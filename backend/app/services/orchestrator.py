@@ -158,11 +158,11 @@ class Orchestrator:
         if not participant:
             raise ValueError(f"Participant not found: {participant_id}")
         
-        # Get LLM provider
+        # Get LLM provider (use global defaults if participant config is empty)
         provider_config = participant.provider_config
         provider = get_provider(
-            provider_config.provider,
-            provider_config.model
+            provider_config.provider or None,  # Empty string = use default
+            provider_config.model or None       # Empty string = use default
         )
         
         # Build context

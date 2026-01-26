@@ -11,9 +11,16 @@ class Settings(BaseSettings):
     supabase_service_key: str = ""
     
     # OpenRouter
-    openrouter_api_key: str
+    openrouter_api_key: str = ""
     openrouter_default_model: str = "anthropic/claude-sonnet-4-20250514"
     openrouter_base_url: str = "https://openrouter.ai/api/v1"
+    
+    # Ollama (local)
+    ollama_base_url: str = "http://localhost:11434"
+    ollama_default_model: str = "llama3.2"
+    
+    # Default provider: "openrouter" or "ollama"
+    default_llm_provider: str = "ollama"
     
     # App
     app_env: str = "development"

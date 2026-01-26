@@ -25,9 +25,12 @@ class DisagreementStatus(str, Enum):
 # ============== AI Participant Models ==============
 
 class ProviderConfig(BaseModel):
-    """LLM provider configuration for an AI participant."""
-    provider: str = "openrouter"
-    model: str = "anthropic/claude-sonnet-4-20250514"
+    """LLM provider configuration for an AI participant.
+    
+    If provider or model are empty, the global defaults from settings will be used.
+    """
+    provider: str = ""  # Empty = use DEFAULT_LLM_PROVIDER from settings
+    model: str = ""     # Empty = use provider's default model from settings
     temperature: float = 0.7
 
 
