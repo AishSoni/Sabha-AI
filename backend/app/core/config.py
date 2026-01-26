@@ -19,7 +19,11 @@ class Settings(BaseSettings):
     ollama_base_url: str = "http://localhost:11434"
     ollama_default_model: str = "llama3.2"
     
-    # Default provider: "openrouter" or "ollama"
+    # Gemini (Google)
+    gemini_api_key: str = ""
+    gemini_default_model: str = "gemini-1.5-flash"
+    
+    # Default provider: "openrouter", "ollama", or "gemini"
     default_llm_provider: str = "ollama"
     
     # App

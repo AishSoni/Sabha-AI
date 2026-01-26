@@ -7,6 +7,7 @@ from app.llm.base import (
 )
 from app.llm.openrouter import OpenRouterProvider
 from app.llm.ollama import OllamaProvider
+from app.llm.gemini import GeminiProvider
 from app.core.config import settings
 
 
@@ -18,6 +19,8 @@ def get_provider(provider_name: str = None, model: str = None) -> LLMProvider:
         return OpenRouterProvider(model=model)
     elif provider_name == "ollama":
         return OllamaProvider(model=model)
+    elif provider_name == "gemini":
+        return GeminiProvider(model=model)
     else:
         raise ValueError(f"Unknown provider: {provider_name}")
 
@@ -30,5 +33,6 @@ __all__ = [
     "ToolCall",
     "OpenRouterProvider",
     "OllamaProvider",
+    "GeminiProvider",
     "get_provider",
 ]
