@@ -133,6 +133,61 @@ export const api = {
         return handleResponse(response);
     },
 
+    // AI Turns (Streaming)
+    async *streamTurn(meetingId: string, participantId: string): AsyncGenerator<StreamEvent> {
+        const response = await fetch(`${API_BASE}/meetings/${meetingId}/turn/stream`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ participant_id: participantId }),
+        });
+
+        if (!response.ok) {
+            const error = await response.json().catch(() => ({ detail: 'Unknown error' }));
+            throw new Error(error.detail || `API Error: ${response.status}`);
+        }
+
+        const reader = response.body?.getReader();
+        if (!reader) throw new Error('No response body');
+
+        const decoder = new TextDecoder();
+        let buffer = '';
+
+        try {
+            while (true) {
+                const { done, value } = await reader.read();
+                if (done) break;
+
+                buffer += decoder.decode(value, { stream: true });
+
+                // Process complete lines only (lines ending with \n)
+                let newlineIndex;
+                while ((newlineIndex = buffer.indexOf('\n')) !== -1) {
+                    const line = buffer.slice(0, newlineIndex).trim();
+                    buffer = buffer.slice(newlineIndex + 1);
+
+                    // Skip empty lines (SSE uses \n\n to separate events)
+                    if (!line) continue;
+
+                    // Parse data lines
+                    if (line.startsWith('data:')) {
+                        const jsonStr = line.slice(5).trim();
+                        if (jsonStr) {
+                            try {
+                                const event = JSON.parse(jsonStr) as StreamEvent;
+                                console.log('[SSE Event]', event.type, event.content?.slice(0, 50));
+                                yield event;
+                            } catch (e) {
+                                console.error('[SSE Parse Error]', jsonStr.slice(0, 100), e);
+                            }
+                        }
+                    }
+                }
+            }
+        } finally {
+            reader.releaseLock();
+        }
+    },
+
     // Conflicts
     async getDisagreements(meetingId: string): Promise<Disagreement[]> {
         const response = await fetch(`${API_BASE}/meetings/${meetingId}/disagreements`);
@@ -150,3 +205,20 @@ export const api = {
         return handleResponse(response);
     },
 };
+
+// Streaming event types
+export type StreamEventType = 'text' | 'thinking' | 'tool_call' | 'tool_result' | 'citation' | 'done' | 'error';
+
+export interface StreamEvent {
+    type: StreamEventType;
+    content?: string;
+    tool_name?: string;
+    tool_arguments?: Record<string, unknown>;
+    tool_result?: string;
+    source?: string;
+    title?: string;
+    url?: string;
+    snippet?: string;
+    message_id?: string;
+    usage?: Record<string, number>;
+}

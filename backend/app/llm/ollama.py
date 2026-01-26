@@ -122,6 +122,109 @@ class OllamaProvider(LLMProvider):
             }
         )
     
+    async def stream(
+        self,
+        messages: List[LLMMessage],
+        tools: Optional[List[ToolDefinition]] = None,
+        temperature: float = 0.7,
+        max_tokens: int = 2048,
+    ):
+        """Stream completion via Ollama API."""
+        from app.llm.base import StreamEvent, StreamEventType
+        
+        payload = {
+            "model": self.model,
+            "messages": self._convert_messages(messages),
+            "stream": True,
+            "options": {
+                "temperature": temperature,
+                "num_predict": max_tokens,
+            }
+        }
+        
+        if tools:
+            payload["tools"] = self._convert_tools(tools)
+        
+        async with httpx.AsyncClient() as client:
+            async with client.stream(
+                "POST",
+                f"{self.base_url}/api/chat",
+                json=payload,
+                timeout=120.0
+            ) as response:
+                if response.status_code != 200:
+                    error_text = await response.aread()
+                    yield StreamEvent(
+                        type=StreamEventType.ERROR,
+                        content=f"Ollama error {response.status_code}: {error_text.decode()}"
+                    )
+                    return
+                
+                accumulated_text = ""
+                tool_calls = []
+                usage = {}
+                in_thinking = False
+                thinking_buffer = ""
+                
+                async for line in response.aiter_lines():
+                    if not line:
+                        continue
+                    
+                    try:
+                        data = json.loads(line)
+                    except json.JSONDecodeError:
+                        continue
+                    
+                    message = data.get("message", {})
+                    content = message.get("content", "")
+                    
+                    # Handle thinking blocks (models may use <think> tags)
+                    if "<think>" in content:
+                        in_thinking = True
+                        content = content.replace("<think>", "")
+                    
+                    if in_thinking:
+                        if "</think>" in content:
+                            in_thinking = False
+                            parts = content.split("</think>")
+                            thinking_buffer += parts[0]
+                            yield StreamEvent(
+                                type=StreamEventType.THINKING,
+                                content=thinking_buffer.strip()
+                            )
+                            thinking_buffer = ""
+                            content = parts[1] if len(parts) > 1 else ""
+                        else:
+                            thinking_buffer += content
+                            continue
+                    
+                    if content:
+                        yield StreamEvent(type=StreamEventType.TEXT, content=content)
+                        accumulated_text += content
+                    
+                    # Handle tool calls
+                    if "tool_calls" in message:
+                        for tc in message["tool_calls"]:
+                            func = tc.get("function", {})
+                            args = func.get("arguments", {})
+                            if isinstance(args, str):
+                                args = json.loads(args)
+                            yield StreamEvent(
+                                type=StreamEventType.TOOL_CALL,
+                                tool_name=func.get("name", ""),
+                                tool_arguments=args
+                            )
+                    
+                    # Check if done
+                    if data.get("done"):
+                        usage = {
+                            "prompt_tokens": data.get("prompt_eval_count", 0),
+                            "completion_tokens": data.get("eval_count", 0),
+                            "total_tokens": data.get("prompt_eval_count", 0) + data.get("eval_count", 0)
+                        }
+                
+                yield StreamEvent(type=StreamEventType.DONE, usage=usage)
+    
     def estimate_cost(self, usage: dict) -> float:
         """Ollama runs locally, so cost is always 0."""
         return 0.0

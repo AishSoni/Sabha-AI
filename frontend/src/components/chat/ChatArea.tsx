@@ -1,22 +1,25 @@
 'use client';
 
 import { useState } from 'react';
-import { useMeetingStore } from '@/stores/meetingStore';
+import { useMeetingStore, StreamingMessage } from '@/stores/meetingStore';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Badge } from '@/components/ui/badge';
-import { Separator } from '@/components/ui/separator';
-import { Send, User, Bot, AlertTriangle } from 'lucide-react';
+import { Send, User, Bot, AlertTriangle, Loader2 } from 'lucide-react';
 import { cn, formatRelativeTime, formatCost } from '@/lib/utils';
-import type { Message, AIParticipant } from '@/lib/api';
+import { ThinkingBlock } from '@/components/chat/ThinkingBlock';
+import { ToolUseBlock } from '@/components/chat/ToolUseBlock';
+import { CitationsBlock } from '@/components/chat/CitationsBlock';
+import type { Message, AIParticipant, Citation } from '@/lib/api';
 
 export function ChatArea() {
     const {
         currentMeeting,
         sendUserMessage,
-        executeTurn,
+        executeTurnStreaming,
         activeTurnParticipantId,
+        streamingMessage,
         error,
         clearError
     } = useMeetingStore();
@@ -79,7 +82,12 @@ export function ChatArea() {
                         />
                     ))}
 
-                    {currentMeeting.messages.length === 0 && (
+                    {/* Streaming message */}
+                    {streamingMessage && (
+                        <StreamingMessageBubble streamingMessage={streamingMessage} />
+                    )}
+
+                    {currentMeeting.messages.length === 0 && !streamingMessage && (
                         <div className="text-center py-12 text-zinc-500">
                             <p>No messages yet. Start the conversation!</p>
                         </div>
@@ -92,7 +100,7 @@ export function ChatArea() {
                 <div className="max-w-3xl mx-auto">
                     <p className="text-xs text-zinc-400 mb-3">Who speaks next?</p>
                     <div className="flex flex-wrap gap-2 mb-4">
-                        {/* User turn button (for typing) */}
+                        {/* User turn button */}
                         <Button
                             variant="outline"
                             size="sm"
@@ -112,7 +120,7 @@ export function ChatArea() {
                                 variant="outline"
                                 size="sm"
                                 disabled={activeTurnParticipantId !== null}
-                                onClick={() => executeTurn(participant.id)}
+                                onClick={() => executeTurnStreaming(participant.id)}
                                 className={cn(
                                     'border-zinc-700 hover:bg-zinc-800',
                                     activeTurnParticipantId === participant.id && 'animate-pulse'
@@ -122,7 +130,11 @@ export function ChatArea() {
                                     color: participant.color,
                                 }}
                             >
-                                <Bot className="w-4 h-4 mr-1" />
+                                {activeTurnParticipantId === participant.id ? (
+                                    <Loader2 className="w-4 h-4 mr-1 animate-spin" />
+                                ) : (
+                                    <Bot className="w-4 h-4 mr-1" />
+                                )}
                                 {participant.name.replace('The ', '')}
                             </Button>
                         ))}
@@ -159,6 +171,9 @@ interface MessageBubbleProps {
 function MessageBubble({ message, participant }: MessageBubbleProps) {
     const isUser = message.sender_type === 'user';
     const isSystem = message.sender_type === 'system';
+
+    // Parse tool artifacts
+    const toolCalls = (message.tool_artifacts as { tool_calls?: Array<{ tool: string; result: string }> })?.tool_calls || [];
 
     return (
         <div className={cn('flex gap-3', isUser && 'flex-row-reverse')}>
@@ -202,6 +217,19 @@ function MessageBubble({ message, participant }: MessageBubbleProps) {
                     )}
                 </div>
 
+                {/* Tool calls */}
+                {toolCalls.length > 0 && (
+                    <div className="mb-2">
+                        {toolCalls.map((tc, i) => (
+                            <ToolUseBlock
+                                key={i}
+                                toolName={tc.tool}
+                                result={tc.result}
+                            />
+                        ))}
+                    </div>
+                )}
+
                 {/* Message Text */}
                 <div className={cn(
                     'rounded-2xl px-4 py-2.5',
@@ -211,14 +239,78 @@ function MessageBubble({ message, participant }: MessageBubbleProps) {
                     <p className="text-sm whitespace-pre-wrap">{message.content}</p>
                 </div>
 
-                {/* Tool artifacts indicator */}
-                {message.tool_artifacts && (
-                    <div className="mt-1 flex gap-1">
-                        {(message.tool_artifacts as { tool_calls?: Array<{ tool: string }> }).tool_calls?.map((tc, i) => (
-                            <Badge key={i} variant="outline" className="text-xs border-amber-600 text-amber-500">
-                                🔧 {tc.tool}
-                            </Badge>
-                        ))}
+                {/* Citations */}
+                {message.citations && message.citations.length > 0 && (
+                    <CitationsBlock citations={message.citations} />
+                )}
+            </div>
+        </div>
+    );
+}
+
+interface StreamingMessageBubbleProps {
+    streamingMessage: StreamingMessage;
+}
+
+function StreamingMessageBubble({ streamingMessage }: StreamingMessageBubbleProps) {
+    return (
+        <div className="flex gap-3">
+            {/* Avatar */}
+            <div
+                className="w-8 h-8 rounded-full flex items-center justify-center shrink-0"
+                style={{ backgroundColor: streamingMessage.participantColor }}
+            >
+                <span className="text-white text-sm font-bold">
+                    {streamingMessage.participantName.charAt(0)}
+                </span>
+            </div>
+
+            {/* Message Content */}
+            <div className="flex-1 max-w-[80%]">
+                {/* Sender Name */}
+                <div className="flex items-center gap-2 mb-1">
+                    <span
+                        className="text-sm font-medium"
+                        style={{ color: streamingMessage.participantColor }}
+                    >
+                        {streamingMessage.participantName}
+                    </span>
+                    <Loader2 className="w-3 h-3 animate-spin text-zinc-500" />
+                </div>
+
+                {/* Thinking block */}
+                {streamingMessage.thinkingContent && (
+                    <ThinkingBlock
+                        content={streamingMessage.thinkingContent}
+                        isStreaming={!streamingMessage.isComplete}
+                    />
+                )}
+
+                {/* Tool calls */}
+                {streamingMessage.toolCalls.map((tc, i) => (
+                    <ToolUseBlock
+                        key={i}
+                        toolName={tc.name}
+                        arguments={tc.arguments}
+                        result={tc.result}
+                        isExecuting={tc.isExecuting}
+                    />
+                ))}
+
+                {/* Message Text */}
+                {streamingMessage.content && (
+                    <div className="rounded-2xl px-4 py-2.5 bg-zinc-800 text-zinc-100 rounded-bl-md">
+                        <p className="text-sm whitespace-pre-wrap">
+                            {streamingMessage.content}
+                            <span className="inline-block w-2 h-4 ml-1 bg-zinc-400 animate-pulse" />
+                        </p>
+                    </div>
+                )}
+
+                {/* Empty state while waiting for first content */}
+                {!streamingMessage.content && !streamingMessage.thinkingContent && streamingMessage.toolCalls.length === 0 && (
+                    <div className="rounded-2xl px-4 py-2.5 bg-zinc-800 text-zinc-500 rounded-bl-md">
+                        <Loader2 className="w-4 h-4 animate-spin" />
                     </div>
                 )}
             </div>

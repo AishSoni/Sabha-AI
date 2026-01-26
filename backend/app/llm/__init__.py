@@ -4,6 +4,8 @@ from app.llm.base import (
     LLMResponse,
     ToolDefinition,
     ToolCall,
+    StreamEvent,
+    StreamEventType,
 )
 from app.llm.openrouter import OpenRouterProvider
 from app.llm.ollama import OllamaProvider
@@ -31,6 +33,8 @@ __all__ = [
     "LLMResponse",
     "ToolDefinition",
     "ToolCall",
+    "StreamEvent",
+    "StreamEventType",
     "OpenRouterProvider",
     "OllamaProvider",
     "GeminiProvider",

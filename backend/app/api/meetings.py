@@ -96,6 +96,27 @@ async def execute_turn(meeting_id: str, data: TurnRequest):
         raise HTTPException(status_code=500, detail=f"Error executing turn: {str(e)}")
 
 
+@router.post("/{meeting_id}/turn/stream")
+async def execute_turn_stream(meeting_id: str, data: TurnRequest):
+    """Stream an AI participant's turn via Server-Sent Events."""
+    from sse_starlette.sse import EventSourceResponse
+    from app.services.streaming import events_to_sse
+    
+    orchestrator = get_orchestrator()
+    
+    async def stream_generator():
+        try:
+            async for sse_line in events_to_sse(
+                orchestrator.execute_turn_streaming(meeting_id, data.participant_id)
+            ):
+                yield sse_line
+        except Exception as e:
+            import json
+            yield f"data: {json.dumps({'type': 'error', 'content': str(e)})}\n\n"
+    
+    return EventSourceResponse(stream_generator())
+
+
 @router.get("/{meeting_id}/disagreements", response_model=List[Disagreement])
 async def get_disagreements(meeting_id: str):
     """Get all disagreements for a meeting."""

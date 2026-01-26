@@ -173,6 +173,120 @@ class GeminiProvider(LLMProvider):
             usage=usage
         )
     
+    async def stream(
+        self,
+        messages: List[LLMMessage],
+        tools: Optional[List[ToolDefinition]] = None,
+        temperature: float = 0.7,
+        max_tokens: int = 2048,
+    ):
+        """Stream completion via Gemini API with thinking block support."""
+        from app.llm.base import StreamEvent, StreamEventType
+        
+        system_instruction, contents = self._convert_messages(messages)
+        
+        if not contents:
+            contents = [{"role": "user", "parts": [{"text": "Hello"}]}]
+        
+        payload = {
+            "contents": contents,
+            "generationConfig": {
+                "temperature": temperature,
+                "maxOutputTokens": max_tokens,
+            }
+        }
+        
+        if system_instruction:
+            payload["systemInstruction"] = {
+                "parts": [{"text": system_instruction}]
+            }
+        
+        if tools:
+            payload["tools"] = self._convert_tools(tools)
+        
+        # Use streamGenerateContent for streaming
+        url = f"{self.base_url}/models/{self.model}:streamGenerateContent?key={self.api_key}&alt=sse"
+        
+        async with httpx.AsyncClient() as client:
+            async with client.stream(
+                "POST",
+                url,
+                json=payload,
+                timeout=120.0
+            ) as response:
+                if response.status_code != 200:
+                    error_text = await response.aread()
+                    yield StreamEvent(
+                        type=StreamEventType.ERROR,
+                        content=f"Gemini API error {response.status_code}: {error_text.decode()}"
+                    )
+                    return
+                
+                accumulated_text = ""
+                tool_calls = []
+                usage = {}
+                
+                async for line in response.aiter_lines():
+                    if not line.startswith("data: "):
+                        continue
+                    
+                    try:
+                        data = json.loads(line[6:])
+                    except json.JSONDecodeError:
+                        continue
+                    
+                    # Extract candidates
+                    candidates = data.get("candidates", [])
+                    if not candidates:
+                        continue
+                    
+                    parts = candidates[0].get("content", {}).get("parts", [])
+                    
+                    for part in parts:
+                        if "text" in part:
+                            text = part["text"]
+                            # Check for thinking blocks (Gemini uses <think> tags)
+                            if "<think>" in text or "</think>" in text:
+                                # Extract thinking content
+                                import re
+                                think_match = re.search(r"<think>(.*?)</think>", text, re.DOTALL)
+                                if think_match:
+                                    yield StreamEvent(
+                                        type=StreamEventType.THINKING,
+                                        content=think_match.group(1).strip()
+                                    )
+                                    text = re.sub(r"<think>.*?</think>", "", text, flags=re.DOTALL)
+                            
+                            if text.strip():
+                                yield StreamEvent(
+                                    type=StreamEventType.TEXT,
+                                    content=text
+                                )
+                                accumulated_text += text
+                        
+                        if "functionCall" in part:
+                            fc = part["functionCall"]
+                            yield StreamEvent(
+                                type=StreamEventType.TOOL_CALL,
+                                tool_name=fc.get("name", ""),
+                                tool_arguments=fc.get("args", {})
+                            )
+                            tool_calls.append(ToolCall(
+                                id=fc.get("name", ""),
+                                name=fc.get("name", ""),
+                                arguments=fc.get("args", {})
+                            ))
+                    
+                    # Get usage from final chunk
+                    if "usageMetadata" in data:
+                        usage = {
+                            "prompt_tokens": data["usageMetadata"].get("promptTokenCount", 0),
+                            "completion_tokens": data["usageMetadata"].get("candidatesTokenCount", 0),
+                            "total_tokens": data["usageMetadata"].get("totalTokenCount", 0)
+                        }
+                
+                yield StreamEvent(type=StreamEventType.DONE, usage=usage)
+    
     def estimate_cost(self, usage: dict) -> float:
         """Estimate cost based on Gemini pricing."""
         prompt_tokens = usage.get("prompt_tokens", 0)

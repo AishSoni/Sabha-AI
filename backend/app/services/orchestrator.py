@@ -223,3 +223,124 @@ class Orchestrator:
             disagreements=disagreements,
             consensus=consensus_list
         )
+    
+    async def execute_turn_streaming(
+        self,
+        meeting_id: str,
+        participant_id: str
+    ):
+        """
+        Execute an AI participant's turn with streaming.
+        Yields StreamEvent objects for real-time UI updates.
+        """
+        from app.llm import get_provider, StreamEvent, StreamEventType
+        
+        # Load meeting data
+        meeting = await self.meeting_manager.get_meeting(meeting_id)
+        if not meeting:
+            yield StreamEvent(type=StreamEventType.ERROR, content=f"Meeting not found: {meeting_id}")
+            return
+        
+        # Find the participant
+        participant = None
+        for p in meeting.participants:
+            if p.id == participant_id:
+                participant = p
+                break
+        
+        if not participant:
+            yield StreamEvent(type=StreamEventType.ERROR, content=f"Participant not found: {participant_id}")
+            return
+        
+        # Get LLM provider
+        provider_config = participant.provider_config
+        provider = get_provider(
+            provider_config.provider or None,
+            provider_config.model or None
+        )
+        
+        # Build context
+        context = self._build_context(participant, meeting.messages, meeting.agenda)
+        
+        # Get tools
+        tools = get_default_tools()
+        
+        # Track accumulated content and tool calls
+        accumulated_content = ""
+        tool_calls_made = []
+        disagreements = []
+        consensus_list = []
+        usage = {}
+        
+        # Stream the response
+        async for event in provider.stream(
+            messages=context,
+            tools=tools,
+            temperature=provider_config.temperature
+        ):
+            # Handle tool calls - execute them and yield results
+            if event.type == StreamEventType.TOOL_CALL and event.tool_name:
+                from app.llm.base import ToolCall
+                tool_call = ToolCall(
+                    id=event.tool_name,
+                    name=event.tool_name,
+                    arguments=event.tool_arguments or {}
+                )
+                
+                result, disagreement, consensus = await self._handle_tool_call(
+                    tool_call, meeting_id, participant
+                )
+                
+                tool_calls_made.append({"tool": event.tool_name, "result": result})
+                
+                if disagreement:
+                    disagreements.append(disagreement)
+                if consensus:
+                    consensus_list.append(consensus)
+                
+                # Yield tool result
+                yield StreamEvent(
+                    type=StreamEventType.TOOL_RESULT,
+                    tool_name=event.tool_name,
+                    tool_result=result
+                )
+            
+            elif event.type == StreamEventType.TEXT:
+                accumulated_content += event.content or ""
+                yield event
+            
+            elif event.type == StreamEventType.THINKING:
+                yield event
+            
+            elif event.type == StreamEventType.DONE:
+                usage = event.usage or {}
+            
+            elif event.type == StreamEventType.ERROR:
+                yield event
+                return
+        
+        # Save the message
+        content = accumulated_content or ""
+        if not content and tool_calls_made:
+            content = f"[{participant.name} used tools: {', '.join(t['tool'] for t in tool_calls_made)}]"
+        
+        cost = provider.estimate_cost(usage)
+        
+        message = await self.meeting_manager.save_message(
+            MessageCreate(
+                meeting_id=meeting_id,
+                content=content,
+                sender_type=SenderType.AI,
+                sender_id=participant.id,
+                sender_name=participant.name,
+                tool_artifacts={"tool_calls": tool_calls_made} if tool_calls_made else None,
+                estimated_cost=cost
+            )
+        )
+        
+        # Yield final done event with message ID
+        yield StreamEvent(
+            type=StreamEventType.DONE,
+            message_id=message.id,
+            usage=usage
+        )
