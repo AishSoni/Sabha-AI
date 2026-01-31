@@ -29,7 +29,7 @@ export default function MeetingRoomPage() {
     }
 
     return (
-        <div className="min-h-screen bg-zinc-950 flex flex-col">
+        <div className="h-screen bg-zinc-950 flex flex-col overflow-hidden">
             {/* Header */}
             <header className="border-b border-zinc-800 px-4 py-3 flex items-center gap-4 shrink-0">
                 <Link
@@ -51,7 +51,7 @@ export default function MeetingRoomPage() {
             </header>
 
             {/* Main Content */}
-            <div className="flex-1 flex min-h-0">
+            <div className="flex-1 flex min-h-0 overflow-hidden">
                 {/* Chat Area */}
                 <ChatArea />
 

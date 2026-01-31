@@ -11,6 +11,8 @@ import { cn, formatRelativeTime, formatCost } from '@/lib/utils';
 import { ThinkingBlock } from '@/components/chat/ThinkingBlock';
 import { ToolUseBlock } from '@/components/chat/ToolUseBlock';
 import { CitationsBlock } from '@/components/chat/CitationsBlock';
+import ReactMarkdown from 'react-markdown';
+import remarkGfm from 'remark-gfm';
 import type { Message, AIParticipant } from '@/lib/api';
 
 export function ChatArea() {
@@ -106,8 +108,8 @@ export function ChatArea() {
                 </div>
             </ScrollArea>
 
-            {/* Turn Selector */}
-            <div className="p-4 border-t border-zinc-800">
+            {/* Turn Selector - Fixed at bottom */}
+            <div className="p-4 border-t border-zinc-800 shrink-0 bg-zinc-950">
                 <div className="max-w-3xl mx-auto">
                     <p className="text-xs text-zinc-400 mb-3">Who speaks next?</p>
                     <div className="flex flex-wrap gap-2 mb-4">
@@ -255,7 +257,15 @@ function MessageBubble({ message, participant }: MessageBubbleProps) {
                     isUser ? 'bg-indigo-600 text-white rounded-br-md' : 'bg-zinc-800 text-zinc-100 rounded-bl-md',
                     isSystem && 'bg-zinc-800/50 text-zinc-400 italic'
                 )}>
-                    <p className="text-sm whitespace-pre-wrap">{message.content}</p>
+                    {isUser || isSystem ? (
+                        <p className="text-sm whitespace-pre-wrap">{message.content}</p>
+                    ) : (
+                        <div className="prose prose-sm prose-invert max-w-none prose-p:my-1 prose-headings:my-2 prose-ul:my-1 prose-ol:my-1 prose-li:my-0.5 prose-pre:my-2 prose-pre:bg-zinc-900 prose-pre:text-zinc-300 prose-code:bg-zinc-900 prose-code:px-1.5 prose-code:py-0.5 prose-code:rounded prose-code:text-indigo-300 prose-code:before:content-none prose-code:after:content-none">
+                            <ReactMarkdown remarkPlugins={[remarkGfm]}>
+                                {message.content}
+                            </ReactMarkdown>
+                        </div>
+                    )}
                 </div>
 
                 {/* Citations */}
@@ -319,10 +329,12 @@ function StreamingMessageBubble({ streamingMessage }: StreamingMessageBubbleProp
                 {/* Message Text */}
                 {streamingMessage.content && (
                     <div className="rounded-2xl px-4 py-2.5 bg-zinc-800 text-zinc-100 rounded-bl-md">
-                        <p className="text-sm whitespace-pre-wrap">
-                            {streamingMessage.content}
+                        <div className="prose prose-sm prose-invert max-w-none prose-p:my-1 prose-headings:my-2 prose-ul:my-1 prose-ol:my-1 prose-li:my-0.5 prose-pre:my-2 prose-pre:bg-zinc-900 prose-pre:text-zinc-300 prose-code:bg-zinc-900 prose-code:px-1.5 prose-code:py-0.5 prose-code:rounded prose-code:text-indigo-300 prose-code:before:content-none prose-code:after:content-none">
+                            <ReactMarkdown remarkPlugins={[remarkGfm]}>
+                                {streamingMessage.content}
+                            </ReactMarkdown>
                             <span className="inline-block w-2 h-4 ml-1 bg-zinc-400 animate-pulse" />
-                        </p>
+                        </div>
                     </div>
                 )}
 
