@@ -159,6 +159,7 @@ class MeetingManager:
             "content": data.content,
             "citations": [c.model_dump() for c in data.citations],
             "tool_artifacts": data.tool_artifacts,
+            "thinking_content": data.thinking_content,
             "estimated_cost": data.estimated_cost,
             "created_at": now,
         }

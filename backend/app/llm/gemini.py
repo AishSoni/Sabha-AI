@@ -243,26 +243,37 @@ class GeminiProvider(LLMProvider):
                     parts = candidates[0].get("content", {}).get("parts", [])
                     
                     for part in parts:
+                        # Handle thought/thinking content (Gemini 2.5+/3 native thinking)
+                        # Check for 'thought' boolean flag or 'thought' key indicating thinking content
+                        is_thought = part.get("thought", False)
+                        
                         if "text" in part:
                             text = part["text"]
-                            # Check for thinking blocks (Gemini uses <think> tags)
-                            if "<think>" in text or "</think>" in text:
-                                # Extract thinking content
-                                import re
-                                think_match = re.search(r"<think>(.*?)</think>", text, re.DOTALL)
-                                if think_match:
-                                    yield StreamEvent(
-                                        type=StreamEventType.THINKING,
-                                        content=think_match.group(1).strip()
-                                    )
-                                    text = re.sub(r"<think>.*?</think>", "", text, flags=re.DOTALL)
                             
-                            if text.strip():
+                            # If this part is marked as a thought, emit as THINKING
+                            if is_thought:
                                 yield StreamEvent(
-                                    type=StreamEventType.TEXT,
+                                    type=StreamEventType.THINKING,
                                     content=text
                                 )
-                                accumulated_text += text
+                            else:
+                                # Check for legacy <think> tags as fallback
+                                if "<think>" in text or "</think>" in text:
+                                    import re
+                                    think_match = re.search(r"<think>(.*?)</think>", text, re.DOTALL)
+                                    if think_match:
+                                        yield StreamEvent(
+                                            type=StreamEventType.THINKING,
+                                            content=think_match.group(1).strip()
+                                        )
+                                        text = re.sub(r"<think>.*?</think>", "", text, flags=re.DOTALL)
+                                
+                                if text.strip():
+                                    yield StreamEvent(
+                                        type=StreamEventType.TEXT,
+                                        content=text
+                                    )
+                                    accumulated_text += text
                         
                         if "functionCall" in part:
                             fc = part["functionCall"]

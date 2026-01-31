@@ -267,6 +267,7 @@ class Orchestrator:
         
         # Track accumulated content and tool calls
         accumulated_content = ""
+        accumulated_thinking = ""  # Track thinking content for persistence
         tool_calls_made = []
         disagreements = []
         consensus_list = []
@@ -310,6 +311,7 @@ class Orchestrator:
                 yield event
             
             elif event.type == StreamEventType.THINKING:
+                accumulated_thinking += event.content or ""
                 yield event
             
             elif event.type == StreamEventType.DONE:
@@ -334,6 +336,7 @@ class Orchestrator:
                 sender_id=participant.id,
                 sender_name=participant.name,
                 tool_artifacts={"tool_calls": tool_calls_made} if tool_calls_made else None,
+                thinking_content=accumulated_thinking if accumulated_thinking else None,
                 estimated_cost=cost
             )
         )

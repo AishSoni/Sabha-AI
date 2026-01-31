@@ -81,6 +81,7 @@ class MessageCreate(MessageBase):
     meeting_id: str
     citations: List[Citation] = Field(default_factory=list)
     tool_artifacts: Optional[dict] = None
+    thinking_content: Optional[str] = None  # AI thinking/reasoning content
     estimated_cost: float = 0.0
 
 
@@ -90,6 +91,7 @@ class Message(MessageBase):
     meeting_id: str
     citations: List[Citation] = Field(default_factory=list)
     tool_artifacts: Optional[dict] = None
+    thinking_content: Optional[str] = None  # AI thinking/reasoning content
     estimated_cost: float = 0.0
     created_at: datetime
 

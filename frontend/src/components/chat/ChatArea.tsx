@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useRef, useEffect } from 'react';
 import { useMeetingStore, StreamingMessage } from '@/stores/meetingStore';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -11,7 +11,7 @@ import { cn, formatRelativeTime, formatCost } from '@/lib/utils';
 import { ThinkingBlock } from '@/components/chat/ThinkingBlock';
 import { ToolUseBlock } from '@/components/chat/ToolUseBlock';
 import { CitationsBlock } from '@/components/chat/CitationsBlock';
-import type { Message, AIParticipant, Citation } from '@/lib/api';
+import type { Message, AIParticipant } from '@/lib/api';
 
 export function ChatArea() {
     const {
@@ -25,6 +25,14 @@ export function ChatArea() {
     } = useMeetingStore();
 
     const [inputValue, setInputValue] = useState('');
+    const scrollRef = useRef<HTMLDivElement>(null);
+
+    // Auto-scroll when messages or streaming content changes
+    useEffect(() => {
+        if (scrollRef.current) {
+            scrollRef.current.scrollIntoView({ behavior: 'smooth' });
+        }
+    }, [currentMeeting?.messages, streamingMessage?.content, streamingMessage?.thinkingContent]);
 
     if (!currentMeeting) {
         return (
@@ -51,9 +59,9 @@ export function ChatArea() {
     };
 
     return (
-        <div className="flex-1 flex flex-col bg-zinc-950">
+        <div className="flex-1 flex flex-col bg-zinc-950 min-h-0 overflow-hidden">
             {/* Header */}
-            <div className="p-4 border-b border-zinc-800">
+            <div className="p-4 border-b border-zinc-800 shrink-0">
                 <h2 className="font-semibold text-white">{currentMeeting.name}</h2>
                 {currentMeeting.agenda && (
                     <p className="text-sm text-zinc-400 mt-1">
@@ -64,7 +72,7 @@ export function ChatArea() {
 
             {/* Error Banner */}
             {error && (
-                <div className="mx-4 mt-4 p-3 bg-red-900/30 border border-red-800 rounded-lg flex items-center gap-2 text-red-400">
+                <div className="mx-4 mt-4 p-3 bg-red-900/30 border border-red-800 rounded-lg flex items-center gap-2 text-red-400 shrink-0">
                     <AlertTriangle className="w-4 h-4" />
                     <span className="text-sm flex-1">{error}</span>
                     <button onClick={clearError} className="text-xs hover:underline">Dismiss</button>
@@ -72,7 +80,7 @@ export function ChatArea() {
             )}
 
             {/* Messages */}
-            <ScrollArea className="flex-1 p-4">
+            <ScrollArea className="flex-1 min-h-0 p-4">
                 <div className="space-y-4 max-w-3xl mx-auto">
                     {currentMeeting.messages.map((message) => (
                         <MessageBubble
@@ -92,6 +100,9 @@ export function ChatArea() {
                             <p>No messages yet. Start the conversation!</p>
                         </div>
                     )}
+
+                    {/* Auto-scroll anchor */}
+                    <div ref={scrollRef} />
                 </div>
             </ScrollArea>
 
@@ -216,6 +227,14 @@ function MessageBubble({ message, participant }: MessageBubbleProps) {
                         </Badge>
                     )}
                 </div>
+
+                {/* Thinking content (persisted) */}
+                {message.thinking_content && (
+                    <ThinkingBlock
+                        content={message.thinking_content}
+                        isStreaming={false}
+                    />
+                )}
 
                 {/* Tool calls */}
                 {toolCalls.length > 0 && (

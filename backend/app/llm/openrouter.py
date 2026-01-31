@@ -1,5 +1,5 @@
 import httpx
-from typing import List, Optional
+from typing import List, Optional, AsyncGenerator
 import json
 
 from app.llm.base import (
@@ -8,6 +8,8 @@ from app.llm.base import (
     LLMResponse,
     ToolDefinition,
     ToolCall,
+    StreamEvent,
+    StreamEventType,
 )
 from app.core.config import settings
 
@@ -130,3 +132,132 @@ class OpenRouterProvider(LLMProvider):
                (output_tokens * output_cost_per_m / 1_000_000)
         
         return round(cost, 6)
+    
+    async def stream(
+        self,
+        messages: List[LLMMessage],
+        tools: Optional[List[ToolDefinition]] = None,
+        temperature: float = 0.7,
+        max_tokens: int = 2048,
+    ) -> AsyncGenerator[StreamEvent, None]:
+        """
+        Stream a completion from OpenRouter with true SSE support.
+        Handles extended thinking/reasoning content from models like Claude, DeepSeek, Gemini.
+        """
+        headers = {
+            "Authorization": f"Bearer {self.api_key}",
+            "Content-Type": "application/json",
+            "HTTP-Referer": "http://localhost:3000",
+            "X-Title": "Sabha"
+        }
+        
+        payload = {
+            "model": self.model,
+            "messages": self._convert_messages(messages),
+            "temperature": temperature,
+            "max_tokens": max_tokens,
+            "stream": True,  # Enable streaming
+        }
+        
+        if tools:
+            payload["tools"] = self._convert_tools(tools)
+        
+        # Track accumulated tool calls for proper parsing
+        pending_tool_calls: dict[int, dict] = {}
+        usage_data = {}
+        
+        async with httpx.AsyncClient() as client:
+            async with client.stream(
+                "POST",
+                f"{self.base_url}/chat/completions",
+                headers=headers,
+                json=payload,
+                timeout=120.0
+            ) as response:
+                response.raise_for_status()
+                
+                async for line in response.aiter_lines():
+                    if not line.strip():
+                        continue
+                        
+                    # SSE format: "data: {...}"
+                    if line.startswith("data: "):
+                        data_str = line[6:]  # Remove "data: " prefix
+                        
+                        if data_str.strip() == "[DONE]":
+                            # Stream complete
+                            yield StreamEvent(
+                                type=StreamEventType.DONE,
+                                usage=usage_data
+                            )
+                            break
+                        
+                        try:
+                            data = json.loads(data_str)
+                        except json.JSONDecodeError:
+                            continue
+                        
+                        # Handle usage info if present
+                        if "usage" in data:
+                            usage_data = data["usage"]
+                        
+                        if not data.get("choices"):
+                            continue
+                            
+                        choice = data["choices"][0]
+                        delta = choice.get("delta", {})
+                        
+                        # Handle reasoning/thinking content (extended thinking models)
+                        # OpenRouter sends this as delta.reasoning_content or delta.thinking
+                        reasoning = delta.get("reasoning_content") or delta.get("thinking") or delta.get("reasoning")
+                        if reasoning:
+                            yield StreamEvent(
+                                type=StreamEventType.THINKING,
+                                content=reasoning
+                            )
+                        
+                        # Handle regular content
+                        if delta.get("content"):
+                            yield StreamEvent(
+                                type=StreamEventType.TEXT,
+                                content=delta["content"]
+                            )
+                        
+                        # Handle tool calls (streamed incrementally)
+                        if delta.get("tool_calls"):
+                            for tc in delta["tool_calls"]:
+                                idx = tc.get("index", 0)
+                                
+                                if idx not in pending_tool_calls:
+                                    pending_tool_calls[idx] = {
+                                        "id": tc.get("id", ""),
+                                        "name": "",
+                                        "arguments": ""
+                                    }
+                                
+                                # Accumulate function info
+                                if "function" in tc:
+                                    if tc["function"].get("name"):
+                                        pending_tool_calls[idx]["name"] = tc["function"]["name"]
+                                    if tc["function"].get("arguments"):
+                                        pending_tool_calls[idx]["arguments"] += tc["function"]["arguments"]
+                        
+                        # Check for finish reason - emit accumulated tool calls
+                        finish_reason = choice.get("finish_reason")
+                        if finish_reason == "tool_calls" and pending_tool_calls:
+                            for idx, tc_data in pending_tool_calls.items():
+                                try:
+                                    args = json.loads(tc_data["arguments"]) if tc_data["arguments"] else {}
+                                except json.JSONDecodeError:
+                                    args = {}
+                                
+                                yield StreamEvent(
+                                    type=StreamEventType.TOOL_CALL,
+                                    tool_name=tc_data["name"],
+                                    tool_arguments=args
+                                )
+                            pending_tool_calls.clear()
+        
+        # Ensure we always yield done if not already done
+        if not usage_data:
+            yield StreamEvent(type=StreamEventType.DONE, usage={})

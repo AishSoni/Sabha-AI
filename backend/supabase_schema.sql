@@ -43,6 +43,7 @@ CREATE TABLE IF NOT EXISTS messages (
     content TEXT NOT NULL,
     citations JSONB DEFAULT '[]'::jsonb,
     tool_artifacts JSONB,
+    thinking_content TEXT,
     estimated_cost DECIMAL(10, 6) DEFAULT 0.0,
     created_at TIMESTAMPTZ DEFAULT NOW()
 );

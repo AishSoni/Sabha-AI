@@ -31,6 +31,7 @@ export interface Message {
     content: string;
     citations: Citation[];
     tool_artifacts: Record<string, unknown> | null;
+    thinking_content: string | null;
     estimated_cost: number;
     created_at: string;
 }
