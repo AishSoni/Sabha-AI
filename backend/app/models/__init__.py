@@ -36,6 +36,20 @@ from app.models.schemas import (
     EndMeetingResponse,
 )
 
+from app.models.persona_schemas import (
+    # Personas
+    PersonaBase,
+    PersonaCreate,
+    PersonaUpdate,
+    Persona,
+    PersonaWithPrompt,
+    # Prompt Versions
+    PromptVersionBase,
+    PromptVersionCreate,
+    PromptVersion,
+    PersonaListResponse,
+)
+
 __all__ = [
     "MeetingStatus",
     "SenderType",
@@ -64,4 +78,15 @@ __all__ = [
     "EndMeetingVote",
     "EndMeetingRequest",
     "EndMeetingResponse",
+    # Personas
+    "PersonaBase",
+    "PersonaCreate",
+    "PersonaUpdate",
+    "Persona",
+    "PersonaWithPrompt",
+    "PromptVersionBase",
+    "PromptVersionCreate",
+    "PromptVersion",
+    "PersonaListResponse",
 ]
+

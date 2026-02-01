@@ -286,3 +286,133 @@ export interface EndMeetingResponse {
     summary: string | null;
     message: string;
 }
+
+// ============== PERSONA TYPES ==============
+
+export interface PersonaProviderConfig {
+    provider: string;
+    model: string;
+    temperature: number;
+    max_tokens: number;
+}
+
+export interface Persona {
+    id: string;
+    name: string;
+    subtitle: string | null;
+    color: string;
+    avatar_url: string | null;
+    provider_config: PersonaProviderConfig;
+    is_default: boolean;
+    user_id: string | null;
+    created_at: string;
+    updated_at: string;
+}
+
+export interface PersonaWithPrompt extends Persona {
+    active_prompt: string | null;
+    active_prompt_version: number | null;
+}
+
+export interface PersonaCreate {
+    name: string;
+    subtitle?: string;
+    color?: string;
+    avatar_url?: string;
+    provider_config?: Partial<PersonaProviderConfig>;
+    system_prompt?: string;
+    user_id?: string;
+}
+
+export interface PersonaUpdate {
+    name?: string;
+    subtitle?: string;
+    color?: string;
+    avatar_url?: string;
+    provider_config?: Partial<PersonaProviderConfig>;
+}
+
+export interface PromptVersion {
+    id: string;
+    persona_id: string;
+    version: number;
+    content: string;
+    is_active: boolean;
+    created_at: string;
+}
+
+export interface PersonaListResponse {
+    personas: PersonaWithPrompt[];
+    total: number;
+}
+
+// ============== PERSONA API ==============
+
+export const personaApi = {
+    async listPersonas(userId?: string, includeDefaults: boolean = true): Promise<PersonaListResponse> {
+        const params = new URLSearchParams();
+        if (userId) params.append('user_id', userId);
+        params.append('include_defaults', String(includeDefaults));
+        const response = await fetch(`${API_BASE}/personas?${params}`);
+        return handleResponse(response);
+    },
+
+    async getPersona(personaId: string): Promise<PersonaWithPrompt> {
+        const response = await fetch(`${API_BASE}/personas/${personaId}`);
+        return handleResponse(response);
+    },
+
+    async createPersona(data: PersonaCreate): Promise<PersonaWithPrompt> {
+        const response = await fetch(`${API_BASE}/personas`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(data),
+        });
+        return handleResponse(response);
+    },
+
+    async updatePersona(personaId: string, data: PersonaUpdate): Promise<PersonaWithPrompt> {
+        const response = await fetch(`${API_BASE}/personas/${personaId}`, {
+            method: 'PUT',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(data),
+        });
+        return handleResponse(response);
+    },
+
+    async deletePersona(personaId: string): Promise<void> {
+        const response = await fetch(`${API_BASE}/personas/${personaId}`, {
+            method: 'DELETE',
+        });
+        if (!response.ok) {
+            const error = await response.json().catch(() => ({ detail: 'Unknown error' }));
+            throw new Error(error.detail || `API Error: ${response.status}`);
+        }
+    },
+
+    // Prompt versions
+    async listPromptVersions(personaId: string): Promise<PromptVersion[]> {
+        const response = await fetch(`${API_BASE}/personas/${personaId}/prompts`);
+        return handleResponse(response);
+    },
+
+    async createPromptVersion(personaId: string, content: string): Promise<PromptVersion> {
+        const response = await fetch(`${API_BASE}/personas/${personaId}/prompts`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ content }),
+        });
+        return handleResponse(response);
+    },
+
+    async activatePromptVersion(personaId: string, version: number): Promise<void> {
+        const response = await fetch(`${API_BASE}/personas/${personaId}/prompts/${version}/activate`, {
+            method: 'POST',
+        });
+        if (!response.ok) {
+            const error = await response.json().catch(() => ({ detail: 'Unknown error' }));
+            throw new Error(error.detail || `API Error: ${response.status}`);
+        }
+    },
+};
+
