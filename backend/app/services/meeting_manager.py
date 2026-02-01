@@ -237,3 +237,13 @@ class MeetingManager:
             .execute()
         
         return [Consensus(**c) for c in result.data]
+
+    async def update_meeting_status(self, meeting_id: str, status: str) -> bool:
+        """Update a meeting's status."""
+        
+        result = self.db.table("meetings") \
+            .update({"status": status}) \
+            .eq("id", meeting_id) \
+            .execute()
+        
+        return len(result.data) > 0

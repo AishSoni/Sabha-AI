@@ -30,6 +30,10 @@ from app.models.schemas import (
     TurnRequest,
     UserMessageRequest,
     TurnResponse,
+    # End Meeting
+    EndMeetingVote,
+    EndMeetingRequest,
+    EndMeetingResponse,
 )
 
 __all__ = [
@@ -57,4 +61,7 @@ __all__ = [
     "TurnRequest",
     "UserMessageRequest",
     "TurnResponse",
+    "EndMeetingVote",
+    "EndMeetingRequest",
+    "EndMeetingResponse",
 ]

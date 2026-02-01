@@ -11,6 +11,7 @@ import {
     Disagreement,
     Consensus,
     StreamEvent,
+    ContextStats,
 } from '@/lib/api';
 
 // Streaming state for a message being generated
@@ -44,6 +45,9 @@ interface MeetingState {
     // Streaming state
     streamingMessage: StreamingMessage | null;
 
+    // Context stats
+    contextStats: ContextStats | null;
+
     // Actions
     fetchMeetings: () => Promise<void>;
     createMeeting: (name: string, agenda?: string) => Promise<MeetingWithParticipants>;
@@ -51,6 +55,8 @@ interface MeetingState {
     sendUserMessage: (content: string) => Promise<void>;
     executeTurn: (participantId: string) => Promise<void>;
     executeTurnStreaming: (participantId: string) => Promise<void>;
+    fetchContextStats: () => Promise<void>;
+    setCurrentMeeting: (meeting: MeetingWithParticipants) => void;
     clearError: () => void;
 }
 
@@ -64,6 +70,7 @@ export const useMeetingStore = create<MeetingState>((set, get) => ({
     error: null,
     activeTurnParticipantId: null,
     streamingMessage: null,
+    contextStats: null,
 
     // Fetch all meetings
     fetchMeetings: async () => {
@@ -105,6 +112,14 @@ export const useMeetingStore = create<MeetingState>((set, get) => ({
                 api.getConsensus(meetingId),
             ]);
             set({ currentMeeting: meeting, disagreements, consensusList, isLoading: false });
+
+            // Also fetch context stats
+            try {
+                const contextStats = await api.getContextStats(meetingId);
+                set({ contextStats });
+            } catch (err) {
+                console.error('Failed to fetch context stats:', err);
+            }
         } catch (err) {
             set({ error: (err as Error).message, isLoading: false });
         }
@@ -235,12 +250,13 @@ export const useMeetingStore = create<MeetingState>((set, get) => ({
                             activeTurnParticipantId: null,
                         });
 
-                        // Also refresh disagreements/consensus
-                        const [disagreements, consensusList] = await Promise.all([
+                        // Also refresh disagreements/consensus and context stats
+                        const [disagreements, consensusList, contextStats] = await Promise.all([
                             api.getDisagreements(currentMeeting.id),
                             api.getConsensus(currentMeeting.id),
+                            api.getContextStats(currentMeeting.id),
                         ]);
-                        set({ disagreements, consensusList });
+                        set({ disagreements, consensusList, contextStats });
                         break;
 
                     case 'error':
@@ -260,6 +276,22 @@ export const useMeetingStore = create<MeetingState>((set, get) => ({
             });
         }
     },
+
+    // Fetch context stats for current meeting
+    fetchContextStats: async () => {
+        const { currentMeeting } = get();
+        if (!currentMeeting) return;
+
+        try {
+            const contextStats = await api.getContextStats(currentMeeting.id);
+            set({ contextStats });
+        } catch (err) {
+            console.error('Failed to fetch context stats:', err);
+        }
+    },
+
+    // Set current meeting (for refreshing after end meeting)
+    setCurrentMeeting: (meeting) => set({ currentMeeting: meeting }),
 
     clearError: () => set({ error: null }),
 }));

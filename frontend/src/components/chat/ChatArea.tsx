@@ -6,14 +6,19 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Badge } from '@/components/ui/badge';
-import { Send, User, Bot, AlertTriangle, Loader2 } from 'lucide-react';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { Card } from '@/components/ui/card';
+import { Send, User, Bot, AlertTriangle, Loader2, MessageSquare, CheckCircle2, Clock, Users, FileText, Scroll } from 'lucide-react';
 import { cn, formatRelativeTime, formatCost } from '@/lib/utils';
 import { ThinkingBlock } from '@/components/chat/ThinkingBlock';
 import { ToolUseBlock } from '@/components/chat/ToolUseBlock';
 import { CitationsBlock } from '@/components/chat/CitationsBlock';
 import ReactMarkdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
-import type { Message, AIParticipant } from '@/lib/api';
+import type { Message, AIParticipant, Disagreement, Consensus } from '@/lib/api';
+import { RosterTab } from '@/components/chat/RosterTab';
+import { SharedDocumentsTab } from '@/components/chat/SharedDocumentsTab';
+import { SummaryTab } from '@/components/chat/SummaryTab';
 
 export function ChatArea() {
     const {
@@ -22,6 +27,8 @@ export function ChatArea() {
         executeTurnStreaming,
         activeTurnParticipantId,
         streamingMessage,
+        disagreements,
+        consensusList,
         error,
         clearError
     } = useMeetingStore();
@@ -34,15 +41,12 @@ export function ChatArea() {
         if (scrollRef.current) {
             scrollRef.current.scrollIntoView({ behavior: 'smooth' });
         }
-    }, [currentMeeting?.messages, streamingMessage?.content, streamingMessage?.thinkingContent]);
+    }, [currentMeeting?.messages, streamingMessage?.content]);
 
     if (!currentMeeting) {
         return (
             <div className="flex-1 flex items-center justify-center bg-zinc-950">
-                <div className="text-center">
-                    <h2 className="text-xl font-semibold text-white mb-2">Welcome to Sabha</h2>
-                    <p className="text-zinc-400">Create or select a meeting to get started</p>
-                </div>
+                <p className="text-zinc-500">Select a meeting to view messages</p>
             </div>
         );
     }
@@ -62,118 +66,330 @@ export function ChatArea() {
 
     return (
         <div className="flex-1 flex flex-col bg-zinc-950 min-h-0 overflow-hidden">
-            {/* Header */}
-            <div className="p-4 border-b border-zinc-800 shrink-0">
-                <h2 className="font-semibold text-white">{currentMeeting.name}</h2>
-                {currentMeeting.agenda && (
-                    <p className="text-sm text-zinc-400 mt-1">
-                        Agenda: {currentMeeting.agenda}
-                    </p>
+            {/* Tabs Header */}
+            <Tabs defaultValue="chat" className="flex-1 flex flex-col min-h-0">
+                <div className="border-b border-zinc-800 px-4 shrink-0">
+                    <TabsList className="bg-transparent h-12 gap-1">
+                        <TabsTrigger
+                            value="chat"
+                            className="data-[state=active]:bg-zinc-800 data-[state=active]:text-white text-zinc-400 px-4"
+                        >
+                            <MessageSquare className="w-4 h-4 mr-2" />
+                            Chat
+                        </TabsTrigger>
+                        <TabsTrigger
+                            value="disagreements"
+                            className="data-[state=active]:bg-zinc-800 data-[state=active]:text-white text-zinc-400 px-4"
+                        >
+                            <AlertTriangle className="w-4 h-4 mr-2" />
+                            Disagreements
+                            {disagreements.length > 0 && (
+                                <Badge variant="secondary" className="ml-2 h-5 px-1.5 text-xs bg-red-900/50 text-red-400">
+                                    {disagreements.length}
+                                </Badge>
+                            )}
+                        </TabsTrigger>
+                        <TabsTrigger
+                            value="consensus"
+                            className="data-[state=active]:bg-zinc-800 data-[state=active]:text-white text-zinc-400 px-4"
+                        >
+                            <CheckCircle2 className="w-4 h-4 mr-2" />
+                            Consensus
+                            {consensusList.length > 0 && (
+                                <Badge variant="secondary" className="ml-2 h-5 px-1.5 text-xs bg-green-900/50 text-green-400">
+                                    {consensusList.length}
+                                </Badge>
+                            )}
+                        </TabsTrigger>
+                        <TabsTrigger
+                            value="roster"
+                            className="data-[state=active]:bg-zinc-800 data-[state=active]:text-white text-zinc-400 px-4"
+                        >
+                            <Users className="w-4 h-4 mr-2" />
+                            Roster
+                        </TabsTrigger>
+                        <TabsTrigger
+                            value="documents"
+                            className="data-[state=active]:bg-zinc-800 data-[state=active]:text-white text-zinc-400 px-4"
+                        >
+                            <FileText className="w-4 h-4 mr-2" />
+                            Shared Docs
+                        </TabsTrigger>
+                        <TabsTrigger
+                            value="summary"
+                            className="data-[state=active]:bg-zinc-800 data-[state=active]:text-white text-zinc-400 px-4"
+                        >
+                            <Scroll className="w-4 h-4 mr-2" />
+                            Summary
+                        </TabsTrigger>
+                    </TabsList>
+                </div>
+
+                {/* Error Banner */}
+                {error && (
+                    <div className="mx-4 mt-4 p-3 bg-red-900/30 border border-red-800 rounded-lg flex items-center gap-2 text-red-400 shrink-0">
+                        <AlertTriangle className="w-4 h-4" />
+                        <span className="text-sm flex-1">{error}</span>
+                        <button onClick={clearError} className="text-xs hover:underline">Dismiss</button>
+                    </div>
                 )}
-            </div>
 
-            {/* Error Banner */}
-            {error && (
-                <div className="mx-4 mt-4 p-3 bg-red-900/30 border border-red-800 rounded-lg flex items-center gap-2 text-red-400 shrink-0">
-                    <AlertTriangle className="w-4 h-4" />
-                    <span className="text-sm flex-1">{error}</span>
-                    <button onClick={clearError} className="text-xs hover:underline">Dismiss</button>
-                </div>
-            )}
+                {/* Chat Tab */}
+                <TabsContent value="chat" className="flex-1 flex flex-col m-0 min-h-0">
+                    <ScrollArea className="flex-1 min-h-0 p-4">
+                        <div className="space-y-4 max-w-3xl mx-auto">
+                            {currentMeeting.messages.map((message) => (
+                                <MessageBubble
+                                    key={message.id}
+                                    message={message}
+                                    participant={currentMeeting.participants.find(p => p.id === message.sender_id)}
+                                />
+                            ))}
 
-            {/* Messages */}
-            <ScrollArea className="flex-1 min-h-0 p-4">
-                <div className="space-y-4 max-w-3xl mx-auto">
-                    {currentMeeting.messages.map((message) => (
-                        <MessageBubble
-                            key={message.id}
-                            message={message}
-                            participant={currentMeeting.participants.find(p => p.id === message.sender_id)}
-                        />
-                    ))}
+                            {/* Streaming message */}
+                            {streamingMessage && (
+                                <StreamingMessageBubble streamingMessage={streamingMessage} />
+                            )}
 
-                    {/* Streaming message */}
-                    {streamingMessage && (
-                        <StreamingMessageBubble streamingMessage={streamingMessage} />
-                    )}
+                            {currentMeeting.messages.length === 0 && !streamingMessage && (
+                                <div className="text-center py-12 text-zinc-500">
+                                    <p>No messages yet. Start the conversation!</p>
+                                </div>
+                            )}
 
-                    {currentMeeting.messages.length === 0 && !streamingMessage && (
-                        <div className="text-center py-12 text-zinc-500">
-                            <p>No messages yet. Start the conversation!</p>
+                            {/* Auto-scroll anchor */}
+                            <div ref={scrollRef} />
                         </div>
-                    )}
+                    </ScrollArea>
+                </TabsContent>
 
-                    {/* Auto-scroll anchor */}
-                    <div ref={scrollRef} />
-                </div>
-            </ScrollArea>
+                {/* Disagreements Tab */}
+                <TabsContent value="disagreements" className="flex-1 m-0 min-h-0">
+                    <ScrollArea className="h-full p-4">
+                        <div className="max-w-3xl mx-auto">
+                            {disagreements.length === 0 ? (
+                                <div className="text-center py-16 text-zinc-500">
+                                    <AlertTriangle className="w-12 h-12 mx-auto mb-3 opacity-50" />
+                                    <h3 className="text-lg font-medium text-zinc-400 mb-1">No Disagreements Yet</h3>
+                                    <p className="text-sm">When AI participants disagree, their debates will appear here.</p>
+                                </div>
+                            ) : (
+                                <div className="space-y-4">
+                                    <p className="text-sm text-zinc-400 mb-4">
+                                        {disagreements.length} disagreement{disagreements.length !== 1 ? 's' : ''} logged
+                                    </p>
+                                    {disagreements.map((d) => (
+                                        <DisagreementCard key={d.id} disagreement={d} />
+                                    ))}
+                                </div>
+                            )}
+                        </div>
+                    </ScrollArea>
+                </TabsContent>
+
+                {/* Consensus Tab */}
+                <TabsContent value="consensus" className="flex-1 m-0 min-h-0">
+                    <ScrollArea className="h-full p-4">
+                        <div className="max-w-3xl mx-auto">
+                            {consensusList.length === 0 ? (
+                                <div className="text-center py-16 text-zinc-500">
+                                    <CheckCircle2 className="w-12 h-12 mx-auto mb-3 opacity-50" />
+                                    <h3 className="text-lg font-medium text-zinc-400 mb-1">No Consensus Yet</h3>
+                                    <p className="text-sm">When AI participants reach agreement, it will appear here.</p>
+                                </div>
+                            ) : (
+                                <div className="space-y-4">
+                                    <p className="text-sm text-zinc-400 mb-4">
+                                        {consensusList.length} consensus point{consensusList.length !== 1 ? 's' : ''} reached
+                                    </p>
+                                    {consensusList.map((c) => (
+                                        <ConsensusCard key={c.id} consensus={c} />
+                                    ))}
+                                </div>
+                            )}
+                        </div>
+                    </ScrollArea>
+                </TabsContent>
+
+                {/* Roster Tab */}
+                <TabsContent value="roster" className="flex-1 m-0 min-h-0">
+                    <RosterTab />
+                </TabsContent>
+
+                {/* Shared Documents Tab */}
+                <TabsContent value="documents" className="flex-1 m-0 min-h-0">
+                    <SharedDocumentsTab />
+                </TabsContent>
+
+                {/* Summary Tab */}
+                <TabsContent value="summary" className="flex-1 m-0 min-h-0">
+                    <SummaryTab />
+                </TabsContent>
+            </Tabs>
 
             {/* Turn Selector - Fixed at bottom */}
             <div className="p-4 border-t border-zinc-800 shrink-0 bg-zinc-950">
                 <div className="max-w-3xl mx-auto">
-                    <p className="text-xs text-zinc-400 mb-3">Who speaks next?</p>
-                    <div className="flex flex-wrap gap-2 mb-4">
-                        {/* User turn button */}
-                        <Button
-                            variant="outline"
-                            size="sm"
-                            className={cn(
-                                'border-zinc-700 hover:bg-zinc-800',
-                                'bg-indigo-600/20 border-indigo-500 text-indigo-400'
-                            )}
-                        >
-                            <User className="w-4 h-4 mr-1" />
-                            You
-                        </Button>
+                    {currentMeeting.status === 'ended' ? (
+                        <div className="text-center py-2 text-zinc-500">
+                            <p className="text-sm">This meeting has ended. The chat is read-only.</p>
+                        </div>
+                    ) : (
+                        <>
+                            <p className="text-xs text-zinc-400 mb-3">Who speaks next?</p>
+                            <div className="flex flex-wrap gap-2 mb-4">
+                                {/* User turn button */}
+                                <Button
+                                    variant="outline"
+                                    size="sm"
+                                    className={cn(
+                                        'border-zinc-700 hover:bg-zinc-800',
+                                        'bg-indigo-600/20 border-indigo-500 text-indigo-400'
+                                    )}
+                                >
+                                    <User className="w-4 h-4 mr-1" />
+                                    You
+                                </Button>
 
-                        {/* AI participant turn buttons */}
-                        {currentMeeting.participants.map((participant) => (
-                            <Button
-                                key={participant.id}
-                                variant="outline"
-                                size="sm"
-                                disabled={activeTurnParticipantId !== null}
-                                onClick={() => executeTurnStreaming(participant.id)}
-                                className={cn(
-                                    'border-zinc-700 hover:bg-zinc-800',
-                                    activeTurnParticipantId === participant.id && 'animate-pulse'
-                                )}
-                                style={{
-                                    borderColor: participant.color + '80',
-                                    color: participant.color,
-                                }}
-                            >
-                                {activeTurnParticipantId === participant.id ? (
-                                    <Loader2 className="w-4 h-4 mr-1 animate-spin" />
-                                ) : (
-                                    <Bot className="w-4 h-4 mr-1" />
-                                )}
-                                {participant.name.replace('The ', '')}
-                            </Button>
-                        ))}
-                    </div>
+                                {/* AI participant turn buttons */}
+                                {currentMeeting.participants.map((participant) => (
+                                    <Button
+                                        key={participant.id}
+                                        variant="outline"
+                                        size="sm"
+                                        disabled={activeTurnParticipantId !== null}
+                                        onClick={() => executeTurnStreaming(participant.id)}
+                                        className={cn(
+                                            'border-zinc-700 hover:bg-zinc-800',
+                                            activeTurnParticipantId === participant.id && 'animate-pulse'
+                                        )}
+                                        style={{
+                                            borderColor: participant.color + '80',
+                                            color: participant.color,
+                                        }}
+                                    >
+                                        {activeTurnParticipantId === participant.id ? (
+                                            <Loader2 className="w-4 h-4 mr-1 animate-spin" />
+                                        ) : (
+                                            <Bot className="w-4 h-4 mr-1" />
+                                        )}
+                                        {participant.name.replace('The ', '')}
+                                    </Button>
+                                ))}
+                            </div>
 
-                    {/* Message Input */}
-                    <div className="flex gap-2">
-                        <Input
-                            value={inputValue}
-                            onChange={(e) => setInputValue(e.target.value)}
-                            onKeyDown={handleKeyDown}
-                            placeholder="Type your message..."
-                            className="bg-zinc-800 border-zinc-700 text-white placeholder:text-zinc-500"
-                        />
-                        <Button
-                            onClick={handleSendMessage}
-                            disabled={!inputValue.trim()}
-                            className="bg-indigo-600 hover:bg-indigo-700"
-                        >
-                            <Send className="w-4 h-4" />
-                        </Button>
-                    </div>
+                            {/* Message Input */}
+                            <div className="flex gap-2">
+                                <Input
+                                    value={inputValue}
+                                    onChange={(e) => setInputValue(e.target.value)}
+                                    onKeyDown={handleKeyDown}
+                                    placeholder="Type your message..."
+                                    className="bg-zinc-800 border-zinc-700 text-white placeholder:text-zinc-500"
+                                />
+                                <Button
+                                    onClick={handleSendMessage}
+                                    disabled={!inputValue.trim()}
+                                    className="bg-indigo-600 hover:bg-indigo-700"
+                                >
+                                    <Send className="w-4 h-4" />
+                                </Button>
+                            </div>
+                        </>
+                    )}
                 </div>
             </div>
         </div>
     );
+}
+
+// Disagreement card component
+function DisagreementCard({ disagreement }: { disagreement: Disagreement }) {
+    const severityColors = {
+        1: 'border-yellow-800/50 bg-yellow-900/20',
+        2: 'border-orange-800/50 bg-orange-900/20',
+        3: 'border-red-800/50 bg-red-900/20',
+        4: 'border-red-700/50 bg-red-900/30',
+        5: 'border-red-600/50 bg-red-900/40',
+    };
+
+    const severity = (disagreement.severity || 3) as keyof typeof severityColors;
+
+    return (
+        <Card className={cn('p-4 border', severityColors[severity])}>
+            <div className="space-y-3">
+                <div className="flex items-start justify-between gap-3">
+                    <h4 className="font-medium text-white">{disagreement.topic}</h4>
+                    <Badge
+                        variant="secondary"
+                        className={cn(
+                            'shrink-0 text-xs',
+                            disagreement.status === 'open'
+                                ? 'bg-red-900/50 text-red-400'
+                                : 'bg-zinc-700 text-zinc-400'
+                        )}
+                    >
+                        {disagreement.status}
+                    </Badge>
+                </div>
+                <p className="text-sm text-zinc-400">{disagreement.reasoning}</p>
+                <div className="flex items-center gap-3 text-xs text-zinc-500">
+                    <span>Challenging: <span className="text-zinc-300">{disagreement.target_name}</span></span>
+                    <span>•</span>
+                    <span className="flex items-center gap-1">
+                        <Clock className="w-3 h-3" />
+                        {formatRelativeTime(disagreement.created_at)}
+                    </span>
+                    <span>•</span>
+                    <span>Severity: {severity}/5</span>
+                </div>
+            </div>
+        </Card>
+    );
+}
+
+// Consensus card component
+function ConsensusCard({ consensus }: { consensus: Consensus }) {
+    const strengthColors = {
+        1: 'border-green-800/30 bg-green-900/10',
+        2: 'border-green-800/40 bg-green-900/15',
+        3: 'border-green-700/50 bg-green-900/20',
+        4: 'border-green-600/50 bg-green-900/25',
+        5: 'border-green-500/50 bg-green-900/30',
+    };
+
+    const strength = (consensus.strength || 3) as keyof typeof strengthColors;
+
+    return (
+        <Card className={cn('p-4 border', strengthColors[strength])}>
+            <div className="space-y-3">
+                <h4 className="font-medium text-white">{consensus.topic}</h4>
+                <div className="flex flex-wrap gap-2">
+                    {(consensus.participants as string[]).map((name, i) => (
+                        <Badge
+                            key={i}
+                            variant="secondary"
+                            className="text-xs bg-green-900/40 text-green-400"
+                        >
+                            {name}
+                        </Badge>
+                    ))}
+                </div>
+                <div className="flex items-center gap-3 text-xs text-zinc-500">
+                    <span>Strength: {strength}/5</span>
+                    <span>•</span>
+                    <span className="flex items-center gap-1">
+                        <Clock className="w-3 h-3" />
+                        {formatRelativeTime(consensus.created_at)}
+                    </span>
+                </div>
+            </div>
+        </Card>
+    );
+}
+
+function formatTime(dateString: string): string {
+    return new Date(dateString).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
 }
 
 interface MessageBubbleProps {

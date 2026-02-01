@@ -48,7 +48,7 @@ export interface Meeting {
     user_id: string | null;
     name: string;
     agenda: string;
-    status: 'active' | 'archived';
+    status: 'active' | 'voting' | 'ended' | 'archived';
     total_cost: number;
     created_at: string;
 }
@@ -205,7 +205,34 @@ export const api = {
         const response = await fetch(`${API_BASE}/participants/templates`);
         return handleResponse(response);
     },
+
+    // Context stats
+    async getContextStats(meetingId: string): Promise<ContextStats> {
+        const response = await fetch(`${API_BASE}/meetings/${meetingId}/context-stats`);
+        return handleResponse(response);
+    },
+
+    // End meeting
+    async endMeeting(meetingId: string, forceEnd: boolean): Promise<EndMeetingResponse> {
+        const response = await fetch(`${API_BASE}/meetings/${meetingId}/end`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ force_end: forceEnd }),
+        });
+        return handleResponse(response);
+    },
 };
+
+export interface ContextStats {
+    current_tokens: number;
+    max_tokens: number;
+    usage_percent: number;
+    message_tokens?: number;
+    system_tokens?: number;
+    agenda_tokens?: number;
+    message_count: number;
+    participant_count: number;
+}
 
 // Streaming event types
 export type StreamEventType = 'text' | 'thinking' | 'tool_call' | 'tool_result' | 'citation' | 'done' | 'error';
@@ -222,4 +249,19 @@ export interface StreamEvent {
     snippet?: string;
     message_id?: string;
     usage?: Record<string, number>;
+}
+
+// End meeting types
+export interface EndMeetingVote {
+    participant_id: string;
+    participant_name: string;
+    vote: boolean;
+    reason: string;
+}
+
+export interface EndMeetingResponse {
+    success: boolean;
+    votes: EndMeetingVote[];
+    summary: string | null;
+    message: string;
 }
