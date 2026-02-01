@@ -247,3 +247,38 @@ class MeetingManager:
             .execute()
         
         return len(result.data) > 0
+
+    async def delete_meeting(self, meeting_id: str) -> bool:
+        """Delete a meeting and all its related data."""
+        
+        # Delete messages first (foreign key constraint)
+        self.db.table("messages") \
+            .delete() \
+            .eq("meeting_id", meeting_id) \
+            .execute()
+        
+        # Delete disagreements
+        self.db.table("disagreements") \
+            .delete() \
+            .eq("meeting_id", meeting_id) \
+            .execute()
+        
+        # Delete consensus
+        self.db.table("consensus") \
+            .delete() \
+            .eq("meeting_id", meeting_id) \
+            .execute()
+        
+        # Delete participants
+        self.db.table("ai_participants") \
+            .delete() \
+            .eq("meeting_id", meeting_id) \
+            .execute()
+        
+        # Finally delete the meeting
+        result = self.db.table("meetings") \
+            .delete() \
+            .eq("id", meeting_id) \
+            .execute()
+        
+        return len(result.data) > 0

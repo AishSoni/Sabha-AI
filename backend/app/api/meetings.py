@@ -377,3 +377,61 @@ Please create a comprehensive executive summary in this format:
         summary=executive_summary,
         message="Meeting ended successfully. Executive summary generated."
     )
+
+
+@router.post("/{meeting_id}/archive")
+async def archive_meeting(meeting_id: str):
+    """Archive a meeting (move to archive folder)."""
+    manager = get_meeting_manager()
+    
+    meeting = await manager.get_meeting(meeting_id)
+    if not meeting:
+        raise HTTPException(status_code=404, detail="Meeting not found")
+    
+    if meeting.status == MeetingStatus.ARCHIVED:
+        raise HTTPException(status_code=400, detail="Meeting is already archived")
+    
+    success = await manager.update_meeting_status(meeting_id, MeetingStatus.ARCHIVED.value)
+    
+    if not success:
+        raise HTTPException(status_code=500, detail="Failed to archive meeting")
+    
+    return {"success": True, "message": "Meeting archived successfully"}
+
+
+@router.post("/{meeting_id}/unarchive")
+async def unarchive_meeting(meeting_id: str):
+    """Unarchive a meeting (restore from archive)."""
+    manager = get_meeting_manager()
+    
+    meeting = await manager.get_meeting(meeting_id)
+    if not meeting:
+        raise HTTPException(status_code=404, detail="Meeting not found")
+    
+    if meeting.status != MeetingStatus.ARCHIVED:
+        raise HTTPException(status_code=400, detail="Meeting is not archived")
+    
+    # Restore to active status
+    success = await manager.update_meeting_status(meeting_id, MeetingStatus.ACTIVE.value)
+    
+    if not success:
+        raise HTTPException(status_code=500, detail="Failed to unarchive meeting")
+    
+    return {"success": True, "message": "Meeting unarchived successfully"}
+
+
+@router.delete("/{meeting_id}")
+async def delete_meeting(meeting_id: str):
+    """Permanently delete a meeting and all its data."""
+    manager = get_meeting_manager()
+    
+    meeting = await manager.get_meeting(meeting_id)
+    if not meeting:
+        raise HTTPException(status_code=404, detail="Meeting not found")
+    
+    success = await manager.delete_meeting(meeting_id)
+    
+    if not success:
+        raise HTTPException(status_code=500, detail="Failed to delete meeting")
+    
+    return {"success": True, "message": "Meeting deleted successfully"}

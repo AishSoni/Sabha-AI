@@ -114,6 +114,27 @@ export const api = {
         return handleResponse(response);
     },
 
+    async archiveMeeting(meetingId: string): Promise<{ success: boolean; message: string }> {
+        const response = await fetch(`${API_BASE}/meetings/${meetingId}/archive`, {
+            method: 'POST',
+        });
+        return handleResponse(response);
+    },
+
+    async unarchiveMeeting(meetingId: string): Promise<{ success: boolean; message: string }> {
+        const response = await fetch(`${API_BASE}/meetings/${meetingId}/unarchive`, {
+            method: 'POST',
+        });
+        return handleResponse(response);
+    },
+
+    async deleteMeeting(meetingId: string): Promise<{ success: boolean; message: string }> {
+        const response = await fetch(`${API_BASE}/meetings/${meetingId}`, {
+            method: 'DELETE',
+        });
+        return handleResponse(response);
+    },
+
     // Messages
     async sendUserMessage(meetingId: string, content: string): Promise<Message> {
         const response = await fetch(`${API_BASE}/meetings/${meetingId}/message`, {
