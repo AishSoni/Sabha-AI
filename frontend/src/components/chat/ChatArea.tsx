@@ -19,6 +19,7 @@ import type { Message, AIParticipant, Disagreement, Consensus } from '@/lib/api'
 import { RosterTab } from '@/components/chat/RosterTab';
 import { SharedDocumentsTab } from '@/components/chat/SharedDocumentsTab';
 import { SummaryTab } from '@/components/chat/SummaryTab';
+import { RateLimitedButton } from '@/components/ui/rate-limited-button';
 
 export function ChatArea() {
     const {
@@ -253,12 +254,14 @@ export function ChatArea() {
 
                                 {/* AI participant turn buttons */}
                                 {currentMeeting.participants.map((participant) => (
-                                    <Button
+                                    <RateLimitedButton
                                         key={participant.id}
+                                        provider={participant.provider_config.provider || 'default'}
                                         variant="outline"
                                         size="sm"
                                         disabled={activeTurnParticipantId !== null}
-                                        onClick={() => executeTurnStreaming(participant.id)}
+                                        onRateLimitedClick={() => executeTurnStreaming(participant.id)}
+                                        isLoading={activeTurnParticipantId === participant.id}
                                         className={cn(
                                             'border-zinc-700 hover:bg-zinc-800',
                                             activeTurnParticipantId === participant.id && 'animate-pulse'
@@ -268,13 +271,9 @@ export function ChatArea() {
                                             color: participant.color,
                                         }}
                                     >
-                                        {activeTurnParticipantId === participant.id ? (
-                                            <Loader2 className="w-4 h-4 mr-1 animate-spin" />
-                                        ) : (
-                                            <Bot className="w-4 h-4 mr-1" />
-                                        )}
+                                        <Bot className="w-4 h-4 mr-1" />
                                         {participant.name.replace('The ', '')}
-                                    </Button>
+                                    </RateLimitedButton>
                                 ))}
                             </div>
 
