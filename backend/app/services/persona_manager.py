@@ -107,8 +107,7 @@ class PersonaManager:
                 query = query.or_(f"user_id.eq.{user_id},is_default.eq.true")
             else:
                 query = query.eq("user_id", user_id)
-        elif include_defaults:
-            query = query.eq("is_default", True)
+        # When no user_id is specified, return all personas (no filter needed)
         
         result = query.order("created_at", desc=True).execute()
         
