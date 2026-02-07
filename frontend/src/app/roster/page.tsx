@@ -5,42 +5,24 @@ import Link from 'next/link';
 import { ArrowLeft, Plus, Bot, Loader2, MoreVertical, Copy, Trash2 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
-import {
-    Dialog,
-    DialogContent,
-    DialogDescription,
-    DialogFooter,
-    DialogHeader,
-    DialogTitle,
-    DialogTrigger,
-} from '@/components/ui/dialog';
+
 import {
     DropdownMenu,
     DropdownMenuContent,
     DropdownMenuItem,
     DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
-import { Input } from '@/components/ui/input';
-import { Label } from '@/components/ui/label';
-import { Textarea } from '@/components/ui/textarea';
-import { personaApi, PersonaWithPrompt, PersonaCreate } from '@/lib/api';
 
-const COLORS = ['#ef4444', '#f97316', '#eab308', '#22c55e', '#14b8a6', '#3b82f6', '#6366f1', '#a855f7', '#ec4899'];
+import { personaApi, PersonaWithPrompt } from '@/lib/api';
+
+
 
 export default function RosterPage() {
     const [personas, setPersonas] = useState<PersonaWithPrompt[]>([]);
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState<string | null>(null);
 
-    // Create dialog state
-    const [createOpen, setCreateOpen] = useState(false);
-    const [creating, setCreating] = useState(false);
-    const [newPersona, setNewPersona] = useState<PersonaCreate>({
-        name: '',
-        subtitle: '',
-        color: '#6366f1',
-        system_prompt: '',
-    });
+
 
     useEffect(() => {
         loadPersonas();
@@ -58,21 +40,7 @@ export default function RosterPage() {
         }
     }
 
-    async function handleCreate() {
-        if (!newPersona.name.trim()) return;
 
-        try {
-            setCreating(true);
-            const created = await personaApi.createPersona(newPersona);
-            setPersonas([created, ...personas]);
-            setCreateOpen(false);
-            setNewPersona({ name: '', subtitle: '', color: '#6366f1', system_prompt: '' });
-        } catch (err) {
-            setError(err instanceof Error ? err.message : 'Failed to create persona');
-        } finally {
-            setCreating(false);
-        }
-    }
 
     async function handleDuplicate(persona: PersonaWithPrompt) {
         try {
@@ -112,81 +80,12 @@ export default function RosterPage() {
                         </div>
                     </div>
 
-                    <Dialog open={createOpen} onOpenChange={setCreateOpen}>
-                        <DialogTrigger asChild>
-                            <Button className="bg-emerald-600 hover:bg-emerald-700">
-                                <Plus className="w-4 h-4 mr-2" />
-                                Create Persona
-                            </Button>
-                        </DialogTrigger>
-                        <DialogContent className="bg-zinc-900 border-zinc-800">
-                            <DialogHeader>
-                                <DialogTitle className="text-white">Create New Persona</DialogTitle>
-                                <DialogDescription>
-                                    Define a new AI persona for your meetings.
-                                </DialogDescription>
-                            </DialogHeader>
-                            <div className="space-y-4 py-4">
-                                <div className="space-y-2">
-                                    <Label htmlFor="name">Name</Label>
-                                    <Input
-                                        id="name"
-                                        placeholder="e.g., The Strategist"
-                                        value={newPersona.name}
-                                        onChange={(e) => setNewPersona({ ...newPersona, name: e.target.value })}
-                                        className="bg-zinc-800 border-zinc-700"
-                                    />
-                                </div>
-                                <div className="space-y-2">
-                                    <Label htmlFor="subtitle">Role / Subtitle</Label>
-                                    <Input
-                                        id="subtitle"
-                                        placeholder="e.g., Strategic Planning Expert"
-                                        value={newPersona.subtitle || ''}
-                                        onChange={(e) => setNewPersona({ ...newPersona, subtitle: e.target.value })}
-                                        className="bg-zinc-800 border-zinc-700"
-                                    />
-                                </div>
-                                <div className="space-y-2">
-                                    <Label>Color</Label>
-                                    <div className="flex gap-2">
-                                        {COLORS.map((color) => (
-                                            <button
-                                                key={color}
-                                                className={`w-8 h-8 rounded-full transition-transform ${newPersona.color === color ? 'ring-2 ring-white scale-110' : ''
-                                                    }`}
-                                                style={{ backgroundColor: color }}
-                                                onClick={() => setNewPersona({ ...newPersona, color })}
-                                            />
-                                        ))}
-                                    </div>
-                                </div>
-                                <div className="space-y-2">
-                                    <Label htmlFor="prompt">System Prompt (Optional)</Label>
-                                    <Textarea
-                                        id="prompt"
-                                        placeholder="Define this persona's personality, expertise, and behavior..."
-                                        value={newPersona.system_prompt || ''}
-                                        onChange={(e) => setNewPersona({ ...newPersona, system_prompt: e.target.value })}
-                                        className="bg-zinc-800 border-zinc-700 min-h-[100px]"
-                                    />
-                                </div>
-                            </div>
-                            <DialogFooter>
-                                <Button variant="outline" onClick={() => setCreateOpen(false)}>
-                                    Cancel
-                                </Button>
-                                <Button
-                                    onClick={handleCreate}
-                                    disabled={!newPersona.name.trim() || creating}
-                                    className="bg-emerald-600 hover:bg-emerald-700"
-                                >
-                                    {creating && <Loader2 className="w-4 h-4 mr-2 animate-spin" />}
-                                    Create Persona
-                                </Button>
-                            </DialogFooter>
-                        </DialogContent>
-                    </Dialog>
+                    <Link href="/roster/new">
+                        <Button className="bg-emerald-600 hover:bg-emerald-700">
+                            <Plus className="w-4 h-4 mr-2" />
+                            Create Persona
+                        </Button>
+                    </Link>
                 </div>
             </header>
 
@@ -209,13 +108,12 @@ export default function RosterPage() {
                         <p className="text-zinc-400 text-sm mb-6">
                             Create your first AI persona to get started.
                         </p>
-                        <Button
-                            onClick={() => setCreateOpen(true)}
-                            className="bg-emerald-600 hover:bg-emerald-700"
-                        >
-                            <Plus className="w-4 h-4 mr-2" />
-                            Create Persona
-                        </Button>
+                        <Link href="/roster/new">
+                            <Button className="bg-emerald-600 hover:bg-emerald-700">
+                                <Plus className="w-4 h-4 mr-2" />
+                                Create Persona
+                            </Button>
+                        </Link>
                     </div>
                 ) : (
                     <>

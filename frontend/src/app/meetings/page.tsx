@@ -26,12 +26,12 @@ import {
 } from '@/components/ui/alert-dialog';
 import { api, Meeting } from '@/lib/api';
 import { formatRelativeTime } from '@/lib/utils';
-import { CreateMeetingRoomDialog } from '@/components/CreateMeetingRoomDialog';
+
 
 export default function MeetingSpacePage() {
     const [meetings, setMeetings] = useState<Meeting[]>([]);
     const [isLoading, setIsLoading] = useState(true);
-    const [showCreateDialog, setShowCreateDialog] = useState(false);
+
     const [activeTab, setActiveTab] = useState('active');
     const [deleteConfirmId, setDeleteConfirmId] = useState<string | null>(null);
     const [actionLoading, setActionLoading] = useState<string | null>(null);
@@ -52,10 +52,7 @@ export default function MeetingSpacePage() {
         }
     };
 
-    const handleMeetingCreated = () => {
-        loadMeetings();
-        setShowCreateDialog(false);
-    };
+
 
     const handleArchive = async (meetingId: string) => {
         setActionLoading(meetingId);
@@ -112,13 +109,12 @@ export default function MeetingSpacePage() {
                             <p className="text-xs text-zinc-500">Manage your AI meeting rooms</p>
                         </div>
                     </div>
-                    <Button
-                        onClick={() => setShowCreateDialog(true)}
-                        className="bg-indigo-600 hover:bg-indigo-700"
-                    >
-                        <Plus className="w-4 h-4 mr-2" />
-                        Create Meeting Room
-                    </Button>
+                    <Link href="/meetings/new">
+                        <Button className="bg-indigo-600 hover:bg-indigo-700">
+                            <Plus className="w-4 h-4 mr-2" />
+                            Create Meeting Room
+                        </Button>
+                    </Link>
                 </div>
             </header>
 
@@ -150,7 +146,7 @@ export default function MeetingSpacePage() {
                         {isLoading ? (
                             <LoadingState />
                         ) : activeMeetings.length === 0 ? (
-                            <EmptyState onCreateClick={() => setShowCreateDialog(true)} />
+                            <EmptyState />
                         ) : (
                             <MeetingGrid
                                 meetings={activeMeetings}
@@ -186,12 +182,7 @@ export default function MeetingSpacePage() {
                 </Tabs>
             </main>
 
-            {/* Create Dialog */}
-            <CreateMeetingRoomDialog
-                open={showCreateDialog}
-                onOpenChange={setShowCreateDialog}
-                onCreated={handleMeetingCreated}
-            />
+
 
             {/* Delete Confirmation Dialog */}
             <AlertDialog open={!!deleteConfirmId} onOpenChange={(open) => !open && setDeleteConfirmId(null)}>
@@ -233,7 +224,7 @@ function LoadingState() {
     );
 }
 
-function EmptyState({ onCreateClick }: { onCreateClick: () => void }) {
+function EmptyState() {
     return (
         <div className="text-center py-20">
             <div className="w-16 h-16 rounded-2xl bg-zinc-800 flex items-center justify-center mx-auto mb-4">
@@ -241,13 +232,12 @@ function EmptyState({ onCreateClick }: { onCreateClick: () => void }) {
             </div>
             <h3 className="text-lg font-medium text-white mb-2">No meeting rooms yet</h3>
             <p className="text-zinc-500 mb-6">Create your first meeting room to get started</p>
-            <Button
-                onClick={onCreateClick}
-                className="bg-indigo-600 hover:bg-indigo-700"
-            >
-                <Plus className="w-4 h-4 mr-2" />
-                Create Meeting Room
-            </Button>
+            <Link href="/meetings/new">
+                <Button className="bg-indigo-600 hover:bg-indigo-700">
+                    <Plus className="w-4 h-4 mr-2" />
+                    Create Meeting Room
+                </Button>
+            </Link>
         </div>
     );
 }
