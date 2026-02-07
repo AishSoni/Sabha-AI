@@ -95,11 +95,11 @@ async function handleResponse<T>(response: Response): Promise<T> {
 
 export const api = {
     // Meetings
-    async createMeeting(name: string, agenda: string = ''): Promise<MeetingWithParticipants> {
+    async createMeeting(name: string, agenda: string = '', personaIds?: string[]): Promise<MeetingWithParticipants> {
         const response = await fetch(`${API_BASE}/meetings`, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ name, agenda }),
+            body: JSON.stringify({ name, agenda, persona_ids: personaIds }),
         });
         return handleResponse(response);
     },
@@ -413,6 +413,105 @@ export const personaApi = {
             const error = await response.json().catch(() => ({ detail: 'Unknown error' }));
             throw new Error(error.detail || `API Error: ${response.status}`);
         }
+    },
+};
+
+// ============== SETTINGS TYPES ==============
+
+export interface ProviderModelInfo {
+    id: string;
+    name: string;
+    context_length: number;
+    supports_tools: boolean;
+    supports_streaming: boolean;
+}
+
+export interface ProviderInfo {
+    id: string;
+    name: string;
+    description: string;
+    requires_api_key: boolean;
+    base_url?: string;
+    models: ProviderModelInfo[];
+    default_model: string;
+    default_temperature: number;
+    default_max_tokens: number;
+}
+
+export interface SystemAIConfig {
+    provider: string;
+    model: string;
+    temperature: number;
+    max_tokens: number;
+}
+
+export interface EnvironmentInfo {
+    is_production: boolean;
+    configured_providers: string[];
+    default_provider: string;
+    default_models: Record<string, string>;
+}
+
+export interface ProvidersListResponse {
+    providers: ProviderInfo[];
+    environment: EnvironmentInfo;
+    system_ai: SystemAIConfig;
+}
+
+export interface TestKeyRequest {
+    provider: 'openrouter' | 'gemini' | 'ollama';
+    api_key: string;
+    base_url?: string;
+}
+
+export interface TestKeyResponse {
+    valid: boolean;
+    message: string;
+    models?: string[];
+}
+
+// ============== SETTINGS API ==============
+
+export interface FetchModelsRequest {
+    provider: 'openrouter' | 'gemini' | 'ollama';
+    api_key?: string;
+    base_url?: string;
+}
+
+export interface FetchedModelInfo {
+    id: string;
+    name: string;
+    context_length?: number;
+}
+
+export interface FetchModelsResponse {
+    success: boolean;
+    models: FetchedModelInfo[];
+    message: string;
+}
+
+export const settingsApi = {
+    async getProviders(): Promise<ProvidersListResponse> {
+        const response = await fetch(`${API_BASE}/settings/providers`);
+        return handleResponse(response);
+    },
+
+    async testKey(request: TestKeyRequest): Promise<TestKeyResponse> {
+        const response = await fetch(`${API_BASE}/settings/test-key`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(request),
+        });
+        return handleResponse(response);
+    },
+
+    async fetchModels(request: FetchModelsRequest): Promise<FetchModelsResponse> {
+        const response = await fetch(`${API_BASE}/settings/models`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(request),
+        });
+        return handleResponse(response);
     },
 };
 

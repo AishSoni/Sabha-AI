@@ -53,9 +53,42 @@ class MeetingManager:
         
         result = self.db.table("meetings").insert(meeting_data).execute()
         
-        # Add default AI participants if requested
+        # Add AI participants
         participants = []
-        if add_default_roster:
+        
+        # If persona_ids provided, fetch those personas from DB
+        if data.persona_ids and len(data.persona_ids) > 0:
+            # Fetch personas from database
+            personas_result = self.db.table("personas") \
+                .select("*") \
+                .in_("id", data.persona_ids) \
+                .execute()
+            
+            for persona_data in personas_result.data:
+                # Fetch active prompt for this persona
+                active_prompt = ""
+                prompts_result = self.db.table("prompt_versions") \
+                    .select("content") \
+                    .eq("persona_id", persona_data["id"]) \
+                    .eq("is_active", True) \
+                    .limit(1) \
+                    .execute()
+                
+                if prompts_result.data:
+                    active_prompt = prompts_result.data[0].get("content", "")
+                
+                participant = await self.add_participant(
+                    AIParticipantCreate(
+                        meeting_id=meeting_id,
+                        name=persona_data["name"],
+                        role=persona_data.get("subtitle") or "AI Assistant",
+                        system_prompt=get_full_prompt(active_prompt),
+                        color=persona_data["color"],
+                    )
+                )
+                participants.append(participant)
+        elif add_default_roster:
+            # Use default roster if no persona_ids provided
             for persona in DEFAULT_ROSTER:
                 participant = await self.add_participant(
                     AIParticipantCreate(

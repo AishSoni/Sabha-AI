@@ -1,8 +1,8 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
-import { Loader2, Upload, X, Bot, FileText } from 'lucide-react';
+import { Loader2, Upload, X, Bot, FileText, RefreshCw } from 'lucide-react';
 import {
     Dialog,
     DialogContent,
@@ -16,14 +16,15 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { Checkbox } from '@/components/ui/checkbox';
-import { api } from '@/lib/api';
+import { api, personaApi, PersonaWithPrompt } from '@/lib/api';
 
-// Default AI roster - will be fetched from backend later
-const DEFAULT_ROSTER = [
-    { id: 'skeptic', name: 'The Skeptic', role: 'Devil\'s Advocate', color: '#ef4444', selected: true },
-    { id: 'optimist', name: 'The Optimist', role: 'Opportunity Finder', color: '#22c55e', selected: true },
-    { id: 'analyst', name: 'The Analyst', role: 'Data Expert', color: '#3b82f6', selected: true },
-];
+interface RosterItem {
+    id: string;
+    name: string;
+    subtitle: string | null;
+    color: string;
+    selected: boolean;
+}
 
 interface CreateMeetingRoomDialogProps {
     open: boolean;
@@ -34,12 +35,42 @@ interface CreateMeetingRoomDialogProps {
 export function CreateMeetingRoomDialog({ open, onOpenChange, onCreated }: CreateMeetingRoomDialogProps) {
     const router = useRouter();
     const [isCreating, setIsCreating] = useState(false);
+    const [loadingRoster, setLoadingRoster] = useState(false);
 
     // Form state
     const [agenda, setAgenda] = useState('');
     const [context, setContext] = useState('');
-    const [roster, setRoster] = useState(DEFAULT_ROSTER);
+    const [roster, setRoster] = useState<RosterItem[]>([]);
     const [documents, setDocuments] = useState<File[]>([]);
+
+    // Load personas when dialog opens
+    useEffect(() => {
+        if (open) {
+            loadPersonas();
+        }
+    }, [open]);
+
+    async function loadPersonas() {
+        try {
+            setLoadingRoster(true);
+            const response = await personaApi.listPersonas(undefined, true);
+            // Convert personas to roster items, all selected by default
+            const items: RosterItem[] = response.personas.map(p => ({
+                id: p.id,
+                name: p.name,
+                subtitle: p.subtitle,
+                color: p.color,
+                selected: true,
+            }));
+            setRoster(items);
+        } catch (err) {
+            console.error('Failed to load personas:', err);
+            // Fallback to empty roster
+            setRoster([]);
+        } finally {
+            setLoadingRoster(false);
+        }
+    }
 
     const handleRosterToggle = (id: string) => {
         setRoster(roster.map(p =>
@@ -60,18 +91,22 @@ export function CreateMeetingRoomDialog({ open, onOpenChange, onCreated }: Creat
     const handleCreate = async () => {
         if (!agenda.trim()) return;
 
+        const selectedPersonaIds = roster.filter(p => p.selected).map(p => p.id);
+        if (selectedPersonaIds.length === 0) return;
+
         setIsCreating(true);
         try {
-            // Create meeting with agenda as name and context as agenda field
-            // In the future, we'll pass selected roster and documents
-            const meeting = await api.createMeeting(agenda.trim(), context.trim());
+            // Create meeting with selected persona IDs
+            const meeting = await api.createMeeting(
+                agenda.trim(),
+                context.trim(),
+                selectedPersonaIds
+            );
 
             // TODO: Upload documents and associate with meeting
-            // TODO: Use custom roster selection instead of defaults
 
             setAgenda('');
             setContext('');
-            setRoster(DEFAULT_ROSTER);
             setDocuments([]);
             onOpenChange(false);
             onCreated?.();
@@ -117,37 +152,66 @@ export function CreateMeetingRoomDialog({ open, onOpenChange, onCreated }: Creat
 
                     {/* Roster Selection */}
                     <div className="space-y-3">
-                        <Label className="text-white">
-                            AI Roster ({selectedCount} selected)
-                        </Label>
-                        <div className="grid gap-2">
-                            {roster.map((persona) => (
-                                <div
-                                    key={persona.id}
-                                    className={`flex items-center gap-3 p-3 rounded-lg border transition-colors cursor-pointer ${persona.selected
+                        <div className="flex items-center justify-between">
+                            <Label className="text-white">
+                                AI Roster ({selectedCount} selected)
+                            </Label>
+                            <Button
+                                variant="ghost"
+                                size="sm"
+                                onClick={loadPersonas}
+                                disabled={loadingRoster}
+                                className="text-zinc-400 hover:text-white"
+                            >
+                                <RefreshCw className={`w-3 h-3 mr-1 ${loadingRoster ? 'animate-spin' : ''}`} />
+                                Refresh
+                            </Button>
+                        </div>
+
+                        {loadingRoster ? (
+                            <div className="flex items-center justify-center py-8">
+                                <Loader2 className="w-6 h-6 animate-spin text-zinc-500" />
+                            </div>
+                        ) : roster.length === 0 ? (
+                            <div className="text-center py-8 border border-dashed border-zinc-700 rounded-lg">
+                                <Bot className="w-8 h-8 mx-auto text-zinc-600 mb-2" />
+                                <p className="text-sm text-zinc-500">No personas available</p>
+                                <p className="text-xs text-zinc-600 mt-1">
+                                    Create personas in the AI Roster page first
+                                </p>
+                            </div>
+                        ) : (
+                            <div className="grid gap-2 max-h-48 overflow-y-auto">
+                                {roster.map((persona) => (
+                                    <div
+                                        key={persona.id}
+                                        className={`flex items-center gap-3 p-3 rounded-lg border transition-colors cursor-pointer ${persona.selected
                                             ? 'bg-zinc-800 border-zinc-600'
                                             : 'bg-zinc-900 border-zinc-800 opacity-60'
-                                        }`}
-                                    onClick={() => handleRosterToggle(persona.id)}
-                                >
-                                    <Checkbox
-                                        checked={persona.selected}
-                                        onCheckedChange={() => handleRosterToggle(persona.id)}
-                                        className="border-zinc-600"
-                                    />
-                                    <div
-                                        className="w-8 h-8 rounded-full flex items-center justify-center"
-                                        style={{ backgroundColor: persona.color }}
+                                            }`}
+                                        onClick={() => handleRosterToggle(persona.id)}
                                     >
-                                        <Bot className="w-4 h-4 text-white" />
+                                        <Checkbox
+                                            checked={persona.selected}
+                                            onCheckedChange={() => handleRosterToggle(persona.id)}
+                                            className="border-zinc-600"
+                                        />
+                                        <div
+                                            className="w-8 h-8 rounded-full flex items-center justify-center"
+                                            style={{ backgroundColor: persona.color }}
+                                        >
+                                            <Bot className="w-4 h-4 text-white" />
+                                        </div>
+                                        <div className="flex-1">
+                                            <p className="text-sm font-medium text-white">{persona.name}</p>
+                                            {persona.subtitle && (
+                                                <p className="text-xs text-zinc-500">{persona.subtitle}</p>
+                                            )}
+                                        </div>
                                     </div>
-                                    <div className="flex-1">
-                                        <p className="text-sm font-medium text-white">{persona.name}</p>
-                                        <p className="text-xs text-zinc-500">{persona.role}</p>
-                                    </div>
-                                </div>
-                            ))}
-                        </div>
+                                ))}
+                            </div>
+                        )}
                         <p className="text-xs text-zinc-500">
                             Select which AI advisors should participate in this meeting
                         </p>

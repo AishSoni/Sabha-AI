@@ -50,6 +50,19 @@ from app.models.persona_schemas import (
     PersonaListResponse,
 )
 
+from app.models.settings_schemas import (
+    # Settings
+    ProviderModelInfo,
+    ProviderInfo,
+    ProviderSettings,
+    TestKeyRequest,
+    TestKeyResponse,
+    SystemAIConfig,
+    EnvironmentInfo,
+    ProvidersListResponse,
+    DEFAULT_PROVIDERS,
+)
+
 __all__ = [
     "MeetingStatus",
     "SenderType",
@@ -88,5 +101,14 @@ __all__ = [
     "PromptVersionCreate",
     "PromptVersion",
     "PersonaListResponse",
+    # Settings
+    "ProviderModelInfo",
+    "ProviderInfo",
+    "ProviderSettings",
+    "TestKeyRequest",
+    "TestKeyResponse",
+    "ProvidersListResponse",
+    "DEFAULT_PROVIDERS",
 ]
+
 

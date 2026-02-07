@@ -112,6 +112,7 @@ class MeetingBase(BaseModel):
 class MeetingCreate(MeetingBase):
     """Create a new meeting."""
     user_id: Optional[str] = None
+    persona_ids: Optional[List[str]] = None  # If provided, use these personas instead of defaults
 
 
 class Meeting(MeetingBase):
