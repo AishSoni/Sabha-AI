@@ -91,7 +91,7 @@ LOG_CONSENSUS = ToolDefinition(
 
 def get_default_tools() -> list[ToolDefinition]:
     """Get the default set of tools for AI agents."""
-    return [LOG_DISAGREEMENT, LOG_CONSENSUS]
+    return [SEARCH_KNOWLEDGE_BASE, LOG_DISAGREEMENT, LOG_CONSENSUS]
 
 
 def get_all_tools() -> list[ToolDefinition]:

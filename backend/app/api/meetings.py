@@ -117,7 +117,7 @@ async def execute_turn_stream(meeting_id: str, data: TurnRequest):
                 yield sse_line
         except Exception as e:
             import json
-            yield f"data: {json.dumps({'type': 'error', 'content': str(e)})}\n\n"
+            yield {"data": json.dumps({"type": "error", "content": str(e)})}
     
     return EventSourceResponse(stream_generator())
 

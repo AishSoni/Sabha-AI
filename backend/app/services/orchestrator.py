@@ -121,8 +121,48 @@ class Orchestrator:
             return "Web search is not yet implemented. Please respond without this tool.", None, None
         
         elif tool_call.name == "search_knowledge_base":
-            # Placeholder for Phase 2
-            return "Knowledge base search is not yet implemented. Please respond without this tool.", None, None
+            # RAG search across meeting shared documents and participant's private knowledge
+            from app.services.vector_store import get_vector_store, VectorStoreManager
+            
+            query = tool_call.arguments.get("query", "")
+            if not query:
+                return "Search query is empty. Please provide a query.", None, None
+            
+            vector_store = get_vector_store()
+            collections_to_search = []
+            
+            # Search meeting's shared documents
+            shared_collection = VectorStoreManager.meeting_collection_name(meeting_id)
+            if await vector_store.collection_exists(shared_collection):
+                collections_to_search.append(shared_collection)
+            
+            # Search participant's private knowledge stack (if has persona_id)
+            # Note: persona_id would come from participant config in future
+            # For now, we only search shared docs
+            
+            if not collections_to_search:
+                return "No documents found in this meeting's knowledge base. Please upload documents first.", None, None
+            
+            try:
+                results = await vector_store.search_multiple_collections(
+                    collection_names=collections_to_search,
+                    query=query,
+                    limit=5,
+                )
+                
+                if not results:
+                    return f"No relevant documents found for query: '{query}'", None, None
+                
+                # Format results for the AI
+                formatted_results = []
+                for i, r in enumerate(results, 1):
+                    file_name = r.metadata.get("file_name", "Unknown")
+                    formatted_results.append(f"[{i}] (Score: {r.score:.2f}, Source: {file_name})\n{r.text}")
+                
+                return f"Found {len(results)} relevant passages:\n\n" + "\n\n---\n\n".join(formatted_results), None, None
+                
+            except Exception as e:
+                return f"Error searching knowledge base: {str(e)}", None, None
         
         else:
             return f"Unknown tool: {tool_call.name}", None, None

@@ -26,6 +26,22 @@ class Settings(BaseSettings):
     # Default provider: "openrouter", "ollama", or "gemini"
     default_llm_provider: str = "ollama"
     
+    # Qdrant Vector DB (deployment agnostic - same config for cloud or local)
+    qdrant_url: str = "http://localhost:6333"
+    qdrant_api_key: str = ""  # Only needed for Qdrant Cloud
+    
+    # Embedding settings
+    # Providers: "gemini", "openai", "cohere", "ollama"
+    embedding_provider: str = "ollama"
+    embedding_model: str = "nomic-embed-text"  # Default for Ollama
+    embedding_dimension: int = 768  # Depends on model
+    
+    # OpenAI (for embeddings if using OpenAI provider)
+    openai_api_key: str = ""
+    
+    # Cohere (for embeddings if using Cohere provider)
+    cohere_api_key: str = ""
+    
     # App
     app_env: str = "development"
     cors_origins: List[str] = ["http://localhost:3000"]

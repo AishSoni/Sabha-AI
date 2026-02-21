@@ -85,6 +85,33 @@ CREATE INDEX IF NOT EXISTS idx_disagreements_meeting_id ON disagreements(meeting
 CREATE INDEX IF NOT EXISTS idx_consensus_meeting_id ON consensus(meeting_id);
 
 -- ============================================
+-- DOCUMENTS TABLE (for RAG pipeline)
+-- ============================================
+CREATE TABLE IF NOT EXISTS documents (
+    id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+    meeting_id UUID REFERENCES meetings(id) ON DELETE CASCADE,
+    persona_id UUID,  -- References personas table if exists
+    file_name VARCHAR(255) NOT NULL,
+    file_type VARCHAR(50) NOT NULL,
+    file_size_bytes BIGINT NOT NULL,
+    chunk_count INTEGER DEFAULT 0,
+    qdrant_collection VARCHAR(255),
+    status VARCHAR(50) DEFAULT 'processing' CHECK (status IN ('processing', 'indexed', 'failed')),
+    error_message TEXT,
+    created_at TIMESTAMPTZ DEFAULT NOW(),
+    
+    -- Either meeting_id OR persona_id should be set, not both
+    CONSTRAINT document_owner_check CHECK (
+        (meeting_id IS NOT NULL AND persona_id IS NULL) OR
+        (meeting_id IS NULL AND persona_id IS NOT NULL)
+    )
+);
+
+CREATE INDEX IF NOT EXISTS idx_documents_meeting_id ON documents(meeting_id);
+CREATE INDEX IF NOT EXISTS idx_documents_persona_id ON documents(persona_id);
+CREATE INDEX IF NOT EXISTS idx_documents_status ON documents(status);
+
+-- ============================================
 -- HELPER FUNCTIONS
 -- ============================================
 

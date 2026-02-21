@@ -515,3 +515,102 @@ export const settingsApi = {
     },
 };
 
+// ============== DOCUMENTS TYPES ==============
+
+export interface Document {
+    id: string;
+    meeting_id: string | null;
+    persona_id: string | null;
+    file_name: string;
+    file_type: string;
+    file_size_bytes: number;
+    chunk_count: number;
+    qdrant_collection: string | null;
+    status: 'processing' | 'indexed' | 'failed';
+    error_message: string | null;
+    created_at: string;
+}
+
+export interface DocumentUploadResponse {
+    id: string;
+    file_name: string;
+    status: string;
+    chunk_count: number;
+    message: string;
+}
+
+export interface DocumentSearchResult {
+    text: string;
+    score: number;
+    document_id: string;
+    file_name: string;
+    chunk_index: number;
+}
+
+export interface DocumentSearchResponse {
+    query: string;
+    results: DocumentSearchResult[];
+    total_results: number;
+}
+
+// ============== DOCUMENTS API ==============
+
+export const documentsApi = {
+    async uploadDocument(
+        file: File,
+        meetingId?: string,
+        personaId?: string
+    ): Promise<DocumentUploadResponse> {
+        const formData = new FormData();
+        formData.append('file', file);
+        if (meetingId) formData.append('meeting_id', meetingId);
+        if (personaId) formData.append('persona_id', personaId);
+
+        const response = await fetch(`${API_BASE}/documents/upload`, {
+            method: 'POST',
+            body: formData,
+        });
+        return handleResponse(response);
+    },
+
+    async listMeetingDocuments(meetingId: string): Promise<Document[]> {
+        const response = await fetch(`${API_BASE}/documents/meeting/${meetingId}`);
+        return handleResponse(response);
+    },
+
+    async listPersonaDocuments(personaId: string): Promise<Document[]> {
+        const response = await fetch(`${API_BASE}/documents/persona/${personaId}`);
+        return handleResponse(response);
+    },
+
+    async getDocument(documentId: string): Promise<Document> {
+        const response = await fetch(`${API_BASE}/documents/${documentId}`);
+        return handleResponse(response);
+    },
+
+    async deleteDocument(documentId: string): Promise<{ message: string; id: string }> {
+        const response = await fetch(`${API_BASE}/documents/${documentId}`, {
+            method: 'DELETE',
+        });
+        return handleResponse(response);
+    },
+
+    async searchDocuments(
+        query: string,
+        meetingId?: string,
+        personaId?: string,
+        limit: number = 5
+    ): Promise<DocumentSearchResponse> {
+        const response = await fetch(`${API_BASE}/documents/search`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+                query,
+                meeting_id: meetingId,
+                persona_id: personaId,
+                limit,
+            }),
+        });
+        return handleResponse(response);
+    },
+};

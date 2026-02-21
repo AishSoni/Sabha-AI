@@ -8,3 +8,18 @@ supabase>=2.3.0
 python-multipart>=0.0.6
 sse-starlette>=3.2.0
 tiktoken>=0.5.0
+
+# RAG Pipeline - Vector DB
+qdrant-client>=1.7.0
+
+# RAG Pipeline - Document Parsing
+pypdf>=3.17.0
+python-docx>=1.1.0
+openpyxl>=3.1.0
+
+# RAG Pipeline - Text Chunking
+langchain-text-splitters>=0.0.1
+
+# RAG Pipeline - Embedding Providers
+cohere>=5.0.0
+openai>=1.0.0

@@ -90,6 +90,17 @@ export default function NewMeetingPage() {
                 selectedPersonaIds
             );
 
+            // Upload documents if any
+            if (documents.length > 0) {
+                const { documentsApi } = await import('@/lib/api');
+                // Upload documents in parallel
+                await Promise.all(
+                    documents.map(file =>
+                        documentsApi.uploadDocument(file, meeting.id)
+                    )
+                );
+            }
+
             // Navigate to the new meeting
             router.push(`/meetings/${meeting.id}`);
         } catch (err) {
@@ -178,7 +189,7 @@ export default function NewMeetingPage() {
                                     onChange={handleFileSelect}
                                     className="hidden"
                                     id="file-upload"
-                                    accept=".pdf,.doc,.docx,.txt,.md"
+                                    accept=".pdf,.docx,.xlsx,.xls,.csv,.txt,.md"
                                 />
                                 <label htmlFor="file-upload" className="cursor-pointer">
                                     <Upload className="w-10 h-10 text-zinc-500 mx-auto mb-3" />
@@ -186,7 +197,7 @@ export default function NewMeetingPage() {
                                         Click to upload documents
                                     </p>
                                     <p className="text-xs text-zinc-600 mt-2">
-                                        PDF, DOC, TXT, MD (Coming soon)
+                                        PDF, DOCX, XLSX, CSV, TXT, MD
                                     </p>
                                 </label>
                             </div>
@@ -269,8 +280,8 @@ export default function NewMeetingPage() {
                                             <div
                                                 key={persona.id}
                                                 className={`flex items-center gap-3 p-3 rounded-lg border transition-all cursor-pointer ${persona.selected
-                                                        ? 'bg-zinc-800 border-zinc-600'
-                                                        : 'bg-zinc-900/50 border-zinc-800 opacity-60'
+                                                    ? 'bg-zinc-800 border-zinc-600'
+                                                    : 'bg-zinc-900/50 border-zinc-800 opacity-60'
                                                     }`}
                                                 onClick={() => handleRosterToggle(persona.id)}
                                             >
