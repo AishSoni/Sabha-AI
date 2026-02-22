@@ -71,6 +71,11 @@ class VectorStoreManager:
     def persona_collection_name(persona_id: str) -> str:
         """Get collection name for persona private knowledge."""
         return f"persona_{persona_id}_knowledge"
+
+    @staticmethod
+    def stack_collection_name(stack_id: str) -> str:
+        """Get collection name for a knowledge stack."""
+        return f"stack_{stack_id}_knowledge"
     
     async def create_collection(self, collection_name: str) -> bool:
         """

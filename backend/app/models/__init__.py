@@ -63,6 +63,14 @@ from app.models.settings_schemas import (
     DEFAULT_PROVIDERS,
 )
 
+from app.models.knowledge_stacks_schemas import (
+    KnowledgeStackBase,
+    KnowledgeStackCreate,
+    KnowledgeStackUpdate,
+    KnowledgeStack,
+    KnowledgeStackListResponse,
+)
+
 __all__ = [
     "MeetingStatus",
     "SenderType",
@@ -109,6 +117,12 @@ __all__ = [
     "TestKeyResponse",
     "ProvidersListResponse",
     "DEFAULT_PROVIDERS",
+    # Knowledge Stacks
+    "KnowledgeStackBase",
+    "KnowledgeStackCreate",
+    "KnowledgeStackUpdate",
+    "KnowledgeStack",
+    "KnowledgeStackListResponse",
 ]
 
 

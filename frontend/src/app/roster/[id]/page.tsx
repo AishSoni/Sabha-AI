@@ -2,14 +2,14 @@
 
 import { useEffect, useState, use } from 'react';
 import Link from 'next/link';
-import { ArrowLeft, Bot, Loader2, Save, History, Settings2 } from 'lucide-react';
+import { ArrowLeft, Bot, Loader2, Save, History, Settings2, BookOpen } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { personaApi, PersonaWithPrompt, PromptVersion, PersonaUpdate } from '@/lib/api';
+import { personaApi, PersonaWithPrompt, PromptVersion, PersonaUpdate, knowledgeStacksApi, KnowledgeStack } from '@/lib/api';
 
 const COLORS = ['#ef4444', '#f97316', '#eab308', '#22c55e', '#14b8a6', '#3b82f6', '#6366f1', '#a855f7', '#ec4899'];
 
@@ -32,6 +32,8 @@ export default function PersonaDetailPage({ params }: PageProps) {
     const [promptContent, setPromptContent] = useState('');
     const [promptVersions, setPromptVersions] = useState<PromptVersion[]>([]);
     const [promptDirty, setPromptDirty] = useState(false);
+    const [availableStacks, setAvailableStacks] = useState<KnowledgeStack[]>([]);
+    const [selectedStacks, setSelectedStacks] = useState<string[]>([]);
 
     useEffect(() => {
         loadPersona();
@@ -40,9 +42,10 @@ export default function PersonaDetailPage({ params }: PageProps) {
     async function loadPersona() {
         try {
             setLoading(true);
-            const [p, versions] = await Promise.all([
+            const [p, versions, stacksRes] = await Promise.all([
                 personaApi.getPersona(id),
                 personaApi.listPromptVersions(id),
+                knowledgeStacksApi.listStacks(),
             ]);
             setPersona(p);
             setName(p.name);
@@ -50,6 +53,8 @@ export default function PersonaDetailPage({ params }: PageProps) {
             setColor(p.color);
             setPromptContent(p.active_prompt || '');
             setPromptVersions(versions);
+            setAvailableStacks(stacksRes.stacks);
+            setSelectedStacks(p.stack_ids || []);
         } catch (err) {
             setError(err instanceof Error ? err.message : 'Failed to load persona');
         } finally {
@@ -62,7 +67,7 @@ export default function PersonaDetailPage({ params }: PageProps) {
 
         try {
             setSaving(true);
-            const update: PersonaUpdate = { name, subtitle, color };
+            const update: PersonaUpdate = { name, subtitle, color, stack_ids: selectedStacks };
             const updated = await personaApi.updatePersona(id, update);
             setPersona(updated);
         } catch (err) {
@@ -219,6 +224,53 @@ export default function PersonaDetailPage({ params }: PageProps) {
                                             />
                                         ))}
                                     </div>
+                                </div>
+
+                                <div className="space-y-3 pt-4 border-t border-zinc-800">
+                                    <div className="flex items-center gap-2">
+                                        <BookOpen className="w-4 h-4 text-blue-400" />
+                                        <Label className="text-white text-base">Knowledge Stacks</Label>
+                                    </div>
+                                    <p className="text-xs text-zinc-500 mb-2">
+                                        Select document domains this AI can query during a meeting.
+                                    </p>
+                                    {availableStacks.length === 0 ? (
+                                        <div className="text-sm text-zinc-500 italic">No knowledge stacks created yet.</div>
+                                    ) : (
+                                        <div className="grid gap-2">
+                                            {availableStacks.map((stack) => {
+                                                const isSelected = selectedStacks.includes(stack.id);
+                                                return (
+                                                    <label
+                                                        key={stack.id}
+                                                        className={`flex items-start gap-3 p-3 rounded-lg border cursor-pointer transition-colors ${isSelected
+                                                                ? 'bg-blue-900/20 border-blue-500/50'
+                                                                : 'bg-zinc-800/30 border-zinc-800 hover:border-zinc-700'
+                                                            }`}
+                                                    >
+                                                        <input
+                                                            type="checkbox"
+                                                            checked={isSelected}
+                                                            onChange={(e) => {
+                                                                if (e.target.checked) {
+                                                                    setSelectedStacks([...selectedStacks, stack.id]);
+                                                                } else {
+                                                                    setSelectedStacks(selectedStacks.filter(id => id !== stack.id));
+                                                                }
+                                                            }}
+                                                            className="mt-1 flex-shrink-0"
+                                                        />
+                                                        <div>
+                                                            <div className="text-sm font-medium text-white">{stack.name}</div>
+                                                            {stack.description && (
+                                                                <div className="text-xs text-zinc-500 mt-0.5">{stack.description}</div>
+                                                            )}
+                                                        </div>
+                                                    </label>
+                                                );
+                                            })}
+                                        </div>
+                                    )}
                                 </div>
 
                                 <Button

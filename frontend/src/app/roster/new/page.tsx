@@ -1,15 +1,15 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
-import { ArrowLeft, Loader2, Bot, Sparkles, Wand2 } from 'lucide-react';
+import { ArrowLeft, Loader2, Bot, Sparkles, Wand2, BookOpen } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { Card, CardContent } from '@/components/ui/card';
-import { personaApi, PersonaCreate } from '@/lib/api';
+import { personaApi, PersonaCreate, knowledgeStacksApi, KnowledgeStack } from '@/lib/api';
 
 const COLORS = [
     '#ef4444', '#f97316', '#eab308', '#22c55e', '#14b8a6',
@@ -35,13 +35,22 @@ export default function NewPersonaPage() {
         system_prompt: '',
     });
 
+    const [availableStacks, setAvailableStacks] = useState<KnowledgeStack[]>([]);
+    const [selectedStacks, setSelectedStacks] = useState<string[]>([]);
+
+    useEffect(() => {
+        knowledgeStacksApi.listStacks()
+            .then(res => setAvailableStacks(res.stacks))
+            .catch(console.error);
+    }, []);
+
     const handleCreate = async () => {
         if (!persona.name.trim()) return;
 
         try {
             setCreating(true);
             setError(null);
-            await personaApi.createPersona(persona);
+            await personaApi.createPersona({ ...persona, stack_ids: selectedStacks });
             router.push('/roster');
         } catch (err) {
             setError(err instanceof Error ? err.message : 'Failed to create persona');
@@ -146,8 +155,8 @@ export default function NewPersonaPage() {
                                     <button
                                         key={color}
                                         className={`w-10 h-10 rounded-full transition-all ${persona.color === color
-                                                ? 'ring-2 ring-white ring-offset-2 ring-offset-zinc-900 scale-110'
-                                                : 'hover:scale-105'
+                                            ? 'ring-2 ring-white ring-offset-2 ring-offset-zinc-900 scale-110'
+                                            : 'hover:scale-105'
                                             }`}
                                         style={{ backgroundColor: color }}
                                         onClick={() => setPersona({ ...persona, color })}
@@ -177,6 +186,58 @@ export default function NewPersonaPage() {
                             <p className="text-xs text-zinc-500">
                                 This prompt shapes how the AI will respond in meetings. Be specific about expertise, tone, and approach.
                             </p>
+                        </section>
+
+                        {/* Knowledge Stacks */}
+                        <section className="space-y-3 pt-4 border-t border-zinc-800">
+                            <div className="flex items-center gap-2">
+                                <BookOpen className="w-5 h-5 text-blue-400" />
+                                <Label className="text-lg font-semibold text-white">
+                                    Knowledge Stacks
+                                </Label>
+                            </div>
+                            <p className="text-sm text-zinc-400 mb-4">
+                                Select document domains this AI can query during a meeting.
+                            </p>
+                            {availableStacks.length === 0 ? (
+                                <div className="text-sm text-zinc-500 italic p-4 bg-zinc-900/50 rounded-lg border border-zinc-800">
+                                    No knowledge stacks available. <Link href="/knowledge-stacks/new" className="text-blue-400 hover:underline">Create one</Link>
+                                </div>
+                            ) : (
+                                <div className="grid gap-2">
+                                    {availableStacks.map((stack) => {
+                                        const isSelected = selectedStacks.includes(stack.id);
+                                        return (
+                                            <label
+                                                key={stack.id}
+                                                className={`flex items-start gap-3 p-3 rounded-lg border cursor-pointer transition-colors ${isSelected
+                                                        ? 'bg-blue-900/20 border-blue-500/50'
+                                                        : 'bg-zinc-800/30 border-zinc-800 hover:border-zinc-700'
+                                                    }`}
+                                            >
+                                                <input
+                                                    type="checkbox"
+                                                    checked={isSelected}
+                                                    onChange={(e) => {
+                                                        if (e.target.checked) {
+                                                            setSelectedStacks([...selectedStacks, stack.id]);
+                                                        } else {
+                                                            setSelectedStacks(selectedStacks.filter(id => id !== stack.id));
+                                                        }
+                                                    }}
+                                                    className="mt-1 flex-shrink-0"
+                                                />
+                                                <div>
+                                                    <div className="text-sm font-medium text-white">{stack.name}</div>
+                                                    {stack.description && (
+                                                        <div className="text-xs text-zinc-500 mt-0.5">{stack.description}</div>
+                                                    )}
+                                                </div>
+                                            </label>
+                                        );
+                                    })}
+                                </div>
+                            )}
                         </section>
                     </div>
 

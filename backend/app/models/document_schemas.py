@@ -18,6 +18,7 @@ class DocumentCreate(DocumentBase):
     """Schema for creating a document record."""
     meeting_id: Optional[str] = None
     persona_id: Optional[str] = None
+    stack_id: Optional[str] = None
     qdrant_collection: Optional[str] = None
 
 
@@ -33,6 +34,7 @@ class Document(DocumentBase):
     id: str
     meeting_id: Optional[str] = None
     persona_id: Optional[str] = None
+    stack_id: Optional[str] = None
     chunk_count: int = 0
     qdrant_collection: Optional[str] = None
     status: str = "processing"
@@ -57,6 +59,7 @@ class DocumentSearchRequest(BaseModel):
     query: str = Field(..., min_length=1, max_length=1000)
     meeting_id: Optional[str] = None
     persona_id: Optional[str] = None
+    stack_ids: Optional[List[str]] = None
     limit: int = Field(default=5, ge=1, le=20)
 
 

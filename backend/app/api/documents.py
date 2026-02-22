@@ -78,24 +78,29 @@ async def upload_document(
     file: UploadFile = File(...),
     meeting_id: Optional[str] = Form(None),
     persona_id: Optional[str] = Form(None),
+    stack_id: Optional[str] = Form(None),
 ):
     """
     Upload a document for indexing.
     
-    Either meeting_id OR persona_id must be provided (but not both).
+    Exactly one of meeting_id, persona_id, or stack_id must be provided.
     - meeting_id: Document is shared with all AI participants in the meeting
-    - persona_id: Document is private to the persona's knowledge stack
+    - persona_id: Document is private to the persona's knowledge stack (legacy)
+    - stack_id: Document is part of a curated knowledge stack
     """
+    # Count how many are provided
+    provided = sum([bool(meeting_id), bool(persona_id), bool(stack_id)])
+    
     # Validate ownership
-    if not meeting_id and not persona_id:
+    if provided == 0:
         raise HTTPException(
             status_code=400,
-            detail="Either meeting_id or persona_id must be provided"
+            detail="Either meeting_id, persona_id, or stack_id must be provided"
         )
-    if meeting_id and persona_id:
+    if provided > 1:
         raise HTTPException(
             status_code=400,
-            detail="Cannot provide both meeting_id and persona_id"
+            detail="Cannot provide more than one of meeting_id, persona_id, or stack_id"
         )
     
     # Validate file type
@@ -120,8 +125,12 @@ async def upload_document(
     # Determine collection name
     if meeting_id:
         collection_name = VectorStoreManager.meeting_collection_name(meeting_id)
-    else:
+    elif persona_id:
         collection_name = VectorStoreManager.persona_collection_name(persona_id)
+    elif stack_id:
+        collection_name = VectorStoreManager.stack_collection_name(stack_id)
+    else:
+        raise HTTPException(status_code=400, detail="Invalid target for document upload")
     
     # Create document record
     document_id = str(uuid.uuid4())
@@ -138,8 +147,10 @@ async def upload_document(
     
     if meeting_id:
         doc_data["meeting_id"] = meeting_id
-    else:
+    elif persona_id:
         doc_data["persona_id"] = persona_id
+    elif stack_id:
+        doc_data["stack_id"] = stack_id
     
     db.table("documents").insert(doc_data).execute()
     
@@ -184,6 +195,20 @@ async def list_persona_documents(persona_id: str):
     result = db.table("documents")\
         .select("*")\
         .eq("persona_id", persona_id)\
+        .order("created_at", desc=True)\
+        .execute()
+    
+    return result.data
+
+
+@router.get("/stack/{stack_id}", response_model=List[Document])
+async def list_stack_documents(stack_id: str):
+    """List all documents in a knowledge stack."""
+    db = get_supabase()
+    
+    result = db.table("documents")\
+        .select("*")\
+        .eq("stack_id", stack_id)\
         .order("created_at", desc=True)\
         .execute()
     
@@ -262,11 +287,15 @@ async def search_documents(request: DocumentSearchRequest):
         collections_to_search.append(
             VectorStoreManager.persona_collection_name(request.persona_id)
         )
+        
+    stack_ids = getattr(request, 'stack_ids', [])
+    for stack_id in stack_ids:
+        collections_to_search.append(VectorStoreManager.stack_collection_name(stack_id))
     
     if not collections_to_search:
         raise HTTPException(
             status_code=400,
-            detail="Either meeting_id or persona_id must be provided for search"
+            detail="At least one of meeting_id, persona_id, or stack_ids must be provided for search"
         )
     
     # Perform search

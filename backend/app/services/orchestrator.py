@@ -136,12 +136,20 @@ class Orchestrator:
             if await vector_store.collection_exists(shared_collection):
                 collections_to_search.append(shared_collection)
             
-            # Search participant's private knowledge stack (if has persona_id)
-            # Note: persona_id would come from participant config in future
-            # For now, we only search shared docs
+            # Search participant's assigned knowledge stacks
+            if getattr(participant, "persona_id", None):
+                db = get_supabase()
+                stacks_res = db.table("persona_knowledge_stacks") \
+                               .select("stack_id") \
+                               .eq("persona_id", participant.persona_id) \
+                               .execute()
+                for row in stacks_res.data:
+                    stack_col = VectorStoreManager.stack_collection_name(row["stack_id"])
+                    if await vector_store.collection_exists(stack_col):
+                        collections_to_search.append(stack_col)
             
             if not collections_to_search:
-                return "No documents found in this meeting's knowledge base. Please upload documents first.", None, None
+                return "No documents found in your knowledge stack or the meeting's shared documents. Please ask the user to upload documents.", None, None
             
             try:
                 results = await vector_store.search_multiple_collections(

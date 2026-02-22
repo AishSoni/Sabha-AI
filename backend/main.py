@@ -1,7 +1,7 @@
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from app.core.config import settings
-from app.api import meetings, participants, personas, settings as settings_api, documents
+from app.api import meetings, participants, personas, settings as settings_api, documents, knowledge_stacks
 
 app = FastAPI(
     title="Sabha API",
@@ -24,6 +24,7 @@ app.include_router(participants.router, prefix="/api/participants", tags=["parti
 app.include_router(personas.router)
 app.include_router(settings_api.router)
 app.include_router(documents.router)
+app.include_router(knowledge_stacks.router)
 
 
 @app.get("/")

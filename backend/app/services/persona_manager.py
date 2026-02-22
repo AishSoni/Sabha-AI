@@ -56,9 +56,16 @@ class PersonaManager:
             )
             active_prompt = prompt_version.content
             active_version = prompt_version.version
-        
+            
+        # Add stack references
+        stack_ids = getattr(data, 'stack_ids', [])
+        if stack_ids:
+            stack_inserts = [{"persona_id": persona_id, "stack_id": s_id} for s_id in stack_ids]
+            self.db.table("persona_knowledge_stacks").insert(stack_inserts).execute()
+
         return PersonaWithPrompt(
             **persona,
+            stack_ids=stack_ids,
             active_prompt=active_prompt,
             active_prompt_version=active_version,
         )
@@ -89,9 +96,17 @@ class PersonaManager:
         if prompt_result.data:
             active_prompt = prompt_result.data[0]["content"]
             active_version = prompt_result.data[0]["version"]
+            
+        # Fetch knowledge stack affiliations
+        stack_result = self.db.table("persona_knowledge_stacks") \
+            .select("stack_id") \
+            .eq("persona_id", persona_id) \
+            .execute()
+        stack_ids = [s["stack_id"] for s in stack_result.data] if stack_result.data else []
         
         return PersonaWithPrompt(
             **persona,
+            stack_ids=stack_ids,
             active_prompt=active_prompt,
             active_prompt_version=active_version,
         )
@@ -125,9 +140,17 @@ class PersonaManager:
             if prompt_result.data:
                 active_prompt = prompt_result.data[0]["content"]
                 active_version = prompt_result.data[0]["version"]
+                
+            # Fetch stacks
+            stack_result = self.db.table("persona_knowledge_stacks") \
+                .select("stack_id") \
+                .eq("persona_id", p["id"]) \
+                .execute()
+            stack_ids = [s["stack_id"] for s in stack_result.data] if stack_result.data else []
             
             personas.append(PersonaWithPrompt(
                 **p,
+                stack_ids=stack_ids,
                 active_prompt=active_prompt,
                 active_prompt_version=active_version,
             ))
@@ -148,6 +171,18 @@ class PersonaManager:
             update_data["avatar_url"] = data.avatar_url
         if data.provider_config is not None:
             update_data["provider_config"] = data.provider_config.model_dump()
+        
+        if hasattr(data, 'stack_ids') and data.stack_ids is not None:
+            # Delete old mappings
+            self.db.table("persona_knowledge_stacks") \
+                .delete() \
+                .eq("persona_id", persona_id) \
+                .execute()
+                
+            # Insert new mappings
+            if data.stack_ids:
+                stack_inserts = [{"persona_id": persona_id, "stack_id": s_id} for s_id in data.stack_ids]
+                self.db.table("persona_knowledge_stacks").insert(stack_inserts).execute()
         
         if not update_data:
             return await self.get_persona(persona_id)

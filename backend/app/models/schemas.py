@@ -43,6 +43,7 @@ class AIParticipantBase(BaseModel):
     system_prompt: str
     provider_config: ProviderConfig = Field(default_factory=ProviderConfig)
     color: str = "#6366f1"  # Default indigo
+    persona_id: Optional[str] = None
 
 
 class AIParticipantCreate(AIParticipantBase):

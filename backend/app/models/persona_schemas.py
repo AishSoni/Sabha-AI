@@ -24,6 +24,7 @@ class PersonaBase(BaseModel):
     avatar_url: Optional[str] = None
     provider_config: ProviderConfig = Field(default_factory=ProviderConfig)
     is_default: bool = False
+    stack_ids: List[str] = Field(default_factory=list)
 
 
 class PersonaCreate(PersonaBase):

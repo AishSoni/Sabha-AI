@@ -305,6 +305,7 @@ export interface Persona {
     provider_config: PersonaProviderConfig;
     is_default: boolean;
     user_id: string | null;
+    stack_ids?: string[];
     created_at: string;
     updated_at: string;
 }
@@ -322,6 +323,7 @@ export interface PersonaCreate {
     provider_config?: Partial<PersonaProviderConfig>;
     system_prompt?: string;
     user_id?: string;
+    stack_ids?: string[];
 }
 
 export interface PersonaUpdate {
@@ -330,6 +332,7 @@ export interface PersonaUpdate {
     color?: string;
     avatar_url?: string;
     provider_config?: Partial<PersonaProviderConfig>;
+    stack_ids?: string[];
 }
 
 export interface PromptVersion {
@@ -559,12 +562,14 @@ export const documentsApi = {
     async uploadDocument(
         file: File,
         meetingId?: string,
-        personaId?: string
+        personaId?: string,
+        stackId?: string
     ): Promise<DocumentUploadResponse> {
         const formData = new FormData();
         formData.append('file', file);
         if (meetingId) formData.append('meeting_id', meetingId);
         if (personaId) formData.append('persona_id', personaId);
+        if (stackId) formData.append('stack_id', stackId);
 
         const response = await fetch(`${API_BASE}/documents/upload`, {
             method: 'POST',
@@ -580,6 +585,11 @@ export const documentsApi = {
 
     async listPersonaDocuments(personaId: string): Promise<Document[]> {
         const response = await fetch(`${API_BASE}/documents/persona/${personaId}`);
+        return handleResponse(response);
+    },
+
+    async listStackDocuments(stackId: string): Promise<Document[]> {
+        const response = await fetch(`${API_BASE}/documents/stack/${stackId}`);
         return handleResponse(response);
     },
 
@@ -599,6 +609,7 @@ export const documentsApi = {
         query: string,
         meetingId?: string,
         personaId?: string,
+        stackIds?: string[],
         limit: number = 5
     ): Promise<DocumentSearchResponse> {
         const response = await fetch(`${API_BASE}/documents/search`, {
@@ -608,9 +619,81 @@ export const documentsApi = {
                 query,
                 meeting_id: meetingId,
                 persona_id: personaId,
+                stack_ids: stackIds,
                 limit,
             }),
         });
         return handleResponse(response);
     },
+};
+
+// ============== KNOWLEDGE STACKS TYPES ==============
+
+export interface KnowledgeStack {
+    id: string;
+    name: string;
+    description: string | null;
+    user_id: string | null;
+    created_at: string;
+    updated_at: string;
+}
+
+export interface KnowledgeStackCreate {
+    name: string;
+    description?: string;
+    user_id?: string;
+}
+
+export interface KnowledgeStackUpdate {
+    name?: string;
+    description?: string;
+}
+
+export interface KnowledgeStackListResponse {
+    stacks: KnowledgeStack[];
+    total: number;
+}
+
+// ============== KNOWLEDGE STACKS API ==============
+
+export const knowledgeStacksApi = {
+    async listStacks(userId?: string): Promise<KnowledgeStackListResponse> {
+        const params = new URLSearchParams();
+        if (userId) params.append('user_id', userId);
+        const response = await fetch(`${API_BASE}/knowledge_stacks?${params}`);
+        return handleResponse(response);
+    },
+
+    async getStack(stackId: string): Promise<KnowledgeStack> {
+        const response = await fetch(`${API_BASE}/knowledge_stacks/${stackId}`);
+        return handleResponse(response);
+    },
+
+    async createStack(data: KnowledgeStackCreate): Promise<KnowledgeStack> {
+        const response = await fetch(`${API_BASE}/knowledge_stacks`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(data),
+        });
+        return handleResponse(response);
+    },
+
+    async updateStack(stackId: string, data: KnowledgeStackUpdate): Promise<KnowledgeStack> {
+        const response = await fetch(`${API_BASE}/knowledge_stacks/${stackId}`, {
+            method: 'PUT',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(data),
+        });
+        return handleResponse(response);
+    },
+
+    async deleteStack(stackId: string): Promise<void> {
+        const response = await fetch(`${API_BASE}/knowledge_stacks/${stackId}`, {
+            method: 'DELETE',
+        });
+        if (!response.ok) {
+            const error = await response.json().catch(() => ({ detail: 'Unknown error' }));
+            throw new Error(error.detail || `API Error: ${response.status}`);
+        }
+    }
 };

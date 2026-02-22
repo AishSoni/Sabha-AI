@@ -1,7 +1,7 @@
 'use client';
 
 import Link from 'next/link';
-import { Users, MessageSquare, Settings, ArrowRight, Sparkles } from 'lucide-react';
+import { Users, MessageSquare, Settings, ArrowRight, Sparkles, BookOpen } from 'lucide-react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 
 export default function HomePage() {
@@ -35,7 +35,7 @@ export default function HomePage() {
         </div>
 
         {/* Navigation Cards */}
-        <div className="grid md:grid-cols-3 gap-6">
+        <div className="grid md:grid-cols-2 lg:grid-cols-4 gap-6">
           {/* Meeting Space */}
           <Link href="/meetings" className="group">
             <Card className="bg-zinc-900/50 border-zinc-800 hover:border-indigo-500/50 transition-all duration-300 hover:shadow-lg hover:shadow-indigo-500/10 h-full">
@@ -82,6 +82,29 @@ export default function HomePage() {
             </Card>
           </Link>
 
+          {/* Knowledge Stacks */}
+          <Link href="/knowledge-stacks" className="group">
+            <Card className="bg-zinc-900/50 border-zinc-800 hover:border-blue-500/50 transition-all duration-300 hover:shadow-lg hover:shadow-blue-500/10 h-full">
+              <CardHeader>
+                <div className="w-12 h-12 rounded-xl bg-blue-500/20 flex items-center justify-center mb-4 group-hover:bg-blue-500/30 transition-colors">
+                  <BookOpen className="w-6 h-6 text-blue-400" />
+                </div>
+                <CardTitle className="text-white flex items-center justify-between">
+                  Knowledge Stacks
+                  <ArrowRight className="w-4 h-4 text-zinc-600 group-hover:text-blue-400 group-hover:translate-x-1 transition-all" />
+                </CardTitle>
+                <CardDescription className="text-zinc-400">
+                  Curate document collections for RAG
+                </CardDescription>
+              </CardHeader>
+              <CardContent>
+                <p className="text-sm text-zinc-500">
+                  Upload and manage custom knowledge domains to power your AI advisors with exact context.
+                </p>
+              </CardContent>
+            </Card>
+          </Link>
+
           {/* Settings */}
           <Link href="/settings" className="group">
             <Card className="bg-zinc-900/50 border-zinc-800 hover:border-amber-500/50 transition-all duration-300 hover:shadow-lg hover:shadow-amber-500/10 h-full">
@@ -104,6 +127,7 @@ export default function HomePage() {
               </CardContent>
             </Card>
           </Link>
+
         </div>
       </main>
     </div>

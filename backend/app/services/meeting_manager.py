@@ -84,6 +84,7 @@ class MeetingManager:
                         role=persona_data.get("subtitle") or "AI Assistant",
                         system_prompt=get_full_prompt(active_prompt),
                         color=persona_data["color"],
+                        persona_id=persona_data["id"],
                     )
                 )
                 participants.append(participant)
@@ -170,6 +171,7 @@ class MeetingManager:
             "system_prompt": data.system_prompt,
             "provider_config": data.provider_config.model_dump(),
             "color": data.color,
+            "persona_id": data.persona_id,
             "created_at": now,
         }
         
