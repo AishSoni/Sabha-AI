@@ -461,16 +461,16 @@ See [`AGENTS.md`](./AGENTS.md) for the full agent architecture spec, including:
 - [x] Cost estimation per message and per meeting
 - [x] Thinking tokens support (for extended reasoning models)
 
-### 🔄 Phase 2 – The Brain (RAG + Tools) — *In Progress*
+### ✅ Phase 2 – The Brain (RAG + Tools) — *In Progress*
 - [x] Document upload & Qdrant indexing
 - [x] `search_knowledge_base` tool for agents
 - [x] Private Knowledge Stacks per persona
-- [ ] Web search tool (Tavily integration)
-- [ ] Citations rendered in chat bubbles
+- [x] Web search tool (Tavily integration)
+- [x] Citations rendered in chat bubbles
 
-### 📅 Phase 3 – Robustness — *Planned*
+### 🔄 Phase 3 – Robustness — *Planned*
 - [ ] Context compression (semantic summarization for long meetings)
-- [ ] Meeting summary generation
+- [x] Meeting summary generation
 - [ ] Fork & replay a meeting from any point
 - [ ] Supabase Auth + multi-user support
 - [ ] Cost dashboard and billing overview
