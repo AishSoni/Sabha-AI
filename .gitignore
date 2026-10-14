@@ -43,3 +43,6 @@ design.md
 # typescript
 *.tsbuildinfo
 next-env.d.ts
+
+# agent
+/.opencode/
