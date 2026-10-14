@@ -1,4 +1,4 @@
-# Sabha — Your Personal AI Advisory Board
+# Sabha Your Personal AI Advisory Board
 
 > *"Don't ask one AI. Convene a board."*
 
