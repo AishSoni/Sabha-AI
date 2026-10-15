@@ -3,7 +3,6 @@
 // must never look effective, and no secret may leave the browser.
 import { describe, expect, it, vi, beforeEach } from 'vitest';
 import type { settingsApi as SettingsApi } from '@/lib/api';
-import type { useSettingsStore as SettingsStoreHook } from '@/stores/settings-store';
 
 vi.mock('@/lib/api', async (importOriginal) => {
   const orig = await importOriginal<typeof import('@/lib/api')>();
@@ -21,7 +20,7 @@ vi.mock('@/lib/api', async (importOriginal) => {
 });
 
 let settingsApiMock: typeof SettingsApi;
-let useSettingsStore: SettingsStoreHook;
+let useSettingsStore: typeof import('@/stores/settings-store')['useSettingsStore'];
 
 function serverEffective() {
   return {

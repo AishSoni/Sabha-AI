@@ -16,6 +16,10 @@ export function ApiKeysSection() {
         providers: providerConfigs,
         defaultProvider,
         isProduction,
+        saveStatus,
+        saveError,
+        effective,
+        effectiveReadiness,
         setProviderConfig,
         setDefaultProvider,
         initializeFromServer,
@@ -78,6 +82,54 @@ export function ApiKeysSection() {
                     Non-secret preferences persist on the server. API keys and
                     destinations stay server-managed and never live in this browser.
                 </p>
+            </div>
+
+            {/* Save status: server-authoritative feedback, never optimistic. */}
+            <div
+                aria-live="polite"
+                className="rounded-lg border border-zinc-800 bg-zinc-900/50 px-4 py-3 text-sm"
+            >
+                {saveStatus === 'saving' && (
+                    <p className="text-zinc-300">Saving preferences to the server…</p>
+                )}
+                {saveStatus === 'saved' && (
+                    <p className="text-green-400">Preferences saved. Values below are the server-effective configuration.</p>
+                )}
+                {saveStatus === 'failed' && (
+                    <p role="alert" className="text-red-400">
+                        Save failed{saveError ? `: ${saveError}` : ''}. The values below are the last confirmed server state, not your unsaved edits.
+                    </p>
+                )}
+                {saveStatus === 'idle' && (
+                    <p className="text-zinc-400">Values below are the last confirmed server-effective configuration.</p>
+                )}
+                {effective ? (
+                    <dl className="mt-2 grid gap-1 text-xs text-zinc-400">
+                        <div className="flex gap-2">
+                            <dt className="shrink-0 text-zinc-500">Effective provider:</dt>
+                            <dd className="text-zinc-200">{effective.provider || '—'}</dd>
+                        </div>
+                        <div className="flex gap-2">
+                            <dt className="shrink-0 text-zinc-500">Effective model:</dt>
+                            <dd className="text-zinc-200">{effective.model || '—'}</dd>
+                        </div>
+                        <div className="flex gap-2">
+                            <dt className="shrink-0 text-zinc-500">Temperature / max tokens:</dt>
+                            <dd className="text-zinc-200">
+                                {effective.temperature} / {effective.max_tokens}
+                            </dd>
+                        </div>
+                        {effectiveReadiness && !effectiveReadiness.ready && (
+                            <p role="status" className="text-amber-400">
+                                Not ready: {effectiveReadiness.reason}
+                            </p>
+                        )}
+                    </dl>
+                ) : (
+                    <p className="mt-2 text-xs text-zinc-500">
+                        Effective configuration unavailable — the server could not be reached or rejected the last save.
+                    </p>
+                )}
             </div>
 
             {/* System AI Section */}
