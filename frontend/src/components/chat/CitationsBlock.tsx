@@ -9,6 +9,8 @@ interface Citation {
     title?: string;
     url?: string;
     snippet?: string;
+    /** True when the evidence was deleted or is no longer retrievable. */
+    unavailable?: boolean;
 }
 
 interface CitationsBlockProps {
@@ -41,10 +43,14 @@ export function CitationsBlock({ citations }: CitationsBlockProps) {
             {isExpanded && (
                 <div className="px-3 pb-3 pt-1 space-y-2">
                     {citations.map((citation, idx) => (
-                        <div key={idx} className="bg-black/20 rounded p-2">
+                        <div key={`${citation.source}:${citation.title ?? ''}:${idx}`} className="bg-black/20 rounded p-2">
                             <div className="flex items-center gap-2">
                                 <span className="text-xs text-blue-500 font-mono">[{idx + 1}]</span>
-                                {citation.url ? (
+                                {citation.unavailable ? (
+                                    <span className="text-sm text-zinc-500 italic">
+                                        {citation.title || citation.source} (unavailable)
+                                    </span>
+                                ) : citation.url ? (
                                     <a
                                         href={citation.url}
                                         target="_blank"

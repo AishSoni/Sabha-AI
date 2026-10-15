@@ -99,6 +99,8 @@ interface MeetingState {
     fetchContextStats: () => Promise<void>;
     setCurrentMeeting: (meeting: MeetingWithParticipants) => void;
     setSessionGeneration: (generation: number | null) => void;
+    /** Abort the local event subscription (server execution continues). */
+    cancelLocalSubscription: () => void;
     clearError: () => void;
 }
 
@@ -642,4 +644,8 @@ export const useMeetingStore = create<MeetingState>((set, get) => ({
     },
 
     clearError: () => set({ error: null }),
+
+    cancelLocalSubscription: () => {
+        abortActiveStream();
+    },
 }));

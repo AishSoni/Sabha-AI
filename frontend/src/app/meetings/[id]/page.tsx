@@ -12,13 +12,18 @@ export default function MeetingRoomPage() {
     const params = useParams();
     const meetingId = params.id as string;
 
-    const { currentMeeting, loadMeeting, isLoading } = useMeetingStore();
+    const { currentMeeting, loadMeeting, cancelLocalSubscription, isLoading } = useMeetingStore();
 
     useEffect(() => {
         if (meetingId) {
             loadMeeting(meetingId);
         }
-    }, [meetingId, loadMeeting]);
+        // Leaving the route aborts the local subscription only; the server
+        // turn keeps running and can be reconciled on return.
+        return () => {
+            cancelLocalSubscription();
+        };
+    }, [meetingId, loadMeeting, cancelLocalSubscription]);
 
     if (isLoading && !currentMeeting) {
         return (

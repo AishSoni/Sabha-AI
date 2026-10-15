@@ -17,6 +17,7 @@ import ReactMarkdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
 import type { Message, AIParticipant, Disagreement, Consensus } from '@/lib/api';
 import { RosterTab } from '@/components/chat/RosterTab';
+import { QueuePanel } from '@/components/chat/QueuePanel';
 import { SharedDocumentsTab } from '@/components/chat/SharedDocumentsTab';
 import { SummaryTab } from '@/components/chat/SummaryTab';
 import { RateLimitedButton } from '@/components/ui/rate-limited-button';
@@ -27,7 +28,10 @@ export function ChatArea() {
         sendUserMessage,
         executeTurnStreaming,
         activeTurnParticipantId,
+        turnStatus,
+        turnError,
         streamingMessage,
+        queueNotice,
         disagreements,
         consensusList,
         error,
@@ -126,6 +130,25 @@ export function ChatArea() {
                     </TabsList>
                 </div>
 
+                {/* Turn status Banner */}
+                {turnStatus === 'reconnecting' && (
+                    <div className="mx-4 mt-4 p-3 bg-amber-900/30 border border-amber-800 rounded-lg flex items-center gap-2 text-amber-400 shrink-0" role="status">
+                        <Loader2 className="w-4 h-4 animate-spin" />
+                        <span className="text-sm flex-1">Connection lost — checking the turn result on the server…</span>
+                    </div>
+                )}
+                {turnStatus === 'failed' && turnError && (
+                    <div className="mx-4 mt-4 p-3 bg-red-900/30 border border-red-800 rounded-lg flex items-center gap-2 text-red-400 shrink-0" role="alert">
+                        <AlertTriangle className="w-4 h-4" />
+                        <span className="text-sm flex-1">{turnError}</span>
+                    </div>
+                )}
+                {queueNotice && (
+                    <div className="mx-4 mt-4 p-3 bg-blue-900/30 border border-blue-800 rounded-lg flex items-center gap-2 text-blue-400 shrink-0" role="status">
+                        <Clock className="w-4 h-4" />
+                        <span className="text-sm flex-1">{queueNotice}</span>
+                    </div>
+                )}
                 {/* Error Banner */}
                 {error && (
                     <div className="mx-4 mt-4 p-3 bg-red-900/30 border border-red-800 rounded-lg flex items-center gap-2 text-red-400 shrink-0">
@@ -284,16 +307,20 @@ export function ChatArea() {
                                     onChange={(e) => setInputValue(e.target.value)}
                                     onKeyDown={handleKeyDown}
                                     placeholder="Type your message..."
+                                    aria-label="Type your message"
                                     className="bg-zinc-800 border-zinc-700 text-white placeholder:text-zinc-500"
                                 />
                                 <Button
                                     onClick={handleSendMessage}
                                     disabled={!inputValue.trim()}
+                                    aria-label="Send message"
                                     className="bg-indigo-600 hover:bg-indigo-700"
                                 >
                                     <Send className="w-4 h-4" />
                                 </Button>
                             </div>
+                            {/* Pending queue (FIFO, editable until dispatch) */}
+                            <QueuePanel />
                         </>
                     )}
                 </div>
@@ -400,8 +427,8 @@ function MessageBubble({ message, participant }: MessageBubbleProps) {
     const isUser = message.sender_type === 'user';
     const isSystem = message.sender_type === 'system';
 
-    // Parse tool artifacts
-    const toolCalls = (message.tool_artifacts as { tool_calls?: Array<{ tool: string; result: string }> })?.tool_calls || [];
+    // Parse tool artifacts (persisted executions carry stable identities)
+    const toolCalls = (message.tool_artifacts as { tool_calls?: Array<{ tool: string; result: string; execution_id?: string; provider_call_id?: string; outcome?: string }> })?.tool_calls || [];
 
     return (
         <div className={cn('flex gap-3', isUser && 'flex-row-reverse')}>
@@ -458,9 +485,11 @@ function MessageBubble({ message, participant }: MessageBubbleProps) {
                     <div className="mb-2">
                         {toolCalls.map((tc, i) => (
                             <ToolUseBlock
-                                key={i}
+                                key={tc.execution_id ?? tc.provider_call_id ?? `${message.id}:tool:${i}`}
                                 toolName={tc.tool}
                                 result={tc.result}
+                                executionId={tc.execution_id ?? tc.provider_call_id ?? null}
+                                outcome={tc.outcome ?? null}
                             />
                         ))}
                     </div>
@@ -531,15 +560,22 @@ function StreamingMessageBubble({ streamingMessage }: StreamingMessageBubbleProp
                 )}
 
                 {/* Tool calls */}
-                {streamingMessage.toolCalls.map((tc, i) => (
+                {streamingMessage.toolCalls.map((tc) => (
                     <ToolUseBlock
-                        key={i}
+                        key={tc.executionId}
                         toolName={tc.name}
                         arguments={tc.arguments}
                         result={tc.result}
                         isExecuting={tc.isExecuting}
+                        executionId={tc.executionId}
+                        outcome={tc.outcome}
                     />
                 ))}
+
+                {/* Streamed citations */}
+                {streamingMessage.citations.length > 0 && (
+                    <CitationsBlock citations={streamingMessage.citations} />
+                )}
 
                 {/* Message Text */}
                 {streamingMessage.content && (

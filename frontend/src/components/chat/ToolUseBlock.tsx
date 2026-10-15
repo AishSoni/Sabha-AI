@@ -10,12 +10,17 @@ interface ToolUseBlockProps {
     arguments?: Record<string, unknown>;
     result?: string;
     isExecuting?: boolean;
+    /** Stable execution identity; same-name calls stay independent. */
+    executionId?: string | null;
+    outcome?: string | null;
 }
 
-export function ToolUseBlock({ toolName, arguments: args, result, isExecuting }: ToolUseBlockProps) {
+export function ToolUseBlock({ toolName, arguments: args, result, isExecuting, executionId, outcome }: ToolUseBlockProps) {
     const [isExpanded, setIsExpanded] = useState(false);
 
     const toolDisplayName = toolName.replace(/_/g, ' ').replace(/\b\w/g, c => c.toUpperCase());
+    const failed = outcome === 'failed' || outcome === 'error';
+    const shortId = executionId ? executionId.slice(-8) : null;
 
     return (
         <div className="my-2 rounded-lg bg-amber-950/30 border border-amber-800/50 overflow-hidden">
@@ -31,6 +36,16 @@ export function ToolUseBlock({ toolName, arguments: args, result, isExecuting }:
                     <Wrench className="w-4 h-4" />
                 )}
                 <span className="text-sm font-medium">{toolDisplayName}</span>
+                {shortId && (
+                    <span className="text-xs text-amber-500/70 font-mono" title={`Tool execution ${executionId}`}>
+                        #{shortId}
+                    </span>
+                )}
+                {failed && !isExecuting && (
+                    <Badge variant="outline" className="text-xs border-red-600 text-red-400">
+                        Failed
+                    </Badge>
+                )}
                 {isExecuting && (
                     <Badge variant="outline" className="text-xs border-amber-600 text-amber-500">
                         Running...
