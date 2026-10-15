@@ -72,6 +72,25 @@ async def process_ingestion_job(
         {"state": "processing", "attempts": attempts, "updated_at": _now()}
     ).eq("document_id", document_id).execute()
     try:
+        # Race guard: a delete that lands mid-processing tombstones first;
+        # the worker must not resurrect the document back to indexed.
+        try:
+            doc_rows = (
+                db.table("documents").select("id,status").eq("id", document_id).execute()
+            )
+            doc_status = (doc_rows.data[0].get("status") if doc_rows.data else None)
+        except Exception:
+            doc_status = None
+        if doc_status in ("deleting", "deleted"):
+            try:
+                from app.modules.knowledge import lifecycle as lifecycle_service
+
+                collection = (row.get("collection_name") or "").strip()
+                if collection:
+                    await lifecycle_service.enqueue_cleanup(db, document_id, collection)
+            except Exception:
+                pass
+            return {"document_id": document_id, "state": doc_status, "retryable": False}
         chunks = processor.process_file(
             file_content=file_content,
             file_name=file_name,

@@ -457,14 +457,18 @@ class TurnEngine:
             lines = []
             for i, item in enumerate(result.items, 1):
                 meta = item.get("metadata", {})
-                fname = meta.get("file_name", "document")
+                fname = (
+                    meta.get("file_name", "")
+                    or item.get("document_id", "")
+                    or "document"
+                )
                 lines.append(f"[{i}] (Score: {item.get('score', 0.0):.2f}, Source: {fname})\n{item.get('text','')}")
             cite_dicts = [c.__dict__ if hasattr(c, "__dict__") else dict(c) for c in result.citations]
             citations.extend(cite_dicts)
             return {"result_text": f"Found {len(result.items)} relevant passages:\n\n" + "\n\n---\n\n".join(lines),
                     "citations": cite_dicts}
         if name == "web_search":
-            return {"result_text": "Web search is unavailable in the offline demo runtime. Respond from meeting context."}
+            return {"result_text": "Web search is disabled by policy in this phase. Respond from meeting context and cited documents."}
         if name == "log_disagreement":
             data = DisagreementCreate(
                 meeting_id=meeting_id, source_ai_id=participant.id,

@@ -175,3 +175,23 @@ async def test_worker_failure_marks_failed_retryable():
     assert outcome["state"] == "failed"
     assert outcome["retryable"] is True
     assert db.docs["d-9"]["status"] == "failed"
+
+
+async def test_worker_does_not_resurrect_tombstoned_document():
+    from app.modules.knowledge import ingestion as ing
+
+    db = _DB()
+    await ing.enqueue_ingestion(
+        db, document_id="d-5", collection="c1",
+        file_name="a.pdf", file_type="pdf", storage_path="p",
+    )
+    # Delete lands mid-processing: tombstone-first excludes immediately.
+    db.docs["d-5"]["status"] = "deleting"
+    vectors = _Vectors()
+    outcome = await ing.process_ingestion_job(
+        db, vectors, _Processor(), document_id="d-5",
+        file_content=b"hello", file_name="a.pdf", file_type="pdf",
+    )
+    assert outcome["state"] == "deleting"
+    assert db.docs["d-5"]["status"] == "deleting"
+    assert vectors.indexed == []  # no resurrection into the vector index
