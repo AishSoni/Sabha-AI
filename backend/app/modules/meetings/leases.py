@@ -76,7 +76,6 @@ CREATE TABLE IF NOT EXISTS lease_history (
 class DurableCoordinator:
     """SQLite-backed lease coordinator. Each instance owns its connection so
     tests race independent instances the way independent workers race."""
-
     def __init__(self, path: Optional[str] = None,
                  now_fn: Optional[Callable[[], float]] = None) -> None:
         self._path = path or str(Path(tempfile.mkdtemp()) / "leases.db")
@@ -282,3 +281,23 @@ class DurableCoordinator:
 
     def new_holder_id(self, prefix: str = "turn") -> str:
         return f"{prefix}-{uuid.uuid4()}"
+
+
+def default_lease_path() -> str:
+    """Stable single-host lease database (backend/data/leases.db). Deployments
+    spanning replicas replace the file coordinator with the Postgres
+    execution_leases adapter (Phase 08); the claim/fencing contract is the
+    same one proven by the sqlite suites."""
+    from pathlib import Path
+
+    data = Path(__file__).resolve().parents[3] / "data"
+    data.mkdir(parents=True, exist_ok=True)
+    return str(data / "leases.db")
+
+
+def reconcile_on_startup(path: Optional[str] = None) -> list[dict]:
+    """Best-effort restart recovery for the lifespan hook."""
+    try:
+        return DurableCoordinator(path=path or default_lease_path()).reconcile()
+    except Exception:
+        return []

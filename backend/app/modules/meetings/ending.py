@@ -263,3 +263,71 @@ async def run_ending_attempt(
     return EndingOutcome(attempt["attempt_id"], decision.next_status,
                          decision.attempt_outcome == "completed",
                          decision.summary, votes, usage)
+
+
+# --------------------------------------------------------------------------
+# Live route helpers: vote collection and summary generation behind injected
+# provider callables. No transaction spans these inference calls; the route
+# persists their outputs through the atomic commit path.
+# --------------------------------------------------------------------------
+
+def build_vote_prompt(participant_name: str, role: str, conversation: str,
+                      agenda: str) -> str:
+    return (
+        f"You are {participant_name}, a {role} in this meeting.\n\n"
+        "The user is proposing to end this meeting. Based on the recent "
+        "discussion below, please vote on whether you think the meeting "
+        "should end now.\n\n"
+        f"RECENT DISCUSSION:\n{conversation}\n\n"
+        f"MEETING AGENDA:\n{agenda}\n\n"
+        "Please respond with ONLY a JSON object in this exact format "
+        "(no other text):\n"
+        '{"vote": true or false, "reason": "Your brief reason (1-2 sentences)"}\n\n'
+        "Vote TRUE if you believe the meeting has achieved its objectives or "
+        "reached a natural conclusion.\n"
+        "Vote FALSE if you believe there are important topics still to discuss."
+    )
+
+
+def parse_vote_response(content: str) -> dict:
+    """Parse a vote ballot; unparseable output counts as a non-yes vote."""
+    import json
+
+    text = (content or "").strip()
+    if "```json" in text:
+        text = text.split("```json")[1].split("```")[0].strip()
+    elif "```" in text:
+        text = text.split("```")[1].split("```")[0].strip()
+    try:
+        data = json.loads(text)
+        return {"vote": bool(data.get("vote", False)),
+                "reason": str(data.get("reason", "No reason provided"))[:500]}
+    except (ValueError, AttributeError, KeyError):
+        return {"vote": False,
+                "reason": f"Could not parse vote response: {text[:100]}..."}
+
+
+def build_summary_prompt(name: str, agenda: str, participants: str,
+                         conversation: str) -> str:
+    return (
+        "Generate an Executive Summary of this meeting.\n\n"
+        f"MEETING NAME: {name}\n\nMEETING AGENDA:\n{agenda}\n\n"
+        f"PARTICIPANTS:\n{participants}\n\n"
+        f"FULL CONVERSATION:\n{conversation}\n\n"
+        "Please create a comprehensive executive summary in this format:\n\n"
+        "# Executive Summary\n\n## Overview\n"
+        "[Brief 2-3 sentence overview of the meeting]\n\n"
+        "## Key Discussion Points\n"
+        "[Bullet points of main topics discussed]\n\n## Decisions Made\n"
+        "[Any decisions or consensus reached]\n\n## Action Items\n"
+        "[Any action items identified, if applicable]\n\n"
+        "## Areas of Disagreement\n"
+        "[Any unresolved disagreements, if applicable]\n\n## Conclusion\n"
+        "[Brief concluding statement]"
+    )
+
+
+def shorten(content: str, limit: int = 200) -> str:
+    if len(content) > limit:
+        return content[:limit] + "..."
+    return content
