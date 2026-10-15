@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useMemo, useState } from 'react';
 import { useMeetingStore } from '@/stores/meetingStore';
 import { api, EndMeetingVote, EndMeetingResponse } from '@/lib/api';
 import { ScrollArea } from '@/components/ui/scroll-area';
@@ -23,33 +23,41 @@ import {
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 
-// Mock summaries for demonstration (will be replaced with real summaries from backend)
-const MOCK_SUMMARIES = [
-    {
-        id: '1',
-        number: 1,
-        content: `## Summary #1 - Initial Discussion
-
-**Key Points Discussed:**
-1. The Investor raised concerns about market positioning
-2. The CTO proposed a phased technical approach
-3. Initial consensus reached on MVP scope
-
-**Open Items:**
-- Need to validate pricing model
-- Technical feasibility study pending`,
-        createdAt: '2026-01-31T14:30:00Z',
-        isFinal: false,
-    },
-];
-
 export function SummaryTab() {
     const { currentMeeting, setCurrentMeeting } = useMeetingStore();
-    const [isGenerating, setIsGenerating] = useState(false);
-    const [summaries, setSummaries] = useState(MOCK_SUMMARIES);
+    const [isRefreshing, setIsRefreshing] = useState(false);
+    const [refreshError, setRefreshError] = useState<string | null>(null);
     const [showEndMeetingConfirm, setShowEndMeetingConfirm] = useState(false);
     const [isEndingMeeting, setIsEndingMeeting] = useState(false);
     const [endMeetingResult, setEndMeetingResult] = useState<EndMeetingResponse | null>(null);
+
+    // Authoritative summary history: system transcript messages plus the final
+    // summary returned by the ending attempt. No locally fabricated summaries.
+    const summaries = useMemo(() => {
+        if (!currentMeeting) return [];
+        const systemEntries = currentMeeting.messages
+            .filter((m) => m.sender_type === 'system')
+            .map((m, i) => ({
+                id: m.id,
+                number: i + 1,
+                content: m.content,
+                createdAt: m.created_at,
+                isFinal: false,
+            }));
+        if (endMeetingResult?.summary) {
+            return [
+                ...systemEntries,
+                {
+                    id: 'final',
+                    number: systemEntries.length + 1,
+                    content: endMeetingResult.summary,
+                    createdAt: new Date().toISOString(),
+                    isFinal: true,
+                },
+            ];
+        }
+        return systemEntries;
+    }, [currentMeeting, endMeetingResult]);
 
     if (!currentMeeting) {
         return (
@@ -60,29 +68,20 @@ export function SummaryTab() {
     }
 
     const isMeetingEnded = currentMeeting.status === 'ended';
+    const isReadOnly = currentMeeting.status === 'ended' || currentMeeting.status === 'archived';
+    const canEnd = currentMeeting.status === 'active';
 
-    const handleGenerateSummary = async () => {
-        setIsGenerating(true);
-        // TODO: Call backend API to generate summary
-        setTimeout(() => {
-            const newSummary = {
-                id: String(summaries.length + 1),
-                number: summaries.length + 1,
-                content: `## Summary #${summaries.length + 1} - Generated at ${new Date().toLocaleTimeString()}
-
-**Key Points:**
-1. Discussion point from recent messages
-2. Areas of agreement and disagreement
-3. Action items identified
-
-**Next Steps:**
-- Continue discussion on open items`,
-                createdAt: new Date().toISOString(),
-                isFinal: false,
-            };
-            setSummaries([...summaries, newSummary]);
-            setIsGenerating(false);
-        }, 2000);
+    const handleRefreshState = async () => {
+        setIsRefreshing(true);
+        setRefreshError(null);
+        try {
+            const updatedMeeting = await api.getMeeting(currentMeeting.id);
+            setCurrentMeeting(updatedMeeting);
+        } catch (err) {
+            setRefreshError((err as Error).message);
+        } finally {
+            setIsRefreshing(false);
+        }
     };
 
     const handleEndMeeting = async (forceEnd: boolean) => {
@@ -97,17 +96,6 @@ export function SummaryTab() {
                 // Refresh meeting data to get updated status and messages
                 const updatedMeeting = await api.getMeeting(currentMeeting.id);
                 setCurrentMeeting(updatedMeeting);
-
-                // Add executive summary to local summaries
-                if (response.summary) {
-                    setSummaries([...summaries, {
-                        id: 'final',
-                        number: summaries.length + 1,
-                        content: response.summary,
-                        createdAt: new Date().toISOString(),
-                        isFinal: true,
-                    }]);
-                }
             }
 
             setShowEndMeetingConfirm(false);
@@ -146,33 +134,39 @@ export function SummaryTab() {
                 <div className="mb-6">
                     <h3 className="text-lg font-semibold text-white mb-1">Meeting Summary</h3>
                     <p className="text-sm text-zinc-400">
-                        Generate numbered summaries at any point during the meeting.
+                        Summaries below come from the server transcript and the ending attempt — never generated locally.
                     </p>
                 </div>
 
-                {/* Generate Summary Button */}
+                {/* Refresh authoritative state */}
                 <Card className="bg-zinc-900/50 border-zinc-800 p-4">
                     <div className="flex items-center justify-between">
                         <div>
-                            <h4 className="font-medium text-white mb-1">Generate Summary</h4>
+                            <h4 className="font-medium text-white mb-1">Authoritative state</h4>
                             <p className="text-xs text-zinc-500">
-                                Create a numbered summary of the discussion so far
+                                Reload the transcript and summary state from the server
                             </p>
+                            {refreshError && (
+                                <p role="alert" className="text-xs text-red-400 mt-1">
+                                    Refresh failed: {refreshError}
+                                </p>
+                            )}
                         </div>
                         <Button
-                            onClick={handleGenerateSummary}
-                            disabled={isGenerating || isMeetingEnded}
+                            onClick={handleRefreshState}
+                            disabled={isRefreshing}
+                            aria-label="Reload summary state from server"
                             className="bg-indigo-600 hover:bg-indigo-700"
                         >
-                            {isGenerating ? (
+                            {isRefreshing ? (
                                 <>
                                     <Loader2 className="w-4 h-4 mr-2 animate-spin" />
-                                    Generating...
+                                    Refreshing...
                                 </>
                             ) : (
                                 <>
                                     <RefreshCw className="w-4 h-4 mr-2" />
-                                    Generate Summary #{summaries.length + 1}
+                                    Refresh from server
                                 </>
                             )}
                         </Button>
@@ -191,7 +185,7 @@ export function SummaryTab() {
                             <Scroll className="w-12 h-12 mx-auto mb-3 opacity-50" />
                             <h3 className="text-lg font-medium text-zinc-400 mb-1">No Summaries Yet</h3>
                             <p className="text-sm">
-                                Generate your first summary to capture the discussion progress.
+                                System transcript entries and the final ending summary will appear here.
                             </p>
                         </div>
                     ) : (
@@ -231,8 +225,14 @@ export function SummaryTab() {
                     </div>
                 )}
 
-                {/* End Meeting Section */}
-                {!isMeetingEnded && (
+                {/* End Meeting Section: active meetings only; ended/archived stay read-only. */}
+                {isReadOnly ? (
+                    <Card className="bg-zinc-900/50 border-zinc-800 p-4">
+                        <p className="text-sm text-zinc-400">
+                            This meeting is {currentMeeting.status}. The summary view is read-only and will never reopen it.
+                        </p>
+                    </Card>
+                ) : (
                     <div>
                         <h4 className="text-sm font-semibold text-zinc-400 mb-3 flex items-center gap-2">
                             <LogOut className="w-4 h-4" />
@@ -251,6 +251,8 @@ export function SummaryTab() {
                                     <Button
                                         variant="outline"
                                         onClick={() => setShowEndMeetingConfirm(true)}
+                                        disabled={!canEnd}
+                                        aria-label="End this meeting"
                                         className="border-red-800 text-red-400 hover:bg-red-900/20"
                                     >
                                         <LogOut className="w-4 h-4 mr-2" />

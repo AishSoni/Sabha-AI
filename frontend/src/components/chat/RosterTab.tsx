@@ -7,24 +7,8 @@ import { Card } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible';
-import { ChevronDown, ChevronUp, Bot, FileText, Lock } from 'lucide-react';
-import type { AIParticipant } from '@/lib/api';
-
-// Mock knowledge files for now - will be replaced with real data from Qdrant
-const MOCK_KNOWLEDGE_FILES: Record<string, Array<{ name: string; type: string }>> = {
-    'investor': [
-        { name: 'Q4_2025_Financial_Report.pdf', type: 'pdf' },
-        { name: 'Market_Analysis_2026.xlsx', type: 'xlsx' },
-    ],
-    'cto': [
-        { name: 'Architecture_Overview.md', type: 'md' },
-        { name: 'Tech_Debt_Tracker.csv', type: 'csv' },
-    ],
-    'analyst': [
-        { name: 'Competitor_Research.pdf', type: 'pdf' },
-        { name: 'User_Survey_Results.xlsx', type: 'xlsx' },
-    ],
-};
+import { ChevronDown, ChevronUp, Bot, RefreshCw, AlertTriangle } from 'lucide-react';
+import { ApiError, participantsApi, type AIParticipant } from '@/lib/api';
 
 export function RosterTab() {
     const { currentMeeting } = useMeetingStore();
@@ -74,11 +58,53 @@ interface ParticipantDetailCardProps {
 
 function ParticipantDetailCard({ participant }: ParticipantDetailCardProps) {
     const [isPromptOpen, setIsPromptOpen] = useState(false);
-    const [isKnowledgeOpen, setIsKnowledgeOpen] = useState(false);
+    const [isRefreshOpen, setIsRefreshOpen] = useState(false);
+    const [preview, setPreview] = useState<Record<string, { from: unknown; to: unknown }> | null>(null);
+    const [previewUnchanged, setPreviewUnchanged] = useState(false);
+    const [previewLoading, setPreviewLoading] = useState(false);
+    const [previewError, setPreviewError] = useState<string | null>(null);
+    const [applying, setApplying] = useState(false);
+    const [applyError, setApplyError] = useState<string | null>(null);
+    const [applied, setApplied] = useState(false);
+    const loadMeeting = useMeetingStore((s) => s.loadMeeting);
+    const currentMeetingId = useMeetingStore((s) => s.currentMeeting?.id);
 
-    // Get mock files based on role (lowercase)
-    const roleKey = participant.role.toLowerCase();
-    const knowledgeFiles = MOCK_KNOWLEDGE_FILES[roleKey] || [];
+    const handlePreview = async () => {
+        setPreviewLoading(true);
+        setPreviewError(null);
+        setApplyError(null);
+        setApplied(false);
+        try {
+            const result = await participantsApi.refreshPreview(participant.id);
+            setPreview(result.diff ?? {});
+            setPreviewUnchanged(!result.changed);
+        } catch (err) {
+            setPreview(null);
+            setPreviewError(err instanceof ApiError ? `${err.code}: ${err.message}` : (err as Error).message);
+        } finally {
+            setPreviewLoading(false);
+        }
+    };
+
+    const handleApply = async () => {
+        setApplying(true);
+        setApplyError(null);
+        setApplied(false);
+        try {
+            await participantsApi.refreshParticipant(participant.id);
+            setApplied(true);
+            setPreview(null);
+            if (currentMeetingId) await loadMeeting(currentMeetingId);
+        } catch (err) {
+            const message = err instanceof ApiError ? `${err.code}: ${err.message}` : (err as Error).message;
+            // Stale or busy conflicts carry a safe server message; the preview is
+            // discarded so the next preview reloads fresh revisions.
+            setPreview(null);
+            setApplyError(message);
+        } finally {
+            setApplying(false);
+        }
+    };
 
     return (
         <Card className="bg-zinc-900/50 border-zinc-800 overflow-hidden">
@@ -137,21 +163,19 @@ function ParticipantDetailCard({ participant }: ParticipantDetailCardProps) {
                 </CollapsibleContent>
             </Collapsible>
 
-            {/* Private Knowledge Stack Section */}
-            <Collapsible open={isKnowledgeOpen} onOpenChange={setIsKnowledgeOpen}>
+            {/* Persona refresh section: explicit preview diff + apply. */}
+            <Collapsible open={isRefreshOpen} onOpenChange={setIsRefreshOpen}>
                 <CollapsibleTrigger asChild>
                     <Button
                         variant="ghost"
+                        aria-label={`Persona refresh for ${participant.name}`}
                         className="w-full justify-between px-4 py-2 h-auto text-sm text-zinc-400 hover:text-white hover:bg-zinc-800 rounded-none border-t border-zinc-800"
                     >
                         <span className="flex items-center gap-2">
-                            <Lock className="w-4 h-4" />
-                            Private Knowledge Stack
-                            <Badge variant="secondary" className="text-xs bg-zinc-800 text-zinc-400">
-                                {knowledgeFiles.length} files
-                            </Badge>
+                            <RefreshCw className="w-4 h-4" />
+                            Persona Refresh
                         </span>
-                        {isKnowledgeOpen ? (
+                        {isRefreshOpen ? (
                             <ChevronUp className="w-4 h-4" />
                         ) : (
                             <ChevronDown className="w-4 h-4" />
@@ -159,23 +183,70 @@ function ParticipantDetailCard({ participant }: ParticipantDetailCardProps) {
                     </Button>
                 </CollapsibleTrigger>
                 <CollapsibleContent>
-                    <div className="px-4 py-3 bg-zinc-950/50 border-t border-zinc-800">
-                        {knowledgeFiles.length === 0 ? (
-                            <p className="text-xs text-zinc-500 italic">
-                                No private documents uploaded for this AI.
+                    <div className="px-4 py-3 bg-zinc-950/50 border-t border-zinc-800 space-y-3">
+                        <p className="text-xs text-zinc-500">
+                            This participant keeps its snapshotted settings until you review and apply a refresh.
+                        </p>
+                        <Button
+                            variant="outline"
+                            size="sm"
+                            onClick={handlePreview}
+                            disabled={previewLoading || applying}
+                            aria-label={`Preview refresh for ${participant.name}`}
+                            className="border-zinc-700 text-zinc-300 hover:bg-zinc-800"
+                        >
+                            {previewLoading ? 'Loading preview…' : 'Preview changes'}
+                        </Button>
+                        {previewError && (
+                            <p role="alert" className="text-xs text-red-400 flex items-center gap-1">
+                                <AlertTriangle className="w-3 h-3" />
+                                {previewError}
                             </p>
-                        ) : (
-                            <ul className="space-y-2">
-                                {knowledgeFiles.map((file, idx) => (
-                                    <li key={idx} className="flex items-center gap-2 text-sm">
-                                        <FileText className="w-4 h-4 text-zinc-500" />
-                                        <span className="text-zinc-300">{file.name}</span>
-                                        <Badge variant="outline" className="text-xs text-zinc-500 border-zinc-700">
-                                            {file.type.toUpperCase()}
-                                        </Badge>
-                                    </li>
-                                ))}
-                            </ul>
+                        )}
+                        {preview && (
+                            <div className="space-y-2">
+                                {previewUnchanged || Object.keys(preview).length === 0 ? (
+                                    <p role="status" className="text-xs text-zinc-400">
+                                        Already up to date — no changes to apply.
+                                    </p>
+                                ) : (
+                                    <>
+                                        <dl className="space-y-1 text-xs">
+                                            {Object.entries(preview).map(([field, change]) => (
+                                                <div key={field} className="flex flex-col gap-0.5 rounded bg-zinc-900 p-2">
+                                                    <dt className="font-medium text-zinc-300">{field}</dt>
+                                                    <dd className="text-zinc-500 line-through">
+                                                        {JSON.stringify(change.from) ?? '—'}
+                                                    </dd>
+                                                    <dd className="text-zinc-200">
+                                                        {JSON.stringify(change.to) ?? '—'}
+                                                    </dd>
+                                                </div>
+                                            ))}
+                                        </dl>
+                                        <Button
+                                            size="sm"
+                                            onClick={handleApply}
+                                            disabled={applying}
+                                            aria-label={`Apply refresh for ${participant.name}`}
+                                            className="bg-indigo-600 hover:bg-indigo-700"
+                                        >
+                                            {applying ? 'Applying…' : 'Apply refresh'}
+                                        </Button>
+                                    </>
+                                )}
+                            </div>
+                        )}
+                        {applyError && (
+                            <p role="alert" className="text-xs text-red-400 flex items-center gap-1">
+                                <AlertTriangle className="w-3 h-3" />
+                                Refresh not applied: {applyError}. Preview again for fresh revisions.
+                            </p>
+                        )}
+                        {applied && (
+                            <p role="status" className="text-xs text-green-400">
+                                Refresh applied — showing the server-confirmed snapshot.
+                            </p>
                         )}
                     </div>
                 </CollapsibleContent>
