@@ -278,7 +278,6 @@ def test_b04_status_repairadmits_voting_and_ended():
     assert "meetings_status_check" in sql
 
 
-@pytest.mark.xfail(strict=True, reason="B-07: persona provider_config dropped; owner Phase 05")
 async def test_b07_persona_provider_config_propagates():
     from app.models import MeetingCreate
     from app.services.meeting_manager import MeetingManager
@@ -291,10 +290,15 @@ async def test_b07_persona_provider_config_propagates():
     )
     payloads = manager.db.inserts_for("ai_participants")
     assert len(payloads) == 1
-    assert payloads[0]["provider_config"] == PERSONA_ROW["provider_config"]
+    # Snapshot canonicalizes the config: persona fields propagate, missing
+    # max_tokens falls back to the canonical 2048 (never dropped to empty).
+    propagated = payloads[0]["provider_config"]
+    assert propagated["provider"] == PERSONA_ROW["provider_config"]["provider"]
+    assert propagated["model"] == PERSONA_ROW["provider_config"]["model"]
+    assert propagated["temperature"] == PERSONA_ROW["provider_config"]["temperature"]
+    assert propagated["max_tokens"] == 2048
 
 
-@pytest.mark.xfail(strict=True, reason="B-11: invalid activation wipes active; owner Phase 05")
 async def test_b11_invalid_activation_preserves_active():
     from app.services.persona_manager import PersonaManager
 
@@ -378,21 +382,65 @@ def test_b05_meeting_routes_enforce_actor_ownership():
         ), f"{name} must resolve the trusted actor"
 
 
-@pytest.mark.xfail(strict=True, reason="B-06: no destination policy; owner Phase 05/08")
 def test_b06_untrusted_destination_never_reaches_transport():
+    import app.api.settings as settings_api
+    import app.modules.personas.destinations as destinations
+
+    # Policy lives in the destinations module: pinned hosts, no redirects.
+    assert set(destinations.ALLOWED_HOSTS) >= {
+        "openrouter.ai",
+        "generativelanguage.googleapis.com",
+    }
+    assert destinations.HTTPX_NO_REDIRECTS == {"follow_redirects": False}
+    with pytest.raises(destinations.DestinationDenied):
+        destinations.validate_destination("https://evil.example.com/models")
+    with pytest.raises(destinations.DestinationDenied):
+        destinations.validate_ollama_base_url("https://evil.example.com")
+
+    # Settings transport honors the policy: validates before every outbound
+    # call and never follows redirects.
     import inspect
 
-    from app.api import settings as settings_api
-
-    src = inspect.getsource(settings_api).lower()
-    assert "allowlist" in src or "allow_list" in src or "approved" in src, (
-        "Ollama destinations need an explicit allowlist before transport"
-    )
+    src = inspect.getsource(settings_api)
+    assert "validate_destination" in src
+    assert "validate_ollama_base_url" in src
+    assert "follow_redirects=False" in src
 
 
-@pytest.mark.xfail(strict=True, reason="B-08: settings wiring seam; owner Phase 05/07")
 def test_b08_saved_settings_drive_inference_pending():
-    pytest.fail(
-        "pending: no seam wires saved frontend settings into backend "
-        "provider resolution until Phase 05; cross-stack case is owned there"
+    """B-08 seam: non-secret preferences persist server-side and resolve into
+    effective inference settings without exposing secrets."""
+    import inspect
+
+    import app.api.settings as settings_api
+    from app.modules.personas.preferences import (
+        effective_for_participant,
+        effective_for_system_ai,
+        get_preferences,
+        update_preferences,
     )
+
+    src = inspect.getsource(settings_api)
+    assert "get_preferences" in src and "put_preferences" in src
+    assert "get_effective_settings" in src
+
+    prefs = update_preferences({
+        "default_provider": "gemini",
+        "default_model": "gemini-ledger",
+        "default_temperature": 0.5,
+        "default_max_tokens": 1024,
+    })
+    public = prefs.to_public_dict()
+    assert "api_key" not in str(public).lower()
+    assert public["default_provider"] == "gemini"
+
+    effective = effective_for_participant(
+        {"provider": "gemini", "model": "gemini-ledger"}, None,
+    )
+    assert effective.provider == "gemini"
+    assert effective.model == "gemini-ledger"
+    assert effective.readiness()["ready"] is True
+
+    system_ai = effective_for_system_ai()
+    assert system_ai.provenance  # resolved separately from participants
+    assert get_preferences() is not None
