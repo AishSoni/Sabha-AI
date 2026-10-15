@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { useMeetingStore } from '@/stores/meetingStore';
 import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
@@ -27,6 +27,7 @@ export function QueuePanel() {
     const [editingId, setEditingId] = useState<string | null>(null);
     const [draft, setDraft] = useState('');
     const [draftError, setDraftError] = useState<string | null>(null);
+    const headingRef = useRef<HTMLHeadingElement>(null);
 
     useEffect(() => {
         if (currentMeeting && currentMeeting.status === 'active') {
@@ -40,6 +41,13 @@ export function QueuePanel() {
         setEditingId(entryId);
         setDraft(content);
         setDraftError(null);
+    };
+
+    const closeEdit = () => {
+        setEditingId(null);
+        setDraftError(null);
+        // Return keyboard focus to the list heading so it is not dropped.
+        headingRef.current?.focus();
     };
 
     const saveEdit = async (entryId: string) => {
@@ -57,6 +65,7 @@ export function QueuePanel() {
             setEditingId(null);
             setDraft('');
             setDraftError(null);
+            headingRef.current?.focus();
         } else {
             // Conflict text lives in queueError; keep the draft for retry/copy.
             setDraftError('Could not save — your draft is preserved below. Copy it before retrying.');
@@ -67,7 +76,7 @@ export function QueuePanel() {
         <section aria-label="Pending messages" className="max-w-3xl mx-auto w-full mt-3">
             {queueEntries.length === 0 && queueStatus !== 'loading' ? null : (
                 <Card className="bg-zinc-900/50 border-zinc-800 p-3">
-                    <h3 className="text-xs font-semibold text-zinc-400 mb-2 flex items-center gap-2">
+                    <h3 ref={headingRef} tabIndex={-1} className="text-xs font-semibold text-zinc-400 mb-2 flex items-center gap-2">
                         <ListOrdered className="w-4 h-4" aria-hidden />
                         Pending ({queueEntries.length}/10) — sends in order when the turn finishes
                     </h3>
@@ -95,8 +104,12 @@ export function QueuePanel() {
                                                 id={`queue-edit-${entry.entryId}`}
                                                 value={draft}
                                                 onChange={(e) => setDraft(e.target.value)}
+                                                onKeyDown={(e) => {
+                                                    if (e.key === 'Escape') closeEdit();
+                                                }}
                                                 rows={2}
                                                 maxLength={MAX_CHARS + 100}
+                                                autoFocus
                                                 className="w-full rounded bg-zinc-900 border border-zinc-700 text-sm text-white p-2"
                                             />
                                             {draftError && (
@@ -116,7 +129,7 @@ export function QueuePanel() {
                                                 <Button
                                                     size="sm"
                                                     variant="ghost"
-                                                    onClick={() => { setEditingId(null); setDraftError(null); }}
+                                                    onClick={closeEdit}
                                                 >
                                                     <X className="w-3 h-3 mr-1" aria-hidden /> Cancel
                                                 </Button>

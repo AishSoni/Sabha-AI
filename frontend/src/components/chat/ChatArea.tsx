@@ -10,6 +10,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Card } from '@/components/ui/card';
 import { Send, User, Bot, AlertTriangle, Loader2, MessageSquare, CheckCircle2, Clock, Users, FileText, Scroll } from 'lucide-react';
 import { cn, formatRelativeTime, formatCost } from '@/lib/utils';
+import { preferredScrollBehavior } from '@/lib/motion';
 import { ThinkingBlock } from '@/components/chat/ThinkingBlock';
 import { ToolUseBlock } from '@/components/chat/ToolUseBlock';
 import { CitationsBlock } from '@/components/chat/CitationsBlock';
@@ -41,10 +42,11 @@ export function ChatArea() {
     const [inputValue, setInputValue] = useState('');
     const scrollRef = useRef<HTMLDivElement>(null);
 
-    // Auto-scroll when messages or streaming content changes
+    // Auto-scroll when messages or streaming content changes. Under a
+    // reduced-motion preference the scroll is instant, never animated.
     useEffect(() => {
         if (scrollRef.current) {
-            scrollRef.current.scrollIntoView({ behavior: 'smooth' });
+            scrollRef.current.scrollIntoView({ behavior: preferredScrollBehavior() });
         }
     }, [currentMeeting?.messages, streamingMessage?.content]);
 
