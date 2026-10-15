@@ -121,6 +121,7 @@ class Meeting(MeetingBase):
     id: str
     user_id: Optional[str] = None
     status: MeetingStatus = MeetingStatus.ACTIVE
+    archived_from: Optional[str] = None
     total_cost: float = 0.0
     created_at: datetime
 

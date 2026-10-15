@@ -18,6 +18,11 @@ async def lifespan(app: FastAPI):
     # Later phases attach durable runner/lease recovery here.
     app.state.startup_complete = True
     try:
+        # Restart recovery: terminalize expired leases without replaying
+        # uncertain paid work; committed effects stay visible in history.
+        from app.modules.meetings.leases import reconcile_on_startup
+
+        app.state.lease_recovery = reconcile_on_startup()
         yield
     finally:
         app.state.startup_complete = False

@@ -22,9 +22,10 @@ from app.models import (
     SenderType,
 )
 from app.services.prompts import DEFAULT_ROSTER, get_full_prompt
+from app.services.lifecycle_store import LifecycleStoreMixin
 
 
-class MeetingManager:
+class MeetingManager(LifecycleStoreMixin):
     """Manages meeting lifecycle and database operations."""
     
     def __init__(self):
@@ -50,12 +51,11 @@ class MeetingManager:
             "total_cost": 0.0,
             "created_at": now,
         }
-        
-        result = self.db.table("meetings").insert(meeting_data).execute()
-        
-        # Add AI participants
-        participants = []
-        
+
+        # Build initial participant payloads first so meeting + roster commit
+        # atomically via RPC (sequential fallback only pre-migration).
+        payloads = []
+
         # If persona_ids provided, fetch those personas from DB
         if data.persona_ids and len(data.persona_ids) > 0:
             # Fetch personas from database
@@ -63,7 +63,7 @@ class MeetingManager:
                 .select("*") \
                 .in_("id", data.persona_ids) \
                 .execute()
-            
+
             for persona_data in personas_result.data:
                 # Fetch active prompt for this persona
                 active_prompt = ""
@@ -73,37 +73,46 @@ class MeetingManager:
                     .eq("is_active", True) \
                     .limit(1) \
                     .execute()
-                
+
                 if prompts_result.data:
                     active_prompt = prompts_result.data[0].get("content", "")
-                
-                participant = await self.add_participant(
-                    AIParticipantCreate(
-                        meeting_id=meeting_id,
-                        name=persona_data["name"],
-                        role=persona_data.get("subtitle") or "AI Assistant",
-                        system_prompt=get_full_prompt(active_prompt),
-                        color=persona_data["color"],
-                        persona_id=persona_data["id"],
-                    )
+
+                payloads.append(
+                    {
+                        "id": str(uuid.uuid4()),
+                        "name": persona_data["name"],
+                        "role": persona_data.get("subtitle") or "AI Assistant",
+                        "system_prompt": get_full_prompt(active_prompt),
+                        "provider_config": {"provider": "", "model": "",
+                                            "temperature": 0.7},
+                        "color": persona_data["color"],
+                        "persona_id": persona_data["id"],
+                        "created_at": now,
+                    }
                 )
-                participants.append(participant)
         elif add_default_roster:
             # Use default roster if no persona_ids provided
             for persona in DEFAULT_ROSTER:
-                participant = await self.add_participant(
-                    AIParticipantCreate(
-                        meeting_id=meeting_id,
-                        name=persona["name"],
-                        role=persona["role"],
-                        system_prompt=get_full_prompt(persona["system_prompt"]),
-                        color=persona["color"],
-                    )
+                payloads.append(
+                    {
+                        "id": str(uuid.uuid4()),
+                        "name": persona["name"],
+                        "role": persona["role"],
+                        "system_prompt": get_full_prompt(persona["system_prompt"]),
+                        "provider_config": {"provider": "", "model": "",
+                                            "temperature": 0.7},
+                        "color": persona["color"],
+                        "persona_id": None,
+                        "created_at": now,
+                    }
                 )
-                participants.append(participant)
-        
+
+        meeting_row, participant_rows = await self.create_meeting_atomic(
+            meeting_data, payloads)
+        participants = [AIParticipant(**p) for p in participant_rows]
+
         return MeetingWithParticipants(
-            **result.data[0],
+            **meeting_row,
             participants=participants,
             messages=[]
         )

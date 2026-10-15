@@ -17,6 +17,7 @@ def _engine_for(meeting_manager: MeetingManager):
     from app.core.database import get_supabase
     from app.modules.meetings.engine import TurnEngine
     from app.modules.meetings.knowledge import ServerKnowledgeSearch
+    from app.modules.meetings.leases import DurableCoordinator, default_lease_path
     from app.modules.meetings.store import InMemoryTurnStore
     from app.services.vector_store import get_vector_store
 
@@ -24,11 +25,16 @@ def _engine_for(meeting_manager: MeetingManager):
     knowledge = ServerKnowledgeSearch(
         vector_store=get_vector_store(), db_factory=get_supabase
     )
+    try:
+        leases = DurableCoordinator(path=default_lease_path())
+    except Exception:
+        leases = None
     engine = TurnEngine(
         meeting_loader=meeting_manager,
         provider_resolver=get_provider,
         knowledge_search=knowledge,
         turn_store=store,
+        lease_coordinator=leases,
     )
     return engine, store
 
