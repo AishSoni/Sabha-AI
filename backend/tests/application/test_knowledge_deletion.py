@@ -53,5 +53,5 @@ async def test_retry_cleanup_is_idempotent_and_survives_parent_cascade():
     vectors = _Vectors()
     await lifecycle_mod.run_cleanup(store, vectors=vectors, document_id="doc-9")
     await lifecycle_mod.run_cleanup(store, vectors=vectors, document_id="doc-9")
-    assert vectors.calls == 2  # safe retry, second is no-op success
-    assert (await store.cleanup_job_for("doc-9").done) is True
+    assert vectors.calls == 1  # idempotent: second retry is a no-op success
+    assert store.cleanup_job_for("doc-9").done is True
