@@ -25,7 +25,7 @@ Intended red reasons (pre-fix code):
   (owner Phase 05/07).
 - B-09: frontend `meetingStore` lets stale loads overwrite the selected
   meeting -- executable case is
-  `frontend/src/test/meeting-store-race.test.ts` (`it.fails`, owner Phase 07).
+  `frontend/src/stores/meetingStore.regression.test.ts` (`it.fails`, owner Phase 07).
 - B-10: `delete_meeting` never touches vector collections (owner Phase 06).
 - B-11: `activate_prompt_version` deactivates all versions before validating
   the target (`persona_manager.py:273-296`).

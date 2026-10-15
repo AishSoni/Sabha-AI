@@ -57,3 +57,48 @@ No production schema changes. Test schema setup uses disposable targets only. Ke
 ## Exclusions and risks
 
 No full engine fix, auth implementation, visual redesign or live-model evaluation. The main risk is overmocking: test doubles must expose side effects and boundaries, while database concurrency and vector compatibility remain explicitly assigned to integration tests.
+
+## Addendum — regression ledger (Phase 01 implementation record)
+
+Implementation commits (local, never pushed): `032cc4c` (P01-T01/T02 seams),
+`f5771f0` (P01-T03/T04/T06/T07 backend harness + ledger), `f366187` (P01-T05
+frontend harness), `e8beb54` (frontend lockfile). Per project constraint this
+ledger lives here, not in DELIVERY.md.
+
+### Fast commands (all offline, no paid credentials)
+
+- `backend/`: `PYTEST_DISABLE_PLUGIN_AUTOLOAD=1 python -m pytest backend/tests
+  -m "not integration" -q -p anyio.pytest_plugin` → **16 passed, 10 xfailed,
+  4 deselected** (integration). Plugin autoload is disabled because the system
+  site-packages ships a broken `langsmith` pytest plugin; the harness needs only
+  the AnyIO plugin. Python 3.11.9, pytest 8.3.5, anyio 4.9.0, httpx 0.28.1.
+- `frontend/`: `npm test` (`vitest run`) → **3 files, 7 tests passed**
+  (incl. B-09 `it.fails` expected failure). `npx tsc --noEmit` clean. Node
+  v26.8.2, vitest 3.2.7, jsdom 26.1.0, @testing-library/react 16.3.3.
+- TDD mapping: TEST01/TEST03 → `backend/tests/unit/` + `meetingStore.isolation`;
+  TEST02 → `test_network_guard.py` (own socket guard, loopback allowed);
+  TEST04 → `tests/api/test_lifespan.py`; TEST05 → `test_strict_xfail_detects_stale_markers`
+  + strict xfail/`it.fails` semantics; TEST06 → `tests/contract/test_fixture_provider.py`;
+  TEST07 → `tests/integration/test_safety.py` (+ `safety.py` guards);
+  TEST08 → `frontend/src/lib/stream.test.ts`.
+
+### B-01..B-11 ledger (all open; no bug fixed in this phase)
+
+| ID | Regression test (asserts correct behavior) | Status | Owner / expiry |
+| --- | --- | --- | --- |
+| B-01 | `test_b01_tool_result_returns_to_model` (backend ledger) | xfail strict, intended red: single provider call, no continuation | 02 / G3 of 02 |
+| B-02 | `test_b02_persona_evidence_lookup_has_no_undefined_reference` | xfail strict, intended red: NameError on `get_supabase` | 02 boundary, 06 integration / G3 of 06 |
+| B-03 | `test_b03_live_query_contract_pending_isolated_fixture` | xfail strict, pending: needs Phase 06 isolated fixture (client surface holds on qdrant-client 1.7.0) | 06 / G3 of 06 |
+| B-04 | `test_b04_schema_check_covers_voting_and_ended` | xfail strict, intended red: CHECK admits only active/archived | 04 / G3 of 04 |
+| B-05 | `test_b05_api_routes_require_actor_binding` | xfail strict, intended red: no actor-binding dependencies | 04 enforcement, 08 audit / G3 of 08 |
+| B-06 | `test_b06_untrusted_destination_never_reaches_transport` | xfail strict, intended red: no Ollama destination allowlist | 05 restriction, 08 demo deny / G3 of 08 |
+| B-07 | `test_b07_persona_provider_config_propagates` | xfail strict, intended red: persona provider_config dropped | 05 / G3 of 05 |
+| B-08 | `test_b08_saved_settings_drive_inference_pending` | xfail strict, pending: wiring seam arrives Phase 05 | 05, 07 / G3 of 07 |
+| B-09 | `frontend/src/stores/meetingStore.regression.test.ts` (`it.fails`) | expected failure, intended red: stale load overwrites selected meeting | 07 / G3 of 07 |
+| B-10 | `test_b10_meeting_deletion_cleans_vectors` | xfail strict, intended red: deletion skips vector cleanup | 06 / G3 of 06 |
+| B-11 | `test_b11_invalid_activation_preserves_active` | xfail strict, intended red: invalid activation wipes live version | 05 / G3 of 05 |
+
+Strict expected-failure semantics (`xfail_strict = true`, Vitest `it.fails`)
+turn any fixed bug with a leftover marker into a suite failure, so stale markers
+cannot linger. No generic skips mask harness errors. All eleven rows must close
+by Phase 09 exit (G3 of 09); Phase 10 cannot start feature work with any open.
