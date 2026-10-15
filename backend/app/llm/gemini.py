@@ -59,7 +59,7 @@ class GeminiProvider(LLMProvider):
                     "role": "function",
                     "parts": [{
                         "functionResponse": {
-                            "name": msg.tool_call_id or "unknown",
+                            "name": msg.tool_name or "unknown",
                             "response": {"result": msg.content}
                         }
                     }]
@@ -152,8 +152,10 @@ class GeminiProvider(LLMProvider):
                 text_content += part["text"]
             if "functionCall" in part:
                 fc = part["functionCall"]
+                # Gemini functionCall has no native ID; synthesize a stable
+                # per-response distinct ID so same-name calls never collide.
                 tool_calls.append(ToolCall(
-                    id=fc.get("name", f"call_{len(tool_calls)}"),
+                    id=fc.get("id") or f"gen-call-{len(tool_calls)}",
                     name=fc.get("name", ""),
                     arguments=fc.get("args", {})
                 ))
@@ -277,13 +279,15 @@ class GeminiProvider(LLMProvider):
                         
                         if "functionCall" in part:
                             fc = part["functionCall"]
+                            call_id = fc.get("id") or f"gen-call-{len(tool_calls)}"
                             yield StreamEvent(
                                 type=StreamEventType.TOOL_CALL,
+                                tool_call_id=call_id,
                                 tool_name=fc.get("name", ""),
                                 tool_arguments=fc.get("args", {})
                             )
                             tool_calls.append(ToolCall(
-                                id=fc.get("name", ""),
+                                id=call_id,
                                 name=fc.get("name", ""),
                                 arguments=fc.get("args", {})
                             ))
@@ -296,7 +300,9 @@ class GeminiProvider(LLMProvider):
                             "total_tokens": data["usageMetadata"].get("totalTokenCount", 0)
                         }
                 
-                yield StreamEvent(type=StreamEventType.DONE, usage=usage)
+                yield StreamEvent(
+                    type=StreamEventType.DONE, usage=usage, invocation_finished=True
+                )
     
     def estimate_cost(self, usage: dict) -> float:
         """Estimate cost based on Gemini pricing."""

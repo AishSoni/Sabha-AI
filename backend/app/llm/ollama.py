@@ -202,17 +202,19 @@ class OllamaProvider(LLMProvider):
                         yield StreamEvent(type=StreamEventType.TEXT, content=content)
                         accumulated_text += content
                     
-                    # Handle tool calls
+                    # Handle tool calls (preserve native IDs; synthesize when absent)
                     if "tool_calls" in message:
-                        for tc in message["tool_calls"]:
+                        for _idx, tc in enumerate(message["tool_calls"]):
                             func = tc.get("function", {})
                             args = func.get("arguments", {})
                             if isinstance(args, str):
                                 args = json.loads(args)
                             yield StreamEvent(
                                 type=StreamEventType.TOOL_CALL,
+                                tool_call_id=tc.get("id") or func.get("id") or f"ol-call-{_idx}",
                                 tool_name=func.get("name", ""),
-                                tool_arguments=args
+                                tool_arguments=args,
+                                invocation_finished=False,
                             )
                     
                     # Check if done
@@ -223,7 +225,9 @@ class OllamaProvider(LLMProvider):
                             "total_tokens": data.get("prompt_eval_count", 0) + data.get("eval_count", 0)
                         }
                 
-                yield StreamEvent(type=StreamEventType.DONE, usage=usage)
+                yield StreamEvent(
+                    type=StreamEventType.DONE, usage=usage, invocation_finished=True
+                )
     
     def estimate_cost(self, usage: dict) -> float:
         """Ollama runs locally, so cost is always 0."""

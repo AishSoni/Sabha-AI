@@ -188,7 +188,8 @@ class OpenRouterProvider(LLMProvider):
                             # Stream complete
                             yield StreamEvent(
                                 type=StreamEventType.DONE,
-                                usage=usage_data
+                                usage=usage_data,
+                                invocation_finished=True,
                             )
                             break
                         
@@ -250,14 +251,16 @@ class OpenRouterProvider(LLMProvider):
                                     args = json.loads(tc_data["arguments"]) if tc_data["arguments"] else {}
                                 except json.JSONDecodeError:
                                     args = {}
-                                
+
                                 yield StreamEvent(
                                     type=StreamEventType.TOOL_CALL,
+                                    tool_call_id=tc_data.get("id") or f"or-call-{idx}",
                                     tool_name=tc_data["name"],
-                                    tool_arguments=args
+                                    tool_arguments=args,
+                                    invocation_finished=False,
                                 )
                             pending_tool_calls.clear()
         
         # Ensure we always yield done if not already done
         if not usage_data:
-            yield StreamEvent(type=StreamEventType.DONE, usage={})
+            yield StreamEvent(type=StreamEventType.DONE, usage={}, invocation_finished=True)
