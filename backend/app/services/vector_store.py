@@ -41,19 +41,28 @@ class VectorStoreManager:
     - Private persona knowledge: persona_{persona_id}_knowledge
     """
     
-    def __init__(self, embedding_provider: EmbeddingProvider | None = None):
+    def __init__(self, embedding_provider: EmbeddingProvider | None = None, client=None):
         """
         Initialize the vector store manager.
-        
+
         Args:
             embedding_provider: Optional custom embedding provider. Defaults to settings.
+            client: Optional Qdrant client (isolated in-memory client in tests).
         """
         self._embedding_provider = embedding_provider
-    
+        self._client_override = client
+
     @property
     def client(self):
         """Lazy access to Qdrant client (avoids stale singleton on reload)."""
+        if self._client_override is not None:
+            return self._client_override
         return get_qdrant_client()
+
+    @staticmethod
+    def stable_point_id(document_id: str, chunk_index: int) -> str:
+        """Stable point ID so retry/upsert does not duplicate points."""
+        return str(uuid.uuid5(uuid.NAMESPACE_URL, f"{document_id}:{chunk_index}"))
     
     @property
     def embedding_provider(self) -> EmbeddingProvider:
@@ -152,10 +161,10 @@ class VectorStoreManager:
         texts = [chunk.text for chunk in chunks]
         embeddings = await self.embedding_provider.embed_batch(texts)
         
-        # Create points with metadata
+        # Create points with metadata (stable IDs make retry idempotent)
         points = []
         for i, (chunk, embedding) in enumerate(zip(chunks, embeddings)):
-            point_id = str(uuid.uuid4())
+            point_id = self.stable_point_id(document_id, chunk.chunk_index)
             points.append(
                 PointStruct(
                     id=point_id,
@@ -212,14 +221,16 @@ class VectorStoreManager:
                 ]
             )
         
-        # Perform search
-        results = await self.client.search(
+        # Perform search via the supported query API (query_points preferred,
+        # search fallback for qdrant-client 1.7). Response shape is mapped
+        # explicitly so client upgrades cannot silently change citations.
+        raw_results = await self._query_vectors(
             collection_name=collection_name,
             query_vector=query_embedding,
+            query_filter=search_filter,
             limit=limit,
-            query_filter=search_filter if search_filter else None,
         )
-        
+
         return [
             SearchResult(
                 text=r.payload.get("text", ""),
@@ -228,8 +239,30 @@ class VectorStoreManager:
                 chunk_index=r.payload.get("chunk_index", 0),
                 metadata={k: v for k, v in r.payload.items() if k not in ["text", "document_id", "chunk_index"]},
             )
-            for r in results
+            for r in raw_results
         ]
+
+    async def _query_vectors(self, collection_name: str, query_vector, query_filter, limit: int):
+        """Query compatibility shim: prefer query_points, fall back to search."""
+        client = self.client
+        if hasattr(client, "query_points"):
+            response = await client.query_points(
+                collection_name=collection_name,
+                query=query_vector,
+                query_filter=query_filter,
+                limit=limit,
+                with_payload=True,
+            )
+            # Newer clients wrap hits in response.points; older return list.
+            points = getattr(response, "points", response)
+            return list(points or [])
+        results = await client.search(
+            collection_name=collection_name,
+            query_vector=query_vector,
+            limit=limit,
+            query_filter=query_filter if query_filter else None,
+        )
+        return list(results or [])
     
     async def search_multiple_collections(
         self,

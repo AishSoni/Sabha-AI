@@ -9,8 +9,8 @@ python-multipart>=0.0.6
 sse-starlette>=3.2.0
 tiktoken>=0.5.0
 
-# RAG Pipeline - Vector DB
-qdrant-client>=1.7.0
+# RAG Pipeline - Vector DB (query_points preferred, search fallback for 1.7)
+qdrant-client>=1.7.0,<2.0.0
 
 # RAG Pipeline - Document Parsing
 pypdf>=3.17.0
