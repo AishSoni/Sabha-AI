@@ -112,10 +112,9 @@ def api_client(api_app):
 
 @pytest.fixture
 def actor_headers():
-    """Trusted-actor binding placeholder.
+    """Trusted-actor headers threaded into API tests.
 
-    Production routes have no auth yet (B-05, owner Phase 04). The harness
-    already threads per-actor headers so Phase 04 enforcement tests do not
-    need a harness rewrite; current routes ignore them.
+    Meeting/child routes enforce ownership (Phase 04); the tests supply the
+    caller identity here since bodies never establish identity.
     """
     return {"X-Test-Actor": "actor-a"}

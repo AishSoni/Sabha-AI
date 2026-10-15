@@ -2,7 +2,7 @@
 Meetings API routes.
 """
 
-from fastapi import APIRouter, HTTPException
+from fastapi import APIRouter, Depends, HTTPException
 from typing import List
 
 from app.models import (
@@ -24,6 +24,8 @@ from app.models import (
 )
 from app.services import MeetingManager, Orchestrator
 from app.llm import get_provider, LLMMessage
+from app.modules.access.actors import Actor
+from app.modules.access.deps import owner_or_404, require_actor
 
 router = APIRouter()
 
@@ -37,42 +39,50 @@ def get_orchestrator() -> Orchestrator:
 
 
 @router.post("", response_model=MeetingWithParticipants)
-async def create_meeting(data: MeetingCreate):
+async def create_meeting(data: MeetingCreate, actor: Actor = Depends(require_actor)):
     """Create a new meeting with default AI participants."""
     manager = get_meeting_manager()
-    meeting = await manager.create_meeting(data)
+    # Bodies never establish identity: the caller always owns what it creates.
+    owned = data.model_copy(update={"user_id": actor.identity})
+    meeting = await manager.create_meeting(owned)
     return meeting
 
 
 @router.get("", response_model=List[Meeting])
-async def list_meetings():
-    """List all meetings."""
+async def list_meetings(actor: Actor = Depends(require_actor)):
+    """List the caller's own meetings."""
     manager = get_meeting_manager()
-    meetings = await manager.list_meetings()
+    meetings = await manager.list_meetings(user_id=actor.identity)
     return meetings
 
 
 @router.get("/{meeting_id}", response_model=MeetingWithParticipants)
-async def get_meeting(meeting_id: str):
+async def get_meeting(meeting_id: str, actor: Actor = Depends(require_actor)):
     """Get a meeting with its participants and messages."""
     manager = get_meeting_manager()
     meeting = await manager.get_meeting(meeting_id)
-    
+
     if not meeting:
         raise HTTPException(status_code=404, detail="Meeting not found")
-    
+
+    owner_or_404(actor, meeting.user_id)
     return meeting
 
 
 @router.post("/{meeting_id}/message", response_model=Message)
-async def add_user_message(meeting_id: str, data: UserMessageRequest):
+async def add_user_message(
+    meeting_id: str, data: UserMessageRequest, actor: Actor = Depends(require_actor)
+):
     """Add a user message to the meeting."""
     manager = get_meeting_manager()
-    
+
     # Verify meeting exists
     meeting = await manager.get_meeting(meeting_id)
     if not meeting:
         raise HTTPException(status_code=404, detail="Meeting not found")
+    owner_or_404(actor, meeting.user_id)
+    if meeting.status != MeetingStatus.ACTIVE:
+        raise HTTPException(status_code=409, detail="meeting_not_active")
     
     # Save user message
     message = await manager.save_message(
@@ -88,10 +98,18 @@ async def add_user_message(meeting_id: str, data: UserMessageRequest):
 
 
 @router.post("/{meeting_id}/turn", response_model=TurnResponse)
-async def execute_turn(meeting_id: str, data: TurnRequest):
+async def execute_turn(
+    meeting_id: str, data: TurnRequest, actor: Actor = Depends(require_actor)
+):
     """Trigger an AI participant's turn."""
+    manager = get_meeting_manager()
+    meeting = await manager.get_meeting(meeting_id)
+    if not meeting:
+        raise HTTPException(status_code=404, detail="Meeting not found")
+    owner_or_404(actor, meeting.user_id)
+
     orchestrator = get_orchestrator()
-    
+
     try:
         response = await orchestrator.execute_turn(meeting_id, data.participant_id)
         return response
@@ -102,11 +120,19 @@ async def execute_turn(meeting_id: str, data: TurnRequest):
 
 
 @router.post("/{meeting_id}/turn/stream")
-async def execute_turn_stream(meeting_id: str, data: TurnRequest):
+async def execute_turn_stream(
+    meeting_id: str, data: TurnRequest, actor: Actor = Depends(require_actor)
+):
     """Stream an AI participant's turn via Server-Sent Events."""
     from sse_starlette.sse import EventSourceResponse
     from app.services.streaming import events_to_sse
-    
+
+    manager = get_meeting_manager()
+    meeting = await manager.get_meeting(meeting_id)
+    if not meeting:
+        raise HTTPException(status_code=404, detail="Meeting not found")
+    owner_or_404(actor, meeting.user_id)
+
     orchestrator = get_orchestrator()
     
     async def stream_generator():
@@ -123,31 +149,40 @@ async def execute_turn_stream(meeting_id: str, data: TurnRequest):
 
 
 @router.get("/{meeting_id}/disagreements", response_model=List[Disagreement])
-async def get_disagreements(meeting_id: str):
+async def get_disagreements(meeting_id: str, actor: Actor = Depends(require_actor)):
     """Get all disagreements for a meeting."""
     manager = get_meeting_manager()
+    meeting = await manager.get_meeting(meeting_id)
+    if not meeting:
+        raise HTTPException(status_code=404, detail="Meeting not found")
+    owner_or_404(actor, meeting.user_id)
     disagreements = await manager.get_disagreements(meeting_id)
     return disagreements
 
 
 @router.get("/{meeting_id}/consensus", response_model=List[Consensus])
-async def get_consensus(meeting_id: str):
+async def get_consensus(meeting_id: str, actor: Actor = Depends(require_actor)):
     """Get all consensus entries for a meeting."""
     manager = get_meeting_manager()
+    meeting = await manager.get_meeting(meeting_id)
+    if not meeting:
+        raise HTTPException(status_code=404, detail="Meeting not found")
+    owner_or_404(actor, meeting.user_id)
     consensus = await manager.get_consensus_list(meeting_id)
     return consensus
 
 
 @router.get("/{meeting_id}/context-stats")
-async def get_context_stats(meeting_id: str):
+async def get_context_stats(meeting_id: str, actor: Actor = Depends(require_actor)):
     """Get context/token usage statistics for a meeting."""
     import tiktoken
-    
+
     manager = get_meeting_manager()
     meeting = await manager.get_meeting(meeting_id)
-    
+
     if not meeting:
         raise HTTPException(status_code=404, detail="Meeting not found")
+    owner_or_404(actor, meeting.user_id)
     
     # Use cl100k_base encoding (used by Claude, GPT-4, etc.)
     try:
@@ -204,13 +239,16 @@ async def get_context_stats(meeting_id: str):
 
 
 @router.post("/{meeting_id}/end", response_model=EndMeetingResponse)
-async def end_meeting(meeting_id: str, data: EndMeetingRequest):
+async def end_meeting(
+    meeting_id: str, data: EndMeetingRequest, actor: Actor = Depends(require_actor)
+):
     """End a meeting, optionally collecting votes from AI participants."""
     manager = get_meeting_manager()
-    
+
     meeting = await manager.get_meeting(meeting_id)
     if not meeting:
         raise HTTPException(status_code=404, detail="Meeting not found")
+    owner_or_404(actor, meeting.user_id)
     
     if meeting.status != MeetingStatus.ACTIVE:
         raise HTTPException(status_code=400, detail=f"Meeting is already {meeting.status}")
@@ -380,14 +418,15 @@ Please create a comprehensive executive summary in this format:
 
 
 @router.post("/{meeting_id}/archive")
-async def archive_meeting(meeting_id: str):
+async def archive_meeting(meeting_id: str, actor: Actor = Depends(require_actor)):
     """Archive a meeting (move to archive folder)."""
     manager = get_meeting_manager()
-    
+
     meeting = await manager.get_meeting(meeting_id)
     if not meeting:
         raise HTTPException(status_code=404, detail="Meeting not found")
-    
+    owner_or_404(actor, meeting.user_id)
+
     if meeting.status == MeetingStatus.ARCHIVED:
         raise HTTPException(status_code=400, detail="Meeting is already archived")
     
@@ -400,13 +439,14 @@ async def archive_meeting(meeting_id: str):
 
 
 @router.post("/{meeting_id}/unarchive")
-async def unarchive_meeting(meeting_id: str):
+async def unarchive_meeting(meeting_id: str, actor: Actor = Depends(require_actor)):
     """Unarchive a meeting (restore from archive)."""
     manager = get_meeting_manager()
-    
+
     meeting = await manager.get_meeting(meeting_id)
     if not meeting:
         raise HTTPException(status_code=404, detail="Meeting not found")
+    owner_or_404(actor, meeting.user_id)
     
     if meeting.status != MeetingStatus.ARCHIVED:
         raise HTTPException(status_code=400, detail="Meeting is not archived")
@@ -421,13 +461,14 @@ async def unarchive_meeting(meeting_id: str):
 
 
 @router.delete("/{meeting_id}")
-async def delete_meeting(meeting_id: str):
+async def delete_meeting(meeting_id: str, actor: Actor = Depends(require_actor)):
     """Permanently delete a meeting and all its data."""
     manager = get_meeting_manager()
-    
+
     meeting = await manager.get_meeting(meeting_id)
     if not meeting:
         raise HTTPException(status_code=404, detail="Meeting not found")
+    owner_or_404(actor, meeting.user_id)
     
     success = await manager.delete_meeting(meeting_id)
     

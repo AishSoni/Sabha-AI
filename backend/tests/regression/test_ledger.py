@@ -336,14 +336,38 @@ def test_b03_live_query_contract_pending_isolated_fixture():
     )
 
 
-@pytest.mark.xfail(strict=True, reason="B-05: no actor enforcement; owner Phase 04/08")
-def test_b05_api_routes_require_actor_binding(api_app):
-    protected = [
-        r for r in api_app.routes if (getattr(r, "path", "") or "").startswith("/api/")
+def test_b05_meeting_routes_enforce_actor_ownership():
+    """B-05 core enforcement (Phase 04): meeting/child routes resolve the
+    trusted actor and scope by ownership. Executable boundary proof lives in
+    `tests/api/test_actor_boundaries.py` (401 without credentials, 404 for
+    cross-owner and ownerless lookups, scoped list, caller-owned creation)
+    plus `tests/unit/test_actor_policy.py`. Persona/stack/document runtime
+    policy audit remains Phase 08."""
+    import inspect
+
+    import app.api.meetings as meetings_api
+
+    src = inspect.getsource(meetings_api)
+    assert "require_actor" in src and "owner_or_404" in src
+    guarded = [
+        "create_meeting",
+        "list_meetings",
+        "get_meeting",
+        "add_user_message",
+        "execute_turn",
+        "execute_turn_stream",
+        "get_disagreements",
+        "get_consensus",
+        "get_context_stats",
+        "end_meeting",
+        "archive_meeting",
+        "unarchive_meeting",
+        "delete_meeting",
     ]
-    assert protected, "expected /api/* routes in the test app"
-    missing = [r.path for r in protected if not getattr(r, "dependencies", None)]
-    assert missing == [], f"routes without actor binding: {missing}"
+    for name in guarded:
+        assert f"actor: Actor = Depends(require_actor)" in inspect.getsource(
+            getattr(meetings_api, name)
+        ), f"{name} must resolve the trusted actor"
 
 
 @pytest.mark.xfail(strict=True, reason="B-06: no destination policy; owner Phase 05/08")
