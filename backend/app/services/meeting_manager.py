@@ -390,16 +390,17 @@ class MeetingManager(LifecycleStoreMixin):
                         await lifecycle_service.run_cleanup_job(
                             self.db, vectors, document_id
                         )
-                # Belt-and-braces: dropping the meeting's shared collection
-                # removes orphan points even if row cascades erase pending
-                # outbox entries before vectors recover.
-                try:
-                    from app.services.vector_store import VectorStoreManager
-                    await vectors.delete_collection(
-                        VectorStoreManager.meeting_collection_name(meeting_id)
-                    )
-                except Exception:
-                    pass
+            # Belt-and-braces: dropping the meeting's shared collection
+            # removes orphan points even if row cascades erase pending
+            # outbox entries before vectors recover. Runs even with zero
+            # document rows so empty meetings leave no collection behind.
+            try:
+                from app.services.vector_store import VectorStoreManager, get_vector_store
+                await get_vector_store().delete_collection(
+                    VectorStoreManager.meeting_collection_name(meeting_id)
+                )
+            except Exception:
+                pass
         except Exception:
             pass
 

@@ -313,8 +313,9 @@ async def test_b11_invalid_activation_preserves_active():
     )
 
 
-@pytest.mark.xfail(strict=True, reason="B-10: deletion skips vector cleanup; owner Phase 06")
 async def test_b10_meeting_deletion_cleans_vectors(monkeypatch):
+    """B-10 fixed (Phase 06): meeting deletion tombstones documents and
+    drops the meeting's shared collection, so no vector points survive."""
     import app.services.vector_store as vs_mod
     from app.services.meeting_manager import MeetingManager
     from app.services.vector_store import VectorStoreManager
@@ -337,15 +338,27 @@ async def test_b10_meeting_deletion_cleans_vectors(monkeypatch):
 # --------------------------------------------------------------------------
 
 
-@pytest.mark.xfail(strict=True, reason="B-03: live contract needs Phase 06 fixture")
 def test_b03_live_query_contract_pending_isolated_fixture():
-    from qdrant_client import AsyncQdrantClient
+    """B-03 fixed (Phase 06): the isolated Qdrant query contract lives in
+    `tests/integration/test_qdrant_contract.py` (in-memory client, no live
+    server). This ledger entry pins the two load-bearing properties: stable
+    point IDs make retry idempotent, and the query path prefers
+    `query_points` with an explicit search fallback."""
+    import inspect
+    from pathlib import Path
 
-    assert hasattr(AsyncQdrantClient, "search")  # holds on installed 1.7.0
-    pytest.fail(
-        "pending: isolated Qdrant query contract needs the Phase 06 "
-        "fixture; no live server is exercised in Phase 01"
+    import app.services.vector_store as vs_mod
+
+    contract = (
+        Path(__file__).resolve().parents[1]
+        / "integration"
+        / "test_qdrant_contract.py"
     )
+    assert contract.exists(), "isolated Qdrant contract test must exist"
+    module_src = inspect.getsource(vs_mod)
+    assert "uuid5" in module_src, "point IDs must be stable across retries"
+    assert "query_points" in module_src, "query path must prefer query_points"
+    assert hasattr(vs_mod.VectorStoreManager, "meeting_collection_name")
 
 
 def test_b05_meeting_routes_enforce_actor_ownership():

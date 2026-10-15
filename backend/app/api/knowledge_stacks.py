@@ -112,12 +112,15 @@ async def delete_knowledge_stack(stack_id: str):
                 if collection:
                     await lifecycle_service.enqueue_cleanup(db, document_id, collection)
                     await lifecycle_service.run_cleanup_job(db, vectors, document_id)
-            try:
-                await vectors.delete_collection(
-                    VectorStoreManager.stack_collection_name(stack_id)
-                )
-            except Exception:
-                pass
+        # Drop the stack collection even with zero document rows so empty
+        # stacks leave no orphan points behind.
+        try:
+            from app.services.vector_store import get_vector_store as _get_vs
+            await _get_vs().delete_collection(
+                VectorStoreManager.stack_collection_name(stack_id)
+            )
+        except Exception:
+            pass
     except Exception:
         pass
     result = db.table("knowledge_stacks").delete().eq("id", stack_id).execute()
