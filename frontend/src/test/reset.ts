@@ -5,14 +5,23 @@ import { useMeetingStore } from '@/stores/meetingStore';
 
 export const MEETING_STORE_INITIAL = {
   meetings: [],
+  meetingsById: {},
   currentMeeting: null,
+  selectedMeetingId: null,
+  sessionGeneration: null,
   disagreements: [],
   consensusList: [],
   isLoading: false,
   error: null,
   activeTurnParticipantId: null,
+  turnStatus: 'idle',
+  turnError: null,
   streamingMessage: null,
   contextStats: null,
+  queueEntries: [],
+  queueStatus: 'idle',
+  queueError: null,
+  queueNotice: null,
 } as const;
 
 export function resetMeetingStore(): void {

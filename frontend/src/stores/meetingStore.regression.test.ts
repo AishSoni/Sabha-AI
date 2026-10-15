@@ -1,8 +1,8 @@
-// B-09 regression (owned by Phase 07): a delayed load/final event for a
+// B-09 regression (fixed by Phase 07): a delayed load/final event for a
 // previously selected meeting must not overwrite the newly selected one.
-// Recorded as it.fails so an unexpected pass fails the suite (stale-marker
-// detection per DELIVERY.md). Correct behavior: stale responses for meeting
-// A arriving after selecting B leave B's visible data untouched.
+// Correct behavior: stale responses for meeting A arriving after selecting
+// B leave B's visible data untouched. Extended race coverage lives in
+// meetingStore.races.test.ts (send/stats/streaming).
 import { describe, expect, it, vi, beforeEach } from 'vitest';
 import { useMeetingStore } from '@/stores/meetingStore';
 import { api } from '@/lib/api';
@@ -32,7 +32,7 @@ describe('B-09 stale load must not overwrite newly selected meeting', () => {
     vi.restoreAllMocks();
   });
 
-  it.fails('delayed A response after selecting B keeps B visible', async () => {
+  it('delayed A response after selecting B keeps B visible', async () => {
     let resolveA!: (v: unknown) => void;
     const gateA = new Promise((resolve) => {
       resolveA = resolve;
