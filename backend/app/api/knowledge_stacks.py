@@ -87,8 +87,39 @@ async def update_knowledge_stack(stack_id: str, data: KnowledgeStackUpdate):
 
 @router.delete("/{stack_id}", status_code=204)
 async def delete_knowledge_stack(stack_id: str):
-    """Delete a knowledge stack."""
+    """Delete a knowledge stack after tombstoning its documents."""
+    from datetime import timezone
+    from app.modules.knowledge import lifecycle as lifecycle_service
+    from app.services.vector_store import VectorStoreManager, get_vector_store
+
     db = get_supabase()
+    try:
+        docs = db.table("documents")\
+            .select("id, qdrant_collection")\
+            .eq("stack_id", stack_id)\
+            .execute()
+        if docs.data:
+            vectors = get_vector_store()
+            now = datetime.now(timezone.utc).isoformat()
+            for doc in docs.data:
+                document_id = doc.get("id", "")
+                collection = doc.get("qdrant_collection", "")
+                db.table("documents").update({
+                    "status": "deleting",
+                    "cleanup_pending": True,
+                    "deleted_at": now,
+                }).eq("id", document_id).execute()
+                if collection:
+                    await lifecycle_service.enqueue_cleanup(db, document_id, collection)
+                    await lifecycle_service.run_cleanup_job(db, vectors, document_id)
+            try:
+                await vectors.delete_collection(
+                    VectorStoreManager.stack_collection_name(stack_id)
+                )
+            except Exception:
+                pass
+    except Exception:
+        pass
     result = db.table("knowledge_stacks").delete().eq("id", stack_id).execute()
     
     if not result.data:

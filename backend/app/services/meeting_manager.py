@@ -361,7 +361,48 @@ class MeetingManager(LifecycleStoreMixin):
 
     async def delete_meeting(self, meeting_id: str) -> bool:
         """Delete a meeting and all its related data."""
-        
+        from datetime import timezone
+        from app.modules.knowledge import lifecycle as lifecycle_service
+
+        # Tombstone meeting documents first so retrieval excludes them before
+        # any row or vector disappears; cleanup persists to the outbox.
+        try:
+            docs = self.db.table("documents")\
+                .select("id, qdrant_collection")\
+                .eq("meeting_id", meeting_id)\
+                .execute()
+            if docs.data:
+                from app.services.vector_store import get_vector_store
+                vectors = get_vector_store()
+                now = datetime.now(timezone.utc).isoformat()
+                for doc in docs.data:
+                    document_id = doc.get("id", "")
+                    collection = doc.get("qdrant_collection", "")
+                    self.db.table("documents").update({
+                        "status": "deleting",
+                        "cleanup_pending": True,
+                        "deleted_at": now,
+                    }).eq("id", document_id).execute()
+                    if collection:
+                        await lifecycle_service.enqueue_cleanup(
+                            self.db, document_id, collection
+                        )
+                        await lifecycle_service.run_cleanup_job(
+                            self.db, vectors, document_id
+                        )
+                # Belt-and-braces: dropping the meeting's shared collection
+                # removes orphan points even if row cascades erase pending
+                # outbox entries before vectors recover.
+                try:
+                    from app.services.vector_store import VectorStoreManager
+                    await vectors.delete_collection(
+                        VectorStoreManager.meeting_collection_name(meeting_id)
+                    )
+                except Exception:
+                    pass
+        except Exception:
+            pass
+
         # Delete messages first (foreign key constraint)
         self.db.table("messages") \
             .delete() \
