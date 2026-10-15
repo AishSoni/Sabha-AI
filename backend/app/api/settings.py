@@ -3,7 +3,7 @@ Settings API endpoints for provider configuration and API key testing.
 """
 
 from typing import List, Literal, Optional
-from fastapi import APIRouter, HTTPException
+from fastapi import APIRouter, Depends, HTTPException
 from pydantic import BaseModel
 import httpx
 
@@ -16,9 +16,25 @@ from app.models.settings_schemas import (
     DEFAULT_PROVIDERS,
 )
 from app.core.config import settings
+from app.modules.access.actors import Actor
+from app.modules.access.deps import require_actor
 
 
 router = APIRouter(prefix="/api/settings", tags=["settings"])
+
+
+def _deny_live_lookup_in_demo() -> None:
+    """Demo runtimes never touch live provider networks (zero-paid rule).
+
+    Runs before authentication so the denial holds without credentials and
+    cannot be bypassed by omitting auth headers.
+    """
+    if settings.app_env == "demo":
+        raise HTTPException(
+            status_code=403,
+            detail="demo_mode_denies_live_lookup: live provider calls are unavailable in demo mode",
+        )
+
 
 
 def _get_configured_providers() -> list[str]:
@@ -95,7 +111,9 @@ async def fetch_models(request: FetchModelsRequest):
     """
     Fetch available models from a provider's API.
     Returns models dynamically from the respective provider.
+    Denied in demo mode: no live provider traffic on shared runtimes.
     """
+    _deny_live_lookup_in_demo()
     try:
         if request.provider == "openrouter":
             api_key = request.api_key or settings.openrouter_api_key
@@ -243,7 +261,9 @@ async def test_api_key(request: TestKeyRequest):
     Test if an API key is valid for the specified provider.
     Server-owned secrets are used when the caller omits one (D-09);
     browser-supplied secrets are never required and never logged.
+    Denied in demo mode: no live provider traffic on shared runtimes.
     """
+    _deny_live_lookup_in_demo()
     effective_key: str | None = None
     if request.provider == "openrouter":
         effective_key = request.api_key or settings.openrouter_api_key or None
@@ -373,7 +393,7 @@ class PreferencesUpdate(BaseModel):
 
 
 @router.get("/preferences")
-async def get_preferences():
+async def get_preferences(actor: Actor = Depends(require_actor)):
     """Scoped read of non-secret preferences (no keys in responses)."""
     from app.modules.personas.preferences import get_preferences as _get
 
@@ -381,7 +401,7 @@ async def get_preferences():
 
 
 @router.put("/preferences")
-async def put_preferences(patch: PreferencesUpdate):
+async def put_preferences(patch: PreferencesUpdate, actor: Actor = Depends(require_actor)):
     """Scoped update of non-secret preferences; secrets stay server-managed."""
     from app.modules.personas.preferences import update_preferences as _update
 
@@ -393,7 +413,9 @@ async def put_preferences(patch: PreferencesUpdate):
 
 
 @router.get("/effective")
-async def get_effective_settings(provider: str = "", model: str = ""):
+async def get_effective_settings(
+    provider: str = "", model: str = "", actor: Actor = Depends(require_actor)
+):
     """Effective inference settings + readiness without revealing secrets."""
     from app.modules.personas.preferences import effective_for_participant
 

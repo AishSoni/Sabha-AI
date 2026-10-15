@@ -3,7 +3,7 @@ Documents API router.
 Handles document upload, listing, deletion, and semantic search.
 """
 
-from fastapi import APIRouter, UploadFile, File, Form, HTTPException, BackgroundTasks
+from fastapi import APIRouter, Depends, UploadFile, File, Form, HTTPException, BackgroundTasks
 from typing import Optional, List
 import os
 import uuid
@@ -17,6 +17,8 @@ from app.models.document_schemas import (
     DocumentSearchResponse,
     DocumentSearchResult,
 )
+from app.modules.access.actors import Actor
+from app.modules.access.deps import require_actor
 from app.modules.knowledge import ingestion as ingestion_service
 from app.modules.knowledge import lifecycle as lifecycle_service
 from app.modules.knowledge import policy as knowledge_policy
@@ -56,13 +58,69 @@ async def _read_limited(file: UploadFile, limit: int) -> bytes:
     return b"".join(parts)
 
 
-def _require_owner_row(db, table: str, row_id: str, label: str) -> None:
-    try:
-        result = db.table(table).select("id").eq("id", row_id).single().execute()
-    except Exception:
-        result = None
-    if not result or not getattr(result, "data", None):
-        raise HTTPException(status_code=404, detail=f"{label} not found")
+def _require_owned_parent(
+    db,
+    actor: Actor,
+    *,
+    meeting_id: Optional[str] = None,
+    persona_id: Optional[str] = None,
+    stack_id: Optional[str] = None,
+) -> None:
+    """Verify the caller owns the document's parent scope.
+
+    Cross-owner and ownerless parents read as not-found so IDs cannot be
+    probed across accounts. Shared default personas stay visible to all.
+    """
+    if meeting_id:
+        try:
+            result = db.table("meetings").select("id, user_id").eq("id", meeting_id).execute()
+        except Exception:
+            result = None
+        row = (result.data[0] if result and getattr(result, "data", None) else None)
+        if not row or row.get("user_id") != actor.identity:
+            raise HTTPException(status_code=404, detail="Meeting not found")
+    elif persona_id:
+        try:
+            result = (
+                db.table("personas")
+                .select("id, user_id, is_default")
+                .eq("id", persona_id)
+                .execute()
+            )
+        except Exception:
+            result = None
+        row = (result.data[0] if result and getattr(result, "data", None) else None)
+        if not row:
+            raise HTTPException(status_code=404, detail="Persona not found")
+        if not row.get("is_default") and row.get("user_id") != actor.identity:
+            raise HTTPException(status_code=404, detail="Persona not found")
+    elif stack_id:
+        try:
+            result = (
+                db.table("knowledge_stacks")
+                .select("id, user_id")
+                .eq("id", stack_id)
+                .execute()
+            )
+        except Exception:
+            result = None
+        row = (result.data[0] if result and getattr(result, "data", None) else None)
+        if not row or row.get("user_id") != actor.identity:
+            raise HTTPException(status_code=404, detail="Knowledge stack not found")
+
+
+def _require_document_visible(db, actor: Actor, doc: dict) -> dict:
+    """A document is visible only through a parent scope the caller owns."""
+    _require_owned_parent(
+        db,
+        actor,
+        meeting_id=doc.get("meeting_id"),
+        persona_id=doc.get("persona_id"),
+        stack_id=doc.get("stack_id"),
+    )
+    if not (doc.get("meeting_id") or doc.get("persona_id") or doc.get("stack_id")):
+        raise HTTPException(status_code=404, detail="Document not found")
+    return doc
 
 
 async def _process_ingestion_job(document_id: str):
@@ -105,6 +163,7 @@ async def _process_ingestion_job(document_id: str):
 @router.post("/upload", response_model=DocumentUploadResponse)
 async def upload_document(
     background_tasks: BackgroundTasks,
+    actor: Actor = Depends(require_actor),
     file: UploadFile = File(...),
     meeting_id: Optional[str] = Form(None),
     persona_id: Optional[str] = Form(None),
@@ -148,12 +207,10 @@ async def upload_document(
     db = get_supabase()
 
     # Verify ownership server-side; never trust caller-supplied IDs alone.
-    if meeting_id:
-        _require_owner_row(db, "meetings", meeting_id, "Meeting")
-    elif persona_id:
-        _require_owner_row(db, "personas", persona_id, "Persona")
-    elif stack_id:
-        _require_owner_row(db, "knowledge_stacks", stack_id, "Knowledge stack")
+    # The caller must own the parent scope, not merely know its ID.
+    _require_owned_parent(
+        db, actor, meeting_id=meeting_id, persona_id=persona_id, stack_id=stack_id
+    )
 
     # Determine collection name
     if meeting_id:
@@ -215,66 +272,69 @@ async def upload_document(
 
 
 @router.get("/meeting/{meeting_id}", response_model=List[Document])
-async def list_meeting_documents(meeting_id: str):
+async def list_meeting_documents(meeting_id: str, actor: Actor = Depends(require_actor)):
     """List all documents for a meeting."""
     db = get_supabase()
-    
+    _require_owned_parent(db, actor, meeting_id=meeting_id)
+
     result = db.table("documents")\
         .select("*")\
         .eq("meeting_id", meeting_id)\
         .order("created_at", desc=True)\
         .execute()
-    
+
     return result.data
 
 
 @router.get("/persona/{persona_id}", response_model=List[Document])
-async def list_persona_documents(persona_id: str):
+async def list_persona_documents(persona_id: str, actor: Actor = Depends(require_actor)):
     """List all documents in a persona's knowledge stack."""
     db = get_supabase()
-    
+    _require_owned_parent(db, actor, persona_id=persona_id)
+
     result = db.table("documents")\
         .select("*")\
         .eq("persona_id", persona_id)\
         .order("created_at", desc=True)\
         .execute()
-    
+
     return result.data
 
 
 @router.get("/stack/{stack_id}", response_model=List[Document])
-async def list_stack_documents(stack_id: str):
+async def list_stack_documents(stack_id: str, actor: Actor = Depends(require_actor)):
     """List all documents in a knowledge stack."""
     db = get_supabase()
-    
+    _require_owned_parent(db, actor, stack_id=stack_id)
+
     result = db.table("documents")\
         .select("*")\
         .eq("stack_id", stack_id)\
         .order("created_at", desc=True)\
         .execute()
-    
+
     return result.data
 
 
 @router.get("/{document_id}", response_model=Document)
-async def get_document(document_id: str):
+async def get_document(document_id: str, actor: Actor = Depends(require_actor)):
     """Get a single document by ID."""
     db = get_supabase()
-    
+
     result = db.table("documents")\
         .select("*")\
         .eq("id", document_id)\
         .single()\
         .execute()
-    
+
     if not result.data:
         raise HTTPException(status_code=404, detail="Document not found")
-    
-    return result.data
+
+    return _require_document_visible(db, actor, result.data)
 
 
 @router.delete("/{document_id}")
-async def delete_document(document_id: str):
+async def delete_document(document_id: str, actor: Actor = Depends(require_actor)):
     """
     Tombstone-first deletion: the row is excluded from retrieval before
     any vector work, cleanup is persisted to the outbox, and the record
@@ -295,7 +355,7 @@ async def delete_document(document_id: str):
     if not result.data:
         raise HTTPException(status_code=404, detail="Document not found")
 
-    doc = result.data
+    doc = _require_document_visible(db, actor, result.data)
     collection = doc.get("qdrant_collection", "")
 
     # Immediate logical deletion: exclude from new retrieval first.
@@ -319,7 +379,7 @@ async def delete_document(document_id: str):
 
 
 @router.post("/jobs/replay-pending")
-async def replay_pending_jobs(limit: int = 20):
+async def replay_pending_jobs(limit: int = 20, actor: Actor = Depends(require_actor)):
     """Re-drive queued/processing ingestion jobs from durable payload bytes."""
     db = get_supabase()
     vector_store = get_vector_store()
@@ -358,7 +418,7 @@ async def replay_pending_jobs(limit: int = 20):
 
 
 @router.post("/cleanup/replay-pending")
-async def replay_pending_cleanups(limit: int = 50):
+async def replay_pending_cleanups(limit: int = 50, actor: Actor = Depends(require_actor)):
     """Finish persisted vector cleanups, then hard-delete confirmed rows."""
     db = get_supabase()
     vector_store = get_vector_store()
@@ -380,31 +440,34 @@ async def replay_pending_cleanups(limit: int = 50):
 
 
 @router.post("/search", response_model=DocumentSearchResponse)
-async def search_documents(request: DocumentSearchRequest):
+async def search_documents(request: DocumentSearchRequest, actor: Actor = Depends(require_actor)):
     """
     Semantic search across documents.
-    
+
     Provide either meeting_id or persona_id to scope the search.
+    Every requested scope must belong to the caller.
     """
     vector_store = get_vector_store()
     db = get_supabase()
-    
+
     # Determine collection(s) to search
     collections_to_search = []
-    
+
     if request.meeting_id:
+        _require_owned_parent(db, actor, meeting_id=request.meeting_id)
         collections_to_search.append(
             VectorStoreManager.meeting_collection_name(request.meeting_id)
         )
-    
+
     if request.persona_id:
+        _require_owned_parent(db, actor, persona_id=request.persona_id)
         collections_to_search.append(
             VectorStoreManager.persona_collection_name(request.persona_id)
         )
-        
+
     stack_ids = getattr(request, 'stack_ids', []) or []
     for stack_id in stack_ids:
-        _require_owner_row(db, "knowledge_stacks", stack_id, "Knowledge stack")
+        _require_owned_parent(db, actor, stack_id=stack_id)
         collections_to_search.append(VectorStoreManager.stack_collection_name(stack_id))
     
     if not collections_to_search:
