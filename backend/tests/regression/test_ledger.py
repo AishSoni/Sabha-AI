@@ -261,13 +261,21 @@ async def test_b02_persona_evidence_lookup_has_no_undefined_reference(monkeypatc
     )
 
 
-@pytest.mark.xfail(strict=True, reason="B-04: CHECK excludes voting/ended; owner Phase 04")
-def test_b04_schema_check_covers_voting_and_ended():
+def test_b04_status_repairadmits_voting_and_ended():
+    """B-04 closed (Phase 04): the base schema keeps its history untouched and
+    migrations/004_meeting_lifecycle.sql expands the status constraint to the
+    full lifecycle plus queue/ending/lease/ledger storage. Executable proof:
+    tests/application/test_migration_rehearsal.py (legacy red, upgrade green,
+    preserved IDs/messages/cost, audit-before-enforcement) and
+    tests/application/test_ending_workflow.py (atomic summary/status commit).
+    """
     from app.models import MeetingStatus
 
-    sql = (Path(__file__).parent.parent.parent / "supabase_schema.sql").read_text()
     assert {s.value for s in MeetingStatus} == {"active", "voting", "ended", "archived"}
+    sql = (Path(__file__).parent.parent.parent
+           / "migrations" / "004_meeting_lifecycle.sql").read_text()
     assert "'voting'" in sql and "'ended'" in sql
+    assert "meetings_status_check" in sql
 
 
 @pytest.mark.xfail(strict=True, reason="B-07: persona provider_config dropped; owner Phase 05")
