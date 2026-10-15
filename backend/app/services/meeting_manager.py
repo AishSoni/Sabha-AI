@@ -67,8 +67,9 @@ class MeetingManager(LifecycleStoreMixin):
             for persona_data in personas_result.data:
                 # Fetch active prompt for this persona
                 active_prompt = ""
+                active_version = None
                 prompts_result = self.db.table("prompt_versions") \
-                    .select("content") \
+                    .select("content, version") \
                     .eq("persona_id", persona_data["id"]) \
                     .eq("is_active", True) \
                     .limit(1) \
@@ -76,16 +77,32 @@ class MeetingManager(LifecycleStoreMixin):
 
                 if prompts_result.data:
                     active_prompt = prompts_result.data[0].get("content", "")
+                    active_version = prompts_result.data[0].get("version")
 
+                from app.modules.personas.snapshots import build_participant_snapshot
+
+                stack_rows = []
+                try:
+                    stack_rows = self.db.table("persona_knowledge_stacks") \
+                        .select("stack_id") \
+                        .eq("persona_id", persona_data["id"]) \
+                        .execute().data or []
+                except Exception:
+                    stack_rows = []
+                snapshot = build_participant_snapshot(
+                    persona={**persona_data, "active_prompt_version": active_version},
+                    active_prompt=active_prompt,
+                    stack_ids=[r.get("stack_id") for r in stack_rows],
+                    persona_revision=int(persona_data.get("revision") or 1),
+                )
                 payloads.append(
                     {
                         "id": str(uuid.uuid4()),
-                        "name": persona_data["name"],
-                        "role": persona_data.get("subtitle") or "AI Assistant",
-                        "system_prompt": get_full_prompt(active_prompt),
-                        "provider_config": {"provider": "", "model": "",
-                                            "temperature": 0.7},
-                        "color": persona_data["color"],
+                        "name": snapshot["name"],
+                        "role": snapshot["role"],
+                        "system_prompt": snapshot["system_prompt"],
+                        "provider_config": snapshot["provider_config"],
+                        "color": snapshot["color"],
                         "persona_id": persona_data["id"],
                         "created_at": now,
                     }
@@ -168,10 +185,10 @@ class MeetingManager(LifecycleStoreMixin):
     
     async def add_participant(self, data: AIParticipantCreate) -> AIParticipant:
         """Add an AI participant to a meeting."""
-        
+
         participant_id = str(uuid.uuid4())
         now = datetime.utcnow().isoformat()
-        
+
         participant_data = {
             "id": participant_id,
             "meeting_id": data.meeting_id,
@@ -183,9 +200,59 @@ class MeetingManager(LifecycleStoreMixin):
             "persona_id": data.persona_id,
             "created_at": now,
         }
-        
+
         result = self.db.table("ai_participants").insert(participant_data).execute()
-        
+
+        return AIParticipant(**result.data[0])
+
+    async def get_participant(self, participant_id: str) -> Optional[AIParticipant]:
+        """Fetch one participant by id."""
+        result = self.db.table("ai_participants").select("*").eq("id", participant_id).execute()
+        if not result.data:
+            return None
+        return AIParticipant(**result.data[0])
+
+    async def get_persona_snapshot(self, persona_id: str | None) -> Optional[dict]:
+        """Persona source for refresh: config + active prompt + stacks + revision."""
+        if not persona_id:
+            return None
+        persona_rows = self.db.table("personas").select("*").eq("id", persona_id).execute()
+        if not persona_rows.data:
+            return None
+        persona = dict(persona_rows.data[0])
+        prompt_rows = self.db.table("prompt_versions").select(
+            "content, version").eq("persona_id", persona_id).eq(
+            "is_active", True).execute()
+        active_prompt = ""
+        active_version = None
+        if prompt_rows.data:
+            active_prompt = prompt_rows.data[0].get("content", "")
+            active_version = prompt_rows.data[0].get("version")
+        try:
+            stack_rows = self.db.table("persona_knowledge_stacks").select(
+                "stack_id").eq("persona_id", persona_id).execute().data or []
+        except Exception:
+            stack_rows = []
+        persona["active_prompt"] = active_prompt
+        persona["active_prompt_version"] = active_version
+        persona["stack_ids"] = [r.get("stack_id") for r in stack_rows]
+        return persona
+
+    async def update_participant_snapshot(self, participant_id: str, snapshot: dict) -> AIParticipant:
+        """Persist an applied refresh snapshot."""
+        update = {
+            "system_prompt": snapshot.get("system_prompt"),
+            "provider_config": snapshot.get("provider_config"),
+        }
+        # New provenance columns are additive; legacy tables ignore them.
+        for key in ("persona_version", "persona_revision", "snapshot_revision",
+                    "effective_provider"):
+            if key in snapshot:
+                update[key] = snapshot[key]
+        result = self.db.table("ai_participants").update(update).eq(
+            "id", participant_id).execute()
+        if not result.data:
+            raise ValueError("Participant not found")
         return AIParticipant(**result.data[0])
     
     async def save_message(self, data: MessageCreate) -> Message:

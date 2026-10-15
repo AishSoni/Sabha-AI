@@ -122,7 +122,10 @@ async def fetch_models(request: FetchModelsRequest):
 
 async def _fetch_openrouter_models(api_key: str) -> FetchModelsResponse:
     """Fetch models from OpenRouter API."""
-    async with httpx.AsyncClient() as client:
+    from app.modules.personas.destinations import validate_destination
+
+    validate_destination("https://openrouter.ai/api/v1/models")
+    async with httpx.AsyncClient(follow_redirects=False) as client:
         response = await client.get(
             "https://openrouter.ai/api/v1/models",
             headers={"Authorization": f"Bearer {api_key}"},
@@ -155,7 +158,10 @@ async def _fetch_openrouter_models(api_key: str) -> FetchModelsResponse:
 
 async def _fetch_gemini_models(api_key: str) -> FetchModelsResponse:
     """Fetch models from Gemini API."""
-    async with httpx.AsyncClient() as client:
+    from app.modules.personas.destinations import validate_destination
+
+    validate_destination("https://generativelanguage.googleapis.com/v1beta/models")
+    async with httpx.AsyncClient(follow_redirects=False) as client:
         response = await client.get(
             f"https://generativelanguage.googleapis.com/v1beta/models?key={api_key}",
             timeout=15.0,
@@ -187,11 +193,17 @@ async def _fetch_gemini_models(api_key: str) -> FetchModelsResponse:
 
 
 async def _fetch_ollama_models(base_url: str) -> FetchModelsResponse:
-    """Fetch models from Ollama."""
-    async with httpx.AsyncClient() as client:
+    """Fetch models from Ollama (pinned destination, no redirect escape)."""
+    from app.modules.personas.destinations import DestinationDenied, validate_ollama_base_url
+
+    try:
+        safe_base = validate_ollama_base_url(base_url)
+    except DestinationDenied as exc:
+        return FetchModelsResponse(success=False, message=f"Destination denied: {exc}")
+    async with httpx.AsyncClient(follow_redirects=False) as client:
         try:
             response = await client.get(
-                f"{base_url}/api/tags",
+                f"{safe_base}/api/tags",
                 timeout=5.0,
             )
             response.raise_for_status()
@@ -229,26 +241,47 @@ async def _fetch_ollama_models(base_url: str) -> FetchModelsResponse:
 async def test_api_key(request: TestKeyRequest):
     """
     Test if an API key is valid for the specified provider.
-    Makes a minimal API call to verify the key works.
+    Server-owned secrets are used when the caller omits one (D-09);
+    browser-supplied secrets are never required and never logged.
     """
-    try:
-        if request.provider == "openrouter":
-            return await _test_openrouter_key(request.api_key)
-        elif request.provider == "gemini":
-            return await _test_gemini_key(request.api_key)
-        elif request.provider == "ollama":
+    effective_key: str | None = None
+    if request.provider == "openrouter":
+        effective_key = request.api_key or settings.openrouter_api_key or None
+        if not effective_key:
+            return TestKeyResponse(valid=False, message="No server-managed key configured")
+        try:
+            return await _test_openrouter_key(effective_key)
+        except httpx.HTTPError as e:
+            return TestKeyResponse(valid=False, message=f"Connection error: {str(e)}")
+        except Exception as e:
+            return TestKeyResponse(valid=False, message=f"Error: {str(e)}")
+    elif request.provider == "gemini":
+        effective_key = request.api_key or settings.gemini_api_key or None
+        if not effective_key:
+            return TestKeyResponse(valid=False, message="No server-managed key configured")
+        try:
+            return await _test_gemini_key(effective_key)
+        except httpx.HTTPError as e:
+            return TestKeyResponse(valid=False, message=f"Connection error: {str(e)}")
+        except Exception as e:
+            return TestKeyResponse(valid=False, message=f"Error: {str(e)}")
+    elif request.provider == "ollama":
+        try:
             return await _test_ollama_connection(request.base_url or settings.ollama_base_url)
-        else:
-            raise HTTPException(status_code=400, detail=f"Unknown provider: {request.provider}")
-    except httpx.HTTPError as e:
-        return TestKeyResponse(valid=False, message=f"Connection error: {str(e)}")
-    except Exception as e:
-        return TestKeyResponse(valid=False, message=f"Error: {str(e)}")
+        except httpx.HTTPError as e:
+            return TestKeyResponse(valid=False, message=f"Connection error: {str(e)}")
+        except Exception as e:
+            return TestKeyResponse(valid=False, message=f"Error: {str(e)}")
+    else:
+        raise HTTPException(status_code=400, detail=f"Unknown provider: {request.provider}")
 
 
 async def _test_openrouter_key(api_key: str) -> TestKeyResponse:
     """Test OpenRouter API key by fetching available models."""
-    async with httpx.AsyncClient() as client:
+    from app.modules.personas.destinations import validate_destination
+
+    validate_destination("https://openrouter.ai/api/v1/models")
+    async with httpx.AsyncClient(follow_redirects=False) as client:
         response = await client.get(
             "https://openrouter.ai/api/v1/models",
             headers={"Authorization": f"Bearer {api_key}"},
@@ -273,7 +306,10 @@ async def _test_openrouter_key(api_key: str) -> TestKeyResponse:
 
 async def _test_gemini_key(api_key: str) -> TestKeyResponse:
     """Test Gemini API key by listing models."""
-    async with httpx.AsyncClient() as client:
+    from app.modules.personas.destinations import validate_destination
+
+    validate_destination("https://generativelanguage.googleapis.com/v1beta/models")
+    async with httpx.AsyncClient(follow_redirects=False) as client:
         response = await client.get(
             f"https://generativelanguage.googleapis.com/v1beta/models?key={api_key}",
             timeout=10.0,
@@ -297,11 +333,17 @@ async def _test_gemini_key(api_key: str) -> TestKeyResponse:
 
 
 async def _test_ollama_connection(base_url: str) -> TestKeyResponse:
-    """Test Ollama connection by listing local models."""
-    async with httpx.AsyncClient() as client:
+    """Test Ollama connection by listing local models (pinned destination)."""
+    from app.modules.personas.destinations import DestinationDenied, validate_ollama_base_url
+
+    try:
+        safe_base = validate_ollama_base_url(base_url)
+    except DestinationDenied as exc:
+        return TestKeyResponse(valid=False, message=f"Destination denied: {exc}")
+    async with httpx.AsyncClient(follow_redirects=False) as client:
         try:
             response = await client.get(
-                f"{base_url}/api/tags",
+                f"{safe_base}/api/tags",
                 timeout=5.0,
             )
             response.raise_for_status()
@@ -312,11 +354,60 @@ async def _test_ollama_connection(base_url: str) -> TestKeyResponse:
             
             return TestKeyResponse(
                 valid=True,
-                message=f"Connected to Ollama at {base_url}",
+                message=f"Connected to Ollama at {safe_base}",
                 models=models if models else ["No models installed"],
             )
         except httpx.ConnectError:
             return TestKeyResponse(
                 valid=False,
-                message=f"Cannot connect to Ollama at {base_url}. Is Ollama running?",
+                message=f"Cannot connect to Ollama at {safe_base}. Is Ollama running?",
             )
+
+
+class PreferencesUpdate(BaseModel):
+    default_provider: Optional[str] = None
+    default_model: Optional[str] = None
+    default_temperature: Optional[float] = None
+    default_max_tokens: Optional[int] = None
+    system_ai: Optional[dict] = None
+
+
+@router.get("/preferences")
+async def get_preferences():
+    """Scoped read of non-secret preferences (no keys in responses)."""
+    from app.modules.personas.preferences import get_preferences as _get
+
+    return {"success": True, "preferences": _get().to_public_dict()}
+
+
+@router.put("/preferences")
+async def put_preferences(patch: PreferencesUpdate):
+    """Scoped update of non-secret preferences; secrets stay server-managed."""
+    from app.modules.personas.preferences import update_preferences as _update
+
+    try:
+        prefs = _update(patch.model_dump(exclude_none=True))
+    except ValueError as exc:
+        raise HTTPException(status_code=422, detail=str(exc))
+    return {"success": True, "preferences": prefs.to_public_dict()}
+
+
+@router.get("/effective")
+async def get_effective_settings(provider: str = "", model: str = ""):
+    """Effective inference settings + readiness without revealing secrets."""
+    from app.modules.personas.preferences import effective_for_participant
+
+    effective = effective_for_participant(
+        {"provider": provider, "model": model} if (provider or model) else None, None,
+    )
+    return {
+        "success": True,
+        "effective": {
+            "provider": effective.provider,
+            "model": effective.model,
+            "temperature": effective.temperature,
+            "max_tokens": effective.max_tokens,
+            "provenance": effective.provenance,
+        },
+        "readiness": effective.readiness(),
+    }

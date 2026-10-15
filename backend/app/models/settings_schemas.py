@@ -41,9 +41,9 @@ class ProviderSettings(BaseModel):
 
 
 class TestKeyRequest(BaseModel):
-    """Request to test an API key."""
+    """Request to test a provider connection (server-managed keys preferred)."""
     provider: Literal["openrouter", "gemini", "ollama"]
-    api_key: str
+    api_key: Optional[str] = None
     base_url: Optional[str] = None  # For Ollama
 
 

@@ -1,4 +1,4 @@
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, field_validator
 from typing import Optional, List, Any
 from datetime import datetime
 from enum import Enum
@@ -28,12 +28,35 @@ class DisagreementStatus(str, Enum):
 
 class ProviderConfig(BaseModel):
     """LLM provider configuration for an AI participant.
-    
+
     If provider or model are empty, the global defaults from settings will be used.
+    Canonical shape shared with personas: provider, model, temperature, max_tokens.
     """
     provider: str = ""  # Empty = use DEFAULT_LLM_PROVIDER from settings
     model: str = ""     # Empty = use provider's default model from settings
     temperature: float = 0.7
+    max_tokens: int = 2048
+
+    @field_validator("provider")
+    @classmethod
+    def _check_provider(cls, v: str) -> str:
+        # Parse layer stays permissive (doubles use synthetic names in tests);
+        # the canonical resolver enforces the provider allowlist visibly.
+        return (v or "").strip()
+
+    @field_validator("temperature")
+    @classmethod
+    def _check_temperature(cls, v: float) -> float:
+        if not (0.0 <= float(v) <= 2.0):
+            raise ValueError("temperature out of range 0..2")
+        return float(v)
+
+    @field_validator("max_tokens")
+    @classmethod
+    def _check_max_tokens(cls, v: int) -> int:
+        if not (1 <= int(v) <= 128000):
+            raise ValueError("max_tokens out of range")
+        return int(v)
 
 
 class AIParticipantBase(BaseModel):
@@ -56,6 +79,12 @@ class AIParticipant(AIParticipantBase):
     id: str
     meeting_id: str
     created_at: datetime
+    # P05 snapshot provenance: participant config stays stable until refresh.
+    # Extra columns are optional so legacy rows without them still parse.
+    persona_version: Optional[int] = None
+    persona_revision: Optional[int] = None
+    snapshot_revision: Optional[int] = 1
+    effective_provider: Optional[dict] = None
 
     class Config:
         from_attributes = True

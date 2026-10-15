@@ -2,18 +2,38 @@
 Persona schemas for the AI Roster feature.
 """
 
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, field_validator
 from typing import Optional, List
 from datetime import datetime
 from enum import Enum
 
 
 class ProviderConfig(BaseModel):
-    """LLM provider configuration for a persona."""
+    """LLM provider configuration for a persona. Canonical defaults match meeting participants."""
     provider: str = ""  # Empty = use default
     model: str = ""     # Empty = use provider default
     temperature: float = 0.7
-    max_tokens: int = 2000
+    max_tokens: int = 2048
+
+    @field_validator("provider")
+    @classmethod
+    def _check_provider(cls, v: str) -> str:
+        # Parse layer stays permissive; canonical resolution enforces allowlist.
+        return (v or "").strip()
+
+    @field_validator("temperature")
+    @classmethod
+    def _check_temperature(cls, v: float) -> float:
+        if not (0.0 <= float(v) <= 2.0):
+            raise ValueError("temperature out of range 0..2")
+        return float(v)
+
+    @field_validator("max_tokens")
+    @classmethod
+    def _check_max_tokens(cls, v: int) -> int:
+        if not (1 <= int(v) <= 128000):
+            raise ValueError("max_tokens out of range")
+        return int(v)
 
 
 class PersonaBase(BaseModel):

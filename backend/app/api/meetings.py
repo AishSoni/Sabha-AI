@@ -465,14 +465,14 @@ async def end_meeting(
             for msg in all_messages
         ])
 
-        # Use the first participant's provider for summary generation
-        if meeting.participants:
-            provider = get_provider(
-                meeting.participants[0].provider_config.provider or None,
-                meeting.participants[0].provider_config.model or None
-            )
-        else:
-            provider = get_provider()
+        # System AI generates the summary; participant providers are never borrowed.
+        from app.modules.personas.preferences import effective_for_system_ai
+
+        system_ai = effective_for_system_ai()
+        provider = get_provider(
+            system_ai.provider or None,
+            system_ai.model or None,
+        )
 
         summary_prompt = build_summary_prompt(
             meeting.name, meeting.agenda,

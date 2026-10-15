@@ -216,47 +216,84 @@ class PersonaManager:
     # ============== Prompt Version Methods ==============
     
     async def create_prompt_version(self, persona_id: str, data: PromptVersionCreate) -> PromptVersion:
-        """Create a new prompt version and set it as active."""
-        
-        # Get current max version
-        max_result = self.db.table("prompt_versions") \
-            .select("version") \
-            .eq("persona_id", persona_id) \
-            .order("version", desc=True) \
-            .limit(1) \
-            .execute()
-        
-        new_version = 1
-        if max_result.data:
-            new_version = max_result.data[0]["version"] + 1
-        
-        # Deactivate all existing versions
-        self.db.table("prompt_versions") \
-            .update({"is_active": False}) \
-            .eq("persona_id", persona_id) \
-            .execute()
-        
-        # Create new version
-        version_id = str(uuid.uuid4())
-        now = datetime.utcnow().isoformat()
-        
-        version_data = {
-            "id": version_id,
-            "persona_id": persona_id,
-            "version": new_version,
-            "content": data.content,
-            "is_active": True,
-            "created_at": now,
-        }
-        
-        result = self.db.table("prompt_versions").insert(version_data).execute()
-        
-        # Update persona's updated_at
-        self.db.table("personas") \
-            .update({"updated_at": now}) \
-            .eq("id", persona_id) \
-            .execute()
-        
+        """Create a new prompt version and set it as active (atomic)."""
+
+        # Locked version allocation: hold the persona row where available so
+        # concurrent creators cannot claim the same number. Supabase REST has
+        # no multi-statement transaction here, so serialize on the unique
+        # (persona_id, version) constraint and retry once on conflict.
+        from app.modules.personas.prompts import next_version_number
+
+        for attempt in range(2):
+            max_result = self.db.table("prompt_versions") \
+                .select("version") \
+                .eq("persona_id", persona_id) \
+                .order("version", desc=True) \
+                .limit(1) \
+                .execute()
+
+            existing = [r["version"] for r in (max_result.data or [])]
+            # Read all versions for allocation safety (single-writer retry).
+            all_result = self.db.table("prompt_versions") \
+                .select("version") \
+                .eq("persona_id", persona_id) \
+                .execute()
+            new_version = next_version_number(
+                [int(r.get("version", 0)) for r in (all_result.data or [])])
+
+            version_id = str(uuid.uuid4())
+            now = datetime.utcnow().isoformat()
+
+            version_data = {
+                "id": version_id,
+                "persona_id": persona_id,
+                "version": new_version,
+                "content": data.content,
+                "is_active": True,
+                "created_at": now,
+            }
+
+            try:
+                result = self.db.table("prompt_versions").insert(version_data).execute()
+            except Exception:
+                if attempt == 0:
+                    continue
+                raise
+            else:
+                # New version won the race: deactivate siblings, keep one active.
+                try:
+                    self.db.table("prompt_versions") \
+                        .update({"is_active": False}) \
+                        .eq("persona_id", persona_id) \
+                        .neq("id", version_id) \
+                        .execute()
+                except Exception:
+                    # Older doubles may not support neq; fall back to version filter.
+                    for row in (all_result.data or []):
+                        self.db.table("prompt_versions") \
+                            .update({"is_active": False}) \
+                            .eq("persona_id", persona_id) \
+                            .eq("version", row.get("version")) \
+                            .execute()
+                break
+
+        # Bump persona revision so snapshots can detect the change.
+        try:
+            persona_row = self.db.table("personas").select("revision").eq("id", persona_id).execute()
+            current_rev = int((persona_row.data or [{}])[0].get("revision") or 1)
+        except Exception:
+            current_rev = 1
+        try:
+            self.db.table("personas") \
+                .update({"updated_at": now, "revision": current_rev + 1}) \
+                .eq("id", persona_id) \
+                .execute()
+        except Exception:
+            self.db.table("personas") \
+                .update({"updated_at": now}) \
+                .eq("id", persona_id) \
+                .execute()
+
         return PromptVersion(**result.data[0])
     
     async def list_prompt_versions(self, persona_id: str) -> List[PromptVersion]:
@@ -271,26 +308,37 @@ class PersonaManager:
         return [PromptVersion(**v) for v in result.data]
     
     async def activate_prompt_version(self, persona_id: str, version: int) -> bool:
-        """Activate a specific prompt version."""
-        
-        # Deactivate all versions
-        self.db.table("prompt_versions") \
-            .update({"is_active": False}) \
+        """Activate a specific prompt version without ever leaving none active."""
+
+        from app.modules.personas.prompts import validate_activation_target
+
+        # Validate the target FIRST so a bad version never clears the active one.
+        existing = self.db.table("prompt_versions") \
+            .select("id, version, is_active") \
             .eq("persona_id", persona_id) \
             .execute()
-        
-        # Activate the specified version
-        result = self.db.table("prompt_versions") \
+        try:
+            validate_activation_target(list(existing.data or []), int(version))
+        except LookupError:
+            return False
+
+        # Target exists: activate it, then deactivate siblings (single-active).
+        self.db.table("prompt_versions") \
             .update({"is_active": True}) \
             .eq("persona_id", persona_id) \
-            .eq("version", version) \
+            .eq("version", int(version)) \
             .execute()
-        
-        if result.data:
-            self.db.table("personas") \
-                .update({"updated_at": datetime.utcnow().isoformat()}) \
-                .eq("id", persona_id) \
-                .execute()
-            return True
-        
-        return False
+        rows = list(existing.data or [])
+        for row in rows:
+            if int(row.get("version", -1)) != int(version) and row.get("is_active"):
+                self.db.table("prompt_versions") \
+                    .update({"is_active": False}) \
+                    .eq("persona_id", persona_id) \
+                    .eq("version", int(row.get("version"))) \
+                    .execute()
+
+        self.db.table("personas") \
+            .update({"updated_at": datetime.utcnow().isoformat()}) \
+            .eq("id", persona_id) \
+            .execute()
+        return True
