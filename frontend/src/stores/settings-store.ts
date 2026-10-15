@@ -6,6 +6,9 @@
 
 import { create } from 'zustand';
 import { persist } from 'zustand/middleware';
+import { settingsApi, type EffectiveSettings } from '@/lib/api';
+
+export type SettingsSaveStatus = 'idle' | 'saving' | 'saved' | 'failed';
 
 export interface ProviderConfig {
     enabled: boolean;
@@ -36,6 +39,14 @@ export interface SettingsState {
     serverConfiguredProviders: string[];
     initialized: boolean; // Whether settings have been initialized from backend
 
+    // Server persistence status (never claims success before the server confirms)
+    saveStatus: SettingsSaveStatus;
+    saveError: string | null;
+
+    // Effective settings actually used for inference (server-resolved)
+    effective: EffectiveSettings | null;
+    effectiveReadiness: { ready: boolean; reason: string } | null;
+
     // Actions
     setProviderConfig: (providerId: keyof SettingsState['providers'], config: Partial<ProviderConfig>) => void;
     setDefaultProvider: (providerId: keyof SettingsState['providers'] | null) => void;
@@ -45,6 +56,8 @@ export interface SettingsState {
     resetAllSettings: () => void;
     persistToServer: () => Promise<boolean>;
     loadFromServer: () => Promise<boolean>;
+    refreshEffective: () => Promise<boolean>;
+    clearSaveStatus: () => void;
     initializeFromServer: (data: {
         isProduction: boolean;
         configuredProviders: string[];
@@ -78,6 +91,10 @@ const initialState = {
     isProduction: false,
     serverConfiguredProviders: [] as string[],
     initialized: false,
+    saveStatus: 'idle' as SettingsSaveStatus,
+    saveError: null as string | null,
+    effective: null as EffectiveSettings | null,
+    effectiveReadiness: null as { ready: boolean; reason: string } | null,
 };
 
 export const useSettingsStore = create<SettingsState>()(
@@ -159,34 +176,53 @@ export const useSettingsStore = create<SettingsState>()(
                 const active = activeId
                     ? state.providers[activeId]
                     : state.getActiveProvider()?.config;
+                set({ saveStatus: 'saving', saveError: null });
                 try {
-                    const res = await fetch('/api/settings/preferences', {
-                        method: 'PUT',
-                        headers: { 'Content-Type': 'application/json' },
-                        body: JSON.stringify({
-                            default_provider: state.defaultProvider ?? '',
-                            default_model: active?.model ?? '',
-                            default_temperature: active?.temperature ?? 0.7,
-                            default_max_tokens: active?.maxTokens ?? 2048,
-                            system_ai: {
-                                provider: state.systemAI.provider,
-                                model: state.systemAI.model,
-                                temperature: state.systemAI.temperature,
-                                max_tokens: state.systemAI.maxTokens,
-                            },
-                        }),
+                    await settingsApi.savePreferences({
+                        default_provider: state.defaultProvider ?? '',
+                        default_model: active?.model ?? '',
+                        default_temperature: active?.temperature ?? 0.7,
+                        default_max_tokens: active?.maxTokens ?? 2048,
+                        system_ai: {
+                            provider: state.systemAI.provider,
+                            model: state.systemAI.model,
+                            temperature: state.systemAI.temperature,
+                            max_tokens: state.systemAI.maxTokens,
+                        },
                     });
-                    return res.ok;
+                    set({ saveStatus: 'saved', saveError: null });
+                    // Refresh the resolved effective values so the panel shows
+                    // exactly what the server will use for inference.
+                    await get().refreshEffective();
+                    return true;
+                } catch (err) {
+                    set({
+                        saveStatus: 'failed',
+                        saveError: err instanceof Error ? err.message : 'Save failed',
+                    });
+                    return false;
+                }
+            },
+
+            clearSaveStatus: () => set({ saveStatus: 'idle', saveError: null }),
+
+            refreshEffective: async () => {
+                try {
+                    const data = await settingsApi.getEffective();
+                    set({
+                        effective: data.effective,
+                        effectiveReadiness: data.readiness,
+                    });
+                    return true;
                 } catch {
+                    set({ effective: null, effectiveReadiness: null });
                     return false;
                 }
             },
 
             loadFromServer: async () => {
                 try {
-                    const res = await fetch('/api/settings/preferences');
-                    if (!res.ok) return false;
-                    const data = await res.json();
+                    const data = await settingsApi.getPreferences();
                     const prefs = data.preferences ?? {};
                     set((state) => {
                         const nextDefault = (prefs.default_provider as SettingsState['defaultProvider'])
@@ -212,6 +248,7 @@ export const useSettingsStore = create<SettingsState>()(
                             initialized: true,
                         };
                     });
+                    await get().refreshEffective();
                     return true;
                 } catch {
                     return false;
