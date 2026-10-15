@@ -7,11 +7,11 @@ B-09's executable reproducer lives in the frontend (see header); every other
 row executes here. P01-TEST05's stale-marker demonstration is
 `test_strict_xfail_detects_stale_markers`.
 
-Intended red reasons (pre-fix code):
-- B-01: execute_turn makes exactly one provider call; tool results never
-  return to the model (`orchestrator.py:222-251`).
-- B-02: persona evidence lookup calls undefined `get_supabase`
-  (`orchestrator.py:141`), raising NameError.
+Intended red reasons (pre-fix code; B-01/B-02 fixed in Phase 02):
+- B-01: FIXED Phase 02 by the shared turn engine: tool results return to
+  the model with the original provider call ID.
+- B-02: FIXED Phase 02 by ServerKnowledgeSearch: injected vector store and
+  database accessor; collection names resolved server-side.
 - B-03: live Qdrant query contract needs an isolated Phase 06 fixture;
   unit-level client surface holds on qdrant-client 1.7.0.
 - B-04: `supabase_schema.sql:15` CHECK admits only active/archived while
@@ -160,6 +160,8 @@ PERSONA_ROW = {
 
 
 def _participant(persona_id=None):
+    from datetime import datetime, timezone
+
     from app.models import AIParticipant
 
     return AIParticipant(
@@ -170,6 +172,7 @@ def _participant(persona_id=None):
         system_prompt="sys",
         color="#000000",
         persona_id=persona_id,
+        created_at=datetime.now(timezone.utc),
     )
 
 
@@ -194,7 +197,7 @@ def test_strict_xfail_detects_stale_markers():
 # --------------------------------------------------------------------------
 
 
-@pytest.mark.xfail(strict=True, reason="B-01: no tool continuation; owner Phase 02")
+# B-01 fixed in Phase 02: the shared turn engine feeds tool results back.
 async def test_b01_tool_result_returns_to_model(monkeypatch):
     import app.services.orchestrator as orch_mod
     from app.services.orchestrator import Orchestrator
@@ -226,7 +229,7 @@ async def test_b01_tool_result_returns_to_model(monkeypatch):
     ), "tool result with the original ID must reach the provider"
 
 
-@pytest.mark.xfail(strict=True, reason="B-02: undefined get_supabase; owner Phase 02/06")
+# B-02 fixed in Phase 02: knowledge search uses injected ports.
 async def test_b02_persona_evidence_lookup_has_no_undefined_reference(monkeypatch):
     import app.services.orchestrator as orch_mod
     import app.services.vector_store as vs_mod
