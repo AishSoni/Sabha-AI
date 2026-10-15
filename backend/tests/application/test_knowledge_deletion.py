@@ -55,3 +55,80 @@ async def test_retry_cleanup_is_idempotent_and_survives_parent_cascade():
     await lifecycle_mod.run_cleanup(store, vectors=vectors, document_id="doc-9")
     assert vectors.calls == 1  # idempotent: second retry is a no-op success
     assert store.cleanup_job_for("doc-9").done is True
+
+
+async def test_persisted_cleanup_job_retries_until_done():
+    from app.modules.knowledge import lifecycle as lifecycle_mod
+
+    class _Rows:
+        def __init__(self, data):
+            self.data = data
+
+    class _Table:
+        def __init__(self, db, name):
+            self._db = db
+            self._name = name
+            self._op = None
+            self._payload = None
+            self._filters = []
+
+        def insert(self, payload):
+            self._op = "insert"
+            self._payload = dict(payload)
+            return self
+
+        def update(self, payload):
+            self._op = "update"
+            self._payload = dict(payload)
+            return self
+
+        def select(self, *a, **k):
+            self._op = "select"
+            return self
+
+        def eq(self, col, val):
+            self._filters.append((col, val))
+            return self
+
+        def execute(self):
+            return self._db._run(self._name, self._op, self._payload, self._filters)
+
+    class _DB:
+        def __init__(self):
+            self.jobs = {}
+
+        def table(self, name):
+            return _Table(self, name)
+
+        def _run(self, name, op, payload, filters):
+            if op == "insert":
+                self.jobs[payload["document_id"]] = dict(payload)
+                return _Rows([dict(payload)])
+            if op == "update":
+                doc_id = dict(filters).get("document_id")
+                self.jobs[doc_id].update(payload)
+                return _Rows([dict(self.jobs[doc_id])])
+            doc_id = dict(filters).get("document_id")
+            if doc_id:
+                return _Rows([dict(self.jobs[doc_id])] if doc_id in self.jobs else [])
+            return _Rows(list(self.jobs.values()))
+
+    class _FlakyVectors:
+        def __init__(self):
+            self.calls = 0
+
+        async def delete_document(self, collection_name, document_id):
+            self.calls += 1
+            if self.calls == 1:
+                raise RuntimeError("vector backend down")
+
+    db = _DB()
+    await lifecycle_mod.enqueue_cleanup(db, "doc-7", "meeting_m_shared")
+    vectors = _FlakyVectors()
+    first = await lifecycle_mod.run_cleanup_job(db, vectors, "doc-7")
+    assert first["done"] is False
+    second = await lifecycle_mod.run_cleanup_job(db, vectors, "doc-7")
+    assert second["done"] is True
+    third = await lifecycle_mod.run_cleanup_job(db, vectors, "doc-7")
+    assert third["done"] is True
+    assert vectors.calls == 2  # failed attempt retries; success is terminal

@@ -73,3 +73,65 @@ async def run_cleanup(store: InMemoryLifecycleStore, vectors, document_id: str) 
     except Exception:
         return
     job.done = True
+
+
+async def enqueue_cleanup(db, document_id: str, collection: str) -> dict:
+    """Persist vector cleanup work before attempting physical deletion."""
+    existing = (
+        db.table("vector_cleanup_outbox")
+        .select("*")
+        .eq("document_id", document_id)
+        .execute()
+    )
+    if existing.data:
+        return dict(existing.data[0])
+    job = {
+        "document_id": document_id,
+        "collection_name": collection,
+        "done": False,
+        "attempts": 0,
+    }
+    try:
+        db.table("vector_cleanup_outbox").insert(job).execute()
+    except Exception:
+        pass
+    return dict(job)
+
+
+async def run_cleanup_job(db, vectors, document_id: str) -> dict:
+    """Run one persisted cleanup attempt; safe to retry until done."""
+    current = (
+        db.table("vector_cleanup_outbox")
+        .select("*")
+        .eq("document_id", document_id)
+        .execute()
+    )
+    if not current.data or current.data[0].get("done"):
+        return {"document_id": document_id, "done": True}
+    job = dict(current.data[0])
+    attempts = int(job.get("attempts", 0)) + 1
+    try:
+        db.table("vector_cleanup_outbox").update({"attempts": attempts}).eq(
+            "document_id", document_id
+        ).execute()
+    except Exception:
+        pass
+    try:
+        if hasattr(vectors, "delete_document"):
+            await vectors.delete_document(
+                collection_name=job.get("collection_name", ""),
+                document_id=document_id,
+            )
+        else:
+            await vectors.delete_points(
+                collection=job.get("collection_name", ""), point_ids=[]
+            )
+    except Exception:
+        return {"document_id": document_id, "done": False, "retryable": True}
+    try:
+        db.table("vector_cleanup_outbox").update({"done": True}).eq(
+            "document_id", document_id
+        ).execute()
+    except Exception:
+        pass
+    return {"document_id": document_id, "done": True}

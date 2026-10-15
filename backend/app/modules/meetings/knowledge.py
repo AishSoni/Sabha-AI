@@ -78,7 +78,7 @@ class ServerKnowledgeSearch:
             try:
                 db = self._db_factory()
                 rows = (
-                    db.table("meeting_documents")
+                    db.table("documents")
                     .select("id,file_name,status")
                     .eq("meeting_id", meeting_id)
                     .execute()
