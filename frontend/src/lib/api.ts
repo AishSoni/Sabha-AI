@@ -3,7 +3,44 @@
  * Handles all backend communication
  */
 
+import {
+    createSequenceDedup,
+    createSseParser,
+    normalizeEvent,
+    type NormalizeContext,
+    type TurnStreamEvent,
+} from './turn-events';
+
 const API_BASE = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000/api';
+
+/** Typed server error: preserves status/conflict codes across the UI. */
+export class ApiError extends Error {
+    status: number;
+    code: string;
+    retryable: boolean;
+
+    constructor(status: number, code: string, message: string, retryable = false) {
+        super(message);
+        this.name = 'ApiError';
+        this.status = status;
+        this.code = code;
+        this.retryable = retryable;
+    }
+}
+
+function toApiError(status: number, body: unknown): ApiError {
+    const detail =
+        (typeof body === 'object' && body !== null && 'detail' in body
+            ? String((body as Record<string, unknown>).detail)
+            : '') || `API Error: ${status}`;
+    if (status === 401) return new ApiError(status, 'unauthenticated', detail, false);
+    if (status === 404) return new ApiError(status, 'not_found', detail, false);
+    if (status === 409) return new ApiError(status, detail, detail, false);
+    if (status === 422) return new ApiError(status, 'validation', detail, false);
+    if (status === 429) return new ApiError(status, 'quota', detail, true);
+    if (status === 503) return new ApiError(status, 'unavailable', detail, true);
+    return new ApiError(status, 'request_failed', detail, status >= 500);
+}
 
 export interface ProviderConfig {
     provider: string;
@@ -85,12 +122,45 @@ export interface TurnResponse {
     consensus: Consensus[];
 }
 
+/** Pending user message waiting behind the running turn (FIFO). */
+export interface QueueEntry {
+    entryId: string;
+    meetingId: string | null;
+    /** FIFO position; backend `seq` (SQL) — `order` accepted as alias. */
+    position: number | null;
+    content: string;
+    revision: number;
+    state: 'pending' | 'dispatched' | 'removed' | string;
+    messageId: string | null;
+}
+
+/** Normalize backend queue payloads (entry_id/id, seq/order variants). */
+export function asQueueEntry(raw: unknown): QueueEntry {
+    const r = (typeof raw === 'object' && raw !== null ? raw : {}) as Record<string, unknown>;
+    const entryId = typeof r.entry_id === 'string' ? r.entry_id : typeof r.id === 'string' ? r.id : '';
+    const position =
+        typeof r.seq === 'number' ? r.seq : typeof r.order === 'number' ? r.order : typeof r.position === 'number' ? r.position : null;
+    return {
+        entryId,
+        meetingId: typeof r.meeting_id === 'string' ? r.meeting_id : null,
+        position,
+        content: typeof r.content === 'string' ? r.content : '',
+        revision: typeof r.revision === 'number' ? r.revision : 1,
+        state: typeof r.state === 'string' ? r.state : 'pending',
+        messageId: typeof r.message_id === 'string' ? r.message_id : null,
+    };
+}
+
 async function handleResponse<T>(response: Response): Promise<T> {
     if (!response.ok) {
         const error = await response.json().catch(() => ({ detail: 'Unknown error' }));
-        throw new Error(error.detail || `API Error: ${response.status}`);
+        throw toApiError(response.status, error);
     }
     return response.json();
+}
+
+function isAbortError(err: unknown): boolean {
+    return err instanceof DOMException && err.name === 'AbortError';
 }
 
 export const api = {
@@ -137,12 +207,74 @@ export const api = {
 
     // Messages
     async sendUserMessage(meetingId: string, content: string): Promise<Message> {
-        const response = await fetch(`${API_BASE}/meetings/${meetingId}/message`, {
+        const result = await api.submitMessage(meetingId, content);
+        if (result.queued) {
+            throw new ApiError(202, 'queued', 'Message queued behind the running turn', true);
+        }
+        return result.message;
+    },
+
+    /**
+     * Discriminated submission: 201 commits immediately when the meeting
+     * is idle, 202 queues FIFO behind the running turn. Callers must
+     * handle both — a queued message is not yet in the transcript.
+     */
+    async submitMessage(
+        meetingId: string,
+        content: string,
+        idempotencyKey?: string,
+    ): Promise<{ queued: false; message: Message } | { queued: true; entry: QueueEntry }> {
+        const response = await fetch(`${API_BASE}/meetings/${meetingId}/messages`, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ content }),
+            body: JSON.stringify({ content, ...(idempotencyKey ? { idempotency_key: idempotencyKey } : {}) }),
         });
-        return handleResponse(response);
+        if (response.status === 201) return { queued: false, message: (await response.json()) as Message };
+        if (response.status === 202) {
+            const body = (await response.json()) as { entry: unknown };
+            return { queued: true, entry: asQueueEntry(body.entry) };
+        }
+        const error = await response.json().catch(() => ({ detail: 'Unknown error' }));
+        throw toApiError(response.status, error);
+    },
+
+    async getQueue(meetingId: string): Promise<QueueEntry[]> {
+        const response = await fetch(`${API_BASE}/meetings/${meetingId}/queue`);
+        const body = await handleResponse<{ entries: unknown[] }>(response);
+        return (body.entries ?? []).map(asQueueEntry);
+    },
+
+    async editQueueEntry(
+        meetingId: string,
+        entryId: string,
+        content: string,
+        expectedRevision: number,
+    ): Promise<QueueEntry> {
+        const response = await fetch(
+            `${API_BASE}/meetings/${meetingId}/queue/${entryId}?expected_revision=${expectedRevision}`,
+            {
+                method: 'PATCH',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ content }),
+            },
+        );
+        if (!response.ok) {
+            const error = await response.json().catch(() => ({ detail: 'Unknown error' }));
+            throw toApiError(response.status, error);
+        }
+        return asQueueEntry(await response.json());
+    },
+
+    async removeQueueEntry(meetingId: string, entryId: string, expectedRevision: number): Promise<void> {
+        const response = await fetch(
+            `${API_BASE}/meetings/${meetingId}/queue/${entryId}?expected_revision=${expectedRevision}`,
+            { method: 'DELETE' },
+        );
+        if (response.status === 204) return;
+        if (!response.ok) {
+            const error = await response.json().catch(() => ({ detail: 'Unknown error' }));
+            throw toApiError(response.status, error);
+        }
     },
 
     // AI Turns
@@ -155,17 +287,29 @@ export const api = {
         return handleResponse(response);
     },
 
-    // AI Turns (Streaming)
-    async *streamTurn(meetingId: string, participantId: string): AsyncGenerator<StreamEvent> {
+    // AI Turns (Streaming, legacy shape; parsed with the shared SSE parser
+    // so split UTF-8, CRLF and multiline data: frames reassemble correctly).
+    // Prefer subscribeTurnEvents for new flows: abortable, deduplicated,
+    // with explicit EOF-without-terminal reporting.
+    async *streamTurn(
+        meetingId: string,
+        participantId: string,
+        opts?: { signal?: AbortSignal },
+    ): AsyncGenerator<StreamEvent> {
         const response = await fetch(`${API_BASE}/meetings/${meetingId}/turn/stream`, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({ participant_id: participantId }),
+            signal: opts?.signal,
+        }).catch((err) => {
+            if (isAbortError(err)) return null;
+            throw err;
         });
+        if (!response) return;
 
         if (!response.ok) {
             const error = await response.json().catch(() => ({ detail: 'Unknown error' }));
-            throw new Error(error.detail || `API Error: ${response.status}`);
+            throw toApiError(response.status, error);
         }
 
         const reader = response.body?.getReader();
@@ -176,38 +320,149 @@ export const api = {
 
         try {
             while (true) {
-                const { done, value } = await reader.read();
+                const { done, value } = await reader.read().catch((err) => {
+                    if (isAbortError(err)) return { done: true as const, value: undefined };
+                    throw err;
+                });
                 if (done) break;
 
                 buffer += decoder.decode(value, { stream: true });
+                buffer = buffer.replace(/\r\n/g, '\n').replace(/\r/g, '\n');
 
-                // Process complete lines only (lines ending with \n)
-                let newlineIndex;
-                while ((newlineIndex = buffer.indexOf('\n')) !== -1) {
-                    const line = buffer.slice(0, newlineIndex).trim();
-                    buffer = buffer.slice(newlineIndex + 1);
-
-                    // Skip empty lines (SSE uses \n\n to separate events)
-                    if (!line) continue;
-
-                    // Parse data lines
-                    if (line.startsWith('data:')) {
-                        const jsonStr = line.slice(5).trim();
-                        if (jsonStr) {
-                            try {
-                                const event = JSON.parse(jsonStr) as StreamEvent;
-                                console.log('[SSE Event]', event.type, event.content?.slice(0, 50));
-                                yield event;
-                            } catch (e) {
-                                console.error('[SSE Parse Error]', jsonStr.slice(0, 100), e);
-                            }
-                        }
+                // Dispatch one JSON payload per blank-line-separated SSE block,
+                // joining multiline data: lines (backend pretty-prints rarely,
+                // proxies sometimes re-chunk).
+                let sep: number;
+                while ((sep = buffer.indexOf('\n\n')) !== -1) {
+                    const block = buffer.slice(0, sep);
+                    buffer = buffer.slice(sep + 2);
+                    const payload = block
+                        .split('\n')
+                        .map((l) => l.trimEnd())
+                        .filter((l) => l && !l.startsWith(':') && !l.startsWith('event:') && !l.startsWith('id:'))
+                        .map((l) => (l.startsWith('data:') ? l.slice(5).trimStart() : l))
+                        .join('\n');
+                    if (!payload) continue;
+                    try {
+                        yield JSON.parse(payload) as StreamEvent;
+                    } catch (e) {
+                        console.error('[SSE Parse Error]', payload.slice(0, 100), e);
                     }
                 }
             }
         } finally {
             reader.releaseLock();
         }
+    },
+
+    /**
+     * Abortable turn subscription over normalized events. Deduplicates
+     * replayed delivery by sequence; reports EOF without terminal so the
+     * caller can show reconnecting and reconcile against GET meeting.
+     * Aborting the signal stops the subscription only — server execution,
+     * if any, is unaffected (navigation is not cancellation).
+     */
+    async subscribeTurnEvents(args: {
+        meetingId: string;
+        participantId: string;
+        signal: AbortSignal;
+        onEvent: (event: TurnStreamEvent) => void;
+    }): Promise<{ terminal: TurnStreamEvent | null; eofWithoutTerminal: boolean; aborted: boolean }> {
+        const { meetingId, participantId, signal, onEvent } = args;
+        let response: Response;
+        try {
+            response = await fetch(`${API_BASE}/meetings/${meetingId}/turn/stream`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ participant_id: participantId }),
+                signal,
+            });
+        } catch (err) {
+            if (isAbortError(err)) return { terminal: null, eofWithoutTerminal: false, aborted: true };
+            throw err;
+        }
+
+        if (!response.ok) {
+            const error = await response.json().catch(() => ({ detail: 'Unknown error' }));
+            throw toApiError(response.status, error);
+        }
+
+        const reader = response.body?.getReader();
+        if (!reader) throw new Error('No response body');
+
+        let seq = 0;
+        let tools = 0;
+        let turnId: string | null = null;
+        const ctx: NormalizeContext = {
+            meetingId,
+            turnId,
+            nextSequence: () => ++seq,
+            nextExecutionId: (name: string) => `legacy:${meetingId}:${++tools}:${name}`,
+        };
+        const isDuplicate = createSequenceDedup();
+        let terminal: TurnStreamEvent | null = null;
+        let aborted = false;
+        let parseErrors = 0;
+
+        const parser = createSseParser({
+            onFrame: (frame) => {
+                if (signal.aborted || !frame.data) return;
+                let raw: unknown;
+                try {
+                    raw = JSON.parse(frame.data);
+                } catch (e) {
+                    parseErrors += 1;
+                    console.error('[SSE Parse Error]', frame.data.slice(0, 100), e);
+                    return;
+                }
+                // Capture v2 lifecycle markers for identity; they carry no UI content.
+                if (
+                    typeof raw === 'object' && raw !== null &&
+                    (raw as Record<string, unknown>).version === 2 &&
+                    (raw as Record<string, unknown>).type === 'turn_started'
+                ) {
+                    const id = (raw as Record<string, unknown>).turn_id;
+                    if (typeof id === 'string') {
+                        turnId = id;
+                        ctx.turnId = id;
+                    }
+                    return;
+                }
+                const event = normalizeEvent(raw, ctx);
+                if (!event) return;
+                if (isDuplicate(event.sequence)) return;
+                if (event.kind === 'terminal') terminal = event;
+                onEvent(event);
+            },
+        });
+
+        try {
+            while (true) {
+                let read: ReadableStreamReadResult<Uint8Array>;
+                try {
+                    read = await reader.read();
+                } catch (err) {
+                    if (isAbortError(err) || signal.aborted) {
+                        aborted = true;
+                        break;
+                    }
+                    throw err;
+                }
+                if (read.done) break;
+                if (signal.aborted) {
+                    aborted = true;
+                    break;
+                }
+                parser.feed(read.value);
+            }
+        } finally {
+            parser.flush();
+            reader.releaseLock();
+        }
+
+        if (signal.aborted) aborted = true;
+        void parseErrors;
+        return { terminal, eofWithoutTerminal: terminal === null && !aborted, aborted };
     },
 
     // Conflicts
