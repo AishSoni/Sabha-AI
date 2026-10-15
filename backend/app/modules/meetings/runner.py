@@ -1,10 +1,25 @@
 """Independent turn runner: one execution, many observers."""
 
 import asyncio
+import weakref
 from typing import Any, Optional
 
 from app.modules.meetings.engine import TurnEngine, TurnResult
 from app.modules.meetings.store import InMemoryTurnStore
+
+_DETACHED: weakref.WeakSet[asyncio.Task] = weakref.WeakSet()
+
+
+async def drain_turn_tasks(timeout: float = 10.0) -> None:
+    """Lifespan shutdown: let in-flight detached turns finish instead of
+    abandoning them, then cancel whatever remains."""
+    tasks = [t for t in list(_DETACHED) if not t.done()]
+    if not tasks:
+        return
+    await asyncio.wait(tasks, timeout=timeout)
+    for task in tasks:
+        if not task.done():
+            task.cancel()
 
 
 class TurnRunner:
@@ -24,6 +39,8 @@ class TurnRunner:
     ) -> asyncio.Task:
         task = asyncio.create_task(self._engine.run(meeting_id, participant_id, idempotency_key))
         self._tasks[idempotency_key or f"{meeting_id}:{participant_id}"] = task
+        _DETACHED.add(task)
+        task.add_done_callback(_DETACHED.discard)
         return task
 
     async def await_turn(self, turn_id: str, timeout: Optional[float] = None) -> TurnResult:

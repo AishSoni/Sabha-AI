@@ -164,6 +164,8 @@ class TurnEngine:
         turn_store: InMemoryTurnStore,
         policies: Optional[TurnPolicies] = None,
         clock: Any = None,
+        lease_coordinator: Any = None,
+        lease_ttl: float = 30.0,
     ) -> None:
         self._meetings = meeting_loader
         self._resolve_provider = provider_resolver
@@ -171,6 +173,9 @@ class TurnEngine:
         self._store = turn_store
         self._policies = policies or TurnPolicies()
         self._clock = clock or time.monotonic
+        self._leases = lease_coordinator
+        self._lease_ttl = lease_ttl
+        self._lease_tokens: dict[str, int] = {}
 
     async def run(
         self,
@@ -178,6 +183,8 @@ class TurnEngine:
         participant_id: str,
         idempotency_key: Optional[str] = None,
     ) -> TurnResult:
+        from app.modules.meetings.leases import LeaseConflict
+
         policies = self._policies
         key = idempotency_key or str(uuid.uuid4())
         meeting = await self._meetings.get_meeting(meeting_id)
@@ -212,6 +219,17 @@ class TurnEngine:
         if record.state in (COMPLETED, FAILED, CANCELLED):
             return await self._replay_result(record)
         await self._store.mark_running(record.turn_id)
+        lease_token: Optional[int] = None
+        if self._leases is not None:
+            try:
+                lease_token = self._leases.claim(
+                    meeting_id, record.turn_id, "turn",
+                    ttl_seconds=self._lease_ttl,
+                )
+            except LeaseConflict as exc:
+                await self._fail(record, "turn_in_progress", str(exc))
+                raise TurnConflict("turn_in_progress") from exc
+            self._lease_tokens[record.turn_id] = lease_token
         await self._store.append_event(
             record.turn_id, "turn_started",
             {"participant_id": participant_id, "context_message_count": len(boundary)},
@@ -280,6 +298,17 @@ class TurnEngine:
                 raise err
 
             try:
+                if self._leases is not None:
+                    if not self._leases.heartbeat(
+                        meeting_id, record.turn_id, lease_token,
+                        ttl_seconds=self._lease_ttl,
+                    ):
+                        await self._fail(record, "lease_lost",
+                                         "Lease lost: stopping without committing")
+                        raise TurnFailure("lease_lost",
+                                          "Turn fenced: lease lost before invocation")
+                    self._leases.mark_provider_started(
+                        meeting_id, record.turn_id, lease_token)
                 response = await provider.complete(
                     messages=provider_history,
                     tools=tools,
@@ -312,6 +341,17 @@ class TurnEngine:
 
             if not calls:
                 if text:
+                    # Fenced workers must not commit: complete the durable
+                    # lease BEFORE persisting the final message.
+                    if self._leases is not None:
+                        if not self._leases.complete(
+                            meeting_id, record.turn_id, lease_token, "completed"
+                        ):
+                            await self._fail(record, "fenced",
+                                             "Turn fenced: lease lost before finalization")
+                            raise TurnFailure("fenced",
+                                              "Turn fenced: lease lost before finalization")
+                    self._lease_tokens.pop(record.turn_id, None)
                     # Success: single atomic finalization.
                     final_text = _sanitize(response.content or "", policies.max_output_chars)
                     saved = await self._meetings.save_message(
@@ -466,6 +506,13 @@ class TurnEngine:
         return {"result_text": f"Unknown tool: {name}"}
 
     async def _fail(self, record: TurnRecord, code: str, message: str) -> None:
+        token = self._lease_tokens.pop(record.turn_id, None) if self._leases else None
+        if self._leases is not None and token is not None:
+            try:
+                self._leases.complete(
+                    record.meeting_id, record.turn_id, token, "failed")
+            except Exception:
+                pass
         await self._store.append_event(record.turn_id, "turn_failed", {"code": code, "message": message[:1000]})
         await self._store.finalize(record.turn_id, FAILED, None, {}, 0.0, code)
 

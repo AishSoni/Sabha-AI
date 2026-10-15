@@ -21,6 +21,10 @@ async def lifespan(app: FastAPI):
         yield
     finally:
         app.state.startup_complete = False
+        # Drain in-flight detached turns so shutdown never abandons them.
+        from app.modules.meetings.runner import drain_turn_tasks
+
+        await drain_turn_tasks()
         # Ensure singletons do not leak across tests.
         from app.core.database import reset_supabase_client
         from app.core.qdrant import reset_qdrant_client
