@@ -1,6 +1,7 @@
 /**
- * Settings Store - Manages provider configurations with localStorage persistence
- * Supports environment-aware settings and System AI configuration.
+ * Settings Store - Server-persisted non-secret preferences (D-09).
+ * Browser storage never holds API keys: secrets stay server-managed and
+ * inference settings come from the authoritative server session.
  */
 
 import { create } from 'zustand';
@@ -8,11 +9,9 @@ import { persist } from 'zustand/middleware';
 
 export interface ProviderConfig {
     enabled: boolean;
-    apiKey: string;
     model: string;
     temperature: number;
     maxTokens: number;
-    baseUrl?: string; // For Ollama
     serverConfigured?: boolean; // True if key is configured on server
 }
 
@@ -44,6 +43,8 @@ export interface SettingsState {
     getActiveProvider: () => { id: string; config: ProviderConfig } | null;
     clearProviderConfig: (providerId: keyof SettingsState['providers']) => void;
     resetAllSettings: () => void;
+    persistToServer: () => Promise<boolean>;
+    loadFromServer: () => Promise<boolean>;
     initializeFromServer: (data: {
         isProduction: boolean;
         configuredProviders: string[];
@@ -55,7 +56,6 @@ export interface SettingsState {
 
 const defaultProviderConfig: ProviderConfig = {
     enabled: false,
-    apiKey: '',
     model: '',
     temperature: 0.7,
     maxTokens: 2048,
@@ -66,7 +66,7 @@ const initialState = {
     providers: {
         openrouter: { ...defaultProviderConfig, model: 'anthropic/claude-sonnet-4-20250514' },
         gemini: { ...defaultProviderConfig, model: 'gemini-2.0-flash' },
-        ollama: { ...defaultProviderConfig, model: 'llama3.2', baseUrl: 'http://localhost:11434', enabled: true },
+        ollama: { ...defaultProviderConfig, model: 'llama3.2', enabled: true },
     },
     defaultProvider: null as SettingsState['defaultProvider'],
     systemAI: {
@@ -95,16 +95,20 @@ export const useSettingsStore = create<SettingsState>()(
                         },
                     },
                 }));
+                // Server owns persistence; browser never holds secrets.
+                void get().persistToServer();
             },
 
             setDefaultProvider: (providerId) => {
                 set({ defaultProvider: providerId });
+                void get().persistToServer();
             },
 
             setSystemAI: (config) => {
                 set((state) => ({
                     systemAI: { ...state.systemAI, ...config },
                 }));
+                void get().persistToServer();
             },
 
             getActiveProvider: () => {
@@ -133,15 +137,85 @@ export const useSettingsStore = create<SettingsState>()(
                         [providerId]: {
                             ...defaultProviderConfig,
                             model: initialState.providers[providerId].model,
-                            baseUrl: initialState.providers[providerId].baseUrl,
                         },
                     },
                     defaultProvider: state.defaultProvider === providerId ? null : state.defaultProvider,
                 }));
+                // Fire-and-forget server sync; secrets are never sent.
+                void get().persistToServer();
             },
 
             resetAllSettings: () => {
+                try {
+                    // Drop any legacy browser-stored secrets from earlier schemas.
+                    localStorage.removeItem('sabha-settings');
+                } catch { /* storage unavailable in some contexts */ }
                 set(initialState);
+            },
+
+            persistToServer: async () => {
+                const state = get();
+                const activeId = state.defaultProvider;
+                const active = activeId
+                    ? state.providers[activeId]
+                    : state.getActiveProvider()?.config;
+                try {
+                    const res = await fetch('/api/settings/preferences', {
+                        method: 'PUT',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({
+                            default_provider: state.defaultProvider ?? '',
+                            default_model: active?.model ?? '',
+                            default_temperature: active?.temperature ?? 0.7,
+                            default_max_tokens: active?.maxTokens ?? 2048,
+                            system_ai: {
+                                provider: state.systemAI.provider,
+                                model: state.systemAI.model,
+                                temperature: state.systemAI.temperature,
+                                max_tokens: state.systemAI.maxTokens,
+                            },
+                        }),
+                    });
+                    return res.ok;
+                } catch {
+                    return false;
+                }
+            },
+
+            loadFromServer: async () => {
+                try {
+                    const res = await fetch('/api/settings/preferences');
+                    if (!res.ok) return false;
+                    const data = await res.json();
+                    const prefs = data.preferences ?? {};
+                    set((state) => {
+                        const nextDefault = (prefs.default_provider as SettingsState['defaultProvider'])
+                            ?? state.defaultProvider;
+                        const providers = { ...state.providers };
+                        if (nextDefault && providers[nextDefault]) {
+                            providers[nextDefault] = {
+                                ...providers[nextDefault],
+                                model: prefs.default_model ?? providers[nextDefault].model,
+                                temperature: prefs.default_temperature ?? providers[nextDefault].temperature,
+                                maxTokens: prefs.default_max_tokens ?? providers[nextDefault].maxTokens,
+                            };
+                        }
+                        return {
+                            defaultProvider: nextDefault,
+                            providers,
+                            systemAI: {
+                                provider: prefs.system_ai?.provider ?? state.systemAI.provider,
+                                model: prefs.system_ai?.model ?? state.systemAI.model,
+                                temperature: prefs.system_ai?.temperature ?? state.systemAI.temperature,
+                                maxTokens: prefs.system_ai?.max_tokens ?? state.systemAI.maxTokens,
+                            },
+                            initialized: true,
+                        };
+                    });
+                    return true;
+                } catch {
+                    return false;
+                }
             },
 
             initializeFromServer: (data) => {
@@ -187,12 +261,50 @@ export const useSettingsStore = create<SettingsState>()(
         }),
         {
             name: 'sabha-settings',
+            // Never persist secrets: only non-secret preferences survive.
+            // Legacy apiKey/baseUrl entries are dropped on migrate.
             partialize: (state) => ({
-                providers: state.providers,
+                providers: {
+                    openrouter: {
+                        enabled: state.providers.openrouter.enabled,
+                        model: state.providers.openrouter.model,
+                        temperature: state.providers.openrouter.temperature,
+                        maxTokens: state.providers.openrouter.maxTokens,
+                        serverConfigured: state.providers.openrouter.serverConfigured,
+                    },
+                    gemini: {
+                        enabled: state.providers.gemini.enabled,
+                        model: state.providers.gemini.model,
+                        temperature: state.providers.gemini.temperature,
+                        maxTokens: state.providers.gemini.maxTokens,
+                        serverConfigured: state.providers.gemini.serverConfigured,
+                    },
+                    ollama: {
+                        enabled: state.providers.ollama.enabled,
+                        model: state.providers.ollama.model,
+                        temperature: state.providers.ollama.temperature,
+                        maxTokens: state.providers.ollama.maxTokens,
+                        serverConfigured: state.providers.ollama.serverConfigured,
+                    },
+                },
                 defaultProvider: state.defaultProvider,
                 systemAI: state.systemAI,
                 initialized: state.initialized,
             }),
+            migrate: (persisted: unknown) => {
+                if (!persisted || typeof persisted !== 'object') return persisted as never;
+                const state = persisted as Record<string, unknown>;
+                const providers = state.providers as Record<string, Record<string, unknown>> | undefined;
+                if (providers) {
+                    for (const key of Object.keys(providers)) {
+                        // Strip legacy secrets without sending them anywhere.
+                        delete providers[key].apiKey;
+                        delete providers[key].baseUrl;
+                    }
+                }
+                return state as never;
+            },
+            version: 2,
         }
     )
 );

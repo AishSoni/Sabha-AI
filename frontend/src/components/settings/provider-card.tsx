@@ -44,8 +44,6 @@ export function ProviderCard({ provider, config, isDefault, isProduction, onConf
         try {
             const result = await settingsApi.fetchModels({
                 provider: provider.id as 'openrouter' | 'gemini' | 'ollama',
-                api_key: config.apiKey || undefined,
-                base_url: config.baseUrl || undefined,
             });
 
             if (result.success) {
@@ -71,8 +69,6 @@ export function ProviderCard({ provider, config, isDefault, isProduction, onConf
         try {
             const result = await settingsApi.testKey({
                 provider: provider.id as 'openrouter' | 'gemini' | 'ollama',
-                api_key: config.apiKey,
-                base_url: config.baseUrl,
             });
             setTestResult(result);
 
@@ -141,66 +137,34 @@ export function ProviderCard({ provider, config, isDefault, isProduction, onConf
                 {provider.requires_api_key && (
                     <div className="space-y-2">
                         <Label className="text-zinc-300">API Key</Label>
-                        {isProduction && config.serverConfigured ? (
-                            <div className="flex items-center gap-2 py-2 px-3 bg-emerald-500/10 border border-emerald-500/30 rounded-md">
-                                <Check className="w-4 h-4 text-emerald-400" />
-                                <span className="text-sm text-emerald-400">Configured on server</span>
-                            </div>
-                        ) : (
-                            <>
-                                <div className="flex gap-2">
-                                    <div className="relative flex-1">
-                                        <Input
-                                            type={showKey ? 'text' : 'password'}
-                                            value={config.apiKey}
-                                            onChange={(e) => onConfigChange({ apiKey: e.target.value })}
-                                            placeholder={`Enter your ${provider.name} API key`}
-                                            className="bg-zinc-900/50 border-zinc-700 text-white pr-10"
-                                        />
-                                        <button
-                                            type="button"
-                                            onClick={() => setShowKey(!showKey)}
-                                            className="absolute right-3 top-1/2 -translate-y-1/2 text-zinc-500 hover:text-zinc-300"
-                                        >
-                                            {showKey ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
-                                        </button>
-                                    </div>
-                                    <Button
-                                        variant="outline"
-                                        onClick={handleTestConnection}
-                                        disabled={testing || !config.apiKey}
-                                        className="border-zinc-700 hover:bg-zinc-800"
-                                    >
-                                        {testing ? <Loader2 className="w-4 h-4 animate-spin" /> : 'Test'}
-                                    </Button>
-                                </div>
-                                {testResult && (
-                                    <p className={`text-xs flex items-center gap-1 ${testResult.valid ? 'text-emerald-400' : 'text-red-400'}`}>
-                                        {testResult.valid ? <Check className="w-3 h-3" /> : <X className="w-3 h-3" />}
-                                        {testResult.message}
-                                    </p>
-                                )}
-                            </>
+                        <div className="flex items-center gap-2 py-2 px-3 bg-blue-500/10 border border-blue-500/30 rounded-md">
+                            <Check className="w-4 h-4 text-blue-400" />
+                            <span className="text-sm text-blue-300">
+                                {config.serverConfigured
+                                    ? 'Managed on the server — never stored in this browser'
+                                    : 'Server-managed. Contact your administrator to configure a key.'}
+                            </span>
+                        </div>
+                        {testResult && (
+                            <p className={`text-xs flex items-center gap-1 ${testResult.valid ? 'text-emerald-400' : 'text-red-400'}`}>
+                                {testResult.valid ? <Check className="w-3 h-3" /> : <X className="w-3 h-3" />}
+                                {testResult.message}
+                            </p>
                         )}
                     </div>
                 )}
 
-                {/* Ollama Base URL */}
+                {/* Ollama endpoint is pinned server-side */}
                 {provider.id === 'ollama' && (
                     <div className="space-y-2">
-                        <Label className="text-zinc-300">Ollama URL</Label>
-                        <div className="flex gap-2">
-                            <Input
-                                value={config.baseUrl || 'http://localhost:11434'}
-                                onChange={(e) => onConfigChange({ baseUrl: e.target.value })}
-                                placeholder="http://localhost:11434"
-                                className="bg-zinc-900/50 border-zinc-700 text-white flex-1"
-                            />
+                        <Label className="text-zinc-300">Ollama endpoint</Label>
+                        <div className="flex items-center gap-2 py-2 px-3 bg-zinc-900/50 border border-zinc-700 rounded-md">
+                            <span className="text-sm text-zinc-300">Pinned server-side to an approved loopback host</span>
                             <Button
                                 variant="outline"
                                 onClick={handleTestConnection}
                                 disabled={testing}
-                                className="border-zinc-700 hover:bg-zinc-800"
+                                className="ml-auto border-zinc-700 hover:bg-zinc-800"
                             >
                                 {testing ? <Loader2 className="w-4 h-4 animate-spin" /> : 'Test'}
                             </Button>
@@ -242,8 +206,8 @@ export function ProviderCard({ provider, config, isDefault, isProduction, onConf
                         <div className="text-xs text-amber-400">{modelsError}</div>
                     ) : models.length === 0 ? (
                         <div className="text-xs text-zinc-500">
-                            {provider.requires_api_key && !config.apiKey && !config.serverConfigured
-                                ? 'Enter API key and test to load models'
+                            {provider.requires_api_key && !config.serverConfigured
+                                ? 'Waiting for a server-managed key'
                                 : 'No models available'}
                         </div>
                     ) : (

@@ -16,7 +16,7 @@ interface SystemAICardProps {
 }
 
 export function SystemAICard({ providers }: SystemAICardProps) {
-    const { systemAI, setSystemAI, defaultProvider, providers: providerConfigs } = useSettingsStore();
+    const { systemAI, setSystemAI, defaultProvider } = useSettingsStore();
     const [models, setModels] = useState<FetchedModelInfo[]>([]);
     const [loadingModels, setLoadingModels] = useState(false);
 
@@ -30,11 +30,9 @@ export function SystemAICard({ providers }: SystemAICardProps) {
     const fetchModelsForProvider = async (providerId: string) => {
         setLoadingModels(true);
         try {
-            const providerConfig = providerConfigs[providerId as keyof typeof providerConfigs];
+            // D-09: server owns secrets and destinations. Never send browser keys.
             const result = await settingsApi.fetchModels({
                 provider: providerId as 'openrouter' | 'gemini' | 'ollama',
-                api_key: providerConfig?.apiKey || undefined,
-                base_url: providerConfig?.baseUrl || undefined,
             });
             if (result.success) {
                 setModels(result.models);
@@ -157,7 +155,7 @@ export function SystemAICard({ providers }: SystemAICardProps) {
                         value={[systemAI.temperature]}
                         onValueChange={([temperature]) => setSystemAI({ temperature })}
                         min={0}
-                        max={1}
+                        max={2}
                         step={0.1}
                         className="py-2"
                     />

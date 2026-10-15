@@ -19,6 +19,7 @@ export function ApiKeysSection() {
         setProviderConfig,
         setDefaultProvider,
         initializeFromServer,
+        loadFromServer,
     } = useSettingsStore();
 
     useEffect(() => {
@@ -30,7 +31,8 @@ export function ApiKeysSection() {
             const response = await settingsApi.getProviders();
             setProviders(response.providers);
 
-            // Initialize settings from server on first load
+            // Initialize settings from server on first load, then hydrate
+            // authoritative non-secret preferences (server owns secrets).
             initializeFromServer({
                 isProduction: response.environment.is_production,
                 configuredProviders: response.environment.configured_providers,
@@ -43,6 +45,7 @@ export function ApiKeysSection() {
                     maxTokens: response.system_ai.max_tokens,
                 },
             });
+            await loadFromServer();
         } catch (err) {
             setError('Failed to load providers');
             console.error(err);
@@ -70,12 +73,10 @@ export function ApiKeysSection() {
     return (
         <div className="space-y-6">
             <div className="space-y-1">
-                <h2 className="text-lg font-semibold text-white">API Keys & Providers</h2>
+                <h2 className="text-lg font-semibold text-white">Providers & Inference</h2>
                 <p className="text-sm text-zinc-400">
-                    Configure your LLM providers.
-                    {isProduction
-                        ? ' API keys are configured on the server for security.'
-                        : ' Keys are stored locally in your browser.'}
+                    Non-secret preferences persist on the server. API keys and
+                    destinations stay server-managed and never live in this browser.
                 </p>
             </div>
 
@@ -114,9 +115,8 @@ export function ApiKeysSection() {
             <div className="bg-zinc-800/50 rounded-lg p-4 text-sm text-zinc-400">
                 <p className="font-medium text-zinc-300 mb-1">🔒 Security Note</p>
                 <p>
-                    {isProduction
-                        ? 'API keys are stored securely on the server and never exposed to the browser.'
-                        : 'API keys are stored in your browser\'s local storage and only transmitted directly to the respective LLM provider APIs.'}
+                    API keys are stored securely on the server and never exposed to the browser.
+                    This panel only edits non-secret defaults; readiness is reported without revealing secrets.
                 </p>
             </div>
         </div>

@@ -463,7 +463,7 @@ export interface ProvidersListResponse {
 
 export interface TestKeyRequest {
     provider: 'openrouter' | 'gemini' | 'ollama';
-    api_key: string;
+    api_key?: string;
     base_url?: string;
 }
 
@@ -512,10 +512,61 @@ export const settingsApi = {
         const response = await fetch(`${API_BASE}/settings/models`, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify(request),
+            // Strip browser-supplied secrets: server owns destinations and keys.
+            body: JSON.stringify({ provider: request.provider }),
         });
         return handleResponse(response);
     },
+
+    async getPreferences(): Promise<ServerPreferencesResponse> {
+        const response = await fetch(`${API_BASE}/settings/preferences`);
+        return handleResponse(response);
+    },
+
+    async savePreferences(prefs: Partial<ServerPreferences>): Promise<ServerPreferencesResponse> {
+        const response = await fetch(`${API_BASE}/settings/preferences`, {
+            method: 'PUT',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(prefs),
+        });
+        return handleResponse(response);
+    },
+
+    async getEffective(provider?: string, model?: string): Promise<EffectiveSettingsResponse> {
+        const params = new URLSearchParams();
+        if (provider) params.append('provider', provider);
+        if (model) params.append('model', model);
+        const qs = params.toString() ? `?${params}` : '';
+        const response = await fetch(`${API_BASE}/settings/effective${qs}`);
+        return handleResponse(response);
+    },
+};
+
+export interface ServerPreferences {
+    default_provider: string;
+    default_model: string;
+    default_temperature: number;
+    default_max_tokens: number;
+    system_ai: SystemAIConfig;
+}
+
+export interface ServerPreferencesResponse {
+    success: boolean;
+    preferences: ServerPreferences;
+}
+
+export interface EffectiveSettings {
+    provider: string;
+    model: string;
+    temperature: number;
+    max_tokens: number;
+    provenance: Record<string, string>;
+}
+
+export interface EffectiveSettingsResponse {
+    success: boolean;
+    effective: EffectiveSettings;
+    readiness: { ready: boolean; reason: string };
 };
 
 // ============== DOCUMENTS TYPES ==============
@@ -696,4 +747,42 @@ export const knowledgeStacksApi = {
             throw new Error(error.detail || `API Error: ${response.status}`);
         }
     }
+};
+
+// ============== PARTICIPANT REFRESH API ==============
+
+export interface RefreshPreviewResponse {
+    changed: boolean;
+    diff: Record<string, { from: unknown; to: unknown }>;
+    expected_persona_revision?: number | null;
+}
+
+export const participantsApi = {
+    async refreshPreview(
+        participantId: string,
+        expectedPersonaRevision?: number | null,
+    ): Promise<RefreshPreviewResponse> {
+        const response = await fetch(`${API_BASE}/participants/${participantId}/refresh-preview`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ expected_persona_revision: expectedPersonaRevision ?? null }),
+        });
+        return handleResponse(response);
+    },
+
+    async refreshParticipant(
+        participantId: string,
+        expectedParticipantRevision?: number | null,
+        expectedPersonaRevision?: number | null,
+    ): Promise<AIParticipant> {
+        const response = await fetch(`${API_BASE}/participants/${participantId}/refresh`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+                expected_participant_revision: expectedParticipantRevision ?? null,
+                expected_persona_revision: expectedPersonaRevision ?? null,
+            }),
+        });
+        return handleResponse(response);
+    },
 };
