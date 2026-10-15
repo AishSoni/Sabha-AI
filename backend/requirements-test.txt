@@ -1,0 +1,10 @@
+# Sabha Phase 01 — offline test dependencies (P01-T01)
+# Compatible with Python 3.11, fastapi 0.111, httpx 0.28, anyio 4.9.
+# Runtime versions recorded 2026-10-15: fastapi 0.111.1, httpx 0.28.1,
+# pydantic 2.12.4, pydantic-settings 2.10.1, anyio 4.9.0, supabase 2.24.0.
+# No blanket runtime upgrades: install with `pip install -r requirements-test.txt`.
+pytest==8.3.5
+anyio==4.9.0
+httpx==0.28.1
+pytest-cov==6.0.0
+pytest-socket==0.6.5

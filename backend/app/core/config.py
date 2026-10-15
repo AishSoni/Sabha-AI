@@ -52,3 +52,24 @@ class Settings(BaseSettings):
 
 
 settings = Settings()
+
+# Phase 01 (P01-T02) minimal test seam: override/reset without changing
+# runtime semantics. Runtime keeps using the global `settings` instance.
+_settings_override: Settings | None = None
+
+
+def get_settings() -> Settings:
+    """Return the effective settings (test override if set, else global)."""
+    return _settings_override if _settings_override is not None else settings
+
+
+def override_settings(custom: Settings) -> None:
+    """Install a test-only settings override (e.g. dummy URLs/keys)."""
+    global _settings_override
+    _settings_override = custom
+
+
+def reset_settings_override() -> None:
+    """Clear any test-only settings override."""
+    global _settings_override
+    _settings_override = None

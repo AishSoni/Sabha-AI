@@ -4,10 +4,16 @@ Provides a singleton async client for vector database operations.
 """
 
 from qdrant_client import AsyncQdrantClient
-from app.core.config import settings
+from app.core.config import get_settings
 
 # Singleton client instance
 _client: AsyncQdrantClient | None = None
+
+
+def reset_qdrant_client() -> None:
+    """Phase 01 (P01-T02) test seam: clear cached client without closing."""
+    global _client
+    _client = None
 
 
 def get_qdrant_client() -> AsyncQdrantClient:
@@ -18,15 +24,16 @@ def get_qdrant_client() -> AsyncQdrantClient:
     global _client
     
     if _client is None:
-        if settings.qdrant_api_key:
+        effective = get_settings()
+        if effective.qdrant_api_key:
             # Qdrant Cloud
             _client = AsyncQdrantClient(
-                url=settings.qdrant_url,
-                api_key=settings.qdrant_api_key,
+                url=effective.qdrant_url,
+                api_key=effective.qdrant_api_key,
             )
         else:
             # Local Qdrant (no API key needed)
-            _client = AsyncQdrantClient(url=settings.qdrant_url)
+            _client = AsyncQdrantClient(url=effective.qdrant_url)
     
     return _client
 
