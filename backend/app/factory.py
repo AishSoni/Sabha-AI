@@ -32,6 +32,7 @@ async def lifespan(app: FastAPI):
 def create_app() -> FastAPI:
     from app.api import meetings, participants, personas
     from app.api import settings as settings_api, documents, knowledge_stacks
+    from app.infrastructure.demo.routes import router as demo_router
 
     effective = get_settings()
     app = FastAPI(
@@ -53,6 +54,9 @@ def create_app() -> FastAPI:
     app.include_router(settings_api.router)
     app.include_router(documents.router)
     app.include_router(knowledge_stacks.router)
+    # Demo scaffold entry stays registered but disabled: every handler
+    # returns typed demo_unavailable. No recruiter start action is exposed.
+    app.include_router(demo_router, prefix="/api/v2/demo", tags=["demo-scaffold"])
 
     @app.get("/")
     async def root():
