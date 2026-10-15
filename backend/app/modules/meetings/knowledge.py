@@ -73,14 +73,56 @@ class ServerKnowledgeSearch:
 
         items: list[dict[str, Any]] = []
         citations: list[CitationItem] = []
+        live: dict[str, dict[str, Any]] = {}
+        if self._db_factory is not None:
+            try:
+                db = self._db_factory()
+                rows = (
+                    db.table("meeting_documents")
+                    .select("id,file_name,status")
+                    .eq("meeting_id", meeting_id)
+                    .execute()
+                )
+                for row in (rows.data or []):
+                    if (row or {}).get("status") == "deleted":
+                        continue
+                    if row.get("id"):
+                        live[str(row["id"])] = row
+            except Exception:
+                live = {}
         for r in results or []:
             metadata = getattr(r, "metadata", {}) or {}
             text = getattr(r, "text", "") or ""
-            items.append({"text": text, "score": getattr(r, "score", 0.0), "metadata": metadata})
+            document_id = str(getattr(r, "document_id", "") or metadata.get("document_id", ""))
+            if not document_id:
+                continue
+            if live and document_id not in live:
+                continue
+            title = str(
+                metadata.get("file_name", "")
+                or (live.get(document_id) or {}).get("file_name", "")
+                or document_id
+            )
+            if "Unknown" in title:
+                continue
+            chunk_index = getattr(r, "chunk_index", 0)
+            try:
+                chunk_index = int(chunk_index if chunk_index is not None else 0)
+            except (TypeError, ValueError):
+                chunk_index = 0
+            items.append(
+                {
+                    "text": text,
+                    "score": getattr(r, "score", 0.0),
+                    "metadata": metadata,
+                    "document_id": document_id,
+                    "chunk_index": chunk_index,
+                }
+            )
             citations.append(
                 CitationItem(
-                    source=str(metadata.get("file_name", "document")),
-                    title=str(metadata.get("file_name", "document")),
+                    source=document_id,
+                    title=title,
                     snippet=text[:500],
                 )
             )
