@@ -107,3 +107,75 @@ Add new revision-specific commands/results, a short content-check note and manua
   complete; AC04 operational packet = this file + code).
 - G4 public exposure: **blocked** on user-owned hosting + manual walkthrough.
   G5 handoff completes when those are recorded.
+
+## Part B revision (2026-10-16, offline, no live services)
+
+Scope: guide section B only (P10-T02 content + P10-T03 package storage).
+Instrument retained per user: INE001A07RW5. Authoring auth=None; no live
+LLM/embedding/search/market calls in authoring or tests.
+
+What was added:
+- `backend/data/demo_bond_package_v1.json`: versioned immutable package
+  (scenario 1/revision 1, status published) with 5 sources carrying usable
+  excerpts + titles/URLs/dates, 9 claims, 3 specialists, honest run_note
+  (human offline research of S1-S7, decisions, gaps M1-M7), 5 recorded
+  invocations (call-search-2/3/4, call-disagree-1, call-consensus-1),
+  seed-fixed assertions, J00-J09 guide copy, disclosure.
+- `backend/migrations/009_demo_bond_package.sql`: additive
+  demo_bond_packages table (scenario/content/revision PK, status, package
+  JSONB). Rerunnable; no existing rows touched.
+- `backend/app/infrastructure/demo/bond_package.py`: offline loader,
+  validator (second-scenario/ISIN-drift/missing-source/empty-excerpt/
+  worksheet-visibility/dishonest-note/disclosure/visitor-effects checks),
+  idempotent import + pinned load. Missing assets raise
+  PackageMissingError; optional audit metadata never blocks.
+- `BondSource` extended with optional url/excerpt only (compatible).
+- `backend/tests/unit/test_demo_bond_package.py` (6 tests): genuine
+  demo-grade content, honest failure, no visitor effects, idempotent
+  import + pinned load, fail-closed without import, migration contract.
+
+Verification:
+- Focused: 21 passed (bond package/scenario/scripts/retrieval).
+- Full: 235 passed, 17 skipped, 7 deselected via
+  `PYTEST_DISABLE_PLUGIN_AUTOLOAD=1 python -m pytest tests -q
+  -p anyio.pytest_plugin` (cwd backend/).
+- Plausibility pass: S1 confirms I-1..I-8; secured wording series-level
+  via S2/S3 snippets + S6; S1 alone silent on security; pre-merger
+  no-transfer is chronology inference (unverified); maturity payment and
+  WDM quotes stay explicit unknowns; approximations labeled.
+
+Not claimed: D-01 approval (still pending-d01), live provider run,
+placement-memo/listing-record full text (scanned PDFs), trustee
+confirmation, executable quotes, browser/hosted checks. Stages C-F
+(vertical slice, tutorial, ending SSE, retire-and-verify) remain open.
+
+## Part B addendum (2026-10-16): original reference PDFs saved
+
+Per user request, the original cited byte artifacts are now saved in-repo
+instead of living only outside it:
+- `backend/data/demo_sources/TS-V-007.pdf` (364526 bytes,
+  sha256 84626479b4b37f25c7b2b2d2ade69ca3e51efcc0da88af93c8970433cfd16a26)
+- `backend/data/demo_sources/SE-V007-intimation-150719.pdf` (338207 bytes,
+  sha256 56c940b6dce4d11fd562ac8c5bf25e5ae4ee5c60240020f9875d3f4a88525835)
+- `backend/data/demo_sources/MANIFEST.json` (provenance + honest gap notes)
+  and `README.md` (artifact rules).
+- `backend/tests/unit/test_demo_source_artifacts.py` (3 tests): files
+  exist with recorded sizes/hashes, hashes match the pre-work inventory,
+  manifest honestly states what was never saved as bytes.
+
+No re-authored excerpt files were kept: only the two original PDFs plus
+manifest/readme. S1/S4/S6 HTML was captured in-session during pre-work but
+never saved as bytes, so no originals exist to store; usable excerpts
+remain embedded in `demo_bond_package_v1.json`. No live fetch was used.
+
+Verification: full suite `238 passed, 17 skipped, 7 deselected` via the
+documented pytest command (cwd backend/).
+
+## Correction: artifacts live in untracked-bond-research/
+
+Per user direction, the original PDFs + MANIFEST.json + README.md were
+moved from `backend/data/demo_sources/` to `untracked-bond-research/`
+(stays untracked, never staged). `test_demo_source_artifacts.py` now
+resolves `../untracked-bond-research` (cwd backend/). Tracked seed
+`demo_bond_package_v1.json` still embeds the usable excerpts; the
+untracked folder holds the byte originals + pre-work notes together.

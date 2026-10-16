@@ -54,6 +54,8 @@ class BondSource(BaseModel):
     content_hash: str = Field(min_length=8, max_length=128)
     snapshot_date: str = Field(min_length=8, max_length=32)
     page_locator: str = Field(min_length=1, max_length=500)
+    url: Optional[str] = Field(default=None, max_length=1000)
+    excerpt: Optional[str] = Field(default=None, max_length=4000)
 
     model_config = {"frozen": True}
 

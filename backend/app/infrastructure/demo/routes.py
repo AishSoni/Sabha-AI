@@ -111,6 +111,40 @@ async def create_real_session(payload: Optional[dict] = None):
     return JSONResponse(status_code=201, content=result)
 
 
+@router.post("/recorded-turn")
+async def start_recorded_turn(payload: Optional[dict] = None):
+    """Start one recorded journey turn on a REAL meeting via shared TurnEngine.
+
+    C0 vertical slice: submit_bond_question (search-only) streams chunked
+    text_delta frames before turn_completed on the NORMAL turn SSE journal.
+    Returns turn_id + events_url (/api/meetings/turns/{turn_id}/events).
+    """
+    body = payload or {}
+    meeting_id = str(body.get("meeting_id", "") or "")
+    action_id = str(body.get("action_id", "") or "")
+    idempotency_key = body.get("idempotency_key")
+    if not meeting_id or not action_id:
+        return _error(422, "missing_fields", "meeting_id and action_id required.")
+    try:
+        result = await bond_service.start_demo_recorded_turn(
+            meeting_id=meeting_id,
+            action_id=action_id,
+            idempotency_key=str(idempotency_key) if idempotency_key else None,
+        )
+    except UnknownAction as exc:
+        return _error(404, "unknown_action", str(exc))
+    except ValueError as exc:
+        return _error(404, "meeting_not_found", str(exc))
+    except RuntimeError as exc:
+        msg = str(exc)
+        if "tool_result_mismatch" in msg or "TurnFailure" in type(exc).__name__:
+            return _error(409, "tool_result_mismatch", msg, True)
+        if "reservation" in msg or "reserved" in msg:
+            return _error(503, "demo_turn_unavailable", msg, True)
+        return _error(503, "demo_storage_unavailable", msg, True)
+    return JSONResponse(status_code=202, content=result)
+
+
 @router.get("/session")
 async def get_demo_session(request: Request):
     token = _bearer(request)

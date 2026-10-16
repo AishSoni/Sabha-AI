@@ -155,6 +155,13 @@ def _sanitize(text: str, limit: int) -> str:
     return text
 
 
+def _chunk_text(text: str, size: int = 400) -> list[str]:
+    """Split final text so SSE emits multiple text_delta frames."""
+    if not text:
+        return [""]
+    return [text[i:i + size] for i in range(0, len(text), size)] or [text]
+
+
 class TurnEngine:
     def __init__(
         self,
@@ -360,15 +367,17 @@ class TurnEngine:
                             citations, total_cost,
                         )
                     )
-                    # Final answer streams as its own segment BEFORE the
-                    # terminal event so subscribers receive text incrementally
-                    # (CONTRACTS §4 segment identification).
-                    await self._store.append_event(
-                        record.turn_id, "text_delta",
-                        {"segment_id": f"{record.turn_id}:final",
-                         "invocation_index": invocation_index - 1,
-                         "content": final_text},
-                    )
+                    # Final answer streams as chunked segments BEFORE the
+                    # terminal event so subscribers receive multiple text
+                    # deltas incrementally (CONTRACTS §4; Part C proof).
+                    chunks = _chunk_text(final_text, 400)
+                    for idx, piece in enumerate(chunks):
+                        await self._store.append_event(
+                            record.turn_id, "text_delta",
+                            {"segment_id": f"{record.turn_id}:final:{idx}",
+                             "invocation_index": invocation_index - 1,
+                             "content": piece},
+                        )
                     await self._store.append_event(
                         record.turn_id, "turn_completed",
                         {"message_id": saved.id, "usage_completeness": "complete" if usage_known else "unknown"},

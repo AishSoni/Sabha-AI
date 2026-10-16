@@ -549,3 +549,167 @@ async def create_real_demo_meeting(
         "approval_status": APPROVAL_STATUS,
         "disclosure": DISCLOSURE,
     }
+
+
+def _pick_demo_participant(meeting, spec: dict) -> Any:
+    """Pick a real participant for the recorded turn (C0 search-only safe).
+
+    The journey script names bond specialists, but a real demo meeting carries
+    the normal default roster (Investor/CTO/Analyst). For the C0 vertical
+    slice (submit_bond_question, search-only) any real participant works;
+    prefer the Analyst for evidence-grounded answers, else the first member.
+    Actions needing bond-roster disagreement/consensus targets fail honestly
+    via engine validation against the real roster.
+    """
+    participants = list(getattr(meeting, "participants", []) or [])
+    if not participants:
+        raise RuntimeError("real demo meeting has no participants")
+    for p in participants:
+        name = (getattr(p, "name", "") or "").lower()
+        role = (getattr(p, "role", "") or "").lower()
+        if "analyst" in name or "analyst" in role:
+            return p
+    return participants[0]
+
+
+class _AssertingDemoKnowledge:
+    """BondKnowledgeSearch wrapper enforcing seed-fixed software assertions.
+
+    Delegates retrieval to the frozen pack, then checks the result against the
+    approved source list/snapshot (never a hash of the payload under test).
+    Mismatch raises TurnFailure so the turn fails honestly with retryable
+    progress preserved.
+    """
+
+    def __init__(self, inner: Any, action_id: str) -> None:
+        self._inner = inner
+        self._action_id = action_id
+
+    async def search(self, query: str, meeting_id: str, persona_id: Any = None):
+        result = await self._inner.search(query, meeting_id, persona_id)
+        try:
+            assert_independent_tool_result(
+                tool={"name": "search_knowledge_base",
+                      "arguments": {"query": query}},
+                payload={
+                    "items": result.items,
+                    "citations": [c.title for c in result.citations],
+                },
+                action_id=self._action_id,
+            )
+        except ValueError as exc:
+            from app.modules.meetings.engine import TurnFailure as _TurnFailure
+
+            raise _TurnFailure("tool_result_mismatch", str(exc)) from exc
+        return result
+
+
+async def start_demo_recorded_turn(
+    *, meeting_id: str, action_id: str, idempotency_key: Optional[str] = None,
+    manager=None,
+) -> dict[str, Any]:
+    """Run one recorded journey action through the SHARED TurnEngine.
+
+    C0 vertical slice: submit_bond_question (search-only, no roster mismatch)
+    plays its original provider call IDs (e.g. call-search-1) through
+    TurnEngine + BondKnowledgeSearch + RecordedProvider, persists a normal
+    message/citations via MeetingManager, and streams chunked text_delta
+    frames before turn_completed on the NORMAL turn SSE journal
+    (/api/meetings/turns/{turn_id}/events). No parallel workflow, no
+    completed-JSON shortcut. Fail honestly on unknown action, missing
+    meeting, or seed drift.
+    """
+    import asyncio
+    import uuid as _uuid
+
+    if action_id not in JOURNEY_ACTION_IDS:
+        raise UnknownAction(f"unsupported journey action: {action_id}")
+    try:
+        spec = action_script(action_id)
+    except KeyError as exc:
+        raise UnknownAction(str(exc)) from exc
+
+    if manager is None:
+        from app.services.meeting_manager import MeetingManager as _MeetingManager
+
+        manager = _MeetingManager()
+    meeting = await manager.get_meeting(meeting_id)
+    if meeting is None:
+        raise ValueError(f"Meeting not found: {meeting_id}")
+    participant = _pick_demo_participant(meeting, spec)
+
+    pack = get_pack()
+    knowledge = _AssertingDemoKnowledge(BondKnowledgeSearch(pack), action_id)
+    provider = build_journey_provider(action_id)
+
+    def _resolve(_provider_name: Any, _model_name: Any):
+        return provider
+
+    from app.modules.meetings.engine import TurnEngine
+    from app.modules.meetings.runner import TurnRunner
+    from app.modules.meetings.store import get_shared_turn_store
+
+    store = get_shared_turn_store()
+    engine = TurnEngine(
+        meeting_loader=manager,
+        provider_resolver=_resolve,
+        knowledge_search=knowledge,
+        turn_store=store,
+        lease_coordinator=None,
+    )
+    key = idempotency_key or f"demo:{meeting_id}:{action_id}:{_uuid.uuid4().hex}"
+
+    async def _run() -> None:
+        await engine.run(meeting_id, participant.id, key)
+
+    task = asyncio.create_task(_run())
+    try:
+        from app.modules.meetings.runner import TurnRunner as _Runner
+
+        _Runner.register_detached(task)
+    except Exception:
+        pass
+
+    # Wait for reservation so callers get the normal turn_id/events_url
+    # (same contract as POST /api/meetings/{id}/turns).
+    loop = asyncio.get_running_loop()
+    deadline = loop.time() + 30.0
+    turn_id: Optional[str] = None
+    reservation_error: Optional[BaseException] = None
+    while True:
+        try:
+            turn_id = await store.turn_id_for_key(key)
+        except Exception:
+            turn_id = None
+        if turn_id is not None:
+            break
+        if task.done():
+            if task.cancelled():
+                reservation_error = RuntimeError(
+                    "demo turn cancelled before reservation")
+            else:
+                exc = task.exception()
+                if exc is not None:
+                    reservation_error = exc
+                else:
+                    reservation_error = RuntimeError(
+                        "demo turn ended before reservation")
+            break
+        if loop.time() >= deadline:
+            reservation_error = RuntimeError("demo turn reservation timed out")
+            break
+        await asyncio.sleep(0.01)
+    if turn_id is None:
+        raise RuntimeError(f"demo recorded turn not reserved: {reservation_error}")
+    return {
+        "turn_id": turn_id,
+        "meeting_id": meeting_id,
+        "participant_id": participant.id,
+        "participant_name": getattr(participant, "name", ""),
+        "action_id": action_id,
+        "stage": spec.get("stage"),
+        "events_url": f"/api/meetings/turns/{turn_id}/events",
+        "recorded_analysis": RECORDED_ANALYSIS,
+        "approval_status": APPROVAL_STATUS,
+        "disclosure": DISCLOSURE,
+    }
