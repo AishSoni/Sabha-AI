@@ -1,7 +1,8 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import Link from 'next/link';
+import { useRouter, useSearchParams } from 'next/navigation';
 import { Plus, MessageSquare, Calendar, ArrowLeft, Loader2, Archive, Trash2, MoreVertical, ArchiveRestore } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
@@ -35,10 +36,59 @@ export default function MeetingSpacePage() {
     const [activeTab, setActiveTab] = useState('active');
     const [deleteConfirmId, setDeleteConfirmId] = useState<string | null>(null);
     const [actionLoading, setActionLoading] = useState<string | null>(null);
+    const [demoNotice, setDemoNotice] = useState<string | null>(null);
+    const router = useRouter();
+    const searchParams = useSearchParams();
+    const demoBootstrapped = useRef(false);
 
     useEffect(() => {
         loadMeetings();
     }, []);
+
+    // ?demo=indian-corporate-bond-review: bootstrap a REAL meeting from the
+    // DB journey package, then enter the normal meeting room. The room uses
+    // the shared stores/SSE/queue/ending paths; the DEMO watermark marks the
+    // recorded-analysis framing.
+    useEffect(() => {
+        const scenario = searchParams.get('demo');
+        if (!scenario || demoBootstrapped.current) return;
+        if (scenario !== 'indian-corporate-bond-review') {
+            setDemoNotice('Unknown demo scenario. Only the approved bond review is served.');
+            return;
+        }
+        demoBootstrapped.current = true;
+        const base = process.env.NEXT_PUBLIC_API_BASE_URL || 'http://localhost:8000';
+        setDemoNotice('Starting the recorded bond walkthrough…');
+        fetch(`${base}/api/v2/demo/real-session`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ scenario_id: scenario, scenario_revision: 1 }),
+        })
+            .then(async (res) => {
+                if (!res.ok) {
+                    const body = await res.json().catch(() => ({}));
+                    throw new Error(
+                        body?.code === 'demo_storage_unavailable'
+                            ? 'Demo storage is unavailable right now. Please try again later.'
+                            : 'Could not start the demo walkthrough.'
+                    );
+                }
+                return res.json();
+            })
+            .then((body) => {
+                const meetingId = body?.meeting?.meeting_id;
+                if (!meetingId) throw new Error('Could not start the demo walkthrough.');
+                try {
+                    sessionStorage.setItem('sabha.demo.sessionToken', `real-${meetingId}`);
+                } catch {
+                    /* watermark marker is best-effort */
+                }
+                router.replace(`/meetings/${meetingId}`);
+            })
+            .catch((err: unknown) => {
+                setDemoNotice(err instanceof Error ? err.message : 'Could not start the demo walkthrough.');
+            });
+    }, [searchParams, router]);
 
     const loadMeetings = async () => {
         setIsLoading(true);
@@ -120,6 +170,11 @@ export default function MeetingSpacePage() {
 
             {/* Main Content */}
             <main className="max-w-6xl mx-auto px-6 py-8">
+                {demoNotice && (
+                    <div className="mb-6 rounded-lg border border-amber-500/30 bg-amber-500/10 px-4 py-3 text-sm text-amber-200" role="status">
+                        {demoNotice}
+                    </div>
+                )}
                 <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
                     <TabsList className="bg-zinc-900/50 border border-zinc-800 mb-6">
                         <TabsTrigger value="active" className="data-[state=active]:bg-zinc-800">

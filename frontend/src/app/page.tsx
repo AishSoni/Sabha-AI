@@ -128,6 +128,26 @@ export default function HomePage() {
             </Card>
           </Link>
 
+          {/* Try the demo — guided tour on normal meeting routes (recorded analysis) */}
+          <Link href="/meetings?demo=indian-corporate-bond-review" className="group">
+            <Card className="bg-zinc-900/50 border-zinc-800 hover:border-purple-500/50 transition-all duration-300 hover:shadow-lg hover:shadow-purple-500/10 h-full">
+              <CardHeader>
+                <CardTitle className="text-white flex items-center justify-between">
+                  Try the demo
+                  <ArrowRight className="w-4 h-4 text-zinc-600 group-hover:text-purple-400 group-hover:translate-x-1 transition-all" />
+                </CardTitle>
+                <CardDescription className="text-zinc-400">
+                  Guided bond review on real meeting routes
+                </CardDescription>
+              </CardHeader>
+              <CardContent>
+                <p className="text-sm text-zinc-500">
+                  Recorded analysis · INE001A07RW5 · Snapshot 2020-07-31.
+                </p>
+              </CardContent>
+            </Card>
+          </Link>
+
         </div>
       </main>
     </div>

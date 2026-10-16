@@ -201,9 +201,9 @@ verify_tool_result = _ToolResultGuard()
 
 
 def build_journey_provider(action_id: str):
-    """Build a ScriptedProvider playing tool calls then the final text."""
-    from tests.doubles.providers import (
-        ScriptedProvider,
+    """Build a RecordedProvider playing tool calls then the final text."""
+    from app.infrastructure.demo.recorded_provider import (
+        RecordedProvider,
         final_text_response,
         tool_call_response,
     )
@@ -217,4 +217,4 @@ def build_journey_provider(action_id: str):
             )
         )
     script.append(final_text_response(spec["final_text"]))
-    return ScriptedProvider(script)
+    return RecordedProvider(script)

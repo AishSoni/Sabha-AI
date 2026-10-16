@@ -1,5 +1,5 @@
-import { BondJourney } from '@/features/demo/BondJourney';
+import { redirect } from 'next/navigation';
 
 export default function DemoPage() {
-  return <BondJourney />;
+  redirect('/');
 }

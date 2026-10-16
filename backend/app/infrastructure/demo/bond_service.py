@@ -1,8 +1,15 @@
 """Bond demo service: sessions, ordered actions, queue exercise, reset.
 
-Deterministic and offline: scripted tool calls carry original provider call
-IDs, fixture tool results are hash-verified before continuation, and no live
-provider, embedding, search, market-data, or discovery call is made.
+Deterministic and offline: recorded tool calls carry original provider call
+IDs, tool results are checked against independent approved assertions (never
+a hash of the payload under test), and no live provider, embedding, search,
+market-data, or discovery call is made.
+
+D-01 status: offline pre-work only (core terms confirmed against the CRISIL
+2020-07-31 rationale; placement memo/listing record/trustee confirmation and
+WDM quotes still missing). No genuine research meeting via a live provider
+exists, so disagreement/consensus/votes/brief below are recorded fixtures,
+not research outcomes. Labeled recorded analysis throughout.
 """
 
 import hashlib
@@ -11,12 +18,12 @@ from typing import Any, Optional
 from app.infrastructure.demo import errors
 from app.infrastructure.demo.bond_retrieval import BondKnowledgeSearch
 from app.infrastructure.demo.bond_scenario import VERIFIED_ISIN as PINNED_ISIN
-from app.infrastructure.demo.bond_scenario import build_hdfc_rw5_pack
+from app.infrastructure.demo.bond_scenario import SNAPSHOT_DATE, build_hdfc_rw5_pack
 from app.infrastructure.demo.bond_scripts import (
+    DISCLOSURE,
     JOURNEY_ACTION_IDS,
     action_script,
     build_journey_provider,
-    verify_tool_result,
 )
 from app.infrastructure.demo.bond_progress import JourneyProgressStore
 from app.infrastructure.demo.manifest import REAL_SCENARIO_ID
@@ -29,6 +36,73 @@ from app.modules.meetings.queue import (
 )
 
 BOND_CONTENT_REVISION = 1
+
+# D-01 approval has NOT been evidenced. All disagreement/consensus/votes/brief
+# content below is a recorded fixture for the offline tutorial, not a genuine
+# research-run outcome. Fail closed if the approved seed drifts.
+APPROVAL_STATUS = "pending-d01"
+RECORDED_ANALYSIS = True
+
+
+def _approved_source_ids() -> set[str]:
+    return {s.source_id for s in _pack.sources}
+
+
+def _approved_source_titles() -> set[str]:
+    return {s.title for s in _pack.sources}
+
+
+def assert_independent_tool_result(*, tool: dict, payload: dict, action_id: str) -> None:
+    """Check a tool result against the approved seed, never against itself.
+
+    Raises ValueError on mismatch; progression stays retryable.
+    """
+    name = tool["name"]
+    if name == "search_knowledge_base":
+        items = payload.get("items")
+        citations = payload.get("citations")
+        if not isinstance(items, list) or not items:
+            raise ValueError(
+                f"tool result mismatch for {action_id}: approved evidence "
+                "requires at least one retrieved item"
+            )
+        approved_ids = _approved_source_ids()
+        for item in items:
+            meta = (item.get("metadata") or {}) if isinstance(item, dict) else {}
+            sid = meta.get("source_id")
+            snap = meta.get("snapshot_date")
+            if sid not in approved_ids:
+                raise ValueError(
+                    f"tool result mismatch for {action_id}: unknown source {sid!r}"
+                )
+            if snap != SNAPSHOT_DATE:
+                raise ValueError(
+                    f"tool result mismatch for {action_id}: snapshot {snap!r} "
+                    f"!= approved {SNAPSHOT_DATE!r}"
+                )
+        if not isinstance(citations, list) or not citations:
+            raise ValueError(
+                f"tool result mismatch for {action_id}: approved evidence "
+                "requires at least one citation"
+            )
+        approved_titles = _approved_source_titles()
+        for title in citations:
+            if title not in approved_titles:
+                raise ValueError(
+                    f"tool result mismatch for {action_id}: unknown citation {title!r}"
+                )
+        return
+    # Recorded communication tools: arguments must match the approved script
+    # exactly; the payload wrapper only marks the result as recorded.
+    if payload.get("recorded") is not True:
+        raise ValueError(
+            f"tool result mismatch for {action_id}: result not marked recorded"
+        )
+    if payload.get("arguments") != tool["arguments"]:
+        raise ValueError(
+            f"tool result mismatch for {action_id}: arguments drifted from "
+            "the approved script; progression stays retryable"
+        )
 
 
 class UnknownAction(ValueError):
@@ -98,6 +172,10 @@ def instrument_view() -> dict[str, Any]:
         "rating": inst.rating,
         "rating_date": inst.rating_date,
         "snapshot_date": _pack.source_snapshot_date,
+        "historical": True,
+        "approval_status": APPROVAL_STATUS,
+        "recorded_analysis": RECORDED_ANALYSIS,
+        "disclosure": DISCLOSURE,
     }
 
 
@@ -208,10 +286,10 @@ async def perform_action(
             }
         else:
             payload = {"recorded": True, "arguments": tool["arguments"]}
-        digest = verify_tool_result.hash_result(payload)
-        verify_tool_result.expect(
-            expected_hash=digest, actual=payload, action_id=action_id
-        )
+        assert_independent_tool_result(tool=tool, payload=payload, action_id=action_id)
+        digest = hashlib.sha256(
+            f"{action_id}|{tool['call_id']}|{tool['name']}".encode("utf-8")
+        ).hexdigest()
         tool_effects.append(
             {
                 "provider_call_id": tool["call_id"],
@@ -230,6 +308,9 @@ async def perform_action(
         ),
         "tool_effects": tool_effects,
         "current_step": state.stage,
+        "recorded_analysis": RECORDED_ANALYSIS,
+        "approval_status": APPROVAL_STATUS,
+        "disclosure": DISCLOSURE,
     }
     if action_id == "queue_verification_question" and not replayed:
         outcome, entry = await queues().submit(
@@ -263,7 +344,7 @@ async def perform_action(
 
 
 async def _play_provider(provider, spec) -> None:
-    """Advance the scripted provider through tool calls to the final text."""
+    """Advance the recorded provider through tool calls to the final text."""
     for tool in spec["expected_tools"]:
         response = await provider.complete([])
         assert [c.id for c in response.tool_calls] == [tool["call_id"]]
@@ -357,4 +438,63 @@ def reset_session(
             "scenario_id": view.scenario_id,
         },
         "meeting": {"meeting_id": meeting.meeting_id},
+    }
+
+
+REAL_DEMO_MEETING_NAME = "Bond Review (Recorded Demo): INE001A07RW5"
+
+
+def build_real_demo_meeting_payload() -> dict[str, str]:
+    """Pure helper: name/agenda for a real meeting bootstrapped from the DB package.
+
+    No network or storage access; unit-tested without Supabase.
+    """
+    agenda = (
+        "Recorded analysis walkthrough for HDFC Ltd 7.87% secured NCD "
+        f"({PINNED_ISIN}), snapshot {SNAPSHOT_DATE} (historical, matured 2022-07-18). "
+        f"Approval status: {APPROVAL_STATUS}. "
+        "All AI answers in this room are recorded analysis, not live research. "
+        f"Disclosure: {DISCLOSURE}"
+    )
+    return {"name": REAL_DEMO_MEETING_NAME, "agenda": agenda}
+
+
+async def create_real_demo_meeting(
+    *, scenario_id: str, scenario_revision: int, manager=None
+) -> dict[str, Any]:
+    """Create a REAL meeting for the demo via the shared MeetingManager.
+
+    Thin facilitation: the meeting itself is a normal record (default roster,
+    normal routes/stores/SSE). The journey package only supplies the seed
+    payload. Fail closed with RuntimeError when storage is unavailable.
+    """
+    if scenario_id != REAL_SCENARIO_ID:
+        raise errors.ScenarioConflict()
+    if scenario_revision != BOND_CONTENT_REVISION:
+        raise StaleRevision(f"revision {scenario_revision} != pinned 1")
+    payload = build_real_demo_meeting_payload()
+    from app.models import MeetingCreate as _MeetingCreate
+
+    create_data = _MeetingCreate(
+        name=payload["name"],
+        agenda=payload["agenda"],
+        user_id="demo-visitor",
+    )
+    if manager is None:
+        from app.services.meeting_manager import MeetingManager as _MeetingManager
+
+        manager = _MeetingManager()
+    try:
+        meeting = await manager.create_meeting(create_data)
+    except Exception as exc:
+        raise RuntimeError(f"real demo meeting unavailable: {exc}") from exc
+    meeting_id = getattr(meeting, "id", None)
+    if meeting_id is None and isinstance(meeting, dict):
+        meeting_id = meeting.get("id")
+    return {
+        "meeting": {"meeting_id": meeting_id},
+        "instrument": instrument_view(),
+        "recorded_analysis": RECORDED_ANALYSIS,
+        "approval_status": APPROVAL_STATUS,
+        "disclosure": DISCLOSURE,
     }

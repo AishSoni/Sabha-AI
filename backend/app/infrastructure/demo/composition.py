@@ -124,10 +124,10 @@ def build_fixture_composition(
     if active.scenario_id == "indian-corporate-bond-review":
         raise DemoUnavailable("real_scenario_bootstrap", "owned by Phase 10")
     if provider is None:
-        from tests.doubles.providers import ScriptedProvider
-        from tests.doubles.providers import final_text_response
+        from app.infrastructure.demo.recorded_provider import RecordedProvider
+        from app.infrastructure.demo.recorded_provider import final_text_response
 
-        provider = ScriptedProvider([final_text_response("synthetic")])
+        provider = RecordedProvider([final_text_response("synthetic")])
     return DemoComposition(
         manifest=active,
         knowledge_search=FixtureKnowledgeSearch(hits=hits),

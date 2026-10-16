@@ -87,6 +87,30 @@ async def create_demo_session(payload: Optional[dict] = None):
     return response
 
 
+@router.post("/real-session")
+async def create_real_session(payload: Optional[dict] = None):
+    """Bootstrap a REAL meeting from the DB journey package (thin facilitation).
+
+    Returns a normal meeting_id usable with the standard meeting room, SSE
+    turn stream, queue, and ending routes. Fails closed (503) when storage
+    is unavailable; unknown scenarios fail closed as 404/409.
+    """
+    body = payload or {}
+    try:
+        result = await bond_service.create_real_demo_meeting(
+            scenario_id=body.get("scenario_id", ""),
+            scenario_revision=int(body.get("scenario_revision", 1)),
+        )
+    except errors.ScenarioConflict:
+        return _error(404, "unknown_scenario",
+                       "Unknown scenario. Only the approved bond review is served.")
+    except StaleRevision as exc:
+        return _error(409, "stale_scenario_revision", str(exc))
+    except RuntimeError as exc:
+        return _error(503, "demo_storage_unavailable", str(exc), True)
+    return JSONResponse(status_code=201, content=result)
+
+
 @router.get("/session")
 async def get_demo_session(request: Request):
     token = _bearer(request)
@@ -94,7 +118,18 @@ async def get_demo_session(request: Request):
         return _error(401, "unauthenticated", "Missing bearer token.")
     try:
         record = bond_service.sessions().get_by_token(token)
-        state = bond_service.progress().current(record.session_id, record.generation)
+        view = bond_service.progress().get(record.session_id, record.generation)
+        state = {
+            "session_id": view.session_id,
+            "generation": view.generation,
+            "meeting_id": view.meeting_id,
+            "current_meeting_id": view.meeting_id,
+            "stage": view.stage,
+            "specialists": list(view.specialists),
+            "completed": list(view.completed),
+            "failed": view.failed,
+            "turn_reference": view.turn_reference,
+        }
     except errors.SessionNotFound:
         return _error(404, "unknown_session", "Unknown session.")
     except errors.SessionExpired:
