@@ -481,68 +481,66 @@ async def get_context_stats(meeting_id: str, actor: Actor = Depends(require_acto
     }
 
 
-@router.post("/{meeting_id}/end", response_model=EndMeetingResponse)
-async def end_meeting(
-    meeting_id: str, data: EndMeetingRequest, actor: Actor = Depends(require_actor),
-    idempotency_key: Optional[str] = Header(default=None, alias="X-Idempotency-Key"),
-):
-    """End a meeting, optionally collecting votes from AI participants."""
-    import uuid as _uuid
+async def _prepare_ending(manager, meeting_id: str, roster: list,
+                           force_end: bool, idempotency_key: str) -> dict:
+    """Begin + lease one ending attempt (the reservation).
 
+    Duplicates return the prior attempt without journaling; a lost lease
+    race rolls the fresh attempt back so a racing turn can never leave it
+    blocking the meeting (CONTRACTS sections 2-3, 9)."""
+    from app.modules.meetings.ending import get_shared_ending_journal
+
+    attempt = await manager.begin_ending_attempt(
+        meeting_id, roster, force_end, idempotency_key)
+    if attempt["duplicate"]:
+        return attempt
+    try:
+        await manager.claim_ending_lease(meeting_id, attempt["attempt_id"])
+    except EndingConflict:
+        try:
+            await manager.commit_ending_attempt(
+                attempt["attempt_id"], "failed", None, {})
+        except Exception:
+            pass
+        raise
+    await get_shared_ending_journal().begin(attempt["attempt_id"], meeting_id)
+    return attempt
+
+
+async def _execute_ending(manager, meeting: MeetingWithParticipants,
+                           roster: list, force_end: bool,
+                           attempt: dict) -> EndMeetingResponse:
+    """Run one ending attempt: journal -> votes -> summary -> atomic commit.
+
+    Each journal entry lands after its own persistence; the terminal entry
+    (ending_completed / ending_failed) lands only after the attempt outcome
+    is committed (or the legacy fallback restored authoritative state)."""
     from app.modules.meetings.domain import decide_end, evaluate_votes
     from app.modules.meetings.ending import (
         build_summary_prompt,
         build_vote_prompt,
+        get_shared_ending_journal,
         parse_vote_response,
         shorten,
+        stream_chunks,
     )
+    from app.modules.personas.preferences import effective_for_system_ai
 
-    manager = get_meeting_manager()
-
-    meeting = await manager.get_meeting(meeting_id)
-    if not meeting:
-        raise HTTPException(status_code=404, detail="Meeting not found")
-    owner_or_404(actor, meeting.user_id)
-
-    if meeting.status != MeetingStatus.ACTIVE:
-        raise HTTPException(status_code=400, detail=f"Meeting is already {meeting.status}")
-    drain = getattr(manager, "drain_queue", None)
-    if drain is not None:
-        try:
-            await drain(meeting_id)
-        except Exception:
-            pass
-    if await manager.pending_queue_count(meeting_id) > 0:
-        raise HTTPException(status_code=409, detail="queue_not_drained")
-
-    key = idempotency_key or str(_uuid.uuid4())
-    roster = [{"id": p.id, "name": p.name} for p in meeting.participants]
-    try:
-        attempt = await manager.begin_ending_attempt(
-            meeting_id, roster, data.force_end, key)
-    except EndingConflict as e:
-        raise HTTPException(status_code=409, detail=str(e))
-    if attempt["duplicate"]:
-        prior = await manager.get_ending_attempt(attempt["attempt_id"])
-        votes = [EndMeetingVote(**v) for v in (prior["votes"] if prior else [])]
-        return EndMeetingResponse(
-            success=(prior["outcome"] == "completed") if prior else False,
-            votes=votes,
-            summary=prior["summary"] if prior else None,
-            message="Duplicate end request: returning the original outcome.",
-        )
+    meeting_id = meeting.id
     attempt_id = attempt["attempt_id"]
-    try:
-        await manager.claim_ending_lease(meeting_id, attempt_id)
-    except EndingConflict as e:
-        raise HTTPException(status_code=409, detail=str(e))
-
+    journal = get_shared_ending_journal()
     usage: dict = {}
     try:
+        await journal.append(attempt_id, "ending_started", {
+            "force_end": force_end,
+            "roster": roster,
+            "meeting_id": meeting_id,
+            "message_count": len(meeting.messages),
+        })
         votes = []
 
         # If not force end, collect votes from each AI
-        if not data.force_end:
+        if not force_end:
             await manager.update_meeting_status(meeting_id, MeetingStatus.VOTING.value)
 
             # Build conversation summary for voting context
@@ -554,6 +552,10 @@ async def end_meeting(
 
             # Get vote from each participant
             for participant in meeting.participants:
+                await journal.append(attempt_id, "vote_delta", {
+                    "participant_id": participant.id,
+                    "participant_name": participant.name,
+                })
                 try:
                     provider = get_provider(
                         participant.provider_config.provider or None,
@@ -566,19 +568,33 @@ async def end_meeting(
                     messages = [LLMMessage(role="user", content=vote_prompt)]
                     response = await provider.complete(messages=messages, tools=[], temperature=0.3)
                     ballot = parse_vote_response(response.content)
-                    votes.append(EndMeetingVote(
+                    vote = EndMeetingVote(
                         participant_id=participant.id,
                         participant_name=participant.name,
                         vote=ballot["vote"],
                         reason=ballot["reason"]
-                    ))
+                    )
                 except Exception as e:
-                    votes.append(EndMeetingVote(
+                    vote = EndMeetingVote(
                         participant_id=participant.id,
                         participant_name=participant.name,
                         vote=False,
                         reason=f"Error getting vote: {str(e)}"
-                    ))
+                    )
+                votes.append(vote)
+                # vote_recorded is published only after the vote persists.
+                try:
+                    await manager.record_ending_votes(
+                        attempt_id, [vote.model_dump()])
+                except Exception:
+                    continue
+                await journal.append(attempt_id, "vote_recorded", {
+                    "participant_id": vote.participant_id,
+                    "participant_name": vote.participant_name,
+                    "vote": vote.vote,
+                    "reason": vote.reason,
+                    "persisted": True,
+                })
         usage["vote_calls"] = len(votes)
 
         # Strict-majority rule: ties fail, invalid votes count as non-yes.
@@ -591,23 +607,28 @@ async def end_meeting(
         try:
             evaluation = evaluate_votes(
                 roster_count=len(roster), yes_count=yes_votes,
-                invalid_count=invalid_votes if not data.force_end else 0,
-                force=data.force_end,
+                invalid_count=invalid_votes if not force_end else 0,
+                force=force_end,
             )
         except ValueError:
             evaluation = None
 
         if evaluation is None or not evaluation.should_end:
             await manager.record_ending_votes(attempt_id, [v.model_dump() for v in votes])
+            committed = False
             try:
                 await manager.commit_ending_attempt(
                     attempt_id, "rejected", None, usage)
+                committed = True
             except EndingConflict:
-                await manager.update_meeting_status(
-                    meeting_id, MeetingStatus.ACTIVE.value)
-            else:
-                await manager.update_meeting_status(
-                    meeting_id, MeetingStatus.ACTIVE.value)
+                pass
+            await manager.update_meeting_status(
+                meeting_id, MeetingStatus.ACTIVE.value)
+            await journal.append(attempt_id, "ending_completed", {
+                "outcome": "rejected", "success": False, "summary": None,
+                "votes": [v.model_dump() for v in votes],
+                "committed": committed, "usage": usage,
+            })
             return EndMeetingResponse(
                 success=False,
                 votes=votes,
@@ -616,6 +637,10 @@ async def end_meeting(
             )
 
         # Meeting will end - generate executive summary (outside any transaction)
+        await journal.append(attempt_id, "summary_started", {
+            "force_end": force_end, "yes_count": yes_votes,
+            "roster_count": len(roster),
+        })
         all_messages = meeting.messages
         conversation_full = "\n".join([
             f"{msg.sender_name}: {msg.content}"
@@ -645,10 +670,18 @@ async def end_meeting(
             executive_summary = None
         usage["summary_calls"] = 1
 
+        if executive_summary:
+            # Provisional summary segments precede the atomic commit so the
+            # summary arrives over SSE before its terminal event (R-22).
+            for chunk_index, chunk in enumerate(stream_chunks(executive_summary)):
+                await journal.append(attempt_id, "summary_delta", {
+                    "content": chunk, "index": chunk_index,
+                })
+
         decision = decide_end(
             roster_count=len(roster), yes_count=yes_votes,
-            invalid_count=invalid_votes if not data.force_end else 0,
-            force=data.force_end, summary_failed=not executive_summary,
+            invalid_count=invalid_votes if not force_end else 0,
+            force=force_end, summary_failed=not executive_summary,
             summary_text=executive_summary,
         )
         await manager.record_ending_votes(attempt_id, [v.model_dump() for v in votes])
@@ -660,15 +693,21 @@ async def end_meeting(
                 pass
             await manager.update_meeting_status(
                 meeting_id, MeetingStatus.ACTIVE.value)
+            await journal.append(attempt_id, "ending_failed", {
+                "code": "summary_failed", "retryable": True,
+                "message": "Summary generation failed",
+            })
             return EndMeetingResponse(
                 success=False,
                 votes=votes,
                 summary=None,
                 message="Summary generation failed. Meeting restored to active.",
             )
+        committed = False
         try:
             await manager.commit_ending_attempt(
                 attempt_id, "completed", decision.summary, usage)
+            committed = True
         except EndingConflict:
             # RPC unavailable pre-migration: legacy sequential fallback.
             await manager.save_message(
@@ -691,14 +730,241 @@ async def end_meeting(
                 )
             )
 
+        await journal.append(attempt_id, "ending_completed", {
+            "outcome": "completed", "success": True,
+            "summary": decision.summary, "usage": usage,
+            "committed": committed,
+            "votes": [v.model_dump() for v in votes],
+        })
         return EndMeetingResponse(
             success=True,
             votes=votes,
             summary=decision.summary,
             message="Meeting ended successfully. Executive summary generated."
         )
+    except Exception as exc:
+        # Unexpected failure: commit failed best-effort, publish the terminal
+        # ending_failed entry, then surface the error to the caller.
+        try:
+            await manager.commit_ending_attempt(
+                attempt_id, "failed", None, usage)
+        except Exception:
+            pass
+        try:
+            await journal.append(attempt_id, "ending_failed", {
+                "code": type(exc).__name__, "retryable": True,
+                "message": str(exc)[:300],
+            })
+        except Exception:
+            pass
+        raise
     finally:
         await manager.release_lease(meeting_id)
+
+
+async def _ending_event_stream(manager, attempt_id: str, after: int = 0):
+    """Journal subscribe when this process holds the record; otherwise poll
+    the authoritative attempt row so post-restart clients still reach a
+    terminal event (EOF without terminal = disconnect, CONTRACTS section 10)."""
+    import asyncio
+
+    from app.modules.meetings.ending import get_shared_ending_journal
+
+    journal = get_shared_ending_journal()
+    if journal.has(attempt_id):
+        async for event in journal.subscribe(attempt_id, after=after):
+            yield event
+        return
+    for _ in range(300):  # bounded DB fallback (~60s), then EOF
+        attempt = await manager.get_ending_attempt(attempt_id)
+        if attempt is None:
+            return
+        outcome = attempt.get("outcome") or "in_progress"
+        if outcome != "in_progress":
+            yield {
+                "version": 2,
+                "event_id": f"{attempt_id}:db:{after + 1}",
+                "sequence": after + 1,
+                "meeting_id": attempt.get("meeting_id"),
+                "turn_id": None,
+                "session_generation": None,
+                "ending_attempt_id": attempt_id,
+                "type": "ending_failed" if outcome == "failed"
+                else "ending_completed",
+                "data": {"outcome": outcome,
+                         "summary": attempt.get("summary"),
+                         "source": "authoritative_state"},
+            }
+            return
+        await asyncio.sleep(0.2)
+
+
+@router.post("/{meeting_id}/end", response_model=EndMeetingResponse)
+async def end_meeting(
+    meeting_id: str, data: EndMeetingRequest, actor: Actor = Depends(require_actor),
+    idempotency_key: Optional[str] = Header(default=None, alias="X-Idempotency-Key"),
+):
+    """End a meeting, optionally collecting votes from AI participants."""
+    import uuid as _uuid
+
+    manager = get_meeting_manager()
+
+    meeting = await manager.get_meeting(meeting_id)
+    if not meeting:
+        raise HTTPException(status_code=404, detail="Meeting not found")
+    owner_or_404(actor, meeting.user_id)
+
+    if meeting.status != MeetingStatus.ACTIVE:
+        raise HTTPException(status_code=400, detail=f"Meeting is already {meeting.status}")
+    # Self-heal stragglers, then enforce the queue barrier (CONTRACTS §5).
+    drain = getattr(manager, "drain_queue", None)
+    if drain is not None:
+        try:
+            await drain(meeting_id)
+        except Exception:
+            pass
+    if await manager.pending_queue_count(meeting_id) > 0:
+        raise HTTPException(status_code=409, detail="queue_not_drained")
+
+    key = idempotency_key or str(_uuid.uuid4())
+    roster = [{"id": p.id, "name": p.name} for p in meeting.participants]
+    try:
+        attempt = await _prepare_ending(
+            manager, meeting_id, roster, data.force_end, key)
+    except EndingConflict as e:
+        raise HTTPException(status_code=409, detail=str(e))
+    if attempt["duplicate"]:
+        prior = await manager.get_ending_attempt(attempt["attempt_id"])
+        votes = [EndMeetingVote(**v) for v in (prior["votes"] if prior else [])]
+        return EndMeetingResponse(
+            success=(prior["outcome"] == "completed") if prior else False,
+            votes=votes,
+            summary=prior["summary"] if prior else None,
+            message="Duplicate end request: returning the original outcome.",
+        )
+    return await _execute_ending(
+        manager, meeting, roster, data.force_end, attempt)
+
+
+@router.post("/{meeting_id}/ending-attempts", status_code=202)
+async def start_ending_attempt(
+    meeting_id: str,
+    data: Optional[EndMeetingRequest] = None,
+    actor: Actor = Depends(require_actor),
+    x_idempotency_key: Optional[str] = Header(None, alias="X-Idempotency-Key"),
+):
+    """Accept an ending-attempt request: reserve, run detached, stream SSE.
+
+    409 when the queue barrier holds, the meeting is not active, a turn or
+    another attempt owns the ending; duplicates return the original attempt.
+    The caller reads the committed journal over
+    GET /ending-attempts/{attempt_id}/events (CONTRACTS §9-§10)."""
+    import asyncio
+    import uuid as _uuid
+
+    from app.modules.meetings.runner import TurnRunner
+
+    manager = get_meeting_manager()
+    meeting = await manager.get_meeting(meeting_id)
+    if not meeting:
+        raise HTTPException(status_code=404, detail="Meeting not found")
+    owner_or_404(actor, meeting.user_id)
+    if meeting.status != MeetingStatus.ACTIVE:
+        raise HTTPException(status_code=409, detail="meeting_not_active")
+    drain = getattr(manager, "drain_queue", None)
+    if drain is not None:
+        try:
+            await drain(meeting_id)
+        except Exception:
+            pass
+    if await manager.pending_queue_count(meeting_id) > 0:
+        raise HTTPException(status_code=409, detail="queue_not_drained")
+
+    force_end = bool(data.force_end) if data else False
+    key = x_idempotency_key or str(_uuid.uuid4())
+    roster = [{"id": p.id, "name": p.name} for p in meeting.participants]
+    try:
+        attempt = await _prepare_ending(manager, meeting_id, roster,
+                                         force_end, key)
+    except EndingConflict as e:
+        raise HTTPException(status_code=409, detail=str(e))
+    attempt_id = attempt["attempt_id"]
+    events_url = f"/api/meetings/ending-attempts/{attempt_id}/events"
+    if attempt["duplicate"]:
+        prior = await manager.get_ending_attempt(attempt_id)
+        return {
+            "attempt_id": attempt_id,
+            "meeting_id": meeting_id,
+            "state": (prior or {}).get(
+                "outcome", attempt.get("outcome", "in_progress")),
+            "duplicate": True,
+            "events_url": events_url,
+        }
+    # Execution is detached: dropping any subscriber never cancels the
+    # attempt; the journal below is the source of stream truth.
+    task = asyncio.create_task(_execute_ending(
+        manager, meeting, roster, force_end, attempt))
+    TurnRunner.register_detached(task)
+    return {
+        "attempt_id": attempt_id,
+        "meeting_id": meeting_id,
+        "state": "in_progress",
+        "duplicate": False,
+        "events_url": events_url,
+    }
+
+
+@router.get("/ending-attempts/{attempt_id}")
+async def get_ending_attempt(attempt_id: str, actor: Actor = Depends(require_actor)):
+    """Authoritative ending-attempt state (reconnect fallback)."""
+    manager = get_meeting_manager()
+    attempt = await manager.get_ending_attempt(attempt_id)
+    if not attempt:
+        raise HTTPException(status_code=404, detail="Ending attempt not found")
+    meeting = await manager.get_meeting(attempt.get("meeting_id"))
+    if not meeting:
+        raise HTTPException(status_code=404, detail="Meeting not found")
+    owner_or_404(actor, meeting.user_id)
+    return {
+        "attempt_id": attempt.get("attempt_id", attempt_id),
+        "meeting_id": attempt.get("meeting_id"),
+        "state": attempt.get("outcome"),
+        "outcome": attempt.get("outcome"),
+        "summary": attempt.get("summary"),
+        "usage": attempt.get("usage", {}),
+        "votes": attempt.get("votes", []),
+    }
+
+
+@router.get("/ending-attempts/{attempt_id}/events")
+async def stream_ending_events(
+    attempt_id: str, after: int = 0, actor: Actor = Depends(require_actor)
+):
+    """Ordered ending-journal replay from the cursor, then live events.
+
+    SSE frames follow CONTRACTS §10 with ending_attempt_id (never a forged
+    turn_id) in the envelope; dropping this subscription never cancels the
+    attempt."""
+    from sse_starlette.sse import EventSourceResponse
+
+    from app.modules.meetings.ending import get_shared_ending_journal
+    from app.services.streaming import events_to_sse
+
+    journal = get_shared_ending_journal()
+    meeting_id = journal.meeting_id(attempt_id)
+    if meeting_id is None:
+        attempt = await get_meeting_manager().get_ending_attempt(attempt_id)
+        if not attempt:
+            raise HTTPException(status_code=404, detail="Ending attempt not found")
+        meeting_id = attempt.get("meeting_id")
+    meeting = await get_meeting_manager().get_meeting(meeting_id)
+    if not meeting:
+        raise HTTPException(status_code=404, detail="Meeting not found")
+    owner_or_404(actor, meeting.user_id)
+    manager = get_meeting_manager()
+    return EventSourceResponse(
+        events_to_sse(_ending_event_stream(manager, attempt_id, after))
+    )
 
 
 @router.post("/{meeting_id}/archive")

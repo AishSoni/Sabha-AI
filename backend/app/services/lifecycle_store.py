@@ -261,7 +261,15 @@ class LifecycleStoreMixin:
                 .eq("meeting_id", meeting_id)
                 .eq("outcome", "in_progress").execute().data or [])
         if live:
-            raise EndingConflict("ending_in_progress")
+            # A stale in-progress attempt (crashed worker, expired lease) must
+            # not block ending forever: without a live ending lease, commit it
+            # as failed, then create a fresh attempt.
+            await self._recover_stale_ending(meeting_id, live[0]["attempt_id"])
+            live = (self.db.table("ending_attempts").select("attempt_id")
+                    .eq("meeting_id", meeting_id)
+                    .eq("outcome", "in_progress").execute().data or [])
+            if live:
+                raise EndingConflict("ending_in_progress")
         payload = {"attempt_id": f"end-{uuid.uuid4()}", "meeting_id": meeting_id,
                    "idempotency_key": idempotency_key, "force_end": force_end,
                    "roster_json": roster, "outcome": "in_progress",
@@ -269,6 +277,34 @@ class LifecycleStoreMixin:
         self.db.table("ending_attempts").insert(payload).execute()
         return {"attempt_id": payload["attempt_id"], "duplicate": False,
                 "outcome": "in_progress", "summary": None, "usage": {}}
+
+    async def _recover_stale_ending(self, meeting_id: str,
+                                    attempt_id: str) -> None:
+        """Commit a stale in-progress attempt as failed when its ending lease
+        is absent or expired; a live lease still means a concurrent ending."""
+        rows = (self.db.table("execution_leases").select("*")
+                .eq("meeting_id", meeting_id).execute().data or [])
+        now = datetime.now(timezone.utc)
+        for row in rows:
+            if row.get("kind") != "ending":
+                continue
+            if row.get("state") not in ("claimed", "running"):
+                continue
+            try:
+                expires = datetime.fromisoformat(row["lease_expires_at"])
+            except (KeyError, ValueError, TypeError):
+                continue
+            if expires > now:
+                raise EndingConflict("ending_in_progress")
+        try:
+            await self.commit_ending_attempt(attempt_id, "failed", None, {})
+        except EndingConflict:
+            # RPC unavailable (pre-migration clone): guarded direct update.
+            # Rows that terminalized in the race match zero rows (in_progress
+            # guard), so this is a no-op for them.
+            (self.db.table("ending_attempts").update({"outcome": "failed"})
+                    .eq("attempt_id", attempt_id)
+                    .eq("outcome", "in_progress").execute())
 
     async def record_ending_votes(self, attempt_id: str, votes: list[dict]) -> None:
         for vote in votes:
@@ -297,7 +333,9 @@ class LifecycleStoreMixin:
         row = rows[0]
         votes = (self.db.table("ending_votes").select("*")
                  .eq("attempt_id", attempt_id).execute().data or [])
-        return {"outcome": row["outcome"], "summary": row.get("summary"),
+        return {"attempt_id": row["attempt_id"],
+                "meeting_id": row["meeting_id"],
+                "outcome": row["outcome"], "summary": row.get("summary"),
                 "usage": row.get("usage_json", {}),
                 "votes": [{"participant_id": v["participant_id"],
                            "participant_name": v["participant_name"],

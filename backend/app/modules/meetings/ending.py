@@ -10,6 +10,7 @@ meeting: duplicate end requests return the original outcome.
 
 from __future__ import annotations
 
+import asyncio
 import sqlite3
 import tempfile
 import threading
@@ -331,3 +332,105 @@ def shorten(content: str, limit: int = 200) -> str:
     if len(content) > limit:
         return content[:limit] + "..."
     return content
+
+
+# --------------------------------------------------------------------------
+# In-process ending journal (CONTRACTS section 10): ordered v2 envelopes
+# carrying ending_attempt_id (never a forged turn_id). Each entry is
+# published only after its own persistence; exactly one terminal event
+# (ending_completed / ending_failed) exists per attempt, after the atomic
+# outcome commit (or the legacy fallback that restored authoritative state).
+# --------------------------------------------------------------------------
+
+class EndingJournalNotFound(Exception):
+    """Unknown attempt id: the journal was never begun in this process."""
+
+
+class EndingJournalStore:
+    TERMINAL_TYPES = frozenset({"ending_completed", "ending_failed"})
+
+    def __init__(self) -> None:
+        self._lock = asyncio.Lock()
+        self._records: dict[str, dict[str, Any]] = {}
+
+    def has(self, attempt_id: str) -> bool:
+        return attempt_id in self._records
+
+    def meeting_id(self, attempt_id: str) -> Optional[str]:
+        record = self._records.get(attempt_id)
+        return record["meeting_id"] if record else None
+
+    async def begin(self, attempt_id: str, meeting_id: str) -> None:
+        async with self._lock:
+            self._records.setdefault(
+                attempt_id,
+                {"meeting_id": meeting_id, "events": [], "terminal": False},
+            )
+
+    async def append(self, attempt_id: str, event_type: str,
+                     data: dict) -> Optional[dict]:
+        """Append one journal entry. After a terminal event, further appends
+        are dropped so clients always see exactly one terminal."""
+        async with self._lock:
+            record = self._records.get(attempt_id)
+            if record is None:
+                raise EndingJournalNotFound(attempt_id)
+            if record["terminal"]:
+                return None
+            sequence = len(record["events"]) + 1
+            event = {
+                "version": 2,
+                "event_id": f"{attempt_id}:{sequence}",
+                "sequence": sequence,
+                "meeting_id": record["meeting_id"],
+                "turn_id": None,
+                "session_generation": None,
+                "ending_attempt_id": attempt_id,
+                "type": event_type,
+                "data": data,
+            }
+            record["events"].append(event)
+            if event_type in self.TERMINAL_TYPES:
+                record["terminal"] = True
+            return event
+
+    async def list_events(self, attempt_id: str, after: int = 0) -> list[dict]:
+        record = self._records.get(attempt_id)
+        if record is None:
+            raise EndingJournalNotFound(attempt_id)
+        return [event for event in record["events"]
+                if event["sequence"] > after]
+
+    async def subscribe(self, attempt_id: str, after: int = 0):
+        """Replay committed events after the cursor, then live-appended
+        events until the terminal entry. EOF without terminal = disconnect."""
+        cursor = after
+        while True:
+            for event in await self.list_events(attempt_id, cursor):
+                cursor = event["sequence"]
+                yield event
+                if event["type"] in self.TERMINAL_TYPES:
+                    return
+            await asyncio.sleep(0.01)
+
+
+_ENDING_JOURNAL: Optional[EndingJournalStore] = None
+
+
+def get_shared_ending_journal() -> EndingJournalStore:
+    global _ENDING_JOURNAL
+    if _ENDING_JOURNAL is None:
+        _ENDING_JOURNAL = EndingJournalStore()
+    return _ENDING_JOURNAL
+
+
+def reset_shared_ending_journal() -> None:
+    global _ENDING_JOURNAL
+    _ENDING_JOURNAL = None
+
+
+def stream_chunks(text: str, size: int = 160) -> list[str]:
+    """Deterministic provisional summary segments for summary_delta events."""
+    if not text:
+        return []
+    return [text[i:i + size] for i in range(0, len(text), size)]
