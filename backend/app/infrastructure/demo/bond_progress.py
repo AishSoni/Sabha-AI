@@ -28,15 +28,87 @@ class ProgressView:
 
 
 class JourneyProgressStore:
-    """In-memory progression; persistence wiring owns the table mapping."""
+    """Progression with optional durable gateway; in-memory by default.
+
+    When a Supabase-compatible client is supplied (table
+    `demo_scenario_progress` from migration 008), each bootstrap/apply is
+    persisted so restarts and second processes see the same authoritative
+    (session, generation) -> meeting mapping. Without a client the store
+    stays process-local (tests + local fixture runtime).
+    """
+
+    TABLE = "demo_scenario_progress"
 
     def __init__(
-        self, meeting_factory: Optional[Callable[[str, int], str]] = None
+        self, meeting_factory: Optional[Callable[[str, int], str]] = None,
+        client: Any = None,
     ) -> None:
         self._meeting_factory = meeting_factory or (
             lambda sid, gen: f"meeting-{sid}-{gen}"
         )
         self._states: dict[tuple[str, int], dict[str, Any]] = {}
+        self._client = client
+
+    # -- durable helpers -------------------------------------------------
+
+    def _row(self, state: dict[str, Any]) -> dict[str, Any]:
+        return {
+            "session_id": state["session_id"],
+            "generation": state["generation"],
+            "scenario_id": "indian-corporate-bond-review",
+            "scenario_revision": state["scenario_revision"],
+            "meeting_id": state["meeting_id"],
+            "current_step": state["stage"],
+            "completed_steps": list(state["completed"]),
+            "idempotency_keys": dict(state["action_keys"]),
+        }
+
+    def _persist(self, state: dict[str, Any]) -> None:
+        if self._client is None:
+            return
+        try:
+            self._client.table(self.TABLE).upsert(
+                self._row(state), on_conflict="session_id,generation"
+            ).execute()
+        except Exception:
+            pass
+
+    def _load(self, session_id: str, generation: int) -> Optional[dict[str, Any]]:
+        if self._client is None:
+            return None
+        try:
+            resp = (
+                self._client.table(self.TABLE)
+                .select("*")
+                .eq("session_id", session_id)
+                .eq("generation", generation)
+                .limit(1)
+                .execute()
+            )
+            rows = resp.data or []
+            if not rows:
+                return None
+            row = rows[0]
+            completed = list(row.get("completed_steps") or [])
+            keys = dict(row.get("idempotency_keys") or {})
+            return {
+                "session_id": row["session_id"],
+                "generation": int(row["generation"]),
+                "scenario_revision": int(row.get("scenario_revision", 1)),
+                "meeting_id": row.get("meeting_id"),
+                "stage": row.get("current_step", "started"),
+                "specialists": [
+                    "credit-business",
+                    "structure-downside",
+                    "treasury-market",
+                ],
+                "completed": completed,
+                "failed": False,
+                "bootstrap_key": "",
+                "action_keys": keys,
+            }
+        except Exception:
+            return None
 
     def bootstrap(
         self,
@@ -71,6 +143,7 @@ class JourneyProgressStore:
             "action_keys": {},
         }
         self._states[key] = state
+        self._persist(state)
         return self._view(state)
 
     def apply_action(
@@ -107,11 +180,16 @@ class JourneyProgressStore:
         state["stage"] = action_id
         state["failed"] = False
         state["turn_reference"] = f"{state['meeting_id']}:{action_id}"
+        self._persist(state)
         return self._view(state)
 
     def get(self, session_id: str, generation: int) -> ProgressView:
         state = self._states.get((session_id, generation))
         if state is None:
+            loaded = self._load(session_id, generation)
+            if loaded is not None:
+                self._states[(session_id, generation)] = loaded
+                return self._view(loaded)
             raise ValueError("walkthrough has not been bootstrapped")
         return self._view(state)
 

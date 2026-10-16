@@ -125,16 +125,60 @@ _pack = build_hdfc_rw5_pack()
 _search = BondKnowledgeSearch(_pack)
 
 
+def get_pack():
+    """Pinned DB package is the sole production path; seed is local fallback.
+
+    Tries `load_pinned_package` via the service-role client (migration 009);
+    falls back to the validated seed file when storage is unavailable (local
+    dev/tests). Missing required assets raise PackageMissingError (fail
+    honestly); callers must not silently use hardcoded prose.
+    """
+    global _pack, _search
+    try:
+        from app.core.database import get_supabase_admin
+        from app.infrastructure.demo.bond_package import load_pinned_package
+
+        pkg = load_pinned_package(get_supabase_admin())
+        from app.infrastructure.demo.bond_scenario import (
+            BondEvidencePack,
+        )
+
+        pack = BondEvidencePack(
+            schema_version=str(pkg.get("schema_version", "1")),
+            scenario_id=pkg["scenario_id"],
+            content_version=int(pkg.get("content_version", 1)),
+            scenario_revision=int(pkg.get("scenario_revision", 1)),
+            instrument=pkg["instrument"],
+            source_snapshot_date=pkg.get("snapshot_date", SNAPSHOT_DATE),
+            sources=pkg["sources"],
+            claims=pkg["claims"],
+            specialists=pkg["specialists"],
+        )
+        _pack = pack
+        _search = BondKnowledgeSearch(_pack)
+        return _pack
+    except Exception:
+        return _pack
+
+
 def sessions() -> DemoSessionStore:
-    """Process singleton session store (Supabase gateway in hosted wiring)."""
+    """Durable session store; Supabase gateway when storage is reachable."""
     global _sessions
     try:
         return _sessions
     except NameError:
-        from app.infrastructure.demo.runtime import InMemoryGateway
+        try:
+            from app.infrastructure.demo.runtime import SupabaseGateway
 
-        _sessions = DemoSessionStore(gateway=InMemoryGateway())
-        return _sessions
+            _sessions = DemoSessionStore(gateway=SupabaseGateway())
+            # Probe once; fall back to process-local on failure.
+            _sessions.stats()
+            return _sessions
+        except Exception:
+            from app.infrastructure.demo.runtime import InMemoryGateway
+
+            _sessions = DemoSessionStore(gateway=InMemoryGateway())
+            return _sessions
 
 
 def progress() -> JourneyProgressStore:
@@ -142,8 +186,14 @@ def progress() -> JourneyProgressStore:
     try:
         return _progress
     except NameError:
-        _progress = JourneyProgressStore()
-        return _progress
+        try:
+            from app.core.database import get_supabase_admin
+
+            _progress = JourneyProgressStore(client=get_supabase_admin())
+            return _progress
+        except Exception:
+            _progress = JourneyProgressStore()
+            return _progress
 
 
 def queues() -> InMemoryQueue:
@@ -161,7 +211,8 @@ def _execution_id(*parts: str) -> str:
 
 
 def instrument_view() -> dict[str, Any]:
-    inst = _pack.instrument
+    pack = get_pack()
+    inst = pack.instrument
     return {
         "isin": inst.isin,
         "issuer": inst.issuer,
