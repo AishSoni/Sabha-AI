@@ -4,6 +4,19 @@
 
 export const DEMO_ENABLED = false as const;
 
+// Phase 10 session contract (D-07 client side; constants only, no behavior).
+// The token lives in sessionStorage (never localStorage, never URLs), travels
+// as an `Authorization: Bearer` header, and is stored server-side as a hash.
+// Phase 10 wires sessionStorage + header sending; until then these constants
+// pin the contract so both sides cannot drift.
+export const DEMO_SESSION_STORAGE_KEY = 'sabha.demo.sessionToken' as const;
+
+export const DEMO_AUTH_SCHEME = 'Bearer' as const;
+
+export function demoAuthHeader(token: string): string {
+  return `${DEMO_AUTH_SCHEME} ${token}`;
+}
+
 export type ClaimKind =
   | 'sourced_fact'
   | 'derived_calculation'
