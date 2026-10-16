@@ -125,3 +125,22 @@ async def test_mode_override_headers_cannot_escape_fixture(api_client):
     )
     assert response.status_code == 201
     assert response.json()["instrument"]["isin"] == "INE001A07RW5"
+
+
+async def test_full_walkthrough_to_brief_stays_json_safe(api_client):
+    """Every step incl. end_walkthrough must serialize (votes are strings)."""
+    from app.infrastructure.demo.bond_scripts import JOURNEY_ACTION_IDS
+
+    body = await _bootstrap(api_client)
+    ending = None
+    for i, action_id in enumerate(JOURNEY_ACTION_IDS):
+        response = await _act(api_client, body, action_id, f"full-{i}")
+        assert response.status_code == 200, (action_id, response.text)
+        payload = response.json()
+        assert payload["action_id"] == action_id
+        if action_id == "end_walkthrough":
+            ending = payload
+    assert ending is not None
+    assert len(ending["votes"]) == 3
+    assert all(isinstance(v["participant"], str) for v in ending["votes"])
+    assert "INE001A07RW5" in ending["brief"]

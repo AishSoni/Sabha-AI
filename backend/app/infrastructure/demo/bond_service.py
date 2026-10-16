@@ -253,7 +253,7 @@ async def perform_action(
         }
     if action_id == "end_walkthrough":
         response["votes"] = [
-            {"participant": s, "vote": "yes"} for s in _pack.specialists
+            {"participant": s.title, "vote": "yes"} for s in _pack.specialists
         ]
         response["brief"] = action_script("end_walkthrough")["final_text"]
     if action_id == "explore_followup":
