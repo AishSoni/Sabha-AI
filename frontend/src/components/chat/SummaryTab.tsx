@@ -24,7 +24,8 @@ import {
 import { cn } from '@/lib/utils';
 
 export function SummaryTab() {
-    const { currentMeeting, setCurrentMeeting } = useMeetingStore();
+    const { currentMeeting } = useMeetingStore();
+    const loadMeeting = useMeetingStore((s) => s.loadMeeting);
     const [isRefreshing, setIsRefreshing] = useState(false);
     const [refreshError, setRefreshError] = useState<string | null>(null);
     const [showEndMeetingConfirm, setShowEndMeetingConfirm] = useState(false);
@@ -75,8 +76,9 @@ export function SummaryTab() {
         setIsRefreshing(true);
         setRefreshError(null);
         try {
-            const updatedMeeting = await api.getMeeting(currentMeeting.id);
-            setCurrentMeeting(updatedMeeting);
+            // Guarded store reload: stale responses never overwrite a newer
+            // selection, and transcript/scoreboard/queue stay consistent.
+            await loadMeeting(currentMeeting.id);
         } catch (err) {
             setRefreshError((err as Error).message);
         } finally {
@@ -93,9 +95,9 @@ export function SummaryTab() {
             setEndMeetingResult(response);
 
             if (response.success) {
-                // Refresh meeting data to get updated status and messages
-                const updatedMeeting = await api.getMeeting(currentMeeting.id);
-                setCurrentMeeting(updatedMeeting);
+                // Reload through the guarded store path so terminal
+                // reconciliation applies instead of a raw transcript swap.
+                await loadMeeting(currentMeeting.id);
             }
 
             setShowEndMeetingConfirm(false);
