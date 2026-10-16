@@ -8,6 +8,7 @@ writes do not silently succeed anywhere else.
 
 from __future__ import annotations
 
+import asyncio
 import uuid
 from datetime import datetime, timezone
 from typing import Any, Optional
@@ -19,6 +20,13 @@ from app.modules.meetings.queue import QueueCapacity, QueueConflict, QueueValida
 
 def _now_iso() -> str:
     return datetime.now(timezone.utc).isoformat()
+
+
+# One drain at a time per meeting: dispatch must stay FIFO and exactly-once
+# while turns terminalize concurrently (CONTRACTS §5).
+_DRAIN_LOCKS: dict[str, asyncio.Lock] = {}
+_DRAIN_LOCKS_MAX = 1024
+_DRAIN_LOOP_LIMIT = 50
 
 
 class LifecycleStoreMixin:
@@ -128,9 +136,77 @@ class LifecycleStoreMixin:
         except Exception as exc:
             raise QueueConflict("dispatch_unavailable") from exc
 
+    def _drain_lock(self, meeting_id: str) -> asyncio.Lock:
+        lock = _DRAIN_LOCKS.get(meeting_id)
+        if lock is None:
+            if len(_DRAIN_LOCKS) >= _DRAIN_LOCKS_MAX:
+                # Process recycling: stale locks only exist for meetings whose
+                # drains completed long ago in this single-worker runtime.
+                for key in list(_DRAIN_LOCKS):
+                    if not _DRAIN_LOCKS[key].locked():
+                        _DRAIN_LOCKS.pop(key, None)
+                        break
+            lock = asyncio.Lock()
+            _DRAIN_LOCKS[meeting_id] = lock
+        return lock
+
+    async def drain_queue(self, meeting_id: str) -> int:
+        """FIFO drain of pending queue entries after turn terminalization.
+
+        Exactly-once per entry is enforced by the dispatch_queue_entry RPC
+        (pending -> dispatched inside one transaction); entries lost to a
+        concurrent dispatch are skipped, transport failures stop the drain
+        without dispatching out of order. Returns entries dispatched.
+        """
+        lock = self._drain_lock(meeting_id)
+        async with lock:
+            if await self.has_active_work(meeting_id):
+                return 0
+            try:
+                meeting = await self.get_meeting(meeting_id)
+            except Exception:
+                return 0
+            if meeting is None:
+                return 0
+            status = getattr(meeting, "status", None)
+            if str(getattr(status, "value", status)).lower() != "active":
+                return 0
+            dispatched = 0
+            for _ in range(_DRAIN_LOOP_LIMIT):
+                if await self.has_active_work(meeting_id):
+                    break
+                pending = await self.list_queue(meeting_id)
+                if not pending:
+                    break
+                entry_id = pending[0].get("entry_id")
+                if not entry_id:
+                    break
+                try:
+                    await self.dispatch_queue_entry(entry_id)
+                    dispatched += 1
+                except QueueConflict as exc:
+                    if exc.code == "already_dispatched":
+                        # Lost the race to another dispatcher: continue FIFO.
+                        continue
+                    break
+                except Exception:
+                    break
+            return dispatched
+
     # -- execution leases (shared durable truth) --------------------------
 
     async def has_active_work(self, meeting_id: str) -> bool:
+        # Shared turn store is the runtime truth for turn reservations
+        # (execution_leases only carries ending leases + explicitly written
+        # rows); consult it first so busy detection cannot miss a running
+        # turn.
+        try:
+            from app.modules.meetings.store import get_shared_turn_store
+
+            if await get_shared_turn_store().get_active(meeting_id) is not None:
+                return True
+        except Exception:
+            pass
         try:
             rows = (self.db.table("execution_leases").select("*")
                     .eq("meeting_id", meeting_id).execute().data or [])

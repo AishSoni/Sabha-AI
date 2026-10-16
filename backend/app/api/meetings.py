@@ -101,11 +101,25 @@ async def submit_user_message(
     if meeting.status != MeetingStatus.ACTIVE:
         raise HTTPException(status_code=409, detail="meeting_not_active")
 
+    # One decision for commit-vs-queue (CONTRACTS §5): while a turn runs the
+    # submission queues; when idle, first self-heal any entries stranded by a
+    # previous terminalization, then decide on the re-checked state.
     try:
-        queued = (await manager.pending_queue_count(meeting_id) > 0
-                  or await manager.has_active_work(meeting_id))
+        active = await manager.has_active_work(meeting_id)
     except Exception:
-        queued = False
+        active = False
+    if not active:
+        drain = getattr(manager, "drain_queue", None)
+        if drain is not None:
+            try:
+                await drain(meeting_id)
+            except Exception:
+                pass
+    try:
+        queued = (active
+                  or await manager.pending_queue_count(meeting_id) > 0)
+    except Exception:
+        queued = active
     if not queued:
         try:
             message = await manager.save_message(
@@ -193,6 +207,13 @@ async def execute_turn(
     if not meeting:
         raise HTTPException(status_code=404, detail="Meeting not found")
     owner_or_404(actor, meeting.user_id)
+    # Self-heal stragglers, then enforce the queue barrier (CONTRACTS §5).
+    drain = getattr(manager, "drain_queue", None)
+    if drain is not None:
+        try:
+            await drain(meeting_id)
+        except Exception:
+            pass
     if await manager.pending_queue_count(meeting_id) > 0:
         raise HTTPException(status_code=409, detail="queue_not_drained")
 
@@ -224,6 +245,14 @@ async def execute_turn_stream(
     if not meeting:
         raise HTTPException(status_code=404, detail="Meeting not found")
     owner_or_404(actor, meeting.user_id)
+    drain = getattr(manager, "drain_queue", None)
+    if drain is not None:
+        try:
+            await drain(meeting_id)
+        except Exception:
+            pass
+    if await manager.pending_queue_count(meeting_id) > 0:
+        raise HTTPException(status_code=409, detail="queue_not_drained")
 
     orchestrator = get_orchestrator()
     
@@ -238,6 +267,128 @@ async def execute_turn_stream(
             yield {"data": json.dumps({"type": "error", "content": str(e)})}
     
     return EventSourceResponse(stream_generator())
+
+
+@router.post("/{meeting_id}/turns", status_code=202)
+async def start_turn(
+    meeting_id: str,
+    data: Optional[TurnRequest] = None,
+    actor: Actor = Depends(require_actor),
+    x_idempotency_key: Optional[str] = Header(None, alias="X-Idempotency-Key"),
+):
+    """Accept a turn execution request: detached run + SSE stream URL.
+
+    409 when the queue barrier holds or a turn is already active; the caller
+    reads the committed journal over GET /turns/{turn_id}/events (CONTRACTS §9).
+    """
+    import uuid as _uuid
+
+    from app.modules.meetings.engine import TurnFailure
+    from app.modules.meetings.store import IdempotencyConflict, TurnConflict
+
+    manager = get_meeting_manager()
+    meeting = await manager.get_meeting(meeting_id)
+    if not meeting:
+        raise HTTPException(status_code=404, detail="Meeting not found")
+    owner_or_404(actor, meeting.user_id)
+    if meeting.status != MeetingStatus.ACTIVE:
+        raise HTTPException(status_code=409, detail="meeting_not_active")
+    drain = getattr(manager, "drain_queue", None)
+    if drain is not None:
+        try:
+            await drain(meeting_id)
+        except Exception:
+            pass
+    if await manager.pending_queue_count(meeting_id) > 0:
+        raise HTTPException(status_code=409, detail="queue_not_drained")
+
+    participant_id = data.participant_id if data else _first_participant_id(meeting)
+    orchestrator = get_orchestrator()
+    idempotency_key = x_idempotency_key or f"turn:{_uuid.uuid4().hex}"
+    task = orchestrator.start_detached_turn(meeting_id, participant_id, idempotency_key)
+    turn_id, reservation_error = await orchestrator._await_reservation(task, idempotency_key)
+    if turn_id is None:
+        exc = reservation_error or RuntimeError("reservation failed")
+        if isinstance(exc, (TurnConflict, IdempotencyConflict)):
+            raise HTTPException(status_code=409, detail=str(exc))
+        if isinstance(exc, TurnFailure):
+            raise HTTPException(status_code=409, detail=f"{exc.code}: {exc}")
+        if isinstance(exc, ValueError):
+            raise HTTPException(status_code=404, detail=str(exc))
+        raise HTTPException(status_code=500, detail=str(exc))
+    record = await orchestrator.get_turn_status(turn_id)
+    return {
+        "turn_id": record["turn_id"],
+        "meeting_id": record["meeting_id"],
+        "participant_id": record["participant_id"],
+        "state": record["state"],
+        "events_url": f"/api/meetings/turns/{turn_id}/events",
+    }
+
+
+def _first_participant_id(meeting: MeetingWithParticipants) -> str:
+    """Default speaker selection for the accepted-turn endpoint."""
+    if not meeting.participants:
+        raise HTTPException(status_code=409, detail="no_participants")
+    return meeting.participants[0].id
+
+
+@router.get("/turns/{turn_id}")
+async def get_turn(turn_id: str, actor: Actor = Depends(require_actor)):
+    """Authoritative turn state (reconnect fallback for stream clients)."""
+    from app.modules.meetings.store import TurnNotFound, get_shared_turn_store
+
+    store = get_shared_turn_store()
+    try:
+        record = await store.get(turn_id)
+    except TurnNotFound:
+        raise HTTPException(status_code=404, detail="Turn not found")
+    manager = get_meeting_manager()
+    meeting = await manager.get_meeting(record.meeting_id)
+    if not meeting:
+        raise HTTPException(status_code=404, detail="Meeting not found")
+    owner_or_404(actor, meeting.user_id)
+    return {
+        "turn_id": record.turn_id,
+        "meeting_id": record.meeting_id,
+        "participant_id": record.participant_id,
+        "state": record.state,
+        "result_message_id": record.result_message_id,
+        "terminal_reason": record.terminal_reason,
+        "usage": record.usage,
+        "cost": record.cost,
+    }
+
+
+@router.get("/turns/{turn_id}/events")
+async def stream_turn_events(
+    turn_id: str, after: int = 0, actor: Actor = Depends(require_actor)
+):
+    """Ordered journal replay from the cursor, then live events until terminal.
+
+    SSE frames follow CONTRACTS §10 (id/event/data); dropping this
+    subscription never cancels the execution.
+    """
+    from sse_starlette.sse import EventSourceResponse
+
+    from app.modules.meetings.store import TurnNotFound, get_shared_turn_store
+    from app.services.streaming import events_to_sse
+
+    store = get_shared_turn_store()
+    try:
+        record = await store.get(turn_id)
+    except TurnNotFound:
+        raise HTTPException(status_code=404, detail="Turn not found")
+    manager = get_meeting_manager()
+    meeting = await manager.get_meeting(record.meeting_id)
+    if not meeting:
+        raise HTTPException(status_code=404, detail="Meeting not found")
+    owner_or_404(actor, meeting.user_id)
+
+    orchestrator = get_orchestrator()
+    return EventSourceResponse(
+        events_to_sse(orchestrator.subscribe_turn(turn_id, after=after))
+    )
 
 
 @router.get("/{meeting_id}/disagreements", response_model=List[Disagreement])
@@ -355,6 +506,12 @@ async def end_meeting(
 
     if meeting.status != MeetingStatus.ACTIVE:
         raise HTTPException(status_code=400, detail=f"Meeting is already {meeting.status}")
+    drain = getattr(manager, "drain_queue", None)
+    if drain is not None:
+        try:
+            await drain(meeting_id)
+        except Exception:
+            pass
     if await manager.pending_queue_count(meeting_id) > 0:
         raise HTTPException(status_code=409, detail="queue_not_drained")
 

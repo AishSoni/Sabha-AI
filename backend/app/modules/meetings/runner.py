@@ -39,8 +39,28 @@ class TurnRunner:
     ) -> asyncio.Task:
         task = asyncio.create_task(self._engine.run(meeting_id, participant_id, idempotency_key))
         self._tasks[idempotency_key or f"{meeting_id}:{participant_id}"] = task
+        self.register_detached(task)
+        return task
+
+    @staticmethod
+    def register_detached(task: asyncio.Task) -> asyncio.Task:
+        """Track an externally-created execution task for lifespan drain.
+
+        The done callback consumes the task exception so a failed detached
+        turn never surfaces as an unhandled task exception, while keeping the
+        task alive for `drain_turn_tasks` shutdown handling.
+        """
+
+        def _consume(t: asyncio.Task) -> None:
+            _DETACHED.discard(t)
+            if not t.cancelled():
+                try:
+                    t.exception()
+                except Exception:
+                    pass
+
         _DETACHED.add(task)
-        task.add_done_callback(_DETACHED.discard)
+        task.add_done_callback(_consume)
         return task
 
     async def await_turn(self, turn_id: str, timeout: Optional[float] = None) -> TurnResult:

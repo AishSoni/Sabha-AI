@@ -136,16 +136,23 @@ class InMemoryTurnStore:
                 return None
             return self._turns[turn_id]
 
+    async def turn_id_for_key(self, idempotency_key: str) -> Optional[str]:
+        """Resolve a reservation's turn id for streaming subscribers."""
+        async with self._lock:
+            return self._idempotency.get(idempotency_key)
+
     async def append_event(self, turn_id: str, event_type: str, data: Optional[dict] = None) -> dict:
         async with self._lock:
-            self._require(turn_id)
+            record = self._require(turn_id)
             journal = self._events.setdefault(turn_id, [])
             sequence = len(journal) + 1
             event = {
                 "version": 2,
                 "event_id": f"{turn_id}:{sequence}",
                 "sequence": sequence,
+                "meeting_id": record.meeting_id,
                 "turn_id": turn_id,
+                "session_generation": None,
                 "type": event_type,
                 "data": data or {},
             }
@@ -223,6 +230,24 @@ class InMemoryTurnStore:
         if record is None:
             raise TurnNotFound(f"unknown turn {turn_id}")
         return record
+
+
+_SHARED_TURN_STORE: Optional[InMemoryTurnStore] = None
+
+
+def get_shared_turn_store() -> InMemoryTurnStore:
+    """Process-wide turn store shared by the orchestrator, busy detection,
+    and streaming subscribers (single-worker runtime; see store module doc)."""
+    global _SHARED_TURN_STORE
+    if _SHARED_TURN_STORE is None:
+        _SHARED_TURN_STORE = InMemoryTurnStore()
+    return _SHARED_TURN_STORE
+
+
+def reset_shared_turn_store() -> None:
+    """Drop the shared store (test isolation / process recycling)."""
+    global _SHARED_TURN_STORE
+    _SHARED_TURN_STORE = None
 
 
 class SqliteTurnLedger:

@@ -47,12 +47,16 @@ def test_settings():
 @pytest.fixture(autouse=True)
 def _isolate_settings_and_singletons(test_settings):
     """Install dummy settings override; clear singletons before and after."""
+    from app.modules.meetings.store import reset_shared_turn_store
+
     override_settings(test_settings)
     reset_supabase_client()
     reset_qdrant_client()
+    reset_shared_turn_store()
     try:
         yield
     finally:
+        reset_shared_turn_store()
         reset_supabase_client()
         reset_qdrant_client()
         reset_settings_override()

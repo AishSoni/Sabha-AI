@@ -57,7 +57,7 @@ class FakeMeetingRepo:
             "sender_id": data.sender_id,
             "sender_name": data.sender_name,
             "content": data.content,
-            "citations": [],
+            "citations": list(getattr(data, "citations", None) or []),
             "tool_artifacts": data.tool_artifacts,
             "thinking_content": getattr(data, "thinking_content", None),
             "estimated_cost": getattr(data, "estimated_cost", 0.0),

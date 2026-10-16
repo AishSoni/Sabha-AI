@@ -360,6 +360,15 @@ class TurnEngine:
                             citations, total_cost,
                         )
                     )
+                    # Final answer streams as its own segment BEFORE the
+                    # terminal event so subscribers receive text incrementally
+                    # (CONTRACTS §4 segment identification).
+                    await self._store.append_event(
+                        record.turn_id, "text_delta",
+                        {"segment_id": f"{record.turn_id}:final",
+                         "invocation_index": invocation_index - 1,
+                         "content": final_text},
+                    )
                     await self._store.append_event(
                         record.turn_id, "turn_completed",
                         {"message_id": saved.id, "usage_completeness": "complete" if usage_known else "unknown"},
@@ -388,7 +397,8 @@ class TurnEngine:
             )
             await self._store.append_event(
                 record.turn_id, "text_delta" if text else "invocation_finished",
-                {"invocation_index": invocation_index - 1, "content": text[:2000]},
+                {"segment_id": f"{record.turn_id}:{invocation_index - 1}",
+                 "invocation_index": invocation_index - 1, "content": text[:2000]},
             )
             for tc in calls:
                 execution_id = f"{record.turn_id}:{invocation_index - 1}:{tc.id}"
@@ -548,4 +558,5 @@ def _message_create(meeting_id: str, participant: Any, content: str,
         sender_id=participant.id, sender_name=participant.name,
         tool_artifacts={"tool_calls": tool_artifacts} if tool_artifacts else None,
         estimated_cost=cost,
+        citations=citations or [],
     )
