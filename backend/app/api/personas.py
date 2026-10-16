@@ -14,18 +14,11 @@ from app.models import (
     PersonaListResponse,
 )
 from app.modules.access.actors import Actor
+from app.modules.access.deps import persona_visible_or_404 as _visible_or_404
 from app.modules.access.deps import require_actor
 from app.services.persona_manager import PersonaManager
 
 router = APIRouter(prefix="/api/personas", tags=["personas"])
-
-
-def _visible_or_404(actor: Actor, persona) -> None:
-    """Shared default personas are visible to all; owned rows stay private."""
-    if persona.is_default:
-        return
-    if not persona.user_id or persona.user_id != actor.identity:
-        raise HTTPException(status_code=404, detail="Persona not found")
 
 
 @router.get("", response_model=PersonaListResponse)

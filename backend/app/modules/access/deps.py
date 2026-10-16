@@ -33,3 +33,19 @@ def owner_or_404(actor: Actor, owner_id: Optional[str]) -> None:
         require_owner(actor, owner_id, resource="meeting")
     except LookupError as exc:
         raise HTTPException(status_code=404, detail="Meeting not found") from exc
+
+
+def persona_visible_or_404(actor: Actor, persona) -> None:
+    """Shared default personas are visible to all; owned rows stay private."""
+    if getattr(persona, "is_default", False):
+        return
+    owner_id = getattr(persona, "user_id", None)
+    if not owner_id or owner_id != actor.identity:
+        raise HTTPException(status_code=404, detail="Persona not found")
+
+
+def stack_owned_or_404(actor: Actor, row: dict) -> dict:
+    """Cross-owner and ownerless stacks read as not-found."""
+    if not row.get("user_id") or row["user_id"] != actor.identity:
+        raise HTTPException(status_code=404, detail="Knowledge stack not found")
+    return row

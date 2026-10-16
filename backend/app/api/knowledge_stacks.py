@@ -10,16 +10,9 @@ from app.models.knowledge_stacks_schemas import (
     KnowledgeStackListResponse
 )
 from app.modules.access.actors import Actor
-from app.modules.access.deps import require_actor
+from app.modules.access.deps import require_actor, stack_owned_or_404 as _owned_or_404
 
 router = APIRouter(prefix="/api/knowledge_stacks", tags=["knowledge_stacks"])
-
-
-def _owned_or_404(actor: Actor, row: dict) -> dict:
-    """Cross-owner and ownerless stacks read as not-found."""
-    if not row.get("user_id") or row["user_id"] != actor.identity:
-        raise HTTPException(status_code=404, detail="Knowledge stack not found")
-    return row
 
 
 @router.get("", response_model=KnowledgeStackListResponse)
