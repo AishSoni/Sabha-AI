@@ -147,10 +147,15 @@ Sabha/
 ├── design.md                     # Product design document (v1.2)
 │
 ├── backend/
-│   ├── main.py                   # FastAPI app entry point
+│   ├── main.py                   # FastAPI app entry point (converged on factory.create_app())
 │   ├── requirements.txt
-│   ├── supabase_schema.sql       # Full DB schema (run once in Supabase)
+│   ├── supabase_schema.sql       # Base DB bootstrap (follow with migrations/002-007)
+│   ├── migrations/               # Incremental schema: 002 personas → 007 demo sessions
+│   ├── tests/                    # pytest suites: api, application, contract, unit, regression
 │   └── app/
+│       ├── factory.py            # Canonical app construction (lifespan, routers)
+│       ├── modules/              # Consolidated domain logic (meetings, personas, knowledge, access)
+│       ├── infrastructure/demo/  # Disabled demo scaffold (returns demo_unavailable)
 │       ├── api/                  # Route handlers
 │       │   ├── meetings.py       # Meeting CRUD + turn execution
 │       │   ├── participants.py   # AI participant endpoints
@@ -230,11 +235,22 @@ cp frontend/.env.example frontend/.env.local
 
 ### 3. Set up the database
 
-Open your [Supabase SQL Editor](https://app.supabase.com) and run the full schema:
+Open your [Supabase SQL Editor](https://app.supabase.com) and run the base schema first:
 
 ```bash
 # Copy contents of this file and run in Supabase SQL Editor
 cat backend/supabase_schema.sql
+```
+
+Then apply the incremental migrations **in numeric order** (they add personas, knowledge stacks, meeting lifecycle, persona configuration, knowledge durability, and demo-session tables, and widen the base CHECK constraints):
+
+```bash
+cat backend/migrations/002_personas.sql
+cat backend/migrations/003_knowledge_stacks.sql
+cat backend/migrations/004_meeting_lifecycle.sql
+cat backend/migrations/005_persona_configuration.sql
+cat backend/migrations/006_knowledge_durability.sql
+cat backend/migrations/007_demo_sessions.sql
 ```
 
 ### 4. Start the backend
@@ -303,14 +319,14 @@ CORS_ORIGINS=http://localhost:3000
 ```env
 NEXT_PUBLIC_SUPABASE_URL=https://your-project.supabase.co
 NEXT_PUBLIC_SUPABASE_ANON_KEY=your_supabase_anon_key
-NEXT_PUBLIC_API_URL=http://localhost:8000
+NEXT_PUBLIC_API_URL=http://localhost:8000/api
 ```
 
 ---
 
 ## 🗄️ Database Setup
 
-Run `backend/supabase_schema.sql` once in your Supabase SQL Editor. It creates:
+Run `backend/supabase_schema.sql` once in your Supabase SQL Editor as the base bootstrap, then apply `backend/migrations/002-007` in order. Together they create:
 
 | Table | Purpose |
 |---|---|
@@ -320,8 +336,14 @@ Run `backend/supabase_schema.sql` once in your Supabase SQL Editor. It creates:
 | `disagreements` | Logged disagreements with severity scores |
 | `consensus` | Logged consensus points with strength scores |
 | `documents` | Document metadata for the RAG pipeline |
+| `personas` / `prompt_versions` | Reusable persona templates and versioned prompts (002, 005) |
+| `knowledge_stacks` / `persona_knowledge_stacks` | Private knowledge collections per persona (003) |
+| `queue_entries` / `ending_attempts` / `ending_votes` | Meeting lifecycle: queue, voting, endings (004) |
+| `usage_ledger` / `execution_leases` | Cost ledger and single-flight leases (004) |
+| `document_ingestion_jobs` / `vector_cleanup_outbox` | Restart-safe indexing and vector cleanup (006) |
+| `demo_sessions` | Synthetic-only demo sessions (007) |
 
-Row Level Security (RLS) is enabled on all tables. Policies are permissive by default for easy local development — **tighten these before any production deployment**.
+Row Level Security (RLS) policies on the base tables are permissive by default for easy local development — **tighten these before any production deployment**. Demo tables intentionally rely on app-layer ownership checks instead of RLS (see `007_demo_sessions.sql`).
 
 ---
 
@@ -398,8 +420,8 @@ The full interactive API docs are available at `http://localhost:8000/docs` when
 | `POST` | `/api/meetings` | Create a new meeting |
 | `GET` | `/api/meetings/{id}` | Get meeting detail (with messages) |
 | `DELETE` | `/api/meetings/{id}` | Delete a meeting |
-| `POST` | `/api/meetings/{id}/turn/{participant_id}` | Trigger an AI turn (non-streaming) |
-| `GET` | `/api/meetings/{id}/turn/{participant_id}/stream` | Trigger an AI turn **(SSE streaming)** |
+| `POST` | `/api/meetings/{id}/turn` | Trigger an AI turn (non-streaming) |
+| `POST` | `/api/meetings/{id}/turn/stream` | Trigger an AI turn **(SSE streaming)** |
 | `POST` | `/api/meetings/{id}/message` | Send a user message |
 
 #### Roster & Personas
@@ -414,20 +436,25 @@ The full interactive API docs are available at `http://localhost:8000/docs` when
 | Method | Endpoint | Description |
 |---|---|---|
 | `POST` | `/api/documents/upload` | Upload & index a document |
-| `GET` | `/api/documents` | List documents (by meeting or stack) |
+| `GET` | `/api/documents/meeting/{meeting_id}` | List documents for a meeting |
+| `GET` | `/api/documents/persona/{persona_id}` | List documents for a persona |
+| `GET` | `/api/documents/stack/{stack_id}` | List documents for a knowledge stack |
 | `DELETE` | `/api/documents/{id}` | Delete a document |
 
 #### Knowledge Stacks
 | Method | Endpoint | Description |
 |---|---|---|
-| `GET` | `/api/knowledge-stacks` | List all knowledge stacks |
-| `POST` | `/api/knowledge-stacks` | Create a new knowledge stack |
+| `GET` | `/api/knowledge_stacks` | List all knowledge stacks |
+| `POST` | `/api/knowledge_stacks` | Create a new knowledge stack |
 
 #### Settings
 | Method | Endpoint | Description |
 |---|---|---|
-| `GET` | `/api/settings` | Get current app settings |
-| `PUT` | `/api/settings` | Update settings |
+| `GET` | `/api/settings/providers` | List configured LLM providers |
+| `POST` | `/api/settings/models` | Fetch available models for a provider |
+| `POST` | `/api/settings/test-key` | Validate a provider API key |
+| `GET` / `PUT` | `/api/settings/preferences` | Get/update non-secret preferences |
+| `GET` | `/api/settings/effective` | Resolve effective inference settings |
 
 ---
 
@@ -461,20 +488,42 @@ See [`AGENTS.md`](./AGENTS.md) for the full agent architecture spec, including:
 - [x] Cost estimation per message and per meeting
 - [x] Thinking tokens support (for extended reasoning models)
 
-### ✅ Phase 2 – The Brain (RAG + Tools) — *In Progress*
+### ✅ Phase 2 – The Brain (RAG + Tools) — *Complete*
 - [x] Document upload & Qdrant indexing
 - [x] `search_knowledge_base` tool for agents
 - [x] Private Knowledge Stacks per persona
 - [x] Web search tool (Tavily integration)
 - [x] Citations rendered in chat bubbles
 
-### 🔄 Phase 3 – Robustness — *Planned*
+### ✅ Later phases — *Complete (see specs/MASTER.md for the full record)*
+- [x] Meeting lifecycle: queue, voting, atomic endings, leases, cost ledger
+- [x] Persona configuration hardening: canonical providers, transactional prompt versions
+- [x] Knowledge durability: restart-safe ingestion jobs, vector cleanup outbox
+- [x] Demo scaffold (disabled by default, synthetic-only sessions)
+- [x] Core consolidation: canonical modules, factory app construction, regression ledger green
+
+### 🔄 Next — *Planned*
+
+### 🔄 Next — *Planned*
 - [ ] Context compression (semantic summarization for long meetings)
 - [x] Meeting summary generation
 - [ ] Fork & replay a meeting from any point
 - [ ] Supabase Auth + multi-user support
 - [ ] Cost dashboard and billing overview
 - [ ] Auto-facilitate toggle (lightweight moderator AI)
+
+---
+
+## 🧪 Testing
+
+| Working directory | Command | Purpose |
+|---|---|---|
+| `backend/` | `python -m pytest -m "not integration"` | Offline fast suite |
+| `backend/` | `python -m pytest -m integration` | Isolated-infrastructure suite (needs Qdrant/Supabase) |
+| `frontend/` | `npm run test -- --run` | Vitest non-watch run |
+| `frontend/` | `npm run test:coverage` | Frontend coverage evidence |
+| `frontend/` | `npm run lint` | Lint check |
+| `frontend/` | `npm run build` | Production build |
 
 ---
 

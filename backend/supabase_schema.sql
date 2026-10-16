@@ -1,5 +1,9 @@
--- Sabha Database Schema
--- Run this in Supabase SQL Editor
+-- Sabha Database Schema (base bootstrap)
+-- Run this in Supabase SQL Editor, THEN apply backend/migrations/002-007
+-- in numeric order: the base CHECK constraints here (e.g. meetings status,
+-- document ownership) are widened/extended by those migrations, and the
+-- personas, knowledge stacks, lifecycle, durability, and demo tables only
+-- exist there.
 
 -- Enable UUID extension
 CREATE EXTENSION IF NOT EXISTS "uuid-ossp";
