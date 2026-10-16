@@ -21,7 +21,7 @@ Public composition must not merely hide controls in the UI. It must not construc
 ## Required runtime behavior
 
 - Demo mode is server-enforced at startup and request dispatch. No API keys are required; live provider/embedding/search adapters are unavailable. Missing fixtures fail closed.
-- Implement generic session issuance/status/reset/expiry plus route allowlisting. Private test bootstrap creates only isolated synthetic/empty state through a seed interface. Real scenario bootstrap/actions stay unavailable until Phase 10 supplies approved content and handlers. Disable arbitrary uploads, persona/global settings mutation, model/key testing and unrestricted meeting creation.
+- Implement persistent generic session issuance/status/reset/expiry plus route allowlisting and nullable pre-meeting state. Private test bootstrap creates only isolated synthetic/empty state through a seed interface. Real scenario bootstrap/actions stay unavailable until Phase 10 supplies approved DB content and handlers. Disable arbitrary uploads, unrestricted persona/prompt/global settings mutation, model/key testing and unrestricted meeting creation. Phase 10 may allow bounded session-owned template-based stack/persona/meeting operations and approved stored-document attachment through ordinary endpoints; the server must enforce field/template/prerequisite/count restrictions, not rely on the guide UI.
 - Use non-cacheable responses for session-specific data/credentials; do not cache authorization-bearing streams through shared caches. Configure allowed origins deliberately; CORS is not authentication.
 - Sessions enforce idle/absolute expiry and server-owned generation fencing. Expiry denies reads/actions and stops/fences remaining jobs; periodic cleanup removes mutable records/events/source references within a documented retention window.
 - Rate/capacity limits cover unauthenticated session creation as well as per-session writes/actions. Reset does not reset lifetime abuse counters. Request/body/event/queue/storage/concurrency limits have typed errors and bounded cleanup.
@@ -45,6 +45,8 @@ Document required process/worker lifetime, durable database/storage support, SSE
 
 Demo retrieval requires no Qdrant. Reuse approved relational metadata storage; avoid adding a broker just for the demo. Validate that platform logging/caching does not expose session tokens and that a process restart does not lose the authoritative queue.
 
+The production session/progress/queue/runner must use the real persistent adapters, not process-local test stores behind superficially successful routes. Phase 10's approved research/guide/provider package is DB-backed with originals in managed storage; missing content fails closed. Allowlisted reads include authorized original-document viewing without third-party fetches. Authoring live research is a separate environment and cannot be enabled by a runtime request flag.
+
 ## TDD and runtime cases
 
 - **P08-TEST01:** Directly call every disabled live/network-sensitive endpoint and send live provider/key/URL overrides to allowed routes; forbidden transport invocation count remains zero.
@@ -55,7 +57,7 @@ Demo retrieval requires no Qdrant. Reuse approved relational metadata storage; a
 - **P08-TEST06:** Scan captured logs/responses/storage for credentials and forbidden private payloads; session responses are non-cacheable and credentials never appear in URLs.
 - **P08-TEST07:** Run simultaneous bounded sessions and a slow subscriber; enforce backpressure/retention limits without losing terminal-state recovery or monopolizing workers.
 - **P08-TEST08:** Exercise synthetic session issuance/reset/expiry and core turn/queue/status APIs without AI keys/Qdrant/embedding settings; audit DNS/HTTP attempts and provider-factory calls. No authored scenario is required.
-- **P08-TEST09:** In the local fixture runtime, validate real streaming, disconnect/reconnect, restart recovery and expiry scheduling. Document actual-host/proxy verification as P10-TEST12, not a prerequisite for this local foundation gate.
+- **P08-TEST09:** In the local fixture runtime, validate real incremental turn and ending/summary streaming, disconnect/reconnect, persistent session/queue/worker restart recovery and expiry scheduling. Document actual-host/proxy verification as P10-TEST12, not a prerequisite for this local foundation gate. Do not defer required local transport/durability checks to hosting.
 - **P08-TEST10:** Absent real scenario content, bootstrap/action requests cannot select an instrument, start a walkthrough, invent a successful seed or trigger live market-data refresh; synthetic seed hooks are private/test-only.
 
 ## Acceptance gate

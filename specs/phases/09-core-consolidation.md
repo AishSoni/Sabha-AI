@@ -1,6 +1,6 @@
 # Phase 09 — Core consolidation and regression closure
 
-Status: draft. Depends on: Phases 00-08 core/scaffold/runtime gates. Requirements: R-12, R-13, R-17 and closure of all B-01 through B-11 plus core requirements. R-04 and final journey/release portions of R-03/R-18 remain explicitly assigned to Phase 10.
+Status: core gate/evidence must be re-audited for the 2026-10-16 correction; no pass is inferred from a regression ledger alone. Depends on: Phases 00-08 core/scaffold/runtime gates. Requirements: R-12, R-13, R-17, shared foundations for R-21/R-22 and closure of all B-01 through B-11 plus core requirements. R-04/R-19/R-20 and final journey/release portions of R-03/R-18/R-21/R-22 remain assigned to Phase 10.
 
 ## Objective and outcome
 
@@ -28,10 +28,12 @@ Update root/backend/frontend setup documentation to reflect actual API base pref
 - **P09-T02 — Remove superseded behavior:** delete duplicate algorithms and dead paths, keeping public compatibility only through thin adapters where still required. Update associated imports/tests.
 - **P09-T03 — Boundary enforcement:** add focused architectural import checks or equivalent lint rules for the approved domain dependencies; avoid a brittle ban on harmless standard-library modules.
 - **P09-T04 — Migration finalization:** verify ledger/install instructions, backfill reconciliation, rollback/forward repair and deferred contraction checklist. Archive no data without an explicit approved policy.
-- **P09-T05 — Core documentation:** write local quickstart, scaffold/extension contracts, live-provider configuration, test/integration setup, worker operations, privacy/retention notes and known limitations. Clearly mark the recruiter journey unimplemented.
+- **P09-T05 — Core documentation:** write local quickstart, scaffold/extension contracts, live-provider configuration, test/integration setup, worker operations, privacy/retention notes and known limitations. Identify the corrected real-application tutorial as pending Phase 10 acceptance; an existing standalone substitute is not completion.
 - **P09-T06 — Defect/core traceability closure:** verify red/green evidence for every B-*, close core R-*/acceptance obligations and explicitly carry forward only Phase 10 feature/release requirements; eliminate stale expected failures and misleading success claims.
 - **P09-T07 — Core verification:** run relevant test/static/build suites, fresh-install and supported-upgrade rehearsals, local real-transport tests and manual core-application checks after final cleanup. Use synthetic fixtures, not a recruiter walkthrough.
 - **P09-T08 — Feature-entry baseline:** record architecture boundaries, operational recovery, all eleven closed defects and the ready-to-use interfaces for Phase 10. Final project handoff follows the complete feature and verification in Phase 10.
+
+Re-audit actual shared turn and ending/summary SSE, normal API ownership/CRUD capabilities, durable session/queue/progress and independent tool continuation against the corrected contracts before reopening feature work. Missing Phase 00/02/09 evidence is an explicit audit action, not permission to fabricate past results or assume every core defect remains open. Preserve valid original evidence and obtain new verification where required.
 
 ## TDD and verification cases
 

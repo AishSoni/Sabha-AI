@@ -2,7 +2,7 @@
 
 ## 1. Baseline and framework decisions
 
-The reviewed repository has no identified first-party test suite. `frontend/package.json` has dev/build/start/lint scripts and no test dependencies; `backend/requirements.txt` has no explicit test dependencies. This is a discovery statement, not a claim that installed third-party packages contain no tests.
+At the original 2026-10-14 discovery baseline, no first-party test suite was identified. Tests and evidence now exist; the 2026-10-16 corrective revision requires checking their observable guarantees rather than assuming green counts prove the intended architecture. Earlier discovery notes describe that historical baseline, not the current dependency inventory.
 
 Approved runners: **pytest** backend, **Vitest** frontend. Proposed supporting libraries: AnyIO's pytest plugin with asyncio backend, HTTPX for API tests, pytest-cov, React Testing Library/user-event/jest-dom, and jsdom. Select compatible versions in Phase 01 and record them. No Playwright, including transitively selecting it for Vitest browser mode.
 
@@ -38,6 +38,8 @@ In-process ASGI tests may buffer streaming differently from a real server. Test 
 
 Frontend stream tests feed byte chunks splitting UTF-8 characters, SSE boundaries, CRLF, and multiline data. Include duplicate/out-of-order IDs, same-name tool calls with distinct IDs, terminal replay, malformed data, EOF without terminal, and reset/navigation races.
 
+For the corrected demo, use the real ordinary meeting and ending-attempt subscriptions/reducers. Prove multiple `text_delta` and `summary_delta` updates are received before their terminal events over a local HTTP server, not merely that complete SSE text can be parsed after buffering. Test vote progress/output where presented, ending failure after provisional text, per-execution cursor recovery and generation fencing. JSON-plus-typewriter and a special demo-only event path are failures, even if the final text looks correct.
+
 ## 5. Reviewed defect matrix
 
 | ID | Baseline location / defect | Fix phase | Required regression |
@@ -64,7 +66,7 @@ For every row, write an assertion for the correct behavior, run it against the p
 | --- | --- |
 | R-01, R-11 | Application loop cases plus real finalization rollback/retry tests |
 | R-02, R-06, R-07, R-15 | Domain transition matrix, independent-worker reservation/edit-dispatch races, crash recovery, disconnect smoke test |
-| R-03, R-04 | Phase 03 scaffold and Phase 08 runtime no-network checks; Phase 10 full scenario replay, fixture-result assertions and guided/explore/reset frontend tests |
+| R-03, R-04 | Phase 03 scaffold and Phase 08 runtime no-network checks; Phase 10 real-home entry, UI00-UI08 route/overlay coverage, shared-workflow replay, independent fixture-result assertions and guided/explore/reset tests |
 | R-05, R-16 | Actual actor boundary matrix across routes, session expiry/reset tests, disabled network-sensitive routes |
 | R-08, R-09 | Snapshot/refresh conflict cases and adapter-call configuration capture |
 | R-10 | Private/shared scope tests, revocation/tombstone checks, real Qdrant cleanup tests |
@@ -72,10 +74,25 @@ For every row, write an assertion for the correct behavior, run it against the p
 | R-13, R-17 | Reproducible scripts, dependency records, phase evidence, no hidden skips |
 | R-14 | Fragmented/replayed streams, load/navigation races, generation isolation, terminal reconciliation |
 | R-18 | Phase 00 design-contract review; Phase 10 verified single-ISIN manifest, claim/source/calculation mappings, distinct specialist contributions, dated facts versus judgments and user verification/disclosure presentation (P00-TEST06, P10-TEST05, P10-TEST06, P10-TEST09, P10-TEST10) |
+| R-19 | Persistent watermark/context on every UI00-UI08 route, reload/resume, paused/dismissed guidance, ended and fork views; placement/accessibility verified manually (P10-TEST15, P10-TEST16) |
+| R-20 | Approved DB seed/research-run provenance, original stored documents/checksums, review and analytical choices; import/version/pinning/restart tests and no precompleted visitor effects (P10-TEST06, P10-TEST17) |
+| R-21 | Normal API reads prove real form-created resources and tool/queue/ending effects; shared provider history contains actual tool results; no fake IDs or parallel workflow (P10-TEST01, P10-TEST02, P10-TEST07, P10-TEST14, P10-TEST18) |
+| R-22 | Incremental shared turn and ending SSE over local HTTP, all AI surfaces, dedup/reconnect/EOF/reset/summary-failure tests; actual-host checks separate (P10-TEST08, P10-TEST12, P10-TEST19) |
 
 Each phase adds named Pxx-TEST cases and maps its acceptance criteria to those groups. Expand these into concrete test names in implementation evidence; matrix rows do not substitute for test execution.
 
 Real-bond factual verification is a recorded authoring/content-review task, not something a scripted replay proves. Ordinary tests use the reviewed frozen evidence pack offline and detect drift, unsupported references, wrong instrument/snapshot, mislabeled assumptions and calculation errors. They must not fetch live financial information or assert that a historical rating/price is still current.
+
+The seed additionally requires a recorded genuine research run through the actual application boundaries, real document capture and human/content review of substantive analytical choices. Preserve visible run/tool/provider artifacts and editorial changes, not private chain-of-thought. Do not invent a successful research run, fixed unanimous votes or provenance merely to make a test pass. Separately authorized authoring may use live research/inference, but test collection, CI and recruiter sessions must not require it. An independent expected hash/assertion must be approved before runtime comparison; self-hashing the actual result is not a retrieval-integrity test.
+
+### Corrective demo acceptance design
+
+- Vitest mounts the normal home/navigation/page/store boundaries with the guide layer, not the retired standalone component. Cover every UI00-UI08 page class/tab, actual form outcomes, short what/why copy, expandable technical explanations, stable anchor availability, pause/back/skip/exit/resume and watermark persistence. Removing/dismissing the overlay leaves normal controls functional within server-enforced capabilities.
+- Normal API reads must verify real created stacks/personas/participants/meeting, messages, queue dispatch, citations, disagreements, consensus, votes, summary and status. Include actual SQL integration for durability, transaction failures and cross-process coordination; fake repositories alone do not pass these gates.
+- Corrupt/remove stored evidence or independently approved expected assertions and show that continuation fails without success/progress. Verify actual returned tool results and original call IDs reach the shared provider continuation. A counter/list of tool names is insufficient.
+- Prove production content loads from the approved DB package, startup has no live calls and no precompleted research effects, every session is isolated, reset preserves shared originals, old versions are pinned/restarted explicitly and meaningful unsupported form edits fail honestly.
+- Record desktop/narrow/keyboard/reduced-motion browser walkthrough observations for every route/tab and watermark/overlay placement, plus actual local transport timing evidence. jsdom, a route build list, grep-only network scans and final-response string assertions cannot replace that evidence.
+- Earlier Phase 10 evidence is historical and its local pass is superseded. Do not reuse aggregate counts as approval of revised requirements; missing core gate/integration/manual evidence remains visible until reverified.
 
 Before Phase 10, use synthetic, clearly test-only data for core/scaffold/runtime acceptance. Those fixtures are not a second public scenario and do not implement J00-J09. Phase 10 alone supplies the complete authored-journey acceptance and P10-TEST12 actual-host release evidence.
 

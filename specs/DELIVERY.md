@@ -78,9 +78,19 @@ The scenario decision remains current; phase assignments in this historical reco
 - **Compatibility:** specification-only resequencing; no application/schema implementation has been performed. Files 03/08/09 are renamed to reflect their revised scope; task IDs retain their phase namespace but this draft revision changes their scope. No old success evidence is reused as proof of the new gates.
 - **Release:** G4 follows Phase 10 and actual-host validation. Hosting procurement remains separate. No new phase after Phase 10 is required for planned feature development.
 
+### Corrective change record — real-application tutorial and research-backed seed (2026-10-16)
+
+- **Reason/status:** user explicitly requires complete removal of the standalone UI, a demo button on the actual home page, concise videogame-style overlays over ordinary screens, a persistent DEMO watermark, minimal backend facilitation through existing utilities, and DB-seeded content from a real research run using real bond documents and genuine analytical decisions. These product requirements are confirmed; numeric/technical defaults and D-01's concrete research approval are not implied. This commit changes specifications only, not implementation acceptance.
+- **Affected scope:** R-03/R-04/R-18 and new R-19..R-22; D-01; README, MASTER, CONTRACTS, DEMO-JOURNEY, TESTING and affected Phase 00/03/04/07/08/09/10 contracts. The separate script-player experience and hardcoded/process-local production content are rejected alternatives. Repair existing utilities rather than writing another demo engine.
+- **UI/API impact:** actual routes and ordinary CRUD/turn/queue/ending APIs remain primary. A persistent tutorial adds trusted anchor-based instructions and a watermark. Bootstrap/status must support pre-meeting setup, returning nullable current resources, pinned guide metadata, actual application state and recovery cursors. Demo actions coordinate/acknowledge supported steps or delegate once to existing use cases; they never return substitute completed transcripts/effects. All AI surfaces, including ending/summary, require shared incremental SSE and recoverable status.
+- **Data/content impact:** preserve original source documents, provenance/claim mappings and the approved research-run artifacts in versioned DB-backed assets. Record substantive evidence-based choices and uncertainty; do not predetermine votes or agreement solely for presentation. Recorded provider outputs go through the shared tool loop, whose actual results are checked against independently approved assertions. Only session-owned effects are created at runtime. Original PDFs may use managed storage with DB metadata/checksums; runtime cannot depend on third-party fetches.
+- **Security/compatibility:** add bounded template-based stack/persona/meeting operations needed by the real forms while continuing to deny arbitrary uploads, prompt/provider escapes and unrelated mutations. Preserve all existing user data and applied migrations; migrate/add versioned assets compatibly. The legacy `/demo` component tree is removed, with at most a redirect to home. Existing sessions must either keep their approved version or receive an explicit restart response; never silently reinterpret old progress.
+- **Verification:** add route/overlay/watermark tests, normal-API persisted-outcome tests, reviewed research-run provenance, actual incremental turn/ending transport, no-network and isolation/reset/recovery tests. Desktop/narrow/keyboard/reduced-motion manual evidence is mandatory; jsdom and aggregate green counts are not substitutes.
+- **Reverification/gates:** reopen Phase 10 and re-audit affected earlier core/runtime contracts, especially missing Phase 00/02/09 evidence and Phase 07/08 transport/durability obligations. Do not infer all bugs remain open, or all are closed, from missing documents alone. Preserve historical outputs but supersede unsupported completion claims. G4 remains blocked until corrected local acceptance plus actual-host evidence; no blanket pass is issued by this revision.
+
 ## 6. Phase evidence record
 
-Store implementation evidence under a future `specs/evidence/phase-XX.md` when the phase is executed. It MUST contain:
+Store implementation evidence under `specs/evidence/phase-XX.md` when the phase is executed or reverified. It MUST contain:
 
 - Spec revision and resolved decisions.
 - Task/acceptance IDs completed and code/test paths.
@@ -91,7 +101,7 @@ Store implementation evidence under a future `specs/evidence/phase-XX.md` when t
 - Manual acceptance observations and remaining limitations.
 - Exit decision: pending, passed, or blocked; no fabricated green status.
 
-No evidence files are pre-populated with success claims in this draft.
+Existing evidence files are historical reports, not proof of compliance with later revisions. Annotate superseded acceptance decisions without erasing original commands or inventing replacement results. Missing core gate records, unrun integration prerequisites and missing manual checks must remain visible blockers where required.
 
 ## 7. Release and rollback rules
 

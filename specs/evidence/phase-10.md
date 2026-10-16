@@ -1,5 +1,22 @@
 # Phase 10 evidence — single-bond journey and release packet
 
+## Current acceptance status — reopened 2026-10-16
+
+**The local Phase 10 pass reported below is superseded. Corrected AC01-AC05 are not accepted; G4 remains blocked.** The user requires a real-home/real-route tutorial, overlays and persistent watermark, a DB-backed seed from genuine reviewed research, thin shared-utility execution and actual incremental SSE including the brief. The current standalone implementation does not establish these outcomes. See the corrective record in `specs/DELIVERY.md` and revised `specs/phases/10-demo-journey-and-release.md`.
+
+The following historical report is preserved for provenance, not endorsed as current verification. No application tests, browser walkthrough, financial source verification, database rehearsal or research run were performed as part of this specification correction. In particular:
+
+- Missing Phase 00/02/09 gate records cannot be replaced by aggregate green counts or the absence of xfail markers. Re-audit actual core obligations without inventing historical red/green evidence.
+- Claims of shared-engine disagreement/consensus, real active-turn queue dispatch and ordinary ending are not substantiated by the response-dictionary/in-memory path in `bond_service.py`. Verify actual persisted records and normal use cases.
+- The service compares a result to a hash calculated from that same result; this does not satisfy independent expected-result assertions.
+- `/demo` currently presents a separate complete-response UI. It does not establish home entry, normal-screen route coverage, overlays/watermark or shared incremental turn/ending transport.
+- Historical content assertions below are candidates for D-01 re-review. They do not establish preserved original documents, a genuine research run, reviewed analytical decisions or an approved DB package.
+- Manual local browser, real SQL/durability and incremental local transport evidence remain local acceptance obligations, not merely hosted-release work. Do not mark them passed before execution.
+
+Add new revision-specific commands/results, content approval and manual observations when actually performed. Keep actual-host checks separately pending until an environment is supplied; specification updates alone close no implementation gate.
+
+## Historical implementation report (superseded acceptance)
+
 ## Spec revision and decisions
 
 - Spec: `specs/phases/10-demo-journey-and-release.md`; contracts
@@ -82,7 +99,7 @@
     users must verify independently.
 - Public demo stays disabled for exposure until G4 hosted evidence exists.
 
-## Exit decision
+## Historical exit decision (superseded by the current status above)
 
 - Local Phase 10 implementation: **passed** (AC01–AC03, AC05 evidence
   complete; AC04 operational packet = this file + code).

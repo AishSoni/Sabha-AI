@@ -1,13 +1,15 @@
 # Sabha refactor and deterministic demo specifications
 
-Status: **Draft for review; implementation has not started.**
-Baseline: repository reviewed on 2026-10-14. File references describe that baseline, not permanent line numbers.
+Status: **Corrective specification revision, 2026-10-16.** The user-confirmed product direction below supersedes the standalone demo. Implementation exists but is not accepted as satisfying this revision; technical defaults still require their recorded approvals.
+Baseline: original repository review on 2026-10-14; demo/spec discrepancy review on 2026-10-16. File references describe reviewed baselines, not permanent line numbers.
 
 ## Purpose
 
 Deliver a reliable AI advisory-board application through an incremental, domain-oriented modular-monolith refactor. Ship a deterministic recruiter onboarding experience through the same application workflows without paid AI dependencies. Preserve existing data. Use pytest for backend tests and Vitest for frontend tests, with no Playwright dependency or browser provider.
 
-The demo centers on exactly one real Indian corporate bond, examined by complementary credit, structure/downside and treasury/market specialists. Position Sabha as a meeting-style tool for sourced, subjective analysis supporting the user's own informed executive decisions. Show not-financial-advice and independent-verification context. The exact bond/ISIN and dated evidence pack remain open under D-01; see [the journey specification](DEMO-JOURNEY.md).
+The demo starts from a **Try the demo** button on the actual home page and teaches the normal application across its real routes using concise, videogame-style overlays and a persistent DEMO watermark. Remove the standalone demo UI completely. The backend provides thin session/seed coordination around shared application utilities; the database supplies a versioned journey package derived from a genuine, reviewed research run with real documents for exactly one Indian corporate bond. All AI output, including the executive brief, arrives incrementally through actual SSE. Recorded analysis is disclosed, never represented as fresh live inference.
+
+Complementary credit, structure/downside and treasury/market specialists support the user's informed executive decision, not financial advice. D-01 must approve the research-run provenance, exact ISIN, source snapshot and recorded analysis; existing code constants or earlier completion claims do not establish that approval. See [the journey specification](DEMO-JOURNEY.md) and [the corrective change record](DELIVERY.md#corrective-change-record--real-application-tutorial-and-research-backed-seed-2026-10-16).
 
 ## Read in this order
 
@@ -32,9 +34,11 @@ The demo centers on exactly one real Indian corporate bond, examined by compleme
 | 07 | [Frontend reliability and QoF](phases/07-frontend-reliability.md) | Correct core stores/streams, editable queue and reusable accessible components |
 | 08 | [Demo runtime foundations](phases/08-demo-runtime-hardening.md) | Generic session lifecycle, isolation, bounds and no-live-service policy; synthetic checks |
 | 09 | [Core consolidation](phases/09-core-consolidation.md) | All eleven defects closed with red/green evidence; refactor complete before feature entry |
-| 10 | [Complete demo journey and release](phases/10-demo-journey-and-release.md) | Final development phase: full single-bond journey, exploration, content/UI, release verification and handoff |
+| 10 | [Complete demo journey and release](phases/10-demo-journey-and-release.md) | Reopened: real-app tutorial, DB research seed, shared streaming workflows, exploration and verified handoff |
 
 **First usable recruiter demonstration:** Phase 10. **Public-exposure gate:** G4 after Phase 10 feature/runtime verification and actual-host checks. Hosting selection and provisioning remain a separate user-owned workstream.
+
+Existing evidence is historical, not automatic acceptance of the correction. Re-audit missing core gate records and shared-workflow obligations; a green test count does not replace them. Phase 10 remains reopened until the revised route, research, persistence, streaming and manual acceptance gates have evidence.
 
 Each affected phase starts with a test asserting the correct behavior that fails for its known bug, records that failure, fixes the bug, then refactors with the regression green. Phase 03 is scaffolding only. Core fixes/refactoring and reusable infrastructure finish through Phase 09; the complete J00-J09 feature is implemented together in Phase 10, including the real queue exercise rather than an early substitute.
 

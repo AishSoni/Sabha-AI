@@ -1,6 +1,6 @@
 # Shared domain and interface contracts
 
-Status: proposed technical baseline. Product decisions marked D-* require approval in MASTER.md. These contracts become normative after that approval.
+Status: technical baseline with the user-confirmed real-application tutorial correction of 2026-10-16. Product direction is recorded in MASTER.md; proposed D-* defaults still need their own approvals. This document is a target contract, not a claim that current code implements it.
 
 ## 1. Identity, ownership, and authorization
 
@@ -13,6 +13,8 @@ Demo bootstrapping issues a high-entropy opaque credential plus public session I
 sessionStorage survives refresh in a tab, not a guaranteed cross-browser restore or a reliable close notification. Tab duplication can copy storage: document this; do not claim strict isolation between duplicated tabs that hold the same credential. Independent new sessions must be isolated. Server expiry and cleanup remain authoritative even when the tab disappears.
 
 Legacy user IDs have inconsistent types/nullable semantics. Migration must map them explicitly or quarantine them under D-12. Shared/default persona reads do not grant shared mutation permission. Never expose ownerless historical records through a demo session.
+
+The real-screen tutorial permits bounded session-owned stack/persona/meeting creation and approved-document attachment through ordinary application endpoints. Resolve approved templates, fields, resource count limits and journey prerequisites server-side. Arbitrary uploads, other instruments, unrestricted prompt/provider mutation, live key/model testing and global settings writes remain denied. A demo flag/action ID is never authorization, and disabling controls alone is insufficient. Do not broaden the allowlist to unrestricted CRUD merely to reuse forms.
 
 ## 2. Meeting lifecycle
 
@@ -102,6 +104,18 @@ Deletion first records a tombstone and cleanup job with sufficient vector/storag
 
 The real-bond demo pins one instrument identity/ISIN, scenario revision and dated source snapshot. Fixture citations preserve publisher/original URL, publication/effective and retrieval dates, page/section locator and content hash. Authored claims distinguish `sourced_fact`, `derived_calculation`, `subjective_judgment` and `unverified_question`; calculations identify inputs and conventions. A private analytical worksheet is labeled as demo-authored, not an issuer disclosure. Missing/current market evidence remains an explicit verification need; no runtime market-data fetch or invented quote fills the gap.
 
+### DB-backed journey and research provenance
+
+The approved immutable package stores the exact instrument/snapshot, source/chunk metadata and content, managed original-document references/checksums, claims/calculations, specialist/prompt templates, starting-state templates, guide copy/anchor keys, allowed transitions/branches, recorded provider invocations, independent tool-result assertions, and research-run/reviewer approval records. Relational tables/structured versioned payloads and managed document storage may be used; this contract does not require PDFs in SQL rows or a new vector service. All visitor-visible content must be available from the deployed DB/storage without third-party document fetches. Runtime Python/TypeScript constants and in-memory dictionaries are not the production content or progress store.
+
+Research-run records identify the authoring run/configuration, document versions/hashes, provider/tool artifacts, citations, actual analytical choices, votes, final brief, review/date and editorial changes. Preserve visible reasoning/decision rationale, not private chain-of-thought. Authoring may use separately authorized live services; deployed demo composition never does. Do not manufacture fixed vote/consensus/disagreement outcomes before research. Successful ending still obeys the same majority and persistence rules.
+
+An approved package is immutable and pinned per session generation. Updates publish a new version; support old pinned versions or return an explicit restart requirement. Missing/unapproved/drifted assets fail closed. Seed/import is idempotent and separate from session creation. Visitor startup creates only the initial resources; actual guided forms create subsequent session-owned resources. Preloaded research artifacts must not appear as effects the visitor has already committed. Shared assets survive reset/expiry, while mutable session progress, queues, turns and effects remain owned and fenced.
+
+The recorded provider is injected into the existing bounded loop. It receives actual authorized tool results with original call IDs and validates continuation against independently reviewed expected hashes/assertions after normalizing volatile IDs/times. Computing the expected hash from the actual result is prohibited. The demo coordinator delegates to existing use cases and observes their committed outcomes; it cannot synthesize tools, scoreboard entries, queue state, votes, summaries or meeting IDs in response dictionaries.
+
+Guide metadata uses stable logical anchor/route keys resolved by a frontend-owned registry, not executable HTML, arbitrary URLs/selectors or server-supplied DOM scripts. Presentation acknowledgement is distinct from committed application progress. Back/review does not repeat commands; skip/pause/dismiss cannot grant permissions or erase the persistent DEMO watermark. Switching out of demo scope clears the associated client caches/credentials without exposing another actor's data.
+
 ## 8. Application ports
 
 Suggested contracts, implemented as typed interfaces/protocols rather than mandatory base classes:
@@ -116,6 +130,7 @@ Suggested contracts, implemented as typed interfaces/protocols rather than manda
 | PersonaRepository | Version activation and snapshot/refresh reads with concurrency checks |
 | JobStore / Runner | Durable job/turn claims, retry policy, heartbeat and recovery |
 | Clock / ID source | Controlled time and identities for tests; secure runtime implementations |
+| DemoPackageRepository | Load approved pinned DB content, research provenance, recorded invocations and guide metadata; no application business-rule execution |
 
 Cross-module access uses application interfaces, not another module's raw SQL tables from route handlers. Query projections may be optimized without loading full aggregates.
 
@@ -127,10 +142,10 @@ Delivery ownership: Phase 03 defines demo composition/types only; core operation
 
 | Operation | Request | Success / important conflicts |
 | --- | --- | --- |
-| `POST /demo/sessions` | the sole approved scenario ID/version; server validates against deployed manifest | 201 credential, session, generation, expiry, current meeting, instrument/snapshot metadata and allowed actions; reject alternate scenarios/instruments |
-| `GET /demo/session` | authenticated session | 200 authoritative progress/generation/expiry |
-| `POST /demo/reset` | expected generation + idempotency key | 200 new generation/meeting; revoke old work atomically |
-| `POST /demo/actions` | action ID, expected scenario revision, idempotency key | 200/202 accepted action/turn; 409 unsupported at this step/stale revision |
+| `POST /demo/sessions` | sole approved scenario/version + creation idempotency key; validate against approved DB package | 201 credential, session, generation, expiry, pinned guide/content metadata, initial resource references, nullable current meeting, instrument/snapshot and allowed actions; reject alternate scenarios/instruments |
+| `GET /demo/session` | authenticated session | 200 authoritative UI/application progress, generation/expiry, pinned versions, created resource references, nullable current meeting, active turn/ending attempt, queue and replay cursors; usable before meeting creation |
+| `POST /demo/reset` | expected generation + idempotency key | 200 new generation/initial resource references and nullable current meeting; fence old work atomically, return to real-home guidance |
+| `POST /demo/actions` | action ID, expected scenario revision/generation, idempotency key | 200 acknowledgement or 202 shared execution reference; 409 unsupported/stale. Thin coordination or one delegation to a normal use case; never a substitute completed `final_text`/fabricated-effect response |
 | `POST /meetings/{id}/turns` | participant ID + idempotency key | 202 turn ID/state/stream URL (without token); 409 busy/invalid state |
 | `GET /turns/{id}` | actor | 200 state, result reference, event cursor, safe failure/usage details |
 | `GET /turns/{id}/events?after={sequence}` | actor; non-secret cursor | ordered SSE replay followed by live subscription |
@@ -141,10 +156,13 @@ Delivery ownership: Phase 03 defines demo composition/types only; core operation
 | `DELETE /meetings/{id}/queue/{entry}` | expected revision | 204 removed; 409 dispatched/stale |
 | `POST /meetings/{id}/ending-attempts` | force flag + idempotency key | 202 attempt reference; 409 busy/queue/non-active |
 | `GET /ending-attempts/{id}` | actor | 200 progress/outcome/votes/summary reference |
+| `GET /ending-attempts/{id}/events?after={sequence}` | actor; non-secret cursor | ordered SSE replay/live vote and summary progress using the shared execution/event infrastructure |
 | `POST /participants/{id}/refresh-preview` | target persona revision | 200 field diff and expected revisions |
 | `POST /participants/{id}/refresh` | approved revisions | 200 new snapshot revision; 409 stale/busy |
 
 Existing CRUD/settings/document endpoints remain compatibility surfaces until explicitly migrated; every surface must gain the same ownership checks. New commands use idempotency keys scoped by actor and operation: same key/same payload returns the original outcome; same key/different payload returns conflict. Idempotency retention must cover the demo session lifetime and documented live retry window.
+
+Real stack/persona/meeting list/create/detail screens use those normal application contracts with resolved demo capabilities. A form creates the actual resource at the guided step; session bootstrap does not precreate a duplicate and pretend the form succeeded. Demo context is resolved by the server and bound to the command/recorded invocation. Commands execute once even if a guide action delegates; the frontend must not issue both a demo mutation and a duplicate normal mutation.
 
 Demo resume/reset/exploration responses retain the same instrument/ISIN and source snapshot for the pinned content version. Forking creates a new meeting, not a different scenario. Ending votes mean ready to summarize; consensus on a verification agenda and meeting completion must never be represented as approval to invest. The persisted brief includes source/snapshot references, subjective-analysis and not-financial-advice disclosures, unresolved questions and user-owned verification steps.
 
@@ -193,3 +211,21 @@ Persist bounded replay events or an equivalent durable journal with a consistent
 Interim model text may precede tool calls. Identify segments/iterations so the UI does not confuse provisional text with the committed final answer. Final transcript text uses the final answer segment; earlier commentary remains in execution artifacts if retained. Do not invent or require private chain-of-thought. Existing thinking fields remain historical compatibility data; optional provider-exposed safe summaries require a separately approved contract.
 
 Protocol consumers must handle UTF-8 splits, partial frames, multiline data, CRLF, duplicate replay, unknown optional fields and EOF without terminal event. EOF alone means connection loss, not successful completion.
+
+### Ending-attempt streaming and all AI surfaces
+
+The shared ending use case runs independently of its subscribers and journals progress using the same event/runner infrastructure. `POST /meetings/{id}/ending-attempts` returns the attempt/status/events references rather than waiting for a complete brief. Its SSE envelope has `version`, `event_id`, monotonic per-attempt `sequence`, `meeting_id`, `ending_attempt_id`, nullable `session_generation`, `type` and discriminated `data`. Do not forge a participant `turn_id` for an ending attempt or feed ending events to a turn reducer without typed dispatch.
+
+| Ending event | Required payload/meaning |
+| --- | --- |
+| `ending_started` | frozen roster/transcript/config revisions and attempt identity |
+| `vote_delta` | participant and segment identity plus incremental public vote explanation, when that output is shown; never private chain-of-thought |
+| `vote_recorded` | persisted participant vote, validated classification and safe public explanation/reference |
+| `summary_started` | validated majority or authorized force-end; summary segment identity |
+| `summary_delta` | incremental public brief content and segment identity, provisional until commit |
+| `ending_completed` | persisted summary reference, committed ended status, known/simulated usage classification |
+| `ending_failed` | safe code/retryability, failed-attempt state and persisted vote/effect references; restored active meeting under normal failure policy |
+
+Publish progress journal entries only after their own commit; interim summary segments are not a successful final summary. Final summary/status/usage/terminal state commit atomically. Reconnect replays after the last accepted attempt sequence or reloads authoritative state on retention expiry. Exactly one ending terminal outcome is committed; clients deduplicate redelivery and fence stale generations/attempts. A dropped subscription cannot cancel execution or mark the meeting ended. Do not weaken existing failure/majority rules for demo playback.
+
+All generated demo output, including supported follow-ups, displayed vote explanations and executive brief, must arrive as incremental SSE while execution is underway. A completed JSON transcript followed by client-side typing, a separate demo stream schema, or a stream buffered entirely until terminal completion fails acceptance. Loading persisted history on resume remains an ordinary query and need not be reanimated. Recorded adapter output is disclosed as recorded; actual provider spend in the demo is zero.

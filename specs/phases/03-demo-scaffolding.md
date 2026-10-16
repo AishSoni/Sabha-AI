@@ -15,9 +15,9 @@ Meeting-status/schema repair and ending extraction belong entirely to Phase 04. 
 ## Required behavior
 
 - Define a server-selected fixture-only composition that can boot without provider credentials, Qdrant or embeddings; unexpected external capabilities fail closed.
-- Provide typed scenario manifest/action/result, session/generation, source provenance and claim-classification contracts. They describe the later single-bond feature without supplying an approved real instrument, authored scripts or journey state machine.
+- Provide typed DB-package/action/result, session/generation, research-run/source/review provenance, claim classification and trusted guide-anchor contracts, including nullable pre-meeting resources. They describe the later single-bond real-screen feature without supplying an approved instrument, content or journey state machine.
 - Reuse deterministic test doubles for one synthetic search -> tool result -> final response smoke exercise through the existing engine. Synthetic test content is visibly test-only and cannot be published as bond evidence or offered as another demo scenario.
-- Define injection seams for fixture retrieval, votes, summaries and metadata; unconfigured capabilities report typed unavailable results rather than pretending to complete them.
+- Define injection seams for DB-backed recorded invocations, fixture retrieval, votes, incremental summaries and metadata through existing ports; unconfigured capabilities report typed unavailable results rather than pretending to complete them. No standalone demo component tree or production hardcoded content store is an acceptable scaffold.
 - Keep public demo bootstrap/actions and any UI entry disabled. Missing scenario content is an intentional unavailable capability, not a successful placeholder walkthrough.
 - Record the Phase 04/07/08/10 dependency checklist. No J-step completion, seeded specialist roster, real-bond evidence pack, guided UI, exploration fork or authored ending is implemented here.
 
