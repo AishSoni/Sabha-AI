@@ -10,8 +10,8 @@ import {
 } from './types';
 
 describe('demo session contract', () => {
-  it('keeps the public entry disabled', () => {
-    expect(DEMO_ENABLED).toBe(false);
+  it('marks the guided entry implemented pending hosted release checks', () => {
+    expect(DEMO_ENABLED).toBe(true);
   });
 
   it('pins the sessionStorage key and bearer header shape', () => {

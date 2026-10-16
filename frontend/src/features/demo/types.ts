@@ -1,8 +1,8 @@
-// Demo scaffold types (disabled entry only, no journey UI).
-// The public demo stays unavailable until Phase 10; this module only
-// describes the target contract so later phases do not drift.
+// Demo journey types: the guided single-bond entry is implemented locally.
+// Public exposure stays gated on hosted checks (P10-TEST12); this flag marks
+// the implemented local entry, not public release.
 
-export const DEMO_ENABLED = false as const;
+export const DEMO_ENABLED = true as const;
 
 // Phase 10 session contract (D-07 client side; constants only, no behavior).
 // The token lives in sessionStorage (never localStorage, never URLs), travels

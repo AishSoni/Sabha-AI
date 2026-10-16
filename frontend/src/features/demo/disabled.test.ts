@@ -6,9 +6,9 @@ import {
   isSyntheticManifest,
 } from './types';
 
-describe('demo scaffold entry stays disabled', () => {
-  it('never enables the public demo from scaffold types', () => {
-    expect(DEMO_ENABLED).toBe(false);
+describe('demo journey entry (implemented locally)', () => {
+  it('marks the guided entry implemented pending hosted release checks', () => {
+    expect(DEMO_ENABLED).toBe(true);
   });
 
   it('reports typed unavailable instead of fabricated success', () => {
