@@ -1,34 +1,40 @@
-"""P01-T06 regression ledger (part 1): strict expected failures for B-01..B-11.
+"""Regression ledger for B-01..B-11: all rows closed, all tests green.
 
-Each test asserts the CORRECT behavior and currently fails for its intended
-reason (recorded below). `xfail_strict = true` (pytest.ini) turns any fixed
-bug with a stale marker into an XPASS failure, forcing marker removal.
-B-09's executable reproducer lives in the frontend (see header); every other
-row executes here. P01-TEST05's stale-marker demonstration is
+Each test asserts the CORRECT behavior and passes against the consolidated
+implementation. No xfail/skip/it.fails markers remain in backend/tests or
+frontend/src: `xfail_strict = true` (backend/pytest.ini) and Vitest's
+unexpected-pass detection stay on as guards so any reintroduced marker that
+unexpectedly passes fails loudly instead of lingering silently.
+B-09's executable reproducer lives in the frontend (see below); every other
+row executes here. The stale-marker demonstration is
 `test_strict_xfail_detects_stale_markers`.
 
-Intended red reasons (pre-fix code; B-01/B-02 fixed in Phase 02):
+Closure record (fix phase; evidence retained here or cited):
 - B-01: FIXED Phase 02 by the shared turn engine: tool results return to
   the model with the original provider call ID.
 - B-02: FIXED Phase 02 by ServerKnowledgeSearch: injected vector store and
   database accessor; collection names resolved server-side.
-- B-03: live Qdrant query contract needs an isolated Phase 06 fixture;
-  unit-level client surface holds on qdrant-client 1.7.0.
-- B-04: `supabase_schema.sql:15` CHECK admits only active/archived while
-  `MeetingStatus` also defines voting/ended.
-- B-05: `/api/*` routes carry no actor-binding dependencies (owner Phase 04).
-- B-06: settings API accepts caller-controlled Ollama base URLs with no
-  destination allowlist (owner Phase 05/08).
-- B-07: `create_meeting` persona branch drops persona provider_config
-  (`meeting_manager.py:80-89`).
-- B-08: no seam wires saved frontend settings into backend inference
-  (owner Phase 05/07).
-- B-09: frontend `meetingStore` lets stale loads overwrite the selected
-  meeting -- executable case is
-  `frontend/src/stores/meetingStore.regression.test.ts` (`it.fails`, owner Phase 07).
-- B-10: `delete_meeting` never touches vector collections (owner Phase 06).
-- B-11: `activate_prompt_version` deactivates all versions before validating
-  the target (`persona_manager.py:273-296`).
+- B-03: FIXED Phase 06: isolated Qdrant query contract pins stable point
+  IDs (uuid5) and the query_points-first path; see
+  tests/integration/test_qdrant_contract.py.
+- B-04: CLOSED Phase 04: MeetingStatus admits active/voting/ended/archived
+  and migrations/004_meeting_lifecycle.sql expands the status constraint
+  plus queue/ending/lease/ledger storage.
+- B-05: CLOSED Phase 04 core, audited Phase 08: meeting/child routes resolve
+  the trusted actor and scope by ownership; persona/stack/document runtime
+  policy covered by actor-boundary tests.
+- B-06: CLOSED: settings transport validates destinations against the
+  allowlist and never follows redirects.
+- B-07: CLOSED: create_meeting persona branch propagates provider_config
+  with the canonical max_tokens fallback.
+- B-08: CLOSED: non-secret preferences persist server-side and resolve into
+  effective inference settings without exposing secrets.
+- B-09: CLOSED Phase 07: frontend meetingStore guards stale loads by
+  selectedMeetingId plus session generation; executable case is
+  `frontend/src/stores/meetingStore.regression.test.ts` (plain it).
+- B-10: CLOSED Phase 06: meeting deletion tombstones documents and drops
+  the meeting's shared collection, so no vector points survive.
+- B-11: CLOSED: invalid prompt-version activation preserves the live version.
 """
 
 from pathlib import Path
@@ -420,8 +426,8 @@ def test_b06_untrusted_destination_never_reaches_transport():
     assert "follow_redirects=False" in src
 
 
-def test_b08_saved_settings_drive_inference_pending():
-    """B-08 seam: non-secret preferences persist server-side and resolve into
+def test_b08_saved_settings_drive_inference():
+    """B-08 closed: non-secret preferences persist server-side and resolve into
     effective inference settings without exposing secrets."""
     import inspect
 
