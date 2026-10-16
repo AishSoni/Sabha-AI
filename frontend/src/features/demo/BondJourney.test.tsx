@@ -60,12 +60,13 @@ describe('bond journey walkthrough', () => {
         {
           status: 200,
           body: {
-            completed_action: 'start_walkthrough',
-            next_action: 'inspect_board',
-            turn: {
-              action_id: 'start_walkthrough',
-              final_text: 'Welcome to the single-bond review.',
-            },
+            action_id: 'start_walkthrough',
+            stage: 'J00',
+            specialist_id: null,
+            final_text: 'Welcome to the single-bond review.',
+            execution_id: 'bond-exec-1',
+            tool_effects: [],
+            current_step: 'start_walkthrough',
           },
         },
       ]),
@@ -81,6 +82,12 @@ describe('bond journey walkthrough', () => {
     await waitFor(() => {
       expect(
         screen.getByText('Welcome to the single-bond review.'),
+      ).toBeInTheDocument();
+    });
+    // The walkthrough must move to the next step, not stay soft-locked.
+    await waitFor(() => {
+      expect(
+        screen.getByRole('button', { name: /inspect the board/i }),
       ).toBeInTheDocument();
     });
   });
@@ -168,12 +175,13 @@ describe('bond journey walkthrough', () => {
         }
         return new Response(
           JSON.stringify({
-            completed_action: 'start_walkthrough',
-            next_action: 'inspect_board',
-            turn: {
-              action_id: 'start_walkthrough',
-              final_text: 'Welcome to the single-bond review.',
-            },
+            action_id: 'start_walkthrough',
+            stage: 'J00',
+            specialist_id: null,
+            final_text: 'Welcome to the single-bond review.',
+            execution_id: 'bond-exec-1',
+            tool_effects: [],
+            current_step: 'start_walkthrough',
           }),
           { status: 200 },
         );

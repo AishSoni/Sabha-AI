@@ -129,23 +129,36 @@ export function useBondJourney() {
             ...(payload ?? {}),
           },
         })) as {
-          completed_action?: string;
-          next_action?: string | null;
-          turn?: JourneyTurn;
-          queued_entry?: { entry_id: string; content: string; revision: number };
-          session?: { generation: number };
+          action_id: string;
+          specialist_id?: string | null;
+          final_text?: string;
+          queue_entry?: { entry_id: string; content: string; revision: number };
+          votes?: Array<{ participant: string; vote: string }>;
+          brief?: string;
         };
         if (requestId.current !== id) return;
-        setState((s) => ({
-          ...s,
-          completed: body.completed_action
-            ? [...s.completed, body.completed_action]
-            : s.completed,
-          currentStep: body.next_action ?? s.currentStep,
-          turns: body.turn ? [...s.turns, body.turn] : s.turns,
-          queue: body.queued_entry ? [...s.queue, body.queued_entry] : s.queue,
-          generation: body.session?.generation ?? s.generation,
-        }));
+        setState((s) => {
+          // Idempotent retries return the same server shape: never record twice.
+          if (s.completed.includes(body.action_id)) return s;
+          const nextIndex =
+            JOURNEY_STEPS.indexOf(
+              body.action_id as (typeof JOURNEY_STEPS)[number],
+            ) + 1;
+          const turn: JourneyTurn = {
+            action_id: body.action_id,
+            final_text: body.final_text ?? '',
+            specialist: body.specialist_id ?? null,
+            votes: body.votes,
+            brief: body.brief ? { text: body.brief } : undefined,
+          };
+          return {
+            ...s,
+            completed: [...s.completed, body.action_id],
+            currentStep: JOURNEY_STEPS[nextIndex] ?? s.currentStep,
+            turns: [...s.turns, turn],
+            queue: body.queue_entry ? [...s.queue, body.queue_entry] : s.queue,
+          };
+        });
       } catch (error) {
         if (requestId.current !== id) return;
         setState((s) => ({ ...s, error: errorText(error) }));
