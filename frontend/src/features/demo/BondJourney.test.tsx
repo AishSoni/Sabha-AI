@@ -97,7 +97,7 @@ describe('bond journey walkthrough', () => {
             meeting: { meeting_id: 'm-1' },
           },
         },
-        { status: 409, body: { code: 'stale_revision' } },
+        { status: 409, body: { code: 'stale_scenario_revision' } },
       ]),
     );
     render(<BondJourney />);
@@ -146,5 +146,54 @@ describe('bond journey walkthrough', () => {
     await waitFor(() => {
       expect(screen.getByText(/step 1 of 10/i)).toBeInTheDocument();
     });
+  });
+
+  it('sends the revision under the field name the actions route reads', async () => {
+    const seen: unknown[] = [];
+    vi.stubGlobal(
+      'fetch',
+      vi.fn(async (_url: unknown, init: unknown) => {
+        seen.push(
+          JSON.parse((init as { body?: string }).body as string),
+        );
+        if (seen.length === 1) {
+          return new Response(
+            JSON.stringify({
+              credential: 'tok-1',
+              session: { generation: 1 },
+              meeting: { meeting_id: 'm-1' },
+            }),
+            { status: 201 },
+          );
+        }
+        return new Response(
+          JSON.stringify({
+            completed_action: 'start_walkthrough',
+            next_action: 'inspect_board',
+            turn: {
+              action_id: 'start_walkthrough',
+              final_text: 'Welcome to the single-bond review.',
+            },
+          }),
+          { status: 200 },
+        );
+      }),
+    );
+    render(<BondJourney />);
+    await userEvent.click(
+      screen.getByRole('button', { name: /start walkthrough/i }),
+    );
+    await waitFor(() => {
+      expect(screen.getByRole('button', { name: /begin/i })).toBeInTheDocument();
+    });
+    await userEvent.click(screen.getByRole('button', { name: /begin/i }));
+    await waitFor(() => {
+      expect(
+        screen.getByText('Welcome to the single-bond review.'),
+      ).toBeInTheDocument();
+    });
+    const actionBody = seen[1] as Record<string, unknown>;
+    expect(actionBody['expected_scenario_revision']).toBe(1);
+    expect(actionBody).not.toHaveProperty('scenario_revision');
   });
 });

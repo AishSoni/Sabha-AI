@@ -61,7 +61,7 @@ const INITIAL: JourneyState = {
 
 function errorText(error: unknown): string {
   const typed = error as Partial<DemoApiError>;
-  if (typed?.code === 'stale_revision') {
+  if (typed?.code === 'stale_revision' || typed?.code === 'stale_scenario_revision') {
     return 'This walkthrough moved on — refreshing from the server before retrying.';
   }
   if (typed?.code === 'demo_session_expired') {
@@ -123,7 +123,7 @@ export function useBondJourney() {
           method: 'POST',
           payload: {
             action_id: actionId,
-            scenario_revision: BOND_CONTENT_REVISION,
+            expected_scenario_revision: BOND_CONTENT_REVISION,
             expected_generation: generation,
             idempotency_key: `${actionId}-${generation}-${Date.now()}`,
             ...(payload ?? {}),
