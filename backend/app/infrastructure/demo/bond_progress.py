@@ -109,6 +109,12 @@ class JourneyProgressStore:
         state["turn_reference"] = f"{state['meeting_id']}:{action_id}"
         return self._view(state)
 
+    def get(self, session_id: str, generation: int) -> ProgressView:
+        state = self._states.get((session_id, generation))
+        if state is None:
+            raise ValueError("walkthrough has not been bootstrapped")
+        return self._view(state)
+
     def mark_failed(self, *, session_id: str, generation: int, action_id: str) -> None:
         state = self._states.get((session_id, generation))
         if state is None or action_id not in state["completed"]:

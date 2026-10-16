@@ -189,13 +189,14 @@ def test_global_active_cap_and_creation_rate_are_enforced(store, clock):
     assert rate_info.value.retry_after_s > 0
 
 
-def test_real_scenario_and_non_synthetic_ids_are_rejected(store):
-    with pytest.raises(Exception):
-        store.issue(
-            scenario_id="indian-corporate-bond-review",
-            scenario_revision=1,
-            creation_key="k",
-        )
+def test_approved_real_scenario_issues_while_unknown_ids_are_rejected(store):
+    view, token = store.issue(
+        scenario_id="indian-corporate-bond-review",
+        scenario_revision=1,
+        creation_key="k",
+    )
+    assert view.scenario_id == "indian-corporate-bond-review"
+    assert store.get_by_token(token).session_id == view.session_id
     with pytest.raises(Exception):
         store.issue(
             scenario_id="custom-live-demo", scenario_revision=1, creation_key="k"

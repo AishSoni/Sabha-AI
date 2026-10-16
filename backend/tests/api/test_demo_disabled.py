@@ -1,49 +1,63 @@
-"""Public demo entry stays disabled; overrides cannot enable live fallback."""
+"""Demo entry is live for the approved bond review and closed otherwise.
+
+The old 503 disabled-entry contract is retired: POST /sessions now bootstraps
+the single approved scenario. What stays fail-closed: unknown scenarios,
+stale revisions, missing auth, and caller-supplied mode/provider overrides.
+"""
 
 import pytest
 
 pytestmark = pytest.mark.anyio
 
+REAL = "indian-corporate-bond-review"
 
-async def test_demo_session_creation_is_unavailable(api_client):
+
+async def test_unknown_scenario_fails_closed(api_client):
+    response = await api_client.post(
+        "/api/v2/demo/sessions", json={"scenario_id": "another-bond"}
+    )
+    assert response.status_code == 404
+    assert response.json()["code"] == "unknown_scenario"
+
+
+async def test_client_mode_override_cannot_escape_fixture(api_client):
+    # A caller-supplied mode/provider must not switch the demo into a live
+    # path; the handler ignores it and serves the scripted bond review.
     response = await api_client.post(
         "/api/v2/demo/sessions",
-        json={"scenario_id": "synthetic-smoke-scaffold"},
+        json={"scenario_id": REAL, "scenario_revision": 1, "mode": "live"},
+        headers={"X-Demo-Mode": "live", "X-Provider": "openrouter"},
     )
-    assert response.status_code == 503
-    body = response.json()
-    assert body["code"] == "demo_unavailable"
-    assert body["retryable"] is False
+    assert response.status_code == 201
+    assert response.json()["instrument"]["isin"] == "INE001A07RW5"
 
 
-async def test_demo_actions_stay_disabled(api_client):
+async def test_actions_require_bearer_token(api_client):
     response = await api_client.post(
         "/api/v2/demo/actions",
         json={
-            "action_id": "synthetic_smoke",
-            "scenario_revision": 1,
+            "action_id": "start_walkthrough",
+            "expected_scenario_revision": 1,
+            "expected_generation": 1,
             "idempotency_key": "key-12345",
         },
     )
-    assert response.status_code == 503
-    assert response.json()["code"] == "demo_unavailable"
+    assert response.status_code == 401
 
 
-async def test_client_mode_override_cannot_enable_demo(api_client):
-    # A caller-supplied mode/provider must not switch the scaffold into a
-    # live or journey path; the handler ignores it and stays unavailable.
-    response = await api_client.post(
-        "/api/v2/demo/sessions",
-        json={"scenario_id": "synthetic-smoke-scaffold", "mode": "live"},
-        headers={"X-Demo-Mode": "live", "X-Provider": "openrouter"},
+async def test_stale_revision_rejected_after_bootstrap(api_client):
+    boot = await api_client.post(
+        "/api/v2/demo/sessions", json={"scenario_id": REAL, "scenario_revision": 1}
     )
-    assert response.status_code == 503
-    assert response.json()["code"] == "demo_unavailable"
-
-
-async def test_demo_reset_stays_disabled(api_client):
+    token = boot.json()["credential"]
     response = await api_client.post(
-        "/api/v2/demo/reset",
-        json={"expected_generation": 1, "idempotency_key": "reset-12345"},
+        "/api/v2/demo/actions",
+        json={
+            "action_id": "start_walkthrough",
+            "expected_scenario_revision": 99,
+            "expected_generation": 1,
+            "idempotency_key": "key-12345",
+        },
+        headers={"Authorization": f"Bearer {token}"},
     )
-    assert response.status_code == 503
+    assert response.status_code == 409

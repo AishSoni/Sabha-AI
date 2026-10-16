@@ -32,8 +32,10 @@ DEMO_SESSIONS_TABLE = "demo_sessions"
 
 
 def _check_synthetic_scenario(scenario_id: str) -> None:
+    # Phase 10 widens the gate to exactly one approved real scenario; every
+    # other non-synthetic ID still fails closed.
     if scenario_id == REAL_SCENARIO_ID:
-        raise DemoUnavailable("real_scenario_bootstrap", "owned by Phase 10")
+        return
     if not scenario_id.startswith("synthetic-"):
         raise DemoUnavailable(scenario_id, "demo serves synthetic fixtures only")
 
