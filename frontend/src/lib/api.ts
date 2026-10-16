@@ -287,10 +287,10 @@ export const api = {
         return handleResponse(response);
     },
 
-    // AI Turns (Streaming, legacy shape; parsed with the shared SSE parser
-    // so split UTF-8, CRLF and multiline data: frames reassemble correctly).
-    // Prefer subscribeTurnEvents for new flows: abortable, deduplicated,
-    // with explicit EOF-without-terminal reporting.
+    // AI Turns (Streaming compatibility wrapper over the shared SSE parser.
+    // Retirement policy: new flows must use subscribeTurnEvents (abortable,
+    // deduplicated, EOF-without-terminal reporting). streamTurn is retained
+    // only for existing callers/tests and yields the legacy StreamEvent shape.
     async *streamTurn(
         meetingId: string,
         participantId: string,
@@ -315,8 +315,23 @@ export const api = {
         const reader = response.body?.getReader();
         if (!reader) throw new Error('No response body');
 
-        const decoder = new TextDecoder();
-        let buffer = '';
+        const pending: string[] = [];
+        const parser = createSseParser({
+            onFrame: (frame) => {
+                if (frame.data) pending.push(frame.data);
+            },
+        });
+
+        function* drain(): Generator<StreamEvent> {
+            while (pending.length > 0) {
+                const payload = pending.shift() as string;
+                try {
+                    yield JSON.parse(payload) as StreamEvent;
+                } catch (e) {
+                    console.error('[SSE Parse Error]', payload.slice(0, 100), e);
+                }
+            }
+        }
 
         try {
             while (true) {
@@ -325,31 +340,11 @@ export const api = {
                     throw err;
                 });
                 if (done) break;
-
-                buffer += decoder.decode(value, { stream: true });
-                buffer = buffer.replace(/\r\n/g, '\n').replace(/\r/g, '\n');
-
-                // Dispatch one JSON payload per blank-line-separated SSE block,
-                // joining multiline data: lines (backend pretty-prints rarely,
-                // proxies sometimes re-chunk).
-                let sep: number;
-                while ((sep = buffer.indexOf('\n\n')) !== -1) {
-                    const block = buffer.slice(0, sep);
-                    buffer = buffer.slice(sep + 2);
-                    const payload = block
-                        .split('\n')
-                        .map((l) => l.trimEnd())
-                        .filter((l) => l && !l.startsWith(':') && !l.startsWith('event:') && !l.startsWith('id:'))
-                        .map((l) => (l.startsWith('data:') ? l.slice(5).trimStart() : l))
-                        .join('\n');
-                    if (!payload) continue;
-                    try {
-                        yield JSON.parse(payload) as StreamEvent;
-                    } catch (e) {
-                        console.error('[SSE Parse Error]', payload.slice(0, 100), e);
-                    }
-                }
+                if (value) parser.feed(value);
+                yield* drain();
             }
+            parser.flush();
+            yield* drain();
         } finally {
             reader.releaseLock();
         }
