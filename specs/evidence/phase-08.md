@@ -30,10 +30,33 @@
 - Composition (B-03/B-04): `backend/app/infrastructure/demo/composition.py`
   (pre-existing; inventoried, not rebuilt).
 - Session lifecycle (B-07/B-08/B-09): `backend/app/infrastructure/demo/`
-  runtime modules (persistent store, issuance/status/reset/expiry,
-  generation fencing). [In progress]
-- Bounds (B-10), cleanup (B-11), observability (B-12), determinism (B-13):
-  [in progress — sections below fill in as each lands].
+  runtime modules — `tokens.py` (256-bit opaque bearer, SHA-256 at rest,
+  constant-time verify), `runtime.py` (`DemoSessionStore` over a gateway
+  port: `InMemoryGateway` default, `SupabaseGateway` persistent via
+  migration `007_demo_sessions.sql`), `errors.py` (typed codes),
+  `bounds.py` (D-02/D-10 values + documented local caps).
+- Bounds (B-10): 1 scenario/session for life, 100 actions/session,
+  30 writes/min sliding window, 100 live sessions global, 20
+  creations/hour per key, 8k-char action payload budget, 32-entry bounded
+  reset-key history. Reset preserves lifetime counters (no bypass).
+- Cleanup (B-11): `cleanup.py` idempotent retention sweep; per-record
+  failures counted not fatal; fixtures preserved by construction (store
+  holds IDs/counters only).
+- Observability (B-12): `observability.py` allowlisted JSON logs (no token
+  parameter by design), `build_health` readiness (backlog, failed
+  cleanups, pending expiry; `paid_probes` always empty),
+  `private_no_store_headers` for credential responses.
+- Determinism (B-13): fixture content replays byte-identical
+  (`test_demo_determinism.py`); credentials are the documented exception.
+- Frontend contract: `frontend/src/features/demo/types.ts`
+  (`DEMO_SESSION_STORAGE_KEY`, `DEMO_AUTH_SCHEME`, `demoAuthHeader`;
+  `DEMO_ENABLED` still false) + `session-contract.test.ts`.
+- Regression: `backend/tests/unit/test_demo_runtime.py` (20 tests),
+  `test_demo_gateway.py` (4), `test_demo_determinism.py` (3),
+  `backend/tests/api/test_cross_owner_isolation.py` (5),
+  `test_demo_route_policy.py` (6).
+- Migration: `backend/migrations/007_demo_sessions.sql` (apply via
+  Supabase SQL editor per repo practice; includes a synthetic-only CHECK).
 
 ## Owned bugs: red/green evidence
 
@@ -64,7 +87,26 @@
   fixture read. Green: the inventory below plus the contract tests
   (`test_demo_composition.py`, `test_demo_manifest.py`,
   `test_demo_smoke.py`, `test_demo_disabled.py`) pin the allowlist.
-- B-07–B-13: [red/green pairs recorded per item as they land].
+- B-07–B-13 red: the runtime modules did not exist — new
+  `test_demo_runtime.py` failed at collection (`ImportError: cannot import
+  name 'bounds'`). Green after implementation: 20/20, including
+  heartbeat-not-extending-idle, absolute-dominates-idle (12 rounds of
+  activity then expiry), reset-preserving-counters, burst-with-retry, and
+  crash-retry cleanup. One real bug caught mid-green: frozen-dataclass
+  exceptions cannot be raised (`FrozenInstanceError` on traceback attach);
+  `errors.py` is now plain `Exception` subclasses. Gateway contract
+  (`test_demo_gateway.py`, recording fake, no network): 4/4 green on first
+  run — adapter over already-verified logic — including a full
+  issue/write/reset/sweep cycle over the Supabase query shape.
+- Cross-owner HTTP (TEST02): `test_cross_owner_isolation.py` (5/5, faked
+  storage, no DB in this environment). Each case asserts both sides so the
+  tests fail against pre-fix code (open reads returned the stranger 200;
+  the unfiltered stack list returned both owners' rows). Parentless
+  documents quarantine to 404; shared default personas stay visible.
+- Determinism (B-13): `test_demo_determinism.py` 3/3 — two builds are
+  byte-identical, content carries no clock/randomness (pinned
+  `2026-01-01` snapshot), search replays identically. Tokens/session IDs
+  are the intentional exception (uniqueness required; never in content).
 
 ## Capability inventory (B-01)
 
@@ -112,17 +154,125 @@ composition raises a second explicit guard on the real scenario ID.
   Verified by code survey (this phase); if a billable client is ever added
   to the demo path, this section must gain a red test first.
 
-## Session lifecycle (B-07/B-08/B-09) — [in progress]
+## Session lifecycle (B-07/B-08/B-09)
 
-## Bounds (B-10) — [pending]
+- Issuance: `DemoSessionStore.issue` mints a 256-bit `secrets` token,
+  stores only its SHA-256 hash, and returns `(SessionView, token)`.
+  Rejects the real scenario and non-`synthetic-` IDs before any state.
+- Status/heartbeat (`get_by_token`) verifies the hash and checks expiry
+  but never touches `last_active_at` — reads cannot extend idle lifetime.
+- Expiry (D-02): idle 2h from last action/write, absolute 24h from issue.
+  Expired sessions deny reads, actions, writes, and reset with typed
+  `demo_session_expired` (410 hint).
+- Reset: idempotent per (key, generation); bumps generation, clears
+  `active_turn_id` (fences old turns/workers), keeps scenario binding,
+  `action_count`, write window, and creation stats. Rebinding conflicts
+  (409). Reset-key history bounded to 32 entries (oldest evicted).
+- Persistence: `InMemoryGateway` (process-local, tested default) and
+  `SupabaseGateway` (same records via `demo_sessions`; apply
+  `007_demo_sessions.sql` in the SQL editor). The store never holds
+  fixture content, tokens, or secrets.
 
-## Cleanup (B-11) — [pending]
+## Bounds (B-10)
 
-## Observability (B-12) — [pending]
+Per D-10 plus documented local caps (see `bounds.py`): 1 scenario/session,
+100 actions/session (lifetime, survives reset), 30 writes/min sliding
+window with `retry_after_s`, 100 live sessions globally (retry = soonest
+expiry), 20 creations/hour per creation key, 8k-char action payload
+budget. All denials are typed `demo_quota_exceeded` (429 hint) with
+scope/limit/retry detail and increment denial counters visible in health.
 
-## Determinism policy (B-13) — [pending]
+## Cleanup (B-11)
+
+`run_retention_sweep` removes idle/absolute-expired sessions, keeps live
+ones, and reruns clean (second pass removes zero). One failing delete does
+not abort the sweep: failures increment `failed_cleanups` (health flips to
+`degraded`) and the retry clears the backlog (both paths tested, including
+a simulated mid-sweep crash). Fixtures are preserved by construction and
+asserted by rebuilding the composition across a sweep.
+
+## Observability (B-12)
+
+`log_event` emits sorted-JSON with request/session/meeting/turn/job IDs and
+a truncated safe detail; the signature accepts no token/secret/content, so
+credential leaks through this path are structurally impossible (tested:
+token absent from payload and keys). `build_health` reports readiness from
+store counts only — no paid probes, ever (`paid_probes: []` asserted).
+Session/credential responses use `Cache-Control: no-store, private`.
+
+## Determinism policy (B-13)
+
+Fixture content is a pure function of the manifest + fixture hits: no
+wall-clock, no randomness, no ambient env. Credentials (tokens, session
+IDs) must be unique per issuance and are kept out of fixture content by
+construction (store records never enter composition inputs).
+
+## Regression map (P08-TEST01–10)
+
+- TEST01 (disabled/live + overrides): `test_demo_disabled.py` (public
+  entry 503 incl. mode-override attempt), `test_demo_route_policy.py`
+  (demo-mode denial of `/models` + `/test-key`), composition tests
+  (resolver rejects live providers pre-transport).
+- TEST02 (cross-session/direct-ID): `test_cross_owner_isolation.py`;
+  guessed-ID reads behave as 404 without distinguishing unknown IDs.
+- TEST03 (fake-time expiry/fencing): `test_demo_runtime.py` idle,
+  absolute, heartbeat, stale-generation, reset-fencing cases.
+- TEST04 (caps/reset-bypass): action-cap-survives-reset, burst window,
+  global cap, creation rate, retry feedback cases.
+- TEST05 (crash/race cleanup): flaky-gateway sweep (failure counted,
+  retry clears), idempotent double-sweep, reset-during-lifetime cases.
+- TEST06 (credential scan): log-output token-absence test; no-store
+  header test; store records contain no `token` field.
+- TEST07 (backpressure/bounds): write-window, payload-budget,
+  reset-key-bound, global-cap cases (no streams exist yet to back up —
+  SSE/backpressure over live streams is Phase 10 scope).
+- TEST08 (synthetic issuance/reset/expiry without keys/Qdrant): full
+  runtime suite runs with env scrubbed and no network (repo socket guard
+  active); composition boots keyless (pre-existing test).
+- TEST09 (local lifecycle/restart): in-memory + Supabase-gateway paths
+  verified; restart recovery requires the Supabase gateway (documented
+  below). Live streaming/reconnect/proxy verification is P10-TEST12, not
+  claimed here.
+- TEST10 (no bootstrap/instrument selection): real-scenario and
+  non-synthetic IDs rejected at issue, manifest, and composition layers;
+  disabled public entry stays 503.
+
+## Runtime foundation packet (Phase 10 handoff)
+
+- Modules: `backend/app/infrastructure/demo/` — `tokens`, `errors`,
+  `bounds`, `runtime` (`DemoSessionStore`, gateways), `cleanup`,
+  `observability`, plus pre-existing `capabilities`, `composition`,
+  `manifest`, `routes` (disabled entry), `sessions` (test-only scaffold).
+- Database: apply `backend/migrations/007_demo_sessions.sql` via the
+  Supabase SQL editor; RLS stays disabled by policy (app-layer control).
+  Point the Phase 10 wiring at `SupabaseGateway` (service role).
+- Environment: no new variables. Demo needs no API keys, no Qdrant, no
+  embeddings. `app_env=demo` flips settings live-lookup denial.
+- Scheduler: run `run_retention_sweep` periodically (idle expiry is lazy
+  otherwise; sweep also feeds `expired_pending`/`failed_cleanups`). Any
+  interval well under 2h works; document the chosen one in Phase 10.
+- Restart: in-memory gateway loses sessions (local dev only); Supabase
+  gateway survives restarts and shares state across processes. No broker
+  required. Authoritative queue durability is Phase 10 wiring concern.
+- SSE/proxy: no streams in this phase. Phase 10 must send
+  `private_no_store_headers()` on session/credential responses, keep
+  `Authorization` out of URLs/logs, and use the pinned frontend contract
+  (`sabha.demo.sessionToken` sessionStorage key, `Bearer` scheme).
+- Frontend contract: `frontend/src/features/demo/types.ts`
+  (`DEMO_ENABLED=false`, storage key, auth scheme, header builder).
+  Session/header integration is Phase 10 work.
+- Deferred hosted checks (not prerequisites of this gate): actual-host
+  proxy/SSE verification (P10-TEST12), live Supabase-backed session test,
+  egress controls for the hosting setup.
 
 ## Verification
 
 - `test_demo_route_policy.py`: 6/6 green post-fix.
-- Full backend suite + frontend checks: [recorded at phase close].
+- Backend: 154 passed, 17 skipped (`PYTEST_DISABLE_PLUGIN_AUTOLOAD=1
+  python -m pytest tests -q -p anyio.pytest_plugin`; integration deselected
+  by `pytest.ini`). The 17 skips are pre-existing unmarked-async tests in
+  untouched application/contract files (verified: same skips on files last
+  touched by earlier phases).
+- Frontend: `vitest run` 12 files / 40 tests pass (incl. 3 new
+  session-contract tests); `eslint` clean on touched files;
+  `tsc --noEmit` clean.
