@@ -37,6 +37,12 @@ The regression ledger (`tests/regression/test_ledger.py`) pins all eleven
 B-01..B-11 defects closed with passing tests; no xfail/skip markers remain
 (`xfail_strict = true` stays on as a guard).
 
+If pytest fails at startup with
+`ImportError: cannot import name 'appengine' from 'urllib3.contrib'`, the
+cause is the third-party `langsmith_plugin` entry point
+(`requests-toolbelt 0.9.x` vs `urllib3 2.x`) breaking before any Sabha code
+loads; rerun with `-p no:langsmith_plugin`.
+
 ## Environment Variables
 
 Copy `.env.example` to `.env` and fill in your values.
