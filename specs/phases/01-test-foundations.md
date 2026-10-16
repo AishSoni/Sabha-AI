@@ -1,6 +1,6 @@
 # Phase 01 — Offline test foundations and regression baseline
 
-Status: draft. Depends on: Phase 00. Requirements: R-13, R-17. Defects: establish B-01 through B-11 regression ownership without pretending they are fixed.
+Status: draft. Depends on: Phase 00. Requirements: R-13, R-17. Defects: establish the ten active B-* regression assignments; B-05 is withdrawn, not an identity/access implementation obligation.
 
 ## Objective and outcome
 
@@ -26,9 +26,9 @@ Proposed additions: backend test dependency/config files, `backend/tests/`, `fro
 - **P01-T01 — Dependency baseline:** record runtime versions, choose compatible test versions, add reproducible test installs and scripts. Avoid blanket runtime upgrades while adding the harness.
 - **P01-T02 — Backend isolation:** introduce test settings/app factory overrides or the smallest equivalent seam; remove import-time network prerequisites from tests without changing runtime semantics.
 - **P01-T03 — Reusable doubles:** add scripted provider invocations, captured provider history, bounded fake knowledge results, in-memory repositories, fake clock and controllable runner. Include explicit failure injection points.
-- **P01-T04 — API harness:** configure actor overrides, lifespan management, HTTPX clients and teardown; separate fast and integration markers.
+- **P01-T04 — API harness:** configure run/repository/provider doubles, lifespan management, HTTPX clients and teardown; separate fast/integration markers. No identity/actor harness is required.
 - **P01-T05 — Frontend harness:** add Vitest setup, DOM matchers/user interactions, stream byte builders, sessionStorage helpers and store reset utilities.
-- **P01-T06 — Regression ledger:** write focused correct-behavior failing cases for B-01/B-04/B-07/B-09/B-11 first, then executable boundary cases for the remaining findings as seams become available. Record the intended assertion failure before any expected-failure marker. An unavailable seam is an explicit pending reproducer assigned to its fixing phase, never permission to fix without first observing red. No known bug may remain open at Phase 09 exit.
+- **P01-T06 — Regression ledger:** write focused correct-behavior failing cases for B-01/B-04/B-07/B-09/B-11 first, then executable boundary cases for the remaining in-scope findings as seams become available. Record the intended assertion failure before any expected-failure marker. An unavailable seam is an explicit pending reproducer assigned to its fixing phase, never permission to fix without first observing red. No known in-scope bug may remain open at Phase 09 exit; withdrawn B-05 requires no reproducer.
 - **P01-T07 — Integration fixtures:** define fresh/legacy database setup, isolated collections and fake embedding dimensions. Block destructive operations unless target is recognized as a test instance.
 - **P01-T08 — Checks and evidence:** wire fast tests and explicit integration/build jobs; document commands, environment, known failures and phase deadlines.
 
@@ -82,7 +82,9 @@ ledger lives here, not in DELIVERY.md.
   TEST07 → `tests/integration/test_safety.py` (+ `safety.py` guards);
   TEST08 → `frontend/src/lib/stream.test.ts`.
 
-### B-01..B-11 ledger (all open; no bug fixed in this phase)
+### Historical Phase 01 ledger (not a current scope/gate assignment)
+
+Original command results are preserved. B-05 is withdrawn by the latest user scope correction; its old test name/status is not a remaining task or gate. Only the other ten findings require implementation closure.
 
 | ID | Regression test (asserts correct behavior) | Status | Owner / expiry |
 | --- | --- | --- | --- |
@@ -90,7 +92,7 @@ ledger lives here, not in DELIVERY.md.
 | B-02 | `test_b02_persona_evidence_lookup_has_no_undefined_reference` | xfail strict, intended red: NameError on `get_supabase` | 02 boundary, 06 integration / G3 of 06 |
 | B-03 | `test_b03_live_query_contract_pending_isolated_fixture` | xfail strict, pending: needs Phase 06 isolated fixture (client surface holds on qdrant-client 1.7.0) | 06 / G3 of 06 |
 | B-04 | `test_b04_schema_check_covers_voting_and_ended` | xfail strict, intended red: CHECK admits only active/archived | 04 / G3 of 04 |
-| B-05 | `test_b05_api_routes_require_actor_binding` | xfail strict, intended red: no actor-binding dependencies | 04 enforcement, 08 audit / G3 of 08 |
+| B-05 | Historical identity-binding finding | Withdrawn by user; no required test | None / no gate |
 | B-06 | `test_b06_untrusted_destination_never_reaches_transport` | xfail strict, intended red: no Ollama destination allowlist | 05 restriction, 08 demo deny / G3 of 08 |
 | B-07 | `test_b07_persona_provider_config_propagates` | xfail strict, intended red: persona provider_config dropped | 05 / G3 of 05 |
 | B-08 | `test_b08_saved_settings_drive_inference_pending` | xfail strict, pending: wiring seam arrives Phase 05 | 05, 07 / G3 of 07 |
@@ -100,5 +102,5 @@ ledger lives here, not in DELIVERY.md.
 
 Strict expected-failure semantics (`xfail_strict = true`, Vitest `it.fails`)
 turn any fixed bug with a leftover marker into a suite failure, so stale markers
-cannot linger. No generic skips mask harness errors. All eleven rows must close
-by Phase 09 exit (G3 of 09); Phase 10 cannot start feature work with any open.
+cannot linger for active findings. No generic skips mask harness errors. The ten
+in-scope rows close by Phase 09; withdrawn B-05 does not block feature work.

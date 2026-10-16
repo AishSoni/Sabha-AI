@@ -1,5 +1,7 @@
 # Phase 03 evidence — demo scaffolding only
 
+> **Current scope correction (2026-10-16):** This is historical execution evidence, not a source of new requirements. Authentication/identity/access-control work is outside scope and B-05 is withdrawn; past tests or future-phase assignments here do not reinstate it. Research now needs only the demo-grade check in DEMO-JOURNEY.md, not formal financial verification or sign-off. No implementation or test rerun is implied by this annotation.
+
 ## Spec revision and decisions
 
 - Spec: `specs/phases/03-demo-scaffolding.md` (scaffold only, no J00-J09).
@@ -90,8 +92,8 @@
 
 ## Downstream ownership checklist (nothing pulled forward)
 
-- Phase 04: meeting status/voting/ended repair, durable coordination, queues,
-  authorization enforcement.
+- Phase 04: meeting status/voting/ended repair, durable coordination and queues.
+  The former authorization assignment is withdrawn by the scope correction.
 - Phase 07: frontend async-state fixes, editable queue UI, reusable
   accessible components.
 - Phase 08: generic session lifecycle/expiry/cleanup, runtime bounds,

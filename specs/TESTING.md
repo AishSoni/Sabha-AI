@@ -12,13 +12,13 @@ Approved runners: **pytest** backend, **Vitest** frontend. Proposed supporting l
 | --- | --- | --- | --- |
 | Domain | `backend/tests/unit/` | Transition rules, voting, limits, snapshots, queue eligibility | None |
 | Application | `backend/tests/application/` | Use-case coordination, tool continuation, effect deduplication, failures | Scripted doubles, in-memory repository doubles |
-| API | `backend/tests/api/` | DTOs, trusted actor binding, status/error mapping, policy composition | Injected app and isolated/fake repositories |
+| API | `backend/tests/api/` | DTOs, run/meeting relationships, status/error mapping, demo capability composition | Injected app and isolated/fake repositories |
 | Provider/stream contract | `backend/tests/contract/` | Real adapter payload parsing/serialization, tool IDs, usage, stream framing | Sanitized recorded payloads and mocked transport |
-| Integration | `backend/tests/integration/` | Real SQL constraints/transactions/leases/RLS, migrations, Qdrant behavior | Isolated database/Qdrant; fake embeddings |
+| Integration | `backend/tests/integration/` | Real SQL constraints/transactions/leases, migrations, Qdrant behavior | Isolated database/Qdrant; fake embeddings |
 | Frontend | colocated `*.test.ts(x)` plus `frontend/src/test/` | Stores, parser, components, interactions, sessionStorage, navigation | jsdom, controlled fetch/streams/time |
 | Manual acceptance | phase evidence | Browser layout, real streaming transport, reconnect, accessibility | Local/demo runtime, no paid services |
 
-Do not claim a fake repository proves concurrency or SQL rollback. Do not claim a recorded provider payload proves current live vendor availability. API auth integration must exercise the actual credential/ownership path, not only a service/admin database role that bypasses policies.
+Do not claim a fake repository proves concurrency or SQL rollback, or a recorded payload proves live vendor availability. Authentication/access-control integration, actor matrices, credential testing and RLS hardening are outside scope and cannot block acceptance.
 
 ## 3. Determinism and isolation
 
@@ -26,7 +26,7 @@ Do not claim a fake repository proves concurrency or SQL rollback. Do not claim 
 - Fail ordinary tests on unexpected outbound network access. Integration tests allow only explicitly configured isolated endpoints.
 - Never load production `.env` as a test prerequisite; use test-only settings and require a recognizable test database target before destructive setup.
 - Use scripted LLM invocations, not exact-text assertions against live models. Shared scenario fixtures test the demo; separate fault fixtures test malformed calls, timeouts, missing usage, disconnects, and conflicting operations.
-- Freeze only test time/IDs. Runtime session tokens remain secure and unique.
+- Freeze test time/IDs; normal new runs receive distinct references for progress/reset bookkeeping, not identity credentials.
 - Restore mocks, clocks, storage, subscriptions and global stores between cases. Parallel tests use distinct database scopes/collections.
 - Test retries and reconnects with controlled signals/clock advancement rather than arbitrary sleeps.
 
@@ -48,7 +48,7 @@ For the corrected demo, use the real ordinary meeting and ending-attempt subscri
 | B-02 | `services/orchestrator.py`: persona retrieval references undefined `get_supabase` | 02 boundary extraction; 06 live integration | Participant with persona retrieves shared and allowed private evidence without global lookup failure |
 | B-03 | `services/vector_store.py`: installed Qdrant client lacks called `search` API | 06 | Real selected client/server query contract returns expected isolated indexed fixture |
 | B-04 | `supabase_schema.sql` status constraint excludes voting/ended | 04 entirely | Fresh install and upgrade accept approved states; summary/status commit together |
-| B-05 | `main.py`, meeting routes, permissive RLS: unauthenticated cross-owner access and paid turns | 04 enforcement; 08 runtime audit | Two actors cannot list/read/mutate/stream each other's resources; no unprotected compatibility routes |
+| B-05 | Withdrawn by user scope correction: identity/access-control finding | None; no implementation or release prerequisite | No required regression; retain ID only for historical traceability. Zero-live-service checks remain under R-03/B-06 |
 | B-06 | `api/settings.py`: arbitrary caller-controlled Ollama URLs | 05 live restriction; 08 demo deny | Untrusted destinations never reach HTTP transport; redirects cannot bypass approved destination policy |
 | B-07 | `services/meeting_manager.py`: persona provider configuration omitted at creation | 05 | Distinct persona settings copied/resolved into participants and passed to provider |
 | B-08 | frontend settings store and backend provider selection disconnected | 05, 07 | Saved effective settings drive participant/system inference; demo overrides cannot escape fixture mode |
@@ -58,7 +58,7 @@ For the corrected demo, use the real ordinary meeting and ending-attempt subscri
 
 These paths are relative to `backend/app/` unless otherwise stated. B-04 base SQL is relative to `backend/`. Finding severity and implementation completion must not be inferred from phase assignment.
 
-For every row, write an assertion for the correct behavior, run it against the pre-fix code/schema and record the intended red failure before fixing. Then record the passing regression and retain it through refactoring. Phase 01 starts this ledger; each fixing phase completes any remaining reproducer before its correction. All eleven rows must be closed by Phase 09, before Phase 10 feature implementation. Phase 10 reruns impacted regressions and uses the same bug-first process for newly discovered defects; it cannot hide a core bug with fixture responses.
+For each in-scope row, write an intended-behavior regression, record its pre-fix failure and retain the passing correction through refactoring. Phase 09 closes the ten active findings; B-05 is withdrawn, not silently fixed and not a blocker. Phase 10 reruns impacted in-scope regressions and uses the same bug-first process for newly discovered defects; it cannot hide a core bug with fixture responses.
 
 ## 6. Cross-cutting requirement coverage
 
@@ -67,30 +67,30 @@ For every row, write an assertion for the correct behavior, run it against the p
 | R-01, R-11 | Application loop cases plus real finalization rollback/retry tests |
 | R-02, R-06, R-07, R-15 | Domain transition matrix, independent-worker reservation/edit-dispatch races, crash recovery, disconnect smoke test |
 | R-03, R-04 | Phase 03 scaffold and Phase 08 runtime no-network checks; Phase 10 real-home entry, UI00-UI08 route/overlay coverage, shared-workflow replay, independent fixture-result assertions and guided/explore/reset tests |
-| R-05, R-16 | Actual actor boundary matrix across routes, session expiry/reset tests, disabled network-sensitive routes |
+| R-05, R-16 | Separate anonymous run progress/resources, targeted reset/expiry, stale-generation tests and disabled network-sensitive routes; no identity/access-control matrix |
 | R-08, R-09 | Snapshot/refresh conflict cases and adapter-call configuration capture |
-| R-10 | Private/shared scope tests, revocation/tombstone checks, real Qdrant cleanup tests |
+| R-10 | Shared/assigned participant-context tests, assignment removal/tombstone checks, real Qdrant cleanup tests |
 | R-12 | Fresh-install and legacy-upgrade fixtures; preserved IDs/counts/history; ambiguity reports |
 | R-13, R-17 | Reproducible scripts, dependency records, phase evidence, no hidden skips |
 | R-14 | Fragmented/replayed streams, load/navigation races, generation isolation, terminal reconciliation |
-| R-18 | Phase 00 design-contract review; Phase 10 verified single-ISIN manifest, claim/source/calculation mappings, distinct specialist contributions, dated facts versus judgments and user verification/disclosure presentation (P00-TEST06, P10-TEST05, P10-TEST06, P10-TEST09, P10-TEST10) |
+| R-18 | One real bond/ISIN, usable real documents/excerpts, basic source context, distinct contributions, labeled assumptions and clear demo/not-financial-advice disclosure; lightweight plausibility pass, not financial certification (P00-TEST06, P10-TEST05, P10-TEST06, P10-TEST09, P10-TEST10) |
 | R-19 | Persistent watermark/context on every UI00-UI08 route, reload/resume, paused/dismissed guidance, ended and fork views; placement/accessibility verified manually (P10-TEST15, P10-TEST16) |
-| R-20 | Approved DB seed/research-run provenance, original stored documents/checksums, review and analytical choices; import/version/pinning/restart tests and no precompleted visitor effects (P10-TEST06, P10-TEST17) |
+| R-20 | Published DB seed, real document content/basic references, short genuine research-run note and meaningful analysis; import/version/restart tests and no precompleted visitor effects. Formal reviewer/claim/hash archives are optional (P10-TEST06, P10-TEST17) |
 | R-21 | Normal API reads prove real form-created resources and tool/queue/ending effects; shared provider history contains actual tool results; no fake IDs or parallel workflow (P10-TEST01, P10-TEST02, P10-TEST07, P10-TEST14, P10-TEST18) |
 | R-22 | Incremental shared turn and ending SSE over local HTTP, all AI surfaces, dedup/reconnect/EOF/reset/summary-failure tests; actual-host checks separate (P10-TEST08, P10-TEST12, P10-TEST19) |
 
 Each phase adds named Pxx-TEST cases and maps its acceptance criteria to those groups. Expand these into concrete test names in implementation evidence; matrix rows do not substitute for test execution.
 
-Real-bond factual verification is a recorded authoring/content-review task, not something a scripted replay proves. Ordinary tests use the reviewed frozen evidence pack offline and detect drift, unsupported references, wrong instrument/snapshot, mislabeled assumptions and calculation errors. They must not fetch live financial information or assert that a historical rating/price is still current.
+Financial correctness is not the test oracle. Use frozen demo content offline and test usable source references, coherent instrument identity, labeled approximations and working software behavior. Missing optional documents/locators, approximate figures and unverified financial claims do not fail acceptance when framed honestly as demo analysis. No live financial fetch, exhaustive fact audit or calculation-reproduction suite is required.
 
-The seed additionally requires a recorded genuine research run through the actual application boundaries, real document capture and human/content review of substantive analytical choices. Preserve visible run/tool/provider artifacts and editorial changes, not private chain-of-thought. Do not invent a successful research run, fixed unanimous votes or provenance merely to make a test pass. Separately authorized authoring may use live research/inference, but test collection, CI and recruiter sessions must not require it. An independent expected hash/assertion must be approved before runtime comparison; self-hashing the actual result is not a retrieval-integrity test.
+The seed still derives from a genuine run using real documents and meaningful analysis through shared application boundaries. Keep a short run/source note and replay outputs, not a forensic evidence dossier or private chain-of-thought. A lightweight author plausibility/readability pass is sufficient; no independent human reviewer or formal sign-off is required. Editorial simplification/curated branches are allowed. Live authoring is separate from tests/visitor runtime, with permission needed for paid use. Expected source IDs/content or simple assertions fixed in the seed test retrieval wiring; self-hashing the actual result remains a vacuous software check, not a substitute for it.
 
 ### Corrective demo acceptance design
 
 - Vitest mounts the normal home/navigation/page/store boundaries with the guide layer, not the retired standalone component. Cover every UI00-UI08 page class/tab, actual form outcomes, short what/why copy, expandable technical explanations, stable anchor availability, pause/back/skip/exit/resume and watermark persistence. Removing/dismissing the overlay leaves normal controls functional within server-enforced capabilities.
 - Normal API reads must verify real created stacks/personas/participants/meeting, messages, queue dispatch, citations, disagreements, consensus, votes, summary and status. Include actual SQL integration for durability, transaction failures and cross-process coordination; fake repositories alone do not pass these gates.
-- Corrupt/remove stored evidence or independently approved expected assertions and show that continuation fails without success/progress. Verify actual returned tool results and original call IDs reach the shared provider continuation. A counter/list of tool names is insufficient.
-- Prove production content loads from the approved DB package, startup has no live calls and no precompleted research effects, every session is isolated, reset preserves shared originals, old versions are pinned/restarted explicitly and meaningful unsupported form edits fail honestly.
+- Corrupt/remove required runtime evidence or break expected tool-result assertions and show that continuation fails without success/progress. Optional financial metadata need not block replay. Actual returned tool results/original IDs must reach shared continuation; a tool-name counter is insufficient.
+- Prove content loads from the published DB package, startup has no live calls/precompleted visitor effects, runs keep separate progress and targeted reset preserves shared source content. Versions are pinned/restarted explicitly and unsupported form edits fail honestly. No identity/access-control audit is required.
 - Record desktop/narrow/keyboard/reduced-motion browser walkthrough observations for every route/tab and watermark/overlay placement, plus actual local transport timing evidence. jsdom, a route build list, grep-only network scans and final-response string assertions cannot replace that evidence.
 - Earlier Phase 10 evidence is historical and its local pass is superseded. Do not reuse aggregate counts as approval of revised requirements; missing core gate/integration/manual evidence remains visible until reverified.
 

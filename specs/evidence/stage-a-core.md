@@ -1,6 +1,8 @@
 # Stage A Evidence — Corrected Core Baseline (P10-T01/Stage A checkpoint)
 
-Authoritative scope: `specs/` (MASTER, CONTRACTS, DELIVERY) plus guide §4 Stage A
+> **Current scope correction (2026-10-16):** The execution observations below are historical. Authentication/identity/access-control work and B-05 are no longer requirements or gates; ownership checks described here do not mandate further work. Research requires only the current demo-grade content check and may proceed in parallel with UI/core implementation, not necessarily last. This annotation does not change code or claim new verification.
+
+Authoritative scope at execution: `specs/` (MASTER, CONTRACTS, DELIVERY) plus guide §4 Stage A
 ("Stop condition: documented corrected core with the actual required tests,
 migrations and recovery evidence. Stop on unresolved core prerequisites; do
 not bypass with fixtures"). This document records what was corrected, how it

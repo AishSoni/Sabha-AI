@@ -14,11 +14,11 @@ Currently both orchestrator methods invoke once; tool results do not return to t
 
 ## Required behavior and boundaries
 
-Implement CONTRACTS.md sections 3-4, 8-10. The use case receives provider resolution, authorized knowledge/tool execution, persistence/unit-of-work, clock and runner dependencies. HTTP routes validate/map requests and subscribe/collect; they do not implement the loop.
+Implement CONTRACTS.md sections 3-4, 8-10. The use case receives provider resolution, context-scoped knowledge/tools, persistence/unit-of-work, clock and runner dependencies. Routes validate/map and subscribe/collect; they do not own the loop. No actor/identity dependency is required.
 
 Pull forward minimal persistent turn reservation, invocation/effect identity, finalization and event sequencing. This is necessary for correct retries and stream-independent execution, not the full Phase 04 queue/lease system. Process-lifetime detached work is acceptable only for this private milestone; public release requires Phase 04 durable recovery.
 
-Tool execution preserves original call IDs and application execution identities. Validate complete arguments before execution; never execute partial streamed JSON. Multiple calls in one response execute in documented order initially. Communication effects are idempotent. Tool errors are structured; authorization failures never leak hidden sources.
+Tool execution preserves original call IDs/execution identities. Validate complete arguments, not partial streamed JSON. Multiple calls execute in documented order; communication effects are idempotent and errors structured. Retrieval follows participant context assignments; no user permission system is required.
 
 Context construction includes the base prompt, snapshot extension and complete conversation/tool groups within budgets. No unbounded history loading in the new engine. Provider usage is accumulated per invocation; unknown usage remains unknown. No hardcoded single-model rate is applied to all vendors/models.
 
@@ -57,7 +57,7 @@ Reserve/finalize using a transaction-capable adapter or approved database RPC. E
 ## Acceptance gate
 
 - **P02-AC01:** B-01 no longer expected-fails; both old routes delegate to one loop (TEST01-05).
-- **P02-AC02:** Original tool identities and authorized results reach the model; no direct persona/global DB lookup remains in the engine (TEST01-04).
+- **P02-AC02:** Original tool IDs and actual context-scoped results reach the model; no direct persona/global lookup remains (TEST01-04).
 - **P02-AC03:** Disconnect continuation, stable status/replay and terminal deduplication pass (TEST05-07, TEST10).
 - **P02-AC04:** Limits, context policy and supported provider contracts pass offline; usage uncertainty is visible (TEST03, TEST08-09).
 

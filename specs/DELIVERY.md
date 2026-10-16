@@ -17,7 +17,7 @@ Waterfall does not mean deferring testing until the end. TDD does not permit dis
 | Gate | Required evidence | Blocks |
 | --- | --- | --- |
 | G0 Requirements baseline | Confirmed scope, decision log, non-goals, acceptance scenarios | Architectural commitment to unresolved behavior |
-| G1 Design baseline | Approved contracts, schema evolution, ownership model, error/recovery semantics, phase dependency map | Production implementation |
+| G1 Design baseline | Approved contracts, schema evolution, run/resource relationships, error/recovery semantics, phase dependency map | Production implementation |
 | G2 Phase entry | Prior required gates passed, affected D-* resolved, tests designed, migration/rollback reviewed | Work in that phase |
 | G3 Phase verification | Required tests/checks and acceptance cases pass; owned regressions no longer expected failures | Declaring phase complete |
 | G4 Public-demo release | Phase 10 integrated feature/content/runtime acceptance, actual-host capability evidence, manual recruiter walkthrough, no live-service routes | Public exposure |
@@ -25,7 +25,7 @@ Waterfall does not mean deferring testing until the end. TDD does not permit dis
 
 The developer supplies evidence. The project owner approves product/default changes and major baseline changes. No extra approval is required for routine code changes already covered by an approved phase.
 
-Phase 10's G2 additionally requires Phase 09's closure of **all eleven B-* defects** and core refactor obligations, plus D-01 content approval before scenario code is implemented. Phase 08 verifies runtime foundations, not public readiness. Local Phase 10 implementation evidence may be complete while G4 remains blocked on the user's hosting environment; those statuses must be reported separately.
+Phase 10's G2 requires closure of the **ten in-scope B-* findings** and core refactor obligations; B-05 is withdrawn. D-01's lightweight demo-content check is needed for final content acceptance, not before scenario/UI implementation. Identity/access work and exhaustive financial verification cannot block any gate. Phase 08 verifies runtime foundations, not public readiness. Local completion and pending actual-host evidence remain separate statuses.
 
 ## 3. Task workflow
 
@@ -40,7 +40,7 @@ For each `Pxx-Tnn`:
 7. Refactor naming/placement without changing the contract, then rerun focused tests.
 8. Run the phase's impacted suites and required checks. Update traceability and migration evidence.
 
-Do not write tests that merely mirror private methods. Assert final state, observable events, authorization, side-effect counts, consistency, and failure behavior.
+Do not write tests that merely mirror private methods. Assert final state, observable events, context/run relationships, side-effect counts, consistency, and failure behavior.
 
 ## 4. Known failures and CI
 
@@ -49,8 +49,8 @@ Phase 01 may record reviewed defects using narrowly scoped strict expected-failu
 - Harness failures and unexplained flakes are never expected failures.
 - Every expected failure has an owner phase and an expiry gate.
 - A phase cannot pass with its own acceptance cases still expected-failing.
-- Phase 09 cannot pass, and Phase 10 feature implementation cannot start, while any B-01 through B-11 remains unfixed, skipped or expected-failing. A scripted adapter is not evidence that the underlying defect is fixed.
-- The release gate allows no unresolved expected failures for the public-demo path.
+- Phase 09 cannot pass while an in-scope B-* remains unfixed, skipped or expected-failing. B-05 is explicitly withdrawn and is not such a failure. A scripted adapter is not evidence that an underlying in-scope defect is fixed.
+- The release gate allows no unresolved expected failures for active public-demo requirements; withdrawn identity/access tests cannot block it.
 - Test collection must not import production credentials or connect to production infrastructure.
 
 ## 5. Specification change control
@@ -61,7 +61,7 @@ Implementation discoveries can change the plan. Update the master contract first
 
 ### Prior draft change record — single real-bond analysis scenario
 
-The scenario decision remains current; phase assignments in this historical record are superseded by the sequencing record below.
+The scenario decision remains current; phase assignments are superseded by the sequencing record below. All earlier financial-verification/sign-off language and references to closing every defect in these historical change records are superseded by the latest scope correction: B-05 is withdrawn and research is demo-grade. These records preserve decision history, not additional current gates.
 
 - **Reason/status:** user confirmed exactly one real Indian corporate bond as the guided scenario, subjective sourced analysis with independent verification/not-financial-advice positioning, and agents with genuinely different analytical responsibilities. This replaces the earlier proposed fictional launch/pilot story. Exact ISIN, evidence snapshot, specialist prompt wording and final copy remain open under D-01; this record does not approve those details or the implementation baseline.
 - **Affected scope:** R-04/R-18 and D-01; MASTER.md, CONTRACTS.md, DEMO-JOURNEY.md, TESTING.md and Phases 00/03/07/08. The alternative fictional business case is superseded; multiple scenarios/instruments are outside this demo.
@@ -80,6 +80,8 @@ The scenario decision remains current; phase assignments in this historical reco
 
 ### Corrective change record — real-application tutorial and research-backed seed (2026-10-16)
 
+Historical correction: the real-UI/DB/shared-SSE direction remains current. Its research approval/claim-audit requirements are relaxed by the scope correction below; they are not remaining implementation gates.
+
 - **Reason/status:** user explicitly requires complete removal of the standalone UI, a demo button on the actual home page, concise videogame-style overlays over ordinary screens, a persistent DEMO watermark, minimal backend facilitation through existing utilities, and DB-seeded content from a real research run using real bond documents and genuine analytical decisions. These product requirements are confirmed; numeric/technical defaults and D-01's concrete research approval are not implied. This commit changes specifications only, not implementation acceptance.
 - **Affected scope:** R-03/R-04/R-18 and new R-19..R-22; D-01; README, MASTER, CONTRACTS, DEMO-JOURNEY, TESTING and affected Phase 00/03/04/07/08/09/10 contracts. The separate script-player experience and hardcoded/process-local production content are rejected alternatives. Repair existing utilities rather than writing another demo engine.
 - **UI/API impact:** actual routes and ordinary CRUD/turn/queue/ending APIs remain primary. A persistent tutorial adds trusted anchor-based instructions and a watermark. Bootstrap/status must support pre-meeting setup, returning nullable current resources, pinned guide metadata, actual application state and recovery cursors. Demo actions coordinate/acknowledge supported steps or delegate once to existing use cases; they never return substitute completed transcripts/effects. All AI surfaces, including ending/summary, require shared incremental SSE and recoverable status.
@@ -87,6 +89,15 @@ The scenario decision remains current; phase assignments in this historical reco
 - **Security/compatibility:** add bounded template-based stack/persona/meeting operations needed by the real forms while continuing to deny arbitrary uploads, prompt/provider escapes and unrelated mutations. Preserve all existing user data and applied migrations; migrate/add versioned assets compatibly. The legacy `/demo` component tree is removed, with at most a redirect to home. Existing sessions must either keep their approved version or receive an explicit restart response; never silently reinterpret old progress.
 - **Verification:** add route/overlay/watermark tests, normal-API persisted-outcome tests, reviewed research-run provenance, actual incremental turn/ending transport, no-network and isolation/reset/recovery tests. Desktop/narrow/keyboard/reduced-motion manual evidence is mandatory; jsdom and aggregate green counts are not substitutes.
 - **Reverification/gates:** reopen Phase 10 and re-audit affected earlier core/runtime contracts, especially missing Phase 00/02/09 evidence and Phase 07/08 transport/durability obligations. Do not infer all bugs remain open, or all are closed, from missing documents alone. Preserve historical outputs but supersede unsupported completion claims. G4 remains blocked until corrected local acceptance plus actual-host evidence; no blanket pass is issued by this revision.
+
+### Scope correction — no authentication and demo-grade research
+
+- **Reason/status:** user explicitly removed authentication from every specification and relaxed bond research because this is clearly a demo run. This scope decision is confirmed, not an unresolved default.
+- **Affected IDs:** R-05 now means anonymous progress/reset bookkeeping; R-10 means participant-context assignment/deletion, not user permissions; R-18/R-20 and D-01 require demo-grade sources/analysis only. D-07 no longer prescribes credentials; D-12 is withdrawn. B-05 is withdrawn, not marked implemented; ten other findings retain their IDs and scope.
+- **Removed work/gates:** accounts, login/signup, actor/identity frameworks, credential/token design, ownership/RLS rollout, cross-user access audits and identity backfills. No phase, regression ledger or release claim requires them. Existing code/evidence may describe past work but creates no new obligation to develop or redesign it.
+- **Research standard:** retain one real bond, real documents/excerpts, a genuine run with meaningful analytical choices, basic source/run notes, a published DB package and clear recorded-demo/not-financial-advice labels. A lightweight author plausibility/readability pass suffices. Independent reviewers, formal approval trails, exhaustive primary documents, claim-by-claim source/calculation verification and bulletproof financial claims are not required. Known gaps, approximate claims and labeled illustrative assumptions/curated branches are acceptable.
+- **Implementation/API impact:** retain anonymous run references solely for state separation/resume/reset; no authentication transport or security guarantee is prescribed. Keep meeting relationships, participant evidence assignments, no-live-service composition, bounded demo operations, persistence and true incremental SSE. No application code or schema change is implied by this documentation edit.
+- **Sequence/tests:** UI/core work and research may proceed in parallel; D-01 is not a research-first code blocker. Reconcile active phase/acceptance/test references and mark historical reports as non-normative instead of rewriting past results. Keep all real-route/overlay/watermark/shared-workflow/transport/manual evidence requirements. No new implementation/test pass is claimed.
 
 ## 6. Phase evidence record
 
@@ -105,6 +116,6 @@ Existing evidence files are historical reports, not proof of compliance with lat
 
 ## 7. Release and rollback rules
 
-Every phase remains locally runnable. Feature flags/composition choices may stage incomplete new paths, but must not expose unprotected routes. Keep old API wrappers only as long as compatibility tests require them. Public demo remains disabled until G4.
+Every phase remains locally runnable. Feature flags/composition choices may stage incomplete paths, but must not enable live-service calls in demo mode. Keep old API wrappers only as long as compatibility tests require them. Public demo remains disabled until G4; identity/access infrastructure is not a G4 requirement.
 
 Application rollback must be tested against expanded schemas. Rollback must not remove new messages or reverse already executed tools. Incompatible contraction is deferred until old readers are retired and recovery is documented. Existing data is never treated as disposable test data.

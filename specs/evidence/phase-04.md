@@ -1,5 +1,7 @@
 # Phase 04 evidence — meeting domain, durable execution, editable queues
 
+> **Current scope correction (2026-10-16):** This is historical execution evidence, not a source of new requirements. Authentication/identity/access-control work is outside scope and B-05 is withdrawn; past tests or future-phase assignments here do not reinstate it. Research now needs only the demo-grade check in DEMO-JOURNEY.md, not formal financial verification or sign-off. No implementation or test rerun is implied by this annotation.
+
 ## Spec revision and decisions
 
 - Spec: `specs/phases/04-meeting-lifecycle.md` (draft); contracts
@@ -8,8 +10,9 @@
 - Historical migrations are never rewritten: `supabase_schema.sql` keeps its
   original CHECK; `migrations/004_meeting_lifecycle.sql` expands the status
   constraint and adds queue/ending/lease/ledger storage plus atomic RPCs.
-- RLS hardening stays Phase 08 (runtime-policy audit). Until then ownership
-  is enforced at the application entry boundary; RPCs run SECURITY DEFINER.
+- Historical implementation used entry-boundary ownership checks and
+  SECURITY DEFINER RPCs. The former Phase 08 RLS-hardening assignment is
+  withdrawn; it is not a current requirement.
 - Multi-replica Postgres lease adapter stays Phase 08; single-host
   durability uses the file-backed coordinator (`backend/data/leases.db`)
   under the same claim/fencing contract proven by the sqlite suites.
@@ -99,7 +102,7 @@
 
 - No recruiter walkthrough (core phase). Disabled demo entry untouched.
 - Limitations: sqlite suites prove the SQL predicates, not live Supabase
-  latency/locking; RLS policies not yet restrictive (Phase 08); multi-worker
+  latency/locking; former RLS work is out of scope; multi-worker
   across hosts needs the PG lease adapter (contract identical); 17 skipped
   are pre-existing unmarked async tests outside this phase's scope.
 

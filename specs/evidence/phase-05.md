@@ -1,5 +1,7 @@
 # Personas and configuration evidence — safe edits, stable snapshots, server-owned settings
 
+> **Current scope correction (2026-10-16):** This is historical execution evidence, not a source of new requirements. Authentication/identity/access-control work is outside scope and B-05 is withdrawn; past tests or future-phase assignments here do not reinstate it. Research now needs only the demo-grade check in DEMO-JOURNEY.md, not formal financial verification or sign-off. No implementation or test rerun is implied by this annotation.
+
 ## Spec revision and decisions
 
 - Spec: `specs/phases/05-personas-and-configuration.md`; contracts
@@ -118,7 +120,7 @@
   response. Temperature upper bound aligned to canonical 2.0 in both
   backend validators and the System AI slider.
 - Limitations: sqlite/double suites prove predicates, not live Supabase
-  locking; RLS hardening stays Phase 08; multi-worker PG adapters stay
+  locking; former RLS hardening is out of scope; multi-worker PG adapters stay
   Phase 08.
 
 ## Exit decision

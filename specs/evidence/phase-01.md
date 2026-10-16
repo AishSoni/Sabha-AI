@@ -1,5 +1,7 @@
 # Phase 01 evidence — offline test foundations and regression baseline
 
+> **Current scope correction (2026-10-16):** This is historical execution evidence, not a source of new requirements. Authentication/identity/access-control work is outside scope and B-05 is withdrawn; past tests or future-phase assignments here do not reinstate it. Research now needs only the demo-grade check in DEMO-JOURNEY.md, not formal financial verification or sign-off. No implementation or test rerun is implied by this annotation.
+
 ## Spec revision and decisions
 
 - Spec: `specs/phases/01-test-foundations.md` (addendum with B-01..B-11 ledger).

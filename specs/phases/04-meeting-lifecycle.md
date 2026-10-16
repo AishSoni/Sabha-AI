@@ -1,6 +1,6 @@
 # Phase 04 — Meeting domain, durable execution and editable queues
 
-Status: draft. Depends on: Phases 00-03. Requirements: R-02, R-05, R-06, R-07, R-11, R-12, R-15. Defects: B-04 full closure; B-05 core authorization enforcement.
+Status: draft. Depends on: Phases 00-03. Requirements: R-02, R-05, R-06, R-07, R-11, R-12, R-15. Defects: B-04 full closure. B-05 is withdrawn; identity/access-control work is not part of this phase or its gates.
 
 ## Objective and outcome
 
@@ -10,7 +10,7 @@ Make meeting behavior reliable under concurrency, disconnects, failure and resta
 
 `backend/app/services/meeting_manager.py` performs several separate SQL calls; `api/meetings.py` contains the ending workflow; participant/message APIs do not consistently enforce active state. The global frontend streaming flag is not server concurrency protection. Build on Phase 02 reservations; Phase 03 added no ending/status implementation. This phase owns that repair and extraction in full.
 
-Destination: meeting domain/use cases, actor policy, repositories/unit-of-work, turn/ending runner and queue APIs. Frontend full queue UX is Phase 07, but API behavior must be complete and inspectable now.
+Destination: meeting domain/use cases, repositories/unit-of-work, turn/ending runner and queue APIs. Frontend full queue UX is Phase 07, but API behavior must be complete and inspectable now.
 
 ## Required behavior
 
@@ -24,23 +24,23 @@ Ending attempts freeze roster/transcript/config, persist each vote/usage, enforc
 
 ## Ordered tasks
 
-Before these implementation tasks, reproduce B-04 with a correct fresh/legacy SQL status and ending-consistency regression and B-05 with denied-access assertions against the current exposed path. Record the intended red failures, implement the corrections, then complete domain extraction/refactoring with those regressions green. Transactional restructuring needed for the correction stays within that red-green cycle. New queue/lease behavior follows TDD and is reusable core functionality, not a guided journey.
+First reproduce B-04 with a fresh/legacy SQL status and ending-consistency regression, fix it, then complete extraction/refactoring with the regression green. B-05 is excluded, not a reproducer or entry prerequisite. New queue/lease behavior follows TDD and is reusable core functionality, not a guided journey.
 
 - **P04-T01 — Domain extraction:** move lifecycle/eligibility rules from routes/managers into small domain models and use cases; add transition-table tests before changing routes.
-- **P04-T02 — Actor policy:** resolve trusted actor at entry, enforce ownership across list/direct-ID/participant/message/turn/event/ending routes and compatibility wrappers; add database policy or restricted-service access enforcement matching the approved storage design.
+- **P04-T02 — Relationship consistency:** validate meeting/participant/message/queue relationships and run/generation bookkeeping through ordinary use cases. Do not introduce actor identity, permission policies or database access-control work.
 - **P04-T03 — Durable coordinator:** add lease claims, fencing, heartbeat, startup reconciliation and bounded retry classifications to the Phase 02 runner. Wire lifecycle shutdown/drain behavior.
 - **P04-T04 — Queue storage/use cases:** add FIFO sequence, revisions, idempotent submission, edit/remove commands, dispatch transactions and turn/ending barriers.
 - **P04-T05 — Status repair and ending workflow:** add the compatible voting/ended constraint migration, extract the route's ending workflow and implement vote validation, incremental public vote/summary SSE with durable journal/status recovery, atomic summary/status persistence, usage ledger, cancellation/failure recovery, idempotency and concurrent attempt protection. No minimal Phase 03 or parallel Phase 10 ending path is assumed.
 - **P04-T06 — Archive/restore:** preserve prior state on new archives; provide explicit handling for historical unknown prior state; block busy/queued transitions.
 - **P04-T07 — Transactional creation/finalization:** ensure meeting+initial participants creation and all owned lifecycle writes are atomic; reconcile legacy cost baseline with new ledger totals.
-- **P04-T08 — Data migration rehearsal:** upgrade sanitized legacy fixtures, enforce constraints after safe backfill, retain unresolved ownership/archive records explicitly, and test application rollback compatibility.
+- **P04-T08 — Data migration rehearsal:** upgrade sanitized legacy fixtures, enforce lifecycle constraints after safe backfill, preserve existing relationships/archive uncertainty, and test rollback compatibility. No identity mapping is required.
 - **P04-T09 — Transport validation:** run local-server disconnect/reconnect tests and independent-worker race tests; expose operational state needed by frontend Phase 07.
 
 ## Storage and API obligations
 
-Add/extend turns, ending attempts/votes, queue entries, active-work reservation, lease/fencing metadata and ownership scope. Use unique active-work protection and revision/row-lock checks. Queue dispatch must transition entry and insert message together with a unique queue-entry linkage. Terminal event creation must be atomic with terminal state or delivered by a transactional outbox.
+Add/extend turns, ending attempts/votes, queue entries, active-work reservation, lease/fencing metadata and run/meeting references. Use unique active-work protection and revision/row-lock checks. Queue dispatch transitions the entry and inserts its message together. Terminal event creation is atomic with terminal state or uses a transactional outbox.
 
-No broad ownership backfill from an arbitrary currently signed-in user. Shared defaults are read-only to ordinary actors. Protect child-table reads as well as parent routes. A privileged server client does not itself establish user authorization; document which layer enforces each invariant and test both direct access policy and application path as appropriate.
+Preserve legacy records and shared templates. Cleanup/reset targets the intended run and must not rewrite unrelated data. No user mapping, permission matrix, RLS migration or identity-related database/client policy is required.
 
 ## TDD cases
 
@@ -51,17 +51,17 @@ No broad ownership backfill from an arbitrary currently signed-in user. Shared d
 - **P04-TEST05:** Fail after queue-message insertion before state update; retry yields exactly one message. New arrivals during drain do not overtake pending entries.
 - **P04-TEST06:** Disconnect subscriber and restart worker around claim/invocation/finalization points; expired worker is fenced and uncertain paid calls are not replayed.
 - **P04-TEST07:** Majority/tie/zero-roster/invalid vote/summary failure/force-end/duplicate end requests produce the approved state and one summary at most; include usage from failed attempts. Public vote/summary events are incremental, replayable and deduplicated; disconnect does not cancel the attempt, provisional summary failure restores active, and completion follows atomic final commit.
-- **P04-TEST08:** Two actors attempt every meeting/child operation, including replay and queue edits; cross-owner access is denied consistently without leaks.
-- **P04-TEST09:** Simulate generation revocation/expiry through the actor/runner boundary while racing a tool effect and finalization; old generation cannot commit after revocation. Already committed effects remain only in the old scoped history. Full persistent session/reset endpoints are Phase 08; this test does not depend on them or the journey.
-- **P04-TEST10:** Fresh install and supported legacy upgrades preserve IDs/messages/cost baseline; invalid states and broken ownership mappings are reported before enforcement.
+- **P04-TEST08:** Separate runs/meetings maintain distinct queues, progress and execution references; mismatched child/meeting relationships are rejected as invalid business data. No cross-user access-control test matrix is required.
+- **P04-TEST09:** Race generation reset/expiry with a tool effect/finalization; stale work cannot overwrite a new generation. Preserve prior committed history. Full persistent reset endpoints remain Phase 08; no identity boundary is required.
+- **P04-TEST10:** Fresh install/legacy upgrades preserve IDs/messages/cost baseline and existing relationships; invalid lifecycle states are reported. No identity backfill is required.
 
 ## Acceptance gate
 
 - **P04-AC01:** Domain/lifecycle and ending regressions pass on real SQL; B-04 is closed (TEST01, TEST07, TEST10).
 - **P04-AC02:** Queue correctness and concurrency guarantees pass independent-connection tests, including failures (TEST02-05).
 - **P04-AC03:** Navigation/disconnect/restart behavior has runtime evidence, not just mocked subscriber tests (TEST06, TEST09).
-- **P04-AC04:** Core actor boundaries cover old/new endpoints and preserve existing data; B-05 enforcement is ready for the Phase 08 runtime-policy audit (TEST08, TEST10).
+- **P04-AC04:** Meeting/run relationships and data-preserving upgrades pass (TEST08, TEST10). B-05 is withdrawn and does not require enforcement or a later audit.
 
 ## Rollout, rollback, exclusions and risks
 
-Expand schemas first, rehearse on a clone, then switch command routing. A rollback may disable new queue submission while retaining pending entries for safe reconciliation; never discard them. Stop/drain workers before incompatible coordination changes. Full queue UI and public quota hardening are later phases. Main risks: database-only tests bypass auth, stale workers reapply effects, and REST pseudo-transactions; each has an explicit test above.
+Expand schemas first, rehearse on a clone, then switch command routing. Rollback may disable new submission while preserving pending entries. Stop/drain workers before incompatible changes. Full queue UI/resource bounds are later phases. Main risks are stale-worker effects and REST pseudo-transactions; identity/access infrastructure is excluded.

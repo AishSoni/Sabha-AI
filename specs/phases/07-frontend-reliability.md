@@ -54,7 +54,7 @@ Keep API DTOs synchronized with CONTRACTS.md, preferably through generated or sh
 - **P07-TEST08:** Synthetic generation change/expired-session/failed-storage responses and duplicate events invalidate only the appropriate cache; old-generation work cannot mutate the selected meeting. This validates store contracts, not a recruiter reset journey.
 - **P07-TEST09:** Generic ended/archived meeting and summary views are read-only, refresh from authoritative state and never implicitly reopen a meeting.
 - **P07-TEST10:** Keyboard-only queue/refresh/core meeting controls have correct accessible names and focus; reduced-motion path avoids forced animation delays.
-- **P07-TEST11:** Generic citation/tool rendering shows source metadata and distinct tool execution IDs, handles unavailable/deleted evidence and does not send session credentials on external source navigation. Bond-specific claim/disclosure presentation remains Phase 10.
+- **P07-TEST11:** Generic citation/tool rendering shows metadata/distinct execution IDs and handles missing/deleted evidence. Source navigation does not alter pinned demo content. Bond-specific demo/assumption labels remain Phase 10; no credential transport requirement applies.
 - **P07-TEST12:** Generic ending-attempt events incrementally render public vote explanations/results and summary in the actual meeting UI; replay does not duplicate output, EOF is not success, failure leaves no completed summary, and old-attempt/generation events cannot overwrite newer state.
 
 ## Acceptance gate

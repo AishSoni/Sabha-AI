@@ -1,5 +1,7 @@
 # Phase 08 evidence — demo runtime hardening (generic foundations only)
 
+> **Current scope correction (2026-10-16):** This is historical execution evidence, not a source of new requirements. Authentication/identity/access-control work is outside scope and B-05 is withdrawn; past tests or future-phase assignments here do not reinstate it. Research now needs only the demo-grade check in DEMO-JOURNEY.md, not formal financial verification or sign-off. No implementation or test rerun is implied by this annotation.
+
 ## Spec revision and decisions
 
 - Spec: `specs/phases/08-demo-runtime-hardening.md` (draft); contracts
@@ -254,13 +256,13 @@ construction (store records never enter composition inputs).
 - Restart: in-memory gateway loses sessions (local dev only); Supabase
   gateway survives restarts and shares state across processes. No broker
   required. Authoritative queue durability is Phase 10 wiring concern.
-- SSE/proxy: no streams in this phase. Phase 10 must send
-  `private_no_store_headers()` on session/credential responses, keep
-  `Authorization` out of URLs/logs, and use the pinned frontend contract
-  (`sabha.demo.sessionToken` sessionStorage key, `Bearer` scheme).
-- Frontend contract: `frontend/src/features/demo/types.ts`
-  (`DEMO_ENABLED=false`, storage key, auth scheme, header builder).
-  Session/header integration is Phase 10 work.
+- SSE/proxy: no streams were verified in this phase. Current Phase 10
+  acceptance requires real incremental turn/ending transport and correct
+  progress freshness. The earlier bearer/header/credential handoff is
+  withdrawn; anonymous run references are state bookkeeping only.
+- Frontend contract: the historical `frontend/src/features/demo/types.ts`
+  scaffold is not a mandatory credential design. Use the current shared
+  API/stream contracts and lightweight anonymous resume/reset state.
 - Deferred hosted checks (not prerequisites of this gate): actual-host
   proxy/SSE verification (P10-TEST12), live Supabase-backed session test,
   egress controls for the hosting setup.

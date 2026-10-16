@@ -2,7 +2,9 @@
 
 ## Current acceptance status — reopened 2026-10-16
 
-**The local Phase 10 pass reported below is superseded. Corrected AC01-AC05 are not accepted; G4 remains blocked.** The user requires a real-home/real-route tutorial, overlays and persistent watermark, a DB-backed seed from genuine reviewed research, thin shared-utility execution and actual incremental SSE including the brief. The current standalone implementation does not establish these outcomes. See the corrective record in `specs/DELIVERY.md` and revised `specs/phases/10-demo-journey-and-release.md`.
+**The local Phase 10 pass reported below is superseded. Corrected AC01-AC05 are not accepted; G4 remains blocked.** The user requires a real-home/real-route tutorial, overlays and persistent watermark, a DB-backed seed from genuine demo-grade research, thin shared-utility execution and actual incremental SSE including the brief. The historical standalone implementation does not establish these outcomes. See the corrective record in `specs/DELIVERY.md` and revised `specs/phases/10-demo-journey-and-release.md`.
+
+**Latest scope:** authentication/identity/access-control work is excluded everywhere; B-05 is withdrawn, not an open gate. Historical implementation/test descriptions below do not reinstate it. Real documents or excerpts, a short genuine-run note, meaningful analysis and a lightweight plausibility/readability pass suffice for research. Independent approval, exhaustive claim/calculation verification, full original-document archives and bulletproof financial claims are not required. Labeled approximations and illustrative branches are acceptable; no research-first coding blocker applies.
 
 The following historical report is preserved for provenance, not endorsed as current verification. No application tests, browser walkthrough, financial source verification, database rehearsal or research run were performed as part of this specification correction. In particular:
 
@@ -10,10 +12,10 @@ The following historical report is preserved for provenance, not endorsed as cur
 - Claims of shared-engine disagreement/consensus, real active-turn queue dispatch and ordinary ending are not substantiated by the response-dictionary/in-memory path in `bond_service.py`. Verify actual persisted records and normal use cases.
 - The service compares a result to a hash calculated from that same result; this does not satisfy independent expected-result assertions.
 - `/demo` currently presents a separate complete-response UI. It does not establish home entry, normal-screen route coverage, overlays/watermark or shared incremental turn/ending transport.
-- Historical content assertions below are candidates for D-01 re-review. They do not establish preserved original documents, a genuine research run, reviewed analytical decisions or an approved DB package.
+- Historical content assertions below may be reused after the lightweight D-01 content check. They do not by themselves establish usable real documents/excerpts, a genuine research run with meaningful choices or a working published DB package; formal financial proof is not required.
 - Manual local browser, real SQL/durability and incremental local transport evidence remain local acceptance obligations, not merely hosted-release work. Do not mark them passed before execution.
 
-Add new revision-specific commands/results, content approval and manual observations when actually performed. Keep actual-host checks separately pending until an environment is supplied; specification updates alone close no implementation gate.
+Add new revision-specific commands/results, a short content-check note and manual observations when actually performed. Keep actual-host checks separately pending until an environment is supplied; specification updates alone close no implementation gate.
 
 ## Historical implementation report (superseded acceptance)
 

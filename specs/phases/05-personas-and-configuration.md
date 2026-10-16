@@ -21,7 +21,7 @@ Snapshot creation resolves persona preferences and approved defaults into effect
 
 Prompt activation validates target existence before mutation and switches atomically. At most one active prompt is enforced by SQL; every usable persona must have an active prompt or an explicit not-ready state. Concurrent version allocation cannot depend on an unprotected max+1 query.
 
-Refresh preview includes field diffs, persona/participant revisions and changed knowledge assignments. Apply is explicit, authorized, atomic and rejected during active work, pending queue or non-active meeting. Deleted/revoked knowledge is never retained as an access grant by snapshotting.
+Refresh preview includes diffs/revisions/assignment changes. Apply is explicit/atomic and rejected during active work, queued messages or non-active meetings. Deleted/unassigned knowledge is excluded from future context; no identity/access policy is required.
 
 Settings authority follows approved D-09: server-managed secrets, server-persisted non-secret preferences, explicit participant overrides and separate System AI settings. Remove false UI claims that a locally tested key automatically drives inference. No secret round-trips in normal settings responses/logs.
 
@@ -34,7 +34,7 @@ Before refactoring, reproduce B-06/B-07/B-08/B-11 with correct denied-destinatio
 - **P05-T01 — Canonical config model:** unify validated fields and precedence; define unset/default semantics, model compatibility, temperature/output limits and provenance.
 - **P05-T02 — Transactional prompt operations:** add active-version invariant, target validation, locked version allocation, revision checks and safe stack-assignment updates.
 - **P05-T03 — Participant snapshot creation:** fix config inheritance, separate base instruction from persona extension and record resolved settings/assignments/version.
-- **P05-T04 — Refresh use cases:** implement preview/apply with expected revisions, access revalidation and meeting eligibility; produce useful conflicts rather than last-write-wins replacement.
+- **P05-T04 — Refresh use cases:** implement preview/apply with expected revisions, current assignment/document checks and meeting eligibility; return useful conflicts, without introducing user permissions.
 - **P05-T05 — Authoritative preferences:** add scoped read/update API for non-secret settings; resolve System AI separately; expose effective settings and readiness without revealing keys.
 - **P05-T06 — Restrict destinations:** remove arbitrary live URL behavior; pin approved endpoints, control redirects and validate before every request. Demo composition denies these routes regardless of supplied credentials.
 - **P05-T07 — Frontend integration seam:** replace disconnected setters with validated server persistence/status, remove browser-secret persistence under D-09 and prepare review/diff UI for Phase 07.
@@ -42,7 +42,7 @@ Before refactoring, reproduce B-06/B-07/B-08/B-11 with correct denied-destinatio
 
 ## Data/API changes
 
-Add participant snapshot revision/provenance and assignment snapshot representation, persona revision and server settings ownership. Keep credential material in approved server secret configuration, not persona/message JSON. Add conditional prompt-active uniqueness after resolving legacy conflicts. Preview/apply follow CONTRACTS.md; settings endpoints need explicit effective versus configured fields and typed validation errors.
+Add participant snapshot provenance/revisions/assignments, persona revisions and server-persisted settings. Provider API secrets stay in server configuration, not persona/message JSON; this is not user authentication. Add prompt-active uniqueness after resolving conflicts. Preview/apply follow CONTRACTS.md; settings distinguish effective/configured fields with typed errors.
 
 Browser storage migration removes old stored keys from the app's persisted settings schema without sending them to a new endpoint. Preserve harmless preferences where meaningful, but do not present unpersisted choices as active server configuration. Explain the migration in release notes.
 
@@ -52,7 +52,7 @@ Browser storage migration removes old stored keys from the app's persisted setti
 - **P05-TEST02:** Concurrent new-version requests allocate distinct versions; transaction failure does not deactivate the old prompt or lose assignments.
 - **P05-TEST03:** Create participants from personas with different providers/models/temperature/output limits; capture exact resolved adapter arguments.
 - **P05-TEST04:** Edit persona/defaults; existing participant stays unchanged. Preview shows diff; confirmed apply changes only the intended participant at the expected revision.
-- **P05-TEST05:** Stale preview, deleted persona, busy meeting, queued messages or cross-owner request cannot apply a refresh. Revoked stack access is not resurrected.
+- **P05-TEST05:** Stale preview, deleted persona, busy meeting, queued messages or mismatched participant/meeting relationships cannot apply refresh. Removed/deleted stack assignments are not resurrected. No cross-user access test is required.
 - **P05-TEST06:** Summary uses System AI configuration, not first participant. Unknown model/provider combinations fail visibly rather than silently choosing another vendor.
 - **P05-TEST07:** Arbitrary base URL, redirect to untrusted destination and client mode/provider override never reach forbidden transport. Demo key/model tests remain disabled.
 - **P05-TEST08:** Settings save/read/reload produces the same effective config; secrets are absent from responses/logs/new local storage and legacy browser-key migration is safe.

@@ -1,5 +1,7 @@
 # Phase 07 evidence — core frontend reliability and reusable controls
 
+> **Current scope correction (2026-10-16):** This is historical execution evidence, not a source of new requirements. Authentication/identity/access-control work is outside scope and B-05 is withdrawn; past tests or future-phase assignments here do not reinstate it. Research now needs only the demo-grade check in DEMO-JOURNEY.md, not formal financial verification or sign-off. No implementation or test rerun is implied by this annotation.
+
 ## Spec revision and decisions
 
 - Spec: `specs/phases/07-frontend-reliability.md` (draft); contracts
@@ -109,7 +111,7 @@
   new defects rather than UI adjustments.
 - Limitations: jsdom does not cover real-server incremental delivery;
   sqlite/double backend suites used for cross-reference do not prove
-  live latency/locking; RLS hardening remains Phase 08.
+  live latency/locking; former RLS hardening is out of scope.
 
 ## Exit decision
 

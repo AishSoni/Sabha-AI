@@ -15,7 +15,7 @@ Meeting-status/schema repair and ending extraction belong entirely to Phase 04. 
 ## Required behavior
 
 - Define a server-selected fixture-only composition that can boot without provider credentials, Qdrant or embeddings; unexpected external capabilities fail closed.
-- Provide typed DB-package/action/result, session/generation, research-run/source/review provenance, claim classification and trusted guide-anchor contracts, including nullable pre-meeting resources. They describe the later single-bond real-screen feature without supplying an approved instrument, content or journey state machine.
+- Provide minimal typed DB-package/action/result, anonymous run/generation, source/run notes and guide-anchor contracts, including nullable pre-meeting resources. Formal claim/reviewer registries and identity credentials are not required; no real scenario content/state machine is supplied here.
 - Reuse deterministic test doubles for one synthetic search -> tool result -> final response smoke exercise through the existing engine. Synthetic test content is visibly test-only and cannot be published as bond evidence or offered as another demo scenario.
 - Define injection seams for DB-backed recorded invocations, fixture retrieval, votes, incremental summaries and metadata through existing ports; unconfigured capabilities report typed unavailable results rather than pretending to complete them. No standalone demo component tree or production hardcoded content store is an acceptable scaffold.
 - Keep public demo bootstrap/actions and any UI entry disabled. Missing scenario content is an intentional unavailable capability, not a successful placeholder walkthrough.
@@ -27,7 +27,7 @@ Meeting-status/schema repair and ending extraction belong entirely to Phase 04. 
 - **P03-T02 — Composition seam:** wire fixture-only provider/retrieval resolution and fail-closed external capability policy, reusing existing ports and test utilities.
 - **P03-T03 — Synthetic smoke harness:** run one developer/test-only tool-continuation case through the Phase 02 engine with captured inputs/effects and no journey progression.
 - **P03-T04 — Disabled entry boundary:** add only necessary route/feature registration and frontend types; absent approved scenario returns unavailable and never seeds a partially working journey. Do not expose a recruiter start action.
-- **P03-T05 — Lifecycle extension points:** specify session/generation/reset integration with the existing actor/runner contracts; use controlled test actors, leaving persistent runtime lifecycle to Phase 08.
+- **P03-T05 — Lifecycle extension points:** specify run/generation/reset integration with the shared runner; use controlled run references, leaving persistent lifecycle to Phase 08. No actor/identity contract is required.
 - **P03-T06 — Scaffold evidence:** document how to run the smoke harness, the unavailable capabilities and the exact downstream ownership. Verify no early journey implementation or paid-service fallback exists.
 
 ## Data/API and compatibility
@@ -40,8 +40,8 @@ No bond content, specialist prompt seeds or production journey-progress rows are
 - **P03-TEST02:** Synthetic smoke invocation returns its tool result through the shared engine and produces one persisted test result; no second inference algorithm or journey transition is involved.
 - **P03-TEST03:** Missing fixture/capability yields an explicit error; it never becomes fabricated successful retrieval, votes or summary.
 - **P03-TEST04:** Public demo entry/actions remain disabled and a client mode/provider override cannot enable them or a live fallback.
-- **P03-TEST05:** Contract validation rejects malformed identity/revision/source shapes; schema tests do not require a selected real ISIN or approved authored scenario.
-- **P03-TEST06:** Test actors/results are isolated and teardown removes only test-owned state; scaffold startup does not overwrite user templates, meetings or configuration.
+- **P03-TEST05:** Contract validation rejects malformed instrument/revision/source shapes; schema tests do not require a selected real ISIN or published authored scenario, and do not introduce user identity.
+- **P03-TEST06:** Test runs/results stay separate and teardown removes only test-created state; startup does not overwrite user templates/meetings/configuration.
 
 ## Acceptance gate
 
