@@ -16,6 +16,10 @@ def meeting_collection_name(meeting_id: str) -> str:
     return f"meeting_{meeting_id}_shared"
 
 
+def persona_collection_name(persona_id: str) -> str:
+    return f"persona_{persona_id}_knowledge"
+
+
 def stack_collection_name(stack_id: str) -> str:
     return f"stack_{stack_id}_knowledge"
 

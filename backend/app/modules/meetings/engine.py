@@ -261,7 +261,7 @@ class TurnEngine:
             participant.provider_config.provider or None,
             participant.provider_config.model or None,
         )
-        from app.services.tools import get_default_tools
+        from app.modules.meetings.tools import get_default_tools
 
         tools = get_default_tools()
         deadline = self._clock() + policies.deadline_seconds

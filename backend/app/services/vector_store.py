@@ -74,17 +74,23 @@ class VectorStoreManager:
     @staticmethod
     def meeting_collection_name(meeting_id: str) -> str:
         """Get collection name for meeting shared documents."""
-        return f"meeting_{meeting_id}_shared"
-    
+        from app.modules.knowledge.policy import meeting_collection_name as canonical
+
+        return canonical(meeting_id)
+
     @staticmethod
     def persona_collection_name(persona_id: str) -> str:
         """Get collection name for persona private knowledge."""
-        return f"persona_{persona_id}_knowledge"
+        from app.modules.knowledge.policy import persona_collection_name as canonical
+
+        return canonical(persona_id)
 
     @staticmethod
     def stack_collection_name(stack_id: str) -> str:
         """Get collection name for a knowledge stack."""
-        return f"stack_{stack_id}_knowledge"
+        from app.modules.knowledge.policy import stack_collection_name as canonical
+
+        return canonical(stack_id)
     
     async def create_collection(self, collection_name: str) -> bool:
         """

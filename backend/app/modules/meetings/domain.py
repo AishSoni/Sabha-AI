@@ -17,6 +17,20 @@ class MeetingState(str, Enum):
     ARCHIVED = "archived"
 
 
+def to_domain_state(status: MeetingState | str) -> MeetingState:
+    """Convert a wire/status value to the canonical domain state.
+
+    The API wire enum (MeetingStatus) and this domain enum share values;
+    this helper is the single conversion point so the two cannot drift.
+    """
+    return MeetingState(str(status) if not isinstance(status, str) else status)
+
+
+def to_wire_value(state: MeetingState | str) -> str:
+    """Convert a domain state to its wire string value."""
+    return MeetingState(state).value
+
+
 class ArchiveRestoreError(ValueError):
     """Legacy archived records without provable prior state stay blocked."""
 
