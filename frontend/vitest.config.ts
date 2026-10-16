@@ -15,8 +15,8 @@ export default defineConfig({
     setupFiles: ['./src/test/setup.ts'],
     restoreMocks: true,
     unstubGlobals: true,
-    // B-09 owned by Phase 07: it.fails unexpected-pass detection is on.
-    // A stale marker fails the suite so it cannot linger silently.
+    // No it.fails/skip markers: unexpected-pass detection stays on so any
+    // reintroduced marker that unexpectedly passes fails loudly.
     coverage: {
       provider: 'v8',
       reporter: ['text', 'lcov'],
