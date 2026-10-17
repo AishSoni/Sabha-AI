@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useRef, useState } from 'react';
+import { Suspense, useEffect, useRef, useState } from 'react';
 import Link from 'next/link';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { Plus, MessageSquare, Calendar, ArrowLeft, Loader2, Archive, Trash2, MoreVertical, ArchiveRestore } from 'lucide-react';
@@ -29,7 +29,7 @@ import { api, Meeting } from '@/lib/api';
 import { formatRelativeTime } from '@/lib/utils';
 
 
-export default function MeetingSpacePage() {
+function MeetingsContent() {
     const [meetings, setMeetings] = useState<Meeting[]>([]);
     const [isLoading, setIsLoading] = useState(true);
 
@@ -417,3 +417,16 @@ function MeetingGrid({ meetings, onArchive, onUnarchive, onDelete, actionLoading
         </div>
     );
 }
+
+export default function MeetingSpacePage() {
+    return (
+        <Suspense fallback={
+            <div className="min-h-screen bg-zinc-950 flex items-center justify-center">
+                <Loader2 className="w-6 h-6 animate-spin text-zinc-500" />
+            </div>
+        }>
+            <MeetingsContent />
+        </Suspense>
+    );
+}
+
