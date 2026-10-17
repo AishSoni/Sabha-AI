@@ -1,8 +1,7 @@
 'use client';
 
 import { useEffect, useState } from 'react';
-import { DEMO_SESSION_STORAGE_KEY } from '@/features/demo/types';
-import { BOND_SNAPSHOT_DATE } from '@/features/demo/journeyClient';
+import { BOND_SNAPSHOT_DATE, DEMO_SESSION_STORAGE_KEY } from '@/features/demo/journeyClient';
 
 /** Persistent DEMO watermark + recorded-analysis context. Never covers controls. */
 export function DemoWatermark() {
