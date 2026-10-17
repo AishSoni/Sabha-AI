@@ -163,30 +163,170 @@ function isAbortError(err: unknown): boolean {
     return err instanceof DOMException && err.name === 'AbortError';
 }
 
+/**
+ * Trusted-actor attribution (CONTRACTS section 1: identity comes from the
+ * transport, never the body).
+ *
+ * - Demo sessions attribute to the fixed demo owner so the shared ownership
+ *   check passes for demo-created meetings (bookkeeping identity, not auth).
+ * - Normal use carries a stable anonymous local identity. This is NOT
+ *   authentication: it only gives normal meetings an owner for their own
+ *   reads/writes (B-05 is withdrawn; no accounts are ever created).
+ */
+export const DEMO_ACTOR_ID = 'demo-visitor';
+const LOCAL_ACTOR_ID = 'local-dev';
+
+export function authHeaders(): Record<string, string> {
+    let identity = LOCAL_ACTOR_ID;
+    try {
+        const token = sessionStorage.getItem('sabha.demo.sessionToken');
+        if (token && token.startsWith('real-')) identity = DEMO_ACTOR_ID;
+    } catch {
+        /* storage unavailable -> local identity */
+    }
+    return { Authorization: `Bearer ${identity}` };
+}
+
+/**
+ * True when the URL's meeting was bootstrapped by the demo walkthrough
+ * (sessions page marks sessionStorage before routing into the room).
+ */
+export function isDemoSessionFor(meetingId: string): boolean {
+    try {
+        return sessionStorage.getItem('sabha.demo.sessionToken') === `real-${meetingId}`;
+    } catch {
+        return false;
+    }
+}
+
+export interface DemoRecordedTurnStart {
+    turn_id: string;
+    meeting_id: string;
+    participant_id: string;
+    participant_name: string;
+    action_id: string;
+    stage?: string | null;
+    events_url: string;
+    recorded_analysis: boolean;
+    approval_status: string;
+    disclosure: string;
+}
+
+interface TurnStreamOutcome {
+    terminal: TurnStreamEvent | null;
+    eofWithoutTerminal: boolean;
+    aborted: boolean;
+}
+
+/** Shared normalized SSE consumption for both turn subscription paths. */
+async function consumeTurnStream(
+    response: Response,
+    args: { meetingId: string; signal: AbortSignal; onEvent: (event: TurnStreamEvent) => void; initialTurnId?: string },
+): Promise<TurnStreamOutcome> {
+    const { meetingId, signal, onEvent, initialTurnId } = args;
+    const reader = response.body?.getReader();
+    if (!reader) throw new Error('No response body');
+
+    let seq = 0;
+    let tools = 0;
+    let turnId: string | null = initialTurnId ?? null;
+    const ctx: NormalizeContext = {
+        meetingId,
+        turnId,
+        nextSequence: () => ++seq,
+        nextExecutionId: (name: string) => `legacy:${meetingId}:${++tools}:${name}`,
+    };
+    const isDuplicate = createSequenceDedup();
+    let terminal: TurnStreamEvent | null = null;
+    let aborted = false;
+    let parseErrors = 0;
+
+    const parser = createSseParser({
+        onFrame: (frame) => {
+            if (signal.aborted || !frame.data) return;
+            let raw: unknown;
+            try {
+                raw = JSON.parse(frame.data);
+            } catch (e) {
+                parseErrors += 1;
+                console.error('[SSE Parse Error]', frame.data.slice(0, 100), e);
+                return;
+            }
+            // Capture v2 lifecycle markers for identity; they carry no UI content.
+            if (
+                typeof raw === 'object' && raw !== null &&
+                (raw as Record<string, unknown>).version === 2 &&
+                (raw as Record<string, unknown>).type === 'turn_started'
+            ) {
+                const id = (raw as Record<string, unknown>).turn_id;
+                if (typeof id === 'string') {
+                    turnId = id;
+                    ctx.turnId = id;
+                }
+                return;
+            }
+            const event = normalizeEvent(raw, ctx);
+            if (!event) return;
+            if (isDuplicate(event.sequence)) return;
+            if (event.kind === 'terminal') terminal = event;
+            onEvent(event);
+        },
+    });
+
+    try {
+        while (true) {
+            let read: ReadableStreamReadResult<Uint8Array>;
+            try {
+                read = await reader.read();
+            } catch (err) {
+                if (isAbortError(err) || signal.aborted) {
+                    aborted = true;
+                    break;
+                }
+                throw err;
+            }
+            if (read.done) break;
+            if (signal.aborted) {
+                aborted = true;
+                break;
+            }
+            parser.feed(read.value);
+        }
+    } finally {
+        parser.flush();
+        reader.releaseLock();
+    }
+
+    if (signal.aborted) aborted = true;
+    void parseErrors;
+    return { terminal, eofWithoutTerminal: terminal === null && !aborted, aborted };
+}
+
 export const api = {
     // Meetings
     async createMeeting(name: string, agenda: string = '', personaIds?: string[]): Promise<MeetingWithParticipants> {
         const response = await fetch(`${API_BASE}/meetings`, {
             method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
+            headers: { 'Content-Type': 'application/json', ...authHeaders() },
             body: JSON.stringify({ name, agenda, persona_ids: personaIds }),
         });
         return handleResponse(response);
     },
 
     async listMeetings(): Promise<Meeting[]> {
-        const response = await fetch(`${API_BASE}/meetings`);
+        const response = await fetch(`${API_BASE}/meetings`, { headers: authHeaders() });
         return handleResponse(response);
     },
 
     async getMeeting(meetingId: string): Promise<MeetingWithParticipants> {
-        const response = await fetch(`${API_BASE}/meetings/${meetingId}`);
+        const response = await fetch(`${API_BASE}/meetings/${meetingId}`, { headers: authHeaders() });
         return handleResponse(response);
     },
 
     async archiveMeeting(meetingId: string): Promise<{ success: boolean; message: string }> {
         const response = await fetch(`${API_BASE}/meetings/${meetingId}/archive`, {
             method: 'POST',
+            headers: authHeaders(),
         });
         return handleResponse(response);
     },
@@ -194,6 +334,7 @@ export const api = {
     async unarchiveMeeting(meetingId: string): Promise<{ success: boolean; message: string }> {
         const response = await fetch(`${API_BASE}/meetings/${meetingId}/unarchive`, {
             method: 'POST',
+            headers: authHeaders(),
         });
         return handleResponse(response);
     },
@@ -201,6 +342,7 @@ export const api = {
     async deleteMeeting(meetingId: string): Promise<{ success: boolean; message: string }> {
         const response = await fetch(`${API_BASE}/meetings/${meetingId}`, {
             method: 'DELETE',
+            headers: authHeaders(),
         });
         return handleResponse(response);
     },
@@ -226,7 +368,7 @@ export const api = {
     ): Promise<{ queued: false; message: Message } | { queued: true; entry: QueueEntry }> {
         const response = await fetch(`${API_BASE}/meetings/${meetingId}/messages`, {
             method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
+            headers: { 'Content-Type': 'application/json', ...authHeaders() },
             body: JSON.stringify({ content, ...(idempotencyKey ? { idempotency_key: idempotencyKey } : {}) }),
         });
         if (response.status === 201) return { queued: false, message: (await response.json()) as Message };
@@ -239,7 +381,7 @@ export const api = {
     },
 
     async getQueue(meetingId: string): Promise<QueueEntry[]> {
-        const response = await fetch(`${API_BASE}/meetings/${meetingId}/queue`);
+        const response = await fetch(`${API_BASE}/meetings/${meetingId}/queue`, { headers: authHeaders() });
         const body = await handleResponse<{ entries: unknown[] }>(response);
         return (body.entries ?? []).map(asQueueEntry);
     },
@@ -254,7 +396,7 @@ export const api = {
             `${API_BASE}/meetings/${meetingId}/queue/${entryId}?expected_revision=${expectedRevision}`,
             {
                 method: 'PATCH',
-                headers: { 'Content-Type': 'application/json' },
+                headers: { 'Content-Type': 'application/json', ...authHeaders() },
                 body: JSON.stringify({ content }),
             },
         );
@@ -268,7 +410,7 @@ export const api = {
     async removeQueueEntry(meetingId: string, entryId: string, expectedRevision: number): Promise<void> {
         const response = await fetch(
             `${API_BASE}/meetings/${meetingId}/queue/${entryId}?expected_revision=${expectedRevision}`,
-            { method: 'DELETE' },
+            { method: 'DELETE', headers: authHeaders() },
         );
         if (response.status === 204) return;
         if (!response.ok) {
@@ -281,7 +423,7 @@ export const api = {
     async executeTurn(meetingId: string, participantId: string): Promise<TurnResponse> {
         const response = await fetch(`${API_BASE}/meetings/${meetingId}/turn`, {
             method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
+            headers: { 'Content-Type': 'application/json', ...authHeaders() },
             body: JSON.stringify({ participant_id: participantId }),
         });
         return handleResponse(response);
@@ -298,7 +440,7 @@ export const api = {
     ): AsyncGenerator<StreamEvent> {
         const response = await fetch(`${API_BASE}/meetings/${meetingId}/turn/stream`, {
             method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
+            headers: { 'Content-Type': 'application/json', ...authHeaders() },
             body: JSON.stringify({ participant_id: participantId }),
             signal: opts?.signal,
         }).catch((err) => {
@@ -321,7 +463,6 @@ export const api = {
                 if (frame.data) pending.push(frame.data);
             },
         });
-
         function* drain(): Generator<StreamEvent> {
             while (pending.length > 0) {
                 const payload = pending.shift() as string;
@@ -368,7 +509,7 @@ export const api = {
         try {
             response = await fetch(`${API_BASE}/meetings/${meetingId}/turn/stream`, {
                 method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
+                headers: { 'Content-Type': 'application/json', ...authHeaders() },
                 body: JSON.stringify({ participant_id: participantId }),
                 signal,
             });
@@ -382,104 +523,95 @@ export const api = {
             throw toApiError(response.status, error);
         }
 
-        const reader = response.body?.getReader();
-        if (!reader) throw new Error('No response body');
+        return consumeTurnStream(response, { meetingId, signal, onEvent });
+    },
 
-        let seq = 0;
-        let tools = 0;
-        let turnId: string | null = null;
-        const ctx: NormalizeContext = {
-            meetingId,
-            turnId,
-            nextSequence: () => ++seq,
-            nextExecutionId: (name: string) => `legacy:${meetingId}:${++tools}:${name}`,
-        };
-        const isDuplicate = createSequenceDedup();
-        let terminal: TurnStreamEvent | null = null;
-        let aborted = false;
-        let parseErrors = 0;
-
-        const parser = createSseParser({
-            onFrame: (frame) => {
-                if (signal.aborted || !frame.data) return;
-                let raw: unknown;
-                try {
-                    raw = JSON.parse(frame.data);
-                } catch (e) {
-                    parseErrors += 1;
-                    console.error('[SSE Parse Error]', frame.data.slice(0, 100), e);
-                    return;
-                }
-                // Capture v2 lifecycle markers for identity; they carry no UI content.
-                if (
-                    typeof raw === 'object' && raw !== null &&
-                    (raw as Record<string, unknown>).version === 2 &&
-                    (raw as Record<string, unknown>).type === 'turn_started'
-                ) {
-                    const id = (raw as Record<string, unknown>).turn_id;
-                    if (typeof id === 'string') {
-                        turnId = id;
-                        ctx.turnId = id;
-                    }
-                    return;
-                }
-                const event = normalizeEvent(raw, ctx);
-                if (!event) return;
-                if (isDuplicate(event.sequence)) return;
-                if (event.kind === 'terminal') terminal = event;
-                onEvent(event);
-            },
+    /**
+     * Demo recorded turn trigger: asks the server to start a SEALed journey
+     * action (server-picked participant, recorded provider, seed assertions)
+     * through the SHARED TurnEngine. Returns the normal turn identity so the
+     * room can subscribe the standard turn journal.
+     */
+    async startDemoRecordedTurn(args: {
+        meetingId: string;
+        actionId?: string;
+        idempotencyKey?: string;
+    }): Promise<DemoRecordedTurnStart> {
+        const response = await fetch(`${API_BASE}/v2/demo/recorded-turn`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+                meeting_id: args.meetingId,
+                action_id: args.actionId ?? 'submit_bond_question',
+                idempotency_key: args.idempotencyKey,
+            }),
+        }).catch((err) => {
+            if (isAbortError(err)) return null;
+            throw err;
         });
-
-        try {
-            while (true) {
-                let read: ReadableStreamReadResult<Uint8Array>;
-                try {
-                    read = await reader.read();
-                } catch (err) {
-                    if (isAbortError(err) || signal.aborted) {
-                        aborted = true;
-                        break;
-                    }
-                    throw err;
-                }
-                if (read.done) break;
-                if (signal.aborted) {
-                    aborted = true;
-                    break;
-                }
-                parser.feed(read.value);
-            }
-        } finally {
-            parser.flush();
-            reader.releaseLock();
+        if (!response) throw new DOMException('Aborted', 'AbortError');
+        if (!response.ok) {
+            const error = await response.json().catch(() => ({ detail: 'Unknown error' }));
+            throw toApiError(response.status, error);
         }
+        return response.json();
+    },
 
-        if (signal.aborted) aborted = true;
-        void parseErrors;
-        return { terminal, eofWithoutTerminal: terminal === null && !aborted, aborted };
+    /**
+     * Subscribe the standard turn journal by turn id (GET .../turns/{id}/events).
+     * Used by the recorded demo turn after POST .../recorded-turn returns the
+     * turn identity; framing/ordering/dedup identical to subscribeTurnEvents.
+     */
+    async subscribeTurnJournal(args: {
+        meetingId: string;
+        turnId: string;
+        signal: AbortSignal;
+        onEvent: (event: TurnStreamEvent) => void;
+        after?: number;
+    }): Promise<{ terminal: TurnStreamEvent | null; eofWithoutTerminal: boolean; aborted: boolean }> {
+        const { meetingId, turnId, signal, onEvent, after = 0 } = args;
+        let response: Response;
+        try {
+            response = await fetch(
+                `${API_BASE}/meetings/turns/${turnId}/events?after=${after}`,
+                { headers: authHeaders(), signal },
+            );
+        } catch (err) {
+            if (isAbortError(err)) return { terminal: null, eofWithoutTerminal: false, aborted: true };
+            throw err;
+        }
+        if (!response.ok) {
+            const error = await response.json().catch(() => ({ detail: 'Unknown error' }));
+            throw toApiError(response.status, error);
+        }
+        return consumeTurnStream(response, {
+            meetingId,
+            signal,
+            onEvent,
+            initialTurnId: turnId,
+        });
     },
 
     // Conflicts
     async getDisagreements(meetingId: string): Promise<Disagreement[]> {
-        const response = await fetch(`${API_BASE}/meetings/${meetingId}/disagreements`);
+        const response = await fetch(`${API_BASE}/meetings/${meetingId}/disagreements`, { headers: authHeaders() });
         return handleResponse(response);
     },
 
     async getConsensus(meetingId: string): Promise<Consensus[]> {
-        const response = await fetch(`${API_BASE}/meetings/${meetingId}/consensus`);
+        const response = await fetch(`${API_BASE}/meetings/${meetingId}/consensus`, { headers: authHeaders() });
         return handleResponse(response);
     },
 
     // Participant templates
     async getParticipantTemplates(): Promise<Array<{ name: string; role: string; system_prompt: string; color: string }>> {
-        const response = await fetch(`${API_BASE}/participants/templates`);
+        const response = await fetch(`${API_BASE}/participants/templates`, { headers: authHeaders() });
         return handleResponse(response);
     },
 
     // Context stats
     async getContextStats(meetingId: string): Promise<ContextStats> {
-        const response = await fetch(`${API_BASE}/meetings/${meetingId}/context-stats`);
+        const response = await fetch(`${API_BASE}/meetings/${meetingId}/context-stats`, { headers: authHeaders() });
         return handleResponse(response);
     },
 
@@ -487,7 +619,7 @@ export const api = {
     async endMeeting(meetingId: string, forceEnd: boolean): Promise<EndMeetingResponse> {
         const response = await fetch(`${API_BASE}/meetings/${meetingId}/end`, {
             method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
+            headers: { 'Content-Type': 'application/json', ...authHeaders() },
             body: JSON.stringify({ force_end: forceEnd }),
         });
         return handleResponse(response);
