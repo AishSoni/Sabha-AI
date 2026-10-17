@@ -25,6 +25,7 @@ class ProgressView:
     completed: list[str] = field(default_factory=list)
     failed: bool = False
     turn_reference: Optional[str] = None
+    scenario_revision: int = 1
 
 
 class JourneyProgressStore:
@@ -193,6 +194,57 @@ class JourneyProgressStore:
             raise ValueError("walkthrough has not been bootstrapped")
         return self._view(state)
 
+    def pin_meeting(self, session_id: str, generation: int,
+                    meeting_id: str) -> ProgressView:
+        """Bind the walkthrough to a REAL meeting id (idempotent).
+
+        Used when the demo creates the actual board through the shared
+        MeetingManager. Re-pinning a different second meeting is rejected so
+        one (session, generation) stays pinned to one meeting.
+        """
+        state = self._states.get((session_id, generation))
+        if state is None:
+            loaded = self._load(session_id, generation)
+            if loaded is None:
+                raise ValueError("walkthrough has not been bootstrapped")
+            state = loaded
+            self._states[(session_id, generation)] = state
+        current = state.get("meeting_id")
+        if current and current != meeting_id and not str(current).startswith("meeting-"):
+            raise ValueError("walkthrough already pinned to another meeting")
+        state["meeting_id"] = meeting_id
+        self._persist(state)
+        return self._view(state)
+
+    def find_by_meeting(self, meeting_id: str) -> Optional[ProgressView]:
+        """Reverse lookup: which (session, generation) owns this meeting.
+
+        Durable adapter queries by meeting_id; the in-memory store scans its
+        states. Synthetic factory ids start with 'meeting-' so real demo
+        meetings remain unambiguous.
+        """
+        if self._client is not None:
+            try:
+                resp = (
+                    self._client.table(self.TABLE)
+                    .select("*")
+                    .eq("meeting_id", meeting_id)
+                    .limit(1)
+                    .execute()
+                )
+                rows = resp.data or []
+                if rows:
+                    row = rows[0]
+                    sid = row["session_id"]
+                    gen = int(row.get("generation", 1))
+                    return self.get(sid, gen)
+            except Exception:
+                pass
+        for (sid, gen), state in list(self._states.items()):
+            if state.get("meeting_id") == meeting_id:
+                return self._view(state)
+        return None
+
     def mark_failed(self, *, session_id: str, generation: int, action_id: str) -> None:
         state = self._states.get((session_id, generation))
         if state is None or action_id not in state["completed"]:
@@ -211,4 +263,5 @@ class JourneyProgressStore:
             completed=list(state["completed"]),
             failed=state["failed"],
             turn_reference=state.get("turn_reference"),
+            scenario_revision=int(state.get("scenario_revision", 1)),
         )

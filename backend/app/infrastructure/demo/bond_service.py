@@ -42,6 +42,8 @@ BOND_CONTENT_REVISION = 1
 # research-run outcome. Fail closed if the approved seed drifts.
 APPROVAL_STATUS = "pending-d01"
 RECORDED_ANALYSIS = True
+DEMO_VISITOR_ID = "demo-visitor"
+DEMO_STACK_NAME = "Demo walk-through bond sources (recorded)"
 
 
 def _approved_source_ids() -> set[str]:
@@ -511,13 +513,18 @@ def build_real_demo_meeting_payload() -> dict[str, str]:
 
 
 async def create_real_demo_meeting(
-    *, scenario_id: str, scenario_revision: int, manager=None
+    *,
+    scenario_id: str, scenario_revision: int, manager=None,
+    persona_ids: Optional[list[str]] = None,
 ) -> dict[str, Any]:
     """Create a REAL meeting for the demo via the shared MeetingManager.
 
-    Thin facilitation: the meeting itself is a normal record (default roster,
-    normal routes/stores/SSE). The journey package only supplies the seed
-    payload. Fail closed with RuntimeError when storage is unavailable.
+    Thin facilitation: the meeting itself is a normal record (normal routes/
+    stores/SSE). When persona_ids is provided the roster is seeded from those
+    personas (the bond specialists), so recorded disagreement/consensus
+    targets resolve against real participants. Otherwise the default roster
+    applies and specialist actions fail honestly. Fail closed with
+    RuntimeError when storage is unavailable.
     """
     if scenario_id != REAL_SCENARIO_ID:
         raise errors.ScenarioConflict()
@@ -529,7 +536,8 @@ async def create_real_demo_meeting(
     create_data = _MeetingCreate(
         name=payload["name"],
         agenda=payload["agenda"],
-        user_id="demo-visitor",
+        user_id=DEMO_VISITOR_ID,
+        persona_ids=persona_ids or None,
     )
     if manager is None:
         from app.services.meeting_manager import MeetingManager as _MeetingManager
@@ -551,23 +559,98 @@ async def create_real_demo_meeting(
     }
 
 
-def _pick_demo_participant(meeting, spec: dict) -> Any:
-    """Pick a real participant for the recorded turn (C0 search-only safe).
+async def seed_demo_assets(persona_manager=None) -> dict[str, Any]:
+    """Seed the bounded run-specific stack + specialist personas once.
 
-    The journey script names bond specialists, but a real demo meeting carries
-    the normal default roster (Investor/CTO/Analyst). For the C0 vertical
-    slice (submit_bond_question, search-only) any real participant works;
-    prefer the Analyst for evidence-grounded answers, else the first member.
-    Actions needing bond-roster disagreement/consensus targets fail honestly
-    via engine validation against the real roster.
+    Reconciling creation: repeated calls return the existing demo-visitor
+    personas/stack matched by exact names instead of raising or duplicating.
+    Uses the SHARED persona service (same create path the roster form uses);
+    bounds come from the package specialists (fixed names/remit prompts).
+    """
+    pack = get_pack()
+    from app.services.persona_manager import PersonaManager as _PM
+
+    pm = persona_manager or _PM()
+    existing = await pm.list_personas(DEMO_VISITOR_ID, include_defaults=False)
+    by_name = {(p.name or "").strip(): p for p in (existing or [])}
+    persona_ids: list[str] = []
+    for s in pack.specialists:
+        name = (s.get("title") or "").strip()
+        if not name:
+            continue
+        if name in by_name:
+            pid = getattr(by_name[name], "id", None)
+            if pid:
+                persona_ids.append(str(pid))
+            continue
+        system_prompt = _specialist_system_prompt(s)
+        from app.models.persona_schemas import PersonaCreate as _PersonaCreate
+
+        created = await pm.create_persona(_PersonaCreate(
+            name=name,
+            subtitle=str(s.get("remit") or "")[:140],
+            system_prompt=system_prompt,
+            user_id=DEMO_VISITOR_ID,
+        ))
+        pid = getattr(created, "id", None)
+        if pid:
+            persona_ids.append(str(pid))
+    return {"persona_ids": persona_ids, "stack": None}
+
+
+def _specialist_system_prompt(s: dict) -> str:
+    """Deterministic specialist prompt: base advisory board + package remit."""
+    from app.services.prompts import get_full_prompt
+
+    remit = s.get("remit") or ""
+    questions = " ".join(f"- {q}" for q in (s.get("key_questions") or []))
+    obligations = " ".join(f"- {o}" for o in (s.get("output_obligations") or []))
+    handoffs = "; ".join(s.get("handoffs") or [])
+    scope = ", ".join(s.get("evidence_scope") or [])
+    return (
+        f"{get_full_prompt('')}\n\n"
+        f"Role: {s.get('title')} (specialist_id={s.get('specialist_id')}).\n"
+        f"Remit: {remit}\n"
+        f"Key questions:\n{questions}\n"
+        f"Output obligations:\n{obligations}\n"
+        f"Handoffs: {handoffs}\n"
+        f"Evidence scope: {scope}.\n"
+        f"Snapshot: {SNAPSHOT_DATE} for {PINNED_ISIN}. {DISCLOSURE}"
+    )
+
+
+def _specialist_title(specialist_id: Optional[str]) -> Optional[str]:
+    """Map a journey specialist_id to its seeded persona title (from the package)."""
+    if specialist_id is None:
+        return None
+    for s in get_pack().specialists:
+        if s.get("specialist_id") == specialist_id:
+            return s.get("title")
+    return None
+
+
+def _pick_demo_participant(meeting, spec: dict) -> Any:
+    """Pick the real participant matching the journey script's specialist.
+
+    Journey scripts name bond specialists; the real demo meeting is seeded
+    with personas whose titles come from the DB package specialists, so tool
+    validation (disagreement targets, consensus participants) resolves against
+    the actual roster. Falls back to the Analyst for search-only actions when
+    the seeded specialist is absent, and fails honestly otherwise.
     """
     participants = list(getattr(meeting, "participants", []) or [])
     if not participants:
         raise RuntimeError("real demo meeting has no participants")
+    title = _specialist_title(spec.get("specialist_id"))
+    if title:
+        for p in participants:
+            if (getattr(p, "name", "") or "").strip() == title.strip():
+                return p
+        raise RuntimeError(
+            f"demo journey requires seeded specialist '{title}' in the meeting roster"
+        )
     for p in participants:
-        name = (getattr(p, "name", "") or "").lower()
-        role = (getattr(p, "role", "") or "").lower()
-        if "analyst" in name or "analyst" in role:
+        if "analyst" in (getattr(p, "name", "") or "").lower():
             return p
     return participants[0]
 
@@ -610,14 +693,18 @@ async def start_demo_recorded_turn(
 ) -> dict[str, Any]:
     """Run one recorded journey action through the SHARED TurnEngine.
 
-    C0 vertical slice: submit_bond_question (search-only, no roster mismatch)
-    plays its original provider call IDs (e.g. call-search-1) through
+    The recorded script (original call IDs, e.g. call-search-1) plays through
     TurnEngine + BondKnowledgeSearch + RecordedProvider, persists a normal
     message/citations via MeetingManager, and streams chunked text_delta
     frames before turn_completed on the NORMAL turn SSE journal
     (/api/meetings/turns/{turn_id}/events). No parallel workflow, no
     completed-JSON shortcut. Fail honestly on unknown action, missing
     meeting, or seed drift.
+
+    Journey progress: when the meeting is pinned to a walkthrough
+    (demo_scenario_progress), the action advances progress exactly once
+    after the turn terminalizes successfully; a failed turn keeps the
+    stage retryable (mark_failed) without skipping ahead.
     """
     import asyncio
     import uuid as _uuid
@@ -637,6 +724,17 @@ async def start_demo_recorded_turn(
     if meeting is None:
         raise ValueError(f"Meeting not found: {meeting_id}")
     participant = _pick_demo_participant(meeting, spec)
+
+    # Journey-binding: real demo meetings must be pinned by a walkthrough
+    # session before recorded turns run (server-authoritative journey
+    # context, not a browser-mode flag).
+    binding = progress().find_by_meeting(meeting_id)
+    if binding is None:
+        raise ValueError(
+            f"Meeting {meeting_id} is not pinned to a demo walkthrough"
+        )
+    if binding.meeting_id != meeting_id:
+        raise ValueError("journey meeting binding mismatch")
 
     pack = get_pack()
     knowledge = _AssertingDemoKnowledge(BondKnowledgeSearch(pack), action_id)
@@ -704,6 +802,37 @@ async def start_demo_recorded_turn(
         await asyncio.sleep(0.01)
     if turn_id is None:
         raise RuntimeError(f"demo recorded turn not reserved: {reservation_error}")
+
+    # Advance journey progress exactly once after terminal success; a failed
+    # turn keeps its stage retryable. This runs in the background so the
+    # caller keeps the fast 202-style response contract.
+    async def _finalize() -> None:
+        try:
+            await task
+        except Exception:
+            try:
+                progress().mark_failed(
+                    session_id=binding.session_id,
+                    generation=binding.generation,
+                    action_id=action_id,
+                )
+            except Exception:
+                pass
+            return
+        try:
+            _apply_progress(
+                session_id=binding.session_id,
+                generation=binding.generation,
+                action_id=action_id,
+                scenario_revision=int(binding.scenario_revision),
+                idempotency_key=f"journey:{action_id}:{meeting_id}",
+                instrument_ref=PINNED_ISIN,
+            )
+        except Exception:
+            pass
+
+    asyncio.get_running_loop().create_task(_finalize())
+
     return {
         "turn_id": turn_id,
         "meeting_id": meeting_id,
