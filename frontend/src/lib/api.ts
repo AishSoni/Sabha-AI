@@ -900,19 +900,19 @@ export const personaApi = {
         const params = new URLSearchParams();
         if (userId) params.append('user_id', userId);
         params.append('include_defaults', String(includeDefaults));
-        const response = await fetch(`${API_BASE}/personas?${params}`);
+        const response = await fetch(`${API_BASE}/personas?${params}`, { headers: authHeaders() });
         return handleResponse(response);
     },
 
     async getPersona(personaId: string): Promise<PersonaWithPrompt> {
-        const response = await fetch(`${API_BASE}/personas/${personaId}`);
+        const response = await fetch(`${API_BASE}/personas/${personaId}`, { headers: authHeaders() });
         return handleResponse(response);
     },
 
     async createPersona(data: PersonaCreate): Promise<PersonaWithPrompt> {
         const response = await fetch(`${API_BASE}/personas`, {
             method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
+            headers: { 'Content-Type': 'application/json', ...authHeaders() },
             body: JSON.stringify(data),
         });
         return handleResponse(response);
@@ -921,7 +921,7 @@ export const personaApi = {
     async updatePersona(personaId: string, data: PersonaUpdate): Promise<PersonaWithPrompt> {
         const response = await fetch(`${API_BASE}/personas/${personaId}`, {
             method: 'PUT',
-            headers: { 'Content-Type': 'application/json' },
+            headers: { 'Content-Type': 'application/json', ...authHeaders() },
             body: JSON.stringify(data),
         });
         return handleResponse(response);
@@ -930,6 +930,7 @@ export const personaApi = {
     async deletePersona(personaId: string): Promise<void> {
         const response = await fetch(`${API_BASE}/personas/${personaId}`, {
             method: 'DELETE',
+            headers: authHeaders(),
         });
         if (!response.ok) {
             const error = await response.json().catch(() => ({ detail: 'Unknown error' }));
@@ -939,14 +940,16 @@ export const personaApi = {
 
     // Prompt versions
     async listPromptVersions(personaId: string): Promise<PromptVersion[]> {
-        const response = await fetch(`${API_BASE}/personas/${personaId}/prompts`);
+        const response = await fetch(`${API_BASE}/personas/${personaId}/prompts`, {
+            headers: authHeaders(),
+        });
         return handleResponse(response);
     },
 
     async createPromptVersion(personaId: string, content: string): Promise<PromptVersion> {
         const response = await fetch(`${API_BASE}/personas/${personaId}/prompts`, {
             method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
+            headers: { 'Content-Type': 'application/json', ...authHeaders() },
             body: JSON.stringify({ content }),
         });
         return handleResponse(response);
@@ -955,6 +958,7 @@ export const personaApi = {
     async activatePromptVersion(personaId: string, version: number): Promise<void> {
         const response = await fetch(`${API_BASE}/personas/${personaId}/prompts/${version}/activate`, {
             method: 'POST',
+            headers: authHeaders(),
         });
         if (!response.ok) {
             const error = await response.json().catch(() => ({ detail: 'Unknown error' }));
@@ -1063,14 +1067,16 @@ export const settingsApi = {
     },
 
     async getPreferences(): Promise<ServerPreferencesResponse> {
-        const response = await fetch(`${API_BASE}/settings/preferences`);
+        const response = await fetch(`${API_BASE}/settings/preferences`, {
+            headers: authHeaders(),
+        });
         return handleResponse(response);
     },
 
     async savePreferences(prefs: Partial<ServerPreferences>): Promise<ServerPreferencesResponse> {
         const response = await fetch(`${API_BASE}/settings/preferences`, {
             method: 'PUT',
-            headers: { 'Content-Type': 'application/json' },
+            headers: { 'Content-Type': 'application/json', ...authHeaders() },
             body: JSON.stringify(prefs),
         });
         return handleResponse(response);
@@ -1081,7 +1087,7 @@ export const settingsApi = {
         if (provider) params.append('provider', provider);
         if (model) params.append('model', model);
         const qs = params.toString() ? `?${params}` : '';
-        const response = await fetch(`${API_BASE}/settings/effective${qs}`);
+        const response = await fetch(`${API_BASE}/settings/effective${qs}`, { headers: authHeaders() });
         return handleResponse(response);
     },
 };
@@ -1168,34 +1174,44 @@ export const documentsApi = {
 
         const response = await fetch(`${API_BASE}/documents/upload`, {
             method: 'POST',
+            headers: authHeaders(),
             body: formData,
         });
         return handleResponse(response);
     },
 
     async listMeetingDocuments(meetingId: string): Promise<Document[]> {
-        const response = await fetch(`${API_BASE}/documents/meeting/${meetingId}`);
+        const response = await fetch(`${API_BASE}/documents/meeting/${meetingId}`, {
+            headers: authHeaders(),
+        });
         return handleResponse(response);
     },
 
     async listPersonaDocuments(personaId: string): Promise<Document[]> {
-        const response = await fetch(`${API_BASE}/documents/persona/${personaId}`);
+        const response = await fetch(`${API_BASE}/documents/persona/${personaId}`, {
+            headers: authHeaders(),
+        });
         return handleResponse(response);
     },
 
     async listStackDocuments(stackId: string): Promise<Document[]> {
-        const response = await fetch(`${API_BASE}/documents/stack/${stackId}`);
+        const response = await fetch(`${API_BASE}/documents/stack/${stackId}`, {
+            headers: authHeaders(),
+        });
         return handleResponse(response);
     },
 
     async getDocument(documentId: string): Promise<Document> {
-        const response = await fetch(`${API_BASE}/documents/${documentId}`);
+        const response = await fetch(`${API_BASE}/documents/${documentId}`, {
+            headers: authHeaders(),
+        });
         return handleResponse(response);
     },
 
     async deleteDocument(documentId: string): Promise<{ message: string; id: string }> {
         const response = await fetch(`${API_BASE}/documents/${documentId}`, {
             method: 'DELETE',
+            headers: authHeaders(),
         });
         return handleResponse(response);
     },
@@ -1209,7 +1225,7 @@ export const documentsApi = {
     ): Promise<DocumentSearchResponse> {
         const response = await fetch(`${API_BASE}/documents/search`, {
             method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
+            headers: { 'Content-Type': 'application/json', ...authHeaders() },
             body: JSON.stringify({
                 query,
                 meeting_id: meetingId,
@@ -1255,19 +1271,21 @@ export const knowledgeStacksApi = {
     async listStacks(userId?: string): Promise<KnowledgeStackListResponse> {
         const params = new URLSearchParams();
         if (userId) params.append('user_id', userId);
-        const response = await fetch(`${API_BASE}/knowledge_stacks?${params}`);
+        const response = await fetch(`${API_BASE}/knowledge_stacks?${params}`, { headers: authHeaders() });
         return handleResponse(response);
     },
 
     async getStack(stackId: string): Promise<KnowledgeStack> {
-        const response = await fetch(`${API_BASE}/knowledge_stacks/${stackId}`);
+        const response = await fetch(`${API_BASE}/knowledge_stacks/${stackId}`, {
+            headers: authHeaders(),
+        });
         return handleResponse(response);
     },
 
     async createStack(data: KnowledgeStackCreate): Promise<KnowledgeStack> {
         const response = await fetch(`${API_BASE}/knowledge_stacks`, {
             method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
+            headers: { 'Content-Type': 'application/json', ...authHeaders() },
             body: JSON.stringify(data),
         });
         return handleResponse(response);
@@ -1276,7 +1294,7 @@ export const knowledgeStacksApi = {
     async updateStack(stackId: string, data: KnowledgeStackUpdate): Promise<KnowledgeStack> {
         const response = await fetch(`${API_BASE}/knowledge_stacks/${stackId}`, {
             method: 'PUT',
-            headers: { 'Content-Type': 'application/json' },
+            headers: { 'Content-Type': 'application/json', ...authHeaders() },
             body: JSON.stringify(data),
         });
         return handleResponse(response);
@@ -1285,6 +1303,7 @@ export const knowledgeStacksApi = {
     async deleteStack(stackId: string): Promise<void> {
         const response = await fetch(`${API_BASE}/knowledge_stacks/${stackId}`, {
             method: 'DELETE',
+            headers: authHeaders(),
         });
         if (!response.ok) {
             const error = await response.json().catch(() => ({ detail: 'Unknown error' }));
@@ -1308,7 +1327,7 @@ export const participantsApi = {
     ): Promise<RefreshPreviewResponse> {
         const response = await fetch(`${API_BASE}/participants/${participantId}/refresh-preview`, {
             method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
+            headers: { 'Content-Type': 'application/json', ...authHeaders() },
             body: JSON.stringify({ expected_persona_revision: expectedPersonaRevision ?? null }),
         });
         return handleResponse(response);
@@ -1321,7 +1340,7 @@ export const participantsApi = {
     ): Promise<AIParticipant> {
         const response = await fetch(`${API_BASE}/participants/${participantId}/refresh`, {
             method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
+            headers: { 'Content-Type': 'application/json', ...authHeaders() },
             body: JSON.stringify({
                 expected_participant_revision: expectedParticipantRevision ?? null,
                 expected_persona_revision: expectedPersonaRevision ?? null,
