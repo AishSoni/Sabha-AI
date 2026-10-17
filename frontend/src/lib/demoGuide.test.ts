@@ -1,6 +1,7 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { DEMO_ANCHOR_ROUTES, mergeGuideSteps, routeForAnchor } from './demoGuideSteps';
 import type { DemoGuidePayload } from './demoGuideApi';
+import { mockHttp, restoreHttpMocks } from '@/test/http';
 import { useDemoGuideStore } from '@/stores/demoGuideStore';
 
 function guidePayload(): DemoGuidePayload {
@@ -59,6 +60,7 @@ beforeEach(() => {
 
 afterEach(() => {
   vi.unstubAllGlobals();
+  restoreHttpMocks();
   sessionStorage.clear();
 });
 
@@ -101,24 +103,21 @@ describe('demo guide steps merge', () => {
 describe('demo guide store', () => {
   it('advances a client-observed journey action via the server and resyncs', async () => {
     const payload = guidePayload();
-    const calls: Array<{ url: string; method?: string }> = [];
     let postedProgress = false;
-    const fetchMock = vi.fn(async (input: RequestInfo | URL, init?: RequestInit) => {
-      const url = String(input);
-      calls.push({ url, method: init?.method });
-      if (url.endsWith('/v2/demo/guide')) {
-        return new Response(JSON.stringify(payload), { status: 200 });
-      }
+    const http = mockHttp((config) => {
+      const url = config.url ?? '';
+      if (url.endsWith('/v2/demo/guide')) return { url: /\/v2\/demo\/guide$/, data: payload };
       if (url.endsWith('/v2/demo/journey-progress')) {
         postedProgress = true;
-        return new Response(JSON.stringify({ ok: true }), { status: 200 });
+        return { url: /\/v2\/demo\/journey-progress$/, data: { ok: true } };
       }
       if (url.endsWith('/v2/demo/journey-state')) {
         const completed = postedProgress
           ? ['start_walkthrough', 'inspect_board']
           : ['start_walkthrough'];
-        return new Response(
-          JSON.stringify({
+        return {
+          url: /\/v2\/demo\/journey-state$/,
+          data: {
             session: {
               session_id: 's-1',
               generation: 1,
@@ -136,13 +135,11 @@ describe('demo guide store', () => {
             },
             instrument: { isin: 'INE001A07RW5', name: 'demo bond' },
             disclosure: 'd',
-          }),
-          { status: 200 },
-        );
+          },
+        };
       }
-      throw new Error(`unexpected fetch ${url}`);
+      return undefined;
     });
-    vi.stubGlobal('fetch', fetchMock);
 
     sessionStorage.setItem('sabha.demo.sessionToken', 'cred-token-1');
     await useDemoGuideStore.getState().hydrate();
@@ -155,7 +152,9 @@ describe('demo guide store', () => {
 
     // Client-observed step posts journey-progress, then resyncs from server.
     await useDemoGuideStore.getState().markJourneyAction('inspect_board');
-    expect(calls.some((c) => c.url.endsWith('/journey-progress'))).toBe(true);
+    expect(http.calls.some((c) => (c.url ?? '').endsWith('/journey-progress'))).toBe(true);
+    // Demo routes carry the raw session credential, not the demo owner alias.
+    expect(http.lastCall().headers?.Authorization).toBe('Bearer cred-token-1');
 
     const state = useDemoGuideStore.getState();
     expect(state.journeyCompleted).toContain('inspect_board');
@@ -169,16 +168,10 @@ describe('demo guide store', () => {
 
   it('does not mark progress UI steps as journey actions and keeps them local', async () => {
     const payload = guidePayload();
-    vi.stubGlobal(
-      'fetch',
-      vi.fn(async (input: RequestInfo | URL) => {
-        const url = String(input);
-        if (url.endsWith('/v2/demo/guide')) {
-          return new Response(JSON.stringify(payload), { status: 200 });
-        }
-        throw new Error('no session requests expected');
-      }),
-    );
+    mockHttp({
+      url: /\/v2\/demo\/guide$/,
+      data: payload,
+    });
     await useDemoGuideStore.getState().hydrate();
     useDemoGuideStore.getState().markUiObserved('UI01');
     expect(useDemoGuideStore.getState().uiCompleted).toContain('UI01');

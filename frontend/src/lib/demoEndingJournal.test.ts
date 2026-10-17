@@ -2,6 +2,8 @@
 // Replay + live subscribe: dedup by sequence, EOF never implies completion.
 import { describe, expect, it, vi, afterEach } from 'vitest';
 import { api } from '@/lib/api';
+import { httpClient } from '@/lib/http';
+import { mockHttp, restoreHttpMocks } from '@/test/http';
 import { encodeSSE, mockFetchStream, splitBytes, toByteStream } from '@/test/sse';
 
 const ATTEMPTS_URL = 'http://localhost:8000/api/meetings/m-demo/ending-attempts';
@@ -10,6 +12,7 @@ const STATE_URL = 'http://localhost:8000/api/meetings/ending-attempts/end-x';
 
 afterEach(() => {
     vi.unstubAllGlobals();
+    restoreHttpMocks();
     sessionStorage.clear();
 });
 
@@ -31,27 +34,25 @@ function ballot(name: string, seq: number) {
 describe('startEndingAttempt', () => {
     it('posts the shared 202 trigger with demo attribution and returns attempt identity', async () => {
         sessionStorage.setItem('sabha.demo.sessionToken', 'real-m-demo');
-        vi.stubGlobal(
-            'fetch',
-            vi.fn(async (url: string, init?: RequestInit) => {
-                expect(url).toBe(ATTEMPTS_URL);
-                expect(JSON.parse(String(init?.body))).toEqual({ force_end: false });
-                expect((init?.headers as Record<string, string>).Authorization).toBe('Bearer demo-visitor');
-                return new Response(
-                    JSON.stringify({
-                        attempt_id: 'end-x',
-                        meeting_id: 'm-demo',
-                        state: 'in_progress',
-                        duplicate: false,
-                        events_url: '/api/meetings/ending-attempts/end-x/events',
-                    }),
-                    { status: 202 },
-                );
-            }),
-        );
+        const http = mockHttp({
+            url: ATTEMPTS_URL,
+            method: 'post',
+            status: 202,
+            data: {
+                attempt_id: 'end-x',
+                meeting_id: 'm-demo',
+                state: 'in_progress',
+                duplicate: false,
+                events_url: '/api/meetings/ending-attempts/end-x/events',
+            },
+        });
 
         const start = await api.startEndingAttempt({ meetingId: 'm-demo', forceEnd: false });
 
+        const call = http.lastCall();
+        expect(`${httpClient.defaults.baseURL}${call.url}`).toBe(ATTEMPTS_URL);
+        expect(http.lastBody()).toEqual({ force_end: false });
+        expect(call.headers?.Authorization).toBe('Bearer demo-visitor');
         expect(start.attempt_id).toBe('end-x');
         expect(start.duplicate).toBe(false);
         expect(start.events_url).toBe('/api/meetings/ending-attempts/end-x/events');
@@ -128,28 +129,23 @@ describe('subscribeEndingJournal', () => {
 describe('getEndingAttempt', () => {
     it('fetches authoritative attempt state with demo attribution', async () => {
         sessionStorage.setItem('sabha.demo.sessionToken', 'real-m-demo');
-        vi.stubGlobal(
-            'fetch',
-            vi.fn(async (url: string, init?: RequestInit) => {
-                expect(url).toBe(STATE_URL);
-                expect((init?.headers as Record<string, string>).Authorization).toBe('Bearer demo-visitor');
-                return new Response(
-                    JSON.stringify({
-                        attempt_id: 'end-x',
-                        meeting_id: 'm-demo',
-                        state: 'completed',
-                        outcome: 'completed',
-                        summary: 'Executive brief for INE001A07RW5.',
-                        usage: { vote_calls: 3, summary_calls: 1 },
-                        votes: [],
-                    }),
-                    { status: 200 },
-                );
-            }),
-        );
+        const http = mockHttp({
+            url: STATE_URL,
+            method: 'get',
+            data: {
+                attempt_id: 'end-x',
+                meeting_id: 'm-demo',
+                state: 'completed',
+                outcome: 'completed',
+                summary: 'Executive brief for INE001A07RW5.',
+                usage: { vote_calls: 3, summary_calls: 1 },
+                votes: [],
+            },
+        });
 
         const view = await api.getEndingAttempt('end-x');
 
+        expect(http.lastCall().headers?.Authorization).toBe('Bearer demo-visitor');
         expect(view.outcome).toBe('completed');
         expect(view.state).toBe('completed');
         expect(view.summary).toContain('INE001A07RW5');

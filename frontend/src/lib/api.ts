@@ -10,37 +10,13 @@ import {
     type NormalizeContext,
     type TurnStreamEvent,
 } from './turn-events';
+import { ApiError, http, isAbortError, streamRequest } from './http';
 
-const API_BASE = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000/api';
-
-/** Typed server error: preserves status/conflict codes across the UI. */
-export class ApiError extends Error {
-    status: number;
-    code: string;
-    retryable: boolean;
-
-    constructor(status: number, code: string, message: string, retryable = false) {
-        super(message);
-        this.name = 'ApiError';
-        this.status = status;
-        this.code = code;
-        this.retryable = retryable;
-    }
-}
-
-function toApiError(status: number, body: unknown): ApiError {
-    const detail =
-        (typeof body === 'object' && body !== null && 'detail' in body
-            ? String((body as Record<string, unknown>).detail)
-            : '') || `API Error: ${status}`;
-    if (status === 401) return new ApiError(status, 'unauthenticated', detail, false);
-    if (status === 404) return new ApiError(status, 'not_found', detail, false);
-    if (status === 409) return new ApiError(status, detail, detail, false);
-    if (status === 422) return new ApiError(status, 'validation', detail, false);
-    if (status === 429) return new ApiError(status, 'quota', detail, true);
-    if (status === 503) return new ApiError(status, 'unavailable', detail, true);
-    return new ApiError(status, 'request_failed', detail, status >= 500);
-}
+/**
+ * Error and transport primitives are owned by the shared HTTP client; re-export
+ * here so existing UI imports (`@/lib/api`) keep working.
+ */
+export { ApiError, DEMO_ACTOR_ID, authHeaders } from './http';
 
 export interface ProviderConfig {
     provider: string;
@@ -149,47 +125,6 @@ export function asQueueEntry(raw: unknown): QueueEntry {
         state: typeof r.state === 'string' ? r.state : 'pending',
         messageId: typeof r.message_id === 'string' ? r.message_id : null,
     };
-}
-
-async function handleResponse<T>(response: Response): Promise<T> {
-    if (!response.ok) {
-        const error = await response.json().catch(() => ({ detail: 'Unknown error' }));
-        throw toApiError(response.status, error);
-    }
-    return response.json();
-}
-
-function isAbortError(err: unknown): boolean {
-    return err instanceof DOMException && err.name === 'AbortError';
-}
-
-/**
- * Trusted-actor attribution (CONTRACTS section 1: identity comes from the
- * transport, never the body).
- *
- * - Demo sessions attribute to the fixed demo owner so the shared ownership
- *   check passes for demo-created meetings (bookkeeping identity, not auth).
- * - Normal use carries a stable anonymous local identity. This is NOT
- *   authentication: it only gives normal meetings an owner for their own
- *   reads/writes (B-05 is withdrawn; no accounts are ever created).
- */
-export const DEMO_ACTOR_ID = 'demo-visitor';
-const LOCAL_ACTOR_ID = 'local-dev';
-
-export function authHeaders(): Record<string, string> {
-    let identity = LOCAL_ACTOR_ID;
-    try {
-        const token = sessionStorage.getItem('sabha.demo.sessionToken');
-        const demoMeeting = sessionStorage.getItem('sabha.demo.meetingId');
-        // Demo actor carries THREE signals: pinned meeting id, the legacy
-        // identifer token ('real-...' before recorded meeting pinning), and
-        // any stored raw credential (session exists). All resolve to the
-        // fixed demo owner sharing real ownership bookkeeping.
-        if (demoMeeting || (token && token.startsWith('real-')) || token) identity = DEMO_ACTOR_ID;
-    } catch {
-        /* storage unavailable -> local identity */
-    }
-    return { Authorization: `Bearer ${identity}` };
 }
 
 /**
@@ -311,46 +246,31 @@ async function consumeTurnStream(
 export const api = {
     // Meetings
     async createMeeting(name: string, agenda: string = '', personaIds?: string[]): Promise<MeetingWithParticipants> {
-        const response = await fetch(`${API_BASE}/meetings`, {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json', ...authHeaders() },
-            body: JSON.stringify({ name, agenda, persona_ids: personaIds }),
+        return http.post<MeetingWithParticipants>('/meetings', {
+            name,
+            agenda,
+            persona_ids: personaIds,
         });
-        return handleResponse(response);
     },
 
     async listMeetings(): Promise<Meeting[]> {
-        const response = await fetch(`${API_BASE}/meetings`, { headers: authHeaders() });
-        return handleResponse(response);
+        return http.get<Meeting[]>('/meetings');
     },
 
     async getMeeting(meetingId: string): Promise<MeetingWithParticipants> {
-        const response = await fetch(`${API_BASE}/meetings/${meetingId}`, { headers: authHeaders() });
-        return handleResponse(response);
+        return http.get<MeetingWithParticipants>(`/meetings/${meetingId}`);
     },
 
     async archiveMeeting(meetingId: string): Promise<{ success: boolean; message: string }> {
-        const response = await fetch(`${API_BASE}/meetings/${meetingId}/archive`, {
-            method: 'POST',
-            headers: authHeaders(),
-        });
-        return handleResponse(response);
+        return http.post(`/meetings/${meetingId}/archive`);
     },
 
     async unarchiveMeeting(meetingId: string): Promise<{ success: boolean; message: string }> {
-        const response = await fetch(`${API_BASE}/meetings/${meetingId}/unarchive`, {
-            method: 'POST',
-            headers: authHeaders(),
-        });
-        return handleResponse(response);
+        return http.post(`/meetings/${meetingId}/unarchive`);
     },
 
     async deleteMeeting(meetingId: string): Promise<{ success: boolean; message: string }> {
-        const response = await fetch(`${API_BASE}/meetings/${meetingId}`, {
-            method: 'DELETE',
-            headers: authHeaders(),
-        });
-        return handleResponse(response);
+        return http.delete(`/meetings/${meetingId}`);
     },
 
     // Messages
@@ -372,23 +292,19 @@ export const api = {
         content: string,
         idempotencyKey?: string,
     ): Promise<{ queued: false; message: Message } | { queued: true; entry: QueueEntry }> {
-        const response = await fetch(`${API_BASE}/meetings/${meetingId}/messages`, {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json', ...authHeaders() },
-            body: JSON.stringify({ content, ...(idempotencyKey ? { idempotency_key: idempotencyKey } : {}) }),
-        });
-        if (response.status === 201) return { queued: false, message: (await response.json()) as Message };
+        const response = await http.raw<Message | { entry: unknown }>(
+            `/meetings/${meetingId}/messages`,
+            { content, ...(idempotencyKey ? { idempotency_key: idempotencyKey } : {}) },
+        );
         if (response.status === 202) {
-            const body = (await response.json()) as { entry: unknown };
+            const body = response.data as { entry: unknown };
             return { queued: true, entry: asQueueEntry(body.entry) };
         }
-        const error = await response.json().catch(() => ({ detail: 'Unknown error' }));
-        throw toApiError(response.status, error);
+        return { queued: false, message: response.data as Message };
     },
 
     async getQueue(meetingId: string): Promise<QueueEntry[]> {
-        const response = await fetch(`${API_BASE}/meetings/${meetingId}/queue`, { headers: authHeaders() });
-        const body = await handleResponse<{ entries: unknown[] }>(response);
+        const body = await http.get<{ entries: unknown[] }>(`/meetings/${meetingId}/queue`);
         return (body.entries ?? []).map(asQueueEntry);
     },
 
@@ -398,41 +314,24 @@ export const api = {
         content: string,
         expectedRevision: number,
     ): Promise<QueueEntry> {
-        const response = await fetch(
-            `${API_BASE}/meetings/${meetingId}/queue/${entryId}?expected_revision=${expectedRevision}`,
-            {
-                method: 'PATCH',
-                headers: { 'Content-Type': 'application/json', ...authHeaders() },
-                body: JSON.stringify({ content }),
-            },
+        const body = await http.patch<unknown>(
+            `/meetings/${meetingId}/queue/${entryId}?expected_revision=${expectedRevision}`,
+            { content },
         );
-        if (!response.ok) {
-            const error = await response.json().catch(() => ({ detail: 'Unknown error' }));
-            throw toApiError(response.status, error);
-        }
-        return asQueueEntry(await response.json());
+        return asQueueEntry(body);
     },
 
     async removeQueueEntry(meetingId: string, entryId: string, expectedRevision: number): Promise<void> {
-        const response = await fetch(
-            `${API_BASE}/meetings/${meetingId}/queue/${entryId}?expected_revision=${expectedRevision}`,
-            { method: 'DELETE', headers: authHeaders() },
+        await http.delete(
+            `/meetings/${meetingId}/queue/${entryId}?expected_revision=${expectedRevision}`,
         );
-        if (response.status === 204) return;
-        if (!response.ok) {
-            const error = await response.json().catch(() => ({ detail: 'Unknown error' }));
-            throw toApiError(response.status, error);
-        }
     },
 
     // AI Turns
     async executeTurn(meetingId: string, participantId: string): Promise<TurnResponse> {
-        const response = await fetch(`${API_BASE}/meetings/${meetingId}/turn`, {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json', ...authHeaders() },
-            body: JSON.stringify({ participant_id: participantId }),
+        return http.post<TurnResponse>(`/meetings/${meetingId}/turn`, {
+            participant_id: participantId,
         });
-        return handleResponse(response);
     },
 
     // AI Turns (Streaming compatibility wrapper over the shared SSE parser.
@@ -444,21 +343,15 @@ export const api = {
         participantId: string,
         opts?: { signal?: AbortSignal },
     ): AsyncGenerator<StreamEvent> {
-        const response = await fetch(`${API_BASE}/meetings/${meetingId}/turn/stream`, {
+        const response = await streamRequest(`/meetings/${meetingId}/turn/stream`, {
             method: 'POST',
-            headers: { 'Content-Type': 'application/json', ...authHeaders() },
-            body: JSON.stringify({ participant_id: participantId }),
+            body: { participant_id: participantId },
             signal: opts?.signal,
         }).catch((err) => {
             if (isAbortError(err)) return null;
             throw err;
         });
         if (!response) return;
-
-        if (!response.ok) {
-            const error = await response.json().catch(() => ({ detail: 'Unknown error' }));
-            throw toApiError(response.status, error);
-        }
 
         const reader = response.body?.getReader();
         if (!reader) throw new Error('No response body');
@@ -511,23 +404,15 @@ export const api = {
         onEvent: (event: TurnStreamEvent) => void;
     }): Promise<{ terminal: TurnStreamEvent | null; eofWithoutTerminal: boolean; aborted: boolean }> {
         const { meetingId, participantId, signal, onEvent } = args;
-        let response: Response;
-        try {
-            response = await fetch(`${API_BASE}/meetings/${meetingId}/turn/stream`, {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json', ...authHeaders() },
-                body: JSON.stringify({ participant_id: participantId }),
-                signal,
-            });
-        } catch (err) {
-            if (isAbortError(err)) return { terminal: null, eofWithoutTerminal: false, aborted: true };
+        const response = await streamRequest(`/meetings/${meetingId}/turn/stream`, {
+            method: 'POST',
+            body: { participant_id: participantId },
+            signal,
+        }).catch((err) => {
+            if (isAbortError(err)) return null;
             throw err;
-        }
-
-        if (!response.ok) {
-            const error = await response.json().catch(() => ({ detail: 'Unknown error' }));
-            throw toApiError(response.status, error);
-        }
+        });
+        if (!response) return { terminal: null, eofWithoutTerminal: false, aborted: true };
 
         return consumeTurnStream(response, { meetingId, signal, onEvent });
     },
@@ -543,24 +428,16 @@ export const api = {
         actionId?: string;
         idempotencyKey?: string;
     }): Promise<DemoRecordedTurnStart> {
-        const response = await fetch(`${API_BASE}/v2/demo/recorded-turn`, {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({
+        return http
+            .post<DemoRecordedTurnStart>('/v2/demo/recorded-turn', {
                 meeting_id: args.meetingId,
                 action_id: args.actionId ?? 'submit_bond_question',
                 idempotency_key: args.idempotencyKey,
-            }),
-        }).catch((err) => {
-            if (isAbortError(err)) return null;
-            throw err;
-        });
-        if (!response) throw new DOMException('Aborted', 'AbortError');
-        if (!response.ok) {
-            const error = await response.json().catch(() => ({ detail: 'Unknown error' }));
-            throw toApiError(response.status, error);
-        }
-        return response.json();
+            })
+            .catch((err) => {
+                if (isAbortError(err)) throw new DOMException('Aborted', 'AbortError');
+                throw err;
+            });
     },
 
     /**
@@ -576,20 +453,13 @@ export const api = {
         after?: number;
     }): Promise<{ terminal: TurnStreamEvent | null; eofWithoutTerminal: boolean; aborted: boolean }> {
         const { meetingId, turnId, signal, onEvent, after = 0 } = args;
-        let response: Response;
-        try {
-            response = await fetch(
-                `${API_BASE}/meetings/turns/${turnId}/events?after=${after}`,
-                { headers: authHeaders(), signal },
-            );
-        } catch (err) {
-            if (isAbortError(err)) return { terminal: null, eofWithoutTerminal: false, aborted: true };
+        const response = await streamRequest(`/meetings/turns/${turnId}/events?after=${after}`, {
+            signal,
+        }).catch((err) => {
+            if (isAbortError(err)) return null;
             throw err;
-        }
-        if (!response.ok) {
-            const error = await response.json().catch(() => ({ detail: 'Unknown error' }));
-            throw toApiError(response.status, error);
-        }
+        });
+        if (!response) return { terminal: null, eofWithoutTerminal: false, aborted: true };
         return consumeTurnStream(response, {
             meetingId,
             signal,
@@ -600,35 +470,30 @@ export const api = {
 
     // Conflicts
     async getDisagreements(meetingId: string): Promise<Disagreement[]> {
-        const response = await fetch(`${API_BASE}/meetings/${meetingId}/disagreements`, { headers: authHeaders() });
-        return handleResponse(response);
+        return http.get<Disagreement[]>(`/meetings/${meetingId}/disagreements`);
     },
 
     async getConsensus(meetingId: string): Promise<Consensus[]> {
-        const response = await fetch(`${API_BASE}/meetings/${meetingId}/consensus`, { headers: authHeaders() });
-        return handleResponse(response);
+        return http.get<Consensus[]>(`/meetings/${meetingId}/consensus`);
     },
 
     // Participant templates
     async getParticipantTemplates(): Promise<Array<{ name: string; role: string; system_prompt: string; color: string }>> {
-        const response = await fetch(`${API_BASE}/participants/templates`, { headers: authHeaders() });
-        return handleResponse(response);
+        return http.get<Array<{ name: string; role: string; system_prompt: string; color: string }>>(
+            '/participants/templates',
+        );
     },
 
     // Context stats
     async getContextStats(meetingId: string): Promise<ContextStats> {
-        const response = await fetch(`${API_BASE}/meetings/${meetingId}/context-stats`, { headers: authHeaders() });
-        return handleResponse(response);
+        return http.get<ContextStats>(`/meetings/${meetingId}/context-stats`);
     },
 
     // End meeting
     async endMeeting(meetingId: string, forceEnd: boolean): Promise<EndMeetingResponse> {
-        const response = await fetch(`${API_BASE}/meetings/${meetingId}/end`, {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json', ...authHeaders() },
-            body: JSON.stringify({ force_end: forceEnd }),
+        return http.post<EndMeetingResponse>(`/meetings/${meetingId}/end`, {
+            force_end: forceEnd,
         });
-        return handleResponse(response);
     },
 
     /**
@@ -642,24 +507,14 @@ export const api = {
         forceEnd?: boolean;
         idempotencyKey?: string;
     }): Promise<EndingAttemptStart> {
-        const response = await fetch(`${API_BASE}/meetings/${args.meetingId}/ending-attempts`, {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json', ...authHeaders() },
-            body: JSON.stringify({ force_end: args.forceEnd ?? false }),
+        return http.post<EndingAttemptStart>(`/meetings/${args.meetingId}/ending-attempts`, {
+            force_end: args.forceEnd ?? false,
         });
-        if (!response.ok) {
-            const error = await response.json().catch(() => ({ detail: 'Unknown error' }));
-            throw toApiError(response.status, error);
-        }
-        return response.json();
     },
 
     /** Authoritative ending attempt state (recovery view after a restart). */
     async getEndingAttempt(attemptId: string): Promise<EndingAttemptView> {
-        const response = await fetch(`${API_BASE}/meetings/ending-attempts/${attemptId}`, {
-            headers: authHeaders(),
-        });
-        return handleResponse(response);
+        return http.get<EndingAttemptView>(`/meetings/ending-attempts/${attemptId}`);
     },
 
     /**
@@ -690,20 +545,14 @@ export const api = {
             },
         });
 
-        let response: Response;
-        try {
-            response = await fetch(`${API_BASE}/meetings/ending-attempts/${attemptId}/events?after=0`, {
-                headers: authHeaders(),
-                signal,
-            });
-        } catch (err) {
-            if (isAbortError(err)) return { terminal: null, eofWithoutTerminal: false, aborted: true };
+        const response = await streamRequest(
+            `/meetings/ending-attempts/${attemptId}/events?after=0`,
+            { signal },
+        ).catch((err) => {
+            if (isAbortError(err)) return null;
             throw err;
-        }
-        if (!response.ok) {
-            const error = await response.json().catch(() => ({ detail: 'Unknown error' }));
-            throw toApiError(response.status, error);
-        }
+        });
+        if (!response) return { terminal, eofWithoutTerminal: false, aborted: true };
 
         const reader = response.body?.getReader();
         if (!reader) throw new ApiError(0, 'unavailable', 'ending stream has no body', false);
@@ -900,70 +749,36 @@ export const personaApi = {
         const params = new URLSearchParams();
         if (userId) params.append('user_id', userId);
         params.append('include_defaults', String(includeDefaults));
-        const response = await fetch(`${API_BASE}/personas?${params}`, { headers: authHeaders() });
-        return handleResponse(response);
+        return http.get<PersonaListResponse>(`/personas?${params}`);
     },
 
     async getPersona(personaId: string): Promise<PersonaWithPrompt> {
-        const response = await fetch(`${API_BASE}/personas/${personaId}`, { headers: authHeaders() });
-        return handleResponse(response);
+        return http.get<PersonaWithPrompt>(`/personas/${personaId}`);
     },
 
     async createPersona(data: PersonaCreate): Promise<PersonaWithPrompt> {
-        const response = await fetch(`${API_BASE}/personas`, {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json', ...authHeaders() },
-            body: JSON.stringify(data),
-        });
-        return handleResponse(response);
+        return http.post<PersonaWithPrompt>('/personas', data);
     },
 
     async updatePersona(personaId: string, data: PersonaUpdate): Promise<PersonaWithPrompt> {
-        const response = await fetch(`${API_BASE}/personas/${personaId}`, {
-            method: 'PUT',
-            headers: { 'Content-Type': 'application/json', ...authHeaders() },
-            body: JSON.stringify(data),
-        });
-        return handleResponse(response);
+        return http.put<PersonaWithPrompt>(`/personas/${personaId}`, data);
     },
 
     async deletePersona(personaId: string): Promise<void> {
-        const response = await fetch(`${API_BASE}/personas/${personaId}`, {
-            method: 'DELETE',
-            headers: authHeaders(),
-        });
-        if (!response.ok) {
-            const error = await response.json().catch(() => ({ detail: 'Unknown error' }));
-            throw new Error(error.detail || `API Error: ${response.status}`);
-        }
+        await http.delete(`/personas/${personaId}`);
     },
 
     // Prompt versions
     async listPromptVersions(personaId: string): Promise<PromptVersion[]> {
-        const response = await fetch(`${API_BASE}/personas/${personaId}/prompts`, {
-            headers: authHeaders(),
-        });
-        return handleResponse(response);
+        return http.get<PromptVersion[]>(`/personas/${personaId}/prompts`);
     },
 
     async createPromptVersion(personaId: string, content: string): Promise<PromptVersion> {
-        const response = await fetch(`${API_BASE}/personas/${personaId}/prompts`, {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json', ...authHeaders() },
-            body: JSON.stringify({ content }),
-        });
-        return handleResponse(response);
+        return http.post<PromptVersion>(`/personas/${personaId}/prompts`, { content });
     },
 
     async activatePromptVersion(personaId: string, version: number): Promise<void> {
-        const response = await fetch(`${API_BASE}/personas/${personaId}/prompts/${version}/activate`, {
-            method: 'POST',
-            headers: authHeaders(),
-        });
-        if (!response.ok) {
-            const error = await response.json().catch(() => ({ detail: 'Unknown error' }));
-            throw new Error(error.detail || `API Error: ${response.status}`);
-        }
+        await http.post(`/personas/${personaId}/prompts/${version}/activate`);
     },
 };
 
@@ -1043,43 +858,27 @@ export interface FetchModelsResponse {
 
 export const settingsApi = {
     async getProviders(): Promise<ProvidersListResponse> {
-        const response = await fetch(`${API_BASE}/settings/providers`);
-        return handleResponse(response);
+        return http.get<ProvidersListResponse>('/settings/providers');
     },
 
     async testKey(request: TestKeyRequest): Promise<TestKeyResponse> {
-        const response = await fetch(`${API_BASE}/settings/test-key`, {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify(request),
-        });
-        return handleResponse(response);
+        return http.post<TestKeyResponse>('/settings/test-key', request);
     },
 
     async fetchModels(request: FetchModelsRequest): Promise<FetchModelsResponse> {
-        const response = await fetch(`${API_BASE}/settings/models`, {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
+        return http.post<FetchModelsResponse>(
+            '/settings/models',
             // Strip browser-supplied secrets: server owns destinations and keys.
-            body: JSON.stringify({ provider: request.provider }),
-        });
-        return handleResponse(response);
+            { provider: request.provider },
+        );
     },
 
     async getPreferences(): Promise<ServerPreferencesResponse> {
-        const response = await fetch(`${API_BASE}/settings/preferences`, {
-            headers: authHeaders(),
-        });
-        return handleResponse(response);
+        return http.get<ServerPreferencesResponse>('/settings/preferences');
     },
 
     async savePreferences(prefs: Partial<ServerPreferences>): Promise<ServerPreferencesResponse> {
-        const response = await fetch(`${API_BASE}/settings/preferences`, {
-            method: 'PUT',
-            headers: { 'Content-Type': 'application/json', ...authHeaders() },
-            body: JSON.stringify(prefs),
-        });
-        return handleResponse(response);
+        return http.put<ServerPreferencesResponse>('/settings/preferences', prefs);
     },
 
     async getEffective(provider?: string, model?: string): Promise<EffectiveSettingsResponse> {
@@ -1087,8 +886,7 @@ export const settingsApi = {
         if (provider) params.append('provider', provider);
         if (model) params.append('model', model);
         const qs = params.toString() ? `?${params}` : '';
-        const response = await fetch(`${API_BASE}/settings/effective${qs}`, { headers: authHeaders() });
-        return handleResponse(response);
+        return http.get<EffectiveSettingsResponse>(`/settings/effective${qs}`);
     },
 };
 
@@ -1172,48 +970,28 @@ export const documentsApi = {
         if (personaId) formData.append('persona_id', personaId);
         if (stackId) formData.append('stack_id', stackId);
 
-        const response = await fetch(`${API_BASE}/documents/upload`, {
-            method: 'POST',
-            headers: authHeaders(),
-            body: formData,
-        });
-        return handleResponse(response);
+        // No explicit Content-Type: the client derives the multipart boundary.
+        return http.post<DocumentUploadResponse>('/documents/upload', formData);
     },
 
     async listMeetingDocuments(meetingId: string): Promise<Document[]> {
-        const response = await fetch(`${API_BASE}/documents/meeting/${meetingId}`, {
-            headers: authHeaders(),
-        });
-        return handleResponse(response);
+        return http.get<Document[]>(`/documents/meeting/${meetingId}`);
     },
 
     async listPersonaDocuments(personaId: string): Promise<Document[]> {
-        const response = await fetch(`${API_BASE}/documents/persona/${personaId}`, {
-            headers: authHeaders(),
-        });
-        return handleResponse(response);
+        return http.get<Document[]>(`/documents/persona/${personaId}`);
     },
 
     async listStackDocuments(stackId: string): Promise<Document[]> {
-        const response = await fetch(`${API_BASE}/documents/stack/${stackId}`, {
-            headers: authHeaders(),
-        });
-        return handleResponse(response);
+        return http.get<Document[]>(`/documents/stack/${stackId}`);
     },
 
     async getDocument(documentId: string): Promise<Document> {
-        const response = await fetch(`${API_BASE}/documents/${documentId}`, {
-            headers: authHeaders(),
-        });
-        return handleResponse(response);
+        return http.get<Document>(`/documents/${documentId}`);
     },
 
     async deleteDocument(documentId: string): Promise<{ message: string; id: string }> {
-        const response = await fetch(`${API_BASE}/documents/${documentId}`, {
-            method: 'DELETE',
-            headers: authHeaders(),
-        });
-        return handleResponse(response);
+        return http.delete<{ message: string; id: string }>(`/documents/${documentId}`);
     },
 
     async searchDocuments(
@@ -1223,18 +1001,13 @@ export const documentsApi = {
         stackIds?: string[],
         limit: number = 5
     ): Promise<DocumentSearchResponse> {
-        const response = await fetch(`${API_BASE}/documents/search`, {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json', ...authHeaders() },
-            body: JSON.stringify({
-                query,
-                meeting_id: meetingId,
-                persona_id: personaId,
-                stack_ids: stackIds,
-                limit,
-            }),
+        return http.post<DocumentSearchResponse>('/documents/search', {
+            query,
+            meeting_id: meetingId,
+            persona_id: personaId,
+            stack_ids: stackIds,
+            limit,
         });
-        return handleResponse(response);
     },
 };
 
@@ -1271,44 +1044,23 @@ export const knowledgeStacksApi = {
     async listStacks(userId?: string): Promise<KnowledgeStackListResponse> {
         const params = new URLSearchParams();
         if (userId) params.append('user_id', userId);
-        const response = await fetch(`${API_BASE}/knowledge_stacks?${params}`, { headers: authHeaders() });
-        return handleResponse(response);
+        return http.get<KnowledgeStackListResponse>(`/knowledge_stacks?${params}`);
     },
 
     async getStack(stackId: string): Promise<KnowledgeStack> {
-        const response = await fetch(`${API_BASE}/knowledge_stacks/${stackId}`, {
-            headers: authHeaders(),
-        });
-        return handleResponse(response);
+        return http.get<KnowledgeStack>(`/knowledge_stacks/${stackId}`);
     },
 
     async createStack(data: KnowledgeStackCreate): Promise<KnowledgeStack> {
-        const response = await fetch(`${API_BASE}/knowledge_stacks`, {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json', ...authHeaders() },
-            body: JSON.stringify(data),
-        });
-        return handleResponse(response);
+        return http.post<KnowledgeStack>('/knowledge_stacks', data);
     },
 
     async updateStack(stackId: string, data: KnowledgeStackUpdate): Promise<KnowledgeStack> {
-        const response = await fetch(`${API_BASE}/knowledge_stacks/${stackId}`, {
-            method: 'PUT',
-            headers: { 'Content-Type': 'application/json', ...authHeaders() },
-            body: JSON.stringify(data),
-        });
-        return handleResponse(response);
+        return http.put<KnowledgeStack>(`/knowledge_stacks/${stackId}`, data);
     },
 
     async deleteStack(stackId: string): Promise<void> {
-        const response = await fetch(`${API_BASE}/knowledge_stacks/${stackId}`, {
-            method: 'DELETE',
-            headers: authHeaders(),
-        });
-        if (!response.ok) {
-            const error = await response.json().catch(() => ({ detail: 'Unknown error' }));
-            throw new Error(error.detail || `API Error: ${response.status}`);
-        }
+        await http.delete(`/knowledge_stacks/${stackId}`);
     }
 };
 
@@ -1325,12 +1077,11 @@ export const participantsApi = {
         participantId: string,
         expectedPersonaRevision?: number | null,
     ): Promise<RefreshPreviewResponse> {
-        const response = await fetch(`${API_BASE}/participants/${participantId}/refresh-preview`, {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json', ...authHeaders() },
-            body: JSON.stringify({ expected_persona_revision: expectedPersonaRevision ?? null }),
-        });
-        return handleResponse(response);
+        const response = await http.post<RefreshPreviewResponse>(
+            `/participants/${participantId}/refresh-preview`,
+            { expected_persona_revision: expectedPersonaRevision ?? null },
+        );
+        return response;
     },
 
     async refreshParticipant(
@@ -1338,14 +1089,9 @@ export const participantsApi = {
         expectedParticipantRevision?: number | null,
         expectedPersonaRevision?: number | null,
     ): Promise<AIParticipant> {
-        const response = await fetch(`${API_BASE}/participants/${participantId}/refresh`, {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json', ...authHeaders() },
-            body: JSON.stringify({
-                expected_participant_revision: expectedParticipantRevision ?? null,
-                expected_persona_revision: expectedPersonaRevision ?? null,
-            }),
+        return http.post<AIParticipant>(`/participants/${participantId}/refresh`, {
+            expected_participant_revision: expectedParticipantRevision ?? null,
+            expected_persona_revision: expectedPersonaRevision ?? null,
         });
-        return handleResponse(response);
     },
 };

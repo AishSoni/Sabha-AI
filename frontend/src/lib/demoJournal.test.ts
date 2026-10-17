@@ -1,6 +1,7 @@
 // Demo recorded-turn transport: journal subscription + actor attribution.
 import { describe, expect, it, vi, afterEach } from 'vitest';
 import { api, authHeaders, isDemoSessionFor } from '@/lib/api';
+import { mockHttp, restoreHttpMocks } from '@/test/http';
 import { encodeSSE, mockFetchStream, splitBytes, toByteStream } from '@/test/sse';
 
 const JOURNAL_URL = 'http://localhost:8000/api/meetings/turns/t-1/events?after=0';
@@ -8,6 +9,7 @@ const DEMO_START_URL = 'http://localhost:8000/api/v2/demo/recorded-turn';
 
 afterEach(() => {
     vi.unstubAllGlobals();
+    restoreHttpMocks();
     sessionStorage.clear();
 });
 
@@ -92,43 +94,44 @@ describe('subscribeTurnJournal', () => {
 
 describe('startDemoRecordedTurn', () => {
     it('posts the recorded trigger with the pinned action and returns the turn identity', async () => {
-        vi.stubGlobal(
-            'fetch',
-            vi.fn(async (url: string) => {
-                expect(url).toBe(DEMO_START_URL);
-                return {
-                    ok: true,
-                    status: 202,
-                    json: async () => ({
-                        turn_id: 't-9',
-                        meeting_id: 'm-demo',
-                        participant_id: 'p-analyst',
-                        participant_name: 'The Analyst',
-                        action_id: 'submit_bond_question',
-                        events_url: '/api/meetings/turns/t-9/events',
-                        recorded_analysis: true,
-                        approval_status: 'demo',
-                        disclosure: 'recorded analysis',
-                    }),
-                } as Response;
-            }),
-        );
+        const http = mockHttp({
+            url: DEMO_START_URL,
+            method: 'post',
+            status: 202,
+            data: {
+                turn_id: 't-9',
+                meeting_id: 'm-demo',
+                participant_id: 'p-analyst',
+                participant_name: 'The Analyst',
+                action_id: 'submit_bond_question',
+                events_url: '/api/meetings/turns/t-9/events',
+                recorded_analysis: true,
+                approval_status: 'demo',
+                disclosure: 'recorded analysis',
+            },
+        });
+
         const start = await api.startDemoRecordedTurn({ meetingId: 'm-demo', idempotencyKey: 'k-1' });
+
+        expect(http.lastBody()).toMatchObject({
+            meeting_id: 'm-demo',
+            action_id: 'submit_bond_question',
+            idempotency_key: 'k-1',
+        });
         expect(start.turn_id).toBe('t-9');
         expect(start.recorded_analysis).toBe(true);
     });
 
     it('maps honest demo failures to typed ApiErrors', async () => {
-        vi.stubGlobal(
-            'fetch',
-            vi.fn(async () => ({
-                ok: false,
-                status: 409,
-                json: async () => ({ code: 'tool_result_mismatch', detail: 'seed drift' }),
-            }) as Response),
-        );
+        mockHttp({
+            url: DEMO_START_URL,
+            method: 'post',
+            status: 409,
+            data: { code: 'tool_result_mismatch', detail: 'seed drift' },
+        });
         await expect(api.startDemoRecordedTurn({ meetingId: 'm-demo' })).rejects.toMatchObject({
             status: 409,
+            code: 'tool_result_mismatch',
         });
     });
 });

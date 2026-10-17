@@ -2,8 +2,7 @@
 // Reads the single DB package (GET /guide); journey mutations stay
 // server-authoritative via /journey-progress. Never parses routes/HTML from DB.
 
-const API_BASE =
-  process.env.NEXT_PUBLIC_API_URL?.replace(/\/$/, '') ?? 'http://localhost:8000/api';
+import { http, type HttpRequestConfig } from './http';
 
 export const DEMO_MEETING_STORAGE_KEY = 'sabha.demo.meetingId' as const;
 export const DEMO_GUIDE_UI_STORAGE_KEY = 'sabha.demo.guideUi' as const;
@@ -133,39 +132,22 @@ export function markGuideUiCompleted(key: string): string[] {
   return done;
 }
 
-function toApiError(status: number, body: Record<string, unknown>): Error & { code: string; status: number } {
-  const code = typeof body.code === 'string' ? body.code : typeof body.detail === 'string' ? 'http_error' : `http_${status}`;
-  const message =
-    typeof body.message === 'string'
-      ? body.message
-      : typeof body.detail === 'string'
-        ? body.detail
-        : 'demo request failed';
-  const err = new Error(message) as Error & { code: string; status: number };
-  err.code = code;
-  err.status = status;
-  return err;
-}
-
+/**
+ * Demo-scoped transport. The raw session credential replaces the default
+ * actor header; the auth-free guide route sends none.
+ */
 async function demoRequest(
   path: string,
   init: { method: string; payload?: unknown; withCredential?: boolean },
 ): Promise<unknown> {
   const credential = loadDemoCredential();
-  const headers: Record<string, string> = { 'Content-Type': 'application/json' };
-  // Demo-scoped routes take the raw session credential; auth-free /guide
-  // carries no header.
+  const config: HttpRequestConfig = { skipAuth: init.withCredential === false };
   if (init.withCredential !== false && credential) {
-    headers.Authorization = `Bearer ${credential}`;
+    config.headers = { Authorization: `Bearer ${credential}` };
   }
-  const response = await fetch(`${API_BASE}/v2/demo${path}`, {
-    method: init.method,
-    headers,
-    body: init.payload !== undefined ? JSON.stringify(init.payload) : undefined,
-  });
-  const body = (await response.json().catch(() => ({}))) as Record<string, unknown>;
-  if (!response.ok) throw toApiError(response.status, body);
-  return body;
+  const url = `/v2/demo${path}`;
+  if (init.method === 'GET') return http.get(url, config);
+  return http.post(url, init.payload ?? {}, config);
 }
 
 /** Auth-free guide content from the pinned DB package. */
