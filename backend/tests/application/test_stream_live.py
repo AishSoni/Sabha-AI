@@ -92,7 +92,8 @@ async def test_stream_yields_live_v2_events_while_provider_blocked(monkeypatch):
 
     final_deltas = [
         f for f in frames
-        if f["type"] == "text_delta" and str(f["data"].get("segment_id", "")).endswith(":final")
+        if f["type"] == "text_delta"
+        and str(f["data"].get("segment_id", "")).startswith(f"{terminal[0]['turn_id']}:final:")
     ]
     assert final_deltas, "final answer must stream as a :final segment"
     assert "".join(d["data"]["content"] for d in final_deltas) == "final answer"

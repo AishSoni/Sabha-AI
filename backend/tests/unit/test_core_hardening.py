@@ -123,14 +123,15 @@ async def test_final_message_persists_citations_and_segments_journal():
     assert loader.saved.citations, "final message must persist citations"
     assert loader.saved.citations[0].source == "doc-1"
 
-    # A2: interim and final text carry distinct segment ids.
+    # A2: interim and final text carry distinct segment ids; the final answer
+    # streams as chunked segments (`:final:<idx>`) joined = full final text.
     events = await store.list_events(result.turn_id, 0)
     deltas = [e for e in events if e["type"] == "text_delta"]
     interim = [d for d in deltas if d["data"].get("segment_id") == f"{result.turn_id}:0"]
     final = [d for d in deltas
-             if str(d["data"].get("segment_id", "")).endswith(":final")]
+             if str(d["data"].get("segment_id", "")).startswith(f"{result.turn_id}:final:")]
     assert interim and interim[0]["data"]["content"] == "checking the covenant"
-    assert final and final[0]["data"]["content"] == "final answer"
+    assert final and "".join(d["data"]["content"] for d in final) == "final answer"
     terminal = [e for e in events if e["type"] == "turn_completed"]
     assert len(terminal) == 1
     assert events.index(final[0]) < events.index(terminal[0])
