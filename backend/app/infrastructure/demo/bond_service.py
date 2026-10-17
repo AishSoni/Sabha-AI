@@ -163,6 +163,233 @@ def get_pack():
         return _pack
 
 
+_raw_package: Optional[dict[str, Any]] = None
+
+
+def loaded_package() -> dict[str, Any]:
+    """Raw validated package dict (guide/guide_ui live here, not on the pack).
+
+    Supabase-pinned row first; validated seed file as local fallback. Cached
+    for repeated guide reads.
+    """
+    global _raw_package
+    if _raw_package is not None:
+        return _raw_package
+    try:
+        from app.core.database import get_supabase_admin
+        from app.infrastructure.demo.bond_package import load_pinned_package
+
+        pkg = load_pinned_package(get_supabase_admin())
+    except Exception:
+        from app.infrastructure.demo.bond_package import load_seed_package
+
+        pkg = load_seed_package()
+    _raw_package = pkg
+    return pkg
+
+
+def guide_view() -> dict[str, Any]:
+    """Guide content for the frontend overlay: journey + UI steps from the DB
+    package. Frontend-owned anchors are referenced by key only; no routes,
+    HTML, or selectors live in the package."""
+    pkg = loaded_package()
+    return {
+        "scenario_id": pkg.get("scenario_id", REAL_SCENARIO_ID),
+        "scenario_revision": int(pkg.get("scenario_revision", 1)),
+        "content_version": int(pkg.get("content_version", 1)),
+        "disclosure": DISCLOSURE,
+        "instrument": instrument_view(),
+        "snapshot_date": pkg.get("snapshot_date", SNAPSHOT_DATE),
+        "journey": pkg.get("guide", {}),
+        "ui": pkg.get("guide_ui", {}),
+        "specialists": [
+            {
+                "specialist_id": s.get("specialist_id"),
+                "title": s.get("title"),
+                "remit": s.get("remit"),
+            }
+            for s in pkg.get("specialists", [])
+        ],
+        "recorded_analysis": RECORDED_ANALYSIS,
+        "approval_status": APPROVAL_STATUS,
+    }
+
+
+def journey_state_for_token(token: str) -> dict[str, Any]:
+    """Authoritative journey state for resume: session + progress + pack."""
+    view = _require_live(token)
+    pv = progress().get(view.session_id, view.generation)
+    return {
+        "session": {
+            "session_id": view.session_id,
+            "generation": view.generation,
+            "scenario_id": view.scenario_id,
+            "action_count": view.action_count,
+            "expires_at": view.expires_at,
+        },
+        "progress": {
+            "stage": pv.stage,
+            "completed": list(pv.completed),
+            "failed": bool(pv.failed),
+            "meeting_id": pv.meeting_id,
+            "specialists": list(pv.specialists),
+            "turn_reference": pv.turn_reference,
+        },
+        "instrument": instrument_view(),
+        "disclosure": DISCLOSURE,
+    }
+
+
+def apply_observed_progress(
+    token: str,
+    action_id: str,
+    idempotency_key: Optional[str] = None,
+) -> dict[str, Any]:
+    """Record client-observed steps (inspect_board, queue exercise) through
+    the same ordered progress store used by recorded turns."""
+    view = _require_live(token)
+    key = idempotency_key or f"journey:{action_id}:{view.session_id}"
+    pv = _apply_progress(
+        session_id=view.session_id,
+        generation=view.generation,
+        action_id=str(action_id),
+        scenario_revision=BOND_CONTENT_REVISION,
+        idempotency_key=str(key),
+        instrument_ref=PINNED_ISIN,
+    )
+    return {
+        "progress": {
+            "stage": pv.stage,
+            "completed": list(pv.completed),
+            "failed": bool(pv.failed),
+            "meeting_id": pv.meeting_id,
+            "turn_reference": pv.turn_reference,
+        }
+    }
+
+
+_FORK_SENTINEL = "__fork__"
+
+
+async def attach_real_meeting(token: str, manager=None) -> dict[str, Any]:
+    """Bind (or reuse) the pinned REAL walkthrough meeting for a session.
+
+    Idempotent per generation: when the progress row already carries a real
+    meeting id (not the synthetic bootstrap placeholder), reuse it; otherwise
+    seed the specialist personas once and create the meeting through the
+    shared MeetingManager, then pin the binding in journey progress.
+    """
+    view = _require_live(token)
+    pv = progress().get(view.session_id, view.generation)
+    meeting_id = pv.meeting_id
+    if meeting_id and not str(meeting_id).startswith("meeting-"):
+        seeds = await seed_demo_assets()
+        return {
+            "session": {
+                "session_id": view.session_id,
+                "generation": view.generation,
+            },
+            "meeting": {"meeting_id": meeting_id},
+            "persona_ids": seeds["persona_ids"],
+            "instrument": instrument_view(),
+            "recorded_analysis": RECORDED_ANALYSIS,
+            "approval_status": APPROVAL_STATUS,
+            "disclosure": DISCLOSURE,
+        }
+    seeds = await seed_demo_assets()
+    result = await create_real_demo_meeting(
+        scenario_id=REAL_SCENARIO_ID,
+        scenario_revision=BOND_CONTENT_REVISION,
+        manager=manager,
+        persona_ids=seeds["persona_ids"],
+    )
+    real_id = result["meeting"]["meeting_id"]
+    progress().pin_meeting(view.session_id, view.generation, real_id)
+    result.update({
+        "session": {
+            "session_id": view.session_id,
+            "generation": view.generation,
+        },
+        "persona_ids": seeds["persona_ids"],
+    })
+    return result
+
+
+async def create_explore_fork(token: str, manager=None) -> dict[str, Any]:
+    """Bounded J09 exploration fork: one secondary meeting per session
+    generation, allowed only after end_walkthrough (honest OutOfOrder gate).
+
+    The fork is a normal meeting (name carries the fork tag); exploring other
+    bonds or reseeding it is rejected by the same bounded path.
+    """
+    view = _require_live(token)
+    fork_tag = f" (fork {view.session_id} g{view.generation})"
+    progress_state = progress().get(view.session_id, view.generation)
+    # In-process registry first; durable fallback queries the fork tag.
+    for ms_key, ms_val in list(_states_for_forks.items()):
+        if ms_key[0] == view.session_id and ms_key[1] == view.generation:
+            return {"meeting": {"meeting_id": ms_val}, "fork": True}
+    try:
+        from app.core.database import get_supabase_admin
+
+        admin = get_supabase_admin()
+        if admin is not None:
+            rows = (
+                admin.table("meetings")
+                .select("id,name")
+                .eq("user_id", DEMO_VISITOR_ID)
+                .ilike("name", f"%{fork_tag}")
+                .limit(1)
+                .execute()
+            ).data or []
+            if rows:
+                _states_for_forks[(view.session_id, view.generation)] = rows[0]["id"]
+                return {"meeting": {"meeting_id": rows[0]["id"]}, "fork": True}
+    except Exception:
+        pass
+    if "explore_followup" not in progress_state.completed:
+        pv = _apply_progress(
+            session_id=view.session_id,
+            generation=view.generation,
+            action_id="explore_followup",
+            scenario_revision=BOND_CONTENT_REVISION,
+            idempotency_key=f"journey:explore_followup:{view.session_id}-{view.generation}",
+            instrument_ref=PINNED_ISIN,
+        )
+    else:
+        pv = progress_state
+    seeds = await seed_demo_assets()
+    payload = build_real_demo_meeting_payload()
+    from app.models import MeetingCreate as _MeetingCreate
+
+    create_data = _MeetingCreate(
+        name=payload["name"] + fork_tag,
+        agenda=payload["agenda"],
+        user_id=DEMO_VISITOR_ID,
+        persona_ids=seeds["persona_ids"],
+    )
+    if manager is None:
+        from app.services.meeting_manager import MeetingManager as _MeetingManager
+
+        manager = _MeetingManager()
+    try:
+        meeting = await manager.create_meeting(create_data)
+    except Exception as exc:
+        raise RuntimeError(f"explore fork unavailable: {exc}") from exc
+    fork_id = getattr(meeting, "id", None)
+    if fork_id is None and isinstance(meeting, dict):
+        fork_id = meeting.get("id")
+    _states_for_forks[(view.session_id, view.generation)] = fork_id
+    return {
+        "meeting": {"meeting_id": fork_id},
+        "fork": True,
+        "progress": {"stage": pv.stage, "completed": list(pv.completed)},
+    }
+
+
+_states_for_forks: dict[tuple[str, int], str] = {}
+
+
 def sessions() -> DemoSessionStore:
     """Durable session store; Supabase gateway when storage is reachable."""
     global _sessions
@@ -272,7 +499,8 @@ def _require_live(token: str):
 
 
 def _apply_progress(*, session_id: str, generation: int, action_id: str,
-                    scenario_revision: int, idempotency_key: str):
+                    scenario_revision: int, idempotency_key: str,
+                    instrument_ref: Optional[str] = None):
     try:
         return progress().apply_action(
             session_id=session_id,
@@ -280,6 +508,7 @@ def _apply_progress(*, session_id: str, generation: int, action_id: str,
             action_id=action_id,
             scenario_revision=scenario_revision,
             idempotency_key=idempotency_key,
+            instrument_ref=instrument_ref,
         )
     except ValueError as exc:
         message = str(exc)
@@ -574,7 +803,7 @@ async def seed_demo_assets(persona_manager=None) -> dict[str, Any]:
     existing = await pm.list_personas(DEMO_VISITOR_ID, include_defaults=False)
     by_name = {(p.name or "").strip(): p for p in (existing or [])}
     persona_ids: list[str] = []
-    for s in pack.specialists:
+    for s in _specialists_as_dicts():
         name = (s.get("title") or "").strip()
         if not name:
             continue
@@ -619,11 +848,24 @@ def _specialist_system_prompt(s: dict) -> str:
     )
 
 
+def _specialists_as_dicts() -> list[dict[str, Any]]:
+    """Package specialists as plain dicts (in-code pack returns pydantic)."""
+    specialists = getattr(get_pack(), "specialists", None) or []
+    out: list[dict[str, Any]] = []
+    for s in specialists:
+        if isinstance(s, dict):
+            out.append(s)
+            continue
+        dumped = getattr(s, "model_dump", None)
+        out.append(dumped() if callable(dumped) else dict(s))
+    return out
+
+
 def _specialist_title(specialist_id: Optional[str]) -> Optional[str]:
     """Map a journey specialist_id to its seeded persona title (from the package)."""
     if specialist_id is None:
         return None
-    for s in get_pack().specialists:
+    for s in _specialists_as_dicts():
         if s.get("specialist_id") == specialist_id:
             return s.get("title")
     return None

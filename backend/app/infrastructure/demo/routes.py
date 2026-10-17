@@ -88,27 +88,126 @@ async def create_demo_session(payload: Optional[dict] = None):
 
 
 @router.post("/real-session")
-async def create_real_session(payload: Optional[dict] = None):
-    """Bootstrap a REAL meeting from the DB journey package (thin facilitation).
+async def create_real_session(request: Request, payload: Optional[dict] = None):
+    """Demo session dispatch (thin facilitation on normal infrastructure).
 
-    Returns a normal meeting_id usable with the standard meeting room, SSE
-    turn stream, queue, and ending routes. Fails closed (503) when storage
-    is unavailable; unknown scenarios fail closed as 404/409.
+    Modes by bearer presence + body.mode:
+    - no bearer (or mode "session"): create a demo SESSION only (credential +
+      durable progress bootstrap + seeded specialist personas); NO meeting yet.
+    - bearer + mode "meeting": attach/reuse the pinned real walkthrough
+      meeting for the session (idempotent per generation).
+    - bearer + mode "fork": bounded once-per-generation exploration fork
+      (J09), honestly gated until end_walkthrough is complete.
+    Fails closed (503) when storage is unavailable; unknown scenarios as
+    404/409.
     """
     body = payload or {}
-    try:
-        result = await bond_service.create_real_demo_meeting(
-            scenario_id=body.get("scenario_id", ""),
-            scenario_revision=int(body.get("scenario_revision", 1)),
+    mode = str(body.get("mode", "") or "").strip().lower()
+    bearer = _bearer(request)
+
+    if mode in {"meeting", "fork"} and bearer is None:
+        return _error(
+            401,
+            "unauthenticated",
+            "Bearer session token required for this mode.",
         )
-    except errors.ScenarioConflict:
-        return _error(404, "unknown_scenario",
-                       "Unknown scenario. Only the approved bond review is served.")
-    except StaleRevision as exc:
-        return _error(409, "stale_scenario_revision", str(exc))
+
+    if bearer is None or mode in {"", "session"}:
+        try:
+            result = await bond_service.create_session(
+                scenario_id=str(
+                    body.get("scenario_id") or bond_service.REAL_SCENARIO_ID
+                ),
+                scenario_revision=int(
+                    body.get(
+                        "scenario_revision", bond_service.BOND_CONTENT_REVISION
+                    )
+                ),
+                creation_key=str(body.get("creation_key", "anonymous")),
+            )
+        except errors.ScenarioConflict:
+            return _error(
+                404,
+                "unknown_scenario",
+                "Unknown scenario. Only the approved bond review is served.",
+            )
+        except StaleRevision as exc:
+            return _error(409, "stale_scenario_revision", str(exc))
+        except RuntimeError as exc:
+            return _error(503, "demo_storage_unavailable", str(exc), True)
+        return JSONResponse(status_code=201, content=result)
+
+    try:
+        if mode == "meeting":
+            result = await bond_service.attach_real_meeting(bearer)
+        elif mode == "fork":
+            result = await bond_service.create_explore_fork(bearer)
+        else:
+            return _error(
+                422,
+                "missing_fields",
+                f"Unsupported demo session mode: {mode or '(unset)'}",
+            )
+    except errors.SessionNotFound:
+        return _error(404, "unknown_session", "Unknown session.")
+    except errors.SessionExpired:
+        return _error(410, "demo_session_expired", "Session expired.", True)
+    except (UnknownAction, StaleRevision, OutOfOrder, NotBootstrapped) as exc:
+        return _map_progress(exc)
     except RuntimeError as exc:
         return _error(503, "demo_storage_unavailable", str(exc), True)
     return JSONResponse(status_code=201, content=result)
+
+
+@router.get("/guide")
+async def get_demo_guide():
+    """Guide content from the DB package: journey UI00-UI08 + J00-J09 step
+    copy keyed by frontend-owned anchors. Auth-free (published content only)."""
+    return bond_service.guide_view()
+
+
+@router.get("/journey-state")
+async def get_journey_state(request: Request):
+    """Authoritative journey state for resume (bearer session -> progress)."""
+    token = _bearer(request)
+    if token is None:
+        return _error(401, "unauthenticated", "Missing bearer token.")
+    try:
+        return bond_service.journey_state_for_token(token)
+    except errors.SessionNotFound:
+        return _error(404, "unknown_session", "Unknown session.")
+    except errors.SessionExpired:
+        return _error(410, "demo_session_expired", "Session expired.", True)
+    except RuntimeError as exc:
+        return _error(503, "demo_storage_unavailable", str(exc), True)
+
+
+@router.post("/journey-progress")
+async def post_journey_progress(request: Request, payload: Optional[dict] = None):
+    """Record client-observed steps (inspect_board, queue exercise) through
+    the ordered progress store: bearer + action_id + idempotency_key."""
+    token = _bearer(request)
+    if token is None:
+        return _error(401, "unauthenticated", "Missing bearer token.")
+    body = payload or {}
+    action_id = str(body.get("action_id", "") or "")
+    if not action_id:
+        return _error(422, "missing_fields", "action_id required.")
+    idempotency_key = body.get("idempotency_key")
+    try:
+        return bond_service.apply_observed_progress(
+            token,
+            action_id,
+            str(idempotency_key) if idempotency_key else None,
+        )
+    except errors.SessionNotFound:
+        return _error(404, "unknown_session", "Unknown session.")
+    except errors.SessionExpired:
+        return _error(410, "demo_session_expired", "Session expired.", True)
+    except (UnknownAction, StaleRevision, OutOfOrder, NotBootstrapped) as exc:
+        return _map_progress(exc)
+    except RuntimeError as exc:
+        return _error(503, "demo_storage_unavailable", str(exc), True)
 
 
 @router.post("/recorded-turn")

@@ -17,14 +17,22 @@ def _make_fake_manager():
     from datetime import datetime, timezone
 
     now = datetime.now(timezone.utc)
-    participant = {
-        "id": "p-analyst",
-        "meeting_id": "m-demo",
-        "name": "The Analyst",
-        "role": "analyst",
-        "system_prompt": "s",
-        "created_at": now,
-    }
+    participants = [
+        {
+            "id": pid,
+            "meeting_id": "m-demo",
+            "name": name,
+            "role": "analyst",
+            "system_prompt": "s",
+            "created_at": now,
+        }
+        for pid, name in [
+            ("p-analyst", "The Analyst"),
+            ("p-credit", "Credit & Business specialist"),
+            ("p-structure", "Bond Structure & Downside specialist"),
+            ("p-treasury", "Treasury & Market specialist"),
+        ]
+    ]
     meeting_row = {
         "id": "m-demo",
         "user_id": "demo-visitor",
@@ -34,7 +42,7 @@ def _make_fake_manager():
         "archived_from": None,
         "total_cost": 0.0,
         "created_at": now,
-        "participants": [participant],
+        "participants": participants,
         "messages": [],
     }
 
@@ -86,11 +94,28 @@ async def _wait_terminal(turn_id, timeout=15.0):
     raise AssertionError(f"turn {turn_id} did not terminate")
 
 
+def _pin_demo_journey():
+    """Bind the fake m-demo meeting to a real journey progress row so the C0
+    recorded turn passes the D1 binding gate (find_by_meeting -> m-demo)."""
+    from app.infrastructure.demo import bond_service
+
+    bond_service.progress().bootstrap(
+        session_id="s-recorded-fixture",
+        generation=1,
+        scenario_revision=1,
+        idempotency_key="bootstrap-s-recorded-fixture-1",
+    )
+    return bond_service.progress().pin_meeting(
+        "s-recorded-fixture", 1, "m-demo"
+    )
+
+
 async def test_recorded_submit_bond_question_streams_chunked_deltas():
     from app.infrastructure.demo import bond_service
     from app.modules.meetings.store import get_shared_turn_store
 
     fake = _make_fake_manager()
+    _pin_demo_journey()
     result = await bond_service.start_demo_recorded_turn(
         meeting_id="m-demo",
         action_id="submit_bond_question",
@@ -120,9 +145,10 @@ async def test_recorded_submit_bond_question_streams_chunked_deltas():
     )
     assert "INE001A07RW5" in joined or len(joined) > 100
 
-    # Normal persistence: one AI message on the real meeting transcript.
+    # Normal persistence: one AI message on the real meeting transcript,
+    # authored by the journey specialist for submit_bond_question.
     assert len(fake.saved_messages) == 1
-    assert fake.saved_messages[0].sender_id == "p-analyst"
+    assert fake.saved_messages[0].sender_id == "p-credit"
 
 
 async def test_recorded_unknown_action_fails_closed():
@@ -169,6 +195,7 @@ async def test_recorded_turn_http_streams_multiple_deltas_before_completion(demo
     from app.modules.meetings.store import get_shared_turn_store
 
     client, fake = demo_http_env
+    _pin_demo_journey()
 
     start_response = await client.post(
         "/api/v2/demo/recorded-turn",

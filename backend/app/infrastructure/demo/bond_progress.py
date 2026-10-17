@@ -169,9 +169,16 @@ class JourneyProgressStore:
             raise ValueError("stale revision: pinned content changed")
         if action_id not in JOURNEY_ACTION_IDS:
             raise ValueError(f"unsupported journey action: {action_id}")
+        completed = state["completed"]
+        if len(completed) >= len(JOURNEY_ACTION_IDS):
+            # All ten steps committed: same action stays idempotent, anything
+            # else is honestly rejected instead of IndexError.
+            if action_id in completed:
+                return self._view(state)
+            raise ValueError("out of order: walkthrough complete")
         if idempotency_key in state["action_keys"]:
             return self._view(state)
-        expected = JOURNEY_ACTION_IDS[len(state["completed"])]
+        expected = JOURNEY_ACTION_IDS[len(completed)]
         if action_id != expected:
             raise ValueError(
                 f"out of order: expected {expected}, got {action_id}"
