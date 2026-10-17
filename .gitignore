@@ -47,3 +47,6 @@ next-env.d.ts
 # agent
 /.opencode/
 backend/data/
+
+# research
+/untracked-bond-research/
