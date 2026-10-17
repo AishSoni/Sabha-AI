@@ -370,7 +370,7 @@ class TurnEngine:
                     # Final answer streams as chunked segments BEFORE the
                     # terminal event so subscribers receive multiple text
                     # deltas incrementally (CONTRACTS §4; Part C proof).
-                    chunks = _chunk_text(final_text, 400)
+                    chunks = _chunk_text(final_text, policies.stream_chunk_chars)
                     for idx, piece in enumerate(chunks):
                         await self._store.append_event(
                             record.turn_id, "text_delta",

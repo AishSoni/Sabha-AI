@@ -14,6 +14,8 @@ class TurnPolicies:
     max_context_chars: int = 48000
     max_output_chars: int = 8000
     max_query_chars: int = 1000
+    # Final-answer SSE text_delta chunk size (CONTRACTS §4 incremental text).
+    stream_chunk_chars: int = 400
 
 
 DEFAULT_POLICIES = TurnPolicies()

@@ -650,12 +650,15 @@ async def start_demo_recorded_turn(
     from app.modules.meetings.store import get_shared_turn_store
 
     store = get_shared_turn_store()
+    from app.modules.meetings.policies import TurnPolicies
+
     engine = TurnEngine(
         meeting_loader=manager,
         provider_resolver=_resolve,
         knowledge_search=knowledge,
         turn_store=store,
         lease_coordinator=None,
+        policies=TurnPolicies(stream_chunk_chars=90),
     )
     key = idempotency_key or f"demo:{meeting_id}:{action_id}:{_uuid.uuid4().hex}"
 
