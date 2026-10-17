@@ -46,6 +46,8 @@ interface DemoGuideState {
   markJourneyAction: (actionId: string) => Promise<void>;
   /** UI-observed step completion (visits etc.). */
   markUiObserved: (key: string) => void;
+  /** J09 follow-up fork (server is bounded once per generation). */
+  createFollowupFork: (onOpened: (meetingId: string) => void) => Promise<void>;
 }
 
 function currentIndexFor(steps: DemoGuideStepView[], uiCompleted: string[], journeyCompleted: string[]): number {
@@ -117,9 +119,20 @@ export const useDemoGuideStore = create<DemoGuideState>((set, get) => ({  steps:
   },
 
   next: () => {
-    const { steps, currentIndex } = get();
+    const { steps, currentIndex, journeyCompleted } = get();
     if (steps.length === 0) return;
-    const nextIndex = clampIndex(currentIndex + 1, steps.length);
+    // Move to the next incomplete step; review controls never replay server
+    // mutations because completed journey actions are skipped.
+    let target = currentIndex + 1;
+    for (let i = currentIndex + 1; i < steps.length; i += 1) {
+      const step = steps[i];
+      const done = step.journeyActionId
+        ? journeyCompleted.includes(step.journeyActionId)
+        : get().uiCompleted.includes(step.key);
+      if (!done) break;
+      target = i + 1;
+    }
+    const nextIndex = clampIndex(target, steps.length);
     set({ currentIndex: nextIndex, paused: false });
     const step = get().steps[nextIndex];
     if (step && !step.journeyActionId && !get().uiCompleted.includes(step.key)) {
@@ -239,5 +252,21 @@ export const useDemoGuideStore = create<DemoGuideState>((set, get) => ({  steps:
       uiCompleted: merged,
       currentIndex: clampIndex(currentIndexFor(steps, merged, get().journeyCompleted), steps.length),
     });
+  },
+
+  createFollowupFork: async onOpened => {
+    const { createDemoFollowupFork } = await import('../lib/demoGuideApi');
+    try {
+      const result = await createDemoFollowupFork();
+      const { steps, uiCompleted } = get();
+      const journeyCompleted = Array.from(new Set([...get().journeyCompleted, 'explore_followup']));
+      set({
+        journeyCompleted,
+        currentIndex: clampIndex(currentIndexFor(steps, uiCompleted, journeyCompleted), steps.length),
+      });
+      onOpened(result.meeting.meeting_id);
+    } catch {
+      /* honest refusal: the guide stays on the fork step with the error visible server-side */
+    }
   },
 }));

@@ -198,3 +198,11 @@ export async function attachDemoMeeting(): Promise<DemoMeetingAttach> {
     payload: { mode: 'meeting' },
   })) as unknown as DemoMeetingAttach;
 }
+
+/** Bounded once-per-generation follow-up fork meeting (J09 explore_followup). */
+export async function createDemoFollowupFork(): Promise<{ meeting: { meeting_id: string }; fork: boolean }> {
+  return (await demoRequest('/real-session', {
+    method: 'POST',
+    payload: { mode: 'fork' },
+  })) as unknown as { meeting: { meeting_id: string }; fork: boolean };
+}

@@ -33,6 +33,8 @@ export function DemoGuide() {
   const pause = useDemoGuideStore(s => s.pause);
   const resume = useDemoGuideStore(s => s.resume);
   const exit = useDemoGuideStore(s => s.exit);
+  const markJourneyAction = useDemoGuideStore(s => s.markJourneyAction);
+  const createFollowupFork = useDemoGuideStore(s => s.createFollowupFork);
 
   useEffect(() => {
     const check = () => setSessionActive(hasDemoSessionState());
@@ -151,6 +153,26 @@ export function DemoGuide() {
                 className="rounded bg-amber-500 px-2 py-1 text-xs font-bold text-zinc-950 hover:bg-amber-400"
               >
                 Go to page
+              </button>
+            ) : null}
+            {step.key === 'J05' ? (
+              <button
+                type="button"
+                onClick={() => void markJourneyAction('queue_verification_question')}
+                className="rounded bg-amber-500 px-2 py-1 text-xs font-bold text-zinc-950 hover:bg-amber-400"
+              >
+                I ran the queue exercise
+              </button>
+            ) : null}
+            {step.key === 'J09' ? (
+              <button
+                type="button"
+                onClick={() =>
+                  void createFollowupFork((forkId) => router.push(`/meetings/${forkId}`))
+                }
+                className="rounded bg-amber-500 px-2 py-1 text-xs font-bold text-zinc-950 hover:bg-amber-400"
+              >
+                Open follow-up fork
               </button>
             ) : null}
             <button
