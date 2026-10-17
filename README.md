@@ -18,7 +18,9 @@ Sabha is an open-source, multi-agent collaborative workspace where you host **st
 | Cost tracking | None | Per-message & per-meeting |
 
 ---
+ 
 
+ 
 ## 🗺️ Table of Contents
 
 1. [Core Concepts](#-core-concepts)
