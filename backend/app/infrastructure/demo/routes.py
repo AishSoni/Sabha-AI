@@ -135,6 +135,14 @@ async def create_real_session(request: Request, payload: Optional[dict] = None):
             return _error(409, "stale_scenario_revision", str(exc))
         except RuntimeError as exc:
             return _error(503, "demo_storage_unavailable", str(exc), True)
+        # Session-only mode: no meeting yet (synthetic bootstrap placeholder is
+        # intentionally not surfaced); specialist personas seed best-effort.
+        result["meeting"] = None
+        try:
+            seeds = await bond_service.seed_demo_assets()
+            result["persona_ids"] = seeds.get("persona_ids", [])
+        except Exception:
+            result["persona_ids"] = []
         return JSONResponse(status_code=201, content=result)
 
     try:

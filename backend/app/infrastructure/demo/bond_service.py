@@ -283,7 +283,11 @@ async def attach_real_meeting(token: str, manager=None) -> dict[str, Any]:
     pv = progress().get(view.session_id, view.generation)
     meeting_id = pv.meeting_id
     if meeting_id and not str(meeting_id).startswith("meeting-"):
-        seeds = await seed_demo_assets()
+        try:
+            seeds = await seed_demo_assets()
+        except Exception as exc:
+            raise RuntimeError(
+                f"specialist personas unavailable: {exc}") from exc
         return {
             "session": {
                 "session_id": view.session_id,
@@ -296,7 +300,10 @@ async def attach_real_meeting(token: str, manager=None) -> dict[str, Any]:
             "approval_status": APPROVAL_STATUS,
             "disclosure": DISCLOSURE,
         }
-    seeds = await seed_demo_assets()
+    try:
+        seeds = await seed_demo_assets()
+    except Exception as exc:
+        raise RuntimeError(f"specialist personas unavailable: {exc}") from exc
     result = await create_real_demo_meeting(
         scenario_id=REAL_SCENARIO_ID,
         scenario_revision=BOND_CONTENT_REVISION,
@@ -358,7 +365,10 @@ async def create_explore_fork(token: str, manager=None) -> dict[str, Any]:
         )
     else:
         pv = progress_state
-    seeds = await seed_demo_assets()
+    try:
+        seeds = await seed_demo_assets()
+    except Exception as exc:
+        raise RuntimeError(f"specialist personas unavailable: {exc}") from exc
     payload = build_real_demo_meeting_payload()
     from app.models import MeetingCreate as _MeetingCreate
 
