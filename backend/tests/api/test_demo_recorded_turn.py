@@ -62,6 +62,7 @@ def _make_fake_manager():
                 sender_type=data.sender_type,
                 sender_id=data.sender_id,
                 sender_name=data.sender_name,
+                citations=getattr(data, "citations", None) or [],
                 created_at=datetime.now(timezone.utc),
             )
             self.saved_messages.append(msg)
@@ -134,3 +135,89 @@ async def test_recorded_unknown_action_fails_closed():
             action_id="nope-not-real",
             manager=_make_fake_manager(),
         )
+
+
+# ---------------- HTTP path: real routes, real SSE framing ----------------
+
+DEMO_BEARER = {"Authorization": "Bearer demo-visitor"}
+
+
+@pytest.fixture
+def demo_http_env(monkeypatch, api_app, api_client):
+    """Route-level demo env: fake manager double behind the real routes.
+
+    Both the demo recorded-turn route (its internal default manager factory)
+    and the meetings routes (get_meeting_manager) resolve the same double, so
+    ownership checks see the demo owner identity.
+    """
+    fake = _make_fake_manager()
+    import app.api.meetings as meetings_api
+    import app.services.meeting_manager as meeting_manager_mod
+
+    monkeypatch.setattr(meetings_api, "get_meeting_manager", lambda: fake)
+    monkeypatch.setattr(meeting_manager_mod, "MeetingManager", lambda *a, **k: fake)
+    return api_client, fake
+
+
+async def test_recorded_turn_http_streams_multiple_deltas_before_completion(demo_http_env):
+    """POST /api/v2/demo/recorded-turn -> GET /api/meetings/turns/{id}/events.
+
+    Proves over the REAL HTTP/SSE framing: at least two text_delta frames
+    arrive before turn_completed, the turn terminalizes completed, and the
+    normal meeting fetch (owner-scoped) reads the persisted AI message.
+    """
+    from app.modules.meetings.store import get_shared_turn_store
+
+    client, fake = demo_http_env
+
+    start_response = await client.post(
+        "/api/v2/demo/recorded-turn",
+        json={
+            "meeting_id": "m-demo",
+            "action_id": "submit_bond_question",
+            "idempotency_key": "demo-http-1",
+        },
+    )
+    assert start_response.status_code == 202, start_response.text
+    body = start_response.json()
+    turn_id = body["turn_id"]
+    assert body["events_url"] == f"/api/meetings/turns/{turn_id}/events"
+
+    # Wait for terminalization so the journal is fully readable.
+    store = get_shared_turn_store()
+    deadline = time.monotonic() + 15.0
+    while time.monotonic() < deadline:
+        record = await store.get(turn_id)
+        if record.state in ("completed", "failed", "cancelled"):
+            break
+        await asyncio.sleep(0.02)
+    assert record.state == "completed", f"turn failed: {record}"
+
+    # Normal turn SSE (owner-scoped): >= 2 text_delta frames before completion.
+    stream = await client.get(
+        f"/api/meetings/turns/{turn_id}/events",
+        headers=DEMO_BEARER,
+    )
+    assert stream.status_code == 200
+    assert "text/event-stream" in stream.headers["content-type"]
+    body_text = stream.text
+    assert body_text.count("event: text_delta") >= 2
+    assert "event: turn_completed" in body_text
+    completed_pos = body_text.index("event: turn_completed")
+    first_delta_pos = body_text.index("event: text_delta")
+    assert first_delta_pos < completed_pos
+
+    # Cross-owner reads stay not-found.
+    foreign = await client.get(
+        f"/api/meetings/turns/{turn_id}/events",
+        headers={"Authorization": "Bearer someone-else"},
+    )
+    assert foreign.status_code == 404
+
+    # Normal meeting read shows the persisted AI message with citations.
+    meeting = await client.get("/api/meetings/m-demo", headers=DEMO_BEARER)
+    assert meeting.status_code == 200
+    payload = meeting.json()
+    ai_messages = [m for m in payload.get("messages", []) if m.get("sender_type") == "ai"]
+    assert len(ai_messages) == 1
+    assert ai_messages[0].get("citations"), "citation must persist on the message"
