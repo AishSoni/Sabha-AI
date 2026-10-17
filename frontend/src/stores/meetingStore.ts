@@ -11,6 +11,7 @@ import { create } from 'zustand';
 import {
     api,
     ApiError,
+    isDemoSessionFor,
     Meeting,
     MeetingWithParticipants,
     Disagreement,
@@ -533,12 +534,49 @@ export const useMeetingStore = create<MeetingState>((set, get) => ({
         };
 
         try {
-            const outcome = await api.subscribeTurnEvents({
-                meetingId,
-                participantId,
-                signal: controller.signal,
-                onEvent: applyEvent,
-            });
+            let outcome: { terminal: TurnStreamEvent | null; eofWithoutTerminal: boolean; aborted: boolean };
+            if (isDemoSessionFor(meetingId)) {
+                // Recorded demo turn: the server starts the SEALed journey
+                // action through the SHARED TurnEngine and returns the normal
+                // turn identity; the room consumes the SAME turn journal the
+                // regular streaming path uses. The requested participant is
+                // advisory — the server binds the specialist and streams
+                // honest tool calls/citations into the room.
+                const start = await api.startDemoRecordedTurn({
+                    meetingId,
+                    actionId: 'submit_bond_question',
+                    idempotencyKey: randomKey(),
+                });
+                if (!stillCurrent()) return;
+                set((state) => ({
+                    streamingMessage: state.streamingMessage
+                        ? { ...state.streamingMessage, turnId: start.turn_id }
+                        : state.streamingMessage,
+                }));
+                const current = get().streamingMessage;
+                if (current && start.participant_name) {
+                    set({
+                        streamingMessage: {
+                            ...current,
+                            participantId: start.participant_id || current.participantId,
+                            participantName: start.participant_name,
+                        },
+                    });
+                }
+                outcome = await api.subscribeTurnJournal({
+                    meetingId,
+                    turnId: start.turn_id,
+                    signal: controller.signal,
+                    onEvent: applyEvent,
+                });
+            } else {
+                outcome = await api.subscribeTurnEvents({
+                    meetingId,
+                    participantId,
+                    signal: controller.signal,
+                    onEvent: applyEvent,
+                });
+            }
             if (activeStream === controller) activeStream = null;
             if (!stillCurrent()) return;
 
