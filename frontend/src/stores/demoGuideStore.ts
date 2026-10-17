@@ -13,7 +13,6 @@ import {
   loadGuideUiCompleted,
   markGuideUiCompleted,
   postDemoJourneyProgress,
-  startDemoWalkthroughSession,
 } from '../lib/demoGuideApi';
 import { mergeGuideSteps, type DemoGuideStepView } from '../lib/demoGuideSteps';
 
@@ -40,7 +39,7 @@ interface DemoGuideState {
   exit: () => void;
   activate: () => void;
   /** After a session POST: records + applies the start_walkthrough journey step. */
-  startWalkthrough: (credential: string) => Promise<void>;
+  startWalkthrough: (credential?: string) => Promise<void>;
   /** Guide-driven lobby: attach + pin the real demo meeting, then route. */
   createMeeting: (onPinned: (meetingId: string) => void) => Promise<void>;
   /** Server-acknowledged journey action completion (turns/queue steps). */
@@ -66,8 +65,7 @@ function currentIndexFor(steps: DemoGuideStepView[], uiCompleted: string[], jour
 
 const clampIndex = (index: number, length: number) => Math.max(0, Math.min(index, Math.max(length - 1, 0)));
 
-export const useDemoGuideStore = create<DemoGuideState>((set, get) => ({
-  steps: [],
+export const useDemoGuideStore = create<DemoGuideState>((set, get) => ({  steps: [],
   currentIndex: 0,
   uiCompleted: [],
   journeyCompleted: [],
@@ -98,7 +96,7 @@ export const useDemoGuideStore = create<DemoGuideState>((set, get) => ({
     const credential = loadDemoCredential();
     const meetingId = loadDemoMeetingId();
     let journeyCompleted: string[] = [];
-    let hasSession = Boolean(credential);
+    const hasSession = Boolean(credential);
     if (credential) {
       try {
         const state = await getDemoJourneyState();
@@ -166,7 +164,7 @@ export const useDemoGuideStore = create<DemoGuideState>((set, get) => ({
     });
   },
 
-  startWalkthrough: async credential => {
+  startWalkthrough: async () => {
     set({ hasSession: true });
     try {
       await postDemoJourneyProgress({ actionId: 'start_walkthrough' });

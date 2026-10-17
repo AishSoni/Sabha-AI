@@ -7,6 +7,8 @@ import { ArrowLeft, Loader2 } from 'lucide-react';
 import { useMeetingStore } from '@/stores/meetingStore';
 import { RightPanel } from '@/components/layout/RightPanel';
 import { ChatArea } from '@/components/chat/ChatArea';
+import { isDemoSessionFor } from '@/lib/api';
+import { useDemoGuideStore } from '@/stores/demoGuideStore';
 
 export default function MeetingRoomPage() {
     const params = useParams();
@@ -15,6 +17,9 @@ export default function MeetingRoomPage() {
     const { currentMeeting, loadMeeting, cancelLocalSubscription, isLoading } = useMeetingStore();
 
     useEffect(() => {
+        if (meetingId && isDemoSessionFor(meetingId)) {
+            void useDemoGuideStore.getState().hydrate();
+        }
         if (meetingId) {
             loadMeeting(meetingId);
         }
@@ -56,7 +61,7 @@ export default function MeetingRoomPage() {
             </header>
 
             {/* Main Content */}
-            <div className="flex-1 flex min-h-0 overflow-hidden">
+            <div className="flex-1 flex min-h-0 overflow-hidden" data-demo-anchor="room.chat">
                 {/* Chat Area */}
                 <ChatArea />
 

@@ -9,6 +9,14 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { Badge } from '@/components/ui/badge';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import {
+  startDemoWalkthroughSession,
+  attachDemoMeeting,
+  loadDemoCredential,
+  saveDemoMeetingId,
+} from '@/lib/demoGuideApi';
+import { saveDemoToken } from '@/features/demo/journeyClient';
+import { useDemoGuideStore } from '@/stores/demoGuideStore';
+import {
     DropdownMenu,
     DropdownMenuContent,
     DropdownMenuItem,
@@ -37,9 +45,23 @@ function MeetingsContent() {
     const [deleteConfirmId, setDeleteConfirmId] = useState<string | null>(null);
     const [actionLoading, setActionLoading] = useState<string | null>(null);
     const [demoNotice, setDemoNotice] = useState<string | null>(null);
+    const [demoCreating, setDemoCreating] = useState(false);
+    const walkthroughActive = useDemoGuideStore((s) => s.active);
     const router = useRouter();
     const searchParams = useSearchParams();
     const demoBootstrapped = useRef(false);
+
+    const handleDemoCreateMeeting = async () => {
+        if (demoCreating) return;
+        setDemoCreating(true);
+        try {
+            await useDemoGuideStore.getState().createMeeting((meetingId) => {
+                router.replace(`/meetings/${meetingId}`);
+            });
+        } finally {
+            setDemoCreating(false);
+        }
+    };
 
     useEffect(() => {
         loadMeetings();
@@ -57,37 +79,33 @@ function MeetingsContent() {
             return;
         }
         demoBootstrapped.current = true;
-        const base = process.env.NEXT_PUBLIC_API_BASE_URL || 'http://localhost:8000';
         setDemoNotice('Starting the recorded bond walkthrough…');
-        fetch(`${base}/api/v2/demo/real-session`, {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ scenario_id: scenario, scenario_revision: 1 }),
-        })
-            .then(async (res) => {
-                if (!res.ok) {
-                    const body = await res.json().catch(() => ({}));
-                    throw new Error(
-                        body?.code === 'demo_storage_unavailable'
-                            ? 'Demo storage is unavailable right now. Please try again later.'
-                            : 'Could not start the demo walkthrough.'
-                    );
+        void (async () => {
+            try {
+                // 1) credential-first: session-only start (idempotent when the
+                // walkthrough already has one).
+                let credential = loadDemoCredential();
+                if (!credential) {
+                    const start = await startDemoWalkthroughSession();
+                    credential = start.credential;
+                    saveDemoToken(start.credential);
+                    await useDemoGuideStore.getState().startWalkthrough();
                 }
-                return res.json();
-            })
-            .then((body) => {
-                const meetingId = body?.meeting?.meeting_id;
+                // 2) attach + pin the real demo meeting (server is
+                // generation-idempotent; replays return the existing meeting).
+                const attach = await attachDemoMeeting();
+                const meetingId = attach.meeting.meeting_id;
                 if (!meetingId) throw new Error('Could not start the demo walkthrough.');
-                try {
-                    sessionStorage.setItem('sabha.demo.sessionToken', `real-${meetingId}`);
-                } catch {
-                    /* watermark marker is best-effort */
-                }
+                saveDemoMeetingId(meetingId);
                 router.replace(`/meetings/${meetingId}`);
-            })
-            .catch((err: unknown) => {
-                setDemoNotice(err instanceof Error ? err.message : 'Could not start the demo walkthrough.');
-            });
+            } catch (err: unknown) {
+                const message = err instanceof Error ? err.message : 'Could not start the demo walkthrough.';
+                const code = /demo_storage_unavailable/.test(String(message))
+                    ? 'Demo storage is unavailable right now. Please try again later.'
+                    : message;
+                setDemoNotice(code);
+            }
+        })();
     }, [searchParams, router]);
 
     const loadMeetings = async () => {
@@ -159,12 +177,29 @@ function MeetingsContent() {
                             <p className="text-xs text-zinc-500">Manage your AI meeting rooms</p>
                         </div>
                     </div>
-                    <Link href="/meetings/new">
-                        <Button className="bg-indigo-600 hover:bg-indigo-700">
-                            <Plus className="w-4 h-4 mr-2" />
-                            Create Meeting Room
-                        </Button>
-                    </Link>
+                    <div className="flex items-center gap-3">
+                        {walkthroughActive ? (
+                            <Button
+                                data-demo-anchor="meetings.create"
+                                className="bg-indigo-600 hover:bg-indigo-700"
+                                onClick={handleDemoCreateMeeting}
+                                disabled={demoCreating}
+                            >
+                                {demoCreating ? (
+                                    <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                                ) : (
+                                    <Plus className="w-4 h-4 mr-2" />
+                                )}
+                                Start Demo Meeting
+                            </Button>
+                        ) : null}
+                        <Link href="/meetings/new">
+                            <Button className="bg-indigo-600 hover:bg-indigo-700">
+                                <Plus className="w-4 h-4 mr-2" />
+                                Create Meeting Room
+                            </Button>
+                        </Link>
+                    </div>
                 </div>
             </header>
 
@@ -175,7 +210,7 @@ function MeetingsContent() {
                         {demoNotice}
                     </div>
                 )}
-                <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
+                <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full" data-demo-anchor="meetings.list">
                     <TabsList className="bg-zinc-900/50 border border-zinc-800 mb-6">
                         <TabsTrigger value="active" className="data-[state=active]:bg-zinc-800">
                             <MessageSquare className="w-4 h-4 mr-2" />

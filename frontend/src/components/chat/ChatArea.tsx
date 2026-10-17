@@ -22,8 +22,13 @@ import { QueuePanel } from '@/components/chat/QueuePanel';
 import { SharedDocumentsTab } from '@/components/chat/SharedDocumentsTab';
 import { SummaryTab } from '@/components/chat/SummaryTab';
 import { RateLimitedButton } from '@/components/ui/rate-limited-button';
+import { useDemoGuideStore } from '@/stores/demoGuideStore';
 
 export function ChatArea() {
+    const demoJourneyAction = useDemoGuideStore(
+        (s) => s.steps[s.currentIndex]?.journeyActionId ?? null,
+    );
+    const demoMode = useDemoGuideStore((s) => s.active);
     const {
         currentMeeting,
         sendUserMessage,
@@ -285,7 +290,9 @@ export function ChatArea() {
                                         variant="outline"
                                         size="sm"
                                         disabled={activeTurnParticipantId !== null}
-                                        onRateLimitedClick={() => executeTurnStreaming(participant.id)}
+                                        onRateLimitedClick={() =>
+                                            executeTurnStreaming(participant.id, demoMode ? { demoActionId: demoJourneyAction ?? 'submit_bond_question' } : undefined)
+                                        }
                                         isLoading={activeTurnParticipantId === participant.id}
                                         className={cn(
                                             'border-zinc-700 hover:bg-zinc-800',
