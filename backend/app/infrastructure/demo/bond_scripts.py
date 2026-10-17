@@ -218,3 +218,34 @@ def build_journey_provider(action_id: str):
         )
     script.append(final_text_response(spec["final_text"]))
     return RecordedProvider(script)
+
+
+_ENDING_BALLOT_REASONS: dict[str, str] = {
+    "Credit & Business specialist": (
+        "Recorded ballot: the walkthrough covered the credit and business "
+        "questions on the pinned instrument."
+    ),
+    "Bond Structure & Downside specialist": (
+        "Recorded ballot: structure terms and downside sensitivities were "
+        "shown from recorded source pages."
+    ),
+    "Treasury & Market specialist": (
+        "Recorded ballot: treasury and market context plus the open "
+        "verification steps are on the agenda."
+    ),
+}
+
+
+def ending_ballot_text(participant_name: str) -> str:
+    """Parseable recorded vote JSON; farmed through parse_vote_response."""
+    reason = _ENDING_BALLOT_REASONS.get(participant_name)
+    if reason is None:
+        raise RuntimeError(
+            f"no recorded ending ballot for participant {participant_name!r}"
+        )
+    return json.dumps({"vote": True, "reason": reason}, sort_keys=True)
+
+
+def ending_summary_text() -> str:
+    """Recorded executive brief: the J08 final text IS the recorded summary."""
+    return _SPECS["end_walkthrough"]["final_text"]

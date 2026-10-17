@@ -507,6 +507,17 @@ async def _prepare_ending(manager, meeting_id: str, roster: list,
     return attempt
 
 
+def _is_demo_meeting(meeting) -> bool:
+    """True for recorded walkthrough meetings owned by the demo visitor.
+
+    Demo endings replay recorded ballots and the recorded executive brief
+    through the SAME shared ending-attempt workflow (journal, votes, commit);
+    they never call the live LLM provider."""
+    from app.infrastructure.demo.bond_service import DEMO_VISITOR_ID
+
+    return getattr(meeting, "user_id", None) == DEMO_VISITOR_ID
+
+
 async def _execute_ending(manager, meeting: MeetingWithParticipants,
                            roster: list, force_end: bool,
                            attempt: dict) -> EndMeetingResponse:
@@ -557,10 +568,14 @@ async def _execute_ending(manager, meeting: MeetingWithParticipants,
                     "participant_name": participant.name,
                 })
                 try:
-                    provider = get_provider(
-                        participant.provider_config.provider or None,
-                        participant.provider_config.model or None
-                    )
+                    if _is_demo_meeting(meeting):
+                        from app.infrastructure.demo import bond_service as _demo
+                        provider = _demo.demo_ending_vote_provider(participant.name)
+                    else:
+                        provider = get_provider(
+                            participant.provider_config.provider or None,
+                            participant.provider_config.model or None
+                        )
                     vote_prompt = build_vote_prompt(
                         participant.name, participant.role,
                         conversation_context, meeting.agenda)
@@ -650,11 +665,15 @@ async def _execute_ending(manager, meeting: MeetingWithParticipants,
         # System AI generates the summary; participant providers are never borrowed.
         from app.modules.personas.preferences import effective_for_system_ai
 
-        system_ai = effective_for_system_ai()
-        provider = get_provider(
-            system_ai.provider or None,
-            system_ai.model or None,
-        )
+        if _is_demo_meeting(meeting):
+            from app.infrastructure.demo import bond_service as _demo
+            provider = _demo.demo_ending_summary_provider()
+        else:
+            system_ai = effective_for_system_ai()
+            provider = get_provider(
+                system_ai.provider or None,
+                system_ai.model or None,
+            )
 
         summary_prompt = build_summary_prompt(
             meeting.name, meeting.agenda,

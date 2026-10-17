@@ -50,6 +50,38 @@ def _approved_source_ids() -> set[str]:
     return {s.source_id for s in _pack.sources}
 
 
+def demo_ending_vote_provider(participant_name: str):
+    """Recorded ballot provider for the SHARED ending workflow.
+
+    Returns an LLMProvider-compatible stub whose complete() emits the
+    parseable recorded vote JSON for exactly this participant; the usual
+    parse_vote_response pipeline stays intact so invalid/unknown ballots
+    still fail honestly as non-yes votes."""
+    from app.infrastructure.demo.bond_scripts import ending_ballot_text
+    from app.infrastructure.demo.recorded_provider import (
+        RecordedProvider,
+        final_text_response,
+    )
+
+    return RecordedProvider(
+        [final_text_response(ending_ballot_text(participant_name))]
+    )
+
+
+def demo_ending_summary_provider():
+    """Recorded summary provider for the SHARED ending workflow.
+
+    complete() returns the recorded executive brief (the J08 final text),
+    so the shared ending flow streams the actual recorded summary."""
+    from app.infrastructure.demo.bond_scripts import ending_summary_text
+    from app.infrastructure.demo.recorded_provider import (
+        RecordedProvider,
+        final_text_response,
+    )
+
+    return RecordedProvider([final_text_response(ending_summary_text())])
+
+
 def _approved_source_titles() -> set[str]:
     return {s.title for s in _pack.sources}
 
