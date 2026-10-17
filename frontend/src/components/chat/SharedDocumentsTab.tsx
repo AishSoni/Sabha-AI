@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useState, useCallback, useRef } from 'react';
+import { useEffect, useState, useCallback, useRef, type ReactNode } from 'react';
 import { useMeetingStore } from '@/stores/meetingStore';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Card } from '@/components/ui/card';
@@ -214,7 +214,7 @@ function DocumentCard({ document, onDelete }: DocumentCardProps) {
         setIsDeleting(false);
     };
 
-    const StatusBadge = () => {
+    const statusBadge = (): ReactNode => {
         switch (document.status) {
             case 'processing':
                 return (
@@ -259,7 +259,7 @@ function DocumentCard({ document, onDelete }: DocumentCardProps) {
                     </div>
                 </div>
                 <div className="flex items-center gap-2">
-                    <StatusBadge />
+                    {statusBadge()}
                     <Badge variant="outline" className="text-xs text-zinc-400 border-zinc-700 uppercase">
                         {document.file_type}
                     </Badge>

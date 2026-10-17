@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState } from 'react';
 import { ChevronDown, ChevronRight, Brain } from 'lucide-react';
 import { cn } from '@/lib/utils';
 
@@ -12,10 +12,9 @@ interface ThinkingBlockProps {
 export function ThinkingBlock({ content, isStreaming }: ThinkingBlockProps) {
     const [isExpanded, setIsExpanded] = useState(true); // Start expanded
 
-    // Auto-expand when streaming starts
-    useEffect(() => {
-        if (isStreaming) setIsExpanded(true);
-    }, [isStreaming]);
+    // Streaming always expands; after the stream, the manual toggle applies.
+    const effectiveExpanded = isStreaming ? true : isExpanded;
+
     return (
         <div className="my-2 rounded-lg bg-violet-950/30 border border-violet-800/50 overflow-hidden">
             <button
@@ -28,14 +27,14 @@ export function ThinkingBlock({ content, isStreaming }: ThinkingBlockProps) {
                     <span className="text-xs text-violet-500 animate-pulse">...</span>
                 )}
                 <div className="flex-1" />
-                {isExpanded ? (
+                {effectiveExpanded ? (
                     <ChevronDown className="w-4 h-4" />
                 ) : (
                     <ChevronRight className="w-4 h-4" />
                 )}
             </button>
 
-            {isExpanded && (
+            {effectiveExpanded && (
                 <div className="px-3 pb-3 pt-1">
                     <p className="text-sm text-violet-300/80 whitespace-pre-wrap font-mono">
                         {content}
