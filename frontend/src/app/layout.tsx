@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import { Inter } from "next/font/google";
 import "./globals.css";
 import { DemoWatermark } from "@/components/demo/DemoWatermark";
+import { DemoGuide } from "@/components/demo/DemoGuide";
 
 const inter = Inter({ subsets: ["latin"] });
 
@@ -20,6 +21,7 @@ export default function RootLayout({
       <body className={`${inter.className} antialiased`}>
         {children}
         <DemoWatermark />
+        <DemoGuide />
       </body>
     </html>
   );

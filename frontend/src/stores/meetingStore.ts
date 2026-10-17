@@ -20,6 +20,7 @@ import {
     ContextStats,
 } from '@/lib/api';
 import type { TurnStreamEvent } from '@/lib/turn-events';
+import { useDemoGuideStore } from '@/stores/demoGuideStore';
 
 // Streaming state for a message being generated
 export interface StreamingToolCall {
@@ -96,7 +97,7 @@ interface MeetingState {
     removeQueueEntry: (entryId: string) => Promise<boolean>;
     clearQueueNotice: () => void;
     executeTurn: (participantId: string) => Promise<void>;
-    executeTurnStreaming: (participantId: string) => Promise<void>;
+    executeTurnStreaming: (participantId: string, turnOptions?: { demoActionId?: string }) => Promise<void>;
     fetchContextStats: () => Promise<void>;
     setCurrentMeeting: (meeting: MeetingWithParticipants) => void;
     setSessionGeneration: (generation: number | null) => void;
@@ -378,7 +379,7 @@ export const useMeetingStore = create<MeetingState>((set, get) => ({
     },
 
     // Execute an AI participant's turn with streaming
-    executeTurnStreaming: async (participantId: string) => {
+    executeTurnStreaming: async (participantId: string, turnOptions?: { demoActionId?: string }) => {
         const snapshot = get().currentMeeting;
         if (!snapshot) return;
         const meetingId = snapshot.id;
@@ -534,7 +535,8 @@ export const useMeetingStore = create<MeetingState>((set, get) => ({
         };
 
         try {
-            let outcome: { terminal: TurnStreamEvent | null; eofWithoutTerminal: boolean; aborted: boolean };
+            let outcome: { terminal: TurnStreamEvent | null; eofWithoutTerminal: boolean; aborted: boolean } | null = null;
+            let demoTurnActionId: string | null = null;
             if (isDemoSessionFor(meetingId)) {
                 // Recorded demo turn: the server starts the SEALed journey
                 // action through the SHARED TurnEngine and returns the normal
@@ -544,9 +546,10 @@ export const useMeetingStore = create<MeetingState>((set, get) => ({
                 // honest tool calls/citations into the room.
                 const start = await api.startDemoRecordedTurn({
                     meetingId,
-                    actionId: 'submit_bond_question',
+                    actionId: turnOptions?.demoActionId ?? 'submit_bond_question',
                     idempotencyKey: randomKey(),
                 });
+                demoTurnActionId = start.action_id;
                 if (!stillCurrent()) return;
                 set((state) => ({
                     streamingMessage: state.streamingMessage
@@ -611,6 +614,14 @@ export const useMeetingStore = create<MeetingState>((set, get) => ({
 
             const terminal = outcome.terminal;
             if (terminal && terminal.terminalKind === 'completed') {
+                if (isDemoSessionFor(meetingId)) {
+                    try {
+                        const { markJourneyAction } = useDemoGuideStore.getState();
+                        await markJourneyAction(demoTurnActionId ?? 'submit_bond_question');
+                    } catch {
+                        /* guide resyncs via journey-state on next hydrate */
+                    }
+                }
                 await reconcileAfterTerminal();
                 if (!stillCurrent()) return;
                 set({ streamingMessage: null, activeTurnParticipantId: null, turnStatus: 'idle' });

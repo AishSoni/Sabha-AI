@@ -180,7 +180,12 @@ export function authHeaders(): Record<string, string> {
     let identity = LOCAL_ACTOR_ID;
     try {
         const token = sessionStorage.getItem('sabha.demo.sessionToken');
-        if (token && token.startsWith('real-')) identity = DEMO_ACTOR_ID;
+        const demoMeeting = sessionStorage.getItem('sabha.demo.meetingId');
+        // Demo actor carries THREE signals: pinned meeting id, the legacy
+        // identifer token ('real-...' before recorded meeting pinning), and
+        // any stored raw credential (session exists). All resolve to the
+        // fixed demo owner sharing real ownership bookkeeping.
+        if (demoMeeting || (token && token.startsWith('real-')) || token) identity = DEMO_ACTOR_ID;
     } catch {
         /* storage unavailable -> local identity */
     }
@@ -193,6 +198,7 @@ export function authHeaders(): Record<string, string> {
  */
 export function isDemoSessionFor(meetingId: string): boolean {
     try {
+        if (sessionStorage.getItem('sabha.demo.meetingId') === meetingId) return true;
         return sessionStorage.getItem('sabha.demo.sessionToken') === `real-${meetingId}`;
     } catch {
         return false;
