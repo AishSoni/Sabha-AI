@@ -630,6 +630,102 @@ export const api = {
         });
         return handleResponse(response);
     },
+
+    /**
+     * Shared ending attempt (202 journal workflow). Votes and the summary are
+     * produced by the server and streamed over the ending journal; the same
+     * endpoint serves demo meetings with recorded ballots and brief.
+     * Duplicate idempotency keys return the prior attempt identity.
+     */
+    async startEndingAttempt(args: {
+        meetingId: string;
+        forceEnd?: boolean;
+        idempotencyKey?: string;
+    }): Promise<EndingAttemptStart> {
+        const response = await fetch(`${API_BASE}/meetings/${args.meetingId}/ending-attempts`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json', ...authHeaders() },
+            body: JSON.stringify({ force_end: args.forceEnd ?? false }),
+        });
+        if (!response.ok) {
+            const error = await response.json().catch(() => ({ detail: 'Unknown error' }));
+            throw toApiError(response.status, error);
+        }
+        return response.json();
+    },
+
+    /** Authoritative ending attempt state (recovery view after a restart). */
+    async getEndingAttempt(attemptId: string): Promise<EndingAttemptView> {
+        const response = await fetch(`${API_BASE}/meetings/ending-attempts/${attemptId}`, {
+            headers: authHeaders(),
+        });
+        return handleResponse(response);
+    },
+
+    /**
+     * Replay + live subscribe of the shared ending journal by attempt id.
+     * Dedup by sequence like the turn journal; EOF without a terminal event is
+     * reported so the caller can reconcile via getEndingAttempt — EOF never
+     * implies completion in either journal.
+     */
+    async subscribeEndingJournal(args: {
+        attemptId: string;
+        signal: AbortSignal;
+        onEvent: (event: EndingJournalEvent) => void;
+    }): Promise<{ terminal: EndingJournalEvent | null; eofWithoutTerminal: boolean; aborted: boolean }> {
+        const { attemptId, signal, onEvent } = args;
+        const dedup = createSequenceDedup();
+        let terminal: EndingJournalEvent | null = null;
+        const parser = createSseParser({
+            onFrame(frame) {
+                const envelope = parseEndingEnvelope(frame.data);
+                if (!envelope) return;
+                const fallbackType = typeof frame.event === 'string' ? frame.event : null;
+                const event = endingEventFrom(envelope, fallbackType);
+                if (!event) return;
+                const sequence = event.sequence;
+                if (sequence !== undefined && dedup(sequence)) return;
+                if (event.type === 'ending_completed' || event.type === 'ending_failed') terminal = event;
+                onEvent(event);
+            },
+        });
+
+        let response: Response;
+        try {
+            response = await fetch(`${API_BASE}/meetings/ending-attempts/${attemptId}/events?after=0`, {
+                headers: authHeaders(),
+                signal,
+            });
+        } catch (err) {
+            if (isAbortError(err)) return { terminal: null, eofWithoutTerminal: false, aborted: true };
+            throw err;
+        }
+        if (!response.ok) {
+            const error = await response.json().catch(() => ({ detail: 'Unknown error' }));
+            throw toApiError(response.status, error);
+        }
+
+        const reader = response.body?.getReader();
+        if (!reader) throw new ApiError(0, 'unavailable', 'ending stream has no body', false);
+        let eof = false;
+        try {
+            while (true) {
+                const { done, value } = await reader.read();
+                if (done) {
+                    eof = true;
+                    break;
+                }
+                parser.feed(value as Uint8Array);
+            }
+        } catch (err) {
+            if (isAbortError(err)) return { terminal, eofWithoutTerminal: false, aborted: true };
+            throw err;
+        } finally {
+            reader.releaseLock();
+        }
+        parser.flush();
+        return { terminal, eofWithoutTerminal: eof && !terminal, aborted: false };
+    },
 };
 
 export interface ContextStats {
@@ -673,6 +769,66 @@ export interface EndMeetingResponse {
     votes: EndMeetingVote[];
     summary: string | null;
     message: string;
+}
+
+// Ending-attempt journal types (shared ending workflow, version-2 SSE).
+export interface EndingAttemptStart {
+    attempt_id: string;
+    meeting_id: string;
+    state: string;
+    duplicate: boolean;
+    events_url: string;
+}
+
+export interface EndingAttemptView {
+    attempt_id: string;
+    meeting_id: string;
+    state: string;
+    outcome: string;
+    summary: string | null;
+    usage: Record<string, number>;
+    votes: Array<Record<string, unknown>>;
+}
+
+interface RawEndingEnvelope {
+    version?: number;
+    type?: string;
+    sequence?: number;
+    ending_attempt_id?: string;
+    [key: string]: unknown;
+}
+
+export interface EndingJournalEvent {
+    type: string;
+    /** The inner `data` payload of the v2 envelope (e.g. vote fields). */
+    data: Record<string, unknown>;
+    sequence?: number;
+    endingAttemptId?: string;
+}
+
+function parseEndingEnvelope(data: string | null): RawEndingEnvelope | null {
+    if (!data) return null;
+    try {
+        const parsed = JSON.parse(data) as RawEndingEnvelope | null;
+        return parsed && typeof parsed === 'object' ? parsed : null;
+    } catch {
+        return null;
+    }
+}
+
+function endingEventFrom(envelope: RawEndingEnvelope, fallbackType: string | null): EndingJournalEvent | null {
+    const type = typeof envelope.type === 'string' ? envelope.type : fallbackType;
+    if (!type) return null;
+    const rawPayload = envelope.data;
+    const payload =
+        rawPayload && typeof rawPayload === 'object' ? (rawPayload as Record<string, unknown>) : {};
+    const sequence = typeof envelope.sequence === 'number' ? envelope.sequence : undefined;
+    return {
+        type,
+        data: payload,
+        sequence,
+        endingAttemptId: typeof envelope.ending_attempt_id === 'string' ? envelope.ending_attempt_id : undefined,
+    };
 }
 
 // ============== PERSONA TYPES ==============

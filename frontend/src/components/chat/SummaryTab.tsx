@@ -2,7 +2,8 @@
 
 import { useMemo, useState } from 'react';
 import { useMeetingStore } from '@/stores/meetingStore';
-import { api, EndMeetingVote, EndMeetingResponse } from '@/lib/api';
+import { api, isDemoSessionFor, EndMeetingVote, EndMeetingResponse } from '@/lib/api';
+import { postDemoJourneyProgress } from '@/lib/demoGuideApi';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Card } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
@@ -31,6 +32,11 @@ export function SummaryTab() {
     const [showEndMeetingConfirm, setShowEndMeetingConfirm] = useState(false);
     const [isEndingMeeting, setIsEndingMeeting] = useState(false);
     const [endMeetingResult, setEndMeetingResult] = useState<EndMeetingResponse | null>(null);
+    const [isDemoEnding, setIsDemoEnding] = useState(false);
+    const [demoVotes, setDemoVotes] = useState<EndMeetingVote[]>([]);
+    const [demoBrief, setDemoBrief] = useState('');
+    const [demoEndingError, setDemoEndingError] = useState<string | null>(null);
+    const [demoEndingNote, setDemoEndingNote] = useState<string | null>(null);
 
     // Authoritative summary history: system transcript messages plus the final
     // summary returned by the ending attempt. No locally fabricated summaries.
@@ -71,6 +77,121 @@ export function SummaryTab() {
     const isMeetingEnded = currentMeeting.status === 'ended';
     const isReadOnly = currentMeeting.status === 'ended' || currentMeeting.status === 'archived';
     const canEnd = currentMeeting.status === 'active';
+    const isDemoRoom = isDemoSessionFor(currentMeeting.id);
+
+    const handleDemoEndMeeting = async () => {
+        const meetingId = currentMeeting.id;
+        setIsDemoEnding(true);
+        setDemoVotes([]);
+        setDemoBrief('');
+        setDemoEndingError(null);
+        setDemoEndingNote(null);
+        setEndMeetingResult(null);
+
+        const controller = new AbortController();
+        let terminal: { type: string; data: Record<string, unknown> } | null = null;
+        const collectedVotes: EndMeetingVote[] = [];
+
+        try {
+            const start = await api.startEndingAttempt({
+                meetingId,
+                forceEnd: false,
+                idempotencyKey: `demo-ending-${Date.now()}-${Math.random().toString(36).slice(2)}`,
+            });
+            if (start.duplicate) {
+                setDemoEndingNote(
+                    'An ending attempt is already journaled for this walkthrough; replaying it.'
+                );
+            }
+
+            const outcome = await api.subscribeEndingJournal({
+                attemptId: start.attempt_id,
+                signal: controller.signal,
+                onEvent: (event) => {
+                    const data = event.data as Record<string, unknown>;
+                    if (event.type === 'vote_recorded') {
+                        const vote: EndMeetingVote = {
+                            participant_id: String(data.participant_id ?? ''),
+                            participant_name: String(data.participant_name ?? ''),
+                            vote: Boolean(data.vote),
+                            reason: String(data.reason ?? ''),
+                        };
+                        collectedVotes.push(vote);
+                        setDemoVotes([...collectedVotes]);
+                    } else if (event.type === 'summary_delta') {
+                        setDemoBrief((prev) => prev + String(data.content ?? ''));
+                    } else if (event.type === 'ending_completed' || event.type === 'ending_failed') {
+                        terminal = { type: event.type, data };
+                    }
+                },
+            });
+            if (!terminal && outcome.terminal) {
+                terminal = {
+                    type: outcome.terminal.type,
+                    data: outcome.terminal.data as Record<string, unknown>,
+                };
+            }
+
+            if (!terminal) {
+                // EOF without terminal: reconcile against authoritative state.
+                const view = await api.getEndingAttempt(start.attempt_id);
+                if (view.outcome === 'completed') {
+                    terminal = {
+                        type: 'ending_completed',
+                        data: { outcome: 'completed', summary: view.summary, votes: view.votes },
+                    };
+                } else if (view.outcome === 'rejected') {
+                    terminal = {
+                        type: 'ending_completed',
+                        data: { outcome: 'rejected', votes: view.votes },
+                    };
+                } else {
+                    throw new Error('Ending attempt still in progress; retry safely (it is idempotent).');
+                }
+            }
+            const terminalData = terminal.data as Record<string, unknown>;
+
+            if (terminal.type === 'ending_failed') {
+                setDemoEndingError(
+                    String(
+                        terminalData.message ??
+                            'Ending attempt failed; the meeting stays active and the attempt can be retried.'
+                    )
+                );
+            } else if (terminalData.outcome === 'completed') {
+                setEndMeetingResult({
+                    success: true,
+                    votes: collectedVotes,
+                    summary: typeof terminalData.summary === 'string' ? terminalData.summary : demoBrief || null,
+                    message: 'Recorded ending committed to the meeting transcript.',
+                });
+                setShowEndMeetingConfirm(false);
+                await loadMeeting(meetingId);
+                try {
+                    await postDemoJourneyProgress({
+                        actionId: 'end_walkthrough',
+                        idempotencyKey: start.attempt_id,
+                    });
+                } catch {
+                    // Journey progression is honest-gated server-side; a conflict
+                    // here is surfaced by the guide overlay, not silently faked.
+                }
+            } else {
+                setEndMeetingResult({
+                    success: false,
+                    votes: collectedVotes,
+                    summary: null,
+                    message: 'Recorded ballots declined the ending. The meeting stays active.',
+                });
+            }
+        } catch (err) {
+            setDemoEndingError(
+                (err as Error).message || 'The ending attempt could not be started. Retry safely.'
+            );
+        } finally {
+            setIsDemoEnding(false);
+        }
+    };
 
     const handleRefreshState = async () => {
         setIsRefreshing(true);
@@ -234,6 +355,69 @@ export function SummaryTab() {
                             This meeting is {currentMeeting.status}. The summary view is read-only and will never reopen it.
                         </p>
                     </Card>
+                ) : isDemoRoom ? (
+                    <div>
+                        <h4 className="text-sm font-semibold text-zinc-400 mb-3 flex items-center gap-2">
+                            <LogOut className="w-4 h-4" />
+                            End Meeting
+                        </h4>
+
+                        <Card className="bg-indigo-950/30 border-indigo-800/50 p-4">
+                            <div className="flex items-start justify-between gap-3">
+                                <div>
+                                    <h4 className="font-medium text-white mb-1">Record the walkthrough ending</h4>
+                                    <p className="text-xs text-zinc-500">
+                                        The three specialists cast recorded ballots and the recorded brief streams
+                                        through the shared ending journal. No live inference runs in the demo.
+                                    </p>
+                                </div>
+                                <Button
+                                    onClick={handleDemoEndMeeting}
+                                    disabled={!canEnd || isDemoEnding}
+                                    aria-label="Record the walkthrough ending"
+                                    className="bg-indigo-600 hover:bg-indigo-700 shrink-0"
+                                >
+                                    {isDemoEnding ? (
+                                        <>
+                                            <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                                            Recording...
+                                        </>
+                                    ) : (
+                                        <>
+                                            <CheckCircle2 className="w-4 h-4 mr-2" />
+                                            Record ending
+                                        </>
+                                    )}
+                                </Button>
+                            </div>
+
+                            {demoEndingNote && (
+                                <p className="text-xs text-indigo-300 mt-2">{demoEndingNote}</p>
+                            )}
+                            {demoEndingError && (
+                                <p role="alert" className="text-xs text-red-400 mt-2">
+                                    {demoEndingError}
+                                </p>
+                            )}
+
+                            {isDemoEnding && demoVotes.length > 0 && (
+                                <div className="mt-3 space-y-1.5">
+                                    {demoVotes.map((vote) => (
+                                        <div key={vote.participant_id} className="text-xs text-zinc-400">
+                                            <span className="font-medium text-zinc-200">{vote.participant_name}</span>
+                                            : {vote.vote ? 'yes' : 'no'} — {vote.reason}
+                                        </div>
+                                    ))}
+                                </div>
+                            )}
+                            {demoBrief && (
+                                <div className="mt-3 rounded border border-indigo-800/40 bg-indigo-900/20 p-3 text-xs text-zinc-300 whitespace-pre-wrap">
+                                    {demoBrief}
+                                    {isDemoEnding && <span className="animate-pulse">▌</span>}
+                                </div>
+                            )}
+                        </Card>
+                    </div>
                 ) : (
                     <div>
                         <h4 className="text-sm font-semibold text-zinc-400 mb-3 flex items-center gap-2">
