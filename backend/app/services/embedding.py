@@ -126,11 +126,18 @@ class CohereEmbedding(EmbeddingProvider):
         "embed-multilingual-light-v3.0": 384,
     }
     
-    def __init__(self, model: str = "embed-english-v3.0"):
+    def __init__(
+        self,
+        model: str = "embed-english-v3.0",
+        api_key: str | None = None,
+        transport: httpx.AsyncBaseTransport | None = None,
+    ):
         self.model = model
-        self.api_key = settings.cohere_api_key
+        self.api_key = api_key or settings.cohere_api_key
         self.base_url = "https://api.cohere.ai/v1"
-        
+        # Optional transport seam for payload-recording tests; None = default.
+        self._transport = transport
+
         if not self.api_key:
             raise ValueError("COHERE_API_KEY is required for Cohere embeddings")
     
@@ -139,27 +146,32 @@ class CohereEmbedding(EmbeddingProvider):
         return self.MODEL_DIMENSIONS.get(self.model, 1024)
     
     async def embed_text(self, text: str) -> List[float]:
-        result = await self.embed_batch([text])
+        """Embed a retrieval QUERY (search_query mode)."""
+        result = await self._embed([text], input_type="search_query")
         return result[0]
-    
+
     async def embed_batch(self, texts: List[str]) -> List[List[float]]:
+        """Embed documents for indexing (search_document mode)."""
+        return await self._embed(texts, input_type="search_document")
+
+    async def _embed(self, texts: List[str], input_type: str) -> List[List[float]]:
         url = f"{self.base_url}/embed"
-        
-        async with httpx.AsyncClient() as client:
+
+        async with httpx.AsyncClient(transport=self._transport) as client:
             response = await client.post(
                 url,
                 headers={"Authorization": f"Bearer {self.api_key}"},
                 json={
                     "model": self.model,
                     "texts": texts,
-                    "input_type": "search_document",  # or "search_query" for queries
+                    "input_type": input_type,
                     "truncate": "END"
                 },
                 timeout=60.0
             )
             response.raise_for_status()
             data = response.json()
-        
+
         return data["embeddings"]
 
 
