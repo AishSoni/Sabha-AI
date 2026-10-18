@@ -48,7 +48,7 @@ class ScriptedProvider(LLMProvider):
     ) -> LLMResponse:
         self.calls.append(
             {
-                "messages": messages,
+                "messages": self._snapshot(messages),
                 "tools": tools,
                 "temperature": temperature,
                 "max_tokens": max_tokens,
@@ -61,6 +61,13 @@ class ScriptedProvider(LLMProvider):
             raise item
         return item
 
+    @staticmethod
+    def _snapshot(messages: List[LLMMessage]) -> List[LLMMessage]:
+        # Record a point-in-time copy: the orchestrator keeps appending tool
+        # results to the same list after a call, and the recorded history of
+        # a completed call must not change afterwards.
+        return list(messages)
+
     async def stream(
         self,
         messages: List[LLMMessage],
@@ -70,7 +77,7 @@ class ScriptedProvider(LLMProvider):
     ) -> AsyncGenerator[StreamEvent, None]:
         self.calls.append(
             {
-                "messages": messages,
+                "messages": self._snapshot(messages),
                 "tools": tools,
                 "temperature": temperature,
                 "max_tokens": max_tokens,

@@ -2,6 +2,7 @@
 Orchestrator service - handles AI turn-taking and response generation.
 """
 
+import json
 from typing import List, Optional
 from app.llm import get_provider, LLMMessage, LLMResponse, ToolCall
 from app.models import (
@@ -18,6 +19,20 @@ from app.models import (
 from app.services.meeting_manager import MeetingManager
 from app.core.database import get_supabase
 from app.services.tools import get_default_tools
+
+
+# Upper bound on provider round-trips within one turn so a model that keeps
+# demanding tools can never loop forever. Each round executes that round's
+# tool calls (each exactly once) and feeds the results back to the model.
+MAX_TOOL_ROUNDS = 5
+
+
+def _merge_usage(total: dict, usage: dict | None) -> dict:
+    """Accumulate numeric token-usage keys across provider calls."""
+    for key, value in (usage or {}).items():
+        if isinstance(value, (int, float)):
+            total[key] = total.get(key, 0) + value
+    return total
 
 
 class Orchestrator:
@@ -222,45 +237,68 @@ class Orchestrator:
         # Build context
         context = self._build_context(participant, meeting.messages, meeting.agenda)
         
+        # Core orchestration loop: the model may request tools, execute them
+        # once, feed the results back, and let the model continue reasoning
+        # until it answers without tool calls (or the round bound is hit).
+        context = self._build_context(participant, meeting.messages, meeting.agenda)
+        messages = list(context)
+
         # Get tools
         tools = get_default_tools()
-        
-        # Make LLM call
-        response = await provider.complete(
-            messages=context,
-            tools=tools,
-            temperature=provider_config.temperature,
-            max_tokens=provider_config.max_tokens
-        )
-        
+
         # Track any conflicts/consensus from tool calls
-        disagreements = []
-        consensus_list = []
-        tool_results = []
-        
-        # Handle tool calls if any
-        if response.tool_calls:
+        disagreements: list[Disagreement] = []
+        consensus_list: list[Consensus] = []
+        tool_results: list[dict] = []
+        usage_total: dict = {}
+
+        response = None
+        for _round in range(MAX_TOOL_ROUNDS):
+            response = await provider.complete(
+                messages=messages,
+                tools=tools,
+                temperature=provider_config.temperature,
+                max_tokens=provider_config.max_tokens
+            )
+            _merge_usage(usage_total, response.usage)
+
+            if not response.tool_calls:
+                break  # the model answered; follow-up inference complete
+
+            # Make the model's tool request part of the conversation, then
+            # append one tool-result message per requested call.
+            messages.append(LLMMessage(
+                role="assistant",
+                content=response.content,
+                tool_calls=response.tool_calls,
+            ))
+
             for tool_call in response.tool_calls:
-                result, disagreement, consensus = await self._handle_tool_call(
+                result, disagreement, consensus = await self._execute_tool_safely(
                     tool_call, meeting_id, participant
                 )
                 tool_results.append({"tool": tool_call.name, "result": result})
-                
+                messages.append(LLMMessage(
+                    role="tool",
+                    tool_call_id=tool_call.id,
+                    content=json.dumps(result),
+                ))
                 if disagreement:
                     disagreements.append(disagreement)
                 if consensus:
                     consensus_list.append(consensus)
-        
+
         # Get the response content
         content = response.content or ""
         if not content and tool_results:
-            # If only tool calls, create a summary
+            # If the bound was reached without a plain answer, summarize what
+            # the tools did.
             content = f"[{participant.name} used tools: {', '.join(t['tool'] for t in tool_results)}]"
-        
-        # Estimate cost
-        cost = provider.estimate_cost(response.usage)
-        
-        # Save the message
+
+        # Estimate cost across ALL rounds of this turn
+        cost = provider.estimate_cost(usage_total)
+
+        # Save the message once, after the loop settles
         message = await self.meeting_manager.save_message(
             MessageCreate(
                 meeting_id=meeting_id,
@@ -272,13 +310,26 @@ class Orchestrator:
                 estimated_cost=cost
             )
         )
-        
+
         return TurnResponse(
             message=message,
             disagreements=disagreements,
             consensus=consensus_list
         )
-    
+
+    async def _execute_tool_safely(
+        self,
+        tool_call: ToolCall,
+        meeting_id: str,
+        participant: AIParticipant
+    ) -> tuple[str, Optional[Disagreement], Optional[Consensus]]:
+        """Execute one tool call, converting failures into a result the model
+        can reason about instead of crashing the turn."""
+        try:
+            return await self._handle_tool_call(tool_call, meeting_id, participant)
+        except Exception as exc:
+            return f"Tool {tool_call.name} failed: {exc}", None, None
+
     async def execute_turn_streaming(
         self,
         meeting_id: str,
@@ -321,68 +372,93 @@ class Orchestrator:
         tools = get_default_tools()
         
         # Track accumulated content and tool calls
+        accumulated_thinking = ""  # Track thinking content for persistence
+
+        # Stream the response, allowing for further inference rounds after
+        # tool execution. Intermediate provider DONE events are swallowed so
+        # the application emits exactly ONE terminal event after persistence.
+        messages = list(context)
         accumulated_content = ""
         accumulated_thinking = ""  # Track thinking content for persistence
         tool_calls_made = []
         disagreements = []
         consensus_list = []
-        usage = {}
-        
-        # Stream the response
-        async for event in provider.stream(
-            messages=context,
-            tools=tools,
-            temperature=provider_config.temperature,
-            max_tokens=provider_config.max_tokens
-        ):
-            # Handle tool calls - execute them and yield results
-            if event.type == StreamEventType.TOOL_CALL and event.tool_name:
-                from app.llm.base import ToolCall
-                tool_call = ToolCall(
-                    id=event.tool_name,
-                    name=event.tool_name,
-                    arguments=event.tool_arguments or {}
-                )
-                
-                result, disagreement, consensus = await self._handle_tool_call(
-                    tool_call, meeting_id, participant
-                )
-                
-                tool_calls_made.append({"tool": event.tool_name, "result": result})
-                
-                if disagreement:
-                    disagreements.append(disagreement)
-                if consensus:
-                    consensus_list.append(consensus)
-                
-                # Yield tool result
-                yield StreamEvent(
-                    type=StreamEventType.TOOL_RESULT,
-                    tool_name=event.tool_name,
-                    tool_result=result
-                )
-            
-            elif event.type == StreamEventType.TEXT:
-                accumulated_content += event.content or ""
-                yield event
-            
-            elif event.type == StreamEventType.THINKING:
-                accumulated_thinking += event.content or ""
-                yield event
-            
-            elif event.type == StreamEventType.DONE:
-                usage = event.usage or {}
-            
-            elif event.type == StreamEventType.ERROR:
-                yield event
-                return
-        
+        usage_total = {}
+
+        for _round in range(MAX_TOOL_ROUNDS):
+            had_tool_calls = False
+
+            async for event in provider.stream(
+                messages=messages,
+                tools=tools,
+                temperature=provider_config.temperature,
+                max_tokens=provider_config.max_tokens
+            ):
+                # Handle tool calls - execute them and yield results
+                if event.type == StreamEventType.TOOL_CALL and event.tool_name:
+                    had_tool_calls = True
+                    from app.llm.base import ToolCall
+                    tool_call = ToolCall(
+                        id=event.tool_name,
+                        name=event.tool_name,
+                        arguments=event.tool_arguments or {}
+                    )
+
+                    result, disagreement, consensus = await self._execute_tool_safely(
+                        tool_call, meeting_id, participant
+                    )
+
+                    tool_calls_made.append({"tool": event.tool_name, "result": result})
+                    messages.append(LLMMessage(
+                        role="assistant",
+                        content="",
+                        tool_calls=[tool_call],
+                    ))
+                    messages.append(LLMMessage(
+                        role="tool",
+                        tool_call_id=tool_call.id,
+                        content=json.dumps(result),
+                    ))
+
+                    if disagreement:
+                        disagreements.append(disagreement)
+                    if consensus:
+                        consensus_list.append(consensus)
+
+                    # Yield tool result
+                    yield StreamEvent(
+                        type=StreamEventType.TOOL_RESULT,
+                        tool_name=event.tool_name,
+                        tool_result=result
+                    )
+
+                elif event.type == StreamEventType.TEXT:
+                    accumulated_content += event.content or ""
+                    messages.append(LLMMessage(role="assistant", content=event.content or ""))
+                    yield event
+
+                elif event.type == StreamEventType.THINKING:
+                    accumulated_thinking += event.content or ""
+                    yield event
+
+                elif event.type == StreamEventType.DONE:
+                    # Capture usage; the terminal event is emitted AFTER
+                    # persistence below (exactly once per turn).
+                    _merge_usage(usage_total, event.usage)
+
+                elif event.type == StreamEventType.ERROR:
+                    yield event
+                    return
+
+            if not had_tool_calls:
+                break
+
         # Save the message
         content = accumulated_content or ""
         if not content and tool_calls_made:
             content = f"[{participant.name} used tools: {', '.join(t['tool'] for t in tool_calls_made)}]"
-        
-        cost = provider.estimate_cost(usage)
+
+        cost = provider.estimate_cost(usage_total)
         
         message = await self.meeting_manager.save_message(
             MessageCreate(
@@ -401,5 +477,5 @@ class Orchestrator:
         yield StreamEvent(
             type=StreamEventType.DONE,
             message_id=message.id,
-            usage=usage
+            usage=usage_total
         )

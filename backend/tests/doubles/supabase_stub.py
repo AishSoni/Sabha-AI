@@ -42,6 +42,7 @@ _RPC_SIGNATURES: dict[str, tuple[tuple[str, str], ...]] = {
         ("p_version_id", ""),
         ("p_created_at", "::timestamptz"),
     ),
+    "increment_meeting_cost": (("meeting_id", "::uuid"), ("cost_delta", "::decimal")),
 }
 
 
