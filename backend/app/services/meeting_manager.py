@@ -21,8 +21,14 @@ from app.models import (
     ConsensusCreate,
     ProviderConfig,
     SenderType,
+    MeetingStatus,
 )
 from app.services.prompts import DEFAULT_ROSTER, get_full_prompt
+
+
+def _status_value(status: "MeetingStatus | str") -> str:
+    """Normalize an enum-or-string status into its persisted value."""
+    return status.value if isinstance(status, MeetingStatus) else status
 
 
 class MeetingManager:
@@ -350,6 +356,28 @@ class MeetingManager:
             .eq("id", meeting_id) \
             .execute()
         
+        return len(result.data) > 0
+
+    async def transition_meeting_status(
+        self,
+        meeting_id: str,
+        expected_from: "MeetingStatus | str",
+        next_status: "MeetingStatus | str",
+    ) -> bool:
+        """Compare-and-swap a meeting's status.
+
+        The update carries the current status as an extra filter, so it only
+        commits when the persisted status still equals `expected_from`. A
+        transition that lost a race (or the whole meeting is unknown) returns
+        False instead of clobbering another writer's state — no
+        last-writer-wins overwrite.
+        """
+        result = self.db.table("meetings") \
+            .update({"status": _status_value(next_status)}) \
+            .eq("id", meeting_id) \
+            .eq("status", _status_value(expected_from)) \
+            .execute()
+
         return len(result.data) > 0
 
     async def delete_meeting(self, meeting_id: str) -> bool:
