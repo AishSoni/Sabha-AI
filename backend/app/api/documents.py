@@ -288,14 +288,14 @@ async def search_documents(request: DocumentSearchRequest):
             VectorStoreManager.persona_collection_name(request.persona_id)
         )
         
-    stack_ids = getattr(request, 'stack_ids', [])
+    stack_ids = request.stack_ids or []
     for stack_id in stack_ids:
         collections_to_search.append(VectorStoreManager.stack_collection_name(stack_id))
-    
-    if not collections_to_search:
+
+    if not (request.meeting_id or request.persona_id or stack_ids):
         raise HTTPException(
             status_code=400,
-            detail="At least one of meeting_id, persona_id, or stack_ids must be provided for search"
+            detail="A search scope is required"
         )
     
     # Perform search
