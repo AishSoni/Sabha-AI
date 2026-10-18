@@ -1,8 +1,10 @@
-# Phase 2: Backend Domain Architecture and Frontend Resilience
+# Phase 2 Reference: Architecture Contracts and Target File Structure
+
+This is the shared design reference, **not a single implementation assignment**. Follow the [Phase 2 roadmap](roadmap-phase-2-domain-architecture-and-frontend-resilience.md) for Spec 03 through Spec 11, their prerequisites, code examples, and acceptance gates. Read the relevant contract sections for the slice being implemented; do not scaffold or implement this whole reference at once.
 
 ## Purpose, prerequisite, and scope
 
-After [Phase 1: Fixing Existing Project Issues](phase-1-existing-issues.md), reorganize Sabha around explicit domain ownership, application workflows, infrastructure boundaries, and resilient frontend state ownership. Implement incrementally, with executable contracts and test-driven development throughout; this is not a wholesale rewrite or a directory-renaming exercise.
+After [Phase 1: Fixing Existing Project Issues](roadmap-phase-1-existing-issues.md), reorganize Sabha around explicit domain ownership, application workflows, infrastructure boundaries, and resilient frontend state ownership. Implement incrementally, with executable contracts and test-driven development throughout; this is not a wholesale rewrite or a directory-renaming exercise.
 
 Phase 1 fixes and their regression tests are the behavioral baseline. Architecture implementation starts only after those fixes are accepted and their relevant suites pass. The Phase 1 document currently records findings, not proof of completed fixes. This document is likewise a specification, not implemented functionality or a passing test report.
 
@@ -96,7 +98,7 @@ Inference is an application workflow. Domain services decide business policies; 
 
 ## Dependency and persistence contracts
 
-- Organize backend modules by business boundary, with focused domain, application, infrastructure, and presentation responsibilities. Use feature/module names that match the vocabulary above; choose exact paths during the foundation phase and enforce them with tests.
+- Organize backend modules by business boundary, with focused domain, application, infrastructure, and presentation responsibilities. Follow the target file structure below; establish its import rules during the foundation phase and enforce them with tests.
 - Domain models are data-focused Python types. Domain services enforce business invariants; application services coordinate use cases and external work. Do not turn anemic models into unrestricted write access from routes or repositories.
 - Domain code must not import FastAPI, Supabase, Qdrant, provider SDKs, or frontend/API schemas. Application code depends on domain contracts and ports, not concrete adapters. Avoid HTTP status codes and transport exceptions in business policies.
 - Presentation validates transport inputs, invokes a use case, and maps typed outcomes/errors. A composition root constructs adapters and injects dependencies; SDK singletons must not leak through domain/application imports.
@@ -195,99 +197,269 @@ Inference is an application workflow. Domain services decide business policies; 
 - For existing documents and summaries, preserve recognizable records and mark missing revision/source metadata honestly. Do not present fabricated audit history or recreate intentionally deleted data.
 - Test both an empty installation and an upgrade from the Phase 1 schema/data. Back up before real migration; rehearse restore and forward recovery for irreversible redaction/deletion instead of promising unsafe rollback.
 
-## Implementation phases
+## Target file structure and restructuring plan
 
-Each phase is a test-first vertical slice with a named entry condition, deliverables, and exit gate. Use descriptive branch/commit names. Small compatibility adapters are acceptable during migration, but must have an owner and removal gate. Do not perform a repository-wide file move before the first migrated behavior passes.
+These are target ownership locations, not directories to scaffold in advance or a claim that they already contain working implementations. Keep the repository's `backend/`, `frontend/`, and `specs/` roots. Keep existing page URLs, backend startup compatibility, and migration history unless an accepted API/deployment change explicitly replaces them. Python package initializer files are omitted from the trees for readability.
 
-### Implementation phase: Baseline and executable architecture contracts
+Create a file when its first tested behavior moves into it. The named boundaries and responsibilities are required; split a growing file by use case when justified, rather than creating empty layers, generic base repositories, or one interface per function. Record any justified path adjustment and update its import checks in the same change.
 
-**Entry:** Phase 1 remediation is accepted; identify the actual passing commands and any explicit limitations rather than assuming a baseline.
+### Backend target layout
 
-**Red:** Add tests for the first intended dependency boundary/use-case seam. Characterize supported existing API/local workflows without freezing the known incorrect behaviors from the review.
+```text
+backend/
+  main.py                         # Thin ASGI entry point; preserve the existing startup command
+  worker.py                       # Optional separate entry point using the same composition root
+  app/
+    bootstrap.py                  # Constructs adapters, use cases, routes, and registered worker handlers
+    presentation/
+      router.py                   # Assembles module routers and shared-workspace access dependencies
+      dependencies.py             # Reads injected use cases; does not construct SDK clients per request
+      errors.py                   # Maps typed application failures to safe HTTP responses
+      sse.py                      # SSE framing/heartbeats; no inference or meeting policy
+      settings.py                 # Settings HTTP boundary, including request/response schemas
+    modules/
+      meetings/
+        public.py                 # Deliberate application interface for other modules
+        domain/
+          models.py               # Data-focused meeting, participant, operation, and usage representations
+          services.py             # Admission, lifecycle, voting, and participant invariants
+          errors.py               # Typed business failures without HTTP dependencies
+        application/
+          commands.py             # Create/update, messages, submit/cancel, archive, and deletion commands
+          queries.py              # Meeting, history, operation, summary, and reporting reads
+          ports.py                # Narrow persistence and external capability requirements
+          contracts.py            # Transport-independent operation receipts and event payloads
+          turns.py                # Claim, capture context/settings, execute, and publish a turn
+          closing.py              # Drain, vote, summarize, checkpoint, retry/abort, and final commit
+          context.py              # Base/persona prompt assembly and conversation-budget policy
+          tools.py                # Meeting-aware tool validation, dispatch, and communication effects
+        infrastructure/
+          supabase.py             # SQL mappings, repositories, atomic RPCs, operation/event persistence
+        presentation/
+          http.py                 # Meeting/participant/message/turn/closing/archive/reporting routes
+          schemas.py              # HTTP DTO validation and mapping; not domain models
+      persona_catalog/
+        public.py                 # Coherent template snapshot and catalog use-case interface
+        domain/
+          models.py               # Templates, prompt revisions, and explicit/inherited generation policies
+          services.py             # Template validation and active-prompt rules
+        application/
+          commands.py             # Template edits, prompt activation, and assignment replacement
+          queries.py              # Catalog/history reads and coherent creation snapshots
+          ports.py                # Catalog persistence and referenced-stack validation contracts
+        infrastructure/
+          supabase.py             # Catalog mappings and transactional persistence
+        presentation/
+          http.py                 # Persona and prompt-history routes
+          schemas.py              # Catalog HTTP DTOs
+      knowledge/
+        public.py                 # Stack validation, eligible retrieval, and cleanup/redaction interface
+        domain/
+          models.py               # Stacks, document revisions, eligibility, and source-linked evidence
+          services.py             # Publication, retrieval-scope, revocation, and deletion rules
+        application/
+          commands.py             # Stack/document commands and durable operation admission
+          queries.py              # Stack/document/status reads
+          ports.py                # Source, parser, embedding, vector, job, and evidence requirements
+          ingestion.py            # Recoverable extraction/indexing and readiness publication
+          retrieval.py            # Resolve scopes, search, revalidate, and record source-linked evidence
+          deletion.py             # Tombstones, passage redaction, parent cleanup, and reconciliation
+        infrastructure/
+          supabase.py             # Metadata, evidence, durable jobs, and transactional state changes
+          qdrant.py               # Derived vector projection, search, and idempotent cleanup
+          parsers.py              # Supported document extraction and format-specific bounds
+          source_store.py         # Only the adapter selected by the original-byte decision gate
+        presentation/
+          http.py                 # Stack/document/upload/status/search routes
+          schemas.py              # Knowledge HTTP DTOs and pending/ready responses
+    capabilities/
+      inference/
+        contracts.py              # Provider/embedding ports and normalized invocation/tool/usage types
+        loop.py                   # Shared bounded inference loop with injected tool execution
+        usage.py                  # Pricing/usage calculations; durable ownership stays with the operation
+      configuration/
+        contracts.py              # Settings policies and non-secret effective settings values
+        ports.py                  # Settings persistence and credential-reference resolution contracts
+        service.py                # Defaults/override resolution and System AI configuration
+      runtime/
+        ports.py                  # Claim/checkpoint/clock/handler requirements without SDK imports
+        runner.py                 # Bounded supervision and recovery through registered handlers/ports
+    platform/
+      config.py                   # Process/environment configuration and local-mode validation
+      database.py                 # Supabase client lifecycle; no user-session mutation of shared clients
+      qdrant.py                   # Qdrant client lifecycle, not retrieval policy
+      authentication.py          # Shared-workspace verification and explicit local bypass adapter
+      configuration.py           # Settings/credential adapter and trusted provider-origin enforcement
+      providers/
+        ollama.py
+        openrouter.py
+        gemini.py
+        embeddings.py            # Configured embedding adapters, including query/document mode
+  migrations/                     # Existing ordered SQL history plus additive Phase 2 migrations
+  tests/
+    architecture/                 # Dependency direction, public interfaces, and SDK-free import checks
+    unit/                         # Domain/capability rules, grouped by owning module
+    application/                  # Workflow tests using injected fakes and deterministic barriers
+    contract/                     # Shared repository/provider/source-store adapter contracts
+    api/                          # Actual HTTP/SSE schemas, access enforcement, and transport behavior
+    integration/                  # Disposable Postgres/Qdrant/source-store and restart/migration tests
+    regression/                   # Phase 1 cases retained through migration
+    doubles/                      # Test-only providers, stores, clocks, and controlled transports
+```
 
-**Green and refactor:** Record the vocabulary, module/dependency map, use-case inventory, error/operation contracts, and chosen test locations. Establish synthetic provider/embedding transports, disposable Postgres/Qdrant resources, and frontend component/transport harnesses. Pick and lock compatible test/runtime dependencies; configure the suites and CI rather than assuming tests already exist.
+Backend placement and import rules:
 
-**Exit:** Phase 1 regressions run; architecture checks demonstrate an intentional forbidden import fails; characterization and smoke suites are reproducible without paid inference. Record unresolved source-store and transaction-adapter decisions with their later gates.
+- `modules/*/domain` contains data models and explicit business services, not active-record models. It imports neither its application/presentation/infrastructure layer nor SDKs or the composition root.
+- Module application code may use its domain, focused capability contracts, and another module's deliberate `public.py` interface. `public.py` exposes application contracts/use cases, not raw repositories, HTTP schemas, concrete clients, or eager SDK construction. Keep cross-module dependencies directional; avoid reciprocal service-locator imports.
+- `capabilities/` is supporting application code, not a fourth business domain or a general shared-utilities bucket. Its inference loop accepts injected tools; it does not decide meeting admission, read persona tables, or select private knowledge scopes. Its runtime accepts registered handlers; it does not import module route handlers or embed their policies.
+- `platform/` and module `infrastructure/` contain concrete integrations. Shared client construction belongs in `platform/`; module-specific SQL/vector mappings belong with their owner. Meeting operations/events and knowledge jobs have one durable owner each, not competing generic and module stores.
+- `bootstrap.py` is the composition root. HTTP and optional worker entry points use it; domain/application imports never reach back into it. A separate worker process is optional, but an in-process runner must still use durable claims and the same tested recovery rules.
+- Generation policies are resolved through the configuration capability; HTTP settings DTOs are not imported into domain models. Keep domain snapshots data-focused and map them to capability input/output values at the application boundary.
+- Cross-source deletion orchestration belongs in Knowledge through explicit evidence/cleanup ports. Meetings requests the required cleanup through that public interface; neither module silently edits the other's raw tables. Necessary cross-table SQL atomicity remains confined to reviewed persistence operations.
+- Keep SQL migrations in one ordered history. Do not scatter copied schema definitions across modules, edit already-applied migrations as an upgrade strategy, or introduce an alternative database/process-local production store as a substitute for the required Supabase contracts. Only implement the selected source-store adapter unless a second adapter is explicitly justified.
 
-### Implementation phase: Backend composition and atomic persistence seams
+### Frontend target layout
 
-**Entry:** Baseline contracts exist.
+```text
+frontend/
+  src/
+    app/
+      layout.tsx                  # Existing route shell and server/client composition boundary
+      providers.tsx               # QueryClient, auth lifecycle, and UI-store composition
+      page.tsx                    # Existing home route; composes feature public interfaces
+      meetings/
+        page.tsx
+        new/page.tsx
+        [id]/page.tsx
+      roster/
+        page.tsx
+        new/page.tsx
+        [id]/page.tsx
+      knowledge-stacks/
+        page.tsx
+        new/page.tsx
+        [id]/page.tsx
+      settings/page.tsx
+    features/
+      meetings/
+        index.ts                  # Intentional public components/hooks, not every private file
+        api/
+          client.ts               # Meeting commands/queries through shared authenticated transport
+          keys.ts                 # Identity-scoped meeting/operation query keys
+          queries.ts              # TanStack Query reads and canonical server-state ownership
+          mutations.ts            # Command submission and deliberate cache reconciliation/invalidation
+        components/
+          MeetingRoom.tsx
+          MessageList.tsx
+          MessageComposer.tsx
+          ParticipantRoster.tsx
+          TurnQueue.tsx
+          ClosingPanel.tsx
+        hooks/
+          useMeetingCreation.ts   # Retains created ID and coordinates upload outcomes
+          useTurnObservation.ts   # Observe/reconcile an accepted operation, never implicit submission
+          useClosingObservation.ts
+        model/
+          events.ts               # Feature event narrowing/validation using the shared API contract
+          reconcile.ts            # Ordered provisional-to-canonical reconciliation rules
+        state/
+          meetingUiStore.ts       # Selected panels and presentation state only
+          operationStore.ts       # Scoped provisional buffers/observation state, not meeting records
+      persona-catalog/
+        index.ts
+        api/                      # client.ts, keys.ts, queries.ts, mutations.ts for catalog operations
+        components/
+          PersonaList.tsx
+          PersonaEditor.tsx
+          PromptHistory.tsx
+        hooks/usePersonaEditor.ts # Draft versions and save workflow; canonical history stays in Query
+      knowledge/
+        index.ts
+        api/                      # client.ts, keys.ts, queries.ts, mutations.ts for knowledge operations
+        components/
+          StackList.tsx
+          StackEditor.tsx
+          DocumentPanel.tsx
+          UploadProgress.tsx
+        hooks/useDocumentUpload.ts # Same pending operation, bounded retries, per-file outcomes
+      settings/
+        index.ts
+        api/                      # client.ts, keys.ts, queries.ts, mutations.ts for backend settings
+        components/
+          SettingsScreen.tsx
+          ProviderCard.tsx
+          SystemAiCard.tsx
+    shared/
+      api/
+        generated.ts              # Reproducible types from the accepted backend API contract
+        transport.ts              # Auth-aware JSON/multipart/status requests and AbortSignal handling
+        errors.ts                 # Safe typed failures, not raw provider exceptions
+        sse.ts                    # Reusable framing/decoding; no meeting state or automatic commands
+      auth/
+        session.ts                # Public auth configuration/session lifecycle, never server secrets
+        AuthBoundary.tsx          # Shared-workspace entry and explicit local-mode presentation
+      layout/                     # Reusable shell/sidebar; business panels remain feature-owned
+      state/preferencesStore.ts   # Justified cross-feature UI preferences with versioned hydration
+      lib/utils.ts                # Small framework-neutral helpers, not business workflow functions
+    components/ui/                # Retain existing stable primitive path; no business/data ownership
+  tests/
+    architecture/                 # Feature-private imports, layer direction, and ownership checks
+    integration/                  # Routes/features, actual event contracts, navigation and recovery
+    fixtures/                     # Generated-contract samples and deterministic HTTP/SSE transports
+    setup.ts                      # Component/query harness and test isolation
+```
 
-**Red:** Write repository/transaction contracts for creation rollback, competing claims, prompt activation, assignment replacement, and permission coverage. Add a test proving domain/application code can execute with fakes without constructing SDK clients.
+Frontend placement and import rules:
 
-**Green and refactor:** Introduce the module boundaries, typed domain/application outcomes, focused ports, composition root, and Supabase adapters. Implement real atomic operations through the chosen transaction strategy. Introduce additive operation/order/idempotency persistence and short conditional transitions. Preserve the Phase 1 authentication gate and trusted provider-origin policy.
+- Preserve existing URLs. Route files select route parameters and compose exported feature screens/hooks; they do not regain persistence, raw fetch/SSE parsing, or inference orchestration. Keep server/client boundaries explicit rather than marking the entire route tree client-only.
+- Every feature `api/` uses the four files shown under Meetings. Query key factories and canonical records stay with their owning feature; query keys are not duplicated in a global registry. The shared transport knows neither feature stores nor query keys.
+- `queries.ts` and `mutations.ts` own server-state integration. `hooks/` coordinates screen workflows, and `model/` holds pure reconciliation only where needed. Do not introduce a separate frontend DDD entity/repository layer for ordinary API records.
+- Meetings owns participant instances, conversation, turn queues, and closing UI. Persona Catalog owns templates/history. Knowledge owns document/stack/upload UI and its query keys. A meeting screen consumes the exported `DocumentPanel` or upload hook through `features/knowledge/index.ts`, not Knowledge's private API/cache/store files.
+- `features/*/index.ts` is a curated interface, not a wildcard barrel. Shared code and primitives cannot import features; a feature may consume another feature's public interface only in a documented direction. Compose reciprocal workflows in the route/provider layer instead of creating cyclic feature dependencies.
+- Zustand stores under `features/meetings/state/` contain only UI/observation state. Never relocate the old full `meetingStore` unchanged into that directory. Settings data belongs in Settings Query state; cross-feature presentation preferences may persist in `shared/state/preferencesStore.ts` without credentials or server records.
+- Shared auth may use the public browser authentication SDK; it must not query application tables directly or import server/service-role credentials. The frontend does not construct provider, embedding, vector-store, or backend data clients. Logout cleanup is composed through explicit callbacks/interfaces rather than Shared importing private feature stores.
+- Colocate pure, hook, store, and component tests as `*.test.ts` or `*.test.tsx` beside their feature files. Keep cross-feature/route/transport tests in `frontend/tests/integration/`; keep reusable synthetic fixtures in `frontend/tests/fixtures/`. Production modules must never import test doubles or fixture data.
+- Retain existing assets, global styles, and framework configuration in their appropriate current locations. Do not move stable UI primitives or rename URLs just to make the trees symmetrical. Generate `shared/api/generated.ts` reproducibly and test drift against backend contracts.
 
-**Exit:** Real disposable database tests establish rollback and concurrency guards; SDK imports stay outside domain/application modules; local startup and existing flows still pass. Routes migrated in this slice invoke use cases instead of database/provider code. Do not claim an empty interface layer completes the architecture migration.
+### Current-to-target file ownership
 
-### Implementation phase: Frontend transport and state foundation
+These are responsibility splits, not mechanical whole-file renames. Confirm callers and run Phase 1 characterization/regression tests before retiring a source file.
 
-**Entry:** Initial API/operation contracts and backend composition seams exist. This foundation can accompany backend vertical slices but must precede migrating their feature screens.
+| Current source | Target responsibility split |
+| --- | --- |
+| `backend/main.py`, `backend/app/api/__init__.py` | Keep the thin entry point; assemble dependencies in `backend/app/bootstrap.py` and routes in `backend/app/presentation/router.py`. |
+| `backend/app/api/meetings.py`, `backend/app/api/participants.py`, `backend/app/services/meeting_manager.py` | Meetings presentation DTOs/routes, application commands/queries/closing, domain services, and Supabase persistence. Do not move mixed route logic into a single new manager. |
+| `backend/app/services/orchestrator.py` | Meetings `application/turns.py`, `context.py`, and `tools.py`; reusable loop/usage contracts under `capabilities/inference/`; runner supervision under `capabilities/runtime/`. |
+| `backend/app/services/tools.py`, `backend/app/services/prompts.py` | Tool dispatch/schema responsibilities into Meetings application/capability contracts; base/persona context assembly into Meetings `application/context.py`. Preserve intentional catalog seed/template definitions under Persona Catalog ownership rather than mixing them into runtime transport code. |
+| `backend/app/api/personas.py`, `backend/app/services/persona_manager.py` | Persona Catalog presentation, commands/queries, domain rules, and transactional adapter. |
+| `backend/app/api/documents.py`, `backend/app/api/knowledge_stacks.py` | Knowledge HTTP DTOs/routes and separate admission, ingestion, retrieval, and deletion use cases. |
+| `backend/app/services/document_processor.py`, `backend/app/services/vector_store.py`, `backend/app/services/embedding.py` | Knowledge parsers/vector projection, application publication/retrieval policy, and configured embedding adapters under `platform/providers/embeddings.py`. |
+| `backend/app/core/config.py`, `backend/app/core/database.py`, `backend/app/core/qdrant.py`, `backend/app/llm/` | Platform configuration/client/provider adapters plus transport-independent inference contracts. Constructors are wired only from the composition root. |
+| `backend/app/api/settings.py`, `backend/app/models/settings_schemas.py`, `backend/app/services/streaming.py` | Shared settings HTTP boundary, configuration capability/adapter, and presentation-only SSE encoding. Provider completion must not be interpreted as application completion by the encoder. |
+| Other `backend/app/models/*schemas.py` | Separate module presentation DTOs from domain data and application contracts. Do not alias HTTP schemas as domain models to avoid the mapping work. |
+| `frontend/src/lib/api.ts` | Shared transport/error/SSE/generated types plus feature-local clients, query keys, queries, and mutations. |
+| `frontend/src/stores/meetingStore.ts` | Meetings Query data, command mutations, observation hooks/reconciliation, and UI-only stores. Delete duplicate canonical writers only after the migrated callers pass. |
+| `frontend/src/stores/settings-store.ts`, `frontend/src/stores/rateLimitStore.ts` | Server settings into Settings API/query ownership; justified UI preferences into Shared state; local cooldown presentation stays non-authoritative and cannot replace server admission limits. |
+| `frontend/src/components/chat/` | Meeting conversation/participant/closing components into Meetings; shared-document behavior into Knowledge's exported `DocumentPanel`. Preserve real citations and tool activity without retaining fabricated runtime records. |
+| `frontend/src/components/settings/`, `frontend/src/components/layout/`, route `page.tsx` files | Settings components into their feature, generic shell into Shared layout, business panels into their owner, and route files into thin composition. Retain `frontend/src/components/ui/`. |
 
-**Red:** Test scoped query keys, authenticated upload/SSE transport, malformed/interrupted stream handling, stale response cleanup, and A-to-B navigation with controlled promises.
+`backend/app/api/`, `backend/app/services/`, the old all-purpose model/client/store files, and any compatibility imports disappear only after their last real caller has migrated and the removal gate passes. Inspect actual source/imports, not just directory names or leftover `__pycache__` files, when assessing progress. Do not overwrite unrelated files or assume similarly named leftovers implement this target.
 
-**Green and refactor:** Add the feature layout, shared typed transport, TanStack Query ownership, focused Zustand UI/observation controllers, and React-local form state. Migrate one read-and-mutate feature end to end before expanding. Define cache updates/invalidation, per-request SSR/client initialization where applicable, and legacy browser-preference migration.
+### File migration sequence and proof
 
-**Exit:** The migrated feature has one canonical server-data owner; old state and new caches do not independently write the same records. Navigation/expiry tests prove buffers and errors remain identity-scoped. Unmigrated features keep their working legacy path until explicitly cut over.
+- **Baseline and executable architecture contracts:** Inventory real source files/callers; adopt the target boundaries above; write failing import/SDK-isolation checks. Do not create the entire tree or relocate all tests first.
+- **Backend composition and atomic persistence seams:** Introduce `bootstrap.py`, presentation assembly, the first module ports/adapters, and real atomic persistence. Switch one supported use case through the entry point; retain other working routes until their own slice migrates.
+- **Frontend transport and state foundation:** Introduce `app/providers.tsx`, Shared transport/auth, and the first feature's API/query ownership. Move its components and callers together; a compatibility wrapper must delegate rather than create another writer.
+- **Persona catalog and independent participants:** Populate Persona Catalog and the participant-creation/configuration seams in Meetings; migrate roster/history/settings callers and their tests without changing existing URLs.
+- **Durable turn queue and unified inference:** Split the orchestrator into Meetings workflows and injected capabilities. Migrate turn HTTP/observation, meeting components, reconciliation, and UI stores as one accepted slice.
+- **Coordinated closing, summaries, and usage:** Move closing policy/workflow/persistence and its feature UI together; remove the old route-level implementation only after failure and replay tests pass through the new path.
+- **Durable knowledge and deletion-aware evidence:** Populate Knowledge infrastructure/use cases and the selected source-store adapter; move document/stack/upload UI and all affected parent-deletion callers together.
+- **Complete feature migration and remove legacy ownership:** Verify remaining settings/reporting/archive/shared-shell callers, remove obsolete imports/writers, and rerun the same Phase 1 contracts against the final paths. Keep existing regression assertions and discoverability when tests move.
+- **Upgrade rehearsal, cutover, and architecture acceptance:** Verify fresh checkout/build/startup, package imports, generated-contract reproducibility, migrations, and optional worker entry against the final layout. Runtime code must not import the old branch, local caches, or test packages, or require unreproducible generated artifacts/source assets found only in the author's ignored files. Provision legitimate document bytes through the explicitly configured source store instead.
 
-### Implementation phase: Persona catalog and independent participants
+## Implementation sequence
 
-**Entry:** Backend persistence seams and frontend foundation are available.
-
-**Red:** Create participant A from a template, edit identity/prompt/overrides/assignments, then create B and assert independent snapshots. Change shared defaults before execution and during an operation; assert inheritance versus explicit override behavior. Test failed/concurrent prompt activation and dirty edits during save.
-
-**Green and refactor:** Move persona use cases into the catalog boundary; create participants through a coherent snapshot contract; save inheritance explicitly. Migrate roster/history/settings interactions to typed feature hooks and canonical cache reconciliation. Implement the planned data backfill without fabricating historical values.
-
-**Exit:** Old/new participants, template deletion, surviving stack bindings, per-turn defaults, prompt atomicity, and editor active-state behavior pass unit, database, and component tests. Existing records load after upgrade; secrets are absent from returned/persisted evidence.
-
-### Implementation phase: Durable turn queue and unified inference
-
-**Entry:** Participant/configuration contracts and operation persistence are accepted.
-
-**Red:** Admit two same-meeting turns concurrently; assert one claim and a visible ordered pending entry. Test duplicate keys, changed-payload key conflicts, cancellation/claim races, user messages during execution, different-meeting independence, worker interruption, stale leases, repeated tool names, and premature stream EOF.
-
-**Green and refactor:** Implement submit/claim/status/cancel/observe use cases, start-time conversation/settings capture, bounded tool-loop execution, usage-attempt recording, and fenced final publication. Replace duplicate streaming/non-streaming logic. Connect the meeting feature to pending queues and operation-scoped observation; navigation detaches without resubmission.
-
-**Exit:** At most one execution claim per meeting and one committed final result per logical operation are proven with database/concurrency tests. The actual backend SSE contract passes through frontend parsing/controller tests. Pending work survives restart; uncertain provider calls are surfaced rather than automatically charged again. No canonical meeting mirror remains in the migrated store path.
-
-### Implementation phase: Coordinated closing, summaries, and usage
-
-**Entry:** The queue and operation pipeline are accepted.
-
-**Red:** Race end admission against a queued claim and user-message write. Test running-turn drain, queued cancellation, negative vote, forced end, summary/provider/save failure, concurrent end requests, checkpoint retries, and every paid attempt's accounting. Cover archive/unarchive preserving ended state.
-
-**Green and refactor:** Move closing out of route bodies into explicit application/domain services. Persist close stages and results, use the System AI contract for summary configuration, commit summary/ended atomically, and provide retry/abort recovery. Migrate real summary and close-progress UI through server state and operation observation.
-
-**Exit:** No close path leaves an unexplained voting/busy state or reopens an ended meeting. Cancelled queued turns stay cancelled. Known incurred usage is retained without double counting. Repeated persistence attempts do not duplicate summaries or silently regenerate completed paid work; UI reload reconstructs the canonical result.
-
-### Implementation phase: Durable knowledge and deletion-aware evidence
-
-**Entry:** Select and record the original-byte storage adapter, retention/backup policy, and publication protocol. Do not start this phase with that decision implicit.
-
-**Red:** Test acknowledgement-to-restart recovery, bounded reads/extraction, off-loop parsing, first-collection races, idempotent publication, retrieval-before-ready exclusion, live revisions with fixed participant assignments, and both document/parent deletion. Pause queries/publication/context dispatch around deletion and assert no stale reuse or resurrection. Assert passage redaction across all declared evidence stores.
-
-**Green and refactor:** Implement the source store, recoverable jobs, revision/chunk identities, SQL eligibility and Qdrant projection adapter, source-linked audit storage, revocation/redaction, and durable cleanup/reconciliation. Connect pending-operation upload tracking and per-file retry to the knowledge/meeting features. A retained meeting ID and operation key prevent duplicate meeting/file creation after failure.
-
-**Exit:** Ready means demonstrably searchable eligible content; pending never appears as completed success. Worker restart, failed cleanup, late writes, source deletion, and old backup restoration follow the declared policies. Deleted evidence is redacted while existing conversation text remains unchanged. Local operation, provider-specific embedding behavior, source-file limits, and real Qdrant adapter compatibility pass.
-
-### Implementation phase: Complete feature migration and remove legacy ownership
-
-**Entry:** Persona, turn, closing, and knowledge slices pass their gates.
-
-**Red:** Add remaining feature integration tests for shared settings changes, stale metadata hydration, archive/reporting views, summaries, per-file retry, auth expiry, and draft preservation across failed/delayed saves. Test forbidden cross-feature/private imports and duplicate server-state ownership where enforceable.
-
-**Green and refactor:** Move remaining routes/screens to the feature contracts, remove obsolete all-purpose state/API paths, and finish canonical query invalidation. Remove canned runtime data and unused compatibility writers only after confirming callers and preserving intentional fixtures. Keep UI behavior changes limited to the specified queue/progress/recovery semantics.
-
-**Exit:** Every supported workflow uses the declared ownership/dependency rules. No migrated route accesses infrastructure directly; no component implements raw SSE parsing or provider persistence. Phase 1 regressions and the complete migrated frontend suite pass without duplicate command submission or stale cross-meeting updates.
-
-### Implementation phase: Upgrade rehearsal, cutover, and architecture acceptance
-
-**Entry:** All feature gates pass on disposable environments.
-
-**Red:** Write upgrade/restore and deployment-contract tests before final migration/cutover scripts. Exercise legacy data with missing snapshots/originals and rejected configuration, not just clean new databases.
-
-**Green and refactor:** Rehearse fresh setup and Phase 1 upgrade; back up and restore SQL plus actual source bytes; verify deleted-source tombstones/redaction reconciliation. Execute the coordinated frontend/backend deployment plan and record rollback/forward-recovery boundaries. Remove transitional columns/adapters only after validated migration and an explicit removal decision.
-
-**Exit:** The completion criteria below are evidenced by executed tests and recorded results. Update developer documentation for module ownership, local startup, worker recovery, source-store selection, migrations, and test commands. Do not label the phase complete while integration gates are merely proposed or skipped.
+The [roadmap](roadmap-phase-2-domain-architecture-and-frontend-resilience.md) links separate implementation specs. Their prerequisites, red tests, examples, deliverables, and exit gates replace the former inline phase outlines. This reference supplies shared contracts and target ownership, not permission to implement all phases in one change.
 
 ## Shared fixture and acceptance matrix
 
@@ -295,7 +467,7 @@ Reuse Phase 1 contracts such as `meetings_ab`, `persona_instances`, `provider_sc
 
 | Fixture/contract | Essential acceptance |
 | --- | --- |
-| `module_boundaries` | Domain/application modules load without SDK construction; forbidden infrastructure/cross-feature imports fail checks. |
+| `module_boundaries` | Domain/application modules load without SDK construction; forbidden infrastructure/cross-feature imports fail checks. Target entry points/public interfaces resolve; production imports never reach tests or legacy compatibility writers after removal. |
 | `atomic_repository_contracts` | Real database rollback, unique prompt activation, assignment replacement, coherent participant creation, and competing operation claims match fake-adapter contracts. |
 | `inherited_settings` | Explicit and inherited fields coexist; queued work resolves current defaults at execution start; later changes do not alter a running tool loop; incompatible models fail visibly. |
 | `queued_turns` | Two workers, stable request keys, FIFO admission, cancel/claim races, resource limits, different-meeting independence, restart and stale-owner fencing are deterministic. |
@@ -316,6 +488,7 @@ Reuse Phase 1 contracts such as `meetings_ab`, `persona_instances`, `provider_sc
 - Participant snapshots, per-turn inheritance, queue ordering, message boundaries, closing, accounting, live knowledge, deletion, and evidence redaction match the confirmed decisions.
 - Supabase remains the authoritative application store and Qdrant the vector projection. Original bytes have an explicitly selected, tested durable store; backup/restore covers bytes rather than metadata alone.
 - Frontend state follows the ownership table, with explicit command/observation separation, operation-scoped cleanup, canonical cache reconciliation, and no duplicate server-data stores.
+- The target file structure is populated by accepted behavior, not empty scaffolding. Current-to-target caller migration is complete, public interfaces/import checks pass, and obsolete mixed-layer writers are removed without changing required URLs or losing regression coverage.
 - Fresh installation, upgrade, local no-login mode, authenticated shared-workspace mode, trusted local Ollama, worker interruption, provider failure, cleanup failure, and coordinated deployment are exercised without paid inference as a required dependency.
 - Real-provider smoke tests, if desired, remain separately opt-in. Record supported dependency versions and actual test/build/type/lint results; do not present source inspection or a successful build as proof of lifecycle correctness.
 

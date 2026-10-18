@@ -1,4 +1,8 @@
-# Phase 1: Fixing Existing Project Issues
+# Phase 1 Reference: Review Evidence and Fixture Contracts
+
+This is a lookup reference, **not an implementation phase**. Implement the two bounded specs linked from the [Phase 1 roadmap](roadmap-phase-1-existing-issues.md): [Spec 01: core correctness and access](spec-01-core-correctness-and-access.md), then [Spec 02: recovery and data safety](spec-02-recovery-and-data-safety.md). Each owns an explicit subset of the findings below. Source line numbers describe the reviewed checkout and must be rechecked after fixes.
+
+The review is static evidence, not a passing test report. Dependency-version conditions and operational risks remain qualified below. Examples in the implementation specs are proposed fragments, not existing implementations.
 
 ## Purpose and review boundaries
 
@@ -198,7 +202,7 @@ For backend-only application-table access, tighten direct database permissions a
 
 **Issue and impact:** `create_meeting` copies persona identity and prompt but omits `provider_config` when constructing the participant. The defaults are persisted instead, changing provider/model/temperature silently. Participant configuration also lacks the persona token-limit option.
 
-**Fix approach:** Copy a validated snapshot of persona generation settings when creating participants. Align supported configuration fields and propagate them into inference; do not merely store an unused token limit. Keep fallback behavior for genuinely empty configuration and existing participant rows. Define a snapshot as creation-time configuration rather than accidentally applying later persona edits to old meetings.
+**Fix approach:** Copy a validated snapshot of explicit persona generation overrides and their inheritance policy when creating participants. Align supported configuration fields and propagate them into inference; do not merely store an unused token limit. Keep fallback behavior for genuinely empty configuration and existing participant rows. Inherited shared defaults resolve at execution start and remain fixed for that operation, as specified in the [architecture contracts](reference-architecture-contracts.md#participant-snapshots-and-per-turn-inheritance). Do not freeze inherited defaults into explicit overrides or apply later template edits to old meetings.
 
 **Fixtures:** `persona_config`; fake database and provider recording effective model/provider/temperature/token limit.
 
