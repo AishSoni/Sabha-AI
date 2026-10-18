@@ -19,6 +19,11 @@ interface PageProps {
 
 export default function PersonaDetailPage({ params }: PageProps) {
     const { id } = use(params);
+    return <PersonaDetailContent personaId={id} />;
+}
+
+export function PersonaDetailContent({ personaId }: { personaId: string }) {
+    const id = personaId;
 
     const [persona, setPersona] = useState<PersonaWithPrompt | null>(null);
     const [loading, setLoading] = useState(true);
@@ -82,9 +87,16 @@ export default function PersonaDetailPage({ params }: PageProps) {
 
         try {
             setSaving(true);
-            const newVersion = await personaApi.createPromptVersion(id, promptContent);
-            setPromptVersions([newVersion, ...promptVersions]);
-            setPersona({ ...persona, active_prompt: promptContent, active_prompt_version: newVersion.version });
+            const saved = await personaApi.createPromptVersion(id, promptContent);
+            // Serialized functional update: the saved revision becomes the
+            // ONLY active one; overwriting based on a captured snapshot
+            // would leave the previous revision flagged active.
+            setPromptVersions((prev) => [
+                saved,
+                ...prev.filter((v) => v.id !== saved.id).map((v) => ({ ...v, is_active: false })),
+            ]);
+            setPersona({ ...persona, active_prompt: promptContent, active_prompt_version: saved.version });
+            // Only the submitted revision clears the draft marker.
             setPromptDirty(false);
         } catch (err) {
             setError(err instanceof Error ? err.message : 'Failed to save prompt');
@@ -102,13 +114,14 @@ export default function PersonaDetailPage({ params }: PageProps) {
             const activated = promptVersions.find(v => v.version === version);
             if (activated) {
                 setPromptContent(activated.content);
-                setPromptVersions(promptVersions.map(v => ({
+                setPersona({ ...persona, active_prompt: activated.content, active_prompt_version: version });
+                // Serialized functional update: exactly one active revision.
+                setPromptVersions(prev => prev.map(v => ({
                     ...v,
                     is_active: v.version === version,
                 })));
-                setPersona({ ...persona, active_prompt: activated.content, active_prompt_version: version });
+                setPromptDirty(false);
             }
-            setPromptDirty(false);
         } catch (err) {
             setError(err instanceof Error ? err.message : 'Failed to activate version');
         } finally {
