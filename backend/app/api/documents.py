@@ -23,7 +23,7 @@ router = APIRouter(prefix="/api/documents", tags=["documents"])
 
 
 # Supported file types
-ALLOWED_EXTENSIONS = {"pdf", "docx", "xlsx", "xls", "csv", "txt", "md"}
+ALLOWED_EXTENSIONS = {"pdf", "docx", "xlsx", "csv", "txt", "md"}
 MAX_FILE_SIZE = 50 * 1024 * 1024  # 50 MB
 
 

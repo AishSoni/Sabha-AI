@@ -77,7 +77,6 @@ class DocumentProcessor:
             "pdf": self._parse_pdf,
             "docx": self._parse_docx,
             "xlsx": self._parse_xlsx,
-            "xls": self._parse_xlsx,
             "csv": self._parse_csv,
             "txt": self._parse_text,
             "md": self._parse_text,

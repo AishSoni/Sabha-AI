@@ -103,7 +103,7 @@ export function SharedDocumentsTab() {
                             <input
                                 ref={fileInputRef}
                                 type="file"
-                                accept=".pdf,.docx,.xlsx,.xls,.csv,.txt,.md"
+                                accept=".pdf,.docx,.xlsx,.csv,.txt,.md"
                                 onChange={handleFileChange}
                                 className="hidden"
                             />

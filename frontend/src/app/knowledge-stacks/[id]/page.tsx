@@ -155,7 +155,7 @@ export default function KnowledgeStackDetailsPage() {
                         <input
                             ref={fileInputRef}
                             type="file"
-                            accept=".pdf,.docx,.xlsx,.xls,.csv,.txt,.md"
+                            accept=".pdf,.docx,.xlsx,.csv,.txt,.md"
                             onChange={handleFileChange}
                             className="hidden"
                         />
@@ -208,7 +208,6 @@ function DocumentListCard({ document, onDelete }: { document: Document, onDelete
     const typeColors: Record<string, string> = {
         pdf: 'text-red-400 bg-red-900/20',
         xlsx: 'text-green-400 bg-green-900/20',
-        xls: 'text-green-400 bg-green-900/20',
         csv: 'text-emerald-400 bg-emerald-900/20',
         md: 'text-blue-400 bg-blue-900/20',
         txt: 'text-zinc-400 bg-zinc-800',

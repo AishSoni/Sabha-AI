@@ -189,7 +189,7 @@ export default function NewMeetingPage() {
                                     onChange={handleFileSelect}
                                     className="hidden"
                                     id="file-upload"
-                                    accept=".pdf,.docx,.xlsx,.xls,.csv,.txt,.md"
+                                    accept=".pdf,.docx,.xlsx,.csv,.txt,.md"
                                 />
                                 <label htmlFor="file-upload" className="cursor-pointer">
                                     <Upload className="w-10 h-10 text-zinc-500 mx-auto mb-3" />
