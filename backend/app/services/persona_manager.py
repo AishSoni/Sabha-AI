@@ -230,48 +230,24 @@ class PersonaManager:
     # ============== Prompt Version Methods ==============
     
     async def create_prompt_version(self, persona_id: str, data: PromptVersionCreate) -> PromptVersion:
-        """Create a new prompt version and set it as active."""
-        
-        # Get current max version
-        max_result = self.db.table("prompt_versions") \
-            .select("version") \
-            .eq("persona_id", persona_id) \
-            .order("version", desc=True) \
-            .limit(1) \
-            .execute()
-        
-        new_version = 1
-        if max_result.data:
-            new_version = max_result.data[0]["version"] + 1
-        
-        # Deactivate all existing versions
-        self.db.table("prompt_versions") \
-            .update({"is_active": False}) \
-            .eq("persona_id", persona_id) \
-            .execute()
-        
-        # Create new version
-        version_id = str(uuid.uuid4())
-        now = datetime.utcnow().isoformat()
-        
-        version_data = {
-            "id": version_id,
-            "persona_id": persona_id,
-            "version": new_version,
-            "content": data.content,
-            "is_active": True,
-            "created_at": now,
-        }
-        
-        result = self.db.table("prompt_versions").insert(version_data).execute()
-        
-        # Update persona's updated_at
-        self.db.table("personas") \
-            .update({"updated_at": now}) \
-            .eq("id", persona_id) \
-            .execute()
-        
-        return PromptVersion(**result.data[0])
+        """Create a new prompt version and set it as active.
+
+        The revision, the activation flip and the persona timestamp are one
+        SQL transaction (`create_prompt_version` RPC): any failure rolls the
+        whole change back, keeping the previous active selection intact.
+        """
+
+        result = self.db.rpc(
+            "create_prompt_version",
+            {
+                "p_persona_id": persona_id,
+                "p_content": data.content,
+                "p_version_id": str(uuid.uuid4()),
+                "p_created_at": datetime.utcnow().isoformat(),
+            },
+        ).execute()
+
+        return PromptVersion(**result.data)
     
     async def list_prompt_versions(self, persona_id: str) -> List[PromptVersion]:
         """List all prompt versions for a persona."""
@@ -285,26 +261,16 @@ class PersonaManager:
         return [PromptVersion(**v) for v in result.data]
     
     async def activate_prompt_version(self, persona_id: str, version: int) -> bool:
-        """Activate a specific prompt version."""
-        
-        # Deactivate all versions
-        self.db.table("prompt_versions") \
-            .update({"is_active": False}) \
-            .eq("persona_id", persona_id) \
-            .execute()
-        
-        # Activate the specified version
-        result = self.db.table("prompt_versions") \
-            .update({"is_active": True}) \
-            .eq("persona_id", persona_id) \
-            .eq("version", version) \
-            .execute()
-        
-        if result.data:
-            self.db.table("personas") \
-                .update({"updated_at": datetime.utcnow().isoformat()}) \
-                .eq("id", persona_id) \
-                .execute()
-            return True
-        
-        return False
+        """Activate a specific prompt version atomically.
+
+        Performed by a single-UPDATE SQL transaction (`activate_prompt_version`
+        RPC): unknown versions are refused and the current active selection
+        survives failed changes.
+        """
+
+        result = self.db.rpc(
+            "activate_prompt_version",
+            {"p_persona_id": persona_id, "p_version": version},
+        ).execute()
+
+        return bool(result.data)

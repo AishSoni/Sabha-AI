@@ -35,6 +35,13 @@ _SAFE_OPS = {"eq": "=", "neq": "<>", "gte": ">=", "lte": "<=", "gt": ">", "lt": 
 _RPC_SIGNATURES: dict[str, tuple[tuple[str, str], ...]] = {
     "replace_persona_stacks": (("p_persona_id", ""), ("p_stack_ids", "::uuid[]")),
     "create_meeting_transaction": (("p_meeting", "::jsonb"), ("p_participants", "::jsonb")),
+    "activate_prompt_version": (("p_persona_id", ""), ("p_version", "")),
+    "create_prompt_version": (
+        ("p_persona_id", ""),
+        ("p_content", ""),
+        ("p_version_id", ""),
+        ("p_created_at", "::timestamptz"),
+    ),
 }
 
 
