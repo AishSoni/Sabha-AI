@@ -11,14 +11,13 @@ Make the architecture migration testable before moving production responsibiliti
 
 ## Bounded deliverable
 
-Do not move every source file or scaffold the target tree. Deliver the contract inventory, first enforced import boundaries, reusable test harnesses, and a reproducible accepted baseline. Record blocking decisions: real transaction strategy before atomic adapters; source-byte storage/retention/backup before ingestion; validated KDF work-factor/envelope policy before vault changes; bounded private multi-worker credential handoff before durable execution. Follow the [runtime contract](reference-runtime-modes-and-credentials.md), without building the complete tutorial here.
+Do not move every source file or scaffold the target tree. Deliver the contract inventory, first enforced import boundaries, reusable test harnesses, and a reproducible accepted baseline. Record two later decision gates: real transaction strategy before backend atomic adapters; source-byte storage/retention/backup before knowledge ingestion.
 
 Current anchors: `backend/app/core/database.py`, `backend/app/services/meeting_manager.py`, `backend/app/services/orchestrator.py`, `frontend/src/lib/api.ts`, and both existing stores. Recheck them after Phase 1 fixes. Target tests: `backend/tests/architecture/`, `backend/tests/doubles/`, `frontend/tests/architecture/`, `frontend/tests/fixtures/`, and `frontend/tests/setup.ts`.
 
 ## Tests to write first
 
-- Characterize accepted live creation, persona history, turns/tools, closing/recovery, upload/search/delete, settings, and reporting. Separately test no-sign-in dedicated replay reads, rejection of all writes/live calls/forged scope, and hosted live BYOK/local configuration. Do not characterize a writable demo or known review defect as supported behavior.
-- Establish runtime/workspace/package cache identity, recorded read/event contracts and package validation, rejecting write/effect ports, `browser_vault` and `credential_handoff` harnesses. Verify reuse of core interfaces without production importing test doubles or introducing a second lifecycle engine; full replay delivery belongs to Spec 10.
+- Characterize accepted creation, persona edit/history, turn/tool behavior, end/recovery, upload/search/delete, settings, archive/reporting, and no-sign-in hosted/local demo access. Verify a fresh visitor needs neither accounts nor an Auth bootstrap. Do not characterize a known review defect as supported behavior.
 - A deliberately forbidden domain SDK import must fail the architecture checker; legal imports must pass. Cover absolute and relative imports, module public interfaces, indirect imports causing SDK construction, and frontend private-feature dependencies.
 - Instantiate the first domain/application use case with fakes while client constructors are patched to fail. Merely avoiding network calls is weaker than avoiding SDK construction/import coupling.
 - Prove fixture reset, fake clocks/barriers, split-event transport, and disposable migrations actually run in CI. Preserve Phase 1 assertions through later moves.
@@ -57,6 +56,6 @@ Apply the completed checker to real domain/application roots using their differe
 
 ## Exit gate
 
-Phase 1 regressions and characterization suites are reproducible without paid inference. Architecture tests reject forbidden imports and pass legal cases. Runtime isolation, vault/handoff, and replay-port harnesses execute, not just prose. Transaction, source-store, KDF, and transient-handoff decisions have explicit owners and downstream gates; no unchosen hosted dependency or sign-in requirement is introduced.
+Phase 1 regressions and characterization suites are reproducible without paid inference. Architecture tests fail on intentional forbidden imports and pass legal cases. Test fixtures exist and execute rather than remaining prose. Transaction and source-store decisions have explicit owners and blocking downstream gates; no unchosen hosted dependency is introduced.
 
 Next: [Backend composition and transactions](spec-04-backend-composition-and-transactions.md). Frontend work follows its accepted API seams through [Frontend transport and state](spec-05-frontend-transport-and-state.md).

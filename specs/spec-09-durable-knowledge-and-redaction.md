@@ -8,7 +8,6 @@ Make upload readiness, live retrieval, deletion, redaction, and recovery one coh
 - **Blocking decision:** choose original-byte storage after comparing Supabase Storage and persistent local filesystem behind a narrow source-store port. Record local startup, durable acknowledgement, size/storage keys, staging/finalization, deletion, restart recovery, retention, and coordinated SQL/bytes backup/restore. Supabase records do not imply a storage choice; do not silently implement both adapters.
 - Define SQL eligibility/publication, revision/chunk identity, embedding model/dimensions/purpose, cleanup ownership, source-linked evidence locations, and redaction/restore policy before writing ingestion adapters.
 - Have real isolated source-store/Qdrant/Postgres adapters plus deterministic indexing/query/context-dispatch barriers and restartable workers. Read [knowledge contracts](reference-architecture-contracts.md#durable-knowledge-publication-and-deletion), [Knowledge ownership](reference-architecture-contracts.md#knowledge), and Phase 1 ingestion/deletion regressions.
-- Adopt the [live credential handoff](reference-runtime-modes-and-credentials.md#live-credential-handoff-and-durable-operations) for hosted embedding/search services, separate from server-only database/vector/source-store credentials. Define missing-key job pause/re-provision and checkpoint recovery before ingestion dispatch.
 
 ## Scope and paths
 
@@ -25,7 +24,6 @@ Migrate stack/document/upload UI to `features/knowledge/`, exported through its 
 - Delete document and parent with no ingestion, during indexing/query, and before context dispatch. Revalidate authoritative eligibility, reject stale reuse, and retry cleanup; no late write/restart can resurrect eligibility.
 - Redact source-linked raw passages across tool artifacts, evidence/citation snippets, and persisted assembled-context copies. Existing conversation text remains unchanged. Restore an old backup and reconcile tombstones/redaction before retrieval resumes.
 - UI retains the same document/operation/meeting ID through pending receipt, remount, failed file retry, and late concurrent completion. Pending is not completed success.
-- Expire/lose visitor embedding/search credentials during pending ingestion or retrieval: pause/recover the same job/operation without re-upload, repeated completed paid stages, operator fallback, or secret persistence. Keep source-byte durability separate from credential availability. Replay returns fixed recorded passages/documents only; upload/index/search/evidence writes and live embeddings/Qdrant searches are never dispatched.
 
 ## Code example: distinguish acknowledgement from readiness
 
@@ -71,10 +69,9 @@ Add barriers before vector publication, before search result return, and before 
 - Persist cleanup/redaction intent with deletion, exclude immediately, and reconcile physical failures. Coordinate SQL/bytes/vector operations without pretending they form one distributed transaction or holding locks across them.
 - Integrate structured evidence and deletion with existing operation persistence. Keep permitted IDs/hashes/deletion markers, not raw passage copies disguised as logs. Backups require retention and restore reconciliation, not unsafe rollback promises.
 - Migrate actual meeting/stack parent-deletion and upload callers together; retain created meeting and per-file operation identity on partial failure.
-- Persist credential-required status/checkpoints, not credential values, with durable jobs. Re-provision uses the existing private operation/service handoff. The demo uses its recorded read source through shared contracts; no-op ingestion or fake committed evidence is not a replay implementation.
 
 ## Exit gate
 
-Real source/Qdrant/database/restart/race tests establish readiness, live eligibility, revocation/redaction, bounded/off-loop processing, and retry cleanup without resurrection. Hosted BYOK credential loss/re-provision and local providers pass without persistent keys or duplicate uploads/paid stages. Original bytes are backed up; legacy missing originals stay honest. Replay reads fixed evidence with zero ingestion/search/live-call/persistence effects.
+Real source/Qdrant/database and restart/race tests establish readiness, fixed-scope live retrieval, source revocation/redaction, bounded/off-loop processing, and durable retry cleanup without resurrection. Local operation and configured providers still pass. Original bytes are actually backed up; legacy missing originals are marked unavailable/re-upload, not fabricated. Pending progress and canonical ready/failure UI survive reload without duplicate uploads.
 
 Next: [Feature cutover and legacy removal](spec-10-feature-cutover-and-legacy-removal.md).
