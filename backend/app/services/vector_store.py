@@ -212,13 +212,15 @@ class VectorStoreManager:
                 ]
             )
         
-        # Perform search
-        results = await self.client.search(
+        # Perform search (query_points is the supported API from qdrant-client 1.16)
+        response = await self.client.query_points(
             collection_name=collection_name,
-            query_vector=query_embedding,
+            query=query_embedding,
+            query_filter=search_filter,
             limit=limit,
-            query_filter=search_filter if search_filter else None,
+            with_payload=True,
         )
+        results = response.points
         
         return [
             SearchResult(
