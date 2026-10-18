@@ -380,6 +380,51 @@ class MeetingManager:
 
         return len(result.data) > 0
 
+    async def commit_meeting_ending(
+        self,
+        meeting_id: str,
+        from_status: "MeetingStatus | str",
+        content: Optional[str],
+    ) -> bool:
+        """Persist the ending message and close the meeting in one transaction.
+
+        The RPC CAS-protects the status flip (`from_status` is usually
+        'voting'), so a losing writer reports False and persists nothing —
+        the ending message cannot outlive a lost race and a committed ending
+        cannot exist without its summary message. Partial commitment is
+        impossible because both writes share one transaction.
+        """
+        result = self.db.rpc(
+            "commit_meeting_ending",
+            {
+                "p_meeting_id": meeting_id,
+                "p_from_status": _status_value(from_status),
+                "p_content": content,
+            },
+        ).execute()
+        return bool(result.data)
+
+    async def get_latest_message_with_prefix(
+        self, meeting_id: str, prefix: str
+    ) -> Optional[Message]:
+        """Newest system message whose content starts with `prefix`.
+
+        Used for ending-marker recovery checks (skip regeneration when an
+        ending or summary already persisted) without loading the whole
+        conversation.
+        """
+        result = self.db.table("messages") \
+            .select("*") \
+            .eq("meeting_id", meeting_id) \
+            .eq("sender_type", SenderType.SYSTEM.value) \
+            .like("content", f"{prefix}%") \
+            .order("created_at", desc=True) \
+            .limit(1) \
+            .execute()
+
+        data = result.data or []
+        return Message(**data[0]) if data else None
+
     async def delete_meeting(self, meeting_id: str) -> bool:
         """Delete a meeting and all its related data."""
         

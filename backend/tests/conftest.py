@@ -46,6 +46,7 @@ SCHEMA_FILES = [
     BACKEND_ROOT / "migrations" / "007_prompt_version_activation.sql",
     BACKEND_ROOT / "migrations" / "008_participant_stack_snapshot.sql",
     BACKEND_ROOT / "migrations" / "009_tighten_rls_to_backend_writes.sql",
+    BACKEND_ROOT / "migrations" / "010_atomic_meeting_close.sql",
 ]
 
 # Schema as it existed before the lifecycle-constraint fix. Upgrade-path tests

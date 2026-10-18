@@ -43,6 +43,11 @@ _RPC_SIGNATURES: dict[str, tuple[tuple[str, str], ...]] = {
         ("p_created_at", "::timestamptz"),
     ),
     "increment_meeting_cost": (("meeting_id", "::uuid"), ("cost_delta", "::decimal")),
+    "commit_meeting_ending": (
+        ("p_meeting_id", "::uuid"),
+        ("p_from_status", ""),
+        ("p_content", ""),
+    ),
 }
 
 
@@ -137,6 +142,13 @@ class _Table:
 
     def neq(self, column: str, value) -> "_Table":
         return self._where("neq", column, value)
+
+    def like(self, column: str, pattern: str) -> "_Table":
+        if not _IDENT.match(column):
+            raise ValueError(f"Unsafe column: {column}")
+        self._conditions.append(f"{column} LIKE %s")
+        self._params.append(pattern)
+        return self
 
     def in_(self, column: str, values) -> "_Table":
         return self._where_in(column, list(values))
