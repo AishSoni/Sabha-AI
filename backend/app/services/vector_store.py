@@ -78,31 +78,78 @@ class VectorStoreManager:
         return f"stack_{stack_id}_knowledge"
     
     async def create_collection(self, collection_name: str) -> bool:
-        """
-        Create a new Qdrant collection if it doesn't exist.
-        
-        Args:
-            collection_name: Name of the collection to create
-            
+        """Create a Qdrant collection if it doesn't exist.
+
+        Race-safe: when creation loses a race (another worker created the
+        collection between the listing and our create), the manager re-reads
+        the collection and validates its vector configuration instead of
+        failing with the server's "already exists" error. Only a collection
+        that truly materialized counts as benign.
+
+        Raises:
+            ValueError: an existing collection's vector configuration cannot
+                accept vectors from the current embedding provider. Producing
+                a controlled diagnostic here prevents obscure server errors
+                at upsert time.
         Returns:
-            True if created, False if already exists
+            True if created now, False if it already existed compatibly.
         """
         # Check if collection exists
-        collections = await self.client.get_collections()
-        existing_names = [c.name for c in collections.collections]
-        
-        if collection_name in existing_names:
+        if await self.collection_exists(collection_name):
+            await self._validate_collection_config(collection_name)
             return False
-        
+
         # Create collection with embedding dimension
-        await self.client.create_collection(
-            collection_name=collection_name,
-            vectors_config=VectorParams(
-                size=self.embedding_provider.dimension,
-                distance=Distance.COSINE,
-            ),
-        )
+        try:
+            await self.client.create_collection(
+                collection_name=collection_name,
+                vectors_config=VectorParams(
+                    size=self.embedding_provider.dimension,
+                    distance=Distance.COSINE,
+                ),
+            )
+        except Exception:
+            # Losing a creation race ends up here; only treat the collection
+            # as benign if it actually exists now (still validates its config).
+            if await self.collection_exists(collection_name):
+                await self._validate_collection_config(collection_name)
+                return False
+            raise
         return True
+
+    async def _validate_collection_config(self, collection_name: str) -> None:
+        """Raise a controlled ValueError when an existing collection cannot
+        accept vectors from the current embedding provider."""
+        requested_size = self.embedding_provider.dimension
+        info = await self.client.get_collection(collection_name)
+        vectors = getattr(
+            getattr(getattr(info, "config", None), "params", None), "vectors", None
+        )
+        if vectors is None:
+            raise ValueError(
+                f"Collection {collection_name!r} returned an unreadable vector "
+                "configuration; refusing to index into it."
+            )
+        size = getattr(vectors, "size", None)
+        if size != requested_size:
+            raise ValueError(
+                f"Collection {collection_name!r} was created with vector dimension "
+                f"{size}, but the current embedding provider produces "
+                f"{requested_size}-dimension vectors. Upserts into this collection "
+                "would be rejected; re-index its documents into a rebuilt collection."
+            )
+        try:
+            found_distance = Distance(vectors.distance)
+        except (TypeError, ValueError) as exc:
+            raise ValueError(
+                f"Collection {collection_name!r} uses vector distance "
+                f"{vectors.distance!r}, which the backend cannot interpret."
+            ) from exc
+        if found_distance != Distance.COSINE:
+            raise ValueError(
+                f"Collection {collection_name!r} uses distance "
+                f"{found_distance.value}, but the backend requires cosine similarity."
+            )
     
     async def delete_collection(self, collection_name: str) -> bool:
         """
