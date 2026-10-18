@@ -11,7 +11,7 @@ CREATE TABLE IF NOT EXISTS meetings (
     user_id UUID REFERENCES auth.users(id) ON DELETE SET NULL,
     name TEXT NOT NULL,
     agenda TEXT DEFAULT '',
-    status TEXT DEFAULT 'active' CHECK (status IN ('active', 'archived')),
+    status TEXT DEFAULT 'active' CHECK (status IN ('active', 'voting', 'ended', 'archived')),
     total_cost DECIMAL(10, 6) DEFAULT 0.0,
     created_at TIMESTAMPTZ DEFAULT NOW()
 );

@@ -42,6 +42,15 @@ SCHEMA_FILES = [
     BACKEND_ROOT / "migrations" / "003_knowledge_stacks.sql",
 ]
 
+# Schema as it existed before the lifecycle-constraint fix. Upgrade-path tests
+# build this state, seed pre-existing rows against it, then apply the new
+# migration — proving upgraded deployments behave like fresh ones.
+LEGACY_SCHEMA_FILES = [
+    BACKEND_ROOT / "tests" / "fixtures" / "schema" / "supabase_schema_legacy.sql",
+    BACKEND_ROOT / "migrations" / "002_personas.sql",
+    BACKEND_ROOT / "migrations" / "003_knowledge_stacks.sql",
+]
+
 # Real deployment targets (Supabase) provide the auth schema; embedded test
 # Postgres needs a minimal stub so the schema's FK reference resolves.
 AUTH_STUB_SQL = """
@@ -120,4 +129,33 @@ def disposable_db(pg_server):
     finally:
         cleanup = psycopg.connect(base_uri, autocommit=True)
         cleanup.execute(f'DROP DATABASE IF EXISTS "{name}" WITH (FORCE)')
+        cleanup.close()
+
+
+def _make_schema_db(pg_server, schema_files):
+    """Create a throwaway database from an explicit schema file list."""
+    import uuid
+
+    name = "sabha_t_" + uuid.uuid4().hex[:10]
+    base_uri = pg_server.get_uri()
+    admin = psycopg.connect(base_uri, autocommit=True)
+    admin.execute(f'CREATE DATABASE "{name}"')
+    admin.close()
+
+    db = DisposableDb(_uri_for_database(base_uri, name), name)
+    with db.connect() as conn:
+        for sql in (AUTH_STUB_SQL, *[p.read_text(encoding="utf-8") for p in schema_files]):
+            conn.execute(sql)
+    return db, base_uri
+
+
+@pytest.fixture()
+def legacy_db(pg_server):
+    """Disposable database holding the pre-fix (legacy) schema chain."""
+    db, base_uri = _make_schema_db(pg_server, LEGACY_SCHEMA_FILES)
+    try:
+        yield db
+    finally:
+        cleanup = psycopg.connect(base_uri, autocommit=True)
+        cleanup.execute(f'DROP DATABASE IF EXISTS "{db.name}" WITH (FORCE)')
         cleanup.close()
