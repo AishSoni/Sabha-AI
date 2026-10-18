@@ -384,6 +384,7 @@ class Orchestrator:
         disagreements = []
         consensus_list = []
         usage_total = {}
+        call_counter = 0  # unique, per-turn ids for announced tool calls
 
         for _round in range(MAX_TOOL_ROUNDS):
             had_tool_calls = False
@@ -394,14 +395,26 @@ class Orchestrator:
                 temperature=provider_config.temperature,
                 max_tokens=provider_config.max_tokens
             ):
-                # Handle tool calls - execute them and yield results
+                # Handle tool calls - announce the call BEFORE executing so
+                # the UI sees the activity, then correlate the result to it.
                 if event.type == StreamEventType.TOOL_CALL and event.tool_name:
                     had_tool_calls = True
                     from app.llm.base import ToolCall
+                    call_id = event.tool_call_id or f"call-{call_counter}"
+                    call_counter += 1
                     tool_call = ToolCall(
-                        id=event.tool_name,
+                        id=call_id,
                         name=event.tool_name,
                         arguments=event.tool_arguments or {}
+                    )
+
+                    # Announce before execution; repeated same-name calls keep
+                    # their own unique ids.
+                    yield StreamEvent(
+                        type=StreamEventType.TOOL_CALL,
+                        tool_name=event.tool_name,
+                        tool_arguments=event.tool_arguments,
+                        tool_call_id=call_id,
                     )
 
                     result, disagreement, consensus = await self._execute_tool_safely(
@@ -416,7 +429,7 @@ class Orchestrator:
                     ))
                     messages.append(LLMMessage(
                         role="tool",
-                        tool_call_id=tool_call.id,
+                        tool_call_id=call_id,
                         content=json.dumps(result),
                     ))
 
@@ -425,11 +438,12 @@ class Orchestrator:
                     if consensus:
                         consensus_list.append(consensus)
 
-                    # Yield tool result
+                    # Yield the correlated tool result
                     yield StreamEvent(
                         type=StreamEventType.TOOL_RESULT,
                         tool_name=event.tool_name,
-                        tool_result=result
+                        tool_result=result,
+                        tool_call_id=call_id,
                     )
 
                 elif event.type == StreamEventType.TEXT:

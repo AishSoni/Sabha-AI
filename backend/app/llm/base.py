@@ -53,6 +53,8 @@ class StreamEvent(BaseModel):
     tool_name: Optional[str] = None
     tool_arguments: Optional[dict] = None
     tool_result: Optional[str] = None
+    # Correlation id announced with tool_call and echoed on tool_result
+    tool_call_id: Optional[str] = None
     # For citations
     source: Optional[str] = None
     title: Optional[str] = None
