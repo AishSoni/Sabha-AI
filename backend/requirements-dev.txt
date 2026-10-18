@@ -1,0 +1,8 @@
+# Test-only dependencies for the Sabha backend suite (Spec 01 prerequisite).
+# Install with:  python -m pip install -r requirements-dev.txt
+# No paid inference: providers/embeddings are always faked in tests.
+pytest==9.1.1
+pytest-asyncio==1.4.0
+pytest-cov==7.1.0
+pgserver==0.1.4            # embedded disposable PostgreSQL for schema/integration tests
+psycopg[binary]==3.3.6     # direct SQL inside test fixtures (schema application, probes)

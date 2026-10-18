@@ -1,14 +1,13 @@
 -- Sabha Database Schema
 -- Run this in Supabase SQL Editor
-
--- Enable UUID extension
-CREATE EXTENSION IF NOT EXISTS "uuid-ossp";
+-- Uses the PostgreSQL built-in gen_random_uuid() (PG13+ / standard on Supabase)
+-- so the same schema also applies to plain disposable Postgres test instances.
 
 -- ============================================
 -- MEETINGS TABLE
 -- ============================================
 CREATE TABLE IF NOT EXISTS meetings (
-    id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
     user_id UUID REFERENCES auth.users(id) ON DELETE SET NULL,
     name TEXT NOT NULL,
     agenda TEXT DEFAULT '',
@@ -21,7 +20,7 @@ CREATE TABLE IF NOT EXISTS meetings (
 -- AI PARTICIPANTS TABLE
 -- ============================================
 CREATE TABLE IF NOT EXISTS ai_participants (
-    id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
     meeting_id UUID NOT NULL REFERENCES meetings(id) ON DELETE CASCADE,
     name VARCHAR(100) NOT NULL,
     role VARCHAR(50) NOT NULL,
@@ -35,7 +34,7 @@ CREATE TABLE IF NOT EXISTS ai_participants (
 -- MESSAGES TABLE
 -- ============================================
 CREATE TABLE IF NOT EXISTS messages (
-    id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
     meeting_id UUID NOT NULL REFERENCES meetings(id) ON DELETE CASCADE,
     sender_type TEXT NOT NULL CHECK (sender_type IN ('user', 'ai', 'system')),
     sender_id UUID REFERENCES ai_participants(id) ON DELETE SET NULL,
@@ -52,7 +51,7 @@ CREATE TABLE IF NOT EXISTS messages (
 -- DISAGREEMENTS TABLE
 -- ============================================
 CREATE TABLE IF NOT EXISTS disagreements (
-    id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
     meeting_id UUID NOT NULL REFERENCES meetings(id) ON DELETE CASCADE,
     source_ai_id UUID NOT NULL REFERENCES ai_participants(id) ON DELETE CASCADE,
     target_name VARCHAR(100) NOT NULL,
@@ -67,7 +66,7 @@ CREATE TABLE IF NOT EXISTS disagreements (
 -- CONSENSUS TABLE
 -- ============================================
 CREATE TABLE IF NOT EXISTS consensus (
-    id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
     meeting_id UUID NOT NULL REFERENCES meetings(id) ON DELETE CASCADE,
     participants JSONB NOT NULL,
     topic VARCHAR(255) NOT NULL,
@@ -88,7 +87,7 @@ CREATE INDEX IF NOT EXISTS idx_consensus_meeting_id ON consensus(meeting_id);
 -- DOCUMENTS TABLE (for RAG pipeline)
 -- ============================================
 CREATE TABLE IF NOT EXISTS documents (
-    id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
     meeting_id UUID REFERENCES meetings(id) ON DELETE CASCADE,
     persona_id UUID,  -- References personas table if exists
     file_name VARCHAR(255) NOT NULL,
