@@ -2,12 +2,7 @@
 
 ## Purpose and review boundaries
 
-Record the code review findings, likely fixes, and concrete regression tests so each issue can be addressed independently. This is a remediation specification, not an implementation or a general product roadmap.
-
-- Evidence comes from static source inspection. Builds, services, migrations, and tests were not run; the test cases below are proposed, not passing results.
-- Source locations describe the reviewed code and may shift as fixes land. Use the named function/component as the durable reference.
-- All recorded findings remain open. There are 20 backend findings and 9 frontend/integration findings, plus 3 operational risks requiring targeted validation. Dependency-version and concurrency conditions are stated explicitly; none imply a reproduced failure in the current environment.
-- Security severity depends on exposure: unauthenticated access is intentional for trusted local development, but is not appropriate for an exposed authenticated deployment.
+Record the code review findings, likely fixes, and concrete regression tests so each issue can be addressed independently.
 
 ### Constraints that every fix must preserve
 
@@ -29,8 +24,6 @@ Every remediation in this specification must follow test-driven development. The
 - For operational risks that are not reproduced incidents, first test the stated guard or failure mechanism. Do not manufacture performance results or claim an incident was reproduced merely because a synthetic test exists.
 - Run the focused tests after each change and the relevant broader suite before completing the fix. Record the failing-before and passing-after commands/results, limitations, and any intentionally unexecuted integration checks. Never describe proposed tests as passing.
 - Existing passing characterization tests protect supported behavior but do not replace a new failing regression for the behavior being corrected. A justified skipped or quarantined test must remain visible and cannot count as acceptance.
-
-The follow-on architecture work is specified in [Phase 2: Backend Domain Architecture and Frontend Resilience](phase-2-domain-architecture-and-frontend-resilience.md). It must preserve these fixes and their regression tests; moving files is not a reason to remove coverage.
 
 ## Findings overview
 
