@@ -5,6 +5,7 @@ Handles document upload, listing, deletion, and semantic search.
 
 from fastapi import APIRouter, UploadFile, File, Form, HTTPException, BackgroundTasks
 from typing import Optional, List
+import logging
 import uuid
 
 from app.core.database import get_supabase
@@ -16,10 +17,13 @@ from app.models.document_schemas import (
     DocumentSearchResult,
 )
 from app.services.document_processor import DocumentProcessor
+from app.services.ingestion import DocumentDeletedError, get_ingestion_registry
 from app.services.vector_store import get_vector_store, VectorStoreManager
 
 
 router = APIRouter(prefix="/api/documents", tags=["documents"])
+
+logger = logging.getLogger(__name__)
 
 
 # Supported file types
@@ -29,17 +33,30 @@ MAX_FILE_SIZE = 50 * 1024 * 1024  # 50 MB
 
 async def _process_and_index_document(
     document_id: str,
+    ticket,
     file_content: bytes,
     file_name: str,
     file_type: str,
     collection_name: str,
 ):
-    """Background task to process and index a document."""
+    """Background task to process and index a document.
+
+    Fenced against racing deletes (spec-02 B1):
+    - tombstone before the pre-publish fence: nothing is ever upserted;
+    - tombstone after points went live: the post-publish fence compensates
+      by deleting the freshly published points immediately.
+    """
     db = get_supabase()
     vector_store = get_vector_store()
     processor = DocumentProcessor()
-    
+
     try:
+        # Fence 0: the document was deleted before this task even started.
+        if ticket.deleted:
+            raise DocumentDeletedError(
+                f"Document {document_id} was deleted during ingestion"
+            )
+
         # Process the file into chunks
         chunks = processor.process_file(
             file_content=file_content,
@@ -47,23 +64,42 @@ async def _process_and_index_document(
             file_type=file_type,
             additional_metadata={"document_id": document_id},
         )
-        
+
         if not chunks:
             raise ValueError("No text content extracted from document")
-        
+
+        # Fence 1: do not publish costs/points for a tombstoned document.
+        await ticket.await_publishable()
+
         # Index chunks in Qdrant
         chunk_count = await vector_store.index_document(
             collection_name=collection_name,
             document_id=document_id,
             chunks=chunks,
         )
-        
+
+        # Fence 2: a delete that landed between fence 1 and here removes the
+        # upserted points immediately (compensation), so no orphan survives.
+        if ticket.deleted:
+            await vector_store.delete_document(
+                collection_name=collection_name,
+                document_id=document_id,
+            )
+            raise DocumentDeletedError(
+                f"Document {document_id} was deleted during ingestion"
+            )
+
         # Update document status to indexed
         db.table("documents").update({
             "status": "indexed",
             "chunk_count": chunk_count,
         }).eq("id", document_id).execute()
-        
+
+    except DocumentDeletedError as e:
+        # The delete route owns the document lifecycle from the tombstone on;
+        # no status flip of ours can resurrect what it is deleting.
+        logger.info("Ingestion fenced for deleted document %s: %s", document_id, e)
+
     except Exception as e:
         # Update document status to failed
         db.table("documents").update({
@@ -153,11 +189,16 @@ async def upload_document(
         doc_data["stack_id"] = stack_id
     
     db.table("documents").insert(doc_data).execute()
-    
+
+    # Register the in-flight ingestion (delete routes fence against it).
+    registry = get_ingestion_registry()
+    ticket = registry.create_ticket(document_id)
+
     # Queue background processing
     background_tasks.add_task(
         _process_and_index_document,
         document_id=document_id,
+        ticket=ticket,
         file_content=file_content,
         file_name=file.filename,
         file_type=file_ext,
@@ -239,29 +280,33 @@ async def delete_document(document_id: str):
     """
     db = get_supabase()
     vector_store = get_vector_store()
-    
+
     # Get document info
     result = db.table("documents")\
         .select("*")\
         .eq("id", document_id)\
         .single()\
         .execute()
-    
+
     if not result.data:
         raise HTTPException(status_code=404, detail="Document not found")
-    
+
     doc = result.data
-    
+
+    # Tombstone FIRST (spec-02 B1): any in-flight ingestion of this document
+    # must be fenced before we delete vectors or the record row.
+    get_ingestion_registry().mark_tombstone(document_id)
+
     # Delete vectors from Qdrant
     if doc.get("qdrant_collection"):
         await vector_store.delete_document(
             collection_name=doc["qdrant_collection"],
             document_id=document_id,
         )
-    
+
     # Delete document record
     db.table("documents").delete().eq("id", document_id).execute()
-    
+
     return {"message": "Document deleted", "id": document_id}
 
 

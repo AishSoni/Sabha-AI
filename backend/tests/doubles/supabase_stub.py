@@ -118,6 +118,7 @@ class _Table:
         self._params: list = []
         self._order_by: str = ""
         self._limit: int | None = None
+        self._single: bool = False
         self._action = "select"
         self._payload = None
 
@@ -172,6 +173,12 @@ class _Table:
 
     def limit(self, count: int) -> "_Table":
         self._limit = int(count)
+        return self
+
+    def single(self) -> "_Table":
+        """PostgREST `media=single`-like shape: scalar row (or None) instead
+        of a list."""
+        self._single = True
         return self
 
     def _where(self, op: str, column: str, value) -> "_Table":
@@ -245,7 +252,10 @@ class _Table:
             if self._limit is not None:
                 sql += f" LIMIT {int(self._limit)}"
             rows = conn.execute(sql, self._params or None).fetchall()
-            return _PostgrestResult(_postgrest_rows(rows))
+            data = _postgrest_rows(rows)
+            if self._single:
+                return _PostgrestResult(data[0] if data else None)
+            return _PostgrestResult(data)
 
         if self._action == "insert":
             rows = []
