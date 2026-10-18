@@ -30,6 +30,22 @@ from psycopg.rows import dict_row
 _IDENT = re.compile(r"^[A-Za-z_][A-Za-z0-9_]*$")
 _SAFE_OPS = {"eq": "=", "neq": "<>", "gte": ">=", "lte": "<=", "gt": ">", "lt": "<"}
 
+# rpc(fn, params) positional signatures: (python_kwarg_name, PG cast suffix).
+# Parameters are matched by name so additions stay order-independent.
+_RPC_SIGNATURES: dict[str, tuple[tuple[str, str], ...]] = {
+    "replace_persona_stacks": (("p_persona_id", ""), ("p_stack_ids", "::uuid[]")),
+    "create_meeting_transaction": (("p_meeting", "::jsonb"), ("p_participants", "::jsonb")),
+}
+
+
+def _adapt_rpc_value(value, cast: str):
+    """Adapt a Python rpc parameter per its declared PG cast."""
+    if cast == "::jsonb":
+        return Json(value) if isinstance(value, (dict, list)) else value
+    if cast == "::jsonb[]":
+        return [Json(item) for item in value]
+    return value
+
 
 def _adapt_value(value):
     """Adapt Python payloads to psycopg for JSONB-aware inserts/updates.
@@ -43,13 +59,21 @@ def _adapt_value(value):
 
 
 def _postgrest_json(value):
-    """Shape values like a PostgREST JSON response (uuids/datetimes -> strings)."""
+    """Shape values like a PostgREST JSON response (uuids/datetimes -> strings).
+
+    Recursive: pyscopg decodes jsonb columns (or a jsonb-returning RPC) as
+    nested Python dicts/lists which still hold raw UUID/datetime objects.
+    """
     if isinstance(value, uuid_module.UUID):
         return str(value)
     if isinstance(value, datetime):
         return value.isoformat()
     if isinstance(value, date):
         return value.isoformat()
+    if isinstance(value, dict):
+        return {k: _postgrest_json(v) for k, v in value.items()}
+    if isinstance(value, list):
+        return [_postgrest_json(v) for v in value]
     return value
 
 
@@ -246,19 +270,25 @@ class _Rpc:
     def execute(self) -> _PostgrestResult:
         if not _IDENT.match(self._fn):
             raise ValueError(f"Unsafe rpc: {self._fn}")
-        # Positional signature used by replace_persona_stacks(p_persona_id, p_stack_ids)
-        func_args = {
-            "replace_persona_stacks": [self._params.get("p_persona_id"), self._params.get("p_stack_ids")],
-        }
-        if self._fn not in func_args:
+        if self._fn not in _RPC_SIGNATURES:
             raise ValueError(f"Stub does not implement rpc {self._fn!r}")
+        signature = _RPC_SIGNATURES[self._fn]
         with psycopg.connect(self._uri, autocommit=True, row_factory=dict_row) as conn:
-            placeholders = ", ".join(["%s"] * len(func_args[self._fn]))
+            placeholders = ", ".join(f"%s{cast}" for _, cast in signature)
+            args = tuple(
+                _adapt_rpc_value(self._params.get(name), cast) for name, cast in signature
+            )
             rows = conn.execute(
                 f"SELECT * FROM {self._fn}({placeholders})",
-                func_args[self._fn],
+                args,
             ).fetchall()
-            return _PostgrestResult(_postgrest_rows(rows))
+            if len(rows) == 1 and len(rows[0]) == 1:
+                # Scalar (jsonb/void) return: PostgREST exposes the value
+                # itself, not a row keyed by the function name.
+                data = _postgrest_json(next(iter(rows[0].values())))
+            else:
+                data = _postgrest_rows(rows)
+            return _PostgrestResult(data)
 
 
 class SupabaseStub:

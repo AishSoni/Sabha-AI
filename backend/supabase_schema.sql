@@ -23,7 +23,7 @@ CREATE TABLE IF NOT EXISTS ai_participants (
     id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
     meeting_id UUID NOT NULL REFERENCES meetings(id) ON DELETE CASCADE,
     name VARCHAR(100) NOT NULL,
-    role VARCHAR(50) NOT NULL,
+    role VARCHAR(200) NOT NULL,
     system_prompt TEXT NOT NULL,
     provider_config JSONB DEFAULT '{"provider": "openrouter", "model": "anthropic/claude-sonnet-4-20250514", "temperature": 0.7}'::jsonb,
     color VARCHAR(20) DEFAULT '#6366f1',

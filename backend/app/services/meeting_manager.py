@@ -36,12 +36,17 @@ class MeetingManager:
         data: MeetingCreate,
         add_default_roster: bool = True
     ) -> MeetingWithParticipants:
-        """Create a new meeting with optional default participants."""
-        
+        """Create a new meeting with optional default participants.
+
+        Personas are validated BEFORE any write, and the meeting row plus all
+        participants are persisted in one transactional write: a failure
+        anywhere rolls the whole creation back instead of leaving an orphan
+        meeting behind.
+        """
+
         meeting_id = str(uuid.uuid4())
         now = datetime.utcnow().isoformat()
-        
-        # Insert meeting
+
         meeting_data = {
             "id": meeting_id,
             "name": data.name,
@@ -51,12 +56,9 @@ class MeetingManager:
             "total_cost": 0.0,
             "created_at": now,
         }
-        
-        result = self.db.table("meetings").insert(meeting_data).execute()
-        
-        # Add AI participants
-        participants = []
-        
+
+        participants_payload: List[dict] = []
+
         # If persona_ids provided, fetch those personas from DB
         if data.persona_ids and len(data.persona_ids) > 0:
             # Fetch personas from database
@@ -64,8 +66,14 @@ class MeetingManager:
                 .select("*") \
                 .in_("id", data.persona_ids) \
                 .execute()
-            
-            for persona_data in personas_result.data:
+
+            found = {str(p["id"]): p for p in personas_result.data}
+            missing = [str(pid) for pid in data.persona_ids if str(pid) not in found]
+            if missing:
+                raise ValueError(f"Unknown personas: {', '.join(missing)}")
+
+            for persona_id in data.persona_ids:
+                persona_data = found[str(persona_id)]
                 # Fetch active prompt for this persona
                 active_prompt = ""
                 prompts_result = self.db.table("prompt_versions") \
@@ -74,47 +82,68 @@ class MeetingManager:
                     .eq("is_active", True) \
                     .limit(1) \
                     .execute()
-                
+
                 if prompts_result.data:
                     active_prompt = prompts_result.data[0].get("content", "")
-                
+
                 # Snapshot the persona's generation settings into this
                 # participant at creation time; empty values keep the
                 # server defaults.
                 persona_cfg = persona_data.get("provider_config") or {}
-                participant = await self.add_participant(
-                    AIParticipantCreate(
-                        meeting_id=meeting_id,
-                        name=persona_data["name"],
-                        role=persona_data.get("subtitle") or "AI Assistant",
-                        system_prompt=get_full_prompt(active_prompt),
-                        provider_config=ProviderConfig(
-                            provider=persona_cfg.get("provider") or "",
-                            model=persona_cfg.get("model") or "",
-                            temperature=persona_cfg.get("temperature", 0.7),
-                            max_tokens=persona_cfg.get("max_tokens", 2048),
-                        ),
-                        color=persona_data["color"],
-                        persona_id=persona_data["id"],
+                role = persona_data.get("subtitle") or "AI Assistant"
+                if len(role) > 200:
+                    raise ValueError(
+                        "Persona subtitle exceeds participant role capacity "
+                        "of 200 characters"
                     )
-                )
-                participants.append(participant)
+                participants_payload.append({
+                    "id": str(uuid.uuid4()),
+                    "meeting_id": meeting_id,
+                    "name": persona_data["name"],
+                    "role": role,
+                    "system_prompt": get_full_prompt(active_prompt),
+                    "provider_config": ProviderConfig(
+                        provider=persona_cfg.get("provider") or "",
+                        model=persona_cfg.get("model") or "",
+                        temperature=persona_cfg.get("temperature", 0.7),
+                        max_tokens=persona_cfg.get("max_tokens", 2048),
+                    ).model_dump(),
+                    "color": persona_data["color"],
+                    "persona_id": str(persona_data["id"]),
+                    "created_at": now,
+                })
         elif add_default_roster:
             # Use default roster if no persona_ids provided
             for persona in DEFAULT_ROSTER:
-                participant = await self.add_participant(
-                    AIParticipantCreate(
-                        meeting_id=meeting_id,
-                        name=persona["name"],
-                        role=persona["role"],
-                        system_prompt=get_full_prompt(persona["system_prompt"]),
-                        color=persona["color"],
+                role = persona["role"]
+                if len(role) > 200:
+                    raise ValueError(
+                        "Default roster role exceeds participant role "
+                        "capacity of 200 characters"
                     )
-                )
-                participants.append(participant)
-        
-        return MeetingWithParticipants(
-            **result.data[0],
+                participants_payload.append({
+                    "id": str(uuid.uuid4()),
+                    "meeting_id": meeting_id,
+                    "name": persona["name"],
+                    "role": role,
+                    "system_prompt": get_full_prompt(persona["system_prompt"]),
+                    "provider_config": ProviderConfig().model_dump(),
+                    "color": persona["color"],
+                    "persona_id": None,
+                    "created_at": now,
+                })
+
+        # One transaction persists meeting + participants; any failure inside
+        # the write rolls everything back.
+        result = self.db.rpc(
+            "create_meeting_transaction",
+            {"p_meeting": meeting_data, "p_participants": participants_payload},
+        ).execute()
+        payload = result.data
+
+        participants = [AIParticipant(**row) for row in payload["participants"]]
+
+        return MeetingWithParticipants(            **payload["meeting"],
             participants=participants,
             messages=[]
         )

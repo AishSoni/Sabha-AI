@@ -40,7 +40,11 @@ def get_orchestrator() -> Orchestrator:
 async def create_meeting(data: MeetingCreate):
     """Create a new meeting with default AI participants."""
     manager = get_meeting_manager()
-    meeting = await manager.create_meeting(data)
+    try:
+        meeting = await manager.create_meeting(data)
+    except ValueError as exc:
+        # Validation happens before any write (e.g. unknown personas).
+        raise HTTPException(status_code=422, detail=str(exc))
     return meeting
 
 
