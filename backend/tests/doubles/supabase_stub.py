@@ -19,6 +19,9 @@ Any identifier is regex-checked; every value is passed as a parameter.
 
 import re
 import uuid as uuid_module
+
+import psycopg
+from psycopg.types.json import Json
 from datetime import date, datetime
 
 import psycopg
@@ -26,6 +29,17 @@ from psycopg.rows import dict_row
 
 _IDENT = re.compile(r"^[A-Za-z_][A-Za-z0-9_]*$")
 _SAFE_OPS = {"eq": "=", "neq": "<>", "gte": ">=", "lte": "<=", "gt": ">", "lt": "<"}
+
+
+def _adapt_value(value):
+    """Adapt Python payloads to psycopg for JSONB-aware inserts/updates.
+
+    PostgREST accepts nested JSON objects for jsonb columns; raw dicts cannot
+    be adapted by psycopg on their own.
+    """
+    if isinstance(value, (dict, list)):
+        return Json(value)
+    return value
 
 
 def _postgrest_json(value):
@@ -193,7 +207,9 @@ class _Table:
                     f"INSERT INTO {self._table} ({', '.join(cols)}) "
                     f"VALUES ({placeholders}) RETURNING *"
                 )
-                row = conn.execute(sql, list(payload.values())).fetchone()
+                row = conn.execute(
+                    sql, [_adapt_value(v) for v in payload.values()]
+                ).fetchone()
                 rows.append({k: _postgrest_json(v) for k, v in row.items()})
             return _PostgrestResult(rows)
 
@@ -204,7 +220,7 @@ class _Table:
                 if not _IDENT.match(c):
                     raise ValueError(f"Unsafe column: {c}")
             set_sql = ", ".join(f"{c} = %s" for c in set_cols)
-            update_param_list = [self._payload[0][c] for c in set_cols]
+            update_param_list = [_adapt_value(self._payload[0][c]) for c in set_cols]
             update_param_list.extend(self._params)
             update_sql = (
                 f"UPDATE {self._table} SET {set_sql}{self._where_sql()} RETURNING *"

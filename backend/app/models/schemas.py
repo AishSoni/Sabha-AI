@@ -30,10 +30,12 @@ class ProviderConfig(BaseModel):
     """LLM provider configuration for an AI participant.
     
     If provider or model are empty, the global defaults from settings will be used.
+    Empty provider_config (all fields empty) keeps every value on server defaults.
     """
     provider: str = ""  # Empty = use DEFAULT_LLM_PROVIDER from settings
     model: str = ""     # Empty = use provider's default model from settings
     temperature: float = 0.7
+    max_tokens: int = 2048
 
 
 class AIParticipantBase(BaseModel):

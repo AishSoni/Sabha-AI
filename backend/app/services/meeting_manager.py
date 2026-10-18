@@ -19,6 +19,7 @@ from app.models import (
     DisagreementCreate,
     Consensus,
     ConsensusCreate,
+    ProviderConfig,
     SenderType,
 )
 from app.services.prompts import DEFAULT_ROSTER, get_full_prompt
@@ -77,12 +78,22 @@ class MeetingManager:
                 if prompts_result.data:
                     active_prompt = prompts_result.data[0].get("content", "")
                 
+                # Snapshot the persona's generation settings into this
+                # participant at creation time; empty values keep the
+                # server defaults.
+                persona_cfg = persona_data.get("provider_config") or {}
                 participant = await self.add_participant(
                     AIParticipantCreate(
                         meeting_id=meeting_id,
                         name=persona_data["name"],
                         role=persona_data.get("subtitle") or "AI Assistant",
                         system_prompt=get_full_prompt(active_prompt),
+                        provider_config=ProviderConfig(
+                            provider=persona_cfg.get("provider") or "",
+                            model=persona_cfg.get("model") or "",
+                            temperature=persona_cfg.get("temperature", 0.7),
+                            max_tokens=persona_cfg.get("max_tokens", 2048),
+                        ),
                         color=persona_data["color"],
                         persona_id=persona_data["id"],
                     )

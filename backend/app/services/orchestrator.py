@@ -223,7 +223,8 @@ class Orchestrator:
         response = await provider.complete(
             messages=context,
             tools=tools,
-            temperature=provider_config.temperature
+            temperature=provider_config.temperature,
+            max_tokens=provider_config.max_tokens
         )
         
         # Track any conflicts/consensus from tool calls
@@ -325,7 +326,8 @@ class Orchestrator:
         async for event in provider.stream(
             messages=context,
             tools=tools,
-            temperature=provider_config.temperature
+            temperature=provider_config.temperature,
+            max_tokens=provider_config.max_tokens
         ):
             # Handle tool calls - execute them and yield results
             if event.type == StreamEventType.TOOL_CALL and event.tool_name:
