@@ -28,6 +28,7 @@ from app.models.schemas import (
     Consensus,
     # API
     TurnRequest,
+    RequestProviderSettings,
     UserMessageRequest,
     TurnResponse,
     # End Meeting
@@ -94,6 +95,7 @@ __all__ = [
     "ConsensusCreate",
     "Consensus",
     "TurnRequest",
+    "RequestProviderSettings",
     "UserMessageRequest",
     "TurnResponse",
     "EndMeetingVote",

@@ -15,9 +15,9 @@ from app.core.config import settings
 class OllamaProvider(LLMProvider):
     """Ollama local LLM provider for running models locally."""
     
-    def __init__(self, model: Optional[str] = None):
+    def __init__(self, model: Optional[str] = None, base_url: Optional[str] = None):
         self.model = model or settings.ollama_default_model
-        self.base_url = settings.ollama_base_url
+        self.base_url = base_url or settings.ollama_base_url
         
     def _convert_messages(self, messages: List[LLMMessage]) -> List[dict]:
         """Convert internal message format to Ollama format."""

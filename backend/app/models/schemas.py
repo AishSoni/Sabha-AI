@@ -198,10 +198,25 @@ class Consensus(ConsensusBase):
 
 # ============== API Request/Response Models ==============
 
+class RequestProviderSettings(BaseModel):
+    """Browser-supplied generation overrides for one turn (BYOK contract).
+
+    Every field is optional: absent fields fall back to the participant's
+    persisted provider_config, then to server defaults. The API key itself
+    never lives here — it rides the X-Provider-Key request header.
+    """
+    provider: Optional[str] = None
+    model: Optional[str] = None
+    temperature: Optional[float] = None
+    max_tokens: Optional[int] = None
+    base_url: Optional[str] = None
+
+
 class TurnRequest(BaseModel):
     """Request to trigger an AI's turn."""
     participant_id: str
-    
+    provider: Optional[RequestProviderSettings] = None
+
     
 class UserMessageRequest(BaseModel):
     """Request to add a user message."""

@@ -19,9 +19,10 @@ from app.core.config import settings
 class GeminiProvider(LLMProvider):
     """Google Gemini API provider."""
     
-    def __init__(self, model: Optional[str] = None):
+    def __init__(self, model: Optional[str] = None, api_key: Optional[str] = None):
         self.model = model or settings.gemini_default_model
-        self.api_key = settings.gemini_api_key
+        # BYOK: a browser-supplied key (per request) wins over the server key.
+        self.api_key = api_key or settings.gemini_api_key
         self.base_url = "https://generativelanguage.googleapis.com/v1beta"
         
     def _convert_messages(self, messages: List[LLMMessage]) -> tuple[str, list]:

@@ -17,10 +17,11 @@ from app.core.config import settings
 class OpenRouterProvider(LLMProvider):
     """OpenRouter API provider supporting multiple LLM backends."""
     
-    def __init__(self, model: Optional[str] = None):
+    def __init__(self, model: Optional[str] = None, api_key: Optional[str] = None):
         self.model = model or settings.openrouter_default_model
         self.base_url = settings.openrouter_base_url
-        self.api_key = settings.openrouter_api_key
+        # BYOK: a browser-supplied key (per request) wins over the server key.
+        self.api_key = api_key or settings.openrouter_api_key
         
     def _convert_messages(self, messages: List[LLMMessage]) -> List[dict]:
         """Convert internal message format to OpenRouter format."""

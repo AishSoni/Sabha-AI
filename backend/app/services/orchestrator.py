@@ -15,9 +15,12 @@ from app.models import (
     Disagreement,
     Consensus,
     TurnResponse,
+    ProviderConfig,
+    RequestProviderSettings,
 )
 from app.services.meeting_manager import MeetingManager
 from app.core.database import get_supabase
+from app.core.config import settings
 from app.services.tools import get_default_tools
 
 
@@ -33,6 +36,60 @@ def _merge_usage(total: dict, usage: dict | None) -> dict:
         if isinstance(value, (int, float)):
             total[key] = total.get(key, 0) + value
     return total
+
+
+class MissingProviderKeyError(ValueError):
+    """A cloud-provider turn carries no browser key (BYOK) and the server has
+    no configured key either — the turn cannot authenticate, so fail loudly
+    instead of silently proceeding."""
+
+
+def _resolve_generation_settings(
+    participant: AIParticipant,
+    provider_settings: Optional[RequestProviderSettings] = None,
+    provider_api_key: Optional[str] = None,
+) -> dict:
+    """Merge per-request browser overrides over the participant's persisted
+    provider_config snapshot (created at meeting time), then server defaults.
+
+    Request values win; absent request values fall back to the participant's
+    own settings; the API key never persists — it rides the request header
+    only. Cloud providers must have some key available or the turn is
+    rejected with MissingProviderKeyError.
+    """
+    config = getattr(participant, "provider_config", None) or ProviderConfig()
+    overrides = provider_settings or RequestProviderSettings()
+
+    resolved = {
+        "provider": overrides.provider or config.provider or "",
+        "model": overrides.model or config.model or "",
+        "temperature": (
+            overrides.temperature
+            if overrides.temperature is not None
+            else config.temperature
+        ),
+        "max_tokens": (
+            overrides.max_tokens
+            if overrides.max_tokens is not None
+            else config.max_tokens
+        ),
+        # base_url is a request-only concept (local Ollama destinations).
+        "base_url": overrides.base_url or None,
+        # Per-request secret; never stored with the participant.
+        "api_key": provider_api_key,
+    }
+
+    resolved["provider"] = resolved["provider"] or settings.default_llm_provider
+
+    if resolved["provider"] in ("openrouter", "gemini"):
+        server_key = getattr(settings, f"{resolved['provider']}_api_key", "")
+        if not resolved["api_key"] and not server_key:
+            raise MissingProviderKeyError(
+                f"No API key available for {resolved['provider']}. "
+                "Provide a browser key (BYOK) or configure the server key."
+            )
+
+    return resolved
 
 
 class Orchestrator:
@@ -199,7 +256,9 @@ class Orchestrator:
     async def execute_turn(
         self,
         meeting_id: str,
-        participant_id: str
+        participant_id: str,
+        provider_settings: Optional[RequestProviderSettings] = None,
+        provider_api_key: Optional[str] = None,
     ) -> TurnResponse:
         """
         Execute an AI participant's turn.
@@ -227,19 +286,19 @@ class Orchestrator:
         if not participant:
             raise ValueError(f"Participant not found: {participant_id}")
         
-        # Get LLM provider (use global defaults if participant config is empty)
-        provider_config = participant.provider_config
+        # Get LLM provider: browser overrides (BYOK, per request) merged over
+        # the participant's persisted config, then server defaults.
+        gen = _resolve_generation_settings(
+            participant, provider_settings, provider_api_key
+        )
         provider = get_provider(
-            provider_config.provider or None,  # Empty string = use default
-            provider_config.model or None       # Empty string = use default
+            provider_name=gen["provider"],
+            model=gen["model"] or None,  # Empty string = use default
+            api_key=gen["api_key"],
+            base_url=gen["base_url"],
         )
         
-        # Build context
-        context = self._build_context(participant, meeting.messages, meeting.agenda)
-        
-        # Core orchestration loop: the model may request tools, execute them
-        # once, feed the results back, and let the model continue reasoning
-        # until it answers without tool calls (or the round bound is hit).
+        # Build context once; the loop appends tool activity to it.
         context = self._build_context(participant, meeting.messages, meeting.agenda)
         messages = list(context)
 
@@ -257,8 +316,8 @@ class Orchestrator:
             response = await provider.complete(
                 messages=messages,
                 tools=tools,
-                temperature=provider_config.temperature,
-                max_tokens=provider_config.max_tokens
+                temperature=gen["temperature"],
+                max_tokens=gen["max_tokens"]
             )
             _merge_usage(usage_total, response.usage)
 
@@ -333,7 +392,9 @@ class Orchestrator:
     async def execute_turn_streaming(
         self,
         meeting_id: str,
-        participant_id: str
+        participant_id: str,
+        provider_settings: Optional[RequestProviderSettings] = None,
+        provider_api_key: Optional[str] = None,
     ):
         """
         Execute an AI participant's turn with streaming.
@@ -358,11 +419,16 @@ class Orchestrator:
             yield StreamEvent(type=StreamEventType.ERROR, content=f"Participant not found: {participant_id}")
             return
         
-        # Get LLM provider
-        provider_config = participant.provider_config
+        # Get LLM provider: browser overrides (BYOK, per request) merged over
+        # the participant's persisted config, then server defaults.
+        gen = _resolve_generation_settings(
+            participant, provider_settings, provider_api_key
+        )
         provider = get_provider(
-            provider_config.provider or None,
-            provider_config.model or None
+            provider_name=gen["provider"],
+            model=gen["model"] or None,
+            api_key=gen["api_key"],
+            base_url=gen["base_url"],
         )
         
         # Build context
@@ -392,8 +458,8 @@ class Orchestrator:
             async for event in provider.stream(
                 messages=messages,
                 tools=tools,
-                temperature=provider_config.temperature,
-                max_tokens=provider_config.max_tokens
+                temperature=gen["temperature"],
+                max_tokens=gen["max_tokens"]
             ):
                 # Handle tool calls - announce the call BEFORE executing so
                 # the UI sees the activity, then correlate the result to it.

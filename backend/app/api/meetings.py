@@ -2,7 +2,7 @@
 Meetings API routes.
 """
 
-from fastapi import APIRouter, HTTPException
+from fastapi import APIRouter, HTTPException, Request
 from typing import List
 
 from app.models import (
@@ -23,6 +23,7 @@ from app.models import (
     MeetingStatus,
 )
 from app.services import MeetingManager, Orchestrator
+from app.services.orchestrator import MissingProviderKeyError
 from app.llm import get_provider, LLMMessage
 
 router = APIRouter()
@@ -92,13 +93,25 @@ async def add_user_message(meeting_id: str, data: UserMessageRequest):
 
 
 @router.post("/{meeting_id}/turn", response_model=TurnResponse)
-async def execute_turn(meeting_id: str, data: TurnRequest):
-    """Trigger an AI participant's turn."""
+async def execute_turn(meeting_id: str, data: TurnRequest, request: Request):
+    """Trigger an AI participant's turn.
+
+    `data.provider` may carry browser generation settings (model, temperature,
+    max_tokens, base_url) and the BYOK key rides the X-Provider-Key header.
+    """
     orchestrator = get_orchestrator()
-    
+
     try:
-        response = await orchestrator.execute_turn(meeting_id, data.participant_id)
+        response = await orchestrator.execute_turn(
+            meeting_id,
+            data.participant_id,
+            provider_settings=data.provider,
+            provider_api_key=request.headers.get("X-Provider-Key"),
+        )
         return response
+    except MissingProviderKeyError as e:
+        # The turn cannot authenticate: browser key missing and no server key.
+        raise HTTPException(status_code=422, detail=str(e))
     except ValueError as e:
         raise HTTPException(status_code=404, detail=str(e))
     except Exception as e:
@@ -106,17 +119,23 @@ async def execute_turn(meeting_id: str, data: TurnRequest):
 
 
 @router.post("/{meeting_id}/turn/stream")
-async def execute_turn_stream(meeting_id: str, data: TurnRequest):
+async def execute_turn_stream(meeting_id: str, data: TurnRequest, request: Request):
     """Stream an AI participant's turn via Server-Sent Events."""
     from sse_starlette.sse import EventSourceResponse
     from app.services.streaming import events_to_sse
-    
+
     orchestrator = get_orchestrator()
-    
+    provider_api_key = request.headers.get("X-Provider-Key")
+
     async def stream_generator():
         try:
             async for sse_line in events_to_sse(
-                orchestrator.execute_turn_streaming(meeting_id, data.participant_id)
+                orchestrator.execute_turn_streaming(
+                    meeting_id,
+                    data.participant_id,
+                    provider_settings=data.provider,
+                    provider_api_key=provider_api_key,
+                )
             ):
                 yield sse_line
         except Exception as e:
