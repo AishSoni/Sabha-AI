@@ -6,12 +6,14 @@ Route one accepted use case through real dependency injection and atomic persist
 
 - [Foundations](spec-03-foundations-and-contracts.md) accepted, with runnable architecture, regression, and real-adapter harnesses.
 - Record the transaction strategy: narrow Postgres RPCs through Supabase, or an explicitly configured direct Postgres transaction adapter. A Python unit-of-work name cannot make sequential SDK calls atomic.
-- Inspect backend credential roles, grants, RLS, and function execution rights on a disposable copy. Preserve no-sign-in shared-workspace access in hosted and local demos; do not silently replace credentials or add owner filtering or a visitor authentication gate.
+- Inspect backend credential roles, grants, RLS, and function rights on a disposable copy. Follow the [runtime contract](reference-runtime-modes-and-credentials.md): replay is dedicated read-only/no-live-effects; live shared records remain separate. No account gate, per-user filters, or silent credential replacement.
 - Adopt [dependency/persistence contracts](reference-architecture-contracts.md#dependency-and-persistence-contracts) and the [backend target layout](reference-architecture-contracts.md#backend-target-layout).
 
 ## Scope and file movement
 
 Introduce `backend/app/bootstrap.py`, thin `backend/main.py`, shared presentation assembly/dependencies/errors, the first owning module's domain/application contracts, and its `infrastructure/supabase.py`. Start with a bounded atomic use case such as prompt activation; migrate its real HTTP caller, not only a test-only path.
+
+Compose server-bound runtime/workspace guards, recorded read ports, and rejecting write/effect ports at the same seams. Add `platform/runtime.py` and the first tested `replay/` contract/reader responsibilities, not the complete guide or a separate domain engine. Live credential adapters take scoped transient inputs rather than mutate global clients or persist visitor keys.
 
 Current mixed responsibilities are in `backend/app/core/database.py`, `backend/app/api/personas.py`, `backend/app/services/persona_manager.py`, and `backend/app/services/meeting_manager.py`. Keep unmigrated routes working until their own vertical slice is accepted. Do not relocate every schema or create empty modules.
 
@@ -20,7 +22,7 @@ Current mixed responsibilities are in `backend/app/core/database.py`, `backend/a
 - Same activation contract against a fake and real database: nonexistent target preserves old active selection; injected failure rolls back; concurrent operations serialize and retain at most one active version.
 - Real atomic creation/assignment contracts: participant insert or mapping failure leaves no partial meeting or replacement. Validate uniqueness and invalid targets with actual constraints.
 - Domain/application use case runs with injected fakes and no SDK construction. Presentation maps typed outcomes to safe HTTP errors instead of leaking SQL/provider details.
-- Real-role permissions reject direct browser/anonymous function/table bypass while intended backend credentials work. Anonymous visitors still use the API normally; re-run hosted/local no-sign-in and trusted-origin tests. The SQL `anon`/`authenticated` roles below are database roles, not a visitor sign-in requirement.
+- Real-role permissions reject direct browser/anonymous function/table bypass while intended live backend credentials work. Replay read-only adapters/roles reject writes; forged mode/workspace/resource IDs and direct API mutations cannot reach demo/live writes or provider construction. No visitor sign-in required; SQL `anon`/`authenticated` are infrastructure roles, not a login requirement.
 - Additive operation/idempotency/order persistence has conditional claims and version/fence guards; test the primitive here, full queue behavior in its later spec.
 
 ## Code example: atomic prompt activation at the database seam
@@ -64,6 +66,7 @@ See [Supabase function transactions and permissions](https://supabase.com/docs/g
 - Run the real caller through the new use case. Mappings/SDK details stay in infrastructure; no domain imports of HTTP DTOs, FastAPI, Supabase, Qdrant, or provider adapters.
 - Add the transaction contracts for meeting creation, assignment replacement, and operation claims incrementally as those seams become real; retain Phase 1 tests at each migrated caller.
 - Keep database claims/transactions short. No lock spans inference, embeddings, vector calls, parsing, or source transfer. Durable checkpoints/cleanup handle cross-system work later.
+- Test the real composition boundary: replay cannot resolve live provider/search/embedding/writable dependencies or silently fall back to them. Bind mode/workspace server-side, never trust a client flag to enable live effects. Bounded transient visitor credential handling must not alter infrastructure credentials or shared provider defaults.
 
 ## Exit gate
 

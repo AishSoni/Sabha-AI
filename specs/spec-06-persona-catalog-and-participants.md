@@ -8,6 +8,7 @@ Separate reusable templates from meeting-owned instances, and make generation in
 - Phase 1 snapshot, stack-update, generation-copy, prompt-atomicity, and editor-active-state regressions remain green. Implement `persona_instances`, `persona_history`, `knowledge_boundaries`, and provider configuration spies.
 - Agree on field-level inheritance representation and legacy migration rules. An empty/default marker is not evidence of a past effective value; unknown historical assignments remain unknown.
 - Read [snapshot/default contracts](reference-architecture-contracts.md#participant-snapshots-and-per-turn-inheritance), [Persona Catalog ownership](reference-architecture-contracts.md#persona-catalog), and target public-interface/import rules.
+- Preserve the [runtime/credential contract](reference-runtime-modes-and-credentials.md): participant/shared policy never owns a visitor's plaintext key. Hosted live credentials are transient and independent of snapshots; replay reads fixed catalog/participant records and cannot edit them.
 
 ## Bounded scope and paths
 
@@ -64,6 +65,6 @@ Persist identity/role/color and prompt/base-prompt revision or equivalent text t
 
 ## Exit gate
 
-Unit, database, API, component, and upgrade cases establish independent A/B instances, coherent snapshots, valid defaults/overrides, prompt atomicity, correct editor state, and template deletion with surviving assignments. No live template configuration lookup remains in the migrated execution path. Secrets are absent from DTOs/audits/cache. Explicit template adoption is not introduced.
+Unit, database, API, component, and upgrade cases establish independent A/B instances, coherent snapshots, defaults/overrides, prompt atomicity, editor state, and template deletion with surviving assignments. No live template lookup remains. Persisted snapshots, response DTOs, audits, and caches contain no secrets; only dedicated transient handoff requests may carry visitor credentials. Explicit template adoption is not introduced; replay cannot mutate templates/instances.
 
 Next: [Durable turn queue and unified inference](spec-07-durable-turn-queue-and-inference.md).

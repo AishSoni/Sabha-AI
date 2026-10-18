@@ -8,6 +8,7 @@ Prerequisites:
 - [Core correctness and access](spec-01-core-correctness-and-access.md) is accepted. In particular, the schema supports voting/ended, retrieval uses a supported client, and persona/settings/tool contracts work.
 - Follow the [roadmap TDD requirements](roadmap-phase-1-existing-issues.md#tdd-and-examples) and [full evidence/fixtures](reference-review-evidence-and-fixtures.md). Build deterministic barriers and restartable isolated adapters before race tests.
 - Implement `deferred_requests`, `stream_variants`, `indexing_barrier`, `indexed_parent`, `collection_creation_barrier`, `controlled_failure`, `inference_usage`, `creation_uploads`, and `ingestion_recovery`.
+- Preserve the [runtime/credential boundary](reference-runtime-modes-and-credentials.md): these mutation/recovery tests exercise live execution. Demo replay must not invoke them or write recovery/progress records; missing live credentials never justify operator-key fallback or secret persistence.
 - Before promising durable recovery, record where original bytes/job state survive restart, their retention, and how cleanup works. Phase 1 may instead expose interrupted ingestion as an honest terminal failure/re-upload path; it must not claim durable replay without retained input. The full source-store selection remains a blocking decision in [Phase 2 knowledge](spec-09-durable-knowledge-and-redaction.md).
 
 ## Backend work packages and tests to write first

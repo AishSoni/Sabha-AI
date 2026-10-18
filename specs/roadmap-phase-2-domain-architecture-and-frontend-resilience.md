@@ -10,12 +10,12 @@ Continue with **Spec 03 through Spec 11, in that order**, following the [ordered
 | --- | --- | --- |
 | [Spec 03: Foundations and executable contracts](spec-03-foundations-and-contracts.md) | Phase 1 accepted | Reproducible harnesses, contracts, import checks, decision gates |
 | [Spec 04: Backend composition and transactions](spec-04-backend-composition-and-transactions.md) | Foundations | First real atomic use case through injected composition |
-| [Spec 05: Frontend transport and state](spec-05-frontend-transport-and-state.md) | Foundations and backend seams/API contracts | One feature with typed transport and one canonical data owner |
+| [Spec 05: Frontend transport and state](spec-05-frontend-transport-and-state.md) | Foundations and backend seams/API contracts; tested vault contract | One feature with typed transport, runtime-scoped identity, encrypted vault, and one canonical data owner |
 | [Spec 06: Persona catalog and participants](spec-06-persona-catalog-and-participants.md) | Backend seams and frontend foundation | Independent snapshots, execution-time inheritance, canonical prompt editing |
 | [Spec 07: Durable turn queue and inference](spec-07-durable-turn-queue-and-inference.md) | Participant/configuration and operation persistence contracts | Durable queue, one execution pipeline, scoped observation |
 | [Spec 08: Closing, summaries, and accounting](spec-08-closing-summaries-and-accounting.md) | Queue accepted | Drain/cancel coordination, recoverable closing, atomic finalization, usage |
 | [Spec 09: Durable knowledge and redaction](spec-09-durable-knowledge-and-redaction.md) | Prior slices; explicit source-store/retention decision | Durable ready publication, live scoped retrieval, revocation/redaction/cleanup |
-| [Spec 10: Feature cutover and legacy removal](spec-10-feature-cutover-and-legacy-removal.md) | Persona, queue, closing, knowledge gates | Remaining screens migrated, no duplicate writers, caller-proven removal |
+| [Spec 10: Guided replay, feature cutover, and legacy removal](spec-10-feature-cutover-and-legacy-removal.md) | Persona, queue, closing, knowledge gates; validated fixed replay package | User-paced tutorial through the same UI/core, no writes/live effects, remaining screens migrated, caller-proven removal |
 | [Spec 11: Upgrade and architecture acceptance](spec-11-upgrade-and-architecture-acceptance.md) | All feature gates | Fresh/upgrade/restore/deployment evidence and final acceptance |
 
 ## Shared references, not additional implementation phases
@@ -23,14 +23,15 @@ Continue with **Spec 03 through Spec 11, in that order**, following the [ordered
 - [Architecture contracts](reference-architecture-contracts.md): confirmed decisions, domains, transactions, participant/default semantics, queue/message/closing behavior, knowledge deletion/redaction, frontend ownership, migration policy, fixture matrix, and final completion criteria.
 - [Target file structure](reference-architecture-contracts.md#target-file-structure-and-restructuring-plan): complete backend/frontend trees, import rules, current-to-target ownership, and incremental file-migration proof. Create files only when tested behavior moves; preserve URLs and startup compatibility.
 - [Phase 1 evidence and fixtures](reference-review-evidence-and-fixtures.md): preserved regressions and source anchors. Recheck implementations after fixes; source line numbers are not permanent APIs.
+- [Runtime modes and credentials](reference-runtime-modes-and-credentials.md): authoritative replay isolation, same-UI/core tutorial, encrypted local BYOK, and credential-aware operation recovery.
 
 These references are consulted by slice; they are not a request to implement the entire design at once. Their contracts remain authoritative when a short example shows only one aspect.
 
 ## Decisions every slice must preserve
 
-Retain FastAPI, Next.js/React, Supabase/Postgres, and Qdrant. Use anemic domain data with explicit domain/application services in a modular monolith. The hosted and local demo use one shared workspace with no sign-in, accounts, or user-auth session/token requirement; retain local Ollama. Keep credentials server-side and direct database access restricted without introducing a visitor login gate. Keep template snapshots independent, inherited defaults execution-scoped, knowledge contents live with source-linked evidence, and deletion redaction distinct from erasing conversation text.
+Retain FastAPI, Next.js/React, Supabase/Postgres, and Qdrant. Use anemic domain data with explicit domain/application services in a modular monolith. Hosted/local demo runs are fixed, user-paced guided replay through the same UI/core in a dedicated, isolated, no-write workspace; no sign-in, credentials, live calls, or durable effects. Hosted live calls use visitor credentials encrypted in browser `localStorage`, with the passphrase/derived key never persisted. Infrastructure secrets remain server-only; preserve explicit local environment/Ollama policy and restricted direct database access. Keep template snapshots independent, inherited defaults execution-scoped, knowledge contents live with source-linked evidence, and deletion redaction distinct from erasing conversation text.
 
-React owns drafts; TanStack Query owns backend records; Zustand owns scoped UI/provisional observation only. AI turns queue server-side; user messages commit immediately within active admission; closing cancels pending turns and drains the executing turn. Upload acknowledgement is not readiness. Breaking API cuts are coordinated and migration-tested.
+React owns drafts; TanStack Query owns backend records; Zustand owns scoped UI/provisional observation only. A separate non-persisted credential capability owns unlocked material; query/cache identities distinguish live from replay and its package/workspace. Live AI turns queue server-side; user messages commit immediately within active admission; closing cancels pending turns and drains the executing turn. Missing transient credentials pause the same operation for re-provision, not operator-key fallback or repeated paid work. Upload acknowledgement is not readiness. Breaking API cuts are coordinated and migration-tested.
 
 **Still undecided:** the original-byte source-store adapter. The knowledge spec cannot begin implementation until the Supabase Storage versus persistent-filesystem decision, durability/retention, local operation, and backup/restore policy are recorded. Keeping Supabase for application records does not settle file storage.
 
