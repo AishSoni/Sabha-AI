@@ -23,7 +23,7 @@ from app.models import (
     MeetingStatus,
 )
 from app.services import MeetingManager, Orchestrator
-from app.services.orchestrator import MissingProviderKeyError
+from app.services.orchestrator import MissingProviderKeyError, MeetingClosedError
 from app.services.meeting_closer import (
     EndAttemptIncomplete,
     MeetingCloser,
@@ -88,7 +88,18 @@ async def add_user_message(meeting_id: str, data: UserMessageRequest):
     meeting = await manager.get_meeting(meeting_id)
     if not meeting:
         raise HTTPException(status_code=404, detail="Meeting not found")
-    
+
+    # Closed meetings reject writes at the door: entry guard before any
+    # persistence (voting = ending in progress; ended/archived = read only).
+    if meeting.status != MeetingStatus.ACTIVE:
+        raise HTTPException(
+            status_code=409,
+            detail=(
+                f"Meeting is {meeting.status.value}; messages can only be sent "
+                "to an active meeting"
+            ),
+        )
+
     # Save user message
     message = await manager.save_message(
         MessageCreate(
@@ -119,6 +130,9 @@ async def execute_turn(meeting_id: str, data: TurnRequest, request: Request):
             provider_api_key=request.headers.get("X-Provider-Key"),
         )
         return response
+    except MeetingClosedError as e:
+        # Entry-time guard: closed meetings reject turns with a conflict.
+        raise HTTPException(status_code=409, detail=str(e))
     except MissingProviderKeyError as e:
         # The turn cannot authenticate: browser key missing and no server key.
         raise HTTPException(status_code=422, detail=str(e))

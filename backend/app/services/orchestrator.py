@@ -17,6 +17,7 @@ from app.models import (
     TurnResponse,
     ProviderConfig,
     RequestProviderSettings,
+    MeetingStatus,
 )
 from app.services.meeting_manager import MeetingManager
 from app.core.database import get_supabase
@@ -42,6 +43,16 @@ class MissingProviderKeyError(ValueError):
     """A cloud-provider turn carries no browser key (BYOK) and the server has
     no configured key either — the turn cannot authenticate, so fail loudly
     instead of silently proceeding."""
+
+
+class MeetingClosedError(ValueError):
+    """A turn targets a meeting whose status is no longer `active`.
+
+    Entry-time guard only (spec-02 "persist anyway" policy): once inference
+    has started, a meeting closing mid-turn does NOT roll back the paid
+    response — it persists as one late write and the closed status is never
+    reverted.
+    """
 
 
 def _resolve_generation_settings(
@@ -275,7 +286,14 @@ class Orchestrator:
         meeting = await self.meeting_manager.get_meeting(meeting_id)
         if not meeting:
             raise ValueError(f"Meeting not found: {meeting_id}")
-        
+
+        if meeting.status != MeetingStatus.ACTIVE:
+            # Entry-time guard: closes must not start paid inference for a
+            # meeting that already stopped accepting turns.
+            raise MeetingClosedError(
+                f"Meeting is {meeting.status.value}; turns are only allowed while a meeting is active"
+            )
+
         # Find the participant
         participant = None
         for p in meeting.participants:
@@ -357,7 +375,10 @@ class Orchestrator:
         # Estimate cost across ALL rounds of this turn
         cost = provider.estimate_cost(usage_total)
 
-        # Save the message once, after the loop settles
+        # Save the message once, after the loop settles.
+        # Late-write policy (spec-02): the meeting status is NOT re-checked
+        # here. A meeting closed mid-turn does not un-earn the paid
+        # response; exactly one write persists and the closed status stands.
         message = await self.meeting_manager.save_message(
             MessageCreate(
                 meeting_id=meeting_id,
@@ -407,7 +428,19 @@ class Orchestrator:
         if not meeting:
             yield StreamEvent(type=StreamEventType.ERROR, content=f"Meeting not found: {meeting_id}")
             return
-        
+
+        if meeting.status != MeetingStatus.ACTIVE:
+            # Entry-time guard: closed meetings never start paid inference;
+            # the client sees the rejection as a normal stream error event.
+            yield StreamEvent(
+                type=StreamEventType.ERROR,
+                content=(
+                    f"Meeting is {meeting.status.value}; turns are only allowed "
+                    "while a meeting is active"
+                ),
+            )
+            return
+
         # Find the participant
         participant = None
         for p in meeting.participants:
@@ -539,7 +572,7 @@ class Orchestrator:
             content = f"[{participant.name} used tools: {', '.join(t['tool'] for t in tool_calls_made)}]"
 
         cost = provider.estimate_cost(usage_total)
-        
+
         message = await self.meeting_manager.save_message(
             MessageCreate(
                 meeting_id=meeting_id,
