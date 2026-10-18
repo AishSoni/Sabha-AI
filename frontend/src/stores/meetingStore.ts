@@ -22,6 +22,7 @@ export interface StreamingMessage {
     content: string;
     thinkingContent: string;
     toolCalls: Array<{
+        id?: string;
         name: string;
         arguments?: Record<string, unknown>;
         result?: string;
@@ -219,6 +220,7 @@ export const useMeetingStore = create<MeetingState>((set, get) => ({
                                 toolCalls: [
                                     ...streamingMessage.toolCalls,
                                     {
+                                        id: event.tool_call_id,
                                         name: event.tool_name || '',
                                         arguments: event.tool_arguments,
                                         isExecuting: true,
@@ -233,7 +235,11 @@ export const useMeetingStore = create<MeetingState>((set, get) => ({
                             streamingMessage: {
                                 ...streamingMessage,
                                 toolCalls: streamingMessage.toolCalls.map(tc =>
-                                    tc.name === event.tool_name
+                                    // Correlated events match by call id; legacy events
+                                    // without ids fall back to name matching.
+                                    (event.tool_call_id
+                                        ? tc.id === event.tool_call_id
+                                        : tc.name === event.tool_name)
                                         ? { ...tc, result: event.tool_result, isExecuting: false }
                                         : tc
                                 ),

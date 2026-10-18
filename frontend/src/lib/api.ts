@@ -264,6 +264,7 @@ export interface StreamEvent {
     tool_name?: string;
     tool_arguments?: Record<string, unknown>;
     tool_result?: string;
+    tool_call_id?: string;
     source?: string;
     title?: string;
     url?: string;
