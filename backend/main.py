@@ -1,12 +1,38 @@
+from contextlib import asynccontextmanager
+
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from app.core.config import settings
 from app.api import meetings, participants, personas, settings as settings_api, documents, knowledge_stacks
 
+
+@asynccontextmanager
+async def lifespan(_: FastAPI):
+    """Recover from interrupted work, then serve.
+
+    Startup reconciliation (spec-02): orphaned 'processing' documents are
+    marked failed with a re-upload message and deferred vector-collection
+    cleanups are retried. The pass must never break startup; its failure mode
+    is a loud warning, retried next boot.
+    """
+    import logging
+    from app.services.recovery import reconcile_startup_state
+
+    logger = logging.getLogger("sabha.startup")
+    try:
+        summary = await reconcile_startup_state()
+        if summary.get("documents_failed") or summary.get("cleanups_attempted"):
+            logger.info("Startup reconciliation: %s", summary)
+    except Exception:
+        logger.warning("Startup reconciliation failed", exc_info=True)
+    yield
+
+
 app = FastAPI(
     title="Sabha API",
     description="Multi-Agent AI Advisory Board Backend",
-    version="0.1.0"
+    version="0.1.0",
+    lifespan=lifespan,
 )
 
 # CORS configuration
