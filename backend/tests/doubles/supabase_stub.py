@@ -152,6 +152,21 @@ class _Table:
     def neq(self, column: str, value) -> "_Table":
         return self._where("neq", column, value)
 
+    def is_(self, column: str, value) -> "_Table":
+        """supabase-py `.is_()`: NULL/boolean membership check."""
+        if not _IDENT.match(column):
+            raise ValueError(f"Unsafe column: {column}")
+        if value is None:
+            self._conditions.append(f"{column} IS NULL")
+        elif value is True:
+            self._conditions.append(f"{column} IS TRUE")
+        elif value is False:
+            self._conditions.append(f"{column} IS FALSE")
+        else:
+            self._conditions.append(f"{column} = %s")
+            self._params.append(value)
+        return self
+
     def like(self, column: str, pattern: str) -> "_Table":
         if not _IDENT.match(column):
             raise ValueError(f"Unsafe column: {column}")

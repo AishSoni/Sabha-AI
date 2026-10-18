@@ -31,6 +31,11 @@ from app.services.meeting_closer import (
     MeetingNotFoundError,
 )
 from app.llm import get_provider, LLMMessage
+from app.services.vector_cleanup import get_vector_cleanup_ledger
+from app.services.vector_store import VectorStoreManager, get_vector_store
+import logging
+
+logger = logging.getLogger(__name__)
 
 router = APIRouter()
 
@@ -321,16 +326,35 @@ async def unarchive_meeting(meeting_id: str):
 
 @router.delete("/{meeting_id}")
 async def delete_meeting(meeting_id: str):
-    """Permanently delete a meeting and all its data."""
+    """Permanently delete a meeting and all its data — including the shared
+    vector collection (recorded first as a pending cleanup so a Qdrant
+    outage cannot block the SQL delete; reconciliation finishes the work)."""
     manager = get_meeting_manager()
-    
+
     meeting = await manager.get_meeting(meeting_id)
     if not meeting:
         raise HTTPException(status_code=404, detail="Meeting not found")
-    
+
+    ledger = get_vector_cleanup_ledger()
+    collection_name = VectorStoreManager.meeting_collection_name(meeting_id)
+    pending_id = await ledger.record(
+        collection_name=collection_name,
+        target_kind="meeting",
+        target_id=meeting_id,
+    )
+    try:
+        await get_vector_store().delete_collection(collection_name)
+        await ledger.resolve(pending_id)
+    except Exception as exc:  # noqa: BLE001 - vector outage must not block deletion
+        logger.warning(
+            "Vector cleanup deferred for deleted meeting %s (%s): %s",
+            meeting_id, collection_name, exc,
+        )
+        await ledger.set_last_error(pending_id, str(exc))
+
     success = await manager.delete_meeting(meeting_id)
-    
+
     if not success:
         raise HTTPException(status_code=500, detail="Failed to delete meeting")
-    
+
     return {"success": True, "message": "Meeting deleted successfully"}

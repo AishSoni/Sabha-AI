@@ -297,12 +297,26 @@ async def delete_document(document_id: str):
     # must be fenced before we delete vectors or the record row.
     get_ingestion_registry().mark_tombstone(document_id)
 
-    # Delete vectors from Qdrant
+    # Delete vectors from Qdrant. Fail closed (spec-02 B2): if the vector
+    # cleanup cannot run, keep the record row so the user can retry — a
+    # deleted row with still-indexed points would be permanently orphaned.
     if doc.get("qdrant_collection"):
-        await vector_store.delete_document(
-            collection_name=doc["qdrant_collection"],
-            document_id=document_id,
-        )
+        try:
+            await vector_store.delete_document(
+                collection_name=doc["qdrant_collection"],
+                document_id=document_id,
+            )
+        except Exception as exc:
+            logger.warning(
+                "Vector cleanup failed for document %s: %s", document_id, exc
+            )
+            raise HTTPException(
+                status_code=503,
+                detail=(
+                    "Vector cleanup failed; the document was not deleted. "
+                    "Try again shortly."
+                ),
+            )
 
     # Delete document record
     db.table("documents").delete().eq("id", document_id).execute()
@@ -350,17 +364,21 @@ async def search_documents(request: DocumentSearchRequest):
         limit=request.limit,
     )
     
-    # Enrich with document info
+    # Enrich with document info, then DROP points whose document row is gone
+    # (spec-02 B2): a destroyed document (or stale injected point) must not
+    # come back as a `file_name="Unknown"` hit.
     document_ids = list(set(r.document_id for r in results))
     doc_info = {}
-    
+
     if document_ids:
         docs = db.table("documents")\
             .select("id, file_name")\
             .in_("id", document_ids)\
             .execute()
         doc_info = {d["id"]: d["file_name"] for d in docs.data}
-    
+
+    kept_results = [r for r in results if r.document_id in doc_info]
+
     return DocumentSearchResponse(
         query=request.query,
         results=[
@@ -368,10 +386,10 @@ async def search_documents(request: DocumentSearchRequest):
                 text=r.text,
                 score=r.score,
                 document_id=r.document_id,
-                file_name=doc_info.get(r.document_id, "Unknown"),
+                file_name=doc_info[r.document_id],
                 chunk_index=r.chunk_index,
             )
-            for r in results
+            for r in kept_results
         ],
-        total_results=len(results),
+        total_results=len(kept_results),
     )
