@@ -17,7 +17,7 @@ Current anchors: `backend/app/core/database.py`, `backend/app/services/meeting_m
 
 ## Tests to write first
 
-- Characterize accepted creation, persona edit/history, turn/tool behavior, end/recovery, upload/search/delete, settings, archive/reporting, and local/authenticated entry. Do not characterize a known review defect as supported behavior.
+- Characterize accepted creation, persona edit/history, turn/tool behavior, end/recovery, upload/search/delete, settings, archive/reporting, and no-sign-in hosted/local demo access. Verify a fresh visitor needs neither accounts nor an Auth bootstrap. Do not characterize a known review defect as supported behavior.
 - A deliberately forbidden domain SDK import must fail the architecture checker; legal imports must pass. Cover absolute and relative imports, module public interfaces, indirect imports causing SDK construction, and frontend private-feature dependencies.
 - Instantiate the first domain/application use case with fakes while client constructors are patched to fail. Merely avoiding network calls is weaker than avoiding SDK construction/import coupling.
 - Prove fixture reset, fake clocks/barriers, split-event transport, and disposable migrations actually run in CI. Preserve Phase 1 assertions through later moves.

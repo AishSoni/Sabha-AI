@@ -4,6 +4,8 @@ Start with **Spec 01**, then implement each spec in ascending order through **Sp
 
 All documents live directly in this folder. Files starting with `spec-` are implementation assignments. Files starting with `roadmap-` or `reference-` are supporting documents, not additional implementation steps.
 
+**Access decision for every spec:** The demo is completely no-sign-in, both hosted and local. Visitors use one shared workspace without accounts, login/signup screens, user-auth tokens, or a required Supabase Auth session (including anonymous sign-in). This supersedes the earlier mandatory authentication gate. Keep database/provider credentials server-side, direct database permissions restricted, server-side operation/resource limits, and participant-private knowledge boundaries; none requires visitor authentication. Adding authentication is outside this implementation sequence.
+
 ## Ordered specs
 
 | Order | Implementation spec | Phase |

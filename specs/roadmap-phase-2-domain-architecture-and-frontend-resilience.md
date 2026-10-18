@@ -28,7 +28,7 @@ These references are consulted by slice; they are not a request to implement the
 
 ## Decisions every slice must preserve
 
-Retain FastAPI, Next.js/React, Supabase/Postgres, and Qdrant. Use anemic domain data with explicit domain/application services in a modular monolith. Authentication gates one shared workspace; retain explicit trusted local no-login and local Ollama. Keep template snapshots independent, inherited defaults execution-scoped, knowledge contents live with source-linked evidence, and deletion redaction distinct from erasing conversation text.
+Retain FastAPI, Next.js/React, Supabase/Postgres, and Qdrant. Use anemic domain data with explicit domain/application services in a modular monolith. The hosted and local demo use one shared workspace with no sign-in, accounts, or user-auth session/token requirement; retain local Ollama. Keep credentials server-side and direct database access restricted without introducing a visitor login gate. Keep template snapshots independent, inherited defaults execution-scoped, knowledge contents live with source-linked evidence, and deletion redaction distinct from erasing conversation text.
 
 React owns drafts; TanStack Query owns backend records; Zustand owns scoped UI/provisional observation only. AI turns queue server-side; user messages commit immediately within active admission; closing cancels pending turns and drains the executing turn. Upload acknowledgement is not readiness. Breaking API cuts are coordinated and migration-tested.
 

@@ -16,8 +16,8 @@ The [review evidence and fixture reference](reference-review-evidence-and-fixtur
 - Inventory real source and test files; cached bytecode and empty directories do not establish a runnable suite. Select/configure backend and frontend test runners and required async/component plugins before using the example tests.
 - Establish isolated, resettable Postgres/Supabase and Qdrant resources. Never run destructive fixtures or permission migrations against existing personal/shared data.
 - Capture supported local startup and API behavior with characterization tests, without freezing the bugs under review. Record dependency versions and actual commands; this roadmap does not assert a passing baseline.
-- Read the [constraints](reference-review-evidence-and-fixtures.md#constraints-that-every-fix-must-preserve) and [fixture contracts](reference-review-evidence-and-fixtures.md#shared-test-fixture-definitions). Keep one shared workspace, explicit local no-login mode, trusted local Ollama, participant-private knowledge, and independent participant snapshots.
-- Resolve database roles and credential usage before access changes. Exposure must remain blocked until authentication, direct database access, and trusted-origin tests pass; their position in a work package is not permission to expose an insecure deployment.
+- Read the [constraints](reference-review-evidence-and-fixtures.md#constraints-that-every-fix-must-preserve) and [fixture contracts](reference-review-evidence-and-fixtures.md#shared-test-fixture-definitions). Keep one no-sign-in shared workspace in hosted and local demos, trusted local Ollama, participant-private knowledge, and independent participant snapshots.
+- Resolve database roles and credential usage before permission changes. Before exposure, test direct database restrictions, server-only credentials, trusted origins, and server-side operation/resource limits. Do not introduce a login gate as an exposure prerequisite; anonymous demo access is intentional.
 
 ## TDD and examples
 
@@ -27,4 +27,4 @@ Code blocks in the implementation specs are **proposed, focused fragments** anch
 
 ## Completion and handoff
 
-Both specs' exit gates must pass, including ordinary and failure paths, fresh/upgrade schemas, local no-login, authenticated shared access, and configured local integrations. Retain the regression tests as the baseline for Phase 2. Use descriptive change/commit names, without finding indexes or numbered prefixes.
+Both specs' exit gates must pass, including ordinary and failure paths, fresh/upgrade schemas, no-sign-in shared access in hosted and local configurations, and configured local integrations. Retain the regression tests as the baseline for Phase 2. Use descriptive change/commit names, without finding indexes or numbered prefixes.

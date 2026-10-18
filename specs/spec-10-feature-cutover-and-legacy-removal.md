@@ -17,7 +17,7 @@ Retire `frontend/src/lib/api.ts`, the old canonical `meetingStore`/settings writ
 ## Tests to write first
 
 - Remaining real-route flows: shared defaults/System AI, metadata reload with old persisted storage, archive/unarchive/reporting, real summaries, per-file retry, and failed/delayed draft saves. No canned runtime history enters ordinary views.
-- Auth expiry/logout across fetch/upload/status/SSE clears observation/cache correctly; local no-login still works. Shared transport cannot import feature stores or backend table/provider clients.
+- Fresh visitors use fetch/upload/status/SSE in hosted and local demos without sign-in, accounts, user-auth tokens, or Auth bootstrap; no login boundary or auth-only cache owner remains in the target. Shared transport cannot import feature stores or backend table/provider clients, and responses must not disclose server secrets.
 - Feature-private imports and dependency cycles fail; curated public exports pass. One canonical Query owner exists per backend record; Zustand only owns scoped UI/provisional state.
 - Navigation/remount and stale refetch preserve current identity/revision, never resubmit commands or duplicate canonical/provisional output.
 - Production imports never reach fixtures/tests or retired writers. Generated API types are reproducible and drift-tested against backend schemas.
@@ -50,7 +50,7 @@ it("reconnects to the same operation without a second command", async () => {
 });
 ```
 
-Use fixed valid UUIDs in the actual API fixture. Add late A events while B is selected, logout, terminal/refetch deduplication, and explicit pending cancellation; navigation itself is not cancellation.
+Use fixed valid UUIDs in the actual API fixture. Add late A events while B is selected, a fresh no-sign-in browser context, terminal/refetch deduplication, and explicit pending cancellation; navigation itself is not cancellation.
 
 ## Green and refactor
 
@@ -61,6 +61,6 @@ Use fixed valid UUIDs in the actual API fixture. Add late A events while B is se
 
 ## Exit gate
 
-Every supported workflow uses declared ownership and public boundaries. Thin routes do not access infrastructure; components do not implement raw SSE/provider persistence; no duplicate canonical store or legacy compatibility writer remains in migrated production paths. Full frontend/backend Phase 1 regressions, architecture checks, auth/local behavior, and coordinated feature tests pass.
+Every supported workflow uses declared ownership and public boundaries. Thin routes do not access infrastructure; components do not implement raw SSE/provider persistence; no duplicate canonical store or legacy compatibility writer remains in migrated production paths. Full frontend/backend Phase 1 regressions, architecture checks, hosted/local no-sign-in behavior, and coordinated feature tests pass.
 
 Next: [Upgrade rehearsal and architecture acceptance](spec-11-upgrade-and-architecture-acceptance.md).

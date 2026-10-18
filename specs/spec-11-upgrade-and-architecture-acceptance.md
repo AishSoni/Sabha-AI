@@ -21,7 +21,7 @@ Do not add new features or revive old branch implementations here. Transitional 
 - Existing IDs/messages/summaries/costs/explicit settings survive. Missing assignments/effective history/original bytes remain honestly unknown/unavailable, never inferred as fabricated snapshots or successful reconstruction.
 - Back up and restore SQL **and actual original bytes**, then reconcile deletion/redaction before reopening retrieval. Old backups must not resurrect deleted knowledge or retained raw passages.
 - Fresh checkout can install, generate API types, run tests, build and start HTTP/optional worker without author-local caches, test package imports, or ignored source/seed files. Legitimate document bytes come from the selected configured source store.
-- Both approved identities share records; unauthenticated exposure fails before cost/mutation; explicit local no-login and configured local Ollama work. Provider/worker interruption and cleanup failure remain recoverable without paid inference.
+- Two independent fresh visitors share records without sign-in in hosted and local demos, including upload/status/SSE workflows; no accounts, user-auth tokens, or Auth bootstrap are needed. Direct database restrictions, credential non-disclosure, operation/resource limits, and configured local Ollama work. Provider/worker interruption and cleanup failure remain recoverable without paid inference.
 - Rehearse deployment compatibility or declared maintenance window and recovery after a mid-cutover failure. Irreversible redaction cannot be undone by promising an unsafe restore.
 
 ## Code example: upgrade preserves known values without inventing missing ones
@@ -63,7 +63,7 @@ The required later revocation metadata must actually survive the restore boundar
 
 ## Green and refactor
 
-- Run fresh, upgrade, restart, backup/restore, API/SSE/client, import, and local/authenticated scenarios using the selected real adapters and controlled provider transports.
+- Run fresh, upgrade, restart, backup/restore, API/SSE/client, import, and hosted/local no-sign-in scenarios using the selected real adapters and controlled provider transports.
 - Execute the deployment rehearsal in its actual order, validate backfills before switching readers/writers, and retain one workflow owner through compatibility windows. Do not drop data because a new class no longer reads it.
 - Publish actual commands/results, versions, setup/startup, module owners, source-store/retention/backup procedures, operation/worker recovery, and unresolved limitations. Lint/types/build supplement the behavioral tests.
 

@@ -6,7 +6,7 @@ Route one accepted use case through real dependency injection and atomic persist
 
 - [Foundations](spec-03-foundations-and-contracts.md) accepted, with runnable architecture, regression, and real-adapter harnesses.
 - Record the transaction strategy: narrow Postgres RPCs through Supabase, or an explicitly configured direct Postgres transaction adapter. A Python unit-of-work name cannot make sequential SDK calls atomic.
-- Inspect backend credential roles, grants, RLS, and function execution rights on a disposable copy. Preserve the shared-workspace gate and local operation; do not silently replace credentials or add owner filtering.
+- Inspect backend credential roles, grants, RLS, and function execution rights on a disposable copy. Preserve no-sign-in shared-workspace access in hosted and local demos; do not silently replace credentials or add owner filtering or a visitor authentication gate.
 - Adopt [dependency/persistence contracts](reference-architecture-contracts.md#dependency-and-persistence-contracts) and the [backend target layout](reference-architecture-contracts.md#backend-target-layout).
 
 ## Scope and file movement
@@ -20,7 +20,7 @@ Current mixed responsibilities are in `backend/app/core/database.py`, `backend/a
 - Same activation contract against a fake and real database: nonexistent target preserves old active selection; injected failure rolls back; concurrent operations serialize and retain at most one active version.
 - Real atomic creation/assignment contracts: participant insert or mapping failure leaves no partial meeting or replacement. Validate uniqueness and invalid targets with actual constraints.
 - Domain/application use case runs with injected fakes and no SDK construction. Presentation maps typed outcomes to safe HTTP errors instead of leaking SQL/provider details.
-- Real-role permissions reject anonymous function/table bypass while intended backend credentials work. Re-run local/authenticated shared-workspace and trusted-origin tests.
+- Real-role permissions reject direct browser/anonymous function/table bypass while intended backend credentials work. Anonymous visitors still use the API normally; re-run hosted/local no-sign-in and trusted-origin tests. The SQL `anon`/`authenticated` roles below are database roles, not a visitor sign-in requirement.
 - Additive operation/idempotency/order persistence has conditional claims and version/fence guards; test the primitive here, full queue behavior in its later spec.
 
 ## Code example: atomic prompt activation at the database seam

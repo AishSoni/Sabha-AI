@@ -14,7 +14,7 @@ Phase 1 fixes and their regression tests are the behavioral baseline. Architectu
 | --- | --- |
 | Application stack | Retain FastAPI, Next.js/React, Supabase/Postgres, and Qdrant. No database or vector-store replacement is part of this work. |
 | Backend style | Modular monolith with anemic domain models and explicit domain/application services. Enforce invariants without requiring behavior-rich entities or elaborate patterns for simple CRUD. |
-| Access | Keep one shared workspace. Authentication gates entry; approved identities see the same application data. Preserve explicit development-only local no-login operation and trusted local Ollama integration. |
+| Access | The hosted and local demo are completely no-sign-in: one shared workspace, no accounts, login/signup UI, user-auth tokens, required Supabase Auth session, or anonymous sign-in bootstrap. This supersedes the earlier mandatory entry gate; authentication is outside this implementation sequence. Keep infrastructure credentials server-side, direct database permissions restricted, server-side operation/resource limits, participant-private knowledge, and trusted local Ollama integration. |
 | Participant identity | Identity, prompt, explicit generation overrides, and knowledge-stack assignments are fixed when a participant joins. Later template edits do not propagate to that participant. |
 | Default generation settings | Preserve an explicit inheritance policy. Resolve inherited settings at each turn's execution start, not participant creation or queue submission. Record the effective configuration for that operation. Credential rotation is independent. |
 | Knowledge contents | Assigned stack IDs are fixed, but their eligible document contents remain live. Record the sources/revisions and passages used; exact historical replay is not promised. |
@@ -92,7 +92,7 @@ Meeting-shared documents and participant-assigned stacks determine AI retrieval 
 
 ### Supporting execution and configuration capabilities
 
-Provide provider/embedding adapters, tool dispatch, settings resolution, usage accounting, job execution, clocks/IDs, and authentication infrastructure. These are supporting capabilities, not automatically independent business domains or deployed services.
+Provide provider/embedding adapters, tool dispatch, settings resolution, usage accounting, job execution, and clocks/IDs. These are supporting capabilities, not automatically independent business domains or deployed services. No visitor authentication capability is required for the demo.
 
 Inference is an application workflow. Domain services decide business policies; provider SDK details, HTTP errors, stream framing, and SQL/Qdrant calls stay outside domain models. Keep tool-loop limits, context-budget behavior, error handling, and usage recording consistent between streaming and non-streaming entry points.
 
@@ -106,7 +106,7 @@ Inference is an application workflow. Domain services decide business policies; 
 - Cross-module work goes through explicit application interfaces. Infrastructure may implement a documented cross-table atomic operation without allowing one domain module to mutate another module's internals arbitrarily.
 - Define atomic operations for meeting-plus-participant creation, prompt activation, assignment replacement, operation admission/claiming, final turn publication, and summary-plus-ended commit. Database constraints and conditional writes back service-level validation.
 - A Python unit-of-work abstraction must represent a real database transaction, not sequential Supabase `.execute()` calls. A narrow Postgres function invoked through RPC is a viable starting point for atomic operations; a direct Postgres transaction adapter is an alternative requiring an explicit decision and connection configuration. Preserve the chosen abstraction's rollback semantics with integration tests.
-- If using database functions, constrain caller permissions and execution privileges; do not expose a new anonymous bypass around the Phase 1 gate. Do not duplicate the entire business policy in SQL: keep only necessary constraints, concurrency guards, and atomic persistence operations there.
+- If using database functions, constrain caller permissions and execution privileges; direct browser/anonymous table or internal RPC access must not bypass backend validation and resource controls. Anonymous visitors use the API, which uses its configured server credential; this is not a visitor login gate. Do not duplicate the entire business policy in SQL: keep only necessary constraints, concurrency guards, and atomic persistence operations there.
 - Never hold a transaction or database lock across inference, embedding, parsing, file transfer, or vector-store calls. Use short claims/transitions, operation IDs, persisted checkpoints, and compensating/reconciliation work.
 - Make blocking SDK calls deliberately off-loop or use supported async adapters. Bound worker/provider concurrency and resource consumption independently of the per-meeting queue.
 
@@ -174,7 +174,7 @@ Inference is an application workflow. Domain services decide business policies; 
 | Form input, prompt edits, temporary validation, upload selection | React component/feature-local state; protect draft edit versions during saves |
 | Selected UI panels, cross-component presentation preferences, active observation references, provisional streamed tokens/tool activity | Focused Zustand stores/controllers scoped to meeting and operation identity |
 | Authoritative generation defaults and System AI configuration | Backend settings contract; cached as server state, edited through validated mutations |
-| HTTP authentication, DTO decoding, errors, AbortSignal, multipart upload, stream parsing | Shared transport layer with feature-facing typed clients |
+| No-sign-in HTTP requests, DTO decoding, errors, AbortSignal, multipart upload, stream parsing | Shared transport layer with feature-facing typed clients; no visitor-auth session or server credentials |
 
 - Organize features around Meetings, Persona Catalog, Knowledge, and Settings. Keep route components thin; feature hooks/use cases coordinate workflows and presentation components render state.
 - Feature modules expose intentional public interfaces. Do not import another feature's private store/component internals or hide business logic in generic shared helpers.
@@ -185,7 +185,7 @@ Inference is an application workflow. Domain services decide business policies; 
 - Separate command submission from operation observation. Queue cancellation, navigation detach, and interrupted stream recovery have distinct behavior. Render waiting turns and pending uploads honestly after remount.
 - Prevent stale refetches from regressing newly committed records, using canonical ordering/revisions and reconciliation rules. Tool activity matches call IDs, not tool names, and is not duplicated after final refetch.
 - Persist only justified client preferences, with versioned migration and explicit hydration. Do not persist active stream flags, server initialization gates, raw credentials, or canonical server records. React Server Components must not share mutable client stores across requests.
-- Authentication-required mode uses the shared authenticated transport for normal fetches, uploads, status reads, and SSE initiation. Logout/expiry stops observation and clears sensitive client/cache state; the server independently enforces entry. Preserve explicit local no-login behavior.
+- Hosted and local demo visitors use ordinary fetches, uploads, status reads, and SSE initiation without accounts, auth headers/cookies, login redirects, or Auth bootstrap. Do not add a login boundary or require an authentication SDK. Server-side workflow, admission, resource, and private-knowledge controls still apply; browser state cannot disable them. Settings/stream/error responses must not disclose server credential values.
 
 ## API, schema, and migration policy
 
@@ -285,10 +285,9 @@ backend/
         ports.py                  # Claim/checkpoint/clock/handler requirements without SDK imports
         runner.py                 # Bounded supervision and recovery through registered handlers/ports
     platform/
-      config.py                   # Process/environment configuration and local-mode validation
+      config.py                   # Process/environment configuration and trusted integration validation
       database.py                 # Supabase client lifecycle; no user-session mutation of shared clients
       qdrant.py                   # Qdrant client lifecycle, not retrieval policy
-      authentication.py          # Shared-workspace verification and explicit local bypass adapter
       configuration.py           # Settings/credential adapter and trusted provider-origin enforcement
       providers/
         ollama.py
@@ -301,7 +300,7 @@ backend/
     unit/                         # Domain/capability rules, grouped by owning module
     application/                  # Workflow tests using injected fakes and deterministic barriers
     contract/                     # Shared repository/provider/source-store adapter contracts
-    api/                          # Actual HTTP/SSE schemas, access enforcement, and transport behavior
+    api/                          # Actual no-sign-in HTTP/SSE, workflow/resource guards, and transport
     integration/                  # Disposable Postgres/Qdrant/source-store and restart/migration tests
     regression/                   # Phase 1 cases retained through migration
     doubles/                      # Test-only providers, stores, clocks, and controlled transports
@@ -325,7 +324,7 @@ frontend/
   src/
     app/
       layout.tsx                  # Existing route shell and server/client composition boundary
-      providers.tsx               # QueryClient, auth lifecycle, and UI-store composition
+      providers.tsx               # QueryClient and UI-store composition; no visitor auth bootstrap
       page.tsx                    # Existing home route; composes feature public interfaces
       meetings/
         page.tsx
@@ -344,7 +343,7 @@ frontend/
       meetings/
         index.ts                  # Intentional public components/hooks, not every private file
         api/
-          client.ts               # Meeting commands/queries through shared authenticated transport
+          client.ts               # Meeting commands/queries through shared no-sign-in transport
           keys.ts                 # Identity-scoped meeting/operation query keys
           queries.ts              # TanStack Query reads and canonical server-state ownership
           mutations.ts            # Command submission and deliberate cache reconciliation/invalidation
@@ -392,12 +391,9 @@ frontend/
     shared/
       api/
         generated.ts              # Reproducible types from the accepted backend API contract
-        transport.ts              # Auth-aware JSON/multipart/status requests and AbortSignal handling
+        transport.ts              # No-sign-in JSON/multipart/status requests and AbortSignal handling
         errors.ts                 # Safe typed failures, not raw provider exceptions
         sse.ts                    # Reusable framing/decoding; no meeting state or automatic commands
-      auth/
-        session.ts                # Public auth configuration/session lifecycle, never server secrets
-        AuthBoundary.tsx          # Shared-workspace entry and explicit local-mode presentation
       layout/                     # Reusable shell/sidebar; business panels remain feature-owned
       state/preferencesStore.ts   # Justified cross-feature UI preferences with versioned hydration
       lib/utils.ts                # Small framework-neutral helpers, not business workflow functions
@@ -417,7 +413,7 @@ Frontend placement and import rules:
 - Meetings owns participant instances, conversation, turn queues, and closing UI. Persona Catalog owns templates/history. Knowledge owns document/stack/upload UI and its query keys. A meeting screen consumes the exported `DocumentPanel` or upload hook through `features/knowledge/index.ts`, not Knowledge's private API/cache/store files.
 - `features/*/index.ts` is a curated interface, not a wildcard barrel. Shared code and primitives cannot import features; a feature may consume another feature's public interface only in a documented direction. Compose reciprocal workflows in the route/provider layer instead of creating cyclic feature dependencies.
 - Zustand stores under `features/meetings/state/` contain only UI/observation state. Never relocate the old full `meetingStore` unchanged into that directory. Settings data belongs in Settings Query state; cross-feature presentation preferences may persist in `shared/state/preferencesStore.ts` without credentials or server records.
-- Shared auth may use the public browser authentication SDK; it must not query application tables directly or import server/service-role credentials. The frontend does not construct provider, embedding, vector-store, or backend data clients. Logout cleanup is composed through explicit callbacks/interfaces rather than Shared importing private feature stores.
+- No visitor authentication SDK, session bootstrap, login route, or Auth boundary is required or added by this plan. The browser must not query application tables directly or import server/service-role credentials; it does not construct provider, embedding, vector-store, or backend data clients. Compose observation/cache cleanup through explicit interfaces rather than Shared importing private feature stores; cleanup remains resource/operation-scoped, not account-scoped.
 - Colocate pure, hook, store, and component tests as `*.test.ts` or `*.test.tsx` beside their feature files. Keep cross-feature/route/transport tests in `frontend/tests/integration/`; keep reusable synthetic fixtures in `frontend/tests/fixtures/`. Production modules must never import test doubles or fixture data.
 - Retain existing assets, global styles, and framework configuration in their appropriate current locations. Do not move stable UI primitives or rename URLs just to make the trees symmetrical. Generate `shared/api/generated.ts` reproducibly and test drift against backend contracts.
 
@@ -449,7 +445,7 @@ These are responsibility splits, not mechanical whole-file renames. Confirm call
 
 - **Baseline and executable architecture contracts:** Inventory real source files/callers; adopt the target boundaries above; write failing import/SDK-isolation checks. Do not create the entire tree or relocate all tests first.
 - **Backend composition and atomic persistence seams:** Introduce `bootstrap.py`, presentation assembly, the first module ports/adapters, and real atomic persistence. Switch one supported use case through the entry point; retain other working routes until their own slice migrates.
-- **Frontend transport and state foundation:** Introduce `app/providers.tsx`, Shared transport/auth, and the first feature's API/query ownership. Move its components and callers together; a compatibility wrapper must delegate rather than create another writer.
+- **Frontend transport and state foundation:** Introduce `app/providers.tsx`, Shared no-sign-in transport, and the first feature's API/query ownership. Move its components and callers together; a compatibility wrapper must delegate rather than create another writer.
 - **Persona catalog and independent participants:** Populate Persona Catalog and the participant-creation/configuration seams in Meetings; migrate roster/history/settings callers and their tests without changing existing URLs.
 - **Durable turn queue and unified inference:** Split the orchestrator into Meetings workflows and injected capabilities. Migrate turn HTTP/observation, meeting components, reconciliation, and UI stores as one accepted slice.
 - **Coordinated closing, summaries, and usage:** Move closing policy/workflow/persistence and its feature UI together; remove the old route-level implementation only after failure and replay tests pass through the new path.
@@ -478,7 +474,7 @@ Reuse Phase 1 contracts such as `meetings_ab`, `persona_instances`, `provider_sc
 | `source_store_contract` | Selected real adapter and fake agree on bounded writes, durable receipt, missing-source errors, deletion, stage cleanup, restart, and backup/restore. |
 | `live_knowledge_and_redaction` | Template assignment edits cannot change A's scope; eligible new stack content is live; deleted sources cannot be newly retrieved/reused; all declared stored passage copies redact while existing messages remain. |
 | `upgrade_dataset` | Existing IDs/messages/costs survive; explicit configuration remains explicit; unknown assignments/originals are honest; no migration restores deleted content. |
-| `shared_workspace_access` | Two approved identities see the same records; unapproved access fails before mutation/inference; local bypass remains explicit and cannot be enabled through request input. |
+| `shared_workspace_access` | Two independent fresh visitors see the same records without accounts, auth headers/cookies, login redirects, or Auth bootstrap in hosted and local demos. Cover fetch/upload/status/SSE; direct table/internal RPC bypass is denied, server secrets stay private, resource limits apply, and supplied user IDs/headers do not expand private knowledge scopes or disable guards. |
 | `frontend_ownership` | Server records have one owner; provisional buffers reconcile once; stale completions cannot clear newer operations; draft edit versions and pending-upload identity survive the required failure paths. |
 
 ## Completion criteria
@@ -489,7 +485,7 @@ Reuse Phase 1 contracts such as `meetings_ab`, `persona_instances`, `provider_sc
 - Supabase remains the authoritative application store and Qdrant the vector projection. Original bytes have an explicitly selected, tested durable store; backup/restore covers bytes rather than metadata alone.
 - Frontend state follows the ownership table, with explicit command/observation separation, operation-scoped cleanup, canonical cache reconciliation, and no duplicate server-data stores.
 - The target file structure is populated by accepted behavior, not empty scaffolding. Current-to-target caller migration is complete, public interfaces/import checks pass, and obsolete mixed-layer writers are removed without changing required URLs or losing regression coverage.
-- Fresh installation, upgrade, local no-login mode, authenticated shared-workspace mode, trusted local Ollama, worker interruption, provider failure, cleanup failure, and coordinated deployment are exercised without paid inference as a required dependency.
+- Fresh installation, upgrade, hosted/local no-sign-in shared-workspace access, trusted local Ollama, worker interruption, provider failure, cleanup failure, and coordinated deployment are exercised without paid inference as a required dependency. No account, user-auth token, or anonymous Auth bootstrap is an acceptance prerequisite.
 - Real-provider smoke tests, if desired, remain separately opt-in. Record supported dependency versions and actual test/build/type/lint results; do not present source inspection or a successful build as proof of lifecycle correctness.
 
 ## Documentation references

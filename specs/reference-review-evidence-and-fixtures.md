@@ -10,8 +10,8 @@ Record the code review findings, likely fixes, and concrete regression tests so 
 
 ### Constraints that every fix must preserve
 
-- **One shared workspace, not user-scoped data.** Authentication controls entry. Approved accounts access the same meetings, personas, documents, and knowledge stacks. Do not add tenant isolation or per-user ownership filters to resolve this review.
-- **Local development remains usable without login.** Any authentication changes must retain an explicit development-only local mode, restricted to a trusted loopback deployment. An exposed deployment must not silently fall back to that mode.
+- **One shared workspace, not user-scoped data.** Demo visitors access the same meetings, personas, documents, and knowledge stacks without signing in. Do not add tenant isolation or per-user ownership filters to resolve this review.
+- **The hosted and local demo require no sign-in at all.** No login/signup UI, accounts, user-auth tokens, required Supabase Auth session, or anonymous sign-in bootstrap. This explicitly supersedes the earlier authentication-gate recommendation; no-sign-in is not restricted to a development-only loopback exception. Authentication is outside this implementation sequence. Backend database/provider credentials remain required infrastructure secrets, never visitor credentials.
 - **Existing local integrations remain functional.** In particular, do not fix SSRF by indiscriminately prohibiting the intentionally configured local Ollama service.
 - **Agent knowledge boundaries still apply.** Shared human access does not mean every AI participant may search every persona's private knowledge stacks.
 - **Persona templates and meeting participants have separate lifecycles.** Later template edits must not silently rewrite an existing participant's identity, prompt, generation settings, or knowledge-stack assignments. Document-content versioning is a separate decision; freezing stack IDs alone does not freeze their contents.
@@ -33,7 +33,7 @@ Every remediation in this specification must follow test-driven development. The
 
 | Area | Priority | Issue |
 | --- | --- | --- |
-| Backend | Exposure-dependent critical | No authentication gate; unrestricted direct database policies |
+| Backend | High when direct database access is exposed | Unrestricted database policies bypass backend controls; no-sign-in API access is intentional |
 | Backend | High when exposed | Caller-controlled Ollama URLs enable server-side requests |
 | Backend | High | Database status constraint rejects meeting ending |
 | Backend | High | Tool results are never returned to the model |
@@ -81,7 +81,7 @@ These are fixture contracts for whoever implements the tests, not new applicatio
 | `deferred_requests` | Manually controlled promises/barriers so A and B responses, messages, statistics, and stream events can complete in a chosen order. Do not use timing-dependent sleeps to reproduce races. |
 | `stream_variants` | Valid text plus `done`; explicit `error`; text followed by clean EOF without a terminal event; malformed/truncated final event; and arbitrary byte chunk boundaries splitting a valid event. |
 | `indexing_barrier` | Pause embedding generation after ingestion starts but before vector upsert. Allow deletion to complete, then release indexing. Record surviving vector points and SQL rows. |
-| `auth_modes` | Explicit local mode and authentication-required mode. A fake verifier accepts two distinct approved identities and rejects missing, malformed, expired, and wrong-project tokens. Both approved identities access the same seeded workspace. |
+| `anonymous_workspace` | Two independent fresh browser/API clients with no accounts, auth headers, session cookies, or Auth bootstrap. Both see the same seeded workspace in hosted and local demo configurations. Use controlled providers and disposable database roles; test allowed HTTP operations separately from denied direct table/RPC access. |
 | `network_spy` | A fake outbound HTTP transport plus controlled DNS resolution. Record destination requests without contacting loopback, private infrastructure, or public services. Include the explicitly configured trusted Ollama origin and unapproved origins. |
 | `persisted_settings` | Browser storage containing `initialized=true`, selected preferences, and stale provider metadata. Server responses can switch production status, configured providers, and default models between loads. |
 | `persona_history` | A persona with prompt version 1 active, version 2 inactive, and a nonexistent target version. Include controlled insert failures and barriers for concurrent version creation/activation. |
@@ -94,28 +94,28 @@ These are fixture contracts for whoever implements the tests, not new applicatio
 | `creation_uploads` | A create-meeting spy returning a fixed meeting ID and two independently controlled upload requests. One upload can succeed while the other fails or completes late. |
 | `ingestion_recovery` | A disposable persistent job/document repository and source-file store, with explicit interruption points after upload acknowledgement, during parsing, and around vector publication. Restart only the worker/application instance, retaining persistent state. |
 
-Use unit/component tests for deterministic branches and races. Use isolated database/API integration tests for migrations, permissions, authentication coverage, and state transitions. Any real-provider smoke test should be separate and opt-in; it is not needed to reproduce these findings.
+Use unit/component tests for deterministic branches and races. Use isolated database/API integration tests for migrations, permissions, no-sign-in route coverage, and state transitions. Any real-provider smoke test should be separate and opt-in; it is not needed to reproduce these findings.
 
 ## Backend findings
 
-### Missing access gate and unrestricted database policies
+### Unrestricted direct database access bypasses backend controls
 
 **Evidence:** `backend/main.py:6-27`; `backend/app/api/meetings.py:39-64`; `backend/app/core/database.py:7-23`; `backend/supabase_schema.sql:132-144`.
 
-**Issue and impact:** Application routers have no authentication gate, meeting listing is global, and the supplied RLS policies allow all operations. Global listing is correct for the shared-workspace requirement; unrestricted entry is the exposure risk. A reachable API allows unapproved callers to read/change shared data and trigger paid inference. Protecting only the frontend would leave the API and potentially the database Data API accessible.
+**Issue and impact:** Application routers have no authentication gate, meeting listing is global, and the supplied RLS policies allow all operations. The first two are intentional for the no-sign-in shared demo, not defects to fix with login. Unrestricted direct application-table/RPC access can bypass backend lifecycle, validation, resource, and private-knowledge controls. Public API access also makes server-side inference/upload/admission limits important; CORS is not an access-control substitute. Do not claim confidentiality between visitors sharing this workspace.
 
-**Fix approach:** Add a centralized backend authentication gate, using the previously discussed Supabase Auth approach rather than per-user data scoping. Cover meetings, participants, personas, knowledge stacks, documents, settings, uploads, and stream initiation. Validate tokens server-side; do not trust decoded claims without verification. Retain an explicit development-only local mode; request headers must not enable it, and exposed deployment configuration must reject it. Keep minimal health endpoints separate.
+**Fix approach:** Keep meetings, participants, personas, stacks, documents, settings, uploads, status, and stream initiation usable without visitor authentication in the demo. Do not implement Supabase Auth, anonymous sign-in, an account approval flow, or a frontend Auth boundary. Apply validated server-side workflow/resource limits before processing or inference; test them without paid calls. A caller-supplied user/owner ID or forged header must not select privileged credentials, expand participant-private search scope, or disable those limits.
 
-For backend-only application-table access, tighten direct database permissions and keep server credentials server-only. Inspect the existing database credential path before changing policies: the current backend may rely on the same permissive access. Do not silently replace credentials or break local access. Keep auth verification separate from the shared database client's mutable session state.
+For backend-only application-table access, tighten direct database permissions and keep server credentials server-only. Inspect the existing database credential path before changing policies: the current backend may rely on the same permissive access. Do not silently replace credentials or break local access. The backend uses its configured infrastructure credential, not a visitor session; no service-role/provider secret may appear in browser bundles, settings responses, streams, errors, or logs.
 
-**Fixtures:** `auth_modes`, `meetings_ab`, disposable database roles/credentials, provider/network spies.
+**Fixtures:** `anonymous_workspace`, `meetings_ab`, disposable database roles/credentials, provider/network spies.
 
 **Regression cases / acceptance:**
-- In required mode, missing/invalid/expired/wrong-project tokens reject every protected route before database mutation, file processing, or provider calls. Streaming must reject before opening a successful event stream.
-- Approved identity 1 and identity 2 list/read the same A and B records. Neither requires owner-specific rows or filters.
-- Explicit local mode supports the existing no-token workflow. A spoofed header cannot activate it in required mode; exposed/bypass configuration fails validation.
-- Direct unauthenticated application-table access cannot bypass the API gate after policy changes. Backend CRUD still works with its intended server credentials.
-- Exercise uploads, settings, and streaming explicitly; do not test only meeting listing.
+- Fresh visitors complete valid meeting/persona/knowledge/settings workflows, uploads, status reads, and stream initiation without login redirects, account creation, auth headers/cookies, or an Auth bootstrap. Exercise hosted and local configurations with controlled providers.
+- Independent visitor clients list/read the same A and B records. Neither requires owner-specific rows, filters, or a fabricated anonymous user identity.
+- Invalid lifecycle commands, exhausted server-side limits, unassigned private scopes, and untrusted provider destinations still fail before side effects, regardless of supplied user IDs or headers.
+- Direct browser/anonymous database table and internal RPC access is denied after permission changes; backend CRUD/RPC still works with its intended server credentials. Denying database roles is not a requirement to authenticate visitors to the API.
+- Settings expose only safe metadata, never existing server secrets. Test browser assets, settings, upload failures, and stream errors for credential leakage.
 
 ### Unrestricted Ollama base URLs allow SSRF
 
@@ -620,6 +620,6 @@ These are source-backed failure mechanisms, not measured performance or reproduc
 - **Make ingestion and deletion coherent:** Cover document deletion/indexing races, parent vector cleanup, and concurrent collection creation. Validate bounded/off-loop processing and restart recovery rather than assuming background tasks provide those properties.
 - **Resolve frontend correctness and data loss:** Protect selected-meeting state from stale requests, remove fabricated summaries, recover incomplete streams, preserve drafts, and make failed upload retries reuse the created meeting.
 - **Align settings end to end:** Connect editable settings to generation and refresh server metadata reliably, coordinating with preservation of persona generation settings.
-- **Secure exposed access:** Address the missing authentication gate, direct database permissions, and unrestricted Ollama URLs before exposing the application. These can be developed in parallel with functional fixes, but must include local-compatibility checks rather than silently changing local access or Ollama behavior.
+- **Protect the no-sign-in deployment:** Address direct database permissions, server-only credentials, server-side operation/resource limits, and unrestricted Ollama URLs before exposure. Preserve anonymous demo workflows and configured local Ollama; adding a login gate is not part of this remediation.
 
 An issue is complete only when the red-green-refactor cycle is recorded, its regression cases are implemented and pass, the relevant local workflow still works, and the fix is checked in both ordinary and failure paths. Record actual test commands/results when fixes are made; this static review does not establish a passing baseline.
