@@ -135,9 +135,20 @@ ALTER TABLE messages ENABLE ROW LEVEL SECURITY;
 ALTER TABLE disagreements ENABLE ROW LEVEL SECURITY;
 ALTER TABLE consensus ENABLE ROW LEVEL SECURITY;
 
--- Policies for meetings (allow all for now, can restrict later)
-CREATE POLICY "Allow all for meetings" ON meetings FOR ALL USING (true);
-CREATE POLICY "Allow all for ai_participants" ON ai_participants FOR ALL USING (true);
-CREATE POLICY "Allow all for messages" ON messages FOR ALL USING (true);
-CREATE POLICY "Allow all for disagreements" ON disagreements FOR ALL USING (true);
-CREATE POLICY "Allow all for consensus" ON consensus FOR ALL USING (true);
+-- Policies: public clients may read (no-auth read world), but writes are
+-- reserved for the backend's service role, which bypasses RLS. No FOR ALL or
+-- mutation policies exist anymore — RLS default-deny + missing grants block
+-- non-backend writes, even for roles WITH table privileges.
+CREATE POLICY "Backend managed writes" ON meetings FOR SELECT USING (true);
+CREATE POLICY "Backend managed writes" ON ai_participants FOR SELECT USING (true);
+CREATE POLICY "Backend managed writes" ON messages FOR SELECT USING (true);
+CREATE POLICY "Backend managed writes" ON disagreements FOR SELECT USING (true);
+CREATE POLICY "Backend managed writes" ON consensus FOR SELECT USING (true);
+
+-- Table-level read grants so non-owner roles relying on the policies above
+-- can actually read. No INSERT/UPDATE/DELETE grants are issued here.
+GRANT SELECT ON meetings TO PUBLIC;
+GRANT SELECT ON ai_participants TO PUBLIC;
+GRANT SELECT ON messages TO PUBLIC;
+GRANT SELECT ON disagreements TO PUBLIC;
+GRANT SELECT ON consensus TO PUBLIC;

@@ -48,6 +48,7 @@ class Settings(BaseSettings):
     
     # App
     app_env: str = "development"
+    runtime_mode: str = "local"  # local | hosted | demo — demo denies writes
     cors_origins: List[str] = ["http://localhost:3000"]
     
     class Config:
