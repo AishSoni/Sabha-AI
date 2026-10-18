@@ -34,12 +34,20 @@ class PersonaCreate(PersonaBase):
 
 
 class PersonaUpdate(BaseModel):
-    """Update persona metadata (not prompt)."""
+    """Update persona metadata (not prompt).
+
+    stack_ids semantics (documented policy):
+    - ``None`` (field omitted or explicit JSON null) leaves existing stack
+      assignments unchanged;
+    - an empty list clears every assignment;
+    - a non-empty list atomically replaces assignments (duplicates removed).
+    """
     name: Optional[str] = None
     subtitle: Optional[str] = None
     color: Optional[str] = None
     avatar_url: Optional[str] = None
     provider_config: Optional[ProviderConfig] = None
+    stack_ids: Optional[List[str]] = None
 
 
 class Persona(PersonaBase):

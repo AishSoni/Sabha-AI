@@ -47,7 +47,10 @@ async def get_persona(persona_id: str):
 async def update_persona(persona_id: str, data: PersonaUpdate):
     """Update persona metadata (not prompt)."""
     manager = PersonaManager()
-    persona = await manager.update_persona(persona_id, data)
+    try:
+        persona = await manager.update_persona(persona_id, data)
+    except ValueError as exc:
+        raise HTTPException(status_code=422, detail=str(exc))
     if not persona:
         raise HTTPException(status_code=404, detail="Persona not found")
     return persona

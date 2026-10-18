@@ -158,7 +158,12 @@ class PersonaManager:
         return personas
     
     async def update_persona(self, persona_id: str, data: PersonaUpdate) -> Optional[PersonaWithPrompt]:
-        """Update persona metadata (not prompt)."""
+        """Update persona metadata (not prompt).
+
+        Stack assignments: omitted/None keeps them, [] clears them, a list
+        replaces them atomically (deduped). Unknown stack ids raise ValueError
+        without losing prior assignments.
+        """
         
         update_data = {}
         if data.name is not None:
@@ -172,17 +177,26 @@ class PersonaManager:
         if data.provider_config is not None:
             update_data["provider_config"] = data.provider_config.model_dump()
         
-        if hasattr(data, 'stack_ids') and data.stack_ids is not None:
-            # Delete old mappings
-            self.db.table("persona_knowledge_stacks") \
-                .delete() \
-                .eq("persona_id", persona_id) \
-                .execute()
-                
-            # Insert new mappings
-            if data.stack_ids:
-                stack_inserts = [{"persona_id": persona_id, "stack_id": s_id} for s_id in data.stack_ids]
-                self.db.table("persona_knowledge_stacks").insert(stack_inserts).execute()
+        if data.stack_ids is not None:
+            # Dedupe while preserving order; [] clears every assignment.
+            stack_ids = list(dict.fromkeys(data.stack_ids))
+
+            # Validate every referenced stack BEFORE touching assignments so
+            # unknown ids fail cleanly without losing prior assignments.
+            if stack_ids:
+                known = self.db.table("knowledge_stacks") \
+                    .select("id") \
+                    .in_("id", stack_ids) \
+                    .execute()
+                known_ids = {row["id"] for row in known.data}
+                unknown = [s for s in stack_ids if s not in known_ids]
+                if unknown:
+                    raise ValueError(f"Unknown knowledge stacks: {unknown}")
+
+            self.db.rpc(
+                "replace_persona_stacks",
+                {"p_persona_id": persona_id, "p_stack_ids": stack_ids},
+            ).execute()
         
         if not update_data:
             return await self.get_persona(persona_id)

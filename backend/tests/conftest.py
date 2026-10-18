@@ -40,6 +40,8 @@ SCHEMA_FILES = [
     BACKEND_ROOT / "supabase_schema.sql",
     BACKEND_ROOT / "migrations" / "002_personas.sql",
     BACKEND_ROOT / "migrations" / "003_knowledge_stacks.sql",
+    BACKEND_ROOT / "migrations" / "004_meeting_status_states.sql",
+    BACKEND_ROOT / "migrations" / "005_persona_stack_replacement.sql",
 ]
 
 # Schema as it existed before the lifecycle-constraint fix. Upgrade-path tests
@@ -89,9 +91,9 @@ class DisposableDb:
     def connect(self) -> psycopg.Connection:
         return psycopg.connect(self.uri, autocommit=True)
 
-    def query(self, sql: str):
+    def query(self, sql: str, params=None):
         with self.connect() as conn:
-            return conn.execute(sql).fetchall()
+            return conn.execute(sql, params).fetchall()
 
 
 def _uri_for_database(base_uri: str, name: str) -> str:
