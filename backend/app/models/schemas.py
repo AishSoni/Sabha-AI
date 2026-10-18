@@ -54,9 +54,17 @@ class AIParticipantCreate(AIParticipantBase):
 
 
 class AIParticipant(AIParticipantBase):
-    """Full AI participant model with ID."""
+    """Full AI participant model with ID.
+
+    stack_ids snapshots the participant's knowledge-stack assignments at
+    creation (server-managed; never accepted from API input). ``None`` marks
+    legacy rows without a snapshot: the orchestrator falls back to the
+    template's live join. Stack contents stay live via per-stack collections.
+    """
+
     id: str
     meeting_id: str
+    stack_ids: Optional[List[str]] = None
     created_at: datetime
 
     class Config:

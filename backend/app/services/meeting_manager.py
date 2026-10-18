@@ -72,6 +72,19 @@ class MeetingManager:
             if missing:
                 raise ValueError(f"Unknown personas: {', '.join(missing)}")
 
+            # Snapshot the persona's knowledge-stack assignments into the
+            # participant at creation: later template edits/deletions must
+            # not retroactively change meeting knowledge access.
+            assignments_result = self.db.table("persona_knowledge_stacks") \
+                .select("persona_id, stack_id") \
+                .in_("persona_id", [str(pid) for pid in data.persona_ids]) \
+                .execute()
+            assignments_by_persona: dict = {}
+            for row in assignments_result.data:
+                assignments_by_persona.setdefault(str(row["persona_id"]), []).append(
+                    str(row["stack_id"])
+                )
+
             for persona_id in data.persona_ids:
                 persona_data = found[str(persona_id)]
                 # Fetch active prompt for this persona
@@ -110,6 +123,7 @@ class MeetingManager:
                     ).model_dump(),
                     "color": persona_data["color"],
                     "persona_id": str(persona_data["id"]),
+                    "stack_ids": assignments_by_persona.get(str(persona_data["id"]), []),
                     "created_at": now,
                 })
         elif add_default_roster:
@@ -130,6 +144,7 @@ class MeetingManager:
                     "provider_config": ProviderConfig().model_dump(),
                     "color": persona["color"],
                     "persona_id": None,
+                    "stack_ids": [],
                     "created_at": now,
                 })
 
@@ -198,11 +213,24 @@ class MeetingManager:
         return [Meeting(**m) for m in result.data]
     
     async def add_participant(self, data: AIParticipantCreate) -> AIParticipant:
-        """Add an AI participant to a meeting."""
-        
+        """Add an AI participant to a meeting.
+
+        Knowledge-stack assignments snapshot from the template at creation so
+        later template edits cannot retroactively widen or shrink this
+        participant's private knowledge access.
+        """
+
         participant_id = str(uuid.uuid4())
         now = datetime.utcnow().isoformat()
-        
+
+        stack_ids: List[str] = []
+        if data.persona_id:
+            assignments_result = self.db.table("persona_knowledge_stacks") \
+                .select("stack_id") \
+                .eq("persona_id", data.persona_id) \
+                .execute()
+            stack_ids = [str(row["stack_id"]) for row in assignments_result.data]
+
         participant_data = {
             "id": participant_id,
             "meeting_id": data.meeting_id,
@@ -212,6 +240,7 @@ class MeetingManager:
             "provider_config": data.provider_config.model_dump(),
             "color": data.color,
             "persona_id": data.persona_id,
+            "stack_ids": stack_ids,
             "created_at": now,
         }
         

@@ -137,17 +137,22 @@ class Orchestrator:
             if await vector_store.collection_exists(shared_collection):
                 collections_to_search.append(shared_collection)
             
-            # Search participant's assigned knowledge stacks
-            if getattr(participant, "persona_id", None):
+            # Search participant's knowledge stacks. Assignment snapshot is
+            # authoritative (captured at participant creation); only legacy
+            # rows without a snapshot fall back to the template join. Stack
+            # CONTENTS stay live via per-stack collections.
+            stack_ids = getattr(participant, "stack_ids", None)
+            if stack_ids is None and getattr(participant, "persona_id", None):
                 db = get_supabase()
                 stacks_res = db.table("persona_knowledge_stacks") \
                                .select("stack_id") \
                                .eq("persona_id", participant.persona_id) \
                                .execute()
-                for row in stacks_res.data:
-                    stack_col = VectorStoreManager.stack_collection_name(row["stack_id"])
-                    if await vector_store.collection_exists(stack_col):
-                        collections_to_search.append(stack_col)
+                stack_ids = [row["stack_id"] for row in stacks_res.data]
+            for stack_id in (stack_ids or []):
+                stack_col = VectorStoreManager.stack_collection_name(stack_id)
+                if await vector_store.collection_exists(stack_col):
+                    collections_to_search.append(stack_col)
             
             if not collections_to_search:
                 return "No documents found in your knowledge stack or the meeting's shared documents. Please ask the user to upload documents.", None, None

@@ -44,6 +44,7 @@ SCHEMA_FILES = [
     BACKEND_ROOT / "migrations" / "005_persona_stack_replacement.sql",
     BACKEND_ROOT / "migrations" / "006_participant_role_capacity.sql",
     BACKEND_ROOT / "migrations" / "007_prompt_version_activation.sql",
+    BACKEND_ROOT / "migrations" / "008_participant_stack_snapshot.sql",
 ]
 
 # Schema as it existed before the lifecycle-constraint fix. Upgrade-path tests
