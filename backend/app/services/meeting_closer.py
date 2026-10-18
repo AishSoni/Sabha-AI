@@ -39,6 +39,7 @@ from app.models.schemas import (
     MeetingStatus,
 )
 from app.services.meeting_manager import MeetingManager
+from app.services.accounting import record_inference_attempt
 
 logger = logging.getLogger(__name__)
 
@@ -115,7 +116,8 @@ class MeetingCloser:
         # loser of the entry CAS) skips the vote phase by design — the vote
         # decision was already made before the earlier summary failed.
 
-        summary, insert_content = await self._summary_for_commit(meeting, meeting_id)
+        summary_purpose = "forced_summary" if force_end else "summary"
+        summary, insert_content = await self._summary_for_commit(meeting, meeting_id, summary_purpose)
 
         committed = await self.manager.commit_meeting_ending(
             meeting_id, from_status=from_status, content=insert_content
@@ -157,6 +159,17 @@ class MeetingCloser:
                     )],
                     tools=[],
                     temperature=0.3,
+                )
+                # Completed vote attempt: charge it in the ledger. A failed
+                # inference (exception below) is never charged.
+                await record_inference_attempt(
+                    self.manager,
+                    meeting_id=meeting_id,
+                    purpose="vote",
+                    provider=participant.provider_config.provider or None,
+                    model=participant.provider_config.model or None,
+                    usage=response.usage,
+                    estimator=provider,
                 )
                 votes.append(self._parse_vote(participant, response))
             except Exception as exc:
@@ -258,11 +271,9 @@ Please create a comprehensive executive summary in this format:
 ## Conclusion
 [Brief concluding statement]"""
 
-    async def _summary_for_commit(self, meeting, meeting_id: str) -> str:
-        """Return the summary body to commit: reuse a stored ending (recovery
-        from a legacy crash / a persist-but-not-committed race window dead
-        state) or generate one fresh — never both, never duplicated."""
-    async def _summary_for_commit(self, meeting, meeting_id: str) -> tuple[str, Optional[str]]:
+    async def _summary_for_commit(
+        self, meeting, meeting_id: str, purpose: str
+    ) -> tuple[str, Optional[str]]:
         """Return `(summary_body, insert_content)`.
 
         - Recovery: an ending message already persisted (legacy crash, or a
@@ -292,6 +303,17 @@ Please create a comprehensive executive summary in this format:
                 f"({type(exc).__name__}: {exc}); nothing was persisted. The meeting "
                 "stays in its current status - call end again to retry."
             ) from exc
+
+        config = meeting.participants[0].provider_config if meeting.participants else None
+        await record_inference_attempt(
+            self.manager,
+            meeting_id=meeting_id,
+            purpose=purpose,
+            provider=(config.provider if config else None) or None,
+            model=(config.model if config else None) or None,
+            usage=response.usage,
+            estimator=provider,
+        )
 
         body = (response.content or "").strip()
         return body, f"{MEETING_ENDED_MARKER}\n\n{body}"

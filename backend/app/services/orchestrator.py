@@ -3,6 +3,7 @@ Orchestrator service - handles AI turn-taking and response generation.
 """
 
 import json
+import uuid as uuid_module
 from typing import List, Optional
 from app.llm import get_provider, LLMMessage, LLMResponse, ToolCall
 from app.models import (
@@ -23,6 +24,7 @@ from app.services.meeting_manager import MeetingManager
 from app.core.database import get_supabase
 from app.core.config import settings
 from app.services.tools import get_default_tools
+from app.services.accounting import record_inference_attempt
 
 
 # Upper bound on provider round-trips within one turn so a model that keeps
@@ -264,6 +266,26 @@ class Orchestrator:
         else:
             return f"Unknown tool: {tool_call.name}", None, None
     
+    async def _record_inference(
+        self,
+        *,
+        meeting_id: str,
+        purpose: str,
+        gen: dict,
+        usage: Optional[dict],
+        estimator,
+    ) -> float:
+        """Record one COMPLETED inference attempt in the universal ledger."""
+        return await record_inference_attempt(
+            self.meeting_manager,
+            meeting_id=meeting_id,
+            purpose=purpose,
+            provider=gen.get("provider"),
+            model=(gen.get("model") or None),
+            usage=usage,
+            estimator=estimator,
+        )
+
     async def execute_turn(
         self,
         meeting_id: str,
@@ -330,6 +352,7 @@ class Orchestrator:
         usage_total: dict = {}
 
         response = None
+        cost_accum = 0.0  # ledger-recorded cost, per completed provider round
         for _round in range(MAX_TOOL_ROUNDS):
             response = await provider.complete(
                 messages=messages,
@@ -338,6 +361,16 @@ class Orchestrator:
                 max_tokens=gen["max_tokens"]
             )
             _merge_usage(usage_total, response.usage)
+
+            # Each completed provider round is one paid inference attempt:
+            # record it exactly once, immediately after completion.
+            cost_accum += await self._record_inference(
+                meeting_id=meeting_id,
+                purpose="turn",
+                gen=gen,
+                usage=response.usage,
+                estimator=provider,
+            )
 
             if not response.tool_calls:
                 break  # the model answered; follow-up inference complete
@@ -372,8 +405,8 @@ class Orchestrator:
             # the tools did.
             content = f"[{participant.name} used tools: {', '.join(t['tool'] for t in tool_results)}]"
 
-        # Estimate cost across ALL rounds of this turn
-        cost = provider.estimate_cost(usage_total)
+        # Message estimate is display-only; the ledger owns meeting totals.
+        cost = cost_accum
 
         # Save the message once, after the loop settles.
         # Late-write policy (spec-02): the meeting status is NOT re-checked
@@ -483,10 +516,12 @@ class Orchestrator:
         disagreements = []
         consensus_list = []
         usage_total = {}
+        cost_accum = 0.0  # ledger-recorded cost, per completed provider round
         call_counter = 0  # unique, per-turn ids for announced tool calls
 
         for _round in range(MAX_TOOL_ROUNDS):
             had_tool_calls = False
+            round_usage = {}  # this round's usage, for its own ledger event
 
             async for event in provider.stream(
                 messages=messages,
@@ -558,10 +593,20 @@ class Orchestrator:
                     # Capture usage; the terminal event is emitted AFTER
                     # persistence below (exactly once per turn).
                     _merge_usage(usage_total, event.usage)
+                    _merge_usage(round_usage, event.usage)
 
                 elif event.type == StreamEventType.ERROR:
                     yield event
                     return
+
+            # The provider stream completed: record this round's paid attempt.
+            cost_accum += await self._record_inference(
+                meeting_id=meeting_id,
+                purpose="turn",
+                gen=gen,
+                usage=round_usage if round_usage else None,
+                estimator=provider,
+            )
 
             if not had_tool_calls:
                 break
@@ -571,7 +616,8 @@ class Orchestrator:
         if not content and tool_calls_made:
             content = f"[{participant.name} used tools: {', '.join(t['tool'] for t in tool_calls_made)}]"
 
-        cost = provider.estimate_cost(usage_total)
+        # Message estimate is display-only; the ledger owns meeting totals.
+        cost = cost_accum
 
         message = await self.meeting_manager.save_message(
             MessageCreate(

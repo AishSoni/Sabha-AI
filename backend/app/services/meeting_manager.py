@@ -275,15 +275,40 @@ class MeetingManager:
         }
         
         result = self.db.table("messages").insert(message_data).execute()
-        
-        # Update meeting total cost
-        if data.estimated_cost > 0:
-            self.db.rpc(
-                "increment_meeting_cost",
-                {"meeting_id": data.meeting_id, "cost_delta": data.estimated_cost}
-            ).execute()
-        
+
+        # Spec-02: saving a message is accounting-NEUTRAL. estimated_cost on
+        # the message is display data only; the universal inference ledger
+        # (record_inference_cost) owns meetings.total_cost.
+
         return Message(**result.data[0])
+
+    async def record_inference_cost(
+        self,
+        *,
+        inference_id: str,
+        meeting_id: str,
+        purpose: str,
+        provider: Optional[str],
+        model: Optional[str],
+        cost: float = 0.0,
+    ) -> bool:
+        """Record one completed inference attempt in the universal ledger.
+
+        Returns True the first time this inference id is seen (the meeting
+        total was updated), False when the id was already recorded
+        (idempotent replay — never double counted)."""
+        result = self.db.rpc(
+            "record_inference_cost",
+            {
+                "p_inference_id": str(inference_id),
+                "p_meeting_id": str(meeting_id),
+                "p_purpose": purpose,
+                "p_provider": provider,
+                "p_model": model,
+                "p_cost": cost,
+            },
+        ).execute()
+        return bool(result.data)
     
     async def save_disagreement(self, data: DisagreementCreate) -> Disagreement:
         """Save a disagreement to the database."""
