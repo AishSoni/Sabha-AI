@@ -16,6 +16,7 @@ from app.models import (
     TurnResponse,
 )
 from app.services.meeting_manager import MeetingManager
+from app.core.database import get_supabase
 from app.services.tools import get_default_tools
 
 

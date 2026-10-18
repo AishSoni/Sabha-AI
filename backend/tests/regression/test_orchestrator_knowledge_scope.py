@@ -1,0 +1,182 @@
+"""Regression: orchestrator knowledge-base tool must resolve collections
+safely and scope them to SHARED meeting documents + the participant's OWN
+assigned knowledge stacks — never other personas' or unassigned stacks.
+
+Evidence: app/services/orchestrator.py:141 called `get_supabase()` without
+importing it, so any participant WITH a persona_id crashed with NameError
+the moment it used search_knowledge_base.
+"""
+
+from datetime import datetime
+
+import pytest
+
+from app.llm import ToolCall
+from app.models import AIParticipant, ProviderConfig
+from app.services.meeting_manager import MeetingManager
+from app.services.orchestrator import Orchestrator
+from app.services.vector_store import SearchResult
+from tests.doubles.supabase_stub import stub_for
+
+MEETING_ID = "aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa"
+PERSONA_A = "44444444-4444-4444-8444-444444444444"
+PERSONA_B = "55555555-5555-4555-8555-555555555555"
+STACK_A = "77777777-7777-4777-8777-777777777771"
+STACK_B = "77777777-7777-4777-8777-777777777772"
+STACK_ORPHAN = "77777777-7777-4777-8777-777777777773"
+
+SHARED_COLLECTION = f"meeting_{MEETING_ID}_shared"
+STACK_A_COLLECTION = f"stack_{STACK_A}_knowledge"
+STACK_B_COLLECTION = f"stack_{STACK_B}_knowledge"
+STACK_ORPHAN_COLLECTION = f"stack_{STACK_ORPHAN}_knowledge"
+
+SEARCH_CALL = ToolCall(
+    id="call-kb-1", name="search_knowledge_base", arguments={"query": "stack facts"}
+)
+
+
+def _participant(persona_id: str | None) -> AIParticipant:
+    return AIParticipant(
+        id="pppppppp-pppp-4ppp-8ppp-pppppppppppp",
+        meeting_id=MEETING_ID,
+        name="Analyst",
+        role="Analyst",
+        system_prompt="You analyze.",
+        provider_config=ProviderConfig(),
+        persona_id=persona_id,
+        created_at=datetime.now(),
+    )
+
+
+class RecordingVectorStore:
+    """Stands in for the vector store; records which collections are queried."""
+
+    def __init__(self, existing_collections):
+        self.existing = set(existing_collections)
+        self.searched = []
+
+    async def collection_exists(self, name: str) -> bool:
+        return name in self.existing
+
+    async def search_multiple_collections(self, *, collection_names, query, limit):
+        self.searched.append(list(collection_names))
+        return [
+            SearchResult(
+                text="brief content",
+                score=0.9,
+                document_id="doc-1",
+                chunk_index=0,
+                metadata={"file_name": "brief.md"},
+            )
+        ]
+
+
+@pytest.fixture()
+def knowledge_env(disposable_db, monkeypatch):
+    db = disposable_db
+    with db.connect() as conn:
+        for persona_id, name in (
+            (PERSONA_A, "Brief Analyst"),
+            (PERSONA_B, "Market Analyst"),
+        ):
+            conn.execute(
+                "INSERT INTO personas (id, name) VALUES (%s, %s)",
+                (persona_id, name),
+            )
+        for stack_id, stack_name in (
+            (STACK_A, "Alpha stack"),
+            (STACK_B, "Beta stack"),
+            (STACK_ORPHAN, "Orphan stack"),
+        ):
+            conn.execute(
+                "INSERT INTO knowledge_stacks (id, name) VALUES (%s, %s)",
+                (stack_id, stack_name),
+            )
+        # Only persona A's stack and persona B's stack are ASSIGNED; orphan is not.
+        conn.execute(
+            "INSERT INTO persona_knowledge_stacks (persona_id, stack_id) VALUES (%s, %s)",
+            (PERSONA_A, STACK_A),
+        )
+        conn.execute(
+            "INSERT INTO persona_knowledge_stacks (persona_id, stack_id) VALUES (%s, %s)",
+            (PERSONA_B, STACK_B),
+        )
+
+    stub = stub_for(db)
+    # The missing module-level `get_supabase` name IS the bug being tested:
+    # pre-registering with raising=False would silently create the attribute
+    # and mask the NameError the orchestrator currently raises. raising=True
+    # makes the patch itself fail while the import is missing.
+    monkeypatch.setattr(
+        "app.services.orchestrator.get_supabase", lambda: stub, raising=True
+    )
+
+    existing = {
+        SHARED_COLLECTION,
+        STACK_A_COLLECTION,
+        STACK_B_COLLECTION,
+        STACK_ORPHAN_COLLECTION,
+    }
+    recorder = RecordingVectorStore(existing)
+    monkeypatch.setattr(
+        "app.services.vector_store.get_vector_store", lambda: recorder
+    )
+
+    orchestrator = Orchestrator(MeetingManager())
+    return orchestrator, recorder, db
+
+
+async def test_orchestrator_imports_get_supabase():
+    """Directly pins finding: orchestrator resolved get_supabase undefined."""
+    import app.services.orchestrator as orchestrator_module
+    from app.core.database import get_supabase as canonical
+
+    assert getattr(orchestrator_module, "get_supabase", None) is not None, (
+        "orchestrator must import get_supabase (NameError at line 141 today)"
+    )
+    assert orchestrator_module.get_supabase is canonical
+
+
+async def test_persona_participant_searches_shared_and_own_stacks_only(knowledge_env):
+    orchestrator, recorder, db = knowledge_env
+
+    result = await orchestrator._handle_tool_call(
+        SEARCH_CALL, MEETING_ID, _participant(str(PERSONA_A))
+    )
+    text, disagreement, consensus = result
+    assert recorder.searched == [[SHARED_COLLECTION, STACK_A_COLLECTION]], (
+        "must search the meeting's shared collection plus ONLY persona A's assigned stack"
+    )
+    assert "brief content" in text
+    assert disagreement is None and consensus is None
+
+
+async def test_participant_without_persona_searches_shared_only(knowledge_env):
+    orchestrator, recorder, db = knowledge_env
+
+    await orchestrator._handle_tool_call(SEARCH_CALL, MEETING_ID, _participant(None))
+    assert recorder.searched == [[SHARED_COLLECTION]]
+
+
+async def test_other_persona_and_unassigned_stacks_are_never_searched(knowledge_env):
+    orchestrator, recorder, db = knowledge_env
+
+    await orchestrator._handle_tool_call(
+        SEARCH_CALL, MEETING_ID, _participant(str(PERSONA_A))
+    )
+    flat = {c for names in recorder.searched for c in names}
+    assert STACK_B_COLLECTION not in flat, "another persona's stack must not leak"
+    assert STACK_ORPHAN_COLLECTION not in flat, "unassigned stack must not leak"
+
+
+async def test_empty_query_short_circuits_without_searching(knowledge_env):
+    orchestrator, recorder, db = knowledge_env
+    empty_call = ToolCall(
+        id="call-kb-2", name="search_knowledge_base", arguments={"query": ""}
+    )
+
+    text, _, _ = await orchestrator._handle_tool_call(
+        empty_call, MEETING_ID, _participant(str(PERSONA_A))
+    )
+    assert recorder.searched == []
+    assert "query" in text.lower()
