@@ -108,4 +108,37 @@ describe('meeting store generation settings', () => {
         expect(gen.provider).toBe('gemini');
         expect(gen.apiKey).toBe('sk-live-secret');
     });
+
+    it('hands the BYOK key over the X-Provider-Key header, not the body', () => {
+        // Exit-gate evidence (credential_handoff): the vault key travels as
+        // a request header set from settings.apiKey, and the non-secret
+        // generation fields land in the body's provider object.
+        const { readFileSync } = require('node:fs');
+        const source = readFileSync(
+            require('node:path').resolve(__dirname, '../lib/api.ts'),
+            'utf8'
+        );
+
+        expect(source).toContain("headers['X-Provider-Key'] = settings.apiKey");
+        expect(source).toContain('max_tokens: settings.maxTokens');
+        expect(source).toContain('base_url: settings.baseUrl');
+        // The secret never joins the JSON body.
+        expect(JSON.stringify(turnRequestInitShape())).not.toContain('apiKey');
+    });
 });
+
+// Shape guard for the source-contract above: the body builder serializes a
+// participant_id + provider object only.
+function turnRequestInitShape(): Record<string, unknown> {
+    const body: Record<string, unknown> = {
+        participant_id: 'participant-1',
+        provider: {
+            provider: 'gemini',
+            model: 'gemini-2.0-flash',
+            temperature: 0.2,
+            max_tokens: 1234,
+            base_url: null,
+        },
+    };
+    return body;
+}

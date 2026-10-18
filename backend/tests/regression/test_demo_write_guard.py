@@ -51,3 +51,19 @@ def test_local_mode_keeps_writes_enabled(disposable_db, monkeypatch):
     client = TestClient(app)
     response = client.post("/api/meetings", json={"name": "Open Council", "persona_ids": []})
     assert response.status_code == 200, response.json()
+
+
+def test_hosted_mode_is_also_a_write_enabled_runtime(disposable_db, monkeypatch):
+    # Exit-gate evidence (runtime_modes): hosted BYOK operation uses the same
+    # no-auth write API as local; only the demo workspace is read-only.
+    from tests.doubles.supabase_stub import stub_for
+
+    import app.services.meeting_manager as meeting_manager_module
+
+    monkeypatch.setattr(config_module.settings, "runtime_mode", "hosted")
+    monkeypatch.setattr(
+        meeting_manager_module, "get_supabase", lambda: stub_for(disposable_db)
+    )
+    client = TestClient(app)
+    response = client.post("/api/meetings", json={"name": "Hosted Council", "persona_ids": []})
+    assert response.status_code == 200, response.json()
