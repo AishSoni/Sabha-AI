@@ -13,6 +13,7 @@ import {
     StreamEvent,
     ContextStats,
 } from '@/lib/api';
+import { useSettingsStore } from './settings-store';
 
 // Streaming state for a message being generated
 export interface StreamingMessage {
@@ -151,7 +152,16 @@ export const useMeetingStore = create<MeetingState>((set, get) => ({
 
         set({ activeTurnParticipantId: participantId, error: null });
         try {
-            const response = await api.executeTurn(currentMeeting.id, participantId);
+            // What the user configured in the browser (vault-backed BYOK)
+            // is what must generate; fall back to participant/server config
+            // when nothing is composed.
+            const generationSettings =
+                useSettingsStore.getState().composeGenerationSettings() ?? undefined;
+            const response = await api.executeTurn(
+                currentMeeting.id,
+                participantId,
+                generationSettings
+            );
 
             set((state) => ({
                 currentMeeting: state.currentMeeting
@@ -190,7 +200,15 @@ export const useMeetingStore = create<MeetingState>((set, get) => ({
         });
 
         try {
-            for await (const event of api.streamTurn(currentMeeting.id, participantId)) {
+            // Same contract as the non-streaming turn: browser generation
+            // settings (incl. BYOK key) ride along per request.
+            const generationSettings =
+                useSettingsStore.getState().composeGenerationSettings() ?? undefined;
+            for await (const event of api.streamTurn(
+                currentMeeting.id,
+                participantId,
+                generationSettings
+            )) {
                 const { streamingMessage } = get();
                 if (!streamingMessage) continue;
 

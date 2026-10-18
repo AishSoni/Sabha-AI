@@ -8,11 +8,11 @@ import { beforeEach, describe, expect, it, vi } from 'vitest';
 
 const mocks = vi.hoisted(() => ({
     api: {
-        streamTurn: vi.fn(),
-        getMeeting: vi.fn(),
-        getDisagreements: vi.fn(),
-        getConsensus: vi.fn(),
-        getContextStats: vi.fn(),
+        streamTurn: vi.fn<(...args: unknown[]) => unknown>(),
+        getMeeting: vi.fn<(...args: unknown[]) => unknown>(),
+        getDisagreements: vi.fn<(...args: unknown[]) => unknown>(),
+        getConsensus: vi.fn<(...args: unknown[]) => unknown>(),
+        getContextStats: vi.fn<(...args: unknown[]) => unknown>(),
     },
 }));
 
@@ -23,7 +23,7 @@ vi.mock('@/lib/api', () => ({
 }));
 
 import { useMeetingStore } from '@/stores/meetingStore';
-import type { StreamEvent } from '@/lib/api';
+import type { MeetingWithParticipants, StreamEvent } from '@/lib/api';
 
 const MEETING_ID = 'meeting-1';
 const PARTICIPANT_ID = 'participant-1';
@@ -51,7 +51,7 @@ function seedCurrentMeeting() {
                 },
             ],
             messages: [],
-        } as unknown as Parameters<typeof useMeetingStore.getState>['0']['currentMeeting'],
+        } as unknown as MeetingWithParticipants,
     });
 }
 
@@ -61,7 +61,7 @@ beforeEach(() => {
 
 describe('streamed tool call correlation', () => {
     it('keys repeated same-name tool calls by their unique call ids', async () => {
-        mocks.api.streamTurn = async function* () {
+        mocks.api.streamTurn.mockImplementation(async function* () {
             yield streamEvent({
                 type: 'tool_call',
                 tool_name: 'search_knowledge_base',
@@ -86,7 +86,7 @@ describe('streamed tool call correlation', () => {
                 tool_result: 'Snapshot B',
                 tool_call_id: 'call-2',
             });
-        };
+        });
 
         await useMeetingStore.getState().executeTurnStreaming(PARTICIPANT_ID);
 
@@ -102,7 +102,7 @@ describe('streamed tool call correlation', () => {
     });
 
     it('falls back to name matching for legacy events without call ids', async () => {
-        mocks.api.streamTurn = async function* () {
+        mocks.api.streamTurn.mockImplementation(async function* () {
             yield streamEvent({
                 type: 'tool_call',
                 tool_name: 'log_consensus',
@@ -113,7 +113,7 @@ describe('streamed tool call correlation', () => {
                 tool_name: 'log_consensus',
                 tool_result: 'Consensus recorded',
             });
-        };
+        });
 
         await useMeetingStore.getState().executeTurnStreaming(PARTICIPANT_ID);
 

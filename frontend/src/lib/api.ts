@@ -93,6 +93,36 @@ async function handleResponse<T>(response: Response): Promise<T> {
     return response.json();
 }
 
+// ---- Generation settings (BYOK contract) ---------------------------------
+// Composed by the settings-store vault; only non-secret fields enter the
+// request body as `provider`, the key rides the X-Provider-Key header.
+export interface GenerationSettings {
+    provider?: string;
+    model?: string;
+    temperature?: number;
+    maxTokens?: number;
+    baseUrl?: string;
+    apiKey?: string;
+}
+
+function turnRequestInit(participantId: string, settings?: GenerationSettings): RequestInit {
+    const headers: Record<string, string> = { 'Content-Type': 'application/json' };
+    if (settings?.apiKey) headers['X-Provider-Key'] = settings.apiKey;
+
+    const body: Record<string, unknown> = { participant_id: participantId };
+    if (settings) {
+        body.provider = {
+            provider: settings.provider ?? null,
+            model: settings.model ?? null,
+            temperature: settings.temperature ?? null,
+            max_tokens: settings.maxTokens ?? null,
+            base_url: settings.baseUrl ?? null,
+        };
+    }
+
+    return { method: 'POST', headers, body: JSON.stringify(body) };
+}
+
 export const api = {
     // Meetings
     async createMeeting(name: string, agenda: string = '', personaIds?: string[]): Promise<MeetingWithParticipants> {
@@ -146,22 +176,32 @@ export const api = {
     },
 
     // AI Turns
-    async executeTurn(meetingId: string, participantId: string): Promise<TurnResponse> {
-        const response = await fetch(`${API_BASE}/meetings/${meetingId}/turn`, {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ participant_id: participantId }),
-        });
+    //
+    // Generation settings are composed in the browser (settings-store vault):
+    // non-secret fields enter the body as `provider`, the BYOK key rides the
+    // X-Provider-Key header and is never persisted anywhere.
+    async executeTurn(
+        meetingId: string,
+        participantId: string,
+        settings?: GenerationSettings
+    ): Promise<TurnResponse> {
+        const response = await fetch(
+            `${API_BASE}/meetings/${meetingId}/turn`,
+            turnRequestInit(participantId, settings)
+        );
         return handleResponse(response);
     },
 
     // AI Turns (Streaming)
-    async *streamTurn(meetingId: string, participantId: string): AsyncGenerator<StreamEvent> {
-        const response = await fetch(`${API_BASE}/meetings/${meetingId}/turn/stream`, {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ participant_id: participantId }),
-        });
+    async *streamTurn(
+        meetingId: string,
+        participantId: string,
+        settings?: GenerationSettings
+    ): AsyncGenerator<StreamEvent> {
+        const response = await fetch(
+            `${API_BASE}/meetings/${meetingId}/turn/stream`,
+            turnRequestInit(participantId, settings)
+        );
 
         if (!response.ok) {
             const error = await response.json().catch(() => ({ detail: 'Unknown error' }));
