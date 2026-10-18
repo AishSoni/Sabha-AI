@@ -3,6 +3,11 @@ Settings API endpoints for provider configuration and API key testing.
 """
 
 from typing import List, Literal, Optional
+import asyncio
+import ipaddress
+import socket
+from urllib.parse import urlsplit
+
 from fastapi import APIRouter, HTTPException
 from pydantic import BaseModel
 import httpx
@@ -16,6 +21,98 @@ from app.models.settings_schemas import (
     DEFAULT_PROVIDERS,
 )
 from app.core.config import settings
+
+
+# --------------------------------------------------------------------------
+# Ollama destination trust gate (SSRF defense for settings probes).
+# User-supplied Ollama origins are only reachable when explicitly configured
+# as trusted; hostnames are pinned to resolved addresses (DNS-rebinding
+# defense) and redirects are never followed.
+# --------------------------------------------------------------------------
+
+def _ollama_client() -> httpx.AsyncClient:
+    """Single seam for Ollama probe requests (tests spy on this factory)."""
+    return httpx.AsyncClient(follow_redirects=False)
+
+
+def _normalized_origin(url: str) -> str:
+    """Normalize an origin to scheme://host:port for allowlist comparison."""
+    parts = urlsplit(url.strip())
+    scheme = (parts.scheme or "").lower()
+    host = (parts.hostname or "").lower()
+    if scheme not in ("http", "https") or not host:
+        raise ValueError(f"Ollama origin {url!r} is not a trusted configured destination")
+    if "@" in (parts.netloc or ""):
+        raise ValueError(f"Ollama origin {url!r} is not a trusted configured destination")
+    port = parts.port
+    if port is None:
+        port = 443 if scheme == "https" else 80
+    return f"{scheme}://{host}:{port}"
+
+
+def _trusted_ollama_origins() -> List[str]:
+    """Origins the operator explicitly trusts for Ollama probes."""
+    raw = (settings.ollama_allowed_origins or "").strip()
+    if raw:
+        return [_normalized_origin(entry) for entry in raw.split(",") if entry.strip()]
+    # Empty configuration falls back to the operator's default endpoint only.
+    return [_normalized_origin(settings.ollama_base_url)]
+
+
+async def _ensure_trusted_ollama_destination(base_url: str) -> None:
+    """Refuse to send Ollama probes anywhere outside the trusted origins."""
+    origin = _normalized_origin(base_url)
+    if origin not in _trusted_ollama_origins():
+        raise ValueError(f"Ollama origin {origin} is not a trusted configured destination")
+
+    parts = urlsplit(base_url)
+    try:
+        infos = await asyncio.get_running_loop().getaddrinfo(
+            parts.hostname, None, type=socket.SOCK_STREAM
+        )
+    except socket.gaierror as exc:
+        raise ValueError(
+            f"Ollama destination {origin} could not be resolved — not a trusted configured destination"
+        ) from exc
+
+    addresses = {info[4][0] for info in infos if info[0] in (socket.AF_INET, socket.AF_INET6)}
+    if not addresses:
+        raise ValueError(
+            f"Ollama destination {origin} resolves to no usable address — refusing to probe"
+        )
+
+    dangerous = []
+    for address in addresses:
+        ip = ipaddress.ip_address(address)
+        # Loopback (127.0.0.1 / ::1) is an allowed class for local Ollama;
+        # ::1 is also Python-reserved, so never treat loopback as dangerous.
+        if ip.is_loopback:
+            continue
+        if ip.is_link_local or ip.is_multicast or ip.is_unspecified or ip.is_reserved:
+            dangerous.append(address)
+
+    if dangerous:
+        raise ValueError(
+            f"Ollama destination {origin} resolves to protected networks {sorted(dangerous)}"
+            " — not a trusted configured destination"
+        )
+
+    # Cross-class resolution (e.g. loopback + public in one answer set) is the
+    # classic rebinding signature for an allowlisted hostname.
+    classes = set()
+    for address in addresses:
+        ip = ipaddress.ip_address(address)
+        if ip.is_loopback:
+            classes.add("loopback")
+        elif ip.is_global:
+            classes.add("global")
+        else:
+            classes.add("other")
+    if len(classes) > 1:
+        raise ValueError(
+            f"Ollama destination {origin} resolves across {sorted(classes)} network classes"
+            " — DNS rebinding suspected"
+        )
 
 
 router = APIRouter(prefix="/api/settings", tags=["settings"])
@@ -187,8 +284,9 @@ async def _fetch_gemini_models(api_key: str) -> FetchModelsResponse:
 
 
 async def _fetch_ollama_models(base_url: str) -> FetchModelsResponse:
-    """Fetch models from Ollama."""
-    async with httpx.AsyncClient() as client:
+    """Fetch models from Ollama (only towards trusted configured origins)."""
+    await _ensure_trusted_ollama_destination(base_url)
+    async with _ollama_client() as client:
         try:
             response = await client.get(
                 f"{base_url}/api/tags",
@@ -297,8 +395,9 @@ async def _test_gemini_key(api_key: str) -> TestKeyResponse:
 
 
 async def _test_ollama_connection(base_url: str) -> TestKeyResponse:
-    """Test Ollama connection by listing local models."""
-    async with httpx.AsyncClient() as client:
+    """Test Ollama connection by listing local models (trusted origins only)."""
+    await _ensure_trusted_ollama_destination(base_url)
+    async with _ollama_client() as client:
         try:
             response = await client.get(
                 f"{base_url}/api/tags",

@@ -17,6 +17,10 @@ class Settings(BaseSettings):
     
     # Ollama (local)
     ollama_base_url: str = "http://localhost:11434"
+    # Trusted destinations for user-provided Ollama origins (SSRF guard for
+    # settings probes). Comma-separated; empty falls back to the origin of
+    # ollama_base_url itself. Hostnames are pinned to resolved IPs.
+    ollama_allowed_origins: str = ""
     ollama_default_model: str = "llama3.2"
     
     # Gemini (Google)
