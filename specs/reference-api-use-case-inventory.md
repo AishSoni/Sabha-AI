@@ -202,26 +202,52 @@ the compatibility surface.
 | `app.models.schemas` mixes meeting/persona/document/DTO shapes untyped-ish | Historical single-module DTO bag | ongoing per-module tightening (first touched by Specs 07/08) | Module-owned DTOs in `app.modules.*.presentation` |
 | `app/core/__init__` re-exported `get_supabase` (removed in spec-03 `e7d2507`) | Made `app.core.config` import drag the Supabase SDK into every consumer | **Done in Spec 03** — new rule: platform `__init__` packages stay side-effect-free; import submodules directly | — |
 
-## Open decision gates (none decided yet)
+## Open decision gates
 
-Spec 03 intentionally leaves these two load-bearing decisions **open**. Each
-has an owner and blocks named downstream specs until it lands.
+Spec 03 left these two load-bearing decisions open, each with an owner that
+blocks named downstream specs until it lands.
 
-### 1. Real transaction strategy — owner: Spec 04 (backend composition)
+### 1. Real transaction strategy — **DECIDED (spec 04, 2026-10-19)**
 
-The closing flow currently relies on the `commit_meeting_ending` Postgres
-RPC (narrow SQL function owns the atomic ending commit) while ordinary
-services write through the Supabase client. Two candidate strategies:
+**Decision: Option A — narrow Postgres RPCs invoked through the Supabase
+client.** One SQL function per atomic multi-table invariant
+(`security invoker`, pinned `search_path`, execution granted only to the
+verified backend service role, revoked from anonymous roles). Ordinary
+single-table writes stay on the standard Supabase client calls.
 
-- **Option A**: keep narrow SQL RPCs (`create function ... security definer`)
-  for multi-table invariants; adapters stay thin.
-- **Option B**: a direct Postgres transaction adapter (psycopg/`UNSAFE`
-  connection pool) with in-process multi-statement transactions.
+Rationale recorded at decision time:
 
-Constraints to decide against: the embedded-posgres test harness
-(`pgserver`), RLS posture, and the shared-collection cleanup ledger. **Blocks
-Spec 04** (backend atomic adapters) — a spec-04 slice cannot land without
-this decision.
+- Phase 1 already built and proved the pattern: `activate_prompt_version`,
+  `create_prompt_version` (007), `replace_persona_stacks` (005),
+  `create_meeting_transaction` (008), `commit_meeting_ending` (010),
+  `record_inference_cost` (011) — each with rollback semantics validated
+  against disposable embedded Postgres (fake + real contract parity).
+- Option B (direct psycopg transaction adapter) would add connection-pool
+  configuration and lifecycle responsibilities without a requirement the
+  RPCs fail to meet, and would re-validate every seam the RPCs already do.
+- Rollback-safety constraints checked: the embedded-Postgres test harness
+  executes the same functions SQL-side, so tests exercise the real
+  transactions; the RLS posture stays table-managed; the RPCs contain no
+  cross-database side effects.
+- Escape hatch: module `application/ports.py` interfaces keep the transport
+  replaceable — a direct-connection adapter could later implement the same
+  ports without touching domain/application code.
+
+### 2. Original source-byte store — owner: Spec 09 (knowledge ingestion)
+
+Uploads currently extract text immediately and persist only chunks/vectors;
+the original bytes live and die with the request. Once ingestion must be
+repriced/retried with new parameters, the bytes need a home:
+
+- **Option A**: Supabase Storage bucket (server-side, integrates with the SQL
+  record row).
+- **Option B**: a persistent local filesystem (volume) behind a focused
+  source-store interface.
+
+Constraints: retention/backup posture, demo/hosted deployment parity, and
+the bounded-read doctrine (upload re-reads are budgeted). **Blocks Spec 09**
+(knowledge ingestion) — ingestion pricing/retries cannot land without this
+decision.
 
 ### 2. Original source-byte store — owner: Spec 09 (knowledge ingestion)
 
