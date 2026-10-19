@@ -1,3 +1,7 @@
+// Test runner setup for the whole frontend (src/test + tests/ trees).
+// Moved here from src/test/setup.ts so the runner-owned tests/ directory
+// hosts setup, not a source-tree folder (spec-03 harness layout).
+//
 // Registers Testing Library's Vitest matchers (Testing Library + vitest globals).
 import "@testing-library/jest-dom/vitest";
 
