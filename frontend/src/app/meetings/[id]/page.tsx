@@ -20,7 +20,12 @@ export default function MeetingRoomPage() {
         }
     }, [meetingId, loadMeeting]);
 
-    if (isLoading && !currentMeeting) {
+    // Never render stale content under a mismatched route: navigating from
+    // meeting A to meeting B must not leave A's chat actionable under B's URL
+    // while B loads.
+    const showsStaleMeeting = currentMeeting !== null && currentMeeting.id !== meetingId;
+
+    if ((isLoading && !currentMeeting) || showsStaleMeeting) {
         return (
             <div className="min-h-screen bg-zinc-950 flex items-center justify-center">
                 <Loader2 className="w-8 h-8 animate-spin text-zinc-500" />
