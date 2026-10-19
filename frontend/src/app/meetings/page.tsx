@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useState } from 'react';
 import Link from 'next/link';
 import { Plus, MessageSquare, Calendar, ArrowLeft, Loader2, Archive, Trash2, MoreVertical, ArchiveRestore } from 'lucide-react';
 import { Button } from '@/components/ui/button';
@@ -24,76 +24,44 @@ import {
     AlertDialogHeader,
     AlertDialogTitle,
 } from '@/components/ui/alert-dialog';
-import { api, Meeting } from '@/lib/api';
+import { useMeetingList, useArchiveMeeting, useUnarchiveMeeting, useDeleteMeeting, type Meeting } from '@/features/meetings';
 import { formatRelativeTime } from '@/lib/utils';
 
 
 export default function MeetingSpacePage() {
-    const [meetings, setMeetings] = useState<Meeting[]>([]);
-    const [isLoading, setIsLoading] = useState(true);
+    const { data, isLoading } = useMeetingList();
+    const list = data ?? [];
+    const archiveMeeting = useArchiveMeeting();
+    const unarchiveMeeting = useUnarchiveMeeting();
+    const deleteMeeting = useDeleteMeeting();
 
     const [activeTab, setActiveTab] = useState('active');
     const [deleteConfirmId, setDeleteConfirmId] = useState<string | null>(null);
     const [actionLoading, setActionLoading] = useState<string | null>(null);
 
-    useEffect(() => {
-        loadMeetings();
-    }, []);
-
-    const loadMeetings = async () => {
-        setIsLoading(true);
-        try {
-            const data = await api.listMeetings();
-            setMeetings(data);
-        } catch (err) {
-            console.error('Failed to load meetings:', err);
-        } finally {
-            setIsLoading(false);
-        }
+    const handleArchive = (meetingId: string) => {
+        setActionLoading(meetingId);
+        archiveMeeting.mutate(meetingId, { onSettled: () => setActionLoading(null) });
     };
 
-
-
-    const handleArchive = async (meetingId: string) => {
+    const handleUnarchive = (meetingId: string) => {
         setActionLoading(meetingId);
-        try {
-            await api.archiveMeeting(meetingId);
-            await loadMeetings();
-        } catch (err) {
-            console.error('Failed to archive meeting:', err);
-        } finally {
-            setActionLoading(null);
-        }
+        unarchiveMeeting.mutate(meetingId, { onSettled: () => setActionLoading(null) });
     };
 
-    const handleUnarchive = async (meetingId: string) => {
+    const handleDelete = (meetingId: string) => {
         setActionLoading(meetingId);
-        try {
-            await api.unarchiveMeeting(meetingId);
-            await loadMeetings();
-        } catch (err) {
-            console.error('Failed to unarchive meeting:', err);
-        } finally {
-            setActionLoading(null);
-        }
-    };
-
-    const handleDelete = async (meetingId: string) => {
-        setActionLoading(meetingId);
-        try {
-            await api.deleteMeeting(meetingId);
-            await loadMeetings();
-        } catch (err) {
-            console.error('Failed to delete meeting:', err);
-        } finally {
-            setActionLoading(null);
-            setDeleteConfirmId(null);
-        }
+        deleteMeeting.mutate(meetingId, {
+            onSettled: () => {
+                setActionLoading(null);
+                setDeleteConfirmId(null);
+            },
+        });
     };
 
     // Filter meetings by status
-    const activeMeetings = meetings.filter(m => m.status === 'active' || m.status === 'ended' || m.status === 'voting');
-    const archivedMeetings = meetings.filter(m => m.status === 'archived');
+    const activeMeetings = list.filter(m => m.status === 'active' || m.status === 'ended' || m.status === 'voting');
+    const archivedMeetings = list.filter(m => m.status === 'archived');
 
     return (
         <div className="min-h-screen bg-gradient-to-br from-zinc-950 via-zinc-900 to-zinc-950">
@@ -290,11 +258,11 @@ function MeetingGrid({ meetings, onArchive, onUnarchive, onDelete, actionLoading
                                 <div className="flex items-center gap-4 text-xs text-zinc-500">
                                     <span className="flex items-center gap-1">
                                         <Calendar className="w-3 h-3" />
-                                        {formatRelativeTime(meeting.created_at)}
+                                        {formatRelativeTime(meeting.created_at ?? '')}
                                     </span>
-                                    {meeting.total_cost > 0 && (
+                                    {(meeting.total_cost ?? 0) > 0 && (
                                         <span className="text-amber-500">
-                                            ${meeting.total_cost.toFixed(4)}
+                                            ${(meeting.total_cost ?? 0).toFixed(4)}
                                         </span>
                                     )}
                                 </div>

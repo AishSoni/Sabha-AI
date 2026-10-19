@@ -19,7 +19,7 @@ import { readFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 import { fireEvent, render, screen, waitFor } from '@testing-library/react';
-import { Providers } from '@/app/providers';
+import { Providers, getQueryClient } from '@/app/providers';
 import MeetingSpacePage from '@/app/meetings/page';
 import { createScriptedFetch, type ScriptedFetch } from '../fixtures/transport';
 
@@ -40,6 +40,9 @@ describe('meetings list screen ownership', () => {
 
     beforeEach(() => {
         fetcher = createScriptedFetch();
+        // The browser query client is a module singleton; tests must start
+        // from an empty cache so each screen renders through a real read.
+        getQueryClient().clear();
         fetcher.install();
     });
 
@@ -67,7 +70,7 @@ describe('meetings list screen ownership', () => {
 
         const listCall = fetcher.calls.at(-1)!;
         expect(listCall.input).toContain('/api/meetings');
-        expect(listCall.init?.method).toBeUndefined();
+        expect(listCall.init?.method ?? 'GET').toBe('GET');
         const headerKeys = Object.keys((listCall.init?.headers ?? {}) as Record<string, string>);
         expect(headerKeys.some((key) => /authorization|cookie|x-user-/i.test(key))).toBe(false);
     });
