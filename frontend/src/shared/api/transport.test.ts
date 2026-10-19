@@ -8,7 +8,7 @@
  * resource/validation failures from transport conditions without ever
  * assuming an authentication flow exists.
  */
-import { beforeEach, describe, expect, it } from "vitest";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import {
     ApiError,
     isApiError,
@@ -23,6 +23,11 @@ let fetcher: ScriptedFetch;
 beforeEach(() => {
     fetcher = createScriptedFetch();
     fetcher.install();
+});
+
+afterEach(() => {
+    fetcher.reset();
+    vi.unstubAllGlobals();
 });
 
 describe("requestJson", () => {
@@ -97,13 +102,16 @@ describe("structured transport failures", () => {
     });
 
     it("keeps the legacy fallback detail when the failure body is not usable", async () => {
-        // Non-JSON failure body: json() rejects, detail falls back per status.
-        fetcher.enqueueJson(500, { detail: "" });
-        const scripted = (fetcher as unknown as {
-            queue: Array<{ status: number; body: unknown }>;
-        }).queue;
-        // body nullish makes json() throw inside the transport's catch path
-        scripted[0] = { status: 500, body: undefined };
+        // Failure body that cannot be decoded as JSON at all.
+        const unparsable = async (): Promise<Response> =>
+            ({
+                ok: false,
+                status: 500,
+                json: async () => {
+                    throw new Error("invalid json");
+                },
+            }) as unknown as Response;
+        vi.stubGlobal("fetch", unparsable);
 
         const failure = await requestJson("/meetings").catch((error: unknown) => error);
 
@@ -166,14 +174,20 @@ describe("structured transport failures", () => {
         expect(apiError.status).toBeNull();
     });
 
-    it("still resolves to a usable payload when a successful response carries no JSON", async () => {
-        const scripted = (fetcher as unknown as {
-            queue: Array<{ status: number; body: unknown }>;
-        }).queue;
-        scripted.push({ status: 200, body: undefined });
+    it("still surfaces a structured error when a successful response carries no JSON", async () => {
+        const unparsable = async (): Promise<Response> =>
+            ({
+                ok: true,
+                status: 200,
+                json: async () => {
+                    throw new Error("unparseable body");
+                },
+            }) as unknown as Response;
+        vi.stubGlobal("fetch", unparsable);
 
         const failure = await requestJson("/meetings").catch((error: unknown) => error);
         const apiError = failure as ApiError;
+        expect(isApiError(apiError)).toBe(true);
         expect(apiError.kind).toBe("http");
         expect(apiError.status).toBe(200);
         expect(apiError.detail).toBe("Unexpected response from the server");
