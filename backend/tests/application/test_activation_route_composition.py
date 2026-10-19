@@ -13,6 +13,7 @@ import pytest
 from fastapi.testclient import TestClient
 
 from app.bootstrap import Container, create_app
+from app.modules.persona_catalog.application.contracts import PromptCatalogUnavailable
 
 PERSONA_ID = "11111111-1111-4111-8111-111111111111"
 REFUSED_VERSION = 999
@@ -35,13 +36,25 @@ class FakePromptCatalog:
         return version != self.refused_version
 
 
-def _client(catalog) -> TestClient:
+def _no_legacy_service() -> None:
+    pytest.fail(
+        "legacy activation route must not serve a composed-container request"
+    )
+
+
+def _client(monkeypatch, catalog) -> TestClient:
+    # Until the cutover commit removes the legacy duplicate, it shadows the
+    # composed route on first match; neutralize its real-credential
+    # construction so pre-cutover red cannot touch the network.
+    monkeypatch.setattr(
+        "app.services.persona_manager.get_supabase", _no_legacy_service
+    )
     return TestClient(create_app(Container(prompt_catalog=catalog)))
 
 
-def test_activation_route_reaches_the_injected_use_case():
+def test_activation_route_reaches_the_injected_use_case(monkeypatch):
     catalog = FakePromptCatalog()
-    with _client(catalog) as client:
+    with _client(monkeypatch, catalog) as client:
         response = client.post(
             f"/api/personas/{PERSONA_ID}/prompts/2/activate"
         )
@@ -50,9 +63,9 @@ def test_activation_route_reaches_the_injected_use_case():
     assert catalog.calls == [(PERSONA_ID, 2)], catalog.calls
 
 
-def test_activation_route_refusal_maps_to_the_legacy_404():
+def test_activation_route_refusal_maps_to_the_legacy_404(monkeypatch):
     catalog = FakePromptCatalog()
-    with _client(catalog) as client:
+    with _client(monkeypatch, catalog) as client:
         response = client.post(
             f"/api/personas/{PERSONA_ID}/prompts/{REFUSED_VERSION}/activate"
         )
@@ -61,13 +74,13 @@ def test_activation_route_refusal_maps_to_the_legacy_404():
     assert catalog.calls == [(PERSONA_ID, REFUSED_VERSION)], catalog.calls
 
 
-def test_activation_route_infrastructure_failure_maps_to_safe_503():
+def test_activation_route_infrastructure_failure_maps_to_safe_503(monkeypatch):
     catalog = FakePromptCatalog(
-        exception=RuntimeError(
+        exception=PromptCatalogUnavailable(
             "supabase PostgrestAPIError: relation does not exist"
         )
     )
-    with _client(catalog) as client:
+    with _client(monkeypatch, catalog) as client:
         response = client.post(
             f"/api/personas/{PERSONA_ID}/prompts/2/activate"
         )
