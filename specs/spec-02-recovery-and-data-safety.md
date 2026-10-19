@@ -99,3 +99,24 @@ Run variants immediately before and after upsert, with cleanup failure and resta
 - Coordinate changes sharing an invariant, but do not combine all packages into one refactor. Retain IDs, supported local configuration, and existing data; run fresh/upgrade and failure tests on disposable resources.
 - All twelve findings' linked acceptance cases and three risk guards pass with recorded red-green-refactor evidence. Demonstrate stream recovery without duplicate inference, no lost drafts, no duplicate meeting on retry, no deleted content searchable, and no permanently unexplained lifecycle state.
 - Record any unexecuted integration/performance checks as limitations, not successes. Both Phase 1 specs must be accepted before [Phase 2 foundations](spec-03-foundations-and-contracts.md).
+
+## Implemented (spec-02 exit gate, recorded 2026-10)
+
+Packages shipped with red-green-refactor evidence in `backend/tests/regression/` and `frontend/src/test/` (one descriptive unnumbered commit per package in git history):
+
+- CAS status transitions; recoverable atomic ending (`commit_meeting_ending` RPC) with stay-voting retry; closed-write entry guards (409) with the documented persist-anyway late-write policy.
+- Universal idempotent inference ledger (`inference_events` + `record_inference_cost`, migration 011); `save_message` no longer mutates `meetings.total_cost` and there is no backfill/ recount of historical message costs.
+- Ingestion fencing (`app/services/ingestion.py` tombstone tickets), deferred vector cleanup ledger + startup reconciliation (migration 012, `app/services/recovery.py` re-upload messaging), collection-creation race validation with controlled dimension/distance diagnostics.
+- Frontend operation-scope guards (`op-scope.ts`, per-operation store identity), stream EOF/terminal-disappearance recovery, draft revision ownership (no lost, duplicated, or stale drafts), real summary endpoint (`POST /meetings/{id}/summary`, BYOK composition + accounting) replacing the canned generator, settings hydration without the stale `initialized` gate (persist version 1 + migration), resumable meeting creation with per-file retry.
+- Bounded upload read (reject before materializing, 413) and off-loop parsing (bounded per-event-loop worker pool) plus extraction row/character budgets.
+
+Commands and results: full backend suite `155 passed` (~3:20, embedded disposable Postgres only); full frontend suite `65 passed / 15 files` (vitest).
+
+### Limitations (recorded honestly; never claimed as executed)
+
+- Multi-worker deployments against a real Qdrant cluster were not exercised; fencing/cleanup semantics are verified with the PostgREST-shaped stub over embedded Postgres plus in-process fakes.
+- No latency or load benchmarking was run (e.g. ingestion throughput under the bounded pool).
+- Synchronous Supabase calls outside the ingestion path still run on the event loop; offloading them is out of scope for this spec.
+- The bounded read still holds up to `MAX_FILE_SIZE` in memory, and parsing materializes extracted text before the character budget truncates.
+- The declared content-length precheck allows 1 MiB of multipart overhead before rejecting; the bounded read remains the authoritative size guard.
+- No paid inference was required; provider transports were deterministic fakes while schema/RPC behavior ran on real embedded Postgres.
