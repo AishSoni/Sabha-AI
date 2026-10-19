@@ -15,6 +15,7 @@ import { ToolUseBlock } from '@/components/chat/ToolUseBlock';
 import { CitationsBlock } from '@/components/chat/CitationsBlock';
 import ReactMarkdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
+import { type Draft, type SentDraft, editDraft, initialDraft, isSameDraftInFlight, shouldClearAfterSend } from '@/lib/op-scope';
 import type { Message, AIParticipant, Disagreement, Consensus } from '@/lib/api';
 import { RosterTab } from '@/components/chat/RosterTab';
 import { SharedDocumentsTab } from '@/components/chat/SharedDocumentsTab';
@@ -35,6 +36,11 @@ export function ChatArea() {
     } = useMeetingStore();
 
     const [inputValue, setInputValue] = useState('');
+    // Owned draft: every edit bumps a revision so a send that completes later
+    // can only clear its own untouched revision. The ref mirrors the current
+    // value so completions read the truth at the time they resolve.
+    const draftRef = useRef<Draft>(initialDraft());
+    const sentRef = useRef<SentDraft | null>(null);
     const scrollRef = useRef<HTMLDivElement>(null);
 
     // Auto-scroll when messages or streaming content changes
@@ -52,10 +58,40 @@ export function ChatArea() {
         );
     }
 
+    const input = (text: string) => {
+        draftRef.current = editDraft(draftRef.current, text);
+        setInputValue(text);
+    };
+
     const handleSendMessage = async () => {
-        if (!inputValue.trim()) return;
-        await sendUserMessage(inputValue.trim());
-        setInputValue('');
+        const draftNow = draftRef.current;
+        const content = draftNow.text.trim();
+        if (!content) return;
+
+        // Duplicate-send guard: only an unchanged draft revision of the same
+        // meeting blocks a second send while one is in flight.
+        const meetingId = currentMeeting.id;
+        if (isSameDraftInFlight(sentRef.current, meetingId, draftNow)) return;
+
+        const sent: SentDraft = {
+            meetingId,
+            revision: draftNow.revision,
+            text: draftNow.text,
+        };
+        sentRef.current = sent;
+
+        // The store resolves true only when the message was confirmed AND
+        // appended to the presented meeting (false: failure or late arrival
+        // after navigation).
+        const confirmed = await sendUserMessage(content);
+
+        const outcome = confirmed ? 'confirmed' : 'failed';
+        const presentedMeetingId = useMeetingStore.getState().currentMeeting?.id ?? null;
+        if (shouldClearAfterSend(sent, outcome, presentedMeetingId, draftRef.current)) {
+            draftRef.current = initialDraft();
+            setInputValue('');
+        }
+        sentRef.current = null;
     };
 
     const handleKeyDown = (e: React.KeyboardEvent) => {
@@ -281,7 +317,7 @@ export function ChatArea() {
                             <div className="flex gap-2">
                                 <Input
                                     value={inputValue}
-                                    onChange={(e) => setInputValue(e.target.value)}
+                                    onChange={(e) => input(e.target.value)}
                                     onKeyDown={handleKeyDown}
                                     placeholder="Type your message..."
                                     className="bg-zinc-800 border-zinc-700 text-white placeholder:text-zinc-500"
@@ -289,6 +325,7 @@ export function ChatArea() {
                                 <Button
                                     onClick={handleSendMessage}
                                     disabled={!inputValue.trim()}
+                                    aria-label="Send message"
                                     className="bg-indigo-600 hover:bg-indigo-700"
                                 >
                                     <Send className="w-4 h-4" />
