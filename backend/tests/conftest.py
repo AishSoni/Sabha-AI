@@ -49,6 +49,7 @@ SCHEMA_FILES = [
     BACKEND_ROOT / "migrations" / "010_atomic_meeting_close.sql",
     BACKEND_ROOT / "migrations" / "011_inference_accounting.sql",
     BACKEND_ROOT / "migrations" / "012_pending_vector_cleanup.sql",
+    BACKEND_ROOT / "migrations" / "013_persona_prompt_locks.sql",
 ]
 
 # Schema as it existed before the lifecycle-constraint fix. Upgrade-path tests
