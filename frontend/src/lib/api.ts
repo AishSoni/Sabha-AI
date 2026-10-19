@@ -106,10 +106,19 @@ export interface GenerationSettings {
 }
 
 function turnRequestInit(participantId: string, settings?: GenerationSettings): RequestInit {
+    return generationRequestInit(participantId, settings);
+}
+
+// Shared BYOK request shape: non-secret settings enter the body as `provider`,
+// the key rides the X-Provider-Key header and is never persisted.
+function generationRequestInit(participantId: string | null, settings?: GenerationSettings): RequestInit {
     const headers: Record<string, string> = { 'Content-Type': 'application/json' };
     if (settings?.apiKey) headers['X-Provider-Key'] = settings.apiKey;
 
-    const body: Record<string, unknown> = { participant_id: participantId };
+    const body: Record<string, unknown> = {};
+    if (participantId !== null) {
+        body.participant_id = participantId;
+    }
     if (settings) {
         body.provider = {
             provider: settings.provider ?? null,
@@ -324,6 +333,16 @@ export const api = {
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({ force_end: forceEnd }),
         });
+        return handleResponse(response);
+    },
+
+    // Generate + persist an interim summary (real, paid, ledgered endpoint).
+    // Same BYOK contract as turns: the key rides X-Provider-Key only.
+    async generateSummary(meetingId: string, settings?: GenerationSettings): Promise<Message> {
+        const response = await fetch(
+            `${API_BASE}/meetings/${meetingId}/summary`,
+            generationRequestInit(null, settings),
+        );
         return handleResponse(response);
     },
 };

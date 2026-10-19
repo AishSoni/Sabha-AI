@@ -217,7 +217,14 @@ class TurnRequest(BaseModel):
     participant_id: str
     provider: Optional[RequestProviderSettings] = None
 
-    
+class SummaryRequest(BaseModel):
+    """Request to generate an interim meeting summary (real endpoint).
+
+    Same BYOK contract as turns: browser overrides in the body, secret in
+    the X-Provider-Key header (read by the route, never persisted).
+    """
+    provider: Optional[RequestProviderSettings] = None
+
 class UserMessageRequest(BaseModel):
     """Request to add a user message."""
     content: str

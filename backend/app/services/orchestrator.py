@@ -57,7 +57,7 @@ class MeetingClosedError(ValueError):
     """
 
 
-def _resolve_generation_settings(
+def resolve_generation_settings(
     participant: AIParticipant,
     provider_settings: Optional[RequestProviderSettings] = None,
     provider_api_key: Optional[str] = None,
@@ -103,6 +103,10 @@ def _resolve_generation_settings(
             )
 
     return resolved
+
+
+# Historical name kept importable; new code uses the exported public name.
+_resolve_generation_settings = resolve_generation_settings
 
 
 class Orchestrator:
@@ -328,7 +332,7 @@ class Orchestrator:
         
         # Get LLM provider: browser overrides (BYOK, per request) merged over
         # the participant's persisted config, then server defaults.
-        gen = _resolve_generation_settings(
+        gen = resolve_generation_settings(
             participant, provider_settings, provider_api_key
         )
         provider = get_provider(
@@ -487,7 +491,7 @@ class Orchestrator:
         
         # Get LLM provider: browser overrides (BYOK, per request) merged over
         # the participant's persisted config, then server defaults.
-        gen = _resolve_generation_settings(
+        gen = resolve_generation_settings(
             participant, provider_settings, provider_api_key
         )
         provider = get_provider(

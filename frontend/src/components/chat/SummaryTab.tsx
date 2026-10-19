@@ -2,7 +2,9 @@
 
 import { useState } from 'react';
 import { useMeetingStore } from '@/stores/meetingStore';
+import { useSettingsStore } from '@/stores/settings-store';
 import { api, EndMeetingVote, EndMeetingResponse } from '@/lib/api';
+import { deriveSummariesFromMessages } from '@/lib/summary-view';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Card } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
@@ -23,30 +25,10 @@ import {
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 
-// Mock summaries for demonstration (will be replaced with real summaries from backend)
-const MOCK_SUMMARIES = [
-    {
-        id: '1',
-        number: 1,
-        content: `## Summary #1 - Initial Discussion
-
-**Key Points Discussed:**
-1. The Investor raised concerns about market positioning
-2. The CTO proposed a phased technical approach
-3. Initial consensus reached on MVP scope
-
-**Open Items:**
-- Need to validate pricing model
-- Technical feasibility study pending`,
-        createdAt: '2026-01-31T14:30:00Z',
-        isFinal: false,
-    },
-];
-
 export function SummaryTab() {
     const { currentMeeting, setCurrentMeeting } = useMeetingStore();
     const [isGenerating, setIsGenerating] = useState(false);
-    const [summaries, setSummaries] = useState(MOCK_SUMMARIES);
+    const [generateError, setGenerateError] = useState<string | null>(null);
     const [showEndMeetingConfirm, setShowEndMeetingConfirm] = useState(false);
     const [isEndingMeeting, setIsEndingMeeting] = useState(false);
     const [endMeetingResult, setEndMeetingResult] = useState<EndMeetingResponse | null>(null);
@@ -60,29 +42,36 @@ export function SummaryTab() {
     }
 
     const isMeetingEnded = currentMeeting.status === 'ended';
+    // The summary list derives from persisted system messages — reload-safe
+    // and free of client-side mock data.
+    const summaries = deriveSummariesFromMessages(currentMeeting.messages);
+    // One shared chronological numbering: interims and the final ending
+    // summary both advance the sequence.
+    const nextSummaryNumber = summaries.length + 1;
+    const meetingId = currentMeeting.id;
 
     const handleGenerateSummary = async () => {
         setIsGenerating(true);
-        // TODO: Call backend API to generate summary
-        setTimeout(() => {
-            const newSummary = {
-                id: String(summaries.length + 1),
-                number: summaries.length + 1,
-                content: `## Summary #${summaries.length + 1} - Generated at ${new Date().toLocaleTimeString()}
-
-**Key Points:**
-1. Discussion point from recent messages
-2. Areas of agreement and disagreement
-3. Action items identified
-
-**Next Steps:**
-- Continue discussion on open items`,
-                createdAt: new Date().toISOString(),
-                isFinal: false,
-            };
-            setSummaries([...summaries, newSummary]);
+        setGenerateError(null);
+        try {
+            const meetingIdAtStart = useMeetingStore.getState().currentMeeting?.id;
+            const generationSettings =
+                useSettingsStore.getState().composeGenerationSettings() ?? undefined;
+            await api.generateSummary(meetingIdAtStart ?? meetingId, generationSettings);
+            // The new summary lives as a persisted system message: refetch the
+            // meeting so the derived list shows it (never recreate it locally).
+            const updatedMeeting = await api.getMeeting(meetingIdAtStart ?? meetingId);
+            // Op-scope: a refetch for a meeting the user already navigated
+            // away from must not overwrite the presented meeting.
+            const presentedId = useMeetingStore.getState().currentMeeting?.id;
+            if (presentedId != null && presentedId === (updatedMeeting as { id?: string }).id) {
+                setCurrentMeeting(updatedMeeting);
+            }
+        } catch (err) {
+            setGenerateError((err as Error).message);
+        } finally {
             setIsGenerating(false);
-        }, 2000);
+        }
     };
 
     const handleEndMeeting = async (forceEnd: boolean) => {
@@ -94,20 +83,11 @@ export function SummaryTab() {
             setEndMeetingResult(response);
 
             if (response.success) {
-                // Refresh meeting data to get updated status and messages
+                // Refresh meeting data: the final executive summary is the
+                // persisted `📋 **MEETING ENDED**` message, so the derived
+                // list picks it up from the refetched meeting alone.
                 const updatedMeeting = await api.getMeeting(currentMeeting.id);
                 setCurrentMeeting(updatedMeeting);
-
-                // Add executive summary to local summaries
-                if (response.summary) {
-                    setSummaries([...summaries, {
-                        id: 'final',
-                        number: summaries.length + 1,
-                        content: response.summary,
-                        createdAt: new Date().toISOString(),
-                        isFinal: true,
-                    }]);
-                }
             }
 
             setShowEndMeetingConfirm(false);
@@ -172,12 +152,23 @@ export function SummaryTab() {
                             ) : (
                                 <>
                                     <RefreshCw className="w-4 h-4 mr-2" />
-                                    Generate Summary #{summaries.length + 1}
+                                    Generate Summary #{nextSummaryNumber}
                                 </>
                             )}
                         </Button>
                     </div>
                 </Card>
+
+                {/* Generation failure banner */}
+                {generateError && (
+                    <div className="p-3 bg-red-900/30 border border-red-800 rounded-lg flex items-center gap-2 text-red-400">
+                        <AlertTriangle className="w-4 h-4" />
+                        <span className="text-sm flex-1">{generateError}</span>
+                        <button onClick={() => setGenerateError(null)} className="text-xs hover:underline">
+                            Dismiss
+                        </button>
+                    </div>
+                )}
 
                 {/* Summary History */}
                 <div>

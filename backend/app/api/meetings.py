@@ -12,6 +12,7 @@ from app.models import (
     Message,
     UserMessageRequest,
     TurnRequest,
+    SummaryRequest,
     TurnResponse,
     MessageCreate,
     SenderType,
@@ -31,6 +32,7 @@ from app.services.meeting_closer import (
     MeetingNotFoundError,
 )
 from app.llm import get_provider, LLMMessage
+from app.services.summary_service import EmptyConversationError, generate_meeting_summary
 from app.services.vector_cleanup import get_vector_cleanup_ledger
 from app.services.vector_store import VectorStoreManager, get_vector_store
 import logging
@@ -116,6 +118,38 @@ async def add_user_message(meeting_id: str, data: UserMessageRequest):
     )
     
     return message
+
+
+@router.post("/{meeting_id}/summary", response_model=Message)
+async def generate_summary(meeting_id: str, data: SummaryRequest, request: Request):
+    """Generate and persist a real interim meeting summary.
+
+    Same generation-settings/BYOK contract as turns: request overrides compose
+    over server defaults and the secret rides the X-Provider-Key header,
+    never storage. The attempt is charged once in the inference ledger.
+    """
+    manager = get_meeting_manager()
+    try:
+        message = await generate_meeting_summary(
+            meeting_id,
+            provider_settings=data.provider,
+            provider_api_key=request.headers.get("X-Provider-Key"),
+            manager=manager,
+        )
+        return message
+    except MeetingClosedError as e:
+        # ended/archived meetings are read-only (409), like all writes.
+        raise HTTPException(status_code=409, detail=str(e))
+    except EmptyConversationError as e:
+        # Nothing to summarize (system messages alone don't count).
+        raise HTTPException(status_code=422, detail=str(e))
+    except MissingProviderKeyError as e:
+        # Cloud provider without any callable key: loud, actionable failure.
+        raise HTTPException(status_code=422, detail=str(e))
+    except ValueError as e:
+        raise HTTPException(status_code=404, detail=str(e))
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Error generating summary: {str(e)}")
 
 
 @router.post("/{meeting_id}/turn", response_model=TurnResponse)
