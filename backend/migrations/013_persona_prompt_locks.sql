@@ -53,9 +53,19 @@ BEGIN
         RETURN FALSE;
     END IF;
 
+    -- Deactivate first, then activate: a single bulk flip
+    -- (`SET is_active = (version = p_version)`) transiently violates the
+    -- partial unique index when the row swap is applied in heap order.
     UPDATE public.prompt_versions
-    SET is_active = (version = p_version)
-    WHERE persona_id = p_persona_id;
+    SET is_active = FALSE
+    WHERE persona_id = p_persona_id
+      AND is_active
+      AND version <> p_version;
+
+    UPDATE public.prompt_versions
+    SET is_active = TRUE
+    WHERE persona_id = p_persona_id
+      AND version = p_version;
 
     UPDATE public.personas
     SET updated_at = now()
