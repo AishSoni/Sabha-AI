@@ -23,6 +23,15 @@ interface QueuedFailure {
     error: Error;
 }
 
+interface QueuedPending {
+    promise: Promise<Response>;
+}
+
+export interface PendingJsonHandle {
+    resolve(): void;
+    reject(error: Error): void;
+}
+
 export interface ScriptedFetch {
     /** Every observed fetch call, in order. */
     calls: ScriptedFetchCall[];
@@ -38,7 +47,7 @@ export interface ScriptedFetch {
 
 export function createScriptedFetch(): ScriptedFetch {
     const calls: ScriptedFetchCall[] = [];
-    const queue: (QueuedJson | QueuedFailure)[] = [];
+    const queue: (QueuedJson | QueuedFailure | QueuedPending)[] = [];
 
     const handler = async (input: unknown, init?: RequestInit): Promise<Response> => {
         calls.push({ input: typeof input === "string" ? input : String(input), init });
@@ -51,12 +60,19 @@ export function createScriptedFetch(): ScriptedFetch {
         if ("error" in next) {
             throw next.error;
         }
-        return {
-            ok: next.status < 400,
-            status: next.status,
-            json: async () => next.body,
-        } as unknown as Response;
+        if ("promise" in next) {
+            return await next.promise;
+        }
+        return scriptJsonResponse(next.status, next.body);
     };
+
+    function scriptJsonResponse(status: number, body: unknown): Response {
+        return {
+            ok: status < 400,
+            status,
+            json: async () => body,
+        } as unknown as Response;
+    }
 
     return {
         calls,
@@ -65,6 +81,28 @@ export function createScriptedFetch(): ScriptedFetch {
         },
         enqueueFailure(error: Error): void {
             queue.push({ error });
+        },
+        /**
+         * Hold the next call's response until the returned handle settles.
+         * Lets a test resolve an in-flight response out of order (for
+         * example, prove a late stale snapshot cannot regress a newer
+         * cache entry).
+         */
+        enqueuePendingJson(status: number, body: unknown): PendingJsonHandle {
+            let resolveResponse!: (response: Response) => void;
+            const promise = new Promise<Response>((resolve) => {
+                resolveResponse = resolve;
+            });
+            queue.push({ promise });
+            return {
+                resolve(): void {
+                    resolveResponse(scriptJsonResponse(status, body));
+                },
+                reject(error: Error): void {
+                    const rejection = Promise.reject(error) as unknown as Response;
+                    resolveResponse(rejection);
+                },
+            };
         },
         install(): void {
             vi.stubGlobal("fetch", handler);
