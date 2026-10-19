@@ -7,7 +7,9 @@
     "build": "next build",
     "start": "next start",
     "lint": "eslint",
-    "test": "vitest run"
+    "test": "vitest run",
+    "test:unit": "vitest run src",
+    "test:architecture": "vitest run tests/architecture --passWithNoTests"
   },
   "dependencies": {
     "@radix-ui/react-alert-dialog": "^1.1.15",
