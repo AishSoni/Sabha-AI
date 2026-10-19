@@ -6,8 +6,33 @@ Supports PDF, DOCX, XLSX, CSV, TXT, and MD formats.
 from dataclasses import dataclass
 from typing import List, BinaryIO
 import io
+import logging
 
 from langchain_text_splitters import RecursiveCharacterTextSplitter
+
+logger = logging.getLogger(__name__)
+
+# Extraction budgets (spec-02 E2): parsing materializes everything it is
+# given, so huge workbooks/texts would freeze ingestion and exhaust memory.
+# Budgets are truncations, not errors — a capped document still ingests the
+# portion within budget. Values are read at call time so tests can lower
+# them; note the parser still materializes the full bytes it was handed.
+MAX_ROWS_PER_SHEET = 50_000
+MAX_EXTRACT_CHARACTERS = 2_000_000
+
+
+def budgeted_rows(rows, max_rows):
+    """Yield at most `max_rows` items from `rows` (a pure iterator cap)."""
+    if max_rows is None:
+        yield from rows
+        return
+    for i, row in enumerate(rows):
+        if i >= max_rows:
+            logger.warning(
+                "Row budget %s reached; remaining rows were not extracted", max_rows
+            )
+            return
+        yield row
 
 
 @dataclass
@@ -87,7 +112,18 @@ class DocumentProcessor:
         if not parser:
             raise ValueError(f"Unsupported file type: {file_type}. Supported: {list(parsers.keys())}")
         
-        return parser(content_bytes)
+        return self._cap_text(parser(content_bytes))
+
+    @staticmethod
+    def _cap_text(text: str) -> str:
+        """Clamp extracted text to MAX_EXTRACT_CHARACTERS (truncate, not fail)."""
+        cap = MAX_EXTRACT_CHARACTERS  # module-global read: monkeypatchable
+        if cap is not None and len(text) > cap:
+            logger.warning(
+                "Extracted text truncated at the %s character budget", cap
+            )
+            return text[:cap]
+        return text
     
     def _parse_pdf(self, content: bytes) -> str:
         """Parse PDF file using pypdf."""
@@ -134,7 +170,9 @@ class DocumentProcessor:
             sheet = wb[sheet_name]
             text_parts.append(f"## Sheet: {sheet_name}")
             
-            for row in sheet.iter_rows():
+            # Row budget: stop pulling rows once the cap is reached so a
+            # huge sheet cannot dominate ingestion.
+            for row in budgeted_rows(sheet.iter_rows(), MAX_ROWS_PER_SHEET):
                 row_values = [str(cell.value) for cell in row if cell.value is not None]
                 if row_values:
                     text_parts.append(" | ".join(row_values))

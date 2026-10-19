@@ -5,8 +5,11 @@ Handles document upload, listing, deletion, and semantic search.
 
 from fastapi import APIRouter, UploadFile, File, Form, HTTPException, BackgroundTasks, Request
 from typing import Optional, List
+import asyncio
 import logging
+import threading
 import uuid
+from weakref import WeakKeyDictionary
 
 from app.core.database import get_supabase
 from app.models.document_schemas import (
@@ -82,6 +85,33 @@ async def read_bounded(upload_file: UploadFile, limit: int) -> bytes:
     return b"".join(chunks)
 
 
+# Heavy parsing (pypdf/python-docx/openpyxl materialize everything) and the
+# sync status writes of the ingestion path run on a small worker pool so one
+# hostile file cannot freeze the API event loop (spec-02 E2). asyncio
+# primitives are loop-bound: tests drive ingestion from dedicated loop
+# threads, so the semaphore is created per running loop.
+_INGESTION_WORKERS = 2
+_semaphore_by_loop: "WeakKeyDictionary[asyncio.AbstractEventLoop, asyncio.Semaphore]" = WeakKeyDictionary()
+_semaphore_lock = threading.Lock()
+
+
+def ingestion_semaphore() -> asyncio.Semaphore:
+    """Return (creating on first use) this loop's ingestion semaphore."""
+    loop = asyncio.get_running_loop()
+    with _semaphore_lock:
+        sem = _semaphore_by_loop.get(loop)
+        if sem is None:
+            sem = asyncio.Semaphore(_INGESTION_WORKERS)
+            _semaphore_by_loop[loop] = sem
+        return sem
+
+
+async def _off_loop(fn, /, *args, **kwargs):
+    """Run a synchronous helper on the bounded ingestion pool."""
+    async with ingestion_semaphore():
+        return await asyncio.to_thread(fn, *args, **kwargs)
+
+
 async def _process_and_index_document(
     document_id: str,
     ticket,
@@ -96,6 +126,9 @@ async def _process_and_index_document(
     - tombstone before the pre-publish fence: nothing is ever upserted;
     - tombstone after points went live: the post-publish fence compensates
       by deleting the freshly published points immediately.
+
+    Parsing and this path's sync DB writes run on a bounded worker pool via
+    `_off_loop` so a huge file never starves the event loop (spec-02 E2).
     """
     db = get_supabase()
     vector_store = get_vector_store()
@@ -108,8 +141,10 @@ async def _process_and_index_document(
                 f"Document {document_id} was deleted during ingestion"
             )
 
-        # Process the file into chunks
-        chunks = processor.process_file(
+        # Process the file into chunks (off the event loop: parsing
+        # materializes everything, so it runs on the bounded worker pool).
+        chunks = await _off_loop(
+            processor.process_file,
             file_content=file_content,
             file_name=file_name,
             file_type=file_type,
@@ -140,11 +175,14 @@ async def _process_and_index_document(
                 f"Document {document_id} was deleted during ingestion"
             )
 
-        # Update document status to indexed
-        db.table("documents").update({
-            "status": "indexed",
-            "chunk_count": chunk_count,
-        }).eq("id", document_id).execute()
+        # Update document status to indexed (sync DB call → worker pool)
+        def _mark_indexed():
+            db.table("documents").update({
+                "status": "indexed",
+                "chunk_count": chunk_count,
+            }).eq("id", document_id).execute()
+
+        await _off_loop(_mark_indexed)
 
     except DocumentDeletedError as e:
         # The delete route owns the document lifecycle from the tombstone on;
@@ -152,11 +190,16 @@ async def _process_and_index_document(
         logger.info("Ingestion fenced for deleted document %s: %s", document_id, e)
 
     except Exception as e:
-        # Update document status to failed
-        db.table("documents").update({
-            "status": "failed",
-            "error_message": str(e),
-        }).eq("id", document_id).execute()
+        # Update document status to failed (sync DB call → worker pool)
+        logger.warning("Ingestion failed for document %s: %s", document_id, e)
+
+        def _mark_failed():
+            db.table("documents").update({
+                "status": "failed",
+                "error_message": str(e),
+            }).eq("id", document_id).execute()
+
+        await _off_loop(_mark_failed)
 
 
 @router.post("/upload", response_model=DocumentUploadResponse)
