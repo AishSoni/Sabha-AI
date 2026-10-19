@@ -12,7 +12,7 @@
  */
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { fireEvent, render, screen, waitFor } from "@testing-library/react";
-import { PersonaDetailContent } from "../app/roster/[id]/page";
+import { PersonaDetailContent } from "./page";
 
 const PERSONA_ID = "persona-1";
 

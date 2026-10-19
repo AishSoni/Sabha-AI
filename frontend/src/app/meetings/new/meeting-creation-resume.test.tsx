@@ -30,7 +30,7 @@ vi.mock('@/lib/api', () => ({
     documentsApi: { uploadDocument: mocks.uploadDocument },
 }));
 
-import NewMeetingPage from '../app/meetings/new/page';
+import NewMeetingPage from './page';
 
 const FILE_ONE = () => new File(['one'], 'market-scan.pdf', { type: 'application/pdf' });
 const FILE_TWO = () => new File(['two'], 'unit-economics.xlsx', { type: 'application/vnd.ms-excel' });
