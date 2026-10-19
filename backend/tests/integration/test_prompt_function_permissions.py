@@ -27,6 +27,7 @@ import pytest
 BACKEND_ROOT = Path(__file__).resolve().parents[2]
 
 MIGRATION_013 = BACKEND_ROOT / "migrations" / "013_persona_prompt_locks.sql"
+MIGRATION_014 = BACKEND_ROOT / "migrations" / "014_operations_primitive.sql"
 
 # The prompt functions this slice owns; every other RPC gains the same
 # execution denial in migration 013, asserted through the shared role sweep.
@@ -38,18 +39,22 @@ GUARDED_FUNCTIONS = [
     ("commit_meeting_ending", "uuid, text, text"),
     ("record_inference_cost", "uuid, uuid, text, text, text, numeric"),
     ("increment_meeting_cost", "uuid, numeric"),
+    ("claim_operation", "text, text"),
+    ("publish_operation", "uuid, integer"),
 ]
 
 PERSONA_TABLES = ["personas", "prompt_versions", "persona_knowledge_stacks", "knowledge_stacks"]
 
 
 def _apply_migration(db) -> None:
-    assert MIGRATION_013.exists(), (
-        "migration 013 does not exist yet — write it before this contract "
-        "can pass (intended red for the permissions slice)"
-    )
+    for migration in (MIGRATION_013, MIGRATION_014):
+        assert migration.exists(), (
+            "migration does not exist yet - write it before this contract "
+            "can pass (intended red for the permissions slice)"
+        )
     with db.connect() as conn:
-        conn.execute(MIGRATION_013.read_text(encoding="utf-8"))
+        for migration in (MIGRATION_013, MIGRATION_014):
+            conn.execute(migration.read_text(encoding="utf-8"))
 
 
 def _ensure_hosted_roles(conn: psycopg.Connection):

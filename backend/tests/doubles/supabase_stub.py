@@ -56,6 +56,14 @@ _RPC_SIGNATURES: dict[str, tuple[tuple[str, str], ...]] = {
         ("p_from_status", ""),
         ("p_content", ""),
     ),
+    "claim_operation": (
+        ("p_request_key", ""),
+        ("p_claimant", ""),
+    ),
+    "publish_operation": (
+        ("p_operation_id", "::uuid"),
+        ("p_expected_fence", ""),
+    ),
 }
 
 
