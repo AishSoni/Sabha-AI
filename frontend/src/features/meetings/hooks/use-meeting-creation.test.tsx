@@ -36,7 +36,13 @@ const MEETING = {
     messages: [],
 };
 
-const UPLOAD_OK = { id: 'doc-1', file_name: 'market-scan.pdf', status: 'processing' };
+const UPLOAD_OK = {
+    id: 'doc-1',
+    file_name: 'market-scan.pdf',
+    status: 'processing',
+    chunk_count: 0,
+    message: 'queued for indexing',
+};
 
 const FILE_ONE = () => new File(['one'], 'market-scan.pdf', { type: 'application/pdf' });
 const FILE_TWO = () => new File(['two'], 'unit-economics.xlsx', { type: 'application/vnd.ms-excel' });
@@ -117,6 +123,7 @@ describe('useMeetingCreation resume semantics', () => {
         const uploadCalls = scripted.calls.filter((call) => call.input.endsWith('/documents/upload'));
         expect(uploadCalls).toHaveLength(2);
 
+        scripted.enqueueJson(201, UPLOAD_OK); // unit-economics.xlsx reaches the server this time
         await act(async () => {
             await result.current.retryUploads();
         });

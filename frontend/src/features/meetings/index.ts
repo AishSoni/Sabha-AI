@@ -14,4 +14,9 @@ export {
     useDeleteMeeting,
     useUnarchiveMeeting,
 } from './api/mutations';
+export {
+    useMeetingCreation,
+    type MeetingCreationInput,
+    type MeetingUploadDraft,
+} from './hooks/use-meeting-creation';
 export type { AIParticipant, Meeting, MeetingStatus, MeetingWithParticipants, Message } from './api/decoders';
