@@ -26,6 +26,7 @@ export function ApiKeysSection() {
     }, []);
 
     const loadProviders = async () => {
+        setError(null);
         try {
             const response = await settingsApi.getProviders();
             setProviders(response.providers);
@@ -63,6 +64,12 @@ export function ApiKeysSection() {
         return (
             <div className="bg-red-500/10 border border-red-500/30 rounded-lg p-4">
                 <p className="text-red-400">{error}</p>
+                <button
+                    onClick={() => loadProviders()}
+                    className="mt-3 px-3 py-1.5 text-sm rounded-md bg-red-500/20 border border-red-500/40 text-red-300 hover:bg-red-500/30 transition-colors"
+                >
+                    Retry
+                </button>
             </div>
         );
     }

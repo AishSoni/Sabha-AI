@@ -97,10 +97,9 @@ export interface SettingsState {
     defaultProvider: 'openrouter' | 'gemini' | 'ollama' | null;
     systemAI: SystemAIConfig;
 
-    // Environment info (loaded from backend)
+    // Environment info (loaded from backend; always re-applied on hydration)
     isProduction: boolean;
     serverConfiguredProviders: string[];
-    initialized: boolean; // Whether settings have been initialized from backend
 
     // BYOK vault state (vaultUnlocked intentionally NOT persisted)
     vaultUnlocked: boolean;
@@ -151,7 +150,6 @@ const initialState = {
     },
     isProduction: false,
     serverConfiguredProviders: [] as string[],
-    initialized: false,
     vaultUnlocked: false,
     vaultSalt: null as string | null,
     vaultCiphertexts: {} as Record<string, string>,
@@ -335,39 +333,62 @@ export const useSettingsStore = create<SettingsState>()(
 
             initializeFromServer: (data) => {
                 const state = get();
+                const pristine = initialState.systemAI;
 
-                // Only auto-populate if not already initialized (first load)
-                if (state.initialized) return;
-
+                // Server metadata is authoritative on EVERY hydration: a
+                // persisted view must never pin the environment or the
+                // provider roster of a deployment (the old behavior applied
+                // this only once, gated by `initialized`).
                 const updates: Partial<SettingsState> = {
                     isProduction: data.isProduction,
-                    serverConfiguredProviders: data.configuredProviders,
-                    initialized: true,
+                    serverConfiguredProviders: [...data.configuredProviders],
                 };
 
-                // Set default provider from server if not set locally
+                // User choice wins: the server default applies only while
+                // none is set locally.
                 if (!state.defaultProvider && data.defaultProvider) {
                     updates.defaultProvider = data.defaultProvider as SettingsState['defaultProvider'];
                 }
 
-                // Update System AI from server
-                updates.systemAI = {
-                    ...state.systemAI,
-                    ...data.systemAI,
-                };
+                // System AI is a local preference once customized; a pristine
+                // (untouched) one adopts the server default.
+                if (
+                    state.systemAI.provider === pristine.provider
+                    && state.systemAI.model === pristine.model
+                    && state.systemAI.temperature === pristine.temperature
+                    && state.systemAI.maxTokens === pristine.maxTokens
+                ) {
+                    updates.systemAI = {
+                        ...state.systemAI,
+                        ...data.systemAI,
+                    };
+                }
 
-                // Auto-enable and set models for server-configured providers
+                // Auto-enable and set models for server-configured providers;
+                // reconcile providers the server no longer configures.
+                const configured = new Set(data.configuredProviders);
                 const newProviders = { ...state.providers };
-                for (const providerId of data.configuredProviders) {
-                    const key = providerId as keyof typeof newProviders;
-                    if (newProviders[key]) {
+                for (const key of Object.keys(newProviders) as Array<keyof typeof newProviders>) {
+                    const current = newProviders[key];
+                    if (configured.has(key)) {
                         newProviders[key] = {
-                            ...newProviders[key],
+                            ...current,
                             enabled: true,
                             serverConfigured: true,
-                            model: data.defaultModels[providerId] || newProviders[key].model,
+                            model: data.defaultModels[key] || current.model,
                         };
+                        continue;
                     }
+
+                    // Not configured anymore: clear the flag. A provider whose
+                    // enablement came only from the server key (no user-owned
+                    // ciphertext) is re-disabled; BYOK providers keep theirs.
+                    const localKey = state.vaultCiphertexts[key] !== undefined;
+                    newProviders[key] = {
+                        ...current,
+                        serverConfigured: false,
+                        enabled: current.serverConfigured === true && !localKey ? false : current.enabled,
+                    };
                 }
                 updates.providers = newProviders;
 
@@ -376,11 +397,20 @@ export const useSettingsStore = create<SettingsState>()(
         }),
         {
             name: 'sabha-settings',
+            // Version 1: legacy payloads carried an `initialized` flag which
+            // gated hydration forever; it is no longer stored at all.
+            version: 1,
+            migrate: (persisted) => {
+                // Prefers 1 (current): strip the stale flag, keep everything
+                // else so user preferences and vault ciphertexts survive.
+                const legacy = persisted as Record<string, unknown> & Partial<SettingsState>;
+                delete legacy.initialized;
+                return legacy as Partial<SettingsState>;
+            },
             partialize: (state) => ({
                 providers: state.providers,
                 defaultProvider: state.defaultProvider,
                 systemAI: state.systemAI,
-                initialized: state.initialized,
                 // Vault: ciphertext + salt only; never the passphrase, the
                 // derived key, or the unlocked flag.
                 vaultSalt: state.vaultSalt,
