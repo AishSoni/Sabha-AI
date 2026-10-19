@@ -3,7 +3,7 @@ Documents API router.
 Handles document upload, listing, deletion, and semantic search.
 """
 
-from fastapi import APIRouter, UploadFile, File, Form, HTTPException, BackgroundTasks
+from fastapi import APIRouter, UploadFile, File, Form, HTTPException, BackgroundTasks, Request
 from typing import Optional, List
 import logging
 import uuid
@@ -29,6 +29,57 @@ logger = logging.getLogger(__name__)
 # Supported file types
 ALLOWED_EXTENSIONS = {"pdf", "docx", "xlsx", "csv", "txt", "md"}
 MAX_FILE_SIZE = 50 * 1024 * 1024  # 50 MB
+
+# Uploads are streamed in bounded chunks instead of being materialized in one
+# `read()` call, so an oversized body is rejected without ever being fully
+# read into memory (spec-02 E1).
+UPLOAD_CHUNK_SIZE = 1024 * 1024
+
+# The declared Content-Length of a multipart request covers the whole body
+# (boundaries + form fields), not just the file bytes. The declared-size
+# precheck therefore allows a bounded overhead on top of the file limit;
+# the bounded read remains the authoritative guard.
+MULTIPART_OVERHEAD_ALLOWANCE = 1024 * 1024
+
+
+class UploadTooLargeError(ValueError):
+    """Raised when an upload exceeds the configured byte budget."""
+
+
+def parse_declared_size(value: Optional[str]) -> Optional[int]:
+    """Best-effort parse of a declared Content-Length header.
+
+    A missing or malformed header returns None — unknown sizes fall through
+    to the bounded read, which remains the real guard.
+    """
+    if not value:
+        return None
+    value = value.strip()
+    if not value.isdigit():
+        return None
+    return int(value)
+
+
+async def read_bounded(upload_file: UploadFile, limit: int) -> bytes:
+    """Read at most `limit` bytes from an upload.
+
+    The read aborts (and closes the stream) as soon as the budget is
+    exceeded, so oversized bodies are never fully materialized.
+    """
+    chunks: List[bytes] = []
+    total = 0
+    while True:
+        chunk = await upload_file.read(UPLOAD_CHUNK_SIZE)
+        if not chunk:
+            break
+        total += len(chunk)
+        if total > limit:
+            await upload_file.close()
+            raise UploadTooLargeError(
+                f"File exceeds the {limit // (1024 * 1024)} MB upload limit."
+            )
+        chunks.append(chunk)
+    return b"".join(chunks)
 
 
 async def _process_and_index_document(
@@ -110,6 +161,7 @@ async def _process_and_index_document(
 
 @router.post("/upload", response_model=DocumentUploadResponse)
 async def upload_document(
+    request: Request,
     background_tasks: BackgroundTasks,
     file: UploadFile = File(...),
     meeting_id: Optional[str] = Form(None),
@@ -147,16 +199,27 @@ async def upload_document(
             detail=f"File type '{file_ext}' not supported. Allowed: {', '.join(ALLOWED_EXTENSIONS)}"
         )
     
-    # Read file content
-    file_content = await file.read()
-    file_size = len(file_content)
-    
-    # Validate file size
-    if file_size > MAX_FILE_SIZE:
+    # Cheap declared-size precheck: reject a grossly oversized body before
+    # reading anything (allowing multipart overhead for boundaries and form
+    # fields). A missing or lying Content-Length falls through to the
+    # bounded read below, which remains the real guard.
+    declared_size = parse_declared_size(request.headers.get("content-length"))
+    if declared_size is not None and declared_size > MAX_FILE_SIZE + MULTIPART_OVERHEAD_ALLOWANCE:
         raise HTTPException(
-            status_code=400,
-            detail=f"File too large. Maximum size is {MAX_FILE_SIZE // (1024*1024)} MB"
+            status_code=413,
+            detail=f"File too large. Maximum size is {MAX_FILE_SIZE // (1024*1024)} MB",
         )
+
+    # Read the body under the byte budget; an oversized upload is rejected
+    # before any documents row is created.
+    try:
+        file_content = await read_bounded(file, MAX_FILE_SIZE)
+    except UploadTooLargeError as error:
+        raise HTTPException(
+            status_code=413,
+            detail=f"File too large. Maximum size is {MAX_FILE_SIZE // (1024*1024)} MB",
+        ) from error
+    file_size = len(file_content)
     
     # Determine collection name
     if meeting_id:
