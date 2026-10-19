@@ -1,20 +1,22 @@
 /**
- * Contract for the streamTurn SSE parser (spec-02 C2).
+ * Contract for the shared SSE stream decoder (spec-02 C2, extracted in spec-05).
  *
- * Evidence: the old parser dropped any event left in the buffer at EOF
- * (`if (done) break`), never tracked whether the stream ended with a terminal
- * (done/error) event, and could end a turn with no terminal at all — leaving
- * the UI streaming state stuck mid-air. These tests pin down:
+ * `decodeSseEvents` owns stream parsing independently of fetch: the caller
+ * provides any `Response`, and the decoder reassembles frames across arbitrary
+ * byte boundaries, tolerates malformed lines, delivers a final unterminated
+ * event, and never replays events after a terminal. These tests pin down:
  *
  * - arbitrary byte splits of lines/JSON parse correctly;
  * - the final unterminated event is flushed and delivered at EOF;
  * - a stream that ends without a terminal yields one synthesized
  *   "recovered interruption" error event (the store clears its own busy
  *   state; no automatic re-inference is attempted);
- * - malformed lines are skipped; events after a terminal are not replayed.
+ * - malformed lines are skipped; events after a terminal are not replayed;
+ * - an aborted reader releases its observation resources and propagates the
+ *   abort — it never claims the backend cancelled anything.
  */
-import { describe, expect, it, vi, beforeEach, afterEach } from 'vitest';
-import { api, StreamEvent } from '@/lib/api';
+import { describe, expect, it, vi } from 'vitest';
+import { decodeSseEvents, StreamEvent } from '@/shared/api/sse';
 
 function responseWithChunks(chunks: string[]): Response {
     const encoder = new TextEncoder();
@@ -37,24 +39,14 @@ function responseWithChunks(chunks: string[]): Response {
 const dataLine = (json: string) => `data: ${json}\n\n`;
 
 async function collect(chunks: string[]): Promise<StreamEvent[]> {
-    vi.stubGlobal('fetch', vi.fn().mockResolvedValue(responseWithChunks(chunks)));
     const events: StreamEvent[] = [];
-    for await (const event of api.streamTurn('meeting-1', 'participant-1')) {
+    for await (const event of decodeSseEvents(responseWithChunks(chunks))) {
         events.push(event);
     }
     return events;
 }
 
-beforeEach(() => {
-    vi.stubGlobal('fetch', vi.fn());
-});
-
-afterEach(() => {
-    vi.unstubAllGlobals();
-    vi.restoreAllMocks();
-});
-
-describe('streamTurn SSE parsing', () => {
+describe('decodeSseEvents envelope parsing', () => {
     it('reassembles events split across arbitrary byte boundaries', async () => {
         const stream =
             dataLine('{"type":"text","content":"hel"}') +
@@ -131,19 +123,45 @@ describe('streamTurn SSE parsing', () => {
         expect(events[1]!.content).toBe('provider exploded');
     });
 
-    it('surfaces non-ok responses as thrown errors', async () => {
-        vi.stubGlobal(
-            'fetch',
-            vi.fn().mockResolvedValue({
-                ok: false,
-                status: 500,
-                json: async () => ({ detail: 'boom' }),
-            })
-        );
+    it('surfaces non-ok responses as thrown safe errors', async () => {
+        const response = {
+            ok: false,
+            status: 500,
+            json: async () => ({ detail: 'boom' }),
+        } as unknown as Response;
+
         await expect(async () => {
-            for await (const _ of api.streamTurn('meeting-1', 'participant-1')) {
+            for await (const _ of decodeSseEvents(response)) {
                 /* unreachable */
             }
         }).rejects.toThrow('boom');
+    });
+
+    it('releases the reader and propagates an aborted read without claiming backend cancellation', async () => {
+        const releaseLock = vi.fn();
+        const body = {
+            getReader: () => ({
+                read: async () => {
+                    throw Object.assign(new Error('The operation was aborted'), {
+                        name: 'AbortError',
+                    });
+                },
+                releaseLock,
+            }),
+        };
+        const response = { ok: true, status: 200, body } as unknown as Response;
+
+        const seen: StreamEvent[] = [];
+        await expect(async () => {
+            for await (const event of decodeSseEvents(response)) {
+                seen.push(event);
+            }
+        }).rejects.toMatchObject({ name: 'AbortError' });
+
+        // The abort released observation resources (no lock leak), yielded the
+        // pre-abort events, and produced NO synthesized interruption event —
+        // cancellation is the caller's, not a backend verdict.
+        expect(releaseLock).toHaveBeenCalled();
+        expect(seen).toHaveLength(0);
     });
 });
