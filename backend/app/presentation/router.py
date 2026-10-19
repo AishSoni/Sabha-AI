@@ -26,3 +26,12 @@ def mount_routes(app) -> None:
     app.include_router(settings_api.router)
     app.include_router(documents.router)
     app.include_router(knowledge_stacks.router)
+
+    # Extracted module routes: their paths are absolute (the router carries
+    # no prefix), and each one replaces the legacy route removed in its
+    # cutover commit.
+    from app.modules.persona_catalog.presentation.http import (
+        router as persona_catalog_router,
+    )
+
+    app.include_router(persona_catalog_router)

@@ -85,13 +85,3 @@ async def create_prompt_version(persona_id: str, data: PromptVersionCreate):
         raise HTTPException(status_code=404, detail="Persona not found")
     
     return await manager.create_prompt_version(persona_id, data)
-
-
-@router.post("/{persona_id}/prompts/{version}/activate", status_code=200)
-async def activate_prompt_version(persona_id: str, version: int):
-    """Activate a specific prompt version."""
-    manager = PersonaManager()
-    success = await manager.activate_prompt_version(persona_id, version)
-    if not success:
-        raise HTTPException(status_code=404, detail="Prompt version not found")
-    return {"message": f"Version {version} activated"}

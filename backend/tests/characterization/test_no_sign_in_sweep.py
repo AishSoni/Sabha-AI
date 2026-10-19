@@ -20,6 +20,7 @@ the visitor-facing POST routes below — no seed helper bypasses the API here,
 so the sweep stays honest about what a fresh visitor can do.
 """
 
+import re
 from pathlib import Path
 
 import pytest
@@ -34,7 +35,6 @@ BACKEND_ROOT = Path(__file__).resolve().parents[2]
 PERSONA_ID = "33333333-3333-4333-8333-333333333333"
 
 FORBIDDEN_TOKENS = (
-    "Depends(",            # no FastAPI dependency/security injection
     "Security(",
     "APIRouter(dependencies",
     "get_current_user",
@@ -43,6 +43,22 @@ FORBIDDEN_TOKENS = (
     "require_auth",
     "supabase.auth",
     ".auth.getUser",       # the JS shape is caught on the frontend side; here for symmetry
+)
+
+# Spec-04 composition retrieves injected use cases with plain FastAPI
+# dependencies, so a bare ``Depends(`` is no longer proof of an auth gate by
+# itself. A dependency is auth-shaped when its callable name carries any of
+# these fragments; ``Depends(build_use_case)`` and friends stay allowed.
+AUTH_SHAPED_DEPENDENCY = r"Depends\(\s*([A-Za-z_][A-Za-z0-9_.]*)"
+AUTH_DEPENDENCY_FRAGMENTS = (
+    "auth",
+    "credential",
+    "jwt",
+    "permission",
+    "session",
+    "security",
+    "token",
+    "user",
 )
 
 AUTH_PATH_FRAGMENTS = ("login", "signin", "signup", "register", "logout", "callback", "token")
@@ -68,12 +84,17 @@ def code_lines(path: Path) -> list[str]:
 def forbidden_auth_usage(paths) -> list[str]:
     """Reuse the same scan logic for app sources and for the sandbox probe."""
     hits = []
+    auth_dependency = re.compile(AUTH_SHAPED_DEPENDENCY)
     for path in paths:
         for line in code_lines(path):
-            for token in FORBIDDEN_TOKENS:
-                if token in line:
+            if any(token in line for token in FORBIDDEN_TOKENS):
+                hits.append(f"{path.name}: {line.strip()}")
+                continue
+            match = auth_dependency.search(line)
+            if match:
+                callable_name = match.group(1).split(".")[-1].lower()
+                if any(fragment in callable_name for fragment in AUTH_DEPENDENCY_FRAGMENTS):
                     hits.append(f"{path.name}: {line.strip()}")
-                    break
     return hits
 
 
