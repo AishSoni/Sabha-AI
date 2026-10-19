@@ -24,12 +24,28 @@ export default function NewMeetingPage() {
     const router = useRouter();
     const [isCreating, setIsCreating] = useState(false);
     const [loadingRoster, setLoadingRoster] = useState(true);
+    const [navigationDone, setNavigationDone] = useState(false);
 
     // Form state
     const [agenda, setAgenda] = useState('');
     const [context, setContext] = useState('');
     const [roster, setRoster] = useState<RosterItem[]>([]);
-    const [documents, setDocuments] = useState<File[]>([]);
+
+    /**
+     * Documents stage per file through an explicit lifecycle so a failed
+     * upload never discards the created meeting: the meeting row is created
+     * exactly once and later retries re-upload only the files that did not
+     * reach the server.
+     */
+    interface UploadItem {
+        file: File;
+        status: 'pending' | 'uploading' | 'uploaded' | 'failed';
+        error: string | null;
+    }
+    const [uploads, setUploads] = useState<UploadItem[]>([]);
+    const [createdMeetingId, setCreatedMeetingId] = useState<string | null>(null);
+    const [creationError, setCreationError] = useState<string | null>(null);
+    const [uploadError, setUploadError] = useState<string | null>(null);
 
     useEffect(() => {
         loadPersonas();
@@ -68,12 +84,58 @@ export default function NewMeetingPage() {
 
     const handleFileSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
         if (e.target.files) {
-            setDocuments([...documents, ...Array.from(e.target.files)]);
+            const incoming: UploadItem[] = Array.from(e.target.files).map(file => ({
+                file,
+                status: 'pending' as const,
+                error: null,
+            }));
+            setUploads(prev => [...prev, ...incoming]);
         }
     };
 
     const removeDocument = (index: number) => {
-        setDocuments(documents.filter((_, i) => i !== index));
+        setUploads(uploads.filter((_, i) => i !== index));
+    };
+
+    /** Uploads every file that has not reached the server yet; returns the file list attempted (for tests/telemetry). */
+    const runPendingUploads = async (meetingId: string) => {
+        const targets = uploads.filter(item => item.status !== 'uploaded');
+        if (targets.length === 0) return;
+
+        const { documentsApi } = await import('@/lib/api');
+        setUploads(prev =>
+            prev.map(item => (item.status !== 'uploaded' ? { ...item, status: 'uploading', error: null } : item))
+        );
+        setUploadError(null);
+
+        const results = await Promise.allSettled(
+            targets.map(item => documentsApi.uploadDocument(item.file, meetingId))
+        );
+
+        // Reconcile by file identity so an out-of-order late success still lands.
+        const outcome = new Map<File, PromiseSettledResult<unknown>>();
+        targets.forEach((item, i) => outcome.set(item.file, results[i]));
+
+        setUploads(prev =>
+            prev.map(item => {
+                const result = outcome.get(item.file);
+                if (!result) return item;
+                if (result.status === 'fulfilled') return { ...item, status: 'uploaded', error: null };
+                return { ...item, status: 'failed', error: (result.reason as Error)?.message ?? 'Upload failed' };
+            })
+        );
+
+        if (results.some(r => r.status === 'rejected')) {
+            const failedCount = results.filter(r => r.status === 'rejected').length;
+            setUploadError(
+                `${failedCount} of ${targets.length} files failed to upload. You can retry below; nothing was lost.`
+            );
+            return;
+        }
+
+        // Everything reached the server — navigate to the meeting once.
+        setNavigationDone(true);
+        router.push(`/meetings/${meetingId}`);
     };
 
     const handleCreate = async () => {
@@ -83,28 +145,34 @@ export default function NewMeetingPage() {
         if (selectedPersonaIds.length === 0) return;
 
         setIsCreating(true);
+        setCreationError(null);
         try {
-            const meeting = await api.createMeeting(
-                agenda.trim(),
-                context.trim(),
-                selectedPersonaIds
-            );
-
-            // Upload documents if any
-            if (documents.length > 0) {
-                const { documentsApi } = await import('@/lib/api');
-                // Upload documents in parallel
-                await Promise.all(
-                    documents.map(file =>
-                        documentsApi.uploadDocument(file, meeting.id)
-                    )
+            // The meeting row exists exactly once: retries after a failed
+            // upload resume from the retained id instead of creating a clone.
+            let meetingId = createdMeetingId;
+            if (!meetingId) {
+                const meeting = await api.createMeeting(
+                    agenda.trim(),
+                    context.trim(),
+                    selectedPersonaIds
                 );
+                meetingId = meeting.id;
+                setCreatedMeetingId(meetingId);
             }
-
-            // Navigate to the new meeting
-            router.push(`/meetings/${meeting.id}`);
+            await runPendingUploads(meetingId);
         } catch (err) {
             console.error('Failed to create meeting:', err);
+            setCreationError(`Failed to create the meeting: ${(err as Error).message}`);
+        } finally {
+            setIsCreating(false);
+        }
+    };
+
+    const retryUploads = async () => {
+        if (!createdMeetingId) return;
+        setIsCreating(true);
+        try {
+            await runPendingUploads(createdMeetingId);
         } finally {
             setIsCreating(false);
         }
@@ -202,25 +270,57 @@ export default function NewMeetingPage() {
                                 </label>
                             </div>
 
-                            {documents.length > 0 && (
+                            {uploads.length > 0 && (
                                 <div className="space-y-2">
-                                    {documents.map((file, i) => (
+                                    {uploads.map((item, i) => (
                                         <div
-                                            key={i}
+                                            key={`${item.file.name}-${i}`}
                                             className="flex items-center gap-3 p-3 bg-zinc-800 rounded-lg"
                                         >
-                                            <FileText className="w-5 h-5 text-zinc-500" />
+                                            <FileText className="w-5 h-5 text-zinc-500 shrink-0" />
                                             <span className="text-sm text-zinc-300 flex-1 truncate">
-                                                {file.name}
+                                                {item.file.name}
                                             </span>
-                                            <button
-                                                onClick={() => removeDocument(i)}
-                                                className="text-zinc-500 hover:text-red-400"
-                                            >
-                                                <X className="w-4 h-4" />
-                                            </button>
+                                            {item.status === 'uploading' && (
+                                                <span className="text-xs text-zinc-400 flex items-center gap-1">
+                                                    <Loader2 className="w-3 h-3 animate-spin" /> Uploading…
+                                                </span>
+                                            )}
+                                            {item.status === 'uploaded' && (
+                                                <span className="text-xs text-green-400">Uploaded</span>
+                                            )}
+                                            {item.status === 'failed' && (
+                                                <span className="text-xs text-red-400">
+                                                    Failed: {item.error ?? 'Upload failed'}
+                                                </span>
+                                            )}
+                                            {item.status !== 'uploaded' && (
+                                                <button
+                                                    onClick={() => removeDocument(i)}
+                                                    className="text-zinc-500 hover:text-red-400"
+                                                >
+                                                    <X className="w-4 h-4" />
+                                                </button>
+                                            )}
                                         </div>
                                     ))}
+                                    {uploadError && (
+                                        <p className="text-xs text-amber-400" role="alert">
+                                            {uploadError}
+                                        </p>
+                                    )}
+                                    {uploadError && createdMeetingId && (
+                                        <Button
+                                            variant="outline"
+                                            size="sm"
+                                            onClick={retryUploads}
+                                            disabled={isCreating}
+                                            className="text-xs border-zinc-700 text-zinc-300 hover:bg-zinc-800"
+                                        >
+                                            <RefreshCw className="w-3 h-3 mr-2" />
+                                            Retry Uploads
+                                        </Button>
+                                    )}
                                 </div>
                             )}
                         </section>
@@ -313,6 +413,11 @@ export default function NewMeetingPage() {
 
                 {/* Footer Actions */}
                 <div className="mt-12 flex items-center justify-end gap-4 border-t border-zinc-800 pt-8">
+                    {creationError && (
+                        <p className="text-sm text-red-400 flex-1" role="alert">
+                            {creationError}
+                        </p>
+                    )}
                     <Button
                         variant="ghost"
                         onClick={() => router.back()}
@@ -322,7 +427,7 @@ export default function NewMeetingPage() {
                     </Button>
                     <Button
                         onClick={handleCreate}
-                        disabled={!agenda.trim() || isCreating || selectedCount === 0}
+                        disabled={!agenda.trim() || isCreating || navigationDone || selectedCount === 0}
                         className="bg-indigo-600 hover:bg-indigo-700 px-8"
                     >
                         {isCreating ? (
