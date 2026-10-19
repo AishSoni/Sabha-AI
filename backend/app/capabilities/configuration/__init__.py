@@ -1,0 +1,1 @@
+"""Runtime inference-configuration capability."""

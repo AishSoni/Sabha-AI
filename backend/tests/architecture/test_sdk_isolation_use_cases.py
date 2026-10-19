@@ -8,9 +8,9 @@ imported: any attribute read (an import of a member, a constructor call, a
 classmethod) trips the stub. Correct behavior can therefore only run if the
 use case module never reaches an SDK member at all.
 
-While RED the target is the legacy orchestrator home (which transitively
-imports the supabase SDK); the extraction commit retargets these constants to
-the dependency-free capability.
+The constants guard the capability home; the original import surface
+(app.services.orchestrator re-exports) stays guarded by the regression
+suites that import through it.
 """
 
 import subprocess
@@ -24,9 +24,9 @@ pytestmark = [pytest.mark.architecture]
 ARCHITECTURE_DIR = Path(__file__).resolve().parent
 BACKEND_ROOT = ARCHITECTURE_DIR.parents[1]
 
-# RED -> call sites must be moved in the extraction commit.
-TARGET_MODULE = "app.services.orchestrator"
-CONTRACTS_MODULE = "app.services.orchestrator"
+# Extracted homes (orchestrator re-exports keep the callers import surface).
+TARGET_MODULE = "app.capabilities.configuration.service"
+CONTRACTS_MODULE = "app.capabilities.configuration.contracts"
 
 SCRIPT_TEMPLATE = '''
 import importlib
@@ -96,6 +96,14 @@ def main():
     MissingProviderKeyError = contracts.MissingProviderKeyError
 
     from app.core.config import settings
+
+    # Pin the synthetic no-server-key state. conftest intends empty provider
+    # keys, but Windows drops empty-string env vars when a child process env
+    # block is materialized, so this child would otherwise read the
+    # operator's real backend/.env values and the gate would descend to
+    # machine configuration.
+    settings.gemini_api_key = ""
+    settings.openrouter_api_key = ""
 
     # 2) Cloud gate: a gemini turn with no browser key and no server key must
     #    fail loudly without ever constructing a provider client.

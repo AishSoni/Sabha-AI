@@ -1,5 +1,3 @@
-# Core module exports
-from app.core.config import settings
-from app.core.database import get_supabase, get_supabase_admin
-
-__all__ = ["settings", "get_supabase", "get_supabase_admin"]
+# Platform seam package. Import submodules directly (app.core.database,
+# app.core.config, app.core.qdrant); this __init__ must stay side-effect
+# free so `app.core.config` remains importable without any SDK client.

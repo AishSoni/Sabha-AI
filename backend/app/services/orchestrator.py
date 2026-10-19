@@ -16,13 +16,13 @@ from app.models import (
     Disagreement,
     Consensus,
     TurnResponse,
-    ProviderConfig,
     RequestProviderSettings,
     MeetingStatus,
 )
 from app.services.meeting_manager import MeetingManager
 from app.core.database import get_supabase
-from app.core.config import settings
+from app.capabilities.configuration.contracts import MissingProviderKeyError
+from app.capabilities.configuration.service import resolve_generation_settings
 from app.services.tools import get_default_tools
 from app.services.accounting import record_inference_attempt
 
@@ -41,12 +41,6 @@ def _merge_usage(total: dict, usage: dict | None) -> dict:
     return total
 
 
-class MissingProviderKeyError(ValueError):
-    """A cloud-provider turn carries no browser key (BYOK) and the server has
-    no configured key either — the turn cannot authenticate, so fail loudly
-    instead of silently proceeding."""
-
-
 class MeetingClosedError(ValueError):
     """A turn targets a meeting whose status is no longer `active`.
 
@@ -55,54 +49,6 @@ class MeetingClosedError(ValueError):
     response — it persists as one late write and the closed status is never
     reverted.
     """
-
-
-def resolve_generation_settings(
-    participant: AIParticipant,
-    provider_settings: Optional[RequestProviderSettings] = None,
-    provider_api_key: Optional[str] = None,
-) -> dict:
-    """Merge per-request browser overrides over the participant's persisted
-    provider_config snapshot (created at meeting time), then server defaults.
-
-    Request values win; absent request values fall back to the participant's
-    own settings; the API key never persists — it rides the request header
-    only. Cloud providers must have some key available or the turn is
-    rejected with MissingProviderKeyError.
-    """
-    config = getattr(participant, "provider_config", None) or ProviderConfig()
-    overrides = provider_settings or RequestProviderSettings()
-
-    resolved = {
-        "provider": overrides.provider or config.provider or "",
-        "model": overrides.model or config.model or "",
-        "temperature": (
-            overrides.temperature
-            if overrides.temperature is not None
-            else config.temperature
-        ),
-        "max_tokens": (
-            overrides.max_tokens
-            if overrides.max_tokens is not None
-            else config.max_tokens
-        ),
-        # base_url is a request-only concept (local Ollama destinations).
-        "base_url": overrides.base_url or None,
-        # Per-request secret; never stored with the participant.
-        "api_key": provider_api_key,
-    }
-
-    resolved["provider"] = resolved["provider"] or settings.default_llm_provider
-
-    if resolved["provider"] in ("openrouter", "gemini"):
-        server_key = getattr(settings, f"{resolved['provider']}_api_key", "")
-        if not resolved["api_key"] and not server_key:
-            raise MissingProviderKeyError(
-                f"No API key available for {resolved['provider']}. "
-                "Provide a browser key (BYOK) or configure the server key."
-            )
-
-    return resolved
 
 
 # Historical name kept importable; new code uses the exported public name.
