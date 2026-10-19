@@ -39,6 +39,8 @@ export interface StreamEvent {
     interrupted?: boolean; // client-only marker, synthesized below
 }
 
+export type StreamEventType = StreamEvent['type'];
+
 const RECOVERED_INTERRUPTION_CONTENT =
     'The stream was interrupted before the turn completed. Any partial result may already be saved — retry when ready to continue.';
 

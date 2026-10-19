@@ -1,7 +1,14 @@
 /**
  * Sabha API Client
  * Handles all backend communication
+ *
+ * Legacy facade. Envelope decoding already lives in the shared transport layer
+ * (src/shared/api/sse.ts); domain slices migrate to their feature api folders
+ * as screens migrate (spec-05, spec-07, spec-10).
  */
+
+import { decodeSseEvents } from '@/shared/api/sse';
+import type { StreamEvent } from '@/shared/api/sse';
 
 const API_BASE = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000/api';
 
@@ -202,6 +209,8 @@ export const api = {
     },
 
     // AI Turns (Streaming)
+    // The facade keeps only the request side; envelope decoding, terminal
+    // bookkeeping, and the interruption synthesis all live in shared api.
     async *streamTurn(
         meetingId: string,
         participantId: string,
@@ -211,96 +220,7 @@ export const api = {
             `${API_BASE}/meetings/${meetingId}/turn/stream`,
             turnRequestInit(participantId, settings)
         );
-
-        if (!response.ok) {
-            const error = await response.json().catch(() => ({ detail: 'Unknown error' }));
-            throw new Error(error.detail || `API Error: ${response.status}`);
-        }
-
-        const reader = response.body?.getReader();
-        if (!reader) throw new Error('No response body');
-
-        const decoder = new TextDecoder();
-        let buffer = '';
-        // Terminal bookkeeping: a well-formed stream ends with exactly one
-        // `done` or `error` event. Anything else means the connection died
-        // mid-turn and the client recovered an interruption.
-        let sawTerminal = false;
-
-        try {
-            while (true) {
-                const { done, value } = await reader.read();
-                if (done) break;
-
-                buffer += decoder.decode(value, { stream: true });
-
-                // Process complete lines only (lines ending with \n)
-                let newlineIndex;
-                while ((newlineIndex = buffer.indexOf('\n')) !== -1) {
-                    const line = buffer.slice(0, newlineIndex).trim();
-                    buffer = buffer.slice(newlineIndex + 1);
-
-                    // Skip empty lines (SSE uses \n\n to separate events)
-                    if (!line) continue;
-
-                    // Parse data lines
-                    if (line.startsWith('data:')) {
-                        const jsonStr = line.slice(5).trim();
-                        if (jsonStr) {
-                            try {
-                                const event = JSON.parse(jsonStr) as StreamEvent;
-                                if (event.type === 'done' || event.type === 'error') {
-                                    sawTerminal = true;
-                                } else if (sawTerminal) {
-                                    // Never replay user-visible activity that
-                                    // arrives after the terminal event.
-                                    console.warn('[SSE] ignored post-terminal event', event.type);
-                                    continue;
-                                }
-                                yield event;
-                            } catch (e) {
-                                console.error('[SSE Parse Error]', jsonStr.slice(0, 100), e);
-                            }
-                        }
-                    }
-                }
-            }
-
-            // Flush the decoder and any final event the server sent without a
-            // trailing newline; a truncated bare fragment is evidence the
-            // connection dropped mid-event.
-            buffer += decoder.decode();
-            const leftover = buffer.trim();
-            if (leftover.startsWith('data:') && !sawTerminal) {
-                const jsonStr = leftover.slice(5).trim();
-                if (jsonStr) {
-                    try {
-                        const event = JSON.parse(jsonStr) as StreamEvent;
-                        if (event.type === 'done' || event.type === 'error') {
-                            sawTerminal = true;
-                        }
-                        yield event;
-                    } catch (e) {
-                        console.error('[SSE Truncated Event]', jsonStr.slice(0, 100), e);
-                    }
-                }
-            }
-        } finally {
-            reader.releaseLock();
-        }
-
-        // End without terminal: the turn result is unknown — deliver one
-        // recovered-interruption error so the store clears its own busy state
-        // and the user can decide whether to retry. No auto re-inference.
-        if (!sawTerminal) {
-            yield {
-                type: 'error',
-                content:
-                    'The stream was interrupted before the turn completed. Any partial ' +
-                    'result may already be saved — retry when ready to continue.',
-                interrupted: true,
-            } as StreamEvent;
-        }
+        yield* decodeSseEvents(response);
     },
 
     // Conflicts
@@ -358,25 +278,9 @@ export interface ContextStats {
     participant_count: number;
 }
 
-// Streaming event types
-export type StreamEventType = 'text' | 'thinking' | 'tool_call' | 'tool_result' | 'citation' | 'done' | 'error';
-
-export interface StreamEvent {
-    type: StreamEventType;
-    content?: string;
-    tool_name?: string;
-    tool_arguments?: Record<string, unknown>;
-    tool_result?: string;
-    tool_call_id?: string;
-    source?: string;
-    title?: string;
-    url?: string;
-    snippet?: string;
-    message_id?: string;
-    usage?: Record<string, number>;
-    /** Set by the client parser for synthesized recovered-interruption errors. */
-    interrupted?: boolean;
-}
+// Streaming event types — canonical definitions live in the shared transport
+// layer; these re-exports keep the legacy facade's type surface intact.
+export type { StreamEvent, StreamEventType } from '@/shared/api/sse';
 
 // End meeting types
 export interface EndMeetingVote {

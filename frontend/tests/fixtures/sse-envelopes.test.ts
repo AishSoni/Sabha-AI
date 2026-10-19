@@ -1,13 +1,14 @@
 /**
- * Executes the SSE wire fixtures against the real streamTurn parser (spec-03).
+ * Executes the SSE wire fixtures against the real stream envelope decoder
+ * (spec-03 contract, decoded from shared api since spec-05).
  *
  * Fixtures must stay executable evidence of the backend_to_frontend_events
  * contract: each envelope is byte-exact backend wire format, and these tests
  * prove they are delivered safely at the transport boundary — splitting,
  * duplicate delivery, EOF-without-terminal, and same-name tool calls.
  */
-import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
-import { api, StreamEvent } from "@/lib/api";
+import { afterEach, describe, expect, it, vi } from "vitest";
+import { decodeSseEvents, StreamEvent } from "@/shared/api/sse";
 import {
     DUPLICATE_REPLAY,
     DUPLICATE_TOOL_NAMES,
@@ -18,22 +19,12 @@ import {
 import { createScriptedFetch } from "./transport";
 
 async function streamWith(chunks: string[]): Promise<StreamEvent[]> {
-    vi.stubGlobal("fetch", vi.fn().mockResolvedValue(makeSseResponse(chunks)));
     const events: StreamEvent[] = [];
-    for await (const event of api.streamTurn("meeting-1", "participant-1")) {
+    for await (const event of decodeSseEvents(makeSseResponse(chunks))) {
         events.push(event);
     }
     return events;
 }
-
-beforeEach(() => {
-    vi.stubGlobal("fetch", vi.fn());
-});
-
-afterEach(() => {
-    vi.unstubAllGlobals();
-    vi.restoreAllMocks();
-});
 
 describe("SSE wire envelopes", () => {
     it("delivers a stream cut mid-JSON and mid-frame intact", async () => {
@@ -88,7 +79,7 @@ describe("SSE wire envelopes", () => {
 
     it("groups envelope semantics under one wire contract", () => {
         // Meta-protection so fixtures stay non-vacuous: envelopes are real
-        // touches of api.streamTurn's documented wire format, not empty lists.
+        // touches of the documented wire format, not empty lists.
         for (const envelope of [SPLIT_TEXT_THEN_DONE, DUPLICATE_REPLAY, EOF_WITHOUT_TERMINAL, DUPLICATE_TOOL_NAMES]) {
             expect(envelope.length).toBeGreaterThan(0);
             for (const chunk of envelope) {
