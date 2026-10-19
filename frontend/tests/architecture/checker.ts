@@ -1,0 +1,232 @@
+/**
+ * Frontend import-boundary checker (spec-03).
+ *
+ * Engine mirrors the backend AST checker: walk TypeScript sources with the
+ * real "typescript" compiler API, resolve import specifiers (relative, the
+ * project alias, and bare packages), and flag the boundaries that are TRUE
+ * for this codebase today:
+ *
+ * - no source file imports the Supabase browser SDK or a provider SDK;
+ *   the app is fully SDK-free and server-authoritative (zero usage today);
+ * - src/components/ui files are generic presentation: imports of app state
+ *   stores must be curated. Exactly one exception is allowed today
+ *   (ui/rate-limited-button.tsx reads the rate-limit store) and the list is
+ *   deliberately explicit so new exceptions are conscious decisions;
+ * - route files under src/app never import test modules.
+ *
+ * Feature-owned index.ts public-interface rules activate when the features
+ * tree lands (Spec 05) — this engine stays extensible for them; nothing is
+ * skipped silently without documentation here.
+ */
+import fs from "node:fs";
+import path from "node:path";
+import ts from "typescript";
+
+export const FORBIDDEN_SDK_PACKAGES = new Set([
+    "@supabase/supabase-js",
+    "supabase",
+    "openai",
+    "cohere",
+    "@cohere-ai/sdk",
+    "anthropic",
+    "@anthropic-ai/sdk",
+]);
+
+/**
+ * Curated UI-store exceptions, as [uiFileRelativeToSrc, storeModuleRelativeToSrc].
+ * The live-tree test asserts each entry still matches a real import.
+ */
+export const UI_STORE_ALLOWLIST: ReadonlyArray<readonly [string, string]> = [
+    ["src/components/ui/rate-limited-button.tsx", "src/stores/rateLimitStore"],
+];
+
+export interface ImportEdge {
+    file: string;
+    /** Raw module specifier as written in the source. */
+    spec: string;
+    /** For bare packages: the package name (@scope/name or first segment). */
+    packageName: string | null;
+    /** Absolute normalized path for relative and "@" specs; null otherwise. */
+    resolved: string | null;
+}
+
+export interface Violation {
+    file: string;
+    spec: string;
+    rule: string;
+    message: string;
+}
+
+export const RULE_FORBIDDEN_SDK_IMPORT = "forbidden_sdk_import";
+export const RULE_STORE_IMPORT_IN_UI = "store_import_in_ui";
+export const RULE_TEST_IMPORT_IN_ROUTE = "test_import_in_route";
+
+function toPosix(p: string): string {
+    return p.split(path.sep).join("/");
+}
+
+function packageNameOf(spec: string): string | null {
+    const segments = spec.split("/");
+    if (spec.startsWith("@")) {
+        if (segments.length < 2) {
+            return spec;
+        }
+        return segments.slice(0, 2).join("/");
+    }
+    return segments[0];
+}
+
+const bare = (spec: string): boolean => !spec.startsWith(".") && !spec.startsWith("@/") && !spec.startsWith("/");
+
+/** true for the project alias prefix (at-sign-slash) only. */
+function isAliasSpec(spec: string): boolean {
+    return spec.startsWith("@/");
+}
+
+/**
+ * Resolve an internal module specifier to an absolute normalized path.
+ * Extensionless specs are probed with .ts/.tsx like TS module resolution.
+ */
+export function resolveInternalSpec(projectRoot: string, importerAbs: string, spec: string): string | null {
+    const root = toPosix(projectRoot);
+    let candidate: string;
+    if (isAliasSpec(spec)) {
+        candidate = path.join(projectRoot, "src", spec.slice(2));
+    } else if (spec.startsWith(".") || spec.startsWith("/")) {
+        candidate = path.resolve(path.dirname(importerAbs), spec);
+    } else {
+        return null;
+    }
+    if (/\.[cm]?[jt]sx?$/.test(candidate)) {
+        return toPosix(candidate);
+    }
+    if (fs.existsSync(`${candidate}.ts`)) {
+        return toPosix(`${candidate}.ts`);
+    }
+    if (fs.existsSync(`${candidate}.tsx`)) {
+        return toPosix(`${candidate}.tsx`);
+    }
+    return toPosix(candidate);
+}
+
+export function isTestModule(projectRoot: string, resolvedPath: string): boolean {
+    const normalized = toPosix(resolvedPath);
+    const root = toPosix(projectRoot);
+    return (
+        normalized.startsWith(`${root}/src/test/`) ||
+        normalized.startsWith(`${root}/tests/`) ||
+        /\.test\.[cm]?[jt]sx?$/.test(normalized) ||
+        /\.spec\.[cm]?[jt]sx?$/.test(normalized)
+    );
+}
+
+function relToRoot(projectRoot: string, filePath: string): string {
+    const rel = toPosix(path.relative(projectRoot, filePath));
+    return rel.replace(/^\.\//, "");
+}
+
+function collectImportEdges(projectRoot: string, fileAbs: string, source: ts.SourceFile): ImportEdge[] {
+    const edges: ImportEdge[] = [];
+    const push = (spec: string): void => {
+        edges.push({
+            file: fileAbs,
+            spec,
+            packageName: bare(spec) ? packageNameOf(spec) : null,
+            resolved: resolveInternalSpec(projectRoot, fileAbs, spec),
+        });
+    };
+
+    const visit = (node: ts.Node): void => {
+        if (ts.isImportDeclaration(node) && ts.isStringLiteral(node.moduleSpecifier)) {
+            push(node.moduleSpecifier.text);
+        } else if (ts.isExportDeclaration(node) && node.moduleSpecifier && ts.isStringLiteral(node.moduleSpecifier)) {
+            push(node.moduleSpecifier.text);
+        } else if (ts.isCallExpression(node) && node.expression.kind === ts.SyntaxKind.ImportKeyword) {
+            const first = node.arguments[0];
+            if (first && ts.isStringLiteral(first)) {
+                push(first.text);
+            }
+        }
+        ts.forEachChild(node, visit);
+    };
+
+    ts.forEachChild(source, visit);
+    return edges;
+}
+
+function walkSources(root: string): string[] {
+    const out: string[] = [];
+    const skip = new Set(["node_modules", ".next", ".git"]);
+    const stack = [root];
+    while (stack.length > 0) {
+        const current = stack.pop()!;
+        for (const entry of fs.readdirSync(current, { withFileTypes: true })) {
+            if (entry.isDirectory()) {
+                if (skip.has(entry.name)) {
+                    continue;
+                }
+                stack.push(path.join(current, entry.name));
+                continue;
+            }
+            if (/\.[cm]?[jt]sx?$/.test(entry.name)) {
+                out.push(path.join(current, entry.name));
+            }
+        }
+    }
+    return out.sort();
+}
+
+/**
+ * Scan every TypeScript source under `root` and report which files plus the
+ * violations of the three documented rules.
+ */
+export function scanSourceTree(root: string): { files: string[]; violations: Violation[] } {
+    const files = walkSources(root);
+    const violations: Violation[] = [];
+
+    for (const file of files) {
+        const source = ts.createSourceFile(file, fs.readFileSync(file, "utf8"), ts.ScriptTarget.Latest, true);
+        for (const edge of collectImportEdges(root, file, source)) {
+            // Rule: the frontend must stay free of the Supabase browser SDK
+            // and provider SDKs (server-authoritative, no-sign-in doctrine).
+            if (edge.packageName && FORBIDDEN_SDK_PACKAGES.has(edge.packageName)) {
+                violations.push({
+                    file,
+                    spec: edge.spec,
+                    rule: RULE_FORBIDDEN_SDK_IMPORT,
+                    message: `'${edge.spec}' is a forbidden SDK import in frontend sources.`,
+                });
+            }
+
+            const fileRel = relToRoot(root, edge.file);
+            if (edge.resolved) {
+                const targetRel = relToRoot(root, edge.resolved);
+                if (fileRel.startsWith("src/components/ui/") && targetRel.startsWith("src/stores/")) {
+                    // Rule: generic UI primitives must own a curated reason to
+                    // read app state; unknown pairs are flagged for review.
+                    const allowed = UI_STORE_ALLOWLIST.some(
+                        ([ui, store]) => ui === fileRel && targetRel.startsWith(store)
+                    );
+                    if (!allowed) {
+                        violations.push({
+                            file,
+                            spec: edge.spec,
+                            rule: RULE_STORE_IMPORT_IN_UI,
+                            message: `'${fileRel}' imports app state '${targetRel}' which is not in the curated UI allowlist.`,
+                        });
+                    }
+                }
+                if (fileRel.startsWith("src/app/") && isTestModule(root, edge.resolved)) {
+                    violations.push({
+                        file,
+                        spec: edge.spec,
+                        rule: RULE_TEST_IMPORT_IN_ROUTE,
+                        message: `Route '${fileRel}' imports test module '${targetRel}'.`,
+                    });
+                }
+            }
+        }
+    }
+
+    return { files, violations };
+}
