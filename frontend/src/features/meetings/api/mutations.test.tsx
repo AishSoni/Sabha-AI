@@ -12,7 +12,7 @@ import { act, render, screen, waitFor } from '@testing-library/react';
 import { QueryClientProvider } from '@tanstack/react-query';
 import { makeQueryClient } from '@/app/providers';
 import { isApiError } from '@/shared/api/errors';
-import { createScriptedFetch, type PendingJsonHandle, type ScriptedFetch } from '../../../tests/fixtures/transport';
+import { createScriptedFetch, type PendingJsonHandle, type ScriptedFetch } from '../../../../tests/fixtures/transport';
 import { meetingKeys } from './keys';
 import { useArchiveMeeting, useCreateMeeting, useDeleteMeeting, useUnarchiveMeeting } from './mutations';
 import { useMeetingList } from './queries';
@@ -40,7 +40,12 @@ const detailJson = (overrides: Record<string, unknown>) => ({
     ...overrides,
 });
 
-const createdResponseJson = meetingJson({ id: 'm-new', name: 'Fresh board' });
+const createdResponseJson = meetingJson({
+    id: 'm-new',
+    name: 'Fresh board',
+    participants: [],
+    messages: [],
+});
 
 function ListProbe() {
     const query = useMeetingList();
@@ -174,14 +179,15 @@ describe('create meeting', () => {
         expect(queryClient.getQueryState(meetingKeys.list())?.isInvalidated).toBe(true);
     });
 
-    it('a stale list snapshot resolving late cannot regress the created detail entry', async () => {
+    it('a stale list refetch cannot regress the created detail entry', async () => {
         const staleListHandle: PendingJsonHandle = scripted.enqueuePendingJson(200, [
             meetingJson({}),
         ]);
         scripted.install();
-        // Refetch after invalidation still returns the pre-create snapshot.
+        // Create response, then the invalidated list refetch that still
+        // returns the pre-create snapshot.
         scripted.enqueueJson(200, createdResponseJson);
-        scripted.enqueueJson(200, [createdResponseJson]);
+        scripted.enqueueJson(200, [meetingJson({})]);
 
         render(
             <UiHarness>
@@ -191,13 +197,18 @@ describe('create meeting', () => {
         );
 
         await waitFor(() => screen.getByText('list loading'));
+        staleListHandle.resolve();
+        await waitFor(() => screen.getByText('list: m-1:Board review'));
 
         screen.getByText('create').click();
         await outcome;
-        staleListHandle.resolve();
 
-        // The late stale snapshot lands on the list identity only.
-        await waitFor(() => screen.getByText('list: m-new:Fresh board'));
+        // Invalidation refetches the list after the first fetch settled.
+        await waitFor(() => expect(scripted.calls).toHaveLength(3));
+
+        // The stale legal snapshot commits onto the list identity...
+        expect(screen.getByText('list: m-1:Board review')).toBeDefined();
+        // ...but the newer committed detail entry must survive untouched.
         expect(queryClient.getQueryData(meetingKeys.detail('m-new'))).toMatchObject({
             id: 'm-new',
             name: 'Fresh board',

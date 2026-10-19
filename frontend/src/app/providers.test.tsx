@@ -15,7 +15,7 @@
  */
 import { describe, expect, it, vi } from 'vitest';
 import { act, render, screen, waitFor } from '@testing-library/react';
-import { useMutation, useQuery } from '@tanstack/react-query';
+import { QueryClientProvider, useMutation, useQuery } from '@tanstack/react-query';
 import { getQueryClient, makeQueryClient, Providers } from './providers';
 
 function deferred<T>() {

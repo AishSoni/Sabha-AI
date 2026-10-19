@@ -39,6 +39,8 @@ export interface ScriptedFetch {
     enqueueJson(status: number, body: unknown): void;
     /** Make the next call reject (connection refused, abort, ...). */
     enqueueFailure(error: Error): void;
+    /** Hold the next call's response until the returned handle settles. */
+    enqueuePendingJson(status: number, body: unknown): PendingJsonHandle;
     /** Wire the handler into globalThis.fetch (via vi.stubGlobal). */
     install(): void;
     /** Remove the stub and recorded calls so suites stay independent. */

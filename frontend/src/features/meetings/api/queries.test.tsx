@@ -11,7 +11,7 @@ import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 import { render, screen, waitFor } from '@testing-library/react';
 import { QueryClientProvider } from '@tanstack/react-query';
 import { makeQueryClient } from '@/app/providers';
-import { createScriptedFetch, type ScriptedFetch } from '../../../tests/fixtures/transport';
+import { createScriptedFetch, type ScriptedFetch } from '../../../../tests/fixtures/transport';
 import { meetingKeys } from './keys';
 import { useMeeting, useMeetingList } from './queries';
 
@@ -94,7 +94,7 @@ function DetailProbe({ meetingId }: { meetingId: string }) {
         <div>
             {query.isPending
                 ? 'detail loading'
-                : `detail: ${query.data?.name} with ${query.data?.participants.length ?? 0}`}
+                : `detail: ${query.data?.name} with ${query.data?.participants?.length ?? 0}`}
         </div>
     );
 }
