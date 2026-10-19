@@ -27,7 +27,7 @@ vi.mock('@/components/settings/system-ai-card', () => ({
     SystemAICard: () => <div data-testid="system-ai-card" />,
 }));
 
-import { ApiKeysSection } from '../components/settings/api-keys-section';
+import { ApiKeysSection } from './api-keys-section';
 import { useSettingsStore } from '@/stores/settings-store';
 
 const providersPayload = {
