@@ -213,6 +213,10 @@ export const api = {
 
         const decoder = new TextDecoder();
         let buffer = '';
+        // Terminal bookkeeping: a well-formed stream ends with exactly one
+        // `done` or `error` event. Anything else means the connection died
+        // mid-turn and the client recovered an interruption.
+        let sawTerminal = false;
 
         try {
             while (true) {
@@ -236,7 +240,14 @@ export const api = {
                         if (jsonStr) {
                             try {
                                 const event = JSON.parse(jsonStr) as StreamEvent;
-                                console.log('[SSE Event]', event.type, event.content?.slice(0, 50));
+                                if (event.type === 'done' || event.type === 'error') {
+                                    sawTerminal = true;
+                                } else if (sawTerminal) {
+                                    // Never replay user-visible activity that
+                                    // arrives after the terminal event.
+                                    console.warn('[SSE] ignored post-terminal event', event.type);
+                                    continue;
+                                }
                                 yield event;
                             } catch (e) {
                                 console.error('[SSE Parse Error]', jsonStr.slice(0, 100), e);
@@ -245,8 +256,41 @@ export const api = {
                     }
                 }
             }
+
+            // Flush the decoder and any final event the server sent without a
+            // trailing newline; a truncated bare fragment is evidence the
+            // connection dropped mid-event.
+            buffer += decoder.decode();
+            const leftover = buffer.trim();
+            if (leftover.startsWith('data:') && !sawTerminal) {
+                const jsonStr = leftover.slice(5).trim();
+                if (jsonStr) {
+                    try {
+                        const event = JSON.parse(jsonStr) as StreamEvent;
+                        if (event.type === 'done' || event.type === 'error') {
+                            sawTerminal = true;
+                        }
+                        yield event;
+                    } catch (e) {
+                        console.error('[SSE Truncated Event]', jsonStr.slice(0, 100), e);
+                    }
+                }
+            }
         } finally {
             reader.releaseLock();
+        }
+
+        // End without terminal: the turn result is unknown — deliver one
+        // recovered-interruption error so the store clears its own busy state
+        // and the user can decide whether to retry. No auto re-inference.
+        if (!sawTerminal) {
+            yield {
+                type: 'error',
+                content:
+                    'The stream was interrupted before the turn completed. Any partial ' +
+                    'result may already be saved — retry when ready to continue.',
+                interrupted: true,
+            } as StreamEvent;
         }
     },
 
@@ -311,6 +355,8 @@ export interface StreamEvent {
     snippet?: string;
     message_id?: string;
     usage?: Record<string, number>;
+    /** Set by the client parser for synthesized recovered-interruption errors. */
+    interrupted?: boolean;
 }
 
 // End meeting types
