@@ -30,7 +30,15 @@ from app.models import MessageCreate, RequestProviderSettings  # noqa: E402
 from app.services.meeting_manager import MeetingManager  # noqa: E402
 from app.services.orchestrator import Orchestrator  # noqa: E402
 
-RECORD_KEYS = {"provider", "model", "temperature", "max_tokens", "base_url"}
+RECORD_KEYS = {
+    "provider",
+    "model",
+    "temperature",
+    "max_tokens",
+    "base_url",
+    "credential_reference",
+    "provenance",
+}
 
 
 def _answer(content: str) -> LLMResponse:
@@ -94,6 +102,7 @@ async def test_the_final_assistant_message_persists_the_effective_record(turn_en
     assert len(ai_rows) == 1
     record = ai_rows[0][1]
     assert set(record.keys()) == RECORD_KEYS
+    assert record["credential_reference"] == "none"
     # The scripted provider ran with the settings the record captured.
     assert provider.calls, "the provider must have been called"
     call = provider.calls[-1]
@@ -122,6 +131,7 @@ async def test_credential_bytes_never_reach_the_effective_record(turn_env):
     record = _rows(env["db"])[-1][1]
     assert record is not None
     assert set(record.keys()) == RECORD_KEYS
+    assert record["credential_reference"] == "browser"
     rendered = repr(record)
     assert "sk-fixture-byok-secret" not in rendered
     assert "api_key" not in rendered
