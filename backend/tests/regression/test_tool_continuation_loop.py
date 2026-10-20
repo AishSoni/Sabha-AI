@@ -84,9 +84,8 @@ def turn_env(disposable_db, monkeypatch):
 
     vector_store = RecordingVectorStore()
     monkeypatch.setattr(meeting_manager_module, "get_supabase", lambda: stub)
-    monkeypatch.setattr(
-        orchestrator_module, "get_supabase", lambda: stub, raising=True
-    )
+    # Spec 06: the orchestrator no longer reaches the database directly —
+    # template joins moved behind MeetingManager (assembly-time).
     monkeypatch.setattr(vector_store_module, "get_vector_store", lambda: vector_store)
 
     provider_box = {}

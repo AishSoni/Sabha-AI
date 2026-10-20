@@ -95,7 +95,7 @@ def ledger_env(disposable_db, monkeypatch):
     _seed(disposable_db)
     stub = stub_for(disposable_db)
     monkeypatch.setattr(meeting_manager_module, "get_supabase", lambda: stub)
-    monkeypatch.setattr(orchestrator_module, "get_supabase", lambda: stub)
+    # Spec 06: the orchestrator owns no database accessor anymore.
 
     def install(responses=(), scripts=()):
         provider = CostedProvider(responses=responses)

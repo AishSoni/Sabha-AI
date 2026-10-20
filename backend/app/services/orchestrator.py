@@ -20,9 +20,8 @@ from app.models import (
     MeetingStatus,
 )
 from app.services.meeting_manager import MeetingManager
-from app.core.database import get_supabase
 from app.capabilities.configuration.contracts import MissingProviderKeyError
-from app.capabilities.configuration.service import resolve_generation_settings
+from app.capabilities.configuration.service import resolve_effective_settings
 from app.services.tools import get_default_tools
 from app.services.accounting import record_inference_attempt
 
@@ -51,21 +50,8 @@ class MeetingClosedError(ValueError):
     """
 
 
-# Historical name kept importable; new code uses the exported public name.
-_resolve_generation_settings = resolve_generation_settings
-
-
-def _effective_generation_record(gen: dict) -> dict:
-    """The non-secret record of the settings a turn actually ran with.
-
-    Slice F: the record rides on the final assistant message. Deliberately
-    excludes credential material (api_key never becomes message data);
-    slice G enriches the source of this record with provenance labels.
-    """
-    return {
-        key: gen[key]
-        for key in ("provider", "model", "temperature", "max_tokens", "base_url")
-    }
+# Alias removed with the spec-06 cutover; resolution is
+# resolve_effective_settings (frozen settings + provenance) everywhere.
 
 
 class Orchestrator:
@@ -185,18 +171,11 @@ class Orchestrator:
             if await vector_store.collection_exists(shared_collection):
                 collections_to_search.append(shared_collection)
             
-            # Search participant's knowledge stacks. Assignment snapshot is
-            # authoritative (captured at participant creation); only legacy
-            # rows without a snapshot fall back to the template join. Stack
-            # CONTENTS stay live via per-stack collections.
-            stack_ids = getattr(participant, "stack_ids", None)
-            if stack_ids is None and getattr(participant, "persona_id", None):
-                db = get_supabase()
-                stacks_res = db.table("persona_knowledge_stacks") \
-                               .select("stack_id") \
-                               .eq("persona_id", participant.persona_id) \
-                               .execute()
-                stack_ids = [row["stack_id"] for row in stacks_res.data]
+            # Search participant's knowledge stacks. The scope was assembled
+            # once before inference started
+            # (MeetingManager.ensure_participant_knowledge_scope); the
+            # execution path never reads template tables (spec 06).
+            stack_ids = participant.stack_ids
             for stack_id in (stack_ids or []):
                 stack_col = VectorStoreManager.stack_collection_name(stack_id)
                 if await vector_store.collection_exists(stack_col):
@@ -289,15 +268,20 @@ class Orchestrator:
         if not participant:
             raise ValueError(f"Participant not found: {participant_id}")
         
-        # Get LLM provider: browser overrides (BYOK, per request) merged over
-        # the participant's persisted config, then server defaults.
-        gen = resolve_generation_settings(
+        # Resolve the GEN settings ONCE per turn: browser overrides (BYOK,
+        # per request) merged over the participant's explicit policy, then
+        # its legacy carrier, then the server defaults AT EXECUTION START.
+        # The frozen object carries NO credentials; providers fall back to
+        # server-configured keys internally when no browser key applies.
+        effective = resolve_effective_settings(
             participant, provider_settings, provider_api_key
         )
+        gen = effective.as_gen_dict()
+        await self.meeting_manager.ensure_participant_knowledge_scope(participant)
         provider = get_provider(
             provider_name=gen["provider"],
             model=gen["model"] or None,  # Empty string = use default
-            api_key=gen["api_key"],
+            api_key=provider_api_key,  # transient browser BYOK key; unused keys are ignored by the transport
             base_url=gen["base_url"],
         )
         
@@ -384,7 +368,7 @@ class Orchestrator:
                 sender_name=participant.name,
                 tool_artifacts={"tool_calls": tool_results} if tool_results else None,
                 estimated_cost=cost,
-                effective_generation=_effective_generation_record(gen)
+                effective_generation=effective.as_record(),
             )
         )
 
@@ -449,15 +433,17 @@ class Orchestrator:
             yield StreamEvent(type=StreamEventType.ERROR, content=f"Participant not found: {participant_id}")
             return
         
-        # Get LLM provider: browser overrides (BYOK, per request) merged over
-        # the participant's persisted config, then server defaults.
-        gen = resolve_generation_settings(
+        # Resolve the GEN settings ONCE per turn (same contract as the
+        # non-streaming path): frozen effective settings with provenance.
+        effective = resolve_effective_settings(
             participant, provider_settings, provider_api_key
         )
+        gen = effective.as_gen_dict()
+        await self.meeting_manager.ensure_participant_knowledge_scope(participant)
         provider = get_provider(
             provider_name=gen["provider"],
             model=gen["model"] or None,
-            api_key=gen["api_key"],
+            api_key=provider_api_key,  # transient browser BYOK key; unused keys are ignored by the transport
             base_url=gen["base_url"],
         )
         
@@ -593,7 +579,7 @@ class Orchestrator:
                 tool_artifacts={"tool_calls": tool_calls_made} if tool_calls_made else None,
                 thinking_content=accumulated_thinking if accumulated_thinking else None,
                 estimated_cost=cost,
-                effective_generation=_effective_generation_record(gen)
+                effective_generation=effective.as_record(),
             )
         )
         

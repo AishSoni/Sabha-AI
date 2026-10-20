@@ -2,9 +2,12 @@
 safely and scope them to SHARED meeting documents + the participant's OWN
 assigned knowledge stacks — never other personas' or unassigned stacks.
 
-Evidence: app/services/orchestrator.py:141 called `get_supabase()` without
-importing it, so any participant WITH a persona_id crashed with NameError
-the moment it used search_knowledge_base.
+Spec 06 update: the participant's stack scope is assembled BEFORE
+inference (MeetingManager.ensure_participant_knowledge_scope — the one
+permitted legacy template join); the execution path itself owns no
+database client. The historical spec-01 finding (get_supabase used
+without import inside the tool branch) is now pinned in its inverted
+form: the orchestrator module exposes no get_supabase at all.
 """
 
 from datetime import datetime
@@ -103,12 +106,10 @@ def knowledge_env(disposable_db, monkeypatch):
         )
 
     stub = stub_for(db)
-    # The missing module-level `get_supabase` name IS the bug being tested:
-    # pre-registering with raising=False would silently create the attribute
-    # and mask the NameError the orchestrator currently raises. raising=True
-    # makes the patch itself fail while the import is missing.
+    # Spec 06: the template join lives in MeetingManager (assembly time);
+    # the orchestrator module itself exposes no database accessor.
     monkeypatch.setattr(
-        "app.services.orchestrator.get_supabase", lambda: stub, raising=True
+        "app.services.meeting_manager.get_supabase", lambda: stub, raising=True
     )
 
     existing = {
@@ -126,22 +127,23 @@ def knowledge_env(disposable_db, monkeypatch):
     return orchestrator, recorder, db
 
 
-async def test_orchestrator_imports_get_supabase():
-    """Directly pins finding: orchestrator resolved get_supabase undefined."""
+async def test_orchestrator_keeps_no_database_client():
+    """Inverted spec-01 finding, per spec 06: the execution path owns no
+    database accessor — its scope is handed over at assembly time."""
     import app.services.orchestrator as orchestrator_module
-    from app.core.database import get_supabase as canonical
 
-    assert getattr(orchestrator_module, "get_supabase", None) is not None, (
-        "orchestrator must import get_supabase (NameError at line 141 today)"
+    assert getattr(orchestrator_module, "get_supabase", None) is None, (
+        "orchestrator must not reach the database directly (spec 06)"
     )
-    assert orchestrator_module.get_supabase is canonical
 
 
 async def test_persona_participant_searches_shared_and_own_stacks_only(knowledge_env):
     orchestrator, recorder, db = knowledge_env
 
+    participant = _participant(str(PERSONA_A))
+    await orchestrator.meeting_manager.ensure_participant_knowledge_scope(participant)
     result = await orchestrator._handle_tool_call(
-        SEARCH_CALL, MEETING_ID, _participant(str(PERSONA_A))
+        SEARCH_CALL, MEETING_ID, participant
     )
     text, disagreement, consensus = result
     assert recorder.searched == [[SHARED_COLLECTION, STACK_A_COLLECTION]], (
@@ -154,15 +156,19 @@ async def test_persona_participant_searches_shared_and_own_stacks_only(knowledge
 async def test_participant_without_persona_searches_shared_only(knowledge_env):
     orchestrator, recorder, db = knowledge_env
 
-    await orchestrator._handle_tool_call(SEARCH_CALL, MEETING_ID, _participant(None))
+    participant = _participant(None)
+    await orchestrator.meeting_manager.ensure_participant_knowledge_scope(participant)
+    await orchestrator._handle_tool_call(SEARCH_CALL, MEETING_ID, participant)
     assert recorder.searched == [[SHARED_COLLECTION]]
 
 
 async def test_other_persona_and_unassigned_stacks_are_never_searched(knowledge_env):
     orchestrator, recorder, db = knowledge_env
 
+    participant = _participant(str(PERSONA_A))
+    await orchestrator.meeting_manager.ensure_participant_knowledge_scope(participant)
     await orchestrator._handle_tool_call(
-        SEARCH_CALL, MEETING_ID, _participant(str(PERSONA_A))
+        SEARCH_CALL, MEETING_ID, participant
     )
     flat = {c for names in recorder.searched for c in names}
     assert STACK_B_COLLECTION not in flat, "another persona's stack must not leak"
@@ -175,8 +181,10 @@ async def test_empty_query_short_circuits_without_searching(knowledge_env):
         id="call-kb-2", name="search_knowledge_base", arguments={"query": ""}
     )
 
+    participant = _participant(str(PERSONA_A))
+    await orchestrator.meeting_manager.ensure_participant_knowledge_scope(participant)
     text, _, _ = await orchestrator._handle_tool_call(
-        empty_call, MEETING_ID, _participant(str(PERSONA_A))
+        empty_call, MEETING_ID, participant
     )
     assert recorder.searched == []
     assert "query" in text.lower()

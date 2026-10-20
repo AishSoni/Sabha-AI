@@ -110,8 +110,10 @@ def instance_env(disposable_db, monkeypatch):
             (TEMPLATE_ID, STACK_A),
         )
 
-    for module in (meeting_manager_module, orchestrator_module, persona_manager_module):
+    for module in (meeting_manager_module, persona_manager_module):
         monkeypatch.setattr(module, "get_supabase", lambda: stub_for(db), raising=True)
+    # Spec 06: the orchestrator owns no database accessor anymore.
+    monkeypatch.setattr(orchestrator_module, "get_supabase", lambda: stub_for(db), raising=False)
 
     return {
         "db": db,

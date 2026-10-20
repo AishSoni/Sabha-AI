@@ -24,6 +24,7 @@ from test_tool_continuation_loop import (  # noqa: F401  (fixture re-export)
 
 import app.llm as llm_module
 import app.services.orchestrator as orchestrator_module
+from app.core.config import settings
 from app.llm.base import LLMResponse, StreamEvent, StreamEventType
 from main import app
 
@@ -187,7 +188,10 @@ def test_turn_without_provider_field_falls_back_to_participant_config(
     # Participant config is empty strings -> provider falls back to the
     # server default (synthetic env pins ollama).
     assert case["provider_name"] == "ollama"
-    assert case["model"] is None
+    # Empty-string carriers are inherit markers: the model resolves at
+    # execution start from the server's declared Ollama default (spec 06),
+    # visibly — no longer deferred into the transport's internal fallback.
+    assert case["model"] == settings.ollama_default_model
     assert case["api_key"] is None
 
     call = recorder.providers[-1].calls[0]

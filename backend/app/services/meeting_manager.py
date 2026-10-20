@@ -206,6 +206,28 @@ class MeetingManager:
         result = self.db.table("ai_participants").insert(participant_data).execute()
         
         return AIParticipant(**result.data[0])
+
+    async def ensure_participant_knowledge_scope(self, participant) -> None:
+        """Guarantee ``participant.stack_ids`` is populated before inference.
+
+        Assignment snapshots are authoritative (captured at participant
+        creation); stack CONTENTS stay live via per-stack collections at
+        execution time. Legacy participant rows created before the
+        snapshot column carry NULL: ONE assembly-time template join
+        resolves their stack scope here, so the execution path itself
+        never reads template tables (spec 06).
+        """
+        if participant.stack_ids is not None:
+            return
+        persona_id = participant.persona_id
+        if not persona_id:
+            participant.stack_ids = []
+            return
+        result = self.db.table("persona_knowledge_stacks") \
+            .select("stack_id") \
+            .eq("persona_id", persona_id) \
+            .execute()
+        participant.stack_ids = [row["stack_id"] for row in (result.data or [])]
     
     async def save_message(self, data: MessageCreate) -> Message:
         """Save a message to the database."""

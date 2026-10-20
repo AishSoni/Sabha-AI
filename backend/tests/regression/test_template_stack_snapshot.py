@@ -99,10 +99,8 @@ def template_env(disposable_db, monkeypatch):
     monkeypatch.setattr(
         meeting_manager_module, "get_supabase", lambda: meeting_stub, raising=True
     )
-    orchestrator_stub = stub_for(disposable_db)
-    monkeypatch.setattr(
-        orchestrator_module, "get_supabase", lambda: orchestrator_stub, raising=True
-    )
+    # Spec 06: the orchestrator no longer reaches the database directly —
+    # the legacy template join moved behind MeetingManager (assembly-time).
     return {"db": disposable_db, "manager": MeetingManager()}
 
 
@@ -206,6 +204,10 @@ async def test_legacy_row_without_snapshot_falls_back_to_template(template_env, 
         raising=True,
     )
     orchestrator = Orchestrator(template_env["manager"])
+    # Spec 06: legacy rows (stack_ids NULL) resolve through ONE assembly-time
+    # template join before inference starts; the tool execution path itself
+    # never reads template tables.
+    await template_env["manager"].ensure_participant_knowledge_scope(legacy_participant)
     from app.llm.base import ToolCall
 
     call = ToolCall(

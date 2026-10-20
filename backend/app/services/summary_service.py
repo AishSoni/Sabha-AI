@@ -30,10 +30,8 @@ from app.models import (
 )
 from app.services.accounting import record_inference_attempt
 from app.services.meeting_manager import MeetingManager
-from app.services.orchestrator import (
-    MeetingClosedError,
-    resolve_generation_settings,
-)
+from app.services.orchestrator import MeetingClosedError
+from app.capabilities.configuration.service import resolve_effective_settings
 
 logger = logging.getLogger(__name__)
 
@@ -109,35 +107,36 @@ async def generate_meeting_summary(
 
     # No participant here: the browser's composed settings (or server defaults)
     # decide who generates. BYOK key rides the header, never storage.
-    resolved = resolve_generation_settings(None, provider_settings, provider_api_key)
+    resolved = resolve_effective_settings(None, provider_settings, provider_api_key)
+    gen = resolved.as_gen_dict()
 
     provider = get_provider(
-        resolved["provider"] or None,
-        resolved["model"] or None,
-        api_key=resolved["api_key"],
-        base_url=resolved["base_url"],
+        gen["provider"] or None,
+        gen["model"] or None,
+        api_key=provider_api_key,  # transient browser BYOK key; unused keys are ignored by the transport
+        base_url=gen["base_url"],
     )
 
     logger.info(
         "Generating interim summary for meeting %s (provider=%s, model=%s)",
         meeting_id,
-        resolved["provider"],
-        resolved["model"],
+        gen["provider"],
+        gen["model"],
     )
 
     response = await provider.complete(
         messages=[LLMMessage(role="user", content=_summary_prompt(meeting, transcript))],
         tools=[],
-        temperature=resolved["temperature"],
-        max_tokens=resolved["max_tokens"],
+        temperature=gen["temperature"],
+        max_tokens=gen["max_tokens"],
     )
 
     cost = await record_inference_attempt(
         manager,
         meeting_id=meeting_id,
         purpose="summary",
-        provider=resolved["provider"] or None,
-        model=resolved["model"] or None,
+        provider=gen["provider"] or None,
+        model=gen["model"] or None,
         usage=response.usage,
         estimator=provider,
     )
