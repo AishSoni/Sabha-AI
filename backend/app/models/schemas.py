@@ -100,6 +100,10 @@ class MessageCreate(MessageBase):
     # Spec-06: the effective generation record rides only on the final
     # assistant message of a turn; user/system writes stay NULL.
     effective_generation: Optional[Dict[str, Any]] = None
+    # Spec-07: user sends carry a stable key so a duplicate click cannot
+    # create two messages; AI messages are linked by the turn operation.
+    request_key: Optional[str] = None
+    operation_id: Optional[str] = None
 
 
 class Message(MessageBase):
@@ -111,6 +115,9 @@ class Message(MessageBase):
     thinking_content: Optional[str] = None  # AI thinking/reasoning content
     estimated_cost: float = 0.0
     effective_generation: Optional[Dict[str, Any]] = None
+    sequence: Optional[int] = None
+    request_key: Optional[str] = None
+    operation_id: Optional[str] = None
     created_at: datetime
 
     class Config:

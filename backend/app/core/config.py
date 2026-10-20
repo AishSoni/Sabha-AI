@@ -48,8 +48,16 @@ class Settings(BaseSettings):
     
     # App
     app_env: str = "development"
-    runtime_mode: str = "local"  # local | hosted | demo — demo denies writes
+    runtime_mode: str = "local"  # local | hosted | demo - demo denies writes
     cors_origins: List[str] = ["http://localhost:3000"]
+
+    # Durable turn queue (spec 07)
+    turn_max_queued_per_meeting: int = 10
+    turn_global_concurrency: int = 1
+    turn_lease_seconds: int = 60
+    turn_poll_seconds: float = 0.5
+    turn_runner_enabled: bool = True
+    turn_execution_timeout_seconds: int = 300
     
     class Config:
         env_file = ".env"

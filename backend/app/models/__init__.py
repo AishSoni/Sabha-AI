@@ -38,6 +38,14 @@ from app.models.schemas import (
     EndMeetingResponse,
 )
 
+from app.models.turn_schemas import (
+    TurnCancelResponse,
+    TurnError,
+    TurnOperationResponse,
+    TurnStatus,
+    TurnSubmitRequest,
+)
+
 from app.models.persona_schemas import (
     # Personas
     PersonaBase,
@@ -103,6 +111,12 @@ __all__ = [
     "EndMeetingVote",
     "EndMeetingRequest",
     "EndMeetingResponse",
+    # Turn queue
+    "TurnSubmitRequest",
+    "TurnOperationResponse",
+    "TurnCancelResponse",
+    "TurnError",
+    "TurnStatus",
     # Personas
     "PersonaBase",
     "PersonaCreate",

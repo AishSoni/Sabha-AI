@@ -247,6 +247,8 @@ class MeetingManager:
             "thinking_content": data.thinking_content,
             "estimated_cost": data.estimated_cost,
             "effective_generation": data.effective_generation,
+            "request_key": data.request_key,
+            "operation_id": data.operation_id,
             "created_at": now,
         }
         

@@ -5,7 +5,9 @@ the port with its use case per request. Building a client or a service
 inside a route/dependency is forbidden by spec-04.
 """
 
-from fastapi import Request
+from fastapi import HTTPException, Request
+
+from app.services.turn_queue import TurnQueueService
 
 from app.modules.persona_catalog.application.use_cases import (
     ActivatePromptVersion,
@@ -17,6 +19,14 @@ from app.modules.persona_catalog.application.use_cases import (
     ReadTemplate,
     UpdateTemplate,
 )
+
+
+def get_turn_queue(request: Request) -> TurnQueueService:
+    """The composition root's durable turn service (spec-07)."""
+    service = getattr(request.app.state.container, "turn_queue", None)
+    if service is None:
+        raise HTTPException(status_code=503, detail="Turn queue is not configured")
+    return service
 
 
 def activate_prompt_version(request: Request) -> ActivatePromptVersion:

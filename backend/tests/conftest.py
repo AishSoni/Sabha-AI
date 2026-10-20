@@ -29,6 +29,9 @@ _SYNTHETIC_ENV = {
     "COHERE_API_KEY": "",
     "QDRANT_API_KEY": "",
     "DEFAULT_LLM_PROVIDER": "ollama",
+    # Background turn claims are opt-in in tests; route/runner tests start a
+    # runner explicitly so claim/observation assertions stay deterministic.
+    "TURN_RUNNER_ENABLED": "false",
 }
 for _key, _value in _SYNTHETIC_ENV.items():
     os.environ.setdefault(_key, _value)

@@ -26,6 +26,8 @@ from app.modules.persona_catalog.application.contracts import (
 )
 from app.presentation.errors import register_error_handlers
 from app.presentation.router import mount_routes
+from app.services.turn_queue import TurnQueueService
+from app.services.turn_runner import TurnRunner
 
 
 @dataclass(frozen=True)
@@ -38,6 +40,11 @@ class Container:
 
     prompt_catalog: PromptCatalogPort
     persona_catalog: PersonaCatalogPort | None = None
+    # Spec-07: the queue service is always present in production so the HTTP
+    # surface can submit/observe even when inference runs in a separate
+    # process. The runner is optional so tests can disable background work.
+    turn_queue: TurnQueueService | None = None
+    turn_runner: TurnRunner | None = None
 
     @classmethod
     def production(cls) -> "Container":
@@ -48,20 +55,28 @@ class Container:
             SupabasePromptCatalog,
         )
 
+        turn_queue = TurnQueueService()
+        runner = TurnRunner(turn_queue) if settings.turn_runner_enabled else None
         return cls(
             prompt_catalog=SupabasePromptCatalog(get_supabase),
             persona_catalog=SupabasePersonaCatalog(get_supabase),
+            turn_queue=turn_queue,
+            turn_runner=runner,
         )
 
 
 @asynccontextmanager
-async def lifespan(_: FastAPI):
+async def lifespan(app: FastAPI):
     """Recover from interrupted work, then serve.
 
     Startup reconciliation (spec-02): orphaned 'processing' documents are
     marked failed with a re-upload message and deferred vector-collection
     cleanups are retried. The pass must never break startup; its failure mode
     is a loud warning, retried next boot.
+
+    Spec-07 adds turn recovery plus an optional inline runner. A dedicated
+    ``worker.py`` can own inference instead; the database guards make both
+    placements safe.
     """
     import logging
     from app.services.recovery import reconcile_startup_state
@@ -73,7 +88,25 @@ async def lifespan(_: FastAPI):
             logger.info("Startup reconciliation: %s", summary)
     except Exception:
         logger.warning("Startup reconciliation failed", exc_info=True)
-    yield
+
+    container: Container = app.state.container
+    runner = container.turn_runner
+    try:
+        if runner is not None:
+            await runner.start()
+        elif container.turn_queue is not None:
+            await container.turn_queue.recover()
+    except Exception:
+        logger.warning("Turn queue startup recovery failed", exc_info=True)
+
+    try:
+        yield
+    finally:
+        if runner is not None:
+            try:
+                await runner.stop()
+            except Exception:
+                logger.warning("Turn runner shutdown failed", exc_info=True)
 
 
 def _ensure_demo_guard(app: FastAPI) -> None:
