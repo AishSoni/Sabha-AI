@@ -16,7 +16,11 @@ import uuid
 import pytest
 from fastapi.testclient import TestClient
 
-import main
+from app.bootstrap import Container, create_app
+from app.modules.persona_catalog.infrastructure.supabase import (
+    SupabasePersonaCatalog,
+    SupabasePromptCatalog,
+)
 from tests.doubles.supabase_stub import stub_for
 
 PERSONA_ID = "11111111-1111-4111-8111-111111111111"
@@ -26,9 +30,11 @@ STACK_UNKNOWN = "00000000-0000-4000-8000-00000000dead"
 
 
 @pytest.fixture()
-def persona_env(monkeypatch, disposable_db):
+def persona_env(disposable_db):
     """Throwaway DB with a baseline persona and two knowledge stacks, the
-    FastAPI test client wired to it through the supabase stub."""
+    FastAPI test client wired to it through the supabase stub. The module
+    routes are composed over the same adapters production wires; the stub
+    supplies the real backend Supabase client for this test app."""
     with disposable_db.connect() as conn:
         conn.execute(
             """
@@ -43,10 +49,13 @@ def persona_env(monkeypatch, disposable_db):
             )
 
     stub = stub_for(disposable_db)
-    monkeypatch.setattr(
-        "app.services.persona_manager.get_supabase", lambda: stub, raising=True
+    app = create_app(
+        Container(
+            persona_catalog=SupabasePersonaCatalog(lambda: stub),
+            prompt_catalog=SupabasePromptCatalog(lambda: stub),
+        )
     )
-    client = TestClient(main.app)
+    client = TestClient(app)
     return client, disposable_db
 
 

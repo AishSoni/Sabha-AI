@@ -1,7 +1,7 @@
 """Supabase implementation of the persona catalog port.
 
 The adapter wraps the narrow Postgres RPC functions through the Supabase
-client — the same seam PersonaManager uses — and translates transport and
+client and translates transport and
 PostgREST failures into the module's typed exception so presentation can
 answer with a safe 503. Business refusals stay boolean values; nothing
 here leaks SQL or provider details upward.
@@ -10,7 +10,7 @@ The client resolves through an injected provider callable (the
 ``app.core.database.get_supabase`` singleton accessor, normally built
 once at composition). Regressions patch that accessor per request; the
 adapter itself is constructed once in the composition root. The sync
-``execute()`` call mirrors the legacy ``PersonaManager`` call chain
+``execute()`` call keeps the PostgREST-compatible access pattern
 (compatibility over purity for this slice).
 """
 
@@ -95,6 +95,29 @@ class SupabasePersonaCatalog:
     def _client(self) -> Any:
         return self._client_provider()
 
+    def _reject_unknown_stacks(self, stack_ids: list[str]) -> None:
+        """Legacy parity: unknown stack ids fail with the ids named.
+
+        Validation reads before the transaction runs, so the typed
+        ``UnknownStacks`` carries the offending ids for the 422 detail.
+        """
+        if not stack_ids:
+            return
+        try:
+            result = (
+                self._client()
+                .table("knowledge_stacks")
+                .select("id")
+                .in_("id", stack_ids)
+                .execute()
+            )
+        except (APIError, httpx.HTTPError) as exc:
+            raise self._translate(exc) from exc
+        known = {row["id"] for row in (result.data or [])}
+        unknown = [sid for sid in stack_ids if sid not in known]
+        if unknown:
+            raise UnknownStacks(unknown)
+
     async def read_creation_snapshot(self, persona_id: str) -> dict | None:
         try:
             result = self._client().rpc(
@@ -128,6 +151,7 @@ class SupabasePersonaCatalog:
         created_at: str,
         stack_ids: list[str],
     ) -> dict:
+        self._reject_unknown_stacks(stack_ids)
         try:
             result = self._client().rpc(
                 "create_persona_transaction",
@@ -162,6 +186,8 @@ class SupabasePersonaCatalog:
         expected_updated_at: str | None,
         updated_at: str,
     ) -> dict:
+        if fields.get("stack_ids") is not None:
+            self._reject_unknown_stacks(fields["stack_ids"])
         try:
             result = self._client().rpc(
                 "update_persona_transaction",
@@ -175,6 +201,108 @@ class SupabasePersonaCatalog:
                     "p_stack_ids": fields.get("stack_ids"),
                     "p_expected_updated_at": expected_updated_at,
                     "p_updated_at": updated_at,
+                },
+            ).execute()
+        except (APIError, httpx.HTTPError) as exc:
+            raise self._translate(exc) from exc
+        row = result.data
+        if not isinstance(row, dict):
+            raise PromptCatalogUnavailable(
+                "the persona catalog returned an unexpected result shape"
+            )
+        return row
+
+    async def list_templates(
+        self, user_id: str | None = None, include_defaults: bool = True
+    ) -> list[dict]:
+        """Legacy list fanout: rows, then per-row prompt + assignments.
+
+        The fanout is a read view (not used by participant construction),
+        so it does not need the persona lock: list rows may reflect
+        concurrent edits mid-flight, exactly like the legacy list.
+        """
+        try:
+            query = self._client().table("personas").select("*")
+            if user_id:
+                if include_defaults:
+                    query = query.or_(f"user_id.eq.{user_id},is_default.eq.true")
+                else:
+                    query = query.eq("user_id", user_id)
+            result = query.order("created_at", desc=True).execute()
+
+            rows: list[dict] = []
+            for persona in result.data or []:
+                prompt_result = (
+                    self._client()
+                    .table("prompt_versions")
+                    .select("content, version")
+                    .eq("persona_id", persona["id"])
+                    .eq("is_active", True)
+                    .execute()
+                )
+                stack_result = (
+                    self._client()
+                    .table("persona_knowledge_stacks")
+                    .select("stack_id")
+                    .eq("persona_id", persona["id"])
+                    .execute()
+                )
+                prompt = (prompt_result.data or [{}])[0]
+                rows.append(
+                    {
+                        **persona,
+                        "active_prompt": prompt.get("content"),
+                        "active_prompt_version": prompt.get("version"),
+                        "stack_ids": [
+                            s["stack_id"] for s in (stack_result.data or [])
+                        ],
+                    }
+                )
+            return rows
+        except (APIError, httpx.HTTPError) as exc:
+            raise self._translate(exc) from exc
+
+    async def list_prompt_versions(self, persona_id: str) -> list[dict]:
+        try:
+            result = (
+                self._client()
+                .table("prompt_versions")
+                .select("*")
+                .eq("persona_id", persona_id)
+                .order("version", desc=True)
+                .execute()
+            )
+        except (APIError, httpx.HTTPError) as exc:
+            raise self._translate(exc) from exc
+        return list(result.data or [])
+
+    async def activate_prompt_version(self, persona_id: str, version: int) -> bool:
+        """Activate a revision (same transport as the prompt catalog)."""
+        try:
+            result = self._client().rpc(
+                "activate_prompt_version",
+                {"p_persona_id": persona_id, "p_version": version},
+            ).execute()
+        except (APIError, httpx.HTTPError) as exc:
+            raise self._translate(exc) from exc
+        return bool(result.data)
+
+    async def create_prompt_version(
+        self,
+        persona_id: str,
+        content: str,
+        *,
+        version_id: str,
+        created_at: str,
+    ) -> dict:
+        try:
+            result = self._client().rpc(
+                "create_prompt_version",
+                {
+                    "p_persona_id": persona_id,
+                    "p_content": content,
+                    "p_version_id": version_id,
+                    "p_created_at": created_at,
                 },
             ).execute()
         except (APIError, httpx.HTTPError) as exc:

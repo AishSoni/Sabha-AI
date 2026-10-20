@@ -306,82 +306,6 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
-    "/api/personas": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        /**
-         * List Personas
-         * @description List all personas, optionally filtered by user.
-         */
-        get: operations["list_personas_api_personas_get"];
-        put?: never;
-        /**
-         * Create Persona
-         * @description Create a new persona with optional initial prompt.
-         */
-        post: operations["create_persona_api_personas_post"];
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
-    "/api/personas/{persona_id}": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        /**
-         * Get Persona
-         * @description Get a persona with its active prompt.
-         */
-        get: operations["get_persona_api_personas__persona_id__get"];
-        /**
-         * Update Persona
-         * @description Update persona metadata (not prompt).
-         */
-        put: operations["update_persona_api_personas__persona_id__put"];
-        post?: never;
-        /**
-         * Delete Persona
-         * @description Delete a persona and all its prompt versions.
-         */
-        delete: operations["delete_persona_api_personas__persona_id__delete"];
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
-    "/api/personas/{persona_id}/prompts": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        /**
-         * List Prompt Versions
-         * @description List all prompt versions for a persona.
-         */
-        get: operations["list_prompt_versions_api_personas__persona_id__prompts_get"];
-        put?: never;
-        /**
-         * Create Prompt Version
-         * @description Create a new prompt version (automatically becomes active).
-         */
-        post: operations["create_prompt_version_api_personas__persona_id__prompts_post"];
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
     "/api/settings/providers": {
         parameters: {
             query?: never;
@@ -629,6 +553,61 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/personas": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** List Personas */
+        get: operations["list_personas_api_personas_get"];
+        put?: never;
+        /** Create Persona */
+        post: operations["create_persona_api_personas_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/personas/{persona_id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Get Persona */
+        get: operations["get_persona_api_personas__persona_id__get"];
+        /** Update Persona */
+        put: operations["update_persona_api_personas__persona_id__put"];
+        post?: never;
+        /** Delete Persona */
+        delete: operations["delete_persona_api_personas__persona_id__delete"];
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/personas/{persona_id}/prompts": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** List Prompt Version Rows */
+        get: operations["list_prompt_version_rows_api_personas__persona_id__prompts_get"];
+        put?: never;
+        /** Post Prompt Revision */
+        post: operations["post_prompt_revision_api_personas__persona_id__prompts_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/personas/{persona_id}/prompts/{version}/activate": {
         parameters: {
             query?: never;
@@ -638,8 +617,8 @@ export interface paths {
         };
         get?: never;
         put?: never;
-        /** Activate Prompt Version */
-        post: operations["activate_prompt_version_api_personas__persona_id__prompts__version__activate_post"];
+        /** Activate Prompt Version Route */
+        post: operations["activate_prompt_version_route_api_personas__persona_id__prompts__version__activate_post"];
         delete?: never;
         options?: never;
         head?: never;
@@ -719,6 +698,10 @@ export interface components {
              * Format: date-time
              */
             created_at: string;
+            /** Generation Policy */
+            generation_policy?: {
+                [key: string]: unknown;
+            } | null;
         };
         /**
          * AIParticipantCreate
@@ -1205,6 +1188,10 @@ export interface components {
              * @default 0
              */
             estimated_cost: number;
+            /** Effective Generation */
+            effective_generation?: {
+                [key: string]: unknown;
+            } | null;
             /**
              * Created At
              * Format: date-time
@@ -1224,142 +1211,10 @@ export interface components {
             context_length?: number | null;
         };
         /**
-         * PersonaCreate
-         * @description Create a new persona.
+         * PromptRevisionInput
+         * @description New prompt revision payload.
          */
-        PersonaCreate: {
-            /** Name */
-            name: string;
-            /** Subtitle */
-            subtitle?: string | null;
-            /**
-             * Color
-             * @default #6366f1
-             */
-            color: string;
-            /** Avatar Url */
-            avatar_url?: string | null;
-            provider_config?: components["schemas"]["app__models__persona_schemas__ProviderConfig"];
-            /**
-             * Is Default
-             * @default false
-             */
-            is_default: boolean;
-            /** Stack Ids */
-            stack_ids?: string[];
-            /**
-             * System Prompt
-             * @default
-             */
-            system_prompt: string;
-            /** User Id */
-            user_id?: string | null;
-        };
-        /**
-         * PersonaListResponse
-         * @description Response for listing personas.
-         */
-        PersonaListResponse: {
-            /** Personas */
-            personas: components["schemas"]["PersonaWithPrompt"][];
-            /** Total */
-            total: number;
-        };
-        /**
-         * PersonaUpdate
-         * @description Update persona metadata (not prompt).
-         *
-         *     stack_ids semantics (documented policy):
-         *     - ``None`` (field omitted or explicit JSON null) leaves existing stack
-         *       assignments unchanged;
-         *     - an empty list clears every assignment;
-         *     - a non-empty list atomically replaces assignments (duplicates removed).
-         */
-        PersonaUpdate: {
-            /** Name */
-            name?: string | null;
-            /** Subtitle */
-            subtitle?: string | null;
-            /** Color */
-            color?: string | null;
-            /** Avatar Url */
-            avatar_url?: string | null;
-            provider_config?: components["schemas"]["app__models__persona_schemas__ProviderConfig"] | null;
-            /** Stack Ids */
-            stack_ids?: string[] | null;
-        };
-        /**
-         * PersonaWithPrompt
-         * @description Persona with its active system prompt.
-         */
-        PersonaWithPrompt: {
-            /** Name */
-            name: string;
-            /** Subtitle */
-            subtitle?: string | null;
-            /**
-             * Color
-             * @default #6366f1
-             */
-            color: string;
-            /** Avatar Url */
-            avatar_url?: string | null;
-            provider_config?: components["schemas"]["app__models__persona_schemas__ProviderConfig"];
-            /**
-             * Is Default
-             * @default false
-             */
-            is_default: boolean;
-            /** Stack Ids */
-            stack_ids?: string[];
-            /** Id */
-            id: string;
-            /** User Id */
-            user_id?: string | null;
-            /**
-             * Created At
-             * Format: date-time
-             */
-            created_at: string;
-            /**
-             * Updated At
-             * Format: date-time
-             */
-            updated_at: string;
-            /** Active Prompt */
-            active_prompt?: string | null;
-            /** Active Prompt Version */
-            active_prompt_version?: number | null;
-        };
-        /**
-         * PromptVersion
-         * @description Full prompt version model.
-         */
-        PromptVersion: {
-            /** Content */
-            content: string;
-            /** Id */
-            id: string;
-            /** Persona Id */
-            persona_id: string;
-            /** Version */
-            version: number;
-            /**
-             * Is Active
-             * @default true
-             */
-            is_active: boolean;
-            /**
-             * Created At
-             * Format: date-time
-             */
-            created_at: string;
-        };
-        /**
-         * PromptVersionCreate
-         * @description Create a new prompt version.
-         */
-        PromptVersionCreate: {
+        PromptRevisionInput: {
             /** Content */
             content: string;
         };
@@ -1519,6 +1374,72 @@ export interface components {
             max_tokens: number;
         };
         /**
+         * TemplateCreate
+         * @description Creation payload; omitted provider_config means all-inherit.
+         */
+        TemplateCreate: {
+            /** Name */
+            name: string;
+            /** Subtitle */
+            subtitle?: string | null;
+            /**
+             * Color
+             * @default #6366f1
+             */
+            color: string;
+            /** Avatar Url */
+            avatar_url?: string | null;
+            provider_config?: components["schemas"]["TemplateGenerationSettings"] | null;
+            /**
+             * Is Default
+             * @default false
+             */
+            is_default: boolean;
+            /** Stack Ids */
+            stack_ids?: string[];
+            /**
+             * System Prompt
+             * @default
+             */
+            system_prompt: string;
+            /** User Id */
+            user_id?: string | null;
+        };
+        /**
+         * TemplateGenerationSettings
+         * @description Per-field generation carrier view (None = inherit).
+         */
+        TemplateGenerationSettings: {
+            /** Provider */
+            provider?: string | null;
+            /** Model */
+            model?: string | null;
+            /** Temperature */
+            temperature?: number | null;
+            /** Max Tokens */
+            max_tokens?: number | null;
+        };
+        /**
+         * TemplateUpdate
+         * @description Partial template edit; None fields mean "leave unchanged".
+         *
+         *     ``provider_config`` follows the module carrier rule: omitted/null
+         *     keeps the recorded carrier, an object (even all-null) replaces it.
+         */
+        TemplateUpdate: {
+            /** Name */
+            name?: string | null;
+            /** Subtitle */
+            subtitle?: string | null;
+            /** Color */
+            color?: string | null;
+            /** Avatar Url */
+            avatar_url?: string | null;
+            provider_config?: components["schemas"]["TemplateGenerationSettings"] | null;
+            /** Stack Ids */
+            stack_ids?: string[] | null;
+        };
+        /**
          * TestKeyRequest
          * @description Request to test an API key.
          */
@@ -1581,32 +1502,6 @@ export interface components {
             msg: string;
             /** Error Type */
             type: string;
-        };
-        /**
-         * ProviderConfig
-         * @description LLM provider configuration for a persona.
-         */
-        app__models__persona_schemas__ProviderConfig: {
-            /**
-             * Provider
-             * @default
-             */
-            provider: string;
-            /**
-             * Model
-             * @default
-             */
-            model: string;
-            /**
-             * Temperature
-             * @default 0.7
-             */
-            temperature: number;
-            /**
-             * Max Tokens
-             * @default 2000
-             */
-            max_tokens: number;
         };
     };
     responses: never;
@@ -2117,232 +2012,6 @@ export interface operations {
             };
         };
     };
-    list_personas_api_personas_get: {
-        parameters: {
-            query?: {
-                user_id?: string | null;
-                include_defaults?: boolean;
-            };
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        requestBody?: never;
-        responses: {
-            /** @description Successful Response */
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["PersonaListResponse"];
-                };
-            };
-            /** @description Validation Error */
-            422: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["HTTPValidationError"];
-                };
-            };
-        };
-    };
-    create_persona_api_personas_post: {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        requestBody: {
-            content: {
-                "application/json": components["schemas"]["PersonaCreate"];
-            };
-        };
-        responses: {
-            /** @description Successful Response */
-            201: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["PersonaWithPrompt"];
-                };
-            };
-            /** @description Validation Error */
-            422: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["HTTPValidationError"];
-                };
-            };
-        };
-    };
-    get_persona_api_personas__persona_id__get: {
-        parameters: {
-            query?: never;
-            header?: never;
-            path: {
-                persona_id: string;
-            };
-            cookie?: never;
-        };
-        requestBody?: never;
-        responses: {
-            /** @description Successful Response */
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["PersonaWithPrompt"];
-                };
-            };
-            /** @description Validation Error */
-            422: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["HTTPValidationError"];
-                };
-            };
-        };
-    };
-    update_persona_api_personas__persona_id__put: {
-        parameters: {
-            query?: never;
-            header?: never;
-            path: {
-                persona_id: string;
-            };
-            cookie?: never;
-        };
-        requestBody: {
-            content: {
-                "application/json": components["schemas"]["PersonaUpdate"];
-            };
-        };
-        responses: {
-            /** @description Successful Response */
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["PersonaWithPrompt"];
-                };
-            };
-            /** @description Validation Error */
-            422: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["HTTPValidationError"];
-                };
-            };
-        };
-    };
-    delete_persona_api_personas__persona_id__delete: {
-        parameters: {
-            query?: never;
-            header?: never;
-            path: {
-                persona_id: string;
-            };
-            cookie?: never;
-        };
-        requestBody?: never;
-        responses: {
-            /** @description Successful Response */
-            204: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content?: never;
-            };
-            /** @description Validation Error */
-            422: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["HTTPValidationError"];
-                };
-            };
-        };
-    };
-    list_prompt_versions_api_personas__persona_id__prompts_get: {
-        parameters: {
-            query?: never;
-            header?: never;
-            path: {
-                persona_id: string;
-            };
-            cookie?: never;
-        };
-        requestBody?: never;
-        responses: {
-            /** @description Successful Response */
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["PromptVersion"][];
-                };
-            };
-            /** @description Validation Error */
-            422: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["HTTPValidationError"];
-                };
-            };
-        };
-    };
-    create_prompt_version_api_personas__persona_id__prompts_post: {
-        parameters: {
-            query?: never;
-            header?: never;
-            path: {
-                persona_id: string;
-            };
-            cookie?: never;
-        };
-        requestBody: {
-            content: {
-                "application/json": components["schemas"]["PromptVersionCreate"];
-            };
-        };
-        responses: {
-            /** @description Successful Response */
-            201: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["PromptVersion"];
-                };
-            };
-            /** @description Validation Error */
-            422: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["HTTPValidationError"];
-                };
-            };
-        };
-    };
     list_providers_api_settings_providers_get: {
         parameters: {
             query?: never;
@@ -2809,7 +2478,233 @@ export interface operations {
             };
         };
     };
-    activate_prompt_version_api_personas__persona_id__prompts__version__activate_post: {
+    list_personas_api_personas_get: {
+        parameters: {
+            query?: {
+                user_id?: string | null;
+                include_defaults?: boolean;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": unknown;
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    create_persona_api_personas_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["TemplateCreate"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": unknown;
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    get_persona_api_personas__persona_id__get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                persona_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": unknown;
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    update_persona_api_personas__persona_id__put: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                persona_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["TemplateUpdate"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": unknown;
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    delete_persona_api_personas__persona_id__delete: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                persona_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    list_prompt_version_rows_api_personas__persona_id__prompts_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                persona_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": unknown;
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    post_prompt_revision_api_personas__persona_id__prompts_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                persona_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["PromptRevisionInput"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": unknown;
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    activate_prompt_version_route_api_personas__persona_id__prompts__version__activate_post: {
         parameters: {
             query?: never;
             header?: never;

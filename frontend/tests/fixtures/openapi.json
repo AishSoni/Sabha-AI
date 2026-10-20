@@ -119,7 +119,7 @@
           "meetings"
         ],
         "summary": "Delete Meeting",
-        "description": "Permanently delete a meeting and all its data — including the shared\nvector collection (recorded first as a pending cleanup so a Qdrant\noutage cannot block the SQL delete; reconciliation finishes the work).",
+        "description": "Permanently delete a meeting and all its data \u2014 including the shared\nvector collection (recorded first as a pending cleanup so a Qdrant\noutage cannot block the SQL delete; reconciliation finishes the work).",
         "operationId": "delete_meeting_api_meetings__meeting_id__delete",
         "parameters": [
           {
@@ -686,332 +686,6 @@
               "application/json": {
                 "schema": {
                   "$ref": "#/components/schemas/AIParticipant"
-                }
-              }
-            }
-          },
-          "422": {
-            "description": "Validation Error",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/HTTPValidationError"
-                }
-              }
-            }
-          }
-        }
-      }
-    },
-    "/api/personas": {
-      "get": {
-        "tags": [
-          "personas"
-        ],
-        "summary": "List Personas",
-        "description": "List all personas, optionally filtered by user.",
-        "operationId": "list_personas_api_personas_get",
-        "parameters": [
-          {
-            "name": "user_id",
-            "in": "query",
-            "required": false,
-            "schema": {
-              "anyOf": [
-                {
-                  "type": "string"
-                },
-                {
-                  "type": "null"
-                }
-              ],
-              "title": "User Id"
-            }
-          },
-          {
-            "name": "include_defaults",
-            "in": "query",
-            "required": false,
-            "schema": {
-              "type": "boolean",
-              "default": true,
-              "title": "Include Defaults"
-            }
-          }
-        ],
-        "responses": {
-          "200": {
-            "description": "Successful Response",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/PersonaListResponse"
-                }
-              }
-            }
-          },
-          "422": {
-            "description": "Validation Error",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/HTTPValidationError"
-                }
-              }
-            }
-          }
-        }
-      },
-      "post": {
-        "tags": [
-          "personas"
-        ],
-        "summary": "Create Persona",
-        "description": "Create a new persona with optional initial prompt.",
-        "operationId": "create_persona_api_personas_post",
-        "requestBody": {
-          "required": true,
-          "content": {
-            "application/json": {
-              "schema": {
-                "$ref": "#/components/schemas/PersonaCreate"
-              }
-            }
-          }
-        },
-        "responses": {
-          "201": {
-            "description": "Successful Response",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/PersonaWithPrompt"
-                }
-              }
-            }
-          },
-          "422": {
-            "description": "Validation Error",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/HTTPValidationError"
-                }
-              }
-            }
-          }
-        }
-      }
-    },
-    "/api/personas/{persona_id}": {
-      "get": {
-        "tags": [
-          "personas"
-        ],
-        "summary": "Get Persona",
-        "description": "Get a persona with its active prompt.",
-        "operationId": "get_persona_api_personas__persona_id__get",
-        "parameters": [
-          {
-            "name": "persona_id",
-            "in": "path",
-            "required": true,
-            "schema": {
-              "type": "string",
-              "title": "Persona Id"
-            }
-          }
-        ],
-        "responses": {
-          "200": {
-            "description": "Successful Response",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/PersonaWithPrompt"
-                }
-              }
-            }
-          },
-          "422": {
-            "description": "Validation Error",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/HTTPValidationError"
-                }
-              }
-            }
-          }
-        }
-      },
-      "put": {
-        "tags": [
-          "personas"
-        ],
-        "summary": "Update Persona",
-        "description": "Update persona metadata (not prompt).",
-        "operationId": "update_persona_api_personas__persona_id__put",
-        "parameters": [
-          {
-            "name": "persona_id",
-            "in": "path",
-            "required": true,
-            "schema": {
-              "type": "string",
-              "title": "Persona Id"
-            }
-          }
-        ],
-        "requestBody": {
-          "required": true,
-          "content": {
-            "application/json": {
-              "schema": {
-                "$ref": "#/components/schemas/PersonaUpdate"
-              }
-            }
-          }
-        },
-        "responses": {
-          "200": {
-            "description": "Successful Response",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/PersonaWithPrompt"
-                }
-              }
-            }
-          },
-          "422": {
-            "description": "Validation Error",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/HTTPValidationError"
-                }
-              }
-            }
-          }
-        }
-      },
-      "delete": {
-        "tags": [
-          "personas"
-        ],
-        "summary": "Delete Persona",
-        "description": "Delete a persona and all its prompt versions.",
-        "operationId": "delete_persona_api_personas__persona_id__delete",
-        "parameters": [
-          {
-            "name": "persona_id",
-            "in": "path",
-            "required": true,
-            "schema": {
-              "type": "string",
-              "title": "Persona Id"
-            }
-          }
-        ],
-        "responses": {
-          "204": {
-            "description": "Successful Response"
-          },
-          "422": {
-            "description": "Validation Error",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/HTTPValidationError"
-                }
-              }
-            }
-          }
-        }
-      }
-    },
-    "/api/personas/{persona_id}/prompts": {
-      "get": {
-        "tags": [
-          "personas"
-        ],
-        "summary": "List Prompt Versions",
-        "description": "List all prompt versions for a persona.",
-        "operationId": "list_prompt_versions_api_personas__persona_id__prompts_get",
-        "parameters": [
-          {
-            "name": "persona_id",
-            "in": "path",
-            "required": true,
-            "schema": {
-              "type": "string",
-              "title": "Persona Id"
-            }
-          }
-        ],
-        "responses": {
-          "200": {
-            "description": "Successful Response",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "type": "array",
-                  "items": {
-                    "$ref": "#/components/schemas/PromptVersion"
-                  },
-                  "title": "Response List Prompt Versions Api Personas  Persona Id  Prompts Get"
-                }
-              }
-            }
-          },
-          "422": {
-            "description": "Validation Error",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/HTTPValidationError"
-                }
-              }
-            }
-          }
-        }
-      },
-      "post": {
-        "tags": [
-          "personas"
-        ],
-        "summary": "Create Prompt Version",
-        "description": "Create a new prompt version (automatically becomes active).",
-        "operationId": "create_prompt_version_api_personas__persona_id__prompts_post",
-        "parameters": [
-          {
-            "name": "persona_id",
-            "in": "path",
-            "required": true,
-            "schema": {
-              "type": "string",
-              "title": "Persona Id"
-            }
-          }
-        ],
-        "requestBody": {
-          "required": true,
-          "content": {
-            "application/json": {
-              "schema": {
-                "$ref": "#/components/schemas/PromptVersionCreate"
-              }
-            }
-          }
-        },
-        "responses": {
-          "201": {
-            "description": "Successful Response",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/PromptVersion"
                 }
               }
             }
@@ -1660,10 +1334,292 @@
         }
       }
     },
+    "/api/personas": {
+      "get": {
+        "summary": "List Personas",
+        "operationId": "list_personas_api_personas_get",
+        "parameters": [
+          {
+            "name": "user_id",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "User Id"
+            }
+          },
+          {
+            "name": "include_defaults",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "boolean",
+              "default": true,
+              "title": "Include Defaults"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      },
+      "post": {
+        "summary": "Create Persona",
+        "operationId": "create_persona_api_personas_post",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/TemplateCreate"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/personas/{persona_id}": {
+      "get": {
+        "summary": "Get Persona",
+        "operationId": "get_persona_api_personas__persona_id__get",
+        "parameters": [
+          {
+            "name": "persona_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Persona Id"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      },
+      "put": {
+        "summary": "Update Persona",
+        "operationId": "update_persona_api_personas__persona_id__put",
+        "parameters": [
+          {
+            "name": "persona_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Persona Id"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/TemplateUpdate"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      },
+      "delete": {
+        "summary": "Delete Persona",
+        "operationId": "delete_persona_api_personas__persona_id__delete",
+        "parameters": [
+          {
+            "name": "persona_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Persona Id"
+            }
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": "Successful Response"
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/personas/{persona_id}/prompts": {
+      "get": {
+        "summary": "List Prompt Version Rows",
+        "operationId": "list_prompt_version_rows_api_personas__persona_id__prompts_get",
+        "parameters": [
+          {
+            "name": "persona_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Persona Id"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      },
+      "post": {
+        "summary": "Post Prompt Revision",
+        "operationId": "post_prompt_revision_api_personas__persona_id__prompts_post",
+        "parameters": [
+          {
+            "name": "persona_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Persona Id"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/PromptRevisionInput"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/api/personas/{persona_id}/prompts/{version}/activate": {
       "post": {
-        "summary": "Activate Prompt Version",
-        "operationId": "activate_prompt_version_api_personas__persona_id__prompts__version__activate_post",
+        "summary": "Activate Prompt Version Route",
+        "operationId": "activate_prompt_version_route_api_personas__persona_id__prompts__version__activate_post",
         "parameters": [
           {
             "name": "persona_id",
@@ -1800,6 +1756,18 @@
             "type": "string",
             "format": "date-time",
             "title": "Created At"
+          },
+          "generation_policy": {
+            "anyOf": [
+              {
+                "additionalProperties": true,
+                "type": "object"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Generation Policy"
           }
         },
         "type": "object",
@@ -2888,6 +2856,18 @@
             "title": "Estimated Cost",
             "default": 0.0
           },
+          "effective_generation": {
+            "anyOf": [
+              {
+                "additionalProperties": true,
+                "type": "object"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Effective Generation"
+          },
           "created_at": {
             "type": "string",
             "format": "date-time",
@@ -2936,322 +2916,7 @@
         "title": "ModelInfo",
         "description": "Information about a model."
       },
-      "PersonaCreate": {
-        "properties": {
-          "name": {
-            "type": "string",
-            "title": "Name"
-          },
-          "subtitle": {
-            "anyOf": [
-              {
-                "type": "string"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Subtitle"
-          },
-          "color": {
-            "type": "string",
-            "title": "Color",
-            "default": "#6366f1"
-          },
-          "avatar_url": {
-            "anyOf": [
-              {
-                "type": "string"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Avatar Url"
-          },
-          "provider_config": {
-            "$ref": "#/components/schemas/app__models__persona_schemas__ProviderConfig"
-          },
-          "is_default": {
-            "type": "boolean",
-            "title": "Is Default",
-            "default": false
-          },
-          "stack_ids": {
-            "items": {
-              "type": "string"
-            },
-            "type": "array",
-            "title": "Stack Ids"
-          },
-          "system_prompt": {
-            "type": "string",
-            "title": "System Prompt",
-            "default": ""
-          },
-          "user_id": {
-            "anyOf": [
-              {
-                "type": "string"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "User Id"
-          }
-        },
-        "type": "object",
-        "required": [
-          "name"
-        ],
-        "title": "PersonaCreate",
-        "description": "Create a new persona."
-      },
-      "PersonaListResponse": {
-        "properties": {
-          "personas": {
-            "items": {
-              "$ref": "#/components/schemas/PersonaWithPrompt"
-            },
-            "type": "array",
-            "title": "Personas"
-          },
-          "total": {
-            "type": "integer",
-            "title": "Total"
-          }
-        },
-        "type": "object",
-        "required": [
-          "personas",
-          "total"
-        ],
-        "title": "PersonaListResponse",
-        "description": "Response for listing personas."
-      },
-      "PersonaUpdate": {
-        "properties": {
-          "name": {
-            "anyOf": [
-              {
-                "type": "string"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Name"
-          },
-          "subtitle": {
-            "anyOf": [
-              {
-                "type": "string"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Subtitle"
-          },
-          "color": {
-            "anyOf": [
-              {
-                "type": "string"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Color"
-          },
-          "avatar_url": {
-            "anyOf": [
-              {
-                "type": "string"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Avatar Url"
-          },
-          "provider_config": {
-            "anyOf": [
-              {
-                "$ref": "#/components/schemas/app__models__persona_schemas__ProviderConfig"
-              },
-              {
-                "type": "null"
-              }
-            ]
-          },
-          "stack_ids": {
-            "anyOf": [
-              {
-                "items": {
-                  "type": "string"
-                },
-                "type": "array"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Stack Ids"
-          }
-        },
-        "type": "object",
-        "title": "PersonaUpdate",
-        "description": "Update persona metadata (not prompt).\n\nstack_ids semantics (documented policy):\n- ``None`` (field omitted or explicit JSON null) leaves existing stack\n  assignments unchanged;\n- an empty list clears every assignment;\n- a non-empty list atomically replaces assignments (duplicates removed)."
-      },
-      "PersonaWithPrompt": {
-        "properties": {
-          "name": {
-            "type": "string",
-            "title": "Name"
-          },
-          "subtitle": {
-            "anyOf": [
-              {
-                "type": "string"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Subtitle"
-          },
-          "color": {
-            "type": "string",
-            "title": "Color",
-            "default": "#6366f1"
-          },
-          "avatar_url": {
-            "anyOf": [
-              {
-                "type": "string"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Avatar Url"
-          },
-          "provider_config": {
-            "$ref": "#/components/schemas/app__models__persona_schemas__ProviderConfig"
-          },
-          "is_default": {
-            "type": "boolean",
-            "title": "Is Default",
-            "default": false
-          },
-          "stack_ids": {
-            "items": {
-              "type": "string"
-            },
-            "type": "array",
-            "title": "Stack Ids"
-          },
-          "id": {
-            "type": "string",
-            "title": "Id"
-          },
-          "user_id": {
-            "anyOf": [
-              {
-                "type": "string"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "User Id"
-          },
-          "created_at": {
-            "type": "string",
-            "format": "date-time",
-            "title": "Created At"
-          },
-          "updated_at": {
-            "type": "string",
-            "format": "date-time",
-            "title": "Updated At"
-          },
-          "active_prompt": {
-            "anyOf": [
-              {
-                "type": "string"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Active Prompt"
-          },
-          "active_prompt_version": {
-            "anyOf": [
-              {
-                "type": "integer"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Active Prompt Version"
-          }
-        },
-        "type": "object",
-        "required": [
-          "name",
-          "id",
-          "created_at",
-          "updated_at"
-        ],
-        "title": "PersonaWithPrompt",
-        "description": "Persona with its active system prompt."
-      },
-      "PromptVersion": {
-        "properties": {
-          "content": {
-            "type": "string",
-            "title": "Content"
-          },
-          "id": {
-            "type": "string",
-            "title": "Id"
-          },
-          "persona_id": {
-            "type": "string",
-            "title": "Persona Id"
-          },
-          "version": {
-            "type": "integer",
-            "title": "Version"
-          },
-          "is_active": {
-            "type": "boolean",
-            "title": "Is Active",
-            "default": true
-          },
-          "created_at": {
-            "type": "string",
-            "format": "date-time",
-            "title": "Created At"
-          }
-        },
-        "type": "object",
-        "required": [
-          "content",
-          "id",
-          "persona_id",
-          "version",
-          "created_at"
-        ],
-        "title": "PromptVersion",
-        "description": "Full prompt version model."
-      },
-      "PromptVersionCreate": {
+      "PromptRevisionInput": {
         "properties": {
           "content": {
             "type": "string",
@@ -3262,8 +2927,8 @@
         "required": [
           "content"
         ],
-        "title": "PromptVersionCreate",
-        "description": "Create a new prompt version."
+        "title": "PromptRevisionInput",
+        "description": "New prompt revision payload."
       },
       "ProviderConfig": {
         "properties": {
@@ -3474,7 +3139,7 @@
         },
         "type": "object",
         "title": "RequestProviderSettings",
-        "description": "Browser-supplied generation overrides for one turn (BYOK contract).\n\nEvery field is optional: absent fields fall back to the participant's\npersisted provider_config, then to server defaults. The API key itself\nnever lives here — it rides the X-Provider-Key request header."
+        "description": "Browser-supplied generation overrides for one turn (BYOK contract).\n\nEvery field is optional: absent fields fall back to the participant's\npersisted provider_config, then to server defaults. The API key itself\nnever lives here \u2014 it rides the X-Provider-Key request header."
       },
       "SenderType": {
         "type": "string",
@@ -3528,6 +3193,211 @@
         "type": "object",
         "title": "SystemAIConfig",
         "description": "Configuration for the System AI used for app-level functions."
+      },
+      "TemplateCreate": {
+        "properties": {
+          "name": {
+            "type": "string",
+            "title": "Name"
+          },
+          "subtitle": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Subtitle"
+          },
+          "color": {
+            "type": "string",
+            "title": "Color",
+            "default": "#6366f1"
+          },
+          "avatar_url": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Avatar Url"
+          },
+          "provider_config": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/TemplateGenerationSettings"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "is_default": {
+            "type": "boolean",
+            "title": "Is Default",
+            "default": false
+          },
+          "stack_ids": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array",
+            "title": "Stack Ids"
+          },
+          "system_prompt": {
+            "type": "string",
+            "title": "System Prompt",
+            "default": ""
+          },
+          "user_id": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "User Id"
+          }
+        },
+        "type": "object",
+        "required": [
+          "name"
+        ],
+        "title": "TemplateCreate",
+        "description": "Creation payload; omitted provider_config means all-inherit."
+      },
+      "TemplateGenerationSettings": {
+        "properties": {
+          "provider": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Provider"
+          },
+          "model": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Model"
+          },
+          "temperature": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Temperature"
+          },
+          "max_tokens": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Max Tokens"
+          }
+        },
+        "type": "object",
+        "title": "TemplateGenerationSettings",
+        "description": "Per-field generation carrier view (None = inherit)."
+      },
+      "TemplateUpdate": {
+        "properties": {
+          "name": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Name"
+          },
+          "subtitle": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Subtitle"
+          },
+          "color": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Color"
+          },
+          "avatar_url": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Avatar Url"
+          },
+          "provider_config": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/TemplateGenerationSettings"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "stack_ids": {
+            "anyOf": [
+              {
+                "items": {
+                  "type": "string"
+                },
+                "type": "array"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Stack Ids"
+          }
+        },
+        "type": "object",
+        "title": "TemplateUpdate",
+        "description": "Partial template edit; None fields mean \"leave unchanged\".\n\n``provider_config`` follows the module carrier rule: omitted/null\nkeeps the recorded carrier, an object (even all-null) replaces it."
       },
       "TestKeyRequest": {
         "properties": {
@@ -3694,33 +3564,6 @@
           "type"
         ],
         "title": "ValidationError"
-      },
-      "app__models__persona_schemas__ProviderConfig": {
-        "properties": {
-          "provider": {
-            "type": "string",
-            "title": "Provider",
-            "default": ""
-          },
-          "model": {
-            "type": "string",
-            "title": "Model",
-            "default": ""
-          },
-          "temperature": {
-            "type": "number",
-            "title": "Temperature",
-            "default": 0.7
-          },
-          "max_tokens": {
-            "type": "integer",
-            "title": "Max Tokens",
-            "default": 2000
-          }
-        },
-        "type": "object",
-        "title": "ProviderConfig",
-        "description": "LLM provider configuration for a persona."
       }
     }
   }

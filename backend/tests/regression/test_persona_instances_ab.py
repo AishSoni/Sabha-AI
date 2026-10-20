@@ -14,18 +14,19 @@ so the extraction cannot silently change snapshot semantics.
 """
 
 import json
+import uuid
 from datetime import datetime, timezone
 
 import pytest
 
-import app.services.orchestrator as orchestrator_module
 import app.services.meeting_manager as meeting_manager_module
-import app.services.persona_manager as persona_manager_module
 from app.llm import ToolCall
-from app.models import MeetingCreate, PersonaUpdate, PromptVersionCreate
+from app.models import MeetingCreate
+from app.modules.persona_catalog.infrastructure.supabase import (
+    SupabasePersonaCatalog,
+)
 from app.services.meeting_manager import MeetingManager
 from app.services.orchestrator import Orchestrator
-from app.services.persona_manager import PersonaManager
 from app.services.vector_store import SearchResult
 from tests.doubles.supabase_stub import stub_for
 
@@ -110,15 +111,13 @@ def instance_env(disposable_db, monkeypatch):
             (TEMPLATE_ID, STACK_A),
         )
 
-    for module in (meeting_manager_module, persona_manager_module):
-        monkeypatch.setattr(module, "get_supabase", lambda: stub_for(db), raising=True)
-    # Spec 06: the orchestrator owns no database accessor anymore.
-    monkeypatch.setattr(orchestrator_module, "get_supabase", lambda: stub_for(db), raising=False)
+    stub = stub_for(db)
+    monkeypatch.setattr(meeting_manager_module, "get_supabase", lambda: stub, raising=True)
 
     return {
         "db": db,
         "meetings": MeetingManager(),
-        "catalog": PersonaManager(),
+        "catalog": SupabasePersonaCatalog(lambda: stub),
     }
 
 
@@ -151,18 +150,27 @@ async def test_participants_from_template_revisions_are_independent(
     # overrides and stack assignments A -> B.
     template = await env["catalog"].update_persona(
         TEMPLATE_ID,
-        PersonaUpdate(
-            name="Advisor Beta",
-            subtitle="Beta role",
-            color="#ef4444",
-            provider_config=BETA_CONFIG,
-            stack_ids=[STACK_B],
-        ),
+        {
+            "name": "Advisor Beta",
+            "subtitle": "Beta role",
+            "color": "#ef4444",
+            "provider_config": BETA_CONFIG,
+            "stack_ids": [STACK_B],
+        },
+        expected_updated_at=None,
+        updated_at=datetime.now(timezone.utc).isoformat(),
     )
     await env["catalog"].create_prompt_version(
-        TEMPLATE_ID, PromptVersionCreate(content=BETA_PROMPT)
+        TEMPLATE_ID,
+        BETA_PROMPT,
+        version_id=str(uuid.uuid4()),
+        created_at=datetime.now(timezone.utc).isoformat(),
     )
-    assert template.stack_ids == [STACK_B]
+    assignments = env["db"].query(
+        "SELECT stack_id FROM persona_knowledge_stacks WHERE persona_id = %s",
+        (TEMPLATE_ID,),
+    )
+    assert [str(r[0]) for r in assignments] == [STACK_B]
 
     meeting_b = await env["meetings"].create_meeting(
         MeetingCreate(name="Meeting B", persona_ids=[TEMPLATE_ID])
@@ -196,7 +204,12 @@ async def test_search_scope_follows_each_participants_own_bindings(
     # snapshots the new binding while A keeps its captured one.
     await env["catalog"].update_persona(
         TEMPLATE_ID,
-        PersonaUpdate(stack_ids=[STACK_B], provider_config=BETA_CONFIG),
+        {
+            "stack_ids": [STACK_B],
+            "provider_config": BETA_CONFIG,
+        },
+        expected_updated_at=None,
+        updated_at=datetime.now(timezone.utc).isoformat(),
     )
     meeting_b = await env["meetings"].create_meeting(
         MeetingCreate(name="Meeting B", persona_ids=[TEMPLATE_ID])
@@ -241,16 +254,21 @@ async def test_template_deletion_spares_both_surviving_instances(
     )
     await env["catalog"].update_persona(
         TEMPLATE_ID,
-        PersonaUpdate(
-            name="Advisor Beta",
-            subtitle="Beta role",
-            color="#ef4444",
-            provider_config=BETA_CONFIG,
-            stack_ids=[STACK_B],
-        ),
+        {
+            "name": "Advisor Beta",
+            "subtitle": "Beta role",
+            "color": "#ef4444",
+            "provider_config": BETA_CONFIG,
+            "stack_ids": [STACK_B],
+        },
+        expected_updated_at=None,
+        updated_at=datetime.now(timezone.utc).isoformat(),
     )
     await env["catalog"].create_prompt_version(
-        TEMPLATE_ID, PromptVersionCreate(content=BETA_PROMPT)
+        TEMPLATE_ID,
+        BETA_PROMPT,
+        version_id=str(uuid.uuid4()),
+        created_at=datetime.now(timezone.utc).isoformat(),
     )
     meeting_b = await env["meetings"].create_meeting(
         MeetingCreate(name="Meeting B", persona_ids=[TEMPLATE_ID])

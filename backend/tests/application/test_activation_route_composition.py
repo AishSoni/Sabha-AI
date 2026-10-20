@@ -36,19 +36,7 @@ class FakePromptCatalog:
         return version != self.refused_version
 
 
-def _no_legacy_service() -> None:
-    pytest.fail(
-        "legacy activation route must not serve a composed-container request"
-    )
-
-
 def _client(monkeypatch, catalog) -> TestClient:
-    # Until the cutover commit removes the legacy duplicate, it shadows the
-    # composed route on first match; neutralize its real-credential
-    # construction so pre-cutover red cannot touch the network.
-    monkeypatch.setattr(
-        "app.services.persona_manager.get_supabase", _no_legacy_service
-    )
     return TestClient(create_app(Container(prompt_catalog=catalog)))
 
 

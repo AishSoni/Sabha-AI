@@ -20,7 +20,10 @@ from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
 from app.core.config import settings
-from app.modules.persona_catalog.application.contracts import PromptCatalogPort
+from app.modules.persona_catalog.application.contracts import (
+    PersonaCatalogPort,
+    PromptCatalogPort,
+)
 from app.presentation.errors import register_error_handlers
 from app.presentation.router import mount_routes
 
@@ -34,16 +37,21 @@ class Container:
     """
 
     prompt_catalog: PromptCatalogPort
+    persona_catalog: PersonaCatalogPort | None = None
 
     @classmethod
     def production(cls) -> "Container":
         """Real composition: one Supabase client, adapters built once."""
         from app.core.database import get_supabase
         from app.modules.persona_catalog.infrastructure.supabase import (
+            SupabasePersonaCatalog,
             SupabasePromptCatalog,
         )
 
-        return cls(prompt_catalog=SupabasePromptCatalog(get_supabase))
+        return cls(
+            prompt_catalog=SupabasePromptCatalog(get_supabase),
+            persona_catalog=SupabasePersonaCatalog(get_supabase),
+        )
 
 
 @asynccontextmanager

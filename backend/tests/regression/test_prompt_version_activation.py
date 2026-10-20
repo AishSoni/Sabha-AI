@@ -1,13 +1,13 @@
 """Regression: prompt-version activation must stay atomic.
 
-Evidence (finding: prompt selection atomicity): PersonaManager.
-activate_prompt_version deactivates every version BEFORE activating the
-target, so activating a nonexistent version destroys the previous active
-selection instead of being refused. create_prompt_version interleaves
+Evidence (finding: prompt selection atomicity): the legacy activation
+flow deactivated every version BEFORE activating the target, so
+activating a nonexistent version destroyed the previous active selection
+instead of being refused; revision creation interleaved
 deactivate/insert/update statements without a transaction, so a failure
-between statements leaves the persona with no active prompt. The unique
+between statements left the persona with no active prompt. The unique
 partial index + SQL RPCs make both flows atomic; failed changes preserve
-the previous selection.
+the previous selection. The catalog adapter drives the same RPCs today.
 """
 
 from datetime import datetime, timezone
@@ -15,7 +15,10 @@ from pathlib import Path
 
 import psycopg
 import pytest
-from fastapi.testclient import TestClient
+
+from app.modules.persona_catalog.infrastructure.supabase import (
+    SupabasePersonaCatalog,
+)
 
 PERSONA_ID = "88888888-8888-4888-8888-888888888888"
 V1_ID = "88888888-8888-4888-8888-888888888811"
@@ -26,7 +29,7 @@ MIGRATION_007 = "007_prompt_version_activation.sql"
 
 
 @pytest.fixture()
-def prompt_env(disposable_db, monkeypatch):
+def prompt_env(disposable_db):
     """Persona with an active v1 prompt and an inactive v2 plus a wired stub."""
     from tests.doubles.supabase_stub import stub_for
 
@@ -48,15 +51,12 @@ def prompt_env(disposable_db, monkeypatch):
         )
 
     stub = stub_for(disposable_db)
-    monkeypatch.setattr("app.services.persona_manager.get_supabase", lambda: stub)
 
-    from main import app
-    from app.services.persona_manager import PersonaManager
-
+    catalog = SupabasePersonaCatalog(lambda: stub)
     return {
         "db": disposable_db,
         "stub": stub,
-        "manager": PersonaManager(),
+        "manager": catalog,
     }
 
 
@@ -111,14 +111,14 @@ def test_create_prompt_version_failure_keeps_previous_active(prompt_env):
 
 
 async def test_create_prompt_version_success_appends_and_replaces_active(prompt_env):
-    from app.models import PromptVersionCreate
-
     created = await prompt_env["manager"].create_prompt_version(
         PERSONA_ID,
-        PromptVersionCreate(content="becomes the directive"),
+        "becomes the directive",
+        version_id=NEW_VERSION_ID,
+        created_at=datetime.now(timezone.utc).isoformat(),
     )
-    assert created.version == 3
-    assert created.is_active is True
+    assert created["version"] == 3
+    assert created["is_active"] is True
     assert _active_version(prompt_env["db"]) == 3
     assert _active_count(prompt_env["db"]) == 3
 

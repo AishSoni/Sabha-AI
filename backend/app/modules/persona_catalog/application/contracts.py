@@ -82,6 +82,33 @@ class PersonaCatalogPort(Protocol):
     async def read_creation_snapshot(self, persona_id: str) -> dict | None:
         """Return the coherent template snapshot row, or None if unknown."""
 
+    async def list_templates(
+        self, user_id: str | None = None, include_defaults: bool = True
+    ) -> list[dict]:
+        """Return template rows (flat, with stack_ids/active_prompt keys).
+
+        ``include_defaults`` widens the user filter with system-default
+        templates, exactly like the legacy list view.
+        """
+
+    async def list_prompt_versions(self, persona_id: str) -> list[dict]:
+        """Return the template's prompt history, newest version first."""
+
+    async def create_prompt_version(
+        self,
+        persona_id: str,
+        content: str,
+        *,
+        version_id: str,
+        created_at: str,
+    ) -> dict:
+        """Append a revision and activate it atomically; return the row.
+
+        Unknown templates raise ``TemplateNotFound``; constraint
+        violations and transport failures follow the same rules as the
+        prompt catalog port.
+        """
+
     async def create_persona(
         self,
         persona_id: str,

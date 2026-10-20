@@ -14,7 +14,6 @@ def mount_routes(app) -> None:
     from app.api import (
         meetings,
         participants,
-        personas,
         settings as settings_api,
         documents,
         knowledge_stacks,
@@ -22,7 +21,6 @@ def mount_routes(app) -> None:
 
     app.include_router(meetings.router, prefix="/api/meetings", tags=["meetings"])
     app.include_router(participants.router, prefix="/api/participants", tags=["participants"])
-    app.include_router(personas.router)
     app.include_router(settings_api.router)
     app.include_router(documents.router)
     app.include_router(knowledge_stacks.router)

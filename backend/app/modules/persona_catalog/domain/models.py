@@ -151,3 +151,27 @@ class CreationSnapshot:
                 else None
             ),
         )
+
+    def as_row(self) -> dict:
+        """Flatten back to the fanout row shape presentation consumes.
+
+        Presentation builds views from flat rows (the same shape the
+        list fanout produces), so a snapshot read flattens without a
+        second catalog surface.
+        """
+        row = {
+            "id": self.template.id,
+            "name": self.template.name,
+            "subtitle": self.template.subtitle,
+            "color": self.template.color,
+            "avatar_url": self.template.avatar_url,
+            "provider_config": dict(self.template.provider_config),
+            "is_default": self.template.is_default,
+            "user_id": self.template.user_id,
+            "created_at": self.template.created_at,
+            "updated_at": self.template.updated_at,
+            "active_prompt": self.active_prompt,
+            "active_prompt_version": self.active_prompt_version,
+            "stack_ids": list(self.stack_ids),
+        }
+        return row
