@@ -21,6 +21,10 @@ import { createScriptedFetch, type ScriptedFetch } from "../../../tests/fixtures
 let fetcher: ScriptedFetch;
 
 beforeEach(() => {
+    // Suite parity runs may export NEXT_PUBLIC_API_URL for the hosted mode;
+    // every default-base assertion in this file pins the env away itself so
+    // the file stays deterministic in both modes.
+    delete process.env.NEXT_PUBLIC_API_URL;
     fetcher = createScriptedFetch();
     fetcher.install();
 });

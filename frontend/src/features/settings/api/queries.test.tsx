@@ -15,6 +15,7 @@ import { useState, type ReactNode } from 'react';
 
 import { createScriptedFetch } from '../../../../tests/fixtures/transport';
 import { makeQueryClient } from '@/app/providers';
+import { resolveApiBaseUrl } from '@/shared/api/transport';
 import { useProvidersEnvironment, settingsKeys } from './queries';
 
 import type { ScriptedFetch } from '../../../../tests/fixtures/transport';
@@ -120,7 +121,7 @@ describe('settings metadata environment query', () => {
         });
 
         const call = scripted.calls[0]!;
-        expect(call.input).toBe('http://localhost:8000/api/settings/providers');
+        expect(call.input).toBe(`${resolveApiBaseUrl()}/settings/providers`);
         const headers = (call.init?.headers ?? {}) as Record<string, string>;
         for (const key of Object.keys(headers)) {
             expect(key.toLowerCase()).not.toMatch(/^authorization$|cookie|x-user-|^x-provider-key/);

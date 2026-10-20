@@ -11,6 +11,7 @@ import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 import { act, render, screen, waitFor } from '@testing-library/react';
 import { QueryClientProvider } from '@tanstack/react-query';
 import { makeQueryClient } from '@/app/providers';
+import { resolveApiBaseUrl } from '@/shared/api/transport';
 import { isApiError } from '@/shared/api/errors';
 import { createScriptedFetch, type PendingJsonHandle, type ScriptedFetch } from '../../../../tests/fixtures/transport';
 import { meetingKeys } from './keys';
@@ -147,7 +148,7 @@ describe('create meeting', () => {
         screen.getByText('create').click();
         await outcome;
 
-        expect(scripted.calls[0]?.input).toBe('http://localhost:8000/api/meetings');
+        expect(scripted.calls[0]?.input).toBe(`${resolveApiBaseUrl()}/meetings`);
         expect(JSON.parse(scripted.calls[0]?.init?.body as string)).toEqual({
             name: 'Fresh board',
             agenda: 'Ship the spec',
@@ -257,7 +258,7 @@ describe('archive and unarchive', () => {
         screen.getByText('archive').click();
         await outcome;
 
-        expect(scripted.calls[0]?.input).toBe('http://localhost:8000/api/meetings/m-1/archive');
+        expect(scripted.calls[0]?.input).toBe(`${resolveApiBaseUrl()}/meetings/m-1/archive`);
         expect(queryClient.getQueryData(meetingKeys.detail('m-1'))).toMatchObject({
             status: 'archived',
         });
@@ -282,7 +283,7 @@ describe('archive and unarchive', () => {
         screen.getByText('unarchive').click();
         await outcome;
 
-        expect(scripted.calls[0]?.input).toBe('http://localhost:8000/api/meetings/m-1/unarchive');
+        expect(scripted.calls[0]?.input).toBe(`${resolveApiBaseUrl()}/meetings/m-1/unarchive`);
         expect(queryClient.getQueryData(meetingKeys.detail('m-1'))).toMatchObject({
             status: 'active',
         });
@@ -309,7 +310,7 @@ describe('delete meeting', () => {
         screen.getByText('delete').click();
         await outcome;
 
-        expect(scripted.calls[0]?.input).toBe('http://localhost:8000/api/meetings/m-1');
+        expect(scripted.calls[0]?.input).toBe(`${resolveApiBaseUrl()}/meetings/m-1`);
         expect(scripted.calls[0]?.init?.method).toBe('DELETE');
         expect(queryClient.getQueryData(meetingKeys.detail('m-1'))).toBeUndefined();
         expect(queryClient.getQueryState(meetingKeys.list())?.isInvalidated).toBe(true);

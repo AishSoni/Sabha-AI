@@ -17,6 +17,7 @@ import { QueryClientProvider } from '@tanstack/react-query';
 import { beforeEach, afterEach, describe, expect, it, vi } from 'vitest';
 import { useMeetingCreation } from '@/features/meetings';
 import { makeQueryClient } from '@/app/providers';
+import { resolveApiBaseUrl } from '@/shared/api/transport';
 import { createScriptedFetch } from '../../../../tests/fixtures/transport';
 
 const push = vi.fn();
@@ -96,7 +97,7 @@ describe('useMeetingCreation resume semantics', () => {
         });
 
         expect(result.current.creationError).toBeNull();
-        const createCalls = scripted.calls.filter((call) => call.input === 'http://localhost:8000/api/meetings');
+        const createCalls = scripted.calls.filter((call) => call.input === `${resolveApiBaseUrl()}/meetings`);
         expect(createCalls).toHaveLength(2);
         await waitFor(() => expect(push).toHaveBeenCalledWith('/meetings/meeting-new-1'));
     });
@@ -134,7 +135,7 @@ describe('useMeetingCreation resume semantics', () => {
         await waitFor(() => expect(push).toHaveBeenCalledTimes(1));
         expect(push).toHaveBeenCalledWith('/meetings/meeting-new-1');
         // The meeting was created exactly once across both phases.
-        expect(scripted.calls.filter((call) => call.input === 'http://localhost:8000/api/meetings')).toHaveLength(1);
+        expect(scripted.calls.filter((call) => call.input === `${resolveApiBaseUrl()}/meetings`)).toHaveLength(1);
     });
 
     it('an all-success run navigates once after every file reached the server', async () => {

@@ -11,6 +11,7 @@ import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 import { render, screen, waitFor } from '@testing-library/react';
 import { QueryClientProvider } from '@tanstack/react-query';
 import { makeQueryClient } from '@/app/providers';
+import { resolveApiBaseUrl } from '@/shared/api/transport';
 import { createScriptedFetch, type ScriptedFetch } from '../../../../tests/fixtures/transport';
 import { meetingKeys } from './keys';
 import { useMeeting, useMeetingList } from './queries';
@@ -134,7 +135,7 @@ describe('canonical reads', () => {
         );
 
         await waitFor(() => screen.getByText('list: Board review'));
-        expect(scripted.calls[0]?.input).toBe('http://localhost:8000/api/meetings');
+        expect(scripted.calls[0]?.input).toBe(`${resolveApiBaseUrl()}/meetings`);
     });
 
     it('reads a detail identity with an abort signal and decoded participants', async () => {
@@ -148,7 +149,7 @@ describe('canonical reads', () => {
         );
 
         await waitFor(() => screen.getByText('detail: Board review with 1'));
-        expect(scripted.calls[0]?.input).toBe('http://localhost:8000/api/meetings/m-1');
+        expect(scripted.calls[0]?.input).toBe(`${resolveApiBaseUrl()}/meetings/m-1`);
         expect(scripted.calls[0]?.init?.signal).toBeInstanceOf(AbortSignal);
     });
 
