@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import { ArrowLeft, Loader2, Upload, X, Bot, FileText, RefreshCw, Users } from 'lucide-react';
@@ -10,7 +10,8 @@ import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { Checkbox } from '@/components/ui/checkbox';
 import { Card, CardContent } from '@/components/ui/card';
-import { api, personaApi } from '@/lib/api';
+import { useMeetingCreation } from '@/features/meetings';
+import { usePersonaList } from '@/features/persona-catalog';
 
 interface RosterItem {
     id: string;
@@ -22,54 +23,45 @@ interface RosterItem {
 
 export default function NewMeetingPage() {
     const router = useRouter();
-    const [isCreating, setIsCreating] = useState(false);
-    const [loadingRoster, setLoadingRoster] = useState(true);
-    const [navigationDone, setNavigationDone] = useState(false);
-
-    // Form state
     const [agenda, setAgenda] = useState('');
     const [context, setContext] = useState('');
     const [roster, setRoster] = useState<RosterItem[]>([]);
 
-    /**
-     * Documents stage per file through an explicit lifecycle so a failed
-     * upload never discards the created meeting: the meeting row is created
-     * exactly once and later retries re-upload only the files that did not
-     * reach the server.
-     */
-    interface UploadItem {
-        file: File;
-        status: 'pending' | 'uploading' | 'uploaded' | 'failed';
-        error: string | null;
-    }
-    const [uploads, setUploads] = useState<UploadItem[]>([]);
-    const [createdMeetingId, setCreatedMeetingId] = useState<string | null>(null);
-    const [creationError, setCreationError] = useState<string | null>(null);
-    const [uploadError, setUploadError] = useState<string | null>(null);
+    const personaList = usePersonaList();
+    const loadingRoster = personaList.isLoading;
 
+    // The catalog query is the canonical owner of the roster source data;
+    // this screen only tracks which rows the director selected.
     useEffect(() => {
-        loadPersonas();
-    }, []);
-
-    async function loadPersonas() {
-        try {
-            setLoadingRoster(true);
-            const response = await personaApi.listPersonas(undefined, true);
-            const items: RosterItem[] = response.personas.map(p => ({
+        if (!personaList.data) return;
+        setRoster(
+            personaList.data.personas.map(p => ({
                 id: p.id,
                 name: p.name,
-                subtitle: p.subtitle,
+                subtitle: p.subtitle ?? null,
                 color: p.color,
                 selected: true,
-            }));
-            setRoster(items);
-        } catch (err) {
-            console.error('Failed to load personas:', err);
-            setRoster([]);
-        } finally {
-            setLoadingRoster(false);
-        }
-    }
+            }))
+        );
+    }, [personaList.data]);
+
+    /**
+     * Document staging, meeting creation, upload retries, and one-shot
+     * navigation live in the meetings feature creation hook so a failed
+     * upload never discards the created meeting and a retry never clones it.
+     */
+    const {
+        isCreating,
+        uploads,
+        createdMeetingId,
+        creationError,
+        uploadError,
+        navigationDone,
+        stageFiles,
+        removeUpload,
+        createMeeting,
+        retryUploads,
+    } = useMeetingCreation();
 
     const handleRosterToggle = (id: string) => {
         setRoster(roster.map(p =>
@@ -84,98 +76,26 @@ export default function NewMeetingPage() {
 
     const handleFileSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
         if (e.target.files) {
-            const incoming: UploadItem[] = Array.from(e.target.files).map(file => ({
-                file,
-                status: 'pending' as const,
-                error: null,
-            }));
-            setUploads(prev => [...prev, ...incoming]);
+            stageFiles(e.target.files);
         }
     };
 
     const removeDocument = (index: number) => {
-        setUploads(uploads.filter((_, i) => i !== index));
+        removeUpload(index);
     };
 
-    /** Uploads every file that has not reached the server yet; returns the file list attempted (for tests/telemetry). */
-    const runPendingUploads = async (meetingId: string) => {
-        const targets = uploads.filter(item => item.status !== 'uploaded');
-        if (targets.length === 0) return;
-
-        const { documentsApi } = await import('@/lib/api');
-        setUploads(prev =>
-            prev.map(item => (item.status !== 'uploaded' ? { ...item, status: 'uploading', error: null } : item))
-        );
-        setUploadError(null);
-
-        const results = await Promise.allSettled(
-            targets.map(item => documentsApi.uploadDocument(item.file, meetingId))
-        );
-
-        // Reconcile by file identity so an out-of-order late success still lands.
-        const outcome = new Map<File, PromiseSettledResult<unknown>>();
-        targets.forEach((item, i) => outcome.set(item.file, results[i]));
-
-        setUploads(prev =>
-            prev.map(item => {
-                const result = outcome.get(item.file);
-                if (!result) return item;
-                if (result.status === 'fulfilled') return { ...item, status: 'uploaded', error: null };
-                return { ...item, status: 'failed', error: (result.reason as Error)?.message ?? 'Upload failed' };
-            })
-        );
-
-        if (results.some(r => r.status === 'rejected')) {
-            const failedCount = results.filter(r => r.status === 'rejected').length;
-            setUploadError(
-                `${failedCount} of ${targets.length} files failed to upload. You can retry below; nothing was lost.`
-            );
-            return;
-        }
-
-        // Everything reached the server — navigate to the meeting once.
-        setNavigationDone(true);
-        router.push(`/meetings/${meetingId}`);
-    };
-
+    /** The creation payload goes through the feature capability: agenda becomes the meeting name, context becomes the agenda. */
     const handleCreate = async () => {
         if (!agenda.trim()) return;
 
         const selectedPersonaIds = roster.filter(p => p.selected).map(p => p.id);
         if (selectedPersonaIds.length === 0) return;
 
-        setIsCreating(true);
-        setCreationError(null);
-        try {
-            // The meeting row exists exactly once: retries after a failed
-            // upload resume from the retained id instead of creating a clone.
-            let meetingId = createdMeetingId;
-            if (!meetingId) {
-                const meeting = await api.createMeeting(
-                    agenda.trim(),
-                    context.trim(),
-                    selectedPersonaIds
-                );
-                meetingId = meeting.id;
-                setCreatedMeetingId(meetingId);
-            }
-            await runPendingUploads(meetingId);
-        } catch (err) {
-            console.error('Failed to create meeting:', err);
-            setCreationError(`Failed to create the meeting: ${(err as Error).message}`);
-        } finally {
-            setIsCreating(false);
-        }
-    };
-
-    const retryUploads = async () => {
-        if (!createdMeetingId) return;
-        setIsCreating(true);
-        try {
-            await runPendingUploads(createdMeetingId);
-        } finally {
-            setIsCreating(false);
-        }
+        await createMeeting({
+            agenda: agenda.trim(),
+            context: context.trim(),
+            personaIds: selectedPersonaIds,
+        });
     };
 
     const selectedCount = roster.filter(p => p.selected).length;
@@ -349,7 +269,7 @@ export default function NewMeetingPage() {
                                         <Button
                                             variant="ghost"
                                             size="sm"
-                                            onClick={loadPersonas}
+                                            onClick={() => void personaList.refetch()}
                                             disabled={loadingRoster}
                                             className="text-zinc-400 hover:text-white h-7 px-2"
                                         >

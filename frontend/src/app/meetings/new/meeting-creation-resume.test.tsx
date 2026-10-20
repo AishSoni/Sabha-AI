@@ -1,134 +1,163 @@
 // @vitest-environment happy-dom
 /**
- * Regression (spec-02 D'): meeting creation must be resumable.
+ * Page wiring for the create-meeting flow (spec-05).
  *
- * - the meeting row is created exactly once; upload retries never create
- *   duplicates;
- * - uploads run via Promise.allSettled with per-file status; late successes
- *   still reconcile;
- * - a retry re-uploads ONLY the files that did not succeed;
- * - navigation happens once, only after every file reached a terminal state;
- * - a creation failure is distinguishable from an upload failure.
+ * The resume invariants (create the row exactly once, re-upload only failed
+ * files, navigate once) are pinned against the feature hook in
+ * src/features/meetings/hooks/use-meeting-creation.test.tsx; this suite
+ * pins that THIS screen drives those capabilities and surfaces their state.
  */
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { fireEvent, render, screen, waitFor } from '@testing-library/react';
 
 const mocks = vi.hoisted(() => ({
-    createMeeting: vi.fn(),
-    uploadDocument: vi.fn(),
-    listPersonas: vi.fn(),
-    push: vi.fn(),
+    pipeline: {
+        isCreating: false,
+        uploads: [] as Array<{ file: { name: string }; status: string; error: string | null }>,
+        createdMeetingId: null as string | null,
+        creationError: null as string | null,
+        uploadError: null as string | null,
+        navigationDone: false,
+        stageFiles: vi.fn(),
+        removeUpload: vi.fn(),
+        createMeeting: vi.fn(),
+        retryUploads: vi.fn(),
+    },
+    refetch: vi.fn(),
+    // Stable view object: the seeding effect depends on `data` identity, so a
+    // fresh literal per render would loop forever.
+    personaView: {
+        data: {
+            personas: [{ id: 'persona-1', name: 'The Investor', subtitle: null, color: '#38bdf8' }],
+            total: 1,
+        } as unknown,
+        isLoading: false,
+        refetch: null as unknown as () => void,
+    },
 }));
 
 vi.mock('next/navigation', () => ({
-    useRouter: () => ({ push: mocks.push, back: vi.fn() }),
+    useRouter: () => ({ push: vi.fn(), back: vi.fn() }),
 }));
 
-vi.mock('@/lib/api', () => ({
-    api: { createMeeting: mocks.createMeeting },
-    personaApi: { listPersonas: mocks.listPersonas },
-    documentsApi: { uploadDocument: mocks.uploadDocument },
+vi.mock('@/features/meetings', () => ({
+    useMeetingCreation: () => mocks.pipeline,
+}));
+
+vi.mock('@/features/persona-catalog', () => ({
+    usePersonaList: () => mocks.personaView,
 }));
 
 import NewMeetingPage from './page';
 
 const FILE_ONE = () => new File(['one'], 'market-scan.pdf', { type: 'application/pdf' });
-const FILE_TWO = () => new File(['two'], 'unit-economics.xlsx', { type: 'application/vnd.ms-excel' });
-const MEETING = { id: 'meeting-new-1', name: 'Pricing committee kickoff' };
 
-/* eslint-disable no-inner-declarations */
-// (removed duplicated disable comment during diagnostic cleanup)
-async function seedValidForm() {
-    // Seed the agenda first: the create button stays disabled until an agenda
-    // and at least one selected persona are present.
-    fireEvent.input(screen.getByLabelText(/Meeting Agenda/i), {
-        target: { value: 'Pricing committee kickoff' },
-    });
-    fireEvent.click(screen.getByRole('button', { name: /select all/i }));
-    await waitFor(() =>
-        expect(screen.getByRole('button', { name: /create meeting room/i })).toBeEnabled()
-    );
+function resetPipeline() {
+    mocks.pipeline.isCreating = false;
+    mocks.pipeline.uploads = [];
+    mocks.pipeline.createdMeetingId = null;
+    mocks.pipeline.creationError = null;
+    mocks.pipeline.uploadError = null;
+    mocks.pipeline.navigationDone = false;
+    mocks.pipeline.stageFiles.mockReset();
+    mocks.pipeline.removeUpload.mockReset();
+    mocks.pipeline.createMeeting.mockReset().mockResolvedValue(undefined);
+    mocks.pipeline.retryUploads.mockReset().mockResolvedValue(undefined);
+    mocks.refetch.mockReset();
+    mocks.personaView.refetch = mocks.refetch;
 }
 
-beforeEach(() => {
-    vi.clearAllMocks();
-    mocks.listPersonas.mockResolvedValue({
-        personas: [{ id: 'persona-1', name: 'The Investor', subtitle: null, color: '#38bdf8' }],
-    });
-});
+/** The header link and the footer submit both read "Create Meeting Room"; the footer one is the action under test. */
+function createButton() {
+    const buttons = screen.getAllByRole('button', { name: /create meeting room/i });
+    return buttons[buttons.length - 1]!;
+}
 
-describe('resumable meeting creation', () => {
-    function seedFiles(files: File[]) {
-        const input = document.querySelector('#file-upload') as HTMLInputElement;
-        Object.defineProperty(input, 'files', { value: files, configurable: true });
-        fireEvent.change(input);
-    }
+beforeEach(resetPipeline);
 
-    it('create failure is distinguishable from upload failure and creates nothing twice', async () => {
-        mocks.createMeeting.mockRejectedValueOnce(new Error('database unreachable'));
-        const { container } = render(<NewMeetingPage />);
-        await seedValidForm(); seedFiles([FILE_ONE()]);
+describe('create flow page wiring', () => {
+    it('renders the roster from the catalog and refreshes through the catalog query', async () => {
+        render(<NewMeetingPage />);
+        await screen.findByText('The Investor');
+        expect(screen.getByText(/1 selected/i)).toBeTruthy();
 
-        fireEvent.click(screen.getByRole('button', { name: 'Create Meeting Room' }));
-        // Distinct creation-failure copy; no upload was ever attempted.
-        await screen.findByText(/Failed to create the meeting/i);
-        expect(mocks.uploadDocument).not.toHaveBeenCalled();
-        expect(mocks.push).not.toHaveBeenCalled();
+        // All rows start selected, so the header toggle reads "Deselect All".
+        fireEvent.click(screen.getByRole('button', { name: /deselect all/i }));
+        expect(screen.getByText(/0 selected/i)).toBeTruthy();
+        expect(screen.getByRole('button', { name: /select all/i })).toBeTruthy();
 
-        // Recovering the creation attempt must not be possible by blind retry:
-        // after fixing nothing further, a second click re-attempts creation.
-        mocks.createMeeting.mockResolvedValueOnce(MEETING);
-        mocks.uploadDocument.mockResolvedValue({ id: 'doc-1' });
-        fireEvent.click(screen.getByRole('button', { name: 'Create Meeting Room' }));
-        await waitFor(() => expect(mocks.push).toHaveBeenCalledWith('/meetings/meeting-new-1'));
-        expect(mocks.createMeeting).toHaveBeenCalledTimes(2);
+        fireEvent.click(screen.getByRole('button', { name: /select all/i }));
+        expect(screen.getByText(/1 selected/i)).toBeTruthy();
+        expect(screen.getByRole('button', { name: /deselect all/i })).toBeTruthy();
+
+        const refreshIcon = document.querySelector('svg.lucide-refresh-cw');
+        expect(refreshIcon).not.toBeNull();
+        fireEvent.click(refreshIcon!.closest('button')!);
+        expect(mocks.refetch).toHaveBeenCalledTimes(1);
     });
 
-    it('upload failures keep the meeting and retry only the failed files', async () => {
-        mocks.createMeeting.mockResolvedValue(MEETING);
-        const callLog: File[] = [];
-        mocks.uploadDocument.mockImplementation(async (file: unknown) => {
-            callLog.push(file as File);
-            if (callLog.length === 2) throw new Error('storage down');
-            return { id: 'doc' };
+    it('stages files and commands one creation through the feature hook', async () => {
+        render(<NewMeetingPage />);
+        await screen.findByText('The Investor');
+
+        fireEvent.input(screen.getByLabelText(/Meeting Agenda/i), {
+            target: { value: 'Pricing committee kickoff' },
         });
+        await waitFor(() => expect(createButton()).toBeEnabled());
 
+        const input = document.querySelector('#file-upload') as HTMLInputElement;
+        Object.defineProperty(input, 'files', { value: [FILE_ONE()], configurable: true });
+        fireEvent.change(input);
+        expect(mocks.pipeline.stageFiles).toHaveBeenCalledWith(expect.anything());
+
+        fireEvent.click(createButton());
+        await waitFor(() =>
+            expect(mocks.pipeline.createMeeting).toHaveBeenCalledWith({
+                agenda: 'Pricing committee kickoff',
+                context: '',
+                personaIds: ['persona-1'],
+            })
+        );
+    });
+
+    it('surfaces creation and upload failures and retries uploads through the hook', async () => {
+        mocks.pipeline.creationError = 'Failed to create the meeting: database unreachable';
+        mocks.pipeline.uploadError = '1 of 2 files failed to upload. You can retry below; nothing was lost.';
+        mocks.pipeline.createdMeetingId = 'meeting-new-1';
+        mocks.pipeline.uploads = [
+            { file: { name: 'market-scan.pdf' }, status: 'uploaded', error: null },
+            { file: { name: 'unit-economics.xlsx' }, status: 'failed', error: 'storage down' },
+        ];
         const { container } = render(<NewMeetingPage />);
-        await seedValidForm(); seedFiles([FILE_ONE(), FILE_TWO()]);
+        await screen.findByText('The Investor');
 
-        fireEvent.click(screen.getByRole('button', { name: 'Create Meeting Room' }));
-
-        await screen.findByText(/storage down/i);
+        const alerts = screen.getAllByRole('alert');
+        expect(alerts.some((node) => node.textContent?.includes('Failed to create the meeting'))).toBe(true);
+        expect(alerts.some((node) => node.textContent?.includes('1 of 2 files failed to upload'))).toBe(true);
         expect(screen.getByText('market-scan.pdf').closest('div')?.textContent).toContain('Uploaded');
         expect(screen.getByText('unit-economics.xlsx').closest('div')?.textContent).toContain('Failed');
-        // Upload failure does not navigate away and does not lose the meeting.
-        expect(mocks.push).not.toHaveBeenCalled();
 
-        // Retry uploads: only the failed file is attempted again.
+        // The failed row keeps its remove affordance; the uploaded row does not.
+        const removeButtons = container.querySelectorAll("button[class*='hover:text-red-400']");
+        expect(removeButtons).toHaveLength(1);
+        fireEvent.click(removeButtons[0]!);
+        expect(mocks.pipeline.removeUpload).toHaveBeenCalledWith(1);
+
         fireEvent.click(screen.getByRole('button', { name: /retry uploads/i }));
-        await waitFor(() => expect(mocks.push).toHaveBeenCalledWith('/meetings/meeting-new-1'));
-        expect(mocks.uploadDocument).toHaveBeenCalledTimes(3);
-        expect(callLog.map(f => f.name)).toEqual(['market-scan.pdf', 'unit-economics.xlsx', 'unit-economics.xlsx']);
-        // The meeting was created exactly once across both phases.
-        expect(mocks.createMeeting).toHaveBeenCalledTimes(1);
-        // Navigation happened exactly once.
-        expect(mocks.push).toHaveBeenCalledTimes(1);
+        expect(mocks.pipeline.retryUploads).toHaveBeenCalledTimes(1);
     });
 
-    it('all-success run navigates once with every file uploaded', async () => {
-        mocks.createMeeting.mockResolvedValue(MEETING);
-        mocks.uploadDocument.mockResolvedValue({ id: 'doc' });
+    it('disables creation while the pipeline is busy, then again after navigation', async () => {
+        mocks.pipeline.isCreating = true;
+        const view = render(<NewMeetingPage />);
+        await screen.findByText('The Investor');
+        // While busy the submit reads "Creating..." instead of its idle label.
+        expect(screen.getByRole('button', { name: 'Creating...' })).toBeDisabled();
+        view.unmount();
 
+        mocks.pipeline.isCreating = false;
+        mocks.pipeline.navigationDone = true;
         render(<NewMeetingPage />);
-        await seedValidForm(); seedFiles([FILE_ONE(), FILE_TWO()]);
-
-        fireEvent.click(screen.getByRole('button', { name: 'Create Meeting Room' }));
-
-        await waitFor(() => expect(mocks.push).toHaveBeenCalledWith('/meetings/meeting-new-1'));
-        expect(screen.getByText('market-scan.pdf').closest('div')?.textContent).toContain('Uploaded');
-        expect(screen.getByText('unit-economics.xlsx').closest('div')?.textContent).toContain('Uploaded');
-        expect(mocks.push).toHaveBeenCalledTimes(1);
+        expect(createButton()).toBeDisabled();
     });
 });
-
-
