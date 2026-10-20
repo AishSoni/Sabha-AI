@@ -10,7 +10,7 @@
  */
 import { describe, expect, it, vi, beforeEach, afterEach } from 'vitest';
 import { act, renderHook, waitFor } from '@testing-library/react';
-import { QueryClientProvider } from '@tanstack/react-query';
+import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { useState, type ReactNode } from 'react';
 
 import { createScriptedFetch } from '../../../../tests/fixtures/transport';
@@ -99,12 +99,12 @@ describe('settings metadata environment query', () => {
         expect(result.current.data!.providers[0]).toMatchObject({
             id: 'openrouter',
             name: 'OpenRouter',
-            requiresApiKey: true,
+            requires_api_key: true,
             models: [{ id: 'm-1', name: 'Model 1' }],
         });
         expect(result.current.data!.providers[1]).toMatchObject({
             id: 'ollama',
-            baseUrl: 'http://localhost:11434',
+            base_url: 'http://localhost:11434',
         });
         expect(result.current.data!.environment).toEqual({
             isProduction: false,
@@ -130,7 +130,17 @@ describe('settings metadata environment query', () => {
     it('surfaces failed metadata reads as retryable query errors', async () => {
         scripted.enqueueJson(500, { detail: 'provider directory unavailable' });
 
-        const { result } = renderHook(() => useProvidersEnvironment(), { wrapper });
+        // Retry policy is a client-level decision; the contract here is that
+        // the failure becomes a surfaced query error with the server detail
+        // and HTTP status — so pin it on a retry-free client.
+        const retryFreeClient = new QueryClient({
+            defaultOptions: { queries: { retry: false } },
+        });
+        const retryFreeWrapper = ({ children }: { children: ReactNode }) => (
+            <QueryClientProvider client={retryFreeClient}>{children}</QueryClientProvider>
+        );
+
+        const { result } = renderHook(() => useProvidersEnvironment(), { wrapper: retryFreeWrapper });
         await waitFor(() => expect(result.current.error).toBeTruthy());
 
         const error = result.current.error as Error & { status?: number | null };

@@ -1,16 +1,17 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useEffect } from 'react';
 import { Loader2, Cpu } from 'lucide-react';
 import { ProviderCard } from './provider-card';
 import { SystemAICard } from './system-ai-card';
-import { settingsApi, ProviderInfo } from '@/lib/api';
+import { useProvidersEnvironment } from '@/features/settings';
 import { useSettingsStore } from '@/stores/settings-store';
 
 export function ApiKeysSection() {
-    const [providers, setProviders] = useState<ProviderInfo[]>([]);
-    const [loading, setLoading] = useState(true);
-    const [error, setError] = useState<string | null>(null);
+    // Server-owned metadata read — TanStack Query owns this fetch; the
+    // settings store keeps only the user's local choices.
+    const providersQuery = useProvidersEnvironment();
+    const providers = providersQuery.data?.providers ?? [];
 
     const {
         providers: providerConfigs,
@@ -21,38 +22,26 @@ export function ApiKeysSection() {
         initializeFromServer,
     } = useSettingsStore();
 
+    const metadata = providersQuery.data;
     useEffect(() => {
-        loadProviders();
-    }, []);
-
-    const loadProviders = async () => {
-        setError(null);
-        try {
-            const response = await settingsApi.getProviders();
-            setProviders(response.providers);
-
-            // Initialize settings from server on first load
-            initializeFromServer({
-                isProduction: response.environment.is_production,
-                configuredProviders: response.environment.configured_providers,
-                defaultProvider: response.environment.default_provider,
-                defaultModels: response.environment.default_models,
-                systemAI: {
-                    provider: response.system_ai.provider,
-                    model: response.system_ai.model,
-                    temperature: response.system_ai.temperature,
-                    maxTokens: response.system_ai.max_tokens,
-                },
-            });
-        } catch (err) {
-            setError('Failed to load providers');
-            console.error(err);
-        } finally {
-            setLoading(false);
+        if (!metadata) {
+            return;
         }
-    };
+        initializeFromServer({
+            isProduction: metadata.environment.isProduction,
+            configuredProviders: metadata.environment.configuredProviders,
+            defaultProvider: metadata.environment.defaultProvider,
+            defaultModels: metadata.environment.defaultModels,
+            systemAI: {
+                provider: metadata.systemAI.provider,
+                model: metadata.systemAI.model,
+                temperature: metadata.systemAI.temperature,
+                maxTokens: metadata.systemAI.maxTokens,
+            },
+        });
+    }, [metadata, initializeFromServer]);
 
-    if (loading) {
+    if (providersQuery.isLoading) {
         return (
             <div className="flex items-center justify-center py-12">
                 <Loader2 className="w-6 h-6 animate-spin text-zinc-500" />
@@ -60,12 +49,12 @@ export function ApiKeysSection() {
         );
     }
 
-    if (error) {
+    if (providersQuery.error) {
         return (
             <div className="bg-red-500/10 border border-red-500/30 rounded-lg p-4">
-                <p className="text-red-400">{error}</p>
+                <p className="text-red-400">Failed to load providers</p>
                 <button
-                    onClick={() => loadProviders()}
+                    onClick={() => void providersQuery.refetch()}
                     className="mt-3 px-3 py-1.5 text-sm rounded-md bg-red-500/20 border border-red-500/40 text-red-300 hover:bg-red-500/30 transition-colors"
                 >
                     Retry

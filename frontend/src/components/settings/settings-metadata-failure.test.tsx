@@ -5,18 +5,55 @@
  * successful retry must hydrate the authoritative metadata into the store
  * (previously the persisted `initialized` flag silently blocked every later
  * hydration attempt).
+ *
+ * Since spec-05 the component reads the environment through the settings
+ * feature query — this file keeps the component-level contract by mocking
+ * that hook, while the query itself is pinned beside its feature api.
  */
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { fireEvent, render, screen } from '@testing-library/react';
 
 const mocks = vi.hoisted(() => ({
-    getProviders: vi.fn(),
+    view: {
+        data: null as object | null,
+        isLoading: false,
+        error: null as object | null,
+    },
+    listeners: [] as Array<() => void>,
+    notify: () => {
+        for (const listener of mocks.listeners) {
+            listener();
+        }
+    },
+    // Stable dispatcher the component can capture once; the test swaps the
+    // action behind it to represent the refetch resolving.
+    refetchAction: () => undefined,
+    refetch: () => {
+        mocks.refetchAction();
+        mocks.notify();
+    },
 }));
 
-vi.mock('@/lib/api', () => ({
-    settingsApi: { getProviders: mocks.getProviders },
-    ProviderInfo: {},
-    FetchedModelInfo: {},
+vi.mock('@/features/settings', () => ({
+    useProvidersEnvironment: () => {
+        const [, setTick] = useState(0);
+        useEffect(() => {
+            const listener = () => setTick((t) => t + 1);
+            mocks.listeners.push(listener);
+            return () => {
+                const index = mocks.listeners.indexOf(listener);
+                if (index !== -1) {
+                    mocks.listeners.splice(index, 1);
+                }
+            };
+        }, []);
+        return {
+            data: mocks.view.data,
+            isLoading: mocks.view.isLoading,
+            error: mocks.view.error,
+            refetch: mocks.refetch,
+        };
+    },
 }));
 
 vi.mock('@/components/settings/provider-card', () => ({
@@ -27,26 +64,23 @@ vi.mock('@/components/settings/system-ai-card', () => ({
     SystemAICard: () => <div data-testid="system-ai-card" />,
 }));
 
+import { useEffect, useState } from 'react';
 import { ApiKeysSection } from './api-keys-section';
 import { useSettingsStore } from '@/stores/settings-store';
 
-const providersPayload = {
-    providers: [
-        { id: 'openrouter', name: 'OpenRouter', models: [] },
-        { id: 'gemini', name: 'Gemini', models: [] },
-        { id: 'ollama', name: 'Ollama', models: [] },
-    ],
+const metadataView = {
+    providers: [],
     environment: {
-        is_production: false,
-        configured_providers: ['ollama'],
-        default_provider: 'ollama',
-        default_models: { ollama: 'llama3.2' },
+        isProduction: false,
+        configuredProviders: ['ollama'],
+        defaultProvider: 'ollama',
+        defaultModels: { ollama: 'llama3.2' },
     },
-    system_ai: {
+    systemAI: {
         provider: 'ollama',
         model: 'llama3.2',
         temperature: 0.5,
-        max_tokens: 2048,
+        maxTokens: 2048,
     },
 };
 
@@ -55,18 +89,28 @@ beforeEach(() => {
     useSettingsStore.getState().resetAllSettings();
     useSettingsStore.getState().lockVault();
     vi.clearAllMocks();
+    mocks.view.data = null;
+    mocks.view.isLoading = false;
+    mocks.view.error = null;
+    mocks.listeners.length = 0;
 });
 
 describe('settings metadata failure visibility', () => {
     it('shows the failure with a retry, and retry hydrates the metadata', async () => {
-        mocks.getProviders.mockRejectedValueOnce(new Error('boom'));
+        mocks.view.error = { message: 'boom' };
+
         render(<ApiKeysSection />);
 
         await screen.findByText('Failed to load providers');
         const retry = screen.getByRole('button', { name: /retry/i });
         expect(retry).toBeTruthy();
 
-        mocks.getProviders.mockResolvedValueOnce(providersPayload);
+        // The refetch resolves the query: swapping the action behind the
+        // stable dispatcher mirrors TanStack re-rendering on data.
+        mocks.refetchAction = () => {
+            mocks.view.error = null;
+            mocks.view.data = metadataView;
+        };
         fireEvent.click(retry);
 
         await screen.findByTestId('system-ai-card');
