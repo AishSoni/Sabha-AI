@@ -44,7 +44,8 @@ describe('credential envelope parsing', () => {
     });
 
     it('rejects envelopes from a newer or unknown version', () => {
-        const future = { ...validEnvelope(), version: CREDENTIAL_ENVELOPE_VERSION + 1 };
+        // Deliberately malformed input: a version the format does not support.
+        const future = { ...validEnvelope(), version: CREDENTIAL_ENVELOPE_VERSION + 1 } as unknown as CredentialEnvelope;
         expect(parseEnvelope(serializeEnvelope(future))).toBeNull();
     });
 
@@ -66,11 +67,11 @@ describe('credential envelope parsing', () => {
         expect(parseEnvelope(serializeEnvelope(weakKdf))).toBeNull();
 
         const otherHash = validEnvelope();
-        otherHash.kdf.hash = 'SHA-1';
+        (otherHash.kdf as { hash: string }).hash = 'SHA-1';
         expect(parseEnvelope(serializeEnvelope(otherHash))).toBeNull();
 
         const otherCipher = validEnvelope();
-        otherCipher.cipher.algorithm = 'AES-CBC';
+        (otherCipher.cipher as { algorithm: string }).algorithm = 'AES-CBC';
         expect(parseEnvelope(serializeEnvelope(otherCipher))).toBeNull();
     });
 

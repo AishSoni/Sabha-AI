@@ -6,70 +6,18 @@
 import { create } from 'zustand';
 import { persist } from 'zustand/middleware';
 import type { GenerationSettings } from '@/lib/api';
+import {
+    forgetInVault,
+    lockVault as lockVaultMemory,
+    observeVaultStorage,
+    openVault,
+    revealFromVault,
+    sealIntoVault,
+} from '@/shared/credentials/vault';
 
-// ============== BYOK key vault (browser-only) ==============
-// Provider keys are encrypted with an AES key derived from a user passphrase
-// (PBKDF2 -> AES-GCM with a random salt and per-secret IV). Only ciphertext
-// and the salt may reach localStorage; the derived key and plaintext keys
-// live solely in module memory and vanish on lock or page refresh.
-const PBKDF2_ITERATIONS = 210_000;
-
-const encoder = new TextEncoder();
-const decoder = new TextDecoder();
-
-const bytesToBase64 = (bytes: Uint8Array): string =>
-    btoa(String.fromCharCode(...Array.from(bytes)));
-
-const base64ToBytes = (b64: string): Uint8Array =>
-    Uint8Array.from(atob(b64), (char) => char.charCodeAt(0));
-
-async function deriveVaultKey(passphrase: string, salt: Uint8Array): Promise<CryptoKey> {
-    const material = await crypto.subtle.importKey(
-        'raw',
-        encoder.encode(passphrase) as unknown as BufferSource,
-        'PBKDF2',
-        false,
-        ['deriveKey'],
-    );
-    return crypto.subtle.deriveKey(
-        { name: 'PBKDF2', salt: salt as unknown as BufferSource, iterations: PBKDF2_ITERATIONS, hash: 'SHA-256' },
-        material,
-        { name: 'AES-GCM', length: 256 },
-        false,
-        ['encrypt', 'decrypt'],
-    );
-}
-
-async function encryptSecret(key: CryptoKey, plaintext: string): Promise<string> {
-    const iv = crypto.getRandomValues(new Uint8Array(12));
-    const encrypted = new Uint8Array(
-        await crypto.subtle.encrypt(
-            { name: 'AES-GCM', iv: iv as unknown as BufferSource },
-            key,
-            encoder.encode(plaintext) as unknown as BufferSource
-        )
-    );
-    const packed = new Uint8Array(iv.length + encrypted.length);
-    packed.set(iv, 0);
-    packed.set(encrypted, iv.length);
-    return bytesToBase64(packed);
-}
-
-async function decryptSecret(key: CryptoKey, payload: string): Promise<string> {
-    const packed = base64ToBytes(payload);
-    const iv = packed.slice(0, 12);
-    const encrypted = packed.slice(12);
-    return decoder.decode(
-        await crypto.subtle.decrypt(
-            { name: 'AES-GCM', iv: iv as unknown as BufferSource },
-            key,
-            encrypted as unknown as BufferSource
-        )
-    );
-}
-
-const inMemoryKeys = new Map<string, string>();
-let vaultKey: CryptoKey | null = null;
+// The key vault lives in src/shared/credentials: this store only orchestrates
+// it and persists sealed envelopes (ciphertext + salt, never any plaintext).
+const SETTINGS_STORAGE_KEY = 'sabha-settings';
 
 export interface ProviderConfig {
     enabled: boolean;
@@ -167,18 +115,17 @@ export const useSettingsStore = create<SettingsState>()(
                 if (apiKey !== undefined) {
                     const key = apiKey.trim();
                     if (key) {
-                        if (!vaultKey) {
+                        const sealed = await sealIntoVault(providerId, key);
+                        if (!sealed) {
                             // Never write a secret (or its ciphertext) while locked.
                             set({ vaultError: 'Unlock the key vault before saving a provider key.' });
                             return;
                         }
-                        const ciphertext = await encryptSecret(vaultKey, key);
-                        inMemoryKeys.set(providerId, key);
                         set((state) => ({
                             vaultError: null,
                             vaultCiphertexts: {
                                 ...state.vaultCiphertexts,
-                                [providerId]: ciphertext,
+                                [providerId]: sealed,
                             },
                             providers: {
                                 ...state.providers,
@@ -194,7 +141,7 @@ export const useSettingsStore = create<SettingsState>()(
                     }
 
                     // Explicit clear: drop ciphertext + memory key too.
-                    inMemoryKeys.delete(providerId);
+                    forgetInVault(providerId);
                     set((state) => {
                         const { [providerId]: _dropped, ...remaining } = state.vaultCiphertexts;
                         return {
@@ -254,7 +201,7 @@ export const useSettingsStore = create<SettingsState>()(
             },
 
             clearProviderConfig: (providerId) => {
-                inMemoryKeys.delete(providerId);
+                forgetInVault(providerId);
                 set((state) => {
                     const { [providerId]: _dropped, ...remaining } = state.vaultCiphertexts;
                     return {
@@ -273,46 +220,25 @@ export const useSettingsStore = create<SettingsState>()(
             },
 
             resetAllSettings: () => {
-                vaultKey = null;
-                inMemoryKeys.clear();
+                lockVaultMemory();
                 set({ ...initialState, vaultCiphertexts: {}, vaultSalt: null, vaultUnlocked: false, vaultError: null });
             },
 
             unlockVault: async (passphrase) => {
-                // Salt: reuse the persisted one, or create it on first unlock.
-                const existingSalt = get().vaultSalt;
-                const saltBytes = existingSalt
-                    ? base64ToBytes(existingSalt)
-                    : crypto.getRandomValues(new Uint8Array(16));
-                if (!existingSalt) {
-                    set({ vaultSalt: bytesToBase64(saltBytes) });
+                // The vault proves the passphrase against existing ciphertext
+                // before unlocking; a wrong passphrase leaves it locked.
+                const result = await openVault(passphrase, get().vaultSalt, get().vaultCiphertexts);
+                if (!result.ok) {
+                    set({ vaultError: result.error });
+                    return false;
                 }
 
-                const key = await deriveVaultKey(passphrase, saltBytes);
-
-                // Prove the passphrase against existing ciphertext before
-                // unlocking; a wrong passphrase leaves the vault locked.
-                const ciphertexts = get().vaultCiphertexts;
-                if (Object.keys(ciphertexts).length > 0) {
-                    try {
-                        for (const [providerId, payload] of Object.entries(ciphertexts)) {
-                            inMemoryKeys.set(providerId, await decryptSecret(key, payload));
-                        }
-                    } catch {
-                        inMemoryKeys.clear();
-                        set({ vaultError: 'Incorrect passphrase — the vault stays locked.' });
-                        return false;
-                    }
-                }
-
-                vaultKey = key;
-                set({ vaultUnlocked: true, vaultError: null });
+                set({ vaultUnlocked: true, vaultError: null, vaultSalt: result.salt });
                 return true;
             },
 
             lockVault: () => {
-                vaultKey = null;
-                inMemoryKeys.clear();
+                lockVaultMemory();
                 set({ vaultUnlocked: false });
             },
 
@@ -327,7 +253,7 @@ export const useSettingsStore = create<SettingsState>()(
                     maxTokens: config.maxTokens,
                     baseUrl: config.baseUrl || undefined,
                     // Key exists in memory only while the vault is unlocked.
-                    apiKey: inMemoryKeys.get(id),
+                    apiKey: revealFromVault(id),
                 };
             },
 
@@ -396,7 +322,7 @@ export const useSettingsStore = create<SettingsState>()(
             },
         }),
         {
-            name: 'sabha-settings',
+            name: SETTINGS_STORAGE_KEY,
             // Version 1: legacy payloads carried an `initialized` flag which
             // gated hydration forever; it is no longer stored at all.
             version: 1,
@@ -419,3 +345,12 @@ export const useSettingsStore = create<SettingsState>()(
         }
     )
 );
+
+// Cross-tab invalidation: when another tab rewrites the persisted payload,
+// this tab's in-memory plaintexts may be stale — lock the vault in response.
+if (typeof window !== 'undefined') {
+    observeVaultStorage(window, SETTINGS_STORAGE_KEY, () => {
+        lockVaultMemory();
+        useSettingsStore.setState({ vaultUnlocked: false });
+    });
+}
