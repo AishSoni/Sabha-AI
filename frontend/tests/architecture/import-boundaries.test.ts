@@ -12,7 +12,10 @@ import os from "node:os";
 import path from "node:path";
 import { describe, expect, it } from "vitest";
 import {
+    RULE_CROSS_FEATURE_ROOT_IMPORT,
+    RULE_FEATURE_LEGACY_IMPORT,
     RULE_FORBIDDEN_SDK_IMPORT,
+    RULE_SHARED_ISOLATION,
     RULE_STORE_IMPORT_IN_UI,
     RULE_TEST_IMPORT_IN_ROUTE,
     UI_STORE_ALLOWLIST,
@@ -101,6 +104,71 @@ describe("checker rejects planted violations (sandbox)", () => {
 
         const rules = rulesIn(root);
         expect(rules).toContain(RULE_TEST_IMPORT_IN_ROUTE);
+    });
+
+    it("flags a feature module reaching for the legacy transport monolith", () => {
+        const root = writeSandbox({
+            "src/lib/api.ts": `export const api = {};\n`,
+            "src/features/meetings/api/legacy-list.ts": `import { api } from '@/lib/api';\nexport const legacyList = () => api;\n`,
+            "src/features/meetings/api/client.ts": `import { requestJson } from '@/shared/api/transport';\nexport const client = { requestJson };\n`,
+            "src/shared/api/transport.ts": `export const requestJson = async () => ({});\n`,
+        });
+
+        const rules = rulesIn(root);
+        expect(rules.has(RULE_FEATURE_LEGACY_IMPORT)).toBe(true);
+    });
+
+    it("flags a feature module reaching into legacy zustand stores", () => {
+        const root = writeSandbox({
+            "src/stores/meetingStore.ts": `export const useMeetingStore = () => ({});\n`,
+            "src/features/meetings/hooks/store-hooks.ts": `import { useMeetingStore } from '@/stores/meetingStore';\nexport const useLegacyMeeting = () => useMeetingStore();\n`,
+        });
+
+        const rules = rulesIn(root);
+        expect(rules.has(RULE_FEATURE_LEGACY_IMPORT)).toBe(true);
+    });
+
+    it("flags shared modules that reach into features, stores, components, or lib", () => {
+        const root = writeSandbox({
+            "src/stores/rateLimitStore.ts": `export const useCooldown = () => ({});\n`,
+            "src/components/ui/button.tsx": `export const Button = () => null;\n`,
+            "src/lib/utils.ts": `export const cn = () => '';\n`,
+            "src/features/meetings/index.ts": `export const meeting = () => null;\n`,
+            "src/shared/api/leaky-transport.ts": `import { meeting } from '@/features/meetings';\nimport { useCooldown } from '@/stores/rateLimitStore';\nimport { Button } from '@/components/ui/button';\nimport { cn } from '@/lib/utils';\nexport const leakyTransport = { meeting, useCooldown, Button, cn };\n`,
+        });
+
+        const rules = rulesIn(root);
+        expect(rules.has(RULE_SHARED_ISOLATION)).toBe(true);
+    });
+
+    it("flags deep cross-feature imports while allowing curated root barrels", () => {
+        const root = writeSandbox({
+            "src/features/knowledge/index.ts": `export const knowledge = () => null;\n`,
+            "src/features/knowledge/api/client.ts": `export const documentClient = {};\n`,
+            "src/features/meetings/hooks/deep-reach.ts": `import { documentClient } from '@/features/knowledge/api/client';\nexport const deepReach = () => documentClient;\n`,
+            "src/features/persona-catalog/api/steal.ts": `import { knowledge } from '../../knowledge';\nexport const steal = () => knowledge();\n`,
+        });
+
+        const { violations } = scanSourceTree(root);
+        const crossViolations = violations.filter((violation) => violation.rule === RULE_CROSS_FEATURE_ROOT_IMPORT);
+
+        expect(crossViolations).toHaveLength(2);
+        expect(crossViolations.map((violation) => violation.file)).toEqual(
+            expect.arrayContaining([expect.stringMatching(/deep-reach\.ts$/), expect.stringMatching(/steal\.ts$/)])
+        );
+    });
+
+    it("passes a happy sandbox tree where features consume other features via root barrels", () => {
+        const root = writeSandbox({
+            "src/shared/api/transport.ts": `import { readFailureDetail } from './errors';\nexport const requestJson = readFailureDetail;\n`,
+            "src/shared/api/errors.ts": `export const readFailureDetail = async () => '';\n`,
+            "src/shared/credentials/vault.ts": `export const sealIntoVault = async () => null;\n`,
+            "src/features/knowledge/index.ts": `export const knowledge = () => null;\n`,
+            "src/features/meetings/index.ts": `export const meetings = () => null;\n`,
+            "src/features/meetings/hooks/use-creation.ts": `import { knowledge } from '@/features/knowledge';\nimport { sealIntoVault } from '@/shared/credentials/vault';\nexport const useCreation = () => ({ knowledge, sealIntoVault });\n`,
+        });
+
+        expect(scanSourceTree(root).violations).toEqual([]);
     });
 
     it("passes a happy sandbox tree with ui reading lib and features-free layout", () => {
