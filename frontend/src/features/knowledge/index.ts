@@ -9,6 +9,9 @@ export {
     documentKeys,
     decodeDocumentUploadResponse,
     useUploadMeetingDocument,
+    stackClient,
     type DocumentUploadInput,
     type DocumentUploadResponse,
+    type KnowledgeStack,
+    type KnowledgeStackListResponse,
 } from './api';

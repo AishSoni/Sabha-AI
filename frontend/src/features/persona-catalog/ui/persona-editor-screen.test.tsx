@@ -9,32 +9,38 @@
  * rendering two "Active" badges and leaving the old row disabled until
  * reload. State updates also read captured snapshots instead of functional
  * updaters (stale under serialized actions).
+ *
+ * Migrated with the screen into the persona-catalog feature (spec-06): the
+ * mocks now target the feature client and the knowledge feature barrel.
  */
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { fireEvent, render, screen, waitFor } from "@testing-library/react";
-import { PersonaDetailContent } from "./page";
+import { PersonaDetailContent } from "./persona-editor-screen";
 
 const PERSONA_ID = "persona-1";
 
 const mocks = vi.hoisted(() => ({
-    getPersona: vi.fn(),
+    get: vi.fn(),
     listPromptVersions: vi.fn(),
     listStacks: vi.fn(),
     createPromptVersion: vi.fn(),
     activatePromptVersion: vi.fn(),
-    updatePersona: vi.fn(),
+    update: vi.fn(),
 }));
 
-vi.mock("@/lib/api", () => ({
-    personaApi: {
-        getPersona: mocks.getPersona,
+vi.mock("@/features/persona-catalog/api/client", () => ({
+    personaClient: {
+        get: mocks.get,
         listPromptVersions: mocks.listPromptVersions,
         createPromptVersion: mocks.createPromptVersion,
         activatePromptVersion: mocks.activatePromptVersion,
-        updatePersona: mocks.updatePersona,
+        update: mocks.update,
     },
-    knowledgeStacksApi: {
-        listStacks: mocks.listStacks,
+}));
+
+vi.mock("@/features/knowledge", () => ({
+    stackClient: {
+        list: mocks.listStacks,
     },
 }));
 
@@ -44,11 +50,12 @@ const personaFixture = {
     subtitle: "Critical Research Specialist",
     color: "#3b82f6",
     avatar_url: null,
-    provider_config: { provider: "", model: "", temperature: 0.7, max_tokens: 2000 },
+    provider_config: { provider: null, model: null, temperature: 0.7, max_tokens: 2000 },
     is_default: true,
     user_id: null,
     stack_ids: [],
     created_at: "2026-01-01T00:00:00Z",
+    updated_at: "2026-01-01T00:00:00Z",
     active_prompt: "Second revision directive",
     active_prompt_version: 2,
 };
@@ -84,7 +91,7 @@ async function loadedVersionRows() {
 
 beforeEach(() => {
     vi.clearAllMocks();
-    mocks.getPersona.mockResolvedValue(personaFixture);
+    mocks.get.mockResolvedValue(personaFixture);
     mocks.listPromptVersions.mockResolvedValue([
         versionFixture("v1", 1, "First revision directive", false),
         versionFixture("v2", 2, "Second revision directive", true),
@@ -96,7 +103,7 @@ beforeEach(() => {
     mocks.activatePromptVersion.mockResolvedValue(undefined);
 });
 
-describe("roster page prompt version controls", () => {
+describe("persona editor prompt version controls", () => {
     it("deactivates the previous revision when a new prompt revision is saved", async () => {
         renderRosterPage();
         await screen.findByText("The Analyst");

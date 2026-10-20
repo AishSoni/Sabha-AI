@@ -16,7 +16,8 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { Checkbox } from '@/components/ui/checkbox';
-import { api, personaApi, PersonaWithPrompt } from '@/lib/api';
+import { api } from '@/lib/api';
+import { personaClient } from '@/features/persona-catalog';
 
 interface RosterItem {
     id: string;
@@ -53,7 +54,7 @@ export function CreateMeetingRoomDialog({ open, onOpenChange, onCreated }: Creat
     async function loadPersonas() {
         try {
             setLoadingRoster(true);
-            const response = await personaApi.listPersonas(undefined, true);
+            const response = await personaClient.list();
             // Convert personas to roster items, all selected by default
             const items: RosterItem[] = response.personas.map(p => ({
                 id: p.id,

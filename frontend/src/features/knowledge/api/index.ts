@@ -8,3 +8,4 @@ export { documentKeys } from './keys';
 export { documentClient, type DocumentUploadInput } from './client';
 export { decodeDocumentUploadResponse, type DocumentUploadResponse } from './decoders';
 export { useUploadMeetingDocument } from './mutations';
+export { stackClient, type KnowledgeStack, type KnowledgeStackListResponse } from './stacks';
