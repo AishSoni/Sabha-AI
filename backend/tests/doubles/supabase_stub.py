@@ -64,6 +64,32 @@ _RPC_SIGNATURES: dict[str, tuple[tuple[str, str], ...]] = {
         ("p_operation_id", "::uuid"),
         ("p_expected_fence", ""),
     ),
+    "read_persona_creation_snapshot": (("p_persona_id", ""),),
+    "create_persona_transaction": (
+        ("p_persona_id", ""),
+        ("p_name", ""),
+        ("p_subtitle", ""),
+        ("p_color", ""),
+        ("p_avatar_url", ""),
+        ("p_provider_config", "::jsonb"),
+        ("p_is_default", ""),
+        ("p_user_id", ""),
+        ("p_prompt_id", ""),
+        ("p_system_prompt", ""),
+        ("p_created_at", "::timestamptz"),
+        ("p_stack_ids", "::uuid[]"),
+    ),
+    "update_persona_transaction": (
+        ("p_persona_id", ""),
+        ("p_name", ""),
+        ("p_subtitle", ""),
+        ("p_color", ""),
+        ("p_avatar_url", ""),
+        ("p_provider_config", "::jsonb"),
+        ("p_stack_ids", "::uuid[]"),
+        ("p_expected_updated_at", "::timestamptz"),
+        ("p_updated_at", "::timestamptz"),
+    ),
 }
 
 
