@@ -18,6 +18,29 @@ class PromptCatalogUnavailable(RuntimeError):
     """
 
 
+class TemplateNotFound(LookupError):
+    """A template write referenced a persona id that does not exist."""
+
+
+class PersonaEditConflict(RuntimeError):
+    """A guarded update lost the optimistic-concurrency race.
+
+    The previous state was preserved; the caller must re-read and
+    re-apply its edit. Presentation answers 409, never 503.
+    """
+
+
+class UnknownStacks(ValueError):
+    """A creation/replacement referenced stack ids that do not exist."""
+
+    def __init__(self, unknown: list[str]) -> None:
+        self.unknown = [str(sid) for sid in unknown]
+        super().__init__(
+            "unknown_knowledge_stacks: "
+            + ", ".join(self.unknown)
+        )
+
+
 class PromptCatalogPort(Protocol):
     """Persistence seam for prompt selection changes."""
 
@@ -42,3 +65,54 @@ class PromptCatalogPort(Protocol):
         ``is_active``). Unknown personas and constraint violations raise —
         including on ``content=None`` — and persist nothing.
         """
+
+
+class PersonaCatalogPort(Protocol):
+    """Persistence seam for template CRUD and creation snapshots.
+
+    The snapshot call is the one participant construction (Meetings
+    module) consumes: a coherent single-call view of template, active
+    prompt and assignments, taken under the persona lock.
+
+    Refusals from business rules travel as the typed exceptions above
+    (``TemplateNotFound``, ``PersonaEditConflict``, ``UnknownStacks``);
+    transport and shape failures raise ``PromptCatalogUnavailable``.
+    """
+
+    async def read_creation_snapshot(self, persona_id: str) -> dict | None:
+        """Return the coherent template snapshot row, or None if unknown."""
+
+    async def create_persona(
+        self,
+        persona_id: str,
+        name: str,
+        *,
+        subtitle: str | None,
+        color: str | None,
+        avatar_url: str | None,
+        provider_config: dict,
+        is_default: bool,
+        user_id: str | None,
+        system_prompt: str | None,
+        prompt_id: str,
+        created_at: str,
+        stack_ids: list[str],
+    ) -> dict:
+        """Create template + prompt + assignments atomically; return the row."""
+
+    async def update_persona(
+        self,
+        persona_id: str,
+        fields: dict,
+        expected_updated_at: str | None,
+        updated_at: str,
+    ) -> dict:
+        """Apply a guarded metadata/assignment update; return the row.
+
+        ``fields`` maps to "leave unchanged" when a value is None; a
+        ``stack_ids`` list replaces assignments, an absent key keeps
+        them. Non-None ``expected_updated_at`` arms the CAS check.
+        """
+
+    async def delete_persona(self, persona_id: str) -> bool:
+        """Delete the template (history dies with it); False if unknown."""

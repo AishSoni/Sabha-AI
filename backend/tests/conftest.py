@@ -51,6 +51,7 @@ SCHEMA_FILES = [
     BACKEND_ROOT / "migrations" / "012_pending_vector_cleanup.sql",
     BACKEND_ROOT / "migrations" / "013_persona_prompt_locks.sql",
     BACKEND_ROOT / "migrations" / "014_operations_primitive.sql",
+    BACKEND_ROOT / "migrations" / "015_persona_catalog_transactions.sql",
 ]
 
 # Schema as it existed before the lifecycle-constraint fix. Upgrade-path tests
