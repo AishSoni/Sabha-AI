@@ -19,10 +19,17 @@ from app.models import (
     DisagreementCreate,
     Consensus,
     ConsensusCreate,
-    ProviderConfig,
     SenderType,
     MeetingStatus,
 )
+from app.modules.meetings.public import (
+    ConstructParticipants,
+    default_roster_participants,
+)
+from app.modules.persona_catalog.infrastructure.supabase import (
+    SupabasePersonaCatalog,
+)
+from app.modules.persona_catalog.public import GetCreationSnapshot
 from app.services.prompts import DEFAULT_ROSTER, get_full_prompt
 
 
@@ -33,9 +40,16 @@ def _status_value(status: "MeetingStatus | str") -> str:
 
 class MeetingManager:
     """Manages meeting lifecycle and database operations."""
-    
+
     def __init__(self):
         self.db = get_supabase()
+        template_snapshots = GetCreationSnapshot(
+            SupabasePersonaCatalog(lambda: self.db)
+        )
+        self._snapshot_template = template_snapshots
+        self._construct_participants = ConstructParticipants(
+            template_snapshots, prompt_composer=get_full_prompt
+        )
     
     async def create_meeting(
         self,
@@ -65,94 +79,25 @@ class MeetingManager:
 
         participants_payload: List[dict] = []
 
-        # If persona_ids provided, fetch those personas from DB
+        # Participant construction is a Meetings application use case reading
+        # the persona catalog's coherent creation snapshots — never template
+        # tables. A snapshot under the persona lock is the participant's
+        # independent copy: later template edits/deletion cannot re-read.
         if data.persona_ids and len(data.persona_ids) > 0:
-            # Fetch personas from database
-            personas_result = self.db.table("personas") \
-                .select("*") \
-                .in_("id", data.persona_ids) \
-                .execute()
-
-            found = {str(p["id"]): p for p in personas_result.data}
-            missing = [str(pid) for pid in data.persona_ids if str(pid) not in found]
-            if missing:
-                raise ValueError(f"Unknown personas: {', '.join(missing)}")
-
-            # Snapshot the persona's knowledge-stack assignments into the
-            # participant at creation: later template edits/deletions must
-            # not retroactively change meeting knowledge access.
-            assignments_result = self.db.table("persona_knowledge_stacks") \
-                .select("persona_id, stack_id") \
-                .in_("persona_id", [str(pid) for pid in data.persona_ids]) \
-                .execute()
-            assignments_by_persona: dict = {}
-            for row in assignments_result.data:
-                assignments_by_persona.setdefault(str(row["persona_id"]), []).append(
-                    str(row["stack_id"])
+            participants_payload = [
+                snapshot.to_payload()
+                for snapshot in await self._construct_participants.execute(
+                    meeting_id, list(data.persona_ids), now
                 )
-
-            for persona_id in data.persona_ids:
-                persona_data = found[str(persona_id)]
-                # Fetch active prompt for this persona
-                active_prompt = ""
-                prompts_result = self.db.table("prompt_versions") \
-                    .select("content") \
-                    .eq("persona_id", persona_data["id"]) \
-                    .eq("is_active", True) \
-                    .limit(1) \
-                    .execute()
-
-                if prompts_result.data:
-                    active_prompt = prompts_result.data[0].get("content", "")
-
-                # Snapshot the persona's generation settings into this
-                # participant at creation time; empty values keep the
-                # server defaults.
-                persona_cfg = persona_data.get("provider_config") or {}
-                role = persona_data.get("subtitle") or "AI Assistant"
-                if len(role) > 200:
-                    raise ValueError(
-                        "Persona subtitle exceeds participant role capacity "
-                        "of 200 characters"
-                    )
-                participants_payload.append({
-                    "id": str(uuid.uuid4()),
-                    "meeting_id": meeting_id,
-                    "name": persona_data["name"],
-                    "role": role,
-                    "system_prompt": get_full_prompt(active_prompt),
-                    "provider_config": ProviderConfig(
-                        provider=persona_cfg.get("provider") or "",
-                        model=persona_cfg.get("model") or "",
-                        temperature=persona_cfg.get("temperature", 0.7),
-                        max_tokens=persona_cfg.get("max_tokens", 2048),
-                    ).model_dump(),
-                    "color": persona_data["color"],
-                    "persona_id": str(persona_data["id"]),
-                    "stack_ids": assignments_by_persona.get(str(persona_data["id"]), []),
-                    "created_at": now,
-                })
+            ]
         elif add_default_roster:
-            # Use default roster if no persona_ids provided
-            for persona in DEFAULT_ROSTER:
-                role = persona["role"]
-                if len(role) > 200:
-                    raise ValueError(
-                        "Default roster role exceeds participant role "
-                        "capacity of 200 characters"
-                    )
-                participants_payload.append({
-                    "id": str(uuid.uuid4()),
-                    "meeting_id": meeting_id,
-                    "name": persona["name"],
-                    "role": role,
-                    "system_prompt": get_full_prompt(persona["system_prompt"]),
-                    "provider_config": ProviderConfig().model_dump(),
-                    "color": persona["color"],
-                    "persona_id": None,
-                    "stack_ids": [],
-                    "created_at": now,
-                })
+            # The built-in roster carries no template state at all.
+            participants_payload = [
+                snapshot.to_payload()
+                for snapshot in default_roster_participants(
+                    meeting_id, DEFAULT_ROSTER, now, prompt_composer=get_full_prompt
+                )
+            ]
 
         # One transaction persists meeting + participants; any failure inside
         # the write rolls everything back.
@@ -231,11 +176,12 @@ class MeetingManager:
 
         stack_ids: List[str] = []
         if data.persona_id:
-            assignments_result = self.db.table("persona_knowledge_stacks") \
-                .select("stack_id") \
-                .eq("persona_id", data.persona_id) \
-                .execute()
-            stack_ids = [str(row["stack_id"]) for row in assignments_result.data]
+            # Template assignment snapshot through the catalog port (one
+            # coherent read); an unknown template keeps the legacy
+            # no-assignments fallback.
+            snapshot = await self._snapshot_template.execute(str(data.persona_id))
+            if snapshot is not None:
+                stack_ids = list(snapshot.stack_ids)
 
         participant_data = {
             "id": participant_id,

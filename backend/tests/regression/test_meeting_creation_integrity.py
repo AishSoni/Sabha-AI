@@ -23,7 +23,14 @@ from app.services.meeting_manager import MeetingManager
 from main import app
 from tests.doubles.supabase_stub import stub_for
 
-MIGRATION_PATH = Path(__file__).resolve().parents[2] / "migrations" / "006_participant_role_capacity.sql"
+MIGRATION_DIR = Path(__file__).resolve().parents[2] / "migrations"
+# The role-capacity upgrade under test, plus the catalog transactional
+# surface the current application code requires (additive SQL, applies
+# cleanly on the legacy schema).
+UPGRADE_MIGRATIONS = [
+    "006_participant_role_capacity.sql",
+    "015_persona_catalog_transactions.sql",
+]
 
 LONG_SUBTITLE = "D" + ("x" * 179)  # 180 chars — fits personas.subtitle, overflows role VARCHAR(50)
 PERSONA_ID = "33333333-3333-4333-8333-333333333333"
@@ -70,10 +77,9 @@ async def test_upgraded_role_column_accepts_full_subtitles(legacy_db, monkeypatc
     seed_persona(legacy_db)
     legacy_stub = stub_for(legacy_db)
     monkeypatch.setattr("app.services.meeting_manager.get_supabase", lambda: legacy_stub)
-
-    migration_sql = MIGRATION_PATH.read_text(encoding="utf-8")
     with legacy_db.connect() as conn:
-        conn.execute(migration_sql)
+        for migration_name in UPGRADE_MIGRATIONS:
+            conn.execute((MIGRATION_DIR / migration_name).read_text(encoding="utf-8"))
 
     meeting = await MeetingManager().create_meeting(
         MeetingCreate(name="Upgrade probe", persona_ids=[PERSONA_ID])
