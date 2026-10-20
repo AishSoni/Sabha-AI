@@ -27,6 +27,10 @@ interface QueuedPending {
     promise: Promise<Response>;
 }
 
+interface QueuedResponse {
+    response: Response;
+}
+
 export interface PendingJsonHandle {
     resolve(): void;
     reject(error: Error): void;
@@ -39,6 +43,8 @@ export interface ScriptedFetch {
     enqueueJson(status: number, body: unknown): void;
     /** Make the next call reject (connection refused, abort, ...). */
     enqueueFailure(error: Error): void;
+    /** Queue a prepared Response (for example an SSE stream). */
+    enqueueResponse(response: Response): void;
     /** Hold the next call's response until the returned handle settles. */
     enqueuePendingJson(status: number, body: unknown): PendingJsonHandle;
     /** Wire the handler into globalThis.fetch (via vi.stubGlobal). */
@@ -49,7 +55,7 @@ export interface ScriptedFetch {
 
 export function createScriptedFetch(): ScriptedFetch {
     const calls: ScriptedFetchCall[] = [];
-    const queue: (QueuedJson | QueuedFailure | QueuedPending)[] = [];
+    const queue: (QueuedJson | QueuedFailure | QueuedPending | QueuedResponse)[] = [];
 
     const handler = async (input: unknown, init?: RequestInit): Promise<Response> => {
         calls.push({ input: typeof input === "string" ? input : String(input), init });
@@ -64,6 +70,9 @@ export function createScriptedFetch(): ScriptedFetch {
         }
         if ("promise" in next) {
             return await next.promise;
+        }
+        if ("response" in next) {
+            return next.response;
         }
         return scriptJsonResponse(next.status, next.body);
     };
@@ -83,6 +92,9 @@ export function createScriptedFetch(): ScriptedFetch {
         },
         enqueueFailure(error: Error): void {
             queue.push({ error });
+        },
+        enqueueResponse(response: Response): void {
+            queue.push({ response });
         },
         /**
          * Hold the next call's response until the returned handle settles.

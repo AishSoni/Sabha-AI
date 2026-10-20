@@ -216,16 +216,24 @@ export async function* decodeTurnEventStream(
     }
 
     if (!sawTerminal) {
-        yield {
-            type: 'interrupted',
-            meetingId: '',
-            operationId: '',
-            eventId: 'local-interruption',
-            sequence: lastSequence,
-            code: 'observation_interrupted',
-            message: 'Observation ended before the turn reached a terminal event.',
-        };
+        yield localObservationInterruption(lastSequence);
     }
+}
+
+/**
+ * A client-local marker, never a persisted turn outcome. It says the stream
+ * ended, not that the server-side operation was interrupted.
+ */
+export function localObservationInterruption(sequence = 0): TurnEvent {
+    return {
+        type: 'interrupted',
+        meetingId: '',
+        operationId: '',
+        eventId: 'local-interruption',
+        sequence,
+        code: 'observation_interrupted',
+        message: 'Observation ended before the turn reached a terminal event.',
+    };
 }
 
 export function turnEventsUrl(meetingId: string, operationId: string, after = 0): string {

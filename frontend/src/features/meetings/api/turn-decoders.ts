@@ -29,6 +29,10 @@ const TURN_STATUSES = [
 ] as const;
 export type TurnStatus = (typeof TURN_STATUSES)[number];
 
+export function isTurnStatus(value: string): value is TurnStatus {
+    return (TURN_STATUSES as readonly string[]).includes(value);
+}
+
 export function isTerminalTurnStatus(status: TurnStatus): boolean {
     return ['completed', 'failed', 'interrupted', 'cancelled'].includes(status);
 }
