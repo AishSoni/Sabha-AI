@@ -14,9 +14,16 @@
  *   deliberately explicit so new exceptions are conscious decisions;
  * - route files under src/app never import test modules.
  *
- * Feature-owned index.ts public-interface rules activate when the features
- * tree lands (Spec 05) — this engine stays extensible for them; nothing is
- * skipped silently without documentation here.
+ * Feature- and shared-owned boundaries (Spec 05):
+ * - files under src/features never import the legacy '@/lib/api' monolith or
+ *   legacy stores; they own their transport, keys, queries, and mutations;
+ * - features consume other features only through the other feature's root
+ *   barrel '@/features/<name>' (documented public-interface direction);
+ * - src/shared modules (shared transport, generated bindings, credential
+ *   vault) import no app modules — features, stores, components, app, lib;
+ *   they stay shape-agnostic on purpose.
+ *
+ * Nothing is skipped silently without documentation here.
  */
 import fs from "node:fs";
 import path from "node:path";
@@ -60,6 +67,22 @@ export interface Violation {
 export const RULE_FORBIDDEN_SDK_IMPORT = "forbidden_sdk_import";
 export const RULE_STORE_IMPORT_IN_UI = "store_import_in_ui";
 export const RULE_TEST_IMPORT_IN_ROUTE = "test_import_in_route";
+export const RULE_FEATURE_LEGACY_IMPORT = "feature_legacy_import";
+export const RULE_SHARED_ISOLATION = "shared_isolation";
+export const RULE_CROSS_FEATURE_ROOT_IMPORT = "cross_feature_root_import";
+
+/** Root barrels consuming other features use exactly this alias shape. */
+function featureRootSpec(feature: string): string {
+    return `@/features/${feature}`;
+}
+
+function featureNameOf(rel: string): string | null {
+    const segments = rel.split("/");
+    if (segments.length >= 3 && segments[0] === "src" && segments[1] === "features") {
+        return segments[2]!;
+    }
+    return null;
+}
 
 function toPosix(p: string): string {
     return p.split(path.sep).join("/");
@@ -223,6 +246,59 @@ export function scanSourceTree(root: string): { files: string[]; violations: Vio
                         rule: RULE_TEST_IMPORT_IN_ROUTE,
                         message: `Route '${fileRel}' imports test module '${targetRel}'.`,
                     });
+                }
+
+                // Rule: features own their transport/keys/queries and never
+                // reach back into the legacy monolith or the zustand stores.
+                const importerFeature = featureNameOf(fileRel);
+                if (importerFeature) {
+                    const legacyTarget =
+                        targetRel === "src/lib/api.ts" || targetRel.startsWith("src/stores/");
+                    if (legacyTarget) {
+                        violations.push({
+                            file,
+                            spec: edge.spec,
+                            rule: RULE_FEATURE_LEGACY_IMPORT,
+                            message: `Feature '${importerFeature}' ('${fileRel}') must not import legacy '${targetRel}'.`,
+                        });
+                    }
+                    // Rule: features consume other features only through the
+                    // documented public interface — the feature's root barrel.
+                    if (targetRel.startsWith("src/features/")) {
+                        const targetFeature = featureNameOf(targetRel)!;
+                        const sameFeature = targetFeature === importerFeature;
+                        const throughRoot =
+                            edge.spec === featureRootSpec(targetFeature) ||
+                            edge.spec.startsWith(`${featureRootSpec(targetFeature)}/index`);
+                        if (!sameFeature && !throughRoot) {
+                            violations.push({
+                                file,
+                                spec: edge.spec,
+                                rule: RULE_CROSS_FEATURE_ROOT_IMPORT,
+                                message: `Feature '${importerFeature}' must consume feature '${targetFeature}' through its root barrel ('${featureRootSpec(targetFeature)}'), not '${edge.spec}'.`,
+                            });
+                        }
+                    }
+                }
+
+                // Rule: shared code stays shape-agnostic — no features,
+                // stores, components, or lib reach-ins.
+                if (fileRel.startsWith("src/shared/")) {
+                    const sharedForbidden =
+                        targetRel.startsWith("src/features/") ||
+                        targetRel.startsWith("src/stores/") ||
+                        targetRel.startsWith("src/components/") ||
+                        targetRel.startsWith("src/app/") ||
+                        targetRel.startsWith("src/lib/") ||
+                        targetRel.startsWith("src/test/");
+                    if (sharedForbidden) {
+                        violations.push({
+                            file,
+                            spec: edge.spec,
+                            rule: RULE_SHARED_ISOLATION,
+                            message: `Shared module '${fileRel}' must not import app module '${targetRel}'.`,
+                        });
+                    }
                 }
             }
         }
