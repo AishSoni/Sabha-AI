@@ -70,6 +70,7 @@ export const RULE_TEST_IMPORT_IN_ROUTE = "test_import_in_route";
 export const RULE_FEATURE_LEGACY_IMPORT = "feature_legacy_import";
 export const RULE_SHARED_ISOLATION = "shared_isolation";
 export const RULE_CROSS_FEATURE_ROOT_IMPORT = "cross_feature_root_import";
+export const RULE_ROSTER_SCREEN_LEGACY_IMPORT = "roster_screen_legacy_import";
 
 /** Root barrels consuming other features use exactly this alias shape. */
 function featureRootSpec(feature: string): string {
@@ -245,6 +246,18 @@ export function scanSourceTree(root: string): { files: string[]; violations: Vio
                         spec: edge.spec,
                         rule: RULE_TEST_IMPORT_IN_ROUTE,
                         message: `Route '${fileRel}' imports test module '${targetRel}'.`,
+                    });
+                }
+
+                if (fileRel.startsWith("src/app/roster/") && targetRel === "src/lib/api.ts") {
+                    // Rule (spec 06): roster screens consume the persona
+                    // catalog feature, not the legacy facade. Screens get
+                    // thin app shells; behavior lives in the feature.
+                    violations.push({
+                        file,
+                        spec: edge.spec,
+                        rule: RULE_ROSTER_SCREEN_LEGACY_IMPORT,
+                        message: `Roster screen '${fileRel}' must import the persona-catalog feature, not legacy '${targetRel}'.`,
                     });
                 }
 

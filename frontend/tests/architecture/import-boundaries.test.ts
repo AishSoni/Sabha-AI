@@ -15,6 +15,7 @@ import {
     RULE_CROSS_FEATURE_ROOT_IMPORT,
     RULE_FEATURE_LEGACY_IMPORT,
     RULE_FORBIDDEN_SDK_IMPORT,
+    RULE_ROSTER_SCREEN_LEGACY_IMPORT,
     RULE_SHARED_ISOLATION,
     RULE_STORE_IMPORT_IN_UI,
     RULE_TEST_IMPORT_IN_ROUTE,
@@ -41,7 +42,10 @@ function rulesIn(root: string): Set<string> {
 
 describe("live source tree boundaries", () => {
     it("src is SDK-free and keeps curated UI/store imports only", () => {
-        const { files, violations } = scanSourceTree(SRC_ROOT);
+        // Root at the project root: the boundary rules reason about
+        // 'src/...' paths, so the live scan must see the same shape the
+        // sandbox scans see (a src-rooted scan silently disables them).
+        const { files, violations } = scanSourceTree(FRONTEND_ROOT);
 
         // Non-vacuous: the app tree is large and the scan really parsed it.
         expect(files.length).toBeGreaterThan(50);
@@ -156,6 +160,21 @@ describe("checker rejects planted violations (sandbox)", () => {
         expect(crossViolations.map((violation) => violation.file)).toEqual(
             expect.arrayContaining([expect.stringMatching(/deep-reach\.ts$/), expect.stringMatching(/steal\.ts$/)])
         );
+    });
+
+    it("flags a roster screen that still reaches the legacy persona facade", () => {
+        const root = writeSandbox({
+            "src/lib/api.ts": `export const personaApi = {};`,
+            "src/app/roster/page.tsx": `import { personaApi } from '@/lib/api';\nexport const page = personaApi;`,
+            "src/features/persona-catalog/ui/roster-screen.tsx": `import { personaClient } from '@/features/persona-catalog/api/client';\nexport const screen = personaClient;`,
+        });
+
+        const { violations } = scanSourceTree(root);
+        const rosterViolations = violations.filter(
+            (violation) => violation.rule === RULE_ROSTER_SCREEN_LEGACY_IMPORT
+        );
+        expect(rosterViolations).toHaveLength(1);
+        expect(rosterViolations[0]!.file.replace(/\\/g, "/")).toMatch(/roster\/page\.tsx$/);
     });
 
     it("passes a happy sandbox tree where features consume other features via root barrels", () => {
