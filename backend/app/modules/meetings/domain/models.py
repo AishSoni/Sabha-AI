@@ -15,7 +15,7 @@ override slot (that freezing is the spec-06 violation to remove).
 
 from __future__ import annotations
 
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from typing import Any, Mapping, Optional
 
 
@@ -69,6 +69,10 @@ class ParticipantSnapshot:
     persona_id: Optional[str]
     stack_ids: tuple[str, ...]
     created_at: str
+    # Explicit-only policy (inherit fields stay absent); every newly
+    # constructed participant records the column ({} at minimum), so a
+    # NULL column honest remains "legacy provenance".
+    generation_policy: dict = field(default_factory=dict)
 
     def to_payload(self) -> dict:
         """Insert/RPC-ready mapping (tuples flattened to lists)."""
@@ -83,4 +87,5 @@ class ParticipantSnapshot:
             "persona_id": self.persona_id,
             "stack_ids": list(self.stack_ids),
             "created_at": self.created_at,
+            "generation_policy": dict(self.generation_policy),
         }

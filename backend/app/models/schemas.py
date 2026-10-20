@@ -1,5 +1,5 @@
 from pydantic import BaseModel, Field
-from typing import Optional, List, Any
+from typing import Optional, List, Any, Dict
 from datetime import datetime
 from enum import Enum
 import uuid
@@ -66,6 +66,7 @@ class AIParticipant(AIParticipantBase):
     meeting_id: str
     stack_ids: Optional[List[str]] = None
     created_at: datetime
+    generation_policy: Optional[Dict[str, Any]] = None
 
     class Config:
         from_attributes = True

@@ -25,6 +25,7 @@ from app.models import (
 from app.modules.meetings.public import (
     ConstructParticipants,
     default_roster_participants,
+    generation_policy_for,
 )
 from app.modules.persona_catalog.infrastructure.supabase import (
     SupabasePersonaCatalog,
@@ -194,6 +195,12 @@ class MeetingManager:
             "persona_id": data.persona_id,
             "stack_ids": stack_ids,
             "created_at": now,
+            # Explicit-only policy derived from the recorded carrier;
+            # the participants API can express inherit through ""/null
+            # carrier markers, never through a bootstrap default.
+            "generation_policy": generation_policy_for(
+                data.provider_config.model_dump()
+            ),
         }
         
         result = self.db.table("ai_participants").insert(participant_data).execute()

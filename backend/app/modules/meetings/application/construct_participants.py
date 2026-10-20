@@ -11,7 +11,7 @@ and template deletion cannot orphan it either.
 from __future__ import annotations
 
 from dataclasses import dataclass
-from typing import Callable, Sequence
+from typing import Any, Callable, Mapping, Sequence
 from uuid import uuid4
 
 
@@ -22,6 +22,19 @@ from app.modules.meetings.domain.models import (
     ParticipantSnapshot,
     participant_provider_carrier,
 )
+from app.modules.persona_catalog.public import GenerationPolicy
+
+
+def generation_policy_for(template_carrier: Mapping[str, Any] | None) -> dict:
+    """Explicit-only generation policy derived from a template carrier.
+
+    Uses the catalog module's carrier language (the documented mapping:
+    ``""`` provider/model are inherit markers, JSON-null keys mean
+    inherit, recorded numbers are explicit recorded values — a zero
+    included); only the explicit fields persist, so inherited settings
+    keep resolving at execution start.
+    """
+    return GenerationPolicy.from_template_config(template_carrier or {}).to_storage()
 
 
 @dataclass(frozen=True)
@@ -109,6 +122,9 @@ class ConstructParticipants:
             persona_id=persona_id,
             stack_ids=snapshot.stack_ids,
             created_at=created_at,
+            # Explicit-only policy derived from the SAME carrier the
+            # verbatim provider_config snapshot carries; both persist.
+            generation_policy=generation_policy_for(template.provider_config),
         )
 
 
@@ -146,6 +162,7 @@ def default_roster_participants(
                 persona_id=None,
                 stack_ids=(),
                 created_at=created_at,
+                generation_policy={},
             )
         )
     return participants

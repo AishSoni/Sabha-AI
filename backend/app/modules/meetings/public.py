@@ -9,6 +9,7 @@ participants for a meeting transaction.
 from app.modules.meetings.application.construct_participants import (
     ConstructParticipants,
     default_roster_participants,
+    generation_policy_for,
 )
 from app.modules.meetings.domain.models import (
     GENERATION_CARRIER_KEYS,
@@ -22,6 +23,7 @@ __all__ = [
     "default_roster_participants",
     "GENERATION_CARRIER_KEYS",
     "ParticipantSnapshot",
+    "generation_policy_for",
     "participant_provider_carrier",
     "resolve_temperature",
 ]
