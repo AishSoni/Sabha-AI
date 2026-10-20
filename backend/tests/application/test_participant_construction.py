@@ -119,6 +119,53 @@ async def test_a_recorded_carrier_passes_through_verbatim():
     assert resolve_temperature(carrier) == 0.0
 
 
+async def test_the_policy_is_derived_explicit_only_from_the_template_carrier():
+    """The policy never freezes inheritance: "" provider/model are the
+    template's documented inherit markers, while recorded numbers — an
+    explicit zero included — travel as explicit values."""
+    participants = await _use_case(FakeCatalog()).execute(
+        "meeting-1", [PERSONA_ID], "t"
+    )
+    payload = participants[0].to_payload()
+    assert payload["generation_policy"] == {
+        "temperature": 0.0,
+        "max_tokens": 1500,
+    }
+    # The legacy carrier stays verbatim beside the derived policy.
+    assert payload["provider_config"] == {
+        "provider": "",
+        "model": "",
+        "temperature": 0.0,
+        "max_tokens": 1500,
+    }
+
+
+async def test_a_fully_concrete_carrier_becomes_a_fully_explicit_policy():
+    catalog = FakeCatalog(
+        _snapshot_row(
+            provider_config={
+                "provider": "openrouter",
+                "model": "fixture/model",
+                "temperature": 0.2,
+                "max_tokens": 1500,
+            }
+        )
+    )
+    participants = await _use_case(catalog).execute("meeting-1", [PERSONA_ID], "t")
+    assert participants[0].to_payload()["generation_policy"] == {
+        "provider": "openrouter",
+        "model": "fixture/model",
+        "temperature": 0.2,
+        "max_tokens": 1500,
+    }
+
+
+async def test_an_absent_carrier_derives_an_all_inherit_policy():
+    catalog = FakeCatalog(_snapshot_row(provider_config=None))
+    participants = await _use_case(catalog).execute("meeting-1", [PERSONA_ID], "t")
+    assert participants[0].to_payload()["generation_policy"] == {}
+
+
 async def test_missing_carrier_keys_are_omitted_not_frozen():
     catalog = FakeCatalog(_snapshot_row(provider_config=None))
     participants = await _use_case(catalog).execute("meeting-1", [PERSONA_ID], "t")
@@ -159,4 +206,5 @@ def test_default_roster_participants_carry_no_template_state():
     assert participants[0].provider_config == {}
     assert participants[0].persona_id is None
     assert participants[0].stack_ids == ()
+    assert participants[0].to_payload()["generation_policy"] == {}
     assert participants[0].system_prompt == "<r roster prompt>"
