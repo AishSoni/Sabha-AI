@@ -85,6 +85,21 @@ describe("requestJson", () => {
 
         expect(fetcher.calls[0]?.init?.signal).toBe(controller.signal);
     });
+
+    it("merges caller headers with the JSON content type", async () => {
+        fetcher.enqueueJson(200, { id: "turn-1" });
+
+        await requestJson("/meetings/m1/turns", {
+            method: "POST",
+            headers: { "X-Provider-Key": "sk-live-secret" },
+            body: { participant_id: "p1", request_key: "r1" },
+        });
+
+        expect(fetcher.calls[0]?.init?.headers).toEqual({
+            "X-Provider-Key": "sk-live-secret",
+            "Content-Type": "application/json",
+        });
+    });
 });
 
 describe("structured transport failures", () => {

@@ -266,7 +266,7 @@
           "meetings"
         ],
         "summary": "Execute Turn",
-        "description": "Trigger an AI participant's turn.\n\n`data.provider` may carry browser generation settings (model, temperature,\nmax_tokens, base_url) and the BYOK key rides the X-Provider-Key header.",
+        "description": "Synchronous compatibility adapter over the durable turn workflow.\n\nNew callers submit through POST /meetings/{id}/turns and observe the\noperation separately. This adapter submits, waits for the same fenced\noperation, and shapes the old response.",
         "operationId": "execute_turn_api_meetings__meeting_id__turn_post",
         "parameters": [
           {
@@ -319,7 +319,7 @@
           "meetings"
         ],
         "summary": "Execute Turn Stream",
-        "description": "Stream an AI participant's turn via Server-Sent Events.",
+        "description": "Streaming compatibility adapter over the durable turn workflow.\n\nIt submits exactly once and only observes persisted events. Disconnecting\nstops this observer; it does not cancel the accepted operation.",
         "operationId": "execute_turn_stream_api_meetings__meeting_id__turn_stream_post",
         "parameters": [
           {
@@ -609,6 +609,281 @@
             "schema": {
               "type": "string",
               "title": "Meeting Id"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/meetings/{meeting_id}/turns": {
+      "post": {
+        "tags": [
+          "turns"
+        ],
+        "summary": "Submit Turn",
+        "description": "Admit a turn and return its durable operation identity.",
+        "operationId": "submit_turn_api_meetings__meeting_id__turns_post",
+        "parameters": [
+          {
+            "name": "meeting_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Meeting Id"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/TurnSubmitRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "202": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/TurnOperationResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      },
+      "get": {
+        "tags": [
+          "turns"
+        ],
+        "summary": "List Turns",
+        "description": "Ordered queue and recent terminal operations for one meeting.",
+        "operationId": "list_turns_api_meetings__meeting_id__turns_get",
+        "parameters": [
+          {
+            "name": "meeting_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Meeting Id"
+            }
+          },
+          {
+            "name": "limit",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "maximum": 200,
+              "minimum": 1,
+              "default": 100,
+              "title": "Limit"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/TurnOperationResponse"
+                  },
+                  "title": "Response List Turns Api Meetings  Meeting Id  Turns Get"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/meetings/{meeting_id}/turns/{operation_id}": {
+      "get": {
+        "tags": [
+          "turns"
+        ],
+        "summary": "Get Turn",
+        "description": "Read durable status without subscribing to or restarting work.",
+        "operationId": "get_turn_api_meetings__meeting_id__turns__operation_id__get",
+        "parameters": [
+          {
+            "name": "meeting_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Meeting Id"
+            }
+          },
+          {
+            "name": "operation_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Operation Id"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/TurnOperationResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/meetings/{meeting_id}/turns/{operation_id}/cancel": {
+      "post": {
+        "tags": [
+          "turns"
+        ],
+        "summary": "Cancel Turn",
+        "description": "Cancel a queued turn or request cooperative cancellation while executing.",
+        "operationId": "cancel_turn_api_meetings__meeting_id__turns__operation_id__cancel_post",
+        "parameters": [
+          {
+            "name": "meeting_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Meeting Id"
+            }
+          },
+          {
+            "name": "operation_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Operation Id"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/TurnCancelResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/meetings/{meeting_id}/turns/{operation_id}/events": {
+      "get": {
+        "tags": [
+          "turns"
+        ],
+        "summary": "Observe Turn",
+        "description": "Replay and follow persisted turn events.\n\nPolling the durable event log (rather than holding an in-process\npublisher) means observation survives worker/API process separation,\nreconnects, and zero subscribers.",
+        "operationId": "observe_turn_api_meetings__meeting_id__turns__operation_id__events_get",
+        "parameters": [
+          {
+            "name": "meeting_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Meeting Id"
+            }
+          },
+          {
+            "name": "operation_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Operation Id"
+            }
+          },
+          {
+            "name": "after",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "minimum": 0,
+              "default": 0,
+              "title": "After"
             }
           }
         ],
@@ -2868,6 +3143,39 @@
             ],
             "title": "Effective Generation"
           },
+          "sequence": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Sequence"
+          },
+          "request_key": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Request Key"
+          },
+          "operation_id": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Operation Id"
+          },
           "created_at": {
             "type": "string",
             "format": "date-time",
@@ -3467,6 +3775,186 @@
         "title": "TestKeyResponse",
         "description": "Response from API key test."
       },
+      "TurnCancelResponse": {
+        "properties": {
+          "outcome": {
+            "type": "string",
+            "enum": [
+              "cancelled",
+              "cancel_requested",
+              "terminal"
+            ],
+            "title": "Outcome"
+          },
+          "status": {
+            "type": "string",
+            "enum": [
+              "queued",
+              "executing",
+              "completed",
+              "failed",
+              "interrupted",
+              "cancelled"
+            ],
+            "title": "Status"
+          }
+        },
+        "type": "object",
+        "required": [
+          "outcome",
+          "status"
+        ],
+        "title": "TurnCancelResponse"
+      },
+      "TurnError": {
+        "properties": {
+          "code": {
+            "type": "string",
+            "title": "Code"
+          },
+          "message": {
+            "type": "string",
+            "title": "Message"
+          }
+        },
+        "type": "object",
+        "required": [
+          "code",
+          "message"
+        ],
+        "title": "TurnError"
+      },
+      "TurnOperationResponse": {
+        "properties": {
+          "operation_id": {
+            "type": "string",
+            "title": "Operation Id"
+          },
+          "meeting_id": {
+            "type": "string",
+            "title": "Meeting Id"
+          },
+          "participant_id": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Participant Id"
+          },
+          "request_key": {
+            "type": "string",
+            "title": "Request Key"
+          },
+          "status": {
+            "type": "string",
+            "enum": [
+              "queued",
+              "executing",
+              "completed",
+              "failed",
+              "interrupted",
+              "cancelled"
+            ],
+            "title": "Status"
+          },
+          "admission": {
+            "type": "integer",
+            "title": "Admission"
+          },
+          "queue_position": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Queue Position"
+          },
+          "created_at": {
+            "type": "string",
+            "format": "date-time",
+            "title": "Created At"
+          },
+          "started_at": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "date-time"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Started At"
+          },
+          "completed_at": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "date-time"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Completed At"
+          },
+          "final_message_id": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Final Message Id"
+          },
+          "cancel_requested": {
+            "type": "boolean",
+            "title": "Cancel Requested",
+            "default": false
+          },
+          "error": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/TurnError"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "effective_generation": {
+            "anyOf": [
+              {
+                "additionalProperties": true,
+                "type": "object"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Effective Generation"
+          }
+        },
+        "type": "object",
+        "required": [
+          "operation_id",
+          "meeting_id",
+          "request_key",
+          "status",
+          "admission",
+          "created_at"
+        ],
+        "title": "TurnOperationResponse"
+      },
       "TurnRequest": {
         "properties": {
           "participant_id": {
@@ -3517,6 +4005,37 @@
         ],
         "title": "TurnResponse",
         "description": "Response from an AI turn."
+      },
+      "TurnSubmitRequest": {
+        "properties": {
+          "participant_id": {
+            "type": "string",
+            "title": "Participant Id"
+          },
+          "request_key": {
+            "type": "string",
+            "maxLength": 200,
+            "minLength": 1,
+            "title": "Request Key"
+          },
+          "provider": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/RequestProviderSettings"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          }
+        },
+        "type": "object",
+        "required": [
+          "participant_id",
+          "request_key"
+        ],
+        "title": "TurnSubmitRequest",
+        "description": "Submit one logical turn.\n\n``request_key`` is globally unique (migration 014). Reusing it with the\nsame payload returns the original operation; a different payload is a\nconflict. The provider key never appears here; it rides X-Provider-Key."
       },
       "UserMessageRequest": {
         "properties": {

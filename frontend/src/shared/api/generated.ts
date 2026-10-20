@@ -109,10 +109,11 @@ export interface paths {
         put?: never;
         /**
          * Execute Turn
-         * @description Trigger an AI participant's turn.
+         * @description Synchronous compatibility adapter over the durable turn workflow.
          *
-         *     `data.provider` may carry browser generation settings (model, temperature,
-         *     max_tokens, base_url) and the BYOK key rides the X-Provider-Key header.
+         *     New callers submit through POST /meetings/{id}/turns and observe the
+         *     operation separately. This adapter submits, waits for the same fenced
+         *     operation, and shapes the old response.
          */
         post: operations["execute_turn_api_meetings__meeting_id__turn_post"];
         delete?: never;
@@ -132,7 +133,10 @@ export interface paths {
         put?: never;
         /**
          * Execute Turn Stream
-         * @description Stream an AI participant's turn via Server-Sent Events.
+         * @description Streaming compatibility adapter over the durable turn workflow.
+         *
+         *     It submits exactly once and only observes persisted events. Disconnecting
+         *     stops this observer; it does not cancel the accepted operation.
          */
         post: operations["execute_turn_stream_api_meetings__meeting_id__turn_stream_post"];
         delete?: never;
@@ -260,6 +264,94 @@ export interface paths {
          * @description Unarchive a meeting (restore from archive).
          */
         post: operations["unarchive_meeting_api_meetings__meeting_id__unarchive_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/meetings/{meeting_id}/turns": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * List Turns
+         * @description Ordered queue and recent terminal operations for one meeting.
+         */
+        get: operations["list_turns_api_meetings__meeting_id__turns_get"];
+        put?: never;
+        /**
+         * Submit Turn
+         * @description Admit a turn and return its durable operation identity.
+         */
+        post: operations["submit_turn_api_meetings__meeting_id__turns_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/meetings/{meeting_id}/turns/{operation_id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Get Turn
+         * @description Read durable status without subscribing to or restarting work.
+         */
+        get: operations["get_turn_api_meetings__meeting_id__turns__operation_id__get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/meetings/{meeting_id}/turns/{operation_id}/cancel": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Cancel Turn
+         * @description Cancel a queued turn or request cooperative cancellation while executing.
+         */
+        post: operations["cancel_turn_api_meetings__meeting_id__turns__operation_id__cancel_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/meetings/{meeting_id}/turns/{operation_id}/events": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Observe Turn
+         * @description Replay and follow persisted turn events.
+         *
+         *     Polling the durable event log (rather than holding an in-process
+         *     publisher) means observation survives worker/API process separation,
+         *     reconnects, and zero subscribers.
+         */
+        get: operations["observe_turn_api_meetings__meeting_id__turns__operation_id__events_get"];
+        put?: never;
+        post?: never;
         delete?: never;
         options?: never;
         head?: never;
@@ -1192,6 +1284,12 @@ export interface components {
             effective_generation?: {
                 [key: string]: unknown;
             } | null;
+            /** Sequence */
+            sequence?: number | null;
+            /** Request Key */
+            request_key?: string | null;
+            /** Operation Id */
+            operation_id?: string | null;
             /**
              * Created At
              * Format: date-time
@@ -1466,6 +1564,67 @@ export interface components {
             /** Models */
             models?: string[] | null;
         };
+        /** TurnCancelResponse */
+        TurnCancelResponse: {
+            /**
+             * Outcome
+             * @enum {string}
+             */
+            outcome: "cancelled" | "cancel_requested" | "terminal";
+            /**
+             * Status
+             * @enum {string}
+             */
+            status: "queued" | "executing" | "completed" | "failed" | "interrupted" | "cancelled";
+        };
+        /** TurnError */
+        TurnError: {
+            /** Code */
+            code: string;
+            /** Message */
+            message: string;
+        };
+        /** TurnOperationResponse */
+        TurnOperationResponse: {
+            /** Operation Id */
+            operation_id: string;
+            /** Meeting Id */
+            meeting_id: string;
+            /** Participant Id */
+            participant_id?: string | null;
+            /** Request Key */
+            request_key: string;
+            /**
+             * Status
+             * @enum {string}
+             */
+            status: "queued" | "executing" | "completed" | "failed" | "interrupted" | "cancelled";
+            /** Admission */
+            admission: number;
+            /** Queue Position */
+            queue_position?: number | null;
+            /**
+             * Created At
+             * Format: date-time
+             */
+            created_at: string;
+            /** Started At */
+            started_at?: string | null;
+            /** Completed At */
+            completed_at?: string | null;
+            /** Final Message Id */
+            final_message_id?: string | null;
+            /**
+             * Cancel Requested
+             * @default false
+             */
+            cancel_requested: boolean;
+            error?: components["schemas"]["TurnError"] | null;
+            /** Effective Generation */
+            effective_generation?: {
+                [key: string]: unknown;
+            } | null;
+        };
         /**
          * TurnRequest
          * @description Request to trigger an AI's turn.
@@ -1485,6 +1644,21 @@ export interface components {
             disagreements?: components["schemas"]["Disagreement"][];
             /** Consensus */
             consensus?: components["schemas"]["Consensus"][];
+        };
+        /**
+         * TurnSubmitRequest
+         * @description Submit one logical turn.
+         *
+         *     ``request_key`` is globally unique (migration 014). Reusing it with the
+         *     same payload returns the original operation; a different payload is a
+         *     conflict. The provider key never appears here; it rides X-Provider-Key.
+         */
+        TurnSubmitRequest: {
+            /** Participant Id */
+            participant_id: string;
+            /** Request Key */
+            request_key: string;
+            provider?: components["schemas"]["RequestProviderSettings"] | null;
         };
         /**
          * UserMessageRequest
@@ -1932,6 +2106,172 @@ export interface operations {
             header?: never;
             path: {
                 meeting_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": unknown;
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    list_turns_api_meetings__meeting_id__turns_get: {
+        parameters: {
+            query?: {
+                limit?: number;
+            };
+            header?: never;
+            path: {
+                meeting_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["TurnOperationResponse"][];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    submit_turn_api_meetings__meeting_id__turns_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                meeting_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["TurnSubmitRequest"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            202: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["TurnOperationResponse"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    get_turn_api_meetings__meeting_id__turns__operation_id__get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                meeting_id: string;
+                operation_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["TurnOperationResponse"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    cancel_turn_api_meetings__meeting_id__turns__operation_id__cancel_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                meeting_id: string;
+                operation_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["TurnCancelResponse"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    observe_turn_api_meetings__meeting_id__turns__operation_id__events_get: {
+        parameters: {
+            query?: {
+                after?: number;
+            };
+            header?: never;
+            path: {
+                meeting_id: string;
+                operation_id: string;
             };
             cookie?: never;
         };

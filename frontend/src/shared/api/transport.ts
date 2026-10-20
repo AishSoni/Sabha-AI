@@ -35,6 +35,8 @@ export interface JsonRequestInit {
     method?: RequestMethod;
     /** JSON-serializable request body. */
     body?: unknown;
+    /** Extra request headers (for example the per-turn BYOK header). */
+    headers?: Record<string, string>;
     /** Propagated to fetch; aborting surfaces as ApiError kind "aborted". */
     signal?: AbortSignal;
     /** Query parameters; undefined entries are skipped, booleans use "true"/"false". */
@@ -75,7 +77,7 @@ async function decodeSuccessPayload<T>(response: Response, path: string): Promis
 
 /** Performs a JSON request and decodes the successful payload. */
 export async function requestJson<T>(path: string, init: JsonRequestInit = {}): Promise<T> {
-    const headers: Record<string, string> = {};
+    const headers: Record<string, string> = { ...(init.headers ?? {}) };
     if (init.body !== undefined) {
         headers["Content-Type"] = "application/json";
     }
