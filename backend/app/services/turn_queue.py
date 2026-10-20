@@ -213,7 +213,14 @@ class TurnQueueService:
         if outcome == "not_found":
             raise QueueNotFoundError("Meeting not found")
         if outcome == "meeting_closed":
-            raise QueueClosedError("Meeting is not active")
+            current = await self.meeting_manager.get_meeting(meeting_id)
+            status_value = (
+                current.status.value if current is not None else "closed"
+            )
+            raise QueueClosedError(
+                f"Meeting is {status_value}; turns can only be submitted "
+                "to an active meeting"
+            )
         if outcome == "participant_not_found":
             raise QueueParticipantNotFoundError("Participant not found in this meeting")
         if outcome == "conflict":
@@ -264,6 +271,30 @@ class TurnQueueService:
             },
         ).execute()
         return result.data or []
+
+    def operation_effects(self, operation_id: str) -> tuple[list[dict], list[dict]]:
+        """Effects committed by one turn, for the legacy synchronous response.
+
+        New callers read the meeting's effect collections. This narrow lookup
+        exists only while the legacy /turn adapter is still accepted.
+        """
+        disagreements = (
+            self.db.table("disagreements")
+            .select("*")
+            .eq("operation_id", str(operation_id))
+            .execute()
+            .data
+            or []
+        )
+        consensus = (
+            self.db.table("consensus")
+            .select("*")
+            .eq("operation_id", str(operation_id))
+            .execute()
+            .data
+            or []
+        )
+        return disagreements, consensus
 
     async def cancel(self, meeting_id: str, operation_id: str) -> dict:
         result = self.db.rpc(

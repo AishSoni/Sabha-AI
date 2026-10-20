@@ -17,9 +17,11 @@ import app.services.orchestrator as orchestrator_module
 import app.services.meeting_manager as meeting_manager_module
 import app.services.vector_store as vector_store_module
 import app.llm as llm_module
+from app.bootstrap import Container
 from app.llm.base import LLMResponse, StreamEvent, StreamEventType, ToolCall
 from app.services.meeting_manager import MeetingManager
 from app.services.orchestrator import Orchestrator
+from app.services.turn_queue import TurnQueueService
 from app.services.vector_store import SearchResult
 from main import app  # noqa: F401  (ensures app import works before stubs)
 from tests.doubles.providers import ScriptedProvider
@@ -104,15 +106,30 @@ def turn_env(disposable_db, monkeypatch):
         )
         return provider
 
+    queue_service = TurnQueueService(
+        MeetingManager(),
+        provider_factory=lambda **kwargs: orchestrator_module.get_provider(**kwargs),
+        vector_store_factory=lambda: vector_store,
+    )
+    previous_container = app.state.container
+    app.state.container = Container(
+        prompt_catalog=previous_container.prompt_catalog,
+        turn_queue=queue_service,
+        turn_runner=None,
+    )
     fixtures = {
         "db": db,
         "stub": stub,
         "vector_store": vector_store,
         "install_provider": _install_provider,
         "orchestrator": Orchestrator(MeetingManager()),
+        "queue": queue_service,
     }
 
-    yield fixtures
+    try:
+        yield fixtures
+    finally:
+        app.state.container = previous_container
 
 
 def _tool_call_round(tool_id="call-1", name="search_knowledge_base", query="market pricing"):

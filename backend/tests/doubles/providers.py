@@ -84,15 +84,36 @@ class ScriptedProvider(LLMProvider):
                 "streamed": True,
             }
         )
-        if not self.scripts:
+        if self.scripts:
+            script = self.scripts.pop(0)
+            if isinstance(script, BaseException):
+                raise script
+            for event in script:
+                if isinstance(event, BaseException):
+                    raise event
+                yield event
+            return
+
+        # The unified inference loop always streams. Let response-scripted
+        # doubles drive it too, preserving provider-native tool-call ids.
+        if not self.responses:
             raise AssertionError("ScriptedProvider exhausted its stream scripts")
-        script = self.scripts.pop(0)
-        if isinstance(script, BaseException):
-            raise script
-        for event in script:
-            if isinstance(event, BaseException):
-                raise event
-            yield event
+        item = self.responses.pop(0)
+        if isinstance(item, BaseException):
+            raise item
+        if item.content:
+            yield StreamEvent(type=StreamEventType.TEXT, content=item.content)
+        for call in item.tool_calls or []:
+            yield StreamEvent(
+                type=StreamEventType.TOOL_CALL,
+                tool_name=call.name,
+                tool_arguments=call.arguments,
+                tool_call_id=call.id,
+            )
+        yield StreamEvent(
+            type=StreamEventType.DONE,
+            usage=item.usage or {},
+        )
 
     def estimate_cost(self, usage: Dict) -> float:
         return 0.0  # synthetic provider; deterministic costs are asserted explicitly
