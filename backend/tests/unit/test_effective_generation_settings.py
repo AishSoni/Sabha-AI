@@ -84,14 +84,14 @@ def test_an_explicit_policy_beats_the_legacy_snapshot_and_the_defaults():
     defaults = _Defaults(provider="local", model="fixture-model", temperature=0.7, max_tokens=2048)
     participant = _Participant(
         policy={"temperature": 0.2},
-        carrier={"provider": "openrouter", "model": "m", "temperature": 0.7, "max_tokens": 999},
+        carrier={"provider": "local", "model": "m", "temperature": 0.7, "max_tokens": 999},
     )
     settings_ = resolve_effective_settings(
         participant, defaults=defaults, catalog=_Catalog()
     )
     assert settings_.temperature == 0.2
     assert settings_.max_tokens == 999
-    assert settings_.provider == "openrouter"
+    assert settings_.provider == "local"
     assert settings_.model == "m"
     assert settings_.provenance["temperature"] == "policy"
     assert settings_.provenance["max_tokens"] == "legacy_snapshot"
@@ -111,12 +111,12 @@ def test_legacy_rows_without_a_policy_resolve_via_their_recorded_snapshot():
     defaults = _Defaults(provider="local", model="fixture-model", temperature=0.7, max_tokens=2048)
     participant = _Participant(
         policy=None,
-        carrier={"provider": "openrouter", "model": "m", "temperature": 0.7, "max_tokens": 2000},
+        carrier={"provider": "local", "model": "m", "temperature": 0.7, "max_tokens": 2000},
     )
     settings_ = resolve_effective_settings(
         participant, defaults=defaults, catalog=_Catalog()
     )
-    assert settings_.provider == "openrouter"
+    assert settings_.provider == "local"
     assert settings_.model == "m"
     assert settings_.temperature == 0.7
     assert settings_.max_tokens == 2000
@@ -147,7 +147,7 @@ def test_request_overrides_beat_policy_and_the_recorded_snapshot():
     defaults = _Defaults(provider="local", model="fixture-model", temperature=0.7, max_tokens=2048)
     participant = _Participant(
         policy={"temperature": 0.2, "max_tokens": 999},
-        carrier={"provider": "openrouter", "model": "m", "temperature": 0.7, "max_tokens": 999},
+        carrier={"provider": "local", "model": "m", "temperature": 0.7, "max_tokens": 999},
     )
     resolved = resolve_effective_settings(
         participant,
@@ -197,6 +197,7 @@ def test_a_model_from_the_provider_catalog_plans_without_refusal():
         participant,
         defaults=defaults,
         catalog=_Catalog(models={"openrouter": ("fixture/model",)}),
+        server_keys={"openrouter": "sk-server"},
     )
     assert resolved.model == "fixture/model"
 

@@ -224,6 +224,7 @@ class MeetingManager:
             "tool_artifacts": data.tool_artifacts,
             "thinking_content": data.thinking_content,
             "estimated_cost": data.estimated_cost,
+            "effective_generation": data.effective_generation,
             "created_at": now,
         }
         

@@ -55,6 +55,19 @@ class MeetingClosedError(ValueError):
 _resolve_generation_settings = resolve_generation_settings
 
 
+def _effective_generation_record(gen: dict) -> dict:
+    """The non-secret record of the settings a turn actually ran with.
+
+    Slice F: the record rides on the final assistant message. Deliberately
+    excludes credential material (api_key never becomes message data);
+    slice G enriches the source of this record with provenance labels.
+    """
+    return {
+        key: gen[key]
+        for key in ("provider", "model", "temperature", "max_tokens", "base_url")
+    }
+
+
 class Orchestrator:
     """
     Handles the AI turn-taking and response generation loop.
@@ -370,7 +383,8 @@ class Orchestrator:
                 sender_id=participant.id,
                 sender_name=participant.name,
                 tool_artifacts={"tool_calls": tool_results} if tool_results else None,
-                estimated_cost=cost
+                estimated_cost=cost,
+                effective_generation=_effective_generation_record(gen)
             )
         )
 
@@ -578,7 +592,8 @@ class Orchestrator:
                 sender_name=participant.name,
                 tool_artifacts={"tool_calls": tool_calls_made} if tool_calls_made else None,
                 thinking_content=accumulated_thinking if accumulated_thinking else None,
-                estimated_cost=cost
+                estimated_cost=cost,
+                effective_generation=_effective_generation_record(gen)
             )
         )
         

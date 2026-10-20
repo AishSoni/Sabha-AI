@@ -97,6 +97,9 @@ class MessageCreate(MessageBase):
     tool_artifacts: Optional[dict] = None
     thinking_content: Optional[str] = None  # AI thinking/reasoning content
     estimated_cost: float = 0.0
+    # Spec-06: the effective generation record rides only on the final
+    # assistant message of a turn; user/system writes stay NULL.
+    effective_generation: Optional[Dict[str, Any]] = None
 
 
 class Message(MessageBase):
@@ -107,6 +110,7 @@ class Message(MessageBase):
     tool_artifacts: Optional[dict] = None
     thinking_content: Optional[str] = None  # AI thinking/reasoning content
     estimated_cost: float = 0.0
+    effective_generation: Optional[Dict[str, Any]] = None
     created_at: datetime
 
     class Config:

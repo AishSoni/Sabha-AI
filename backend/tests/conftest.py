@@ -53,6 +53,7 @@ SCHEMA_FILES = [
     BACKEND_ROOT / "migrations" / "014_operations_primitive.sql",
     BACKEND_ROOT / "migrations" / "015_persona_catalog_transactions.sql",
     BACKEND_ROOT / "migrations" / "016_participant_generation_policy.sql",
+    BACKEND_ROOT / "migrations" / "017_message_effective_generation.sql",
 ]
 
 # Schema as it existed before the lifecycle-constraint fix. Upgrade-path tests
