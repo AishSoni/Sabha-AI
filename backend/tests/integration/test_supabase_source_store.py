@@ -7,6 +7,7 @@ transport (see HOSTED_STORAGE_VERIFICATION.md); no production code changes.
 
 from __future__ import annotations
 
+import hashlib
 import io
 
 import httpx
@@ -61,12 +62,14 @@ def test_put_move_download_delete_roundtrip():
     store = _store(fake)
     payload = b"pricing evidence sentinel"
 
-    store.put(
+    stored = store.put(
         "staging/doc-1/rev-1",
         io.BytesIO(payload),
         content_type="text/plain",
         max_bytes=1024,
     )
+    assert stored.size == len(payload)
+    assert stored.sha256 == hashlib.sha256(payload).hexdigest()
     assert fake.buckets["sabha-sources"]["staging/doc-1/rev-1"] == payload
 
     store.move("staging/doc-1/rev-1", "sources/stack/s1/doc-1/rev-1/notes.txt")

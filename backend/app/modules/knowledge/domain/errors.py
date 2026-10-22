@@ -36,3 +36,9 @@ class SourceTooLarge(UploadRejected):
 
 class MissingSource(KnowledgeError):
     code = "missing_source"
+
+
+class KnowledgeUnavailable(KnowledgeError):
+    """The durable knowledge store cannot be reached or returned garbage."""
+
+    code = "knowledge_unavailable"

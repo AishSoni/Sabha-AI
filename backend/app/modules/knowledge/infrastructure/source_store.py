@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import hashlib
 import os
 import tempfile
 from typing import Any, BinaryIO, Callable
@@ -26,15 +27,19 @@ def _status(exc: StorageApiError) -> int:
         return 0
 
 
-def _spool_bounded(stream: BinaryIO, *, max_bytes: int, key: str) -> str:
+def _spool_bounded(
+    stream: BinaryIO, *, max_bytes: int, key: str
+) -> tuple[str, int, str]:
     """Copy the upload stream to a bounded temporary file.
 
     ``storage3`` only accepts bytes, a path, or a handful of concrete file
     types. Spooling keeps the read budget explicit and lets the SDK open a
-    real path instead of copying an arbitrary stream into memory.
+    real path instead of copying an arbitrary stream into memory. The digest
+    is computed in the same single pass so admission never rereads bytes.
     """
     fd, path = tempfile.mkstemp(prefix="sabha-source-")
     total = 0
+    digest = hashlib.sha256()
     try:
         with os.fdopen(fd, "wb") as spool:
             while True:
@@ -46,6 +51,7 @@ def _spool_bounded(stream: BinaryIO, *, max_bytes: int, key: str) -> str:
                     raise SourceObjectTooLarge(
                         f"source object {key!r} exceeds the {max_bytes} byte budget"
                     )
+                digest.update(chunk)
                 spool.write(chunk)
             spool.flush()
             os.fsync(spool.fileno())
@@ -55,7 +61,7 @@ def _spool_bounded(stream: BinaryIO, *, max_bytes: int, key: str) -> str:
         except OSError:
             pass
         raise
-    return path
+    return path, total, digest.hexdigest()
 
 
 class SupabaseSourceStore:
@@ -142,8 +148,8 @@ class SupabaseSourceStore:
         *,
         content_type: str,
         max_bytes: int,
-    ) -> None:
-        spool = _spool_bounded(stream, max_bytes=max_bytes, key=key)
+    ) -> StoredSource:
+        spool, size, sha256 = _spool_bounded(stream, max_bytes=max_bytes, key=key)
         try:
             self._bucket().upload(
                 key,
@@ -163,6 +169,7 @@ class SupabaseSourceStore:
                 os.unlink(spool)
             except OSError:
                 pass
+        return StoredSource(key=key, size=size, sha256=sha256)
 
     def move(self, source_key: str, destination_key: str) -> None:
         bucket = self._bucket()

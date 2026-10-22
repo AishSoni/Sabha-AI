@@ -8,6 +8,15 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 from typing import BinaryIO, Protocol
+from uuid import UUID
+
+from app.modules.knowledge.domain.errors import KnowledgeUnavailable
+from app.modules.knowledge.domain.models import (
+    IngestionState,
+    KnowledgeOwner,
+    RevisionState,
+    UploadAdmission,
+)
 
 
 class SourceStoreError(Exception):
@@ -32,6 +41,7 @@ class StoredSource:
 
     key: str
     size: int | None = None
+    sha256: str | None = None
 
 
 class SourceStore(Protocol):
@@ -52,8 +62,12 @@ class SourceStore(Protocol):
         *,
         content_type: str,
         max_bytes: int,
-    ) -> None:
-        """Write a staging object within the byte budget; idempotent per key."""
+    ) -> StoredSource:
+        """Write a staging object within the byte budget; idempotent per key.
+
+        The returned object reports the stored size and SHA-256 digest so
+        admission can persist the exact bytes identity in one pass.
+        """
 
     def move(self, source_key: str, destination_key: str) -> None:
         """Finalize a staged object at its durable key."""
@@ -69,3 +83,55 @@ class SourceStore(Protocol):
 
     def list_prefix(self, prefix: str, *, limit: int = 100) -> list[StoredSource]:
         """List the immediate children under a prefix."""
+
+
+@dataclass(frozen=True)
+class NewUpload:
+    """Everything admission needs to persist one durable upload."""
+
+    document_id: UUID
+    revision_id: UUID
+    ingestion_id: UUID
+    owner: KnowledgeOwner
+    file_name: str
+    file_type: str
+    file_size_bytes: int
+    collection_name: str
+    source_key: str
+    source_sha256: str
+    embedding_provider: str
+    embedding_model: str
+    embedding_dimension: int
+
+
+@dataclass(frozen=True)
+class IngestionRecord:
+    """Read model for an upload receipt and its publication state."""
+
+    ingestion_id: UUID
+    document_id: UUID
+    revision_id: UUID
+    state: IngestionState
+    revision_state: RevisionState
+    document_status: str
+    file_name: str
+    file_type: str
+    collection_name: str
+    chunk_count: int = 0
+    error_message: str | None = None
+
+
+class KnowledgePersistence(Protocol):
+    """SQL authority for durable knowledge state.
+
+    Every method is synchronous and may raise ``KnowledgeUnavailable`` only;
+    callers run it off the event loop. Eligibility and publication decisions
+    stay inside the database functions so a derived vector payload can never
+    override a tombstone.
+    """
+
+    def admit_upload(self, upload: NewUpload) -> UploadAdmission:
+        """Persist document, revision, and ingestion before acknowledging."""
+
+    def get_ingestion(self, ingestion_id: UUID) -> IngestionRecord | None:
+        """Read the durable receipt state, or None when it never existed."""
