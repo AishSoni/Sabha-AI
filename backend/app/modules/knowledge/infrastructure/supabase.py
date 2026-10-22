@@ -20,10 +20,15 @@ from app.modules.knowledge.application.ports import (
     IngestionRecord,
     NewUpload,
     PublishResult,
+    RevocationResult,
 )
-from app.modules.knowledge.domain.errors import KnowledgeUnavailable
+from app.modules.knowledge.domain.errors import (
+    DocumentNotFound,
+    KnowledgeUnavailable,
+)
 from app.modules.knowledge.domain.models import (
     ChunkIdentity,
+    CleanupIntent,
     EligibleRevision,
     IngestionState,
     PassageEvidence,
@@ -394,6 +399,220 @@ class SupabaseKnowledgeRepository:
             raise KnowledgeUnavailable(
                 "knowledge persistence failed while recording evidence"
             ) from exc
+
+
+    def revoke_document(
+        self, document_id: UUID, *, reason: str
+    ) -> RevocationResult:
+        result = self._rpc(
+            "knowledge_revoke_document",
+            {"p_document_id": str(document_id), "p_reason": reason},
+        )
+        outcome = result.get("outcome")
+        if outcome == "not_found":
+            raise DocumentNotFound("knowledge document was not found")
+        if outcome != "revoked":
+            raise KnowledgeUnavailable(
+                "knowledge persistence returned an unexpected revocation outcome"
+            )
+        try:
+            return RevocationResult(
+                document_id=UUID(str(result["document_id"])),
+                revisions=int(result.get("revisions", 0)),
+            )
+        except (KeyError, TypeError, ValueError) as exc:
+            raise KnowledgeUnavailable(
+                "knowledge persistence returned an unexpected revocation shape"
+            ) from exc
+
+    def list_cleanup_intents(self, *, limit: int = 50) -> list[CleanupIntent]:
+        try:
+            result = (
+                self._client()
+                .table("knowledge_cleanup")
+                .select(
+                    "id,target_kind,target_id,document_id,revision_id,"
+                    "collection_name,source_key,reason,attempts,resolved_at"
+                )
+                .order("created_at")
+                .limit(max(limit * 4, limit))
+                .execute()
+            )
+        except (APIError, httpx.HTTPError) as exc:
+            raise KnowledgeUnavailable(
+                "knowledge persistence failed while listing cleanup intents"
+            ) from exc
+        rows = getattr(result, "data", None) or []
+        intents: list[CleanupIntent] = []
+        for row in rows:
+            if not isinstance(row, dict) or row.get("resolved_at") is not None:
+                continue
+            try:
+                intents.append(
+                    CleanupIntent(
+                        intent_id=UUID(str(row["id"])),
+                        kind=str(row["target_kind"]),
+                        target_id=UUID(str(row["target_id"])),
+                        document_id=(
+                            UUID(str(row["document_id"]))
+                            if row.get("document_id")
+                            else None
+                        ),
+                        revision_id=(
+                            UUID(str(row["revision_id"]))
+                            if row.get("revision_id")
+                            else None
+                        ),
+                        collection_name=row.get("collection_name"),
+                        source_key=row.get("source_key"),
+                        reason=row.get("reason"),
+                        attempts=int(row.get("attempts") or 0),
+                    )
+                )
+            except (KeyError, TypeError, ValueError) as exc:
+                raise KnowledgeUnavailable(
+                    "knowledge cleanup returned an unexpected row shape"
+                ) from exc
+            if len(intents) >= limit:
+                break
+        return intents
+
+    def resolve_cleanup(self, intent_id: UUID) -> bool:
+        value = self._rpc_value(
+            "knowledge_resolve_cleanup", {"p_id": str(intent_id)}
+        )
+        return bool(value)
+
+    def note_cleanup_failure(self, intent_id: UUID, error: str) -> bool:
+        value = self._rpc_value(
+            "knowledge_note_cleanup_failure",
+            {"p_id": str(intent_id), "p_error": error[:500]},
+        )
+        return bool(value)
+
+    def redact_evidence(self, revision_id: UUID, *, reason: str) -> int:
+        value = self._rpc_value(
+            "knowledge_redact_evidence",
+            {"p_revision_id": str(revision_id), "p_reason": reason},
+        )
+        if not isinstance(value, int):
+            raise KnowledgeUnavailable(
+                "knowledge persistence returned an unexpected redaction count"
+            )
+        return value
+
+    def attach_evidence_message(
+        self, operation_id: UUID, tool_call_id: str, message_id: UUID
+    ) -> int:
+        value = self._rpc_value(
+            "knowledge_attach_evidence_message",
+            {
+                "p_operation_id": str(operation_id),
+                "p_tool_call_id": tool_call_id,
+                "p_message_id": str(message_id),
+            },
+        )
+        if not isinstance(value, int):
+            raise KnowledgeUnavailable(
+                "knowledge persistence returned an unexpected attach count"
+            )
+        return value
+
+    def redact_message_artifacts(
+        self, revision_id: UUID, *, reason: str
+    ) -> int:
+        try:
+            evidence_result = (
+                self._client()
+                .table("retrieved_passage_evidence")
+                .select("message_id,tool_call_id,revision_id,document_id")
+                .eq("revision_id", str(revision_id))
+                .execute()
+            )
+        except (APIError, httpx.HTTPError) as exc:
+            raise KnowledgeUnavailable(
+                "knowledge persistence failed while reading evidence artifacts"
+            ) from exc
+
+        targets: dict[UUID, set[str]] = {}
+        for row in getattr(evidence_result, "data", None) or []:
+            if not isinstance(row, dict) or not row.get("message_id"):
+                continue
+            message_id = UUID(str(row["message_id"]))
+            targets.setdefault(message_id, set())
+            if row.get("tool_call_id"):
+                targets[message_id].add(str(row["tool_call_id"]))
+        if not targets:
+            return 0
+
+        updated = 0
+        for message_id, call_ids in targets.items():
+            try:
+                result = (
+                    self._client()
+                    .table("messages")
+                    .select("id,citations,tool_artifacts")
+                    .eq("id", str(message_id))
+                    .limit(1)
+                    .execute()
+                )
+            except (APIError, httpx.HTTPError) as exc:
+                raise KnowledgeUnavailable(
+                    "knowledge persistence failed while reading message artifacts"
+                ) from exc
+            rows = getattr(result, "data", None) or []
+            if not rows:
+                continue
+            message = rows[0]
+            changed = False
+
+            artifacts = message.get("tool_artifacts")
+            if isinstance(artifacts, dict):
+                calls = artifacts.get("tool_calls")
+                if isinstance(calls, list):
+                    for call in calls:
+                        if not isinstance(call, dict):
+                            continue
+                        if str(call.get("call_id")) in call_ids:
+                            call["result"] = "[redacted]"
+                            call["redacted"] = True
+                            changed = True
+
+            citations = message.get("citations")
+            if isinstance(citations, list):
+                for citation in citations:
+                    if not isinstance(citation, dict):
+                        continue
+                    linked = str(citation.get("revision_id")) == str(revision_id)
+                    if not linked:
+                        continue
+                    for field in ("snippet", "text", "excerpt", "content"):
+                        if field in citation:
+                            citation[field] = "[redacted]"
+                            citation["redacted"] = True
+                            changed = True
+
+            if not changed:
+                continue
+            try:
+                (
+                    self._client()
+                    .table("messages")
+                    .update(
+                        {
+                            "citations": citations,
+                            "tool_artifacts": artifacts,
+                        }
+                    )
+                    .eq("id", str(message_id))
+                    .execute()
+                )
+            except (APIError, httpx.HTTPError) as exc:
+                raise KnowledgeUnavailable(
+                    "knowledge persistence failed while redacting message artifacts"
+                ) from exc
+            updated += 1
+        return updated
 
 
 def _eligible_rows(rows: list[dict[str, Any]]) -> list[EligibleRevision]:

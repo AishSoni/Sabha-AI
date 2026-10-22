@@ -167,6 +167,17 @@ class QdrantKnowledgeProjection:
             ) from exc
         return int(getattr(counted, "count", 0) or 0)
 
+    async def delete_collection(self, collection_name: str) -> bool:
+        try:
+            if not await self.client.collection_exists(collection_name):
+                return False
+            await self.client.delete_collection(collection_name)
+        except Exception as exc:
+            raise ProjectionUnavailable(
+                f"failed to delete collection {collection_name}"
+            ) from exc
+        return True
+
     async def search(
         self,
         collection_name: str,

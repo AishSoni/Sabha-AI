@@ -112,6 +112,16 @@ _RPC_SIGNATURES: dict[str, tuple[tuple[str, str], ...]] = {
         ("p_reason", ""),
     ),
     "knowledge_replay_deletion_events": (("p_since", "::timestamptz"),),
+    "knowledge_resolve_cleanup": (("p_id", "::uuid"),),
+    "knowledge_note_cleanup_failure": (
+        ("p_id", "::uuid"),
+        ("p_error", ""),
+    ),
+    "knowledge_attach_evidence_message": (
+        ("p_operation_id", "::uuid"),
+        ("p_tool_call_id", ""),
+        ("p_message_id", "::uuid"),
+    ),
     "commit_meeting_ending": (
         ("p_meeting_id", "::uuid"),
         ("p_from_status", ""),

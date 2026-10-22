@@ -38,6 +38,10 @@ class MissingSource(KnowledgeError):
     code = "missing_source"
 
 
+class DocumentNotFound(KnowledgeError):
+    code = "document_not_found"
+
+
 class KnowledgeUnavailable(KnowledgeError):
     """The durable knowledge store cannot be reached or returned garbage."""
 

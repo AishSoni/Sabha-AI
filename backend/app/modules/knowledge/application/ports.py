@@ -13,6 +13,7 @@ from uuid import UUID
 
 from app.modules.knowledge.domain.models import (
     ChunkIdentity,
+    CleanupIntent,
     EligibleRevision,
     IngestionState,
     KnowledgeOwner,
@@ -189,6 +190,39 @@ class KnowledgePersistence(Protocol):
     def record_evidence(self, passages: list[PassageEvidence]) -> None:
         """Persist raw retrieved passages for later source-linked redaction."""
 
+    def revoke_document(
+        self, document_id: UUID, *, reason: str
+    ) -> "RevocationResult":
+        """Revoke eligibility and persist retryable cleanup intents."""
+
+    def list_cleanup_intents(self, *, limit: int = 50) -> list[CleanupIntent]:
+        """Unresolved physical cleanup work in creation order."""
+
+    def resolve_cleanup(self, intent_id: UUID) -> bool:
+        """Mark one cleanup intent resolved."""
+
+    def note_cleanup_failure(self, intent_id: UUID, error: str) -> bool:
+        """Keep a failed intent visible with its latest error."""
+
+    def redact_evidence(self, revision_id: UUID, *, reason: str) -> int:
+        """Null retained raw passages for one revision."""
+
+    def redact_message_artifacts(
+        self, revision_id: UUID, *, reason: str
+    ) -> int:
+        """Redact matching tool-artifact and citation passages in messages."""
+
+    def attach_evidence_message(
+        self, operation_id: UUID, tool_call_id: str | None, message_id: UUID
+    ) -> int:
+        """Attach published message identity to evidence recorded mid-turn."""
+
+
+@dataclass(frozen=True)
+class RevocationResult:
+    document_id: UUID
+    revisions: int
+
 
 @dataclass(frozen=True)
 class IngestionClaim:
@@ -247,6 +281,8 @@ class VectorProjection(Protocol):
     async def delete_revision(
         self, collection_name: str, revision_id: UUID
     ) -> int: ...
+
+    async def delete_collection(self, collection_name: str) -> bool: ...
 
     async def search(
         self,

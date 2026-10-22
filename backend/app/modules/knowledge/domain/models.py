@@ -103,6 +103,7 @@ class PassageEvidence:
 
 @dataclass(frozen=True)
 class CleanupIntent:
+    intent_id: UUID
     kind: str
     target_id: UUID
     document_id: UUID | None = None
