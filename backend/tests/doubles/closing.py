@@ -162,6 +162,115 @@ class ClosingWorld:
         ).execute()
         return result.data
 
+    # -- voting checkpoints -------------------------------------------------
+    def start_voting(self, closing: dict) -> dict:
+        result = self.stub.rpc(
+            "start_closing_voting",
+            {"p_closing_id": closing["id"], "p_now": self.clock.now()},
+        ).execute()
+        return result.data
+
+    def begin_vote(
+        self,
+        closing: dict,
+        participant_id: str,
+        *,
+        attempt_id: str,
+        lease_seconds: int = 30,
+        provider: str = "scripted",
+        model: str = "scripted",
+        settings: dict | None = None,
+    ) -> dict:
+        result = self.stub.rpc(
+            "begin_closing_vote_attempt",
+            {
+                "p_closing_id": closing["id"],
+                "p_participant_id": participant_id,
+                "p_attempt_id": attempt_id,
+                "p_lease_seconds": lease_seconds,
+                "p_provider": provider,
+                "p_model": model,
+                "p_settings": settings or {},
+                "p_now": self.clock.now(),
+            },
+        ).execute()
+        return result.data
+
+    def finish_vote(
+        self,
+        closing: dict,
+        participant_id: str,
+        *,
+        attempt_id: str,
+        vote: bool | None = True,
+        reason: str = "because",
+        status: str = "completed",
+        usage: dict | None = None,
+        usage_kind: str | None = "reported",
+        price_kind: str | None = "metered",
+        estimated_cost: float = 0.01,
+        reported_cost: float | None = 0.012,
+        provider: str = "scripted",
+        model: str = "scripted",
+        error_code: str | None = None,
+        error_message: str | None = None,
+    ) -> dict:
+        result = self.stub.rpc(
+            "finish_closing_vote_attempt",
+            {
+                "p_closing_id": closing["id"],
+                "p_participant_id": participant_id,
+                "p_attempt_id": attempt_id,
+                "p_provider": provider,
+                "p_model": model,
+                "p_status": status,
+                "p_vote": vote,
+                "p_reason": reason,
+                "p_usage": usage,
+                "p_usage_kind": usage_kind,
+                "p_price_kind": price_kind,
+                "p_estimated_cost": estimated_cost,
+                "p_reported_cost": reported_cost,
+                "p_error_code": error_code,
+                "p_error_message": error_message,
+                "p_now": self.clock.now(),
+            },
+        ).execute()
+        return result.data
+
+    def votes(self, meeting_id: str) -> list[dict]:
+        return self.read(meeting_id)["votes"]
+
+    def vote_row(self, closing: dict, participant_id: str) -> dict:
+        return self.db.query(
+            """
+            SELECT status, attempt_id, attempt_number, attempt_lease_expires_at,
+                   vote, reason, usage, usage_kind, price_kind, estimated_cost,
+                   reported_cost, error_code
+            FROM closing_votes
+            WHERE closing_id = %s AND participant_id = %s
+            """,
+            (closing["id"], participant_id),
+        )[0]
+
+    def ledger_rows(self, meeting_id: str) -> list[tuple]:
+        return self.db.query(
+            """
+            SELECT id, purpose, usage, usage_kind, price_kind, estimated_cost,
+                   reported_cost
+            FROM inference_events
+            WHERE meeting_id = %s
+            ORDER BY created_at, id
+            """,
+            (meeting_id,),
+        )
+
+    def inference_count(self, meeting_id: str) -> int:
+        return self.queue.inference_count(meeting_id)
+
+    def total_cost(self, meeting_id: str) -> float:
+        return self.queue.total_cost(meeting_id)
+
     # -- lifecycle guards ---------------------------------------------------
     def archive(self, meeting_id: str) -> dict:
         result = self.stub.rpc(
