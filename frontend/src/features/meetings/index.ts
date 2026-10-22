@@ -19,4 +19,12 @@ export {
     type MeetingCreationInput,
     type MeetingUploadDraft,
 } from './hooks/use-meeting-creation';
+export {
+    createTurnRequestKey,
+    useMeetingTurnController,
+    type MeetingTurnController,
+} from './hooks/use-meeting-turn-controller';
+export type { TurnGenerationSettings } from './api/turn-client';
+export type { TurnOperation, TurnStatus } from './api/turn-decoders';
+export type { TurnProjection, TurnToolProjection } from './api/turn-projection';
 export type { AIParticipant, Meeting, MeetingStatus, MeetingWithParticipants, Message } from './api/decoders';

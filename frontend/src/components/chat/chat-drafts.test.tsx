@@ -21,12 +21,37 @@ const mocks = vi.hoisted(() => ({
         streamTurn: vi.fn(),
         executeTurn: vi.fn(),
     },
+    turnController: {
+        operations: [],
+        activeOperation: null,
+        queuedOperations: [],
+        activeParticipantId: null,
+        projection: undefined,
+        isObserving: false,
+        isSubmitting: false,
+        cancelingOperationId: null,
+        actionError: null,
+        submit: vi.fn(),
+        cancel: vi.fn(),
+        resumeObservation: vi.fn(),
+        clearActionError: vi.fn(),
+    },
 }));
 
 vi.mock('@/lib/api', () => ({
     api: mocks.api,
     default: mocks.api,
 }));
+
+vi.mock('@/features/meetings', async () => {
+    const actual = await vi.importActual<typeof import('@/features/meetings')>(
+        '@/features/meetings'
+    );
+    return {
+        ...actual,
+        useMeetingTurnController: () => mocks.turnController,
+    };
+});
 
 import { useMeetingStore } from '@/stores/meetingStore';
 import { ChatArea } from '@/components/chat/ChatArea';
@@ -75,6 +100,11 @@ function sendMessage(input: HTMLInputElement) {
 beforeEach(() => {
     vi.clearAllMocks();
     resetStore();
+    mocks.turnController.activeOperation = null;
+    mocks.turnController.activeParticipantId = null;
+    mocks.turnController.projection = undefined;
+    mocks.turnController.operations = [];
+    mocks.turnController.queuedOperations = [];
 });
 
 describe('composer drafts', () => {

@@ -1,14 +1,20 @@
 'use client';
 
 import { useState, useRef, useEffect } from 'react';
-import { useMeetingStore, StreamingMessage } from '@/stores/meetingStore';
+import { useMeetingStore } from '@/stores/meetingStore';
+import { useSettingsStore } from '@/stores/settings-store';
+import {
+    useMeetingTurnController,
+    type TurnOperation,
+    type TurnProjection,
+} from '@/features/meetings';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Badge } from '@/components/ui/badge';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Card } from '@/components/ui/card';
-import { Send, User, Bot, AlertTriangle, Loader2, MessageSquare, CheckCircle2, Clock, Users, FileText, Scroll } from 'lucide-react';
+import { Send, User, Bot, AlertTriangle, Loader2, MessageSquare, CheckCircle2, Clock, Users, FileText, Scroll, XCircle } from 'lucide-react';
 import { cn, formatRelativeTime, formatCost } from '@/lib/utils';
 import { ThinkingBlock } from '@/components/chat/ThinkingBlock';
 import { ToolUseBlock } from '@/components/chat/ToolUseBlock';
@@ -25,15 +31,23 @@ import { RateLimitedButton } from '@/components/ui/rate-limited-button';
 export function ChatArea() {
     const {
         currentMeeting,
+        loadMeeting,
         sendUserMessage,
-        executeTurnStreaming,
-        activeTurnParticipantId,
-        streamingMessage,
         disagreements,
         consensusList,
         error,
         clearError
     } = useMeetingStore();
+
+    const meetingId = currentMeeting?.id ?? '';
+    const turns = useMeetingTurnController({
+        meetingId,
+        onTerminal: () => {
+            // Legacy room reads still live in the store for this release;
+            // refresh it after the canonical turn commit.
+            void loadMeeting(meetingId);
+        },
+    });
 
     const [inputValue, setInputValue] = useState('');
     // Owned draft: every edit bumps a revision so a send that completes later
@@ -48,7 +62,7 @@ export function ChatArea() {
         if (scrollRef.current) {
             scrollRef.current.scrollIntoView({ behavior: 'smooth' });
         }
-    }, [currentMeeting?.messages, streamingMessage?.content]);
+    }, [currentMeeting?.messages, turns.projection?.text]);
 
     if (!currentMeeting) {
         return (
@@ -99,6 +113,12 @@ export function ChatArea() {
             e.preventDefault();
             handleSendMessage();
         }
+    };
+
+    const handleStartTurn = (participantId: string) => {
+        const settings =
+            useSettingsStore.getState().composeGenerationSettings() ?? undefined;
+        void turns.submit(participantId, settings);
     };
 
     return (
@@ -171,6 +191,14 @@ export function ChatArea() {
                     </div>
                 )}
 
+                {turns.actionError && (
+                    <div className="mx-4 mt-4 p-3 bg-amber-950/40 border border-amber-800 rounded-lg flex items-center gap-2 text-amber-300 shrink-0">
+                        <AlertTriangle className="w-4 h-4" />
+                        <span className="text-sm flex-1">{turns.actionError}</span>
+                        <button onClick={turns.clearActionError} className="text-xs hover:underline">Dismiss</button>
+                    </div>
+                )}
+
                 {/* Chat Tab */}
                 <TabsContent value="chat" className="flex-1 flex flex-col m-0 min-h-0">
                     <ScrollArea className="flex-1 min-h-0 p-4">
@@ -183,12 +211,20 @@ export function ChatArea() {
                                 />
                             ))}
 
-                            {/* Streaming message */}
-                            {streamingMessage && (
-                                <StreamingMessageBubble streamingMessage={streamingMessage} />
+                            {/* Durable turn projection */}
+                            {turns.activeOperation && (
+                                <TurnProjectionBubble
+                                    operation={turns.activeOperation}
+                                    projection={turns.projection}
+                                    participant={currentMeeting.participants.find(
+                                        (p) => p.id === turns.activeOperation?.participant_id
+                                    )}
+                                    isObserving={turns.isObserving}
+                                    onResume={turns.resumeObservation}
+                                />
                             )}
 
-                            {currentMeeting.messages.length === 0 && !streamingMessage && (
+                            {currentMeeting.messages.length === 0 && !turns.activeOperation && (
                                 <div className="text-center py-12 text-zinc-500">
                                     <p>No messages yet. Start the conversation!</p>
                                 </div>
@@ -289,29 +325,113 @@ export function ChatArea() {
                                 </Button>
 
                                 {/* AI participant turn buttons */}
-                                {currentMeeting.participants.map((participant) => (
-                                    <RateLimitedButton
-                                        key={participant.id}
-                                        provider={participant.provider_config.provider || 'default'}
-                                        variant="outline"
-                                        size="sm"
-                                        disabled={activeTurnParticipantId !== null}
-                                        onRateLimitedClick={() => executeTurnStreaming(participant.id)}
-                                        isLoading={activeTurnParticipantId === participant.id}
-                                        className={cn(
-                                            'border-zinc-700 hover:bg-zinc-800',
-                                            activeTurnParticipantId === participant.id && 'animate-pulse'
-                                        )}
-                                        style={{
-                                            borderColor: participant.color + '80',
-                                            color: participant.color,
-                                        }}
-                                    >
-                                        <Bot className="w-4 h-4 mr-1" />
-                                        {participant.name.replace('The ', '')}
-                                    </RateLimitedButton>
-                                ))}
+                                {currentMeeting.participants.map((participant) => {
+                                    const isActive = turns.activeParticipantId === participant.id;
+                                    const isQueued = turns.operations.some(
+                                        (operation) =>
+                                            operation.participant_id === participant.id &&
+                                            operation.status === 'queued'
+                                    );
+                                    return (
+                                        <RateLimitedButton
+                                            key={participant.id}
+                                            provider={participant.provider_config.provider || 'default'}
+                                            variant="outline"
+                                            size="sm"
+                                            disabled={turns.isSubmitting}
+                                            onRateLimitedClick={() => handleStartTurn(participant.id)}
+                                            isLoading={isActive}
+                                            className={cn(
+                                                'border-zinc-700 hover:bg-zinc-800',
+                                                isActive && 'animate-pulse',
+                                                isQueued && 'border-dashed'
+                                            )}
+                                            style={{
+                                                borderColor: participant.color + '80',
+                                                color: participant.color,
+                                            }}
+                                        >
+                                            <Bot className="w-4 h-4 mr-1" />
+                                            {participant.name.replace('The ', '')}
+                                            {isQueued && (
+                                                <Clock className="w-3 h-3 ml-1 opacity-70" />
+                                            )}
+                                        </RateLimitedButton>
+                                    );
+                                })}
                             </div>
+
+                            {turns.operations.some(
+                                (operation) => !['completed', 'failed', 'interrupted', 'cancelled'].includes(operation.status)
+                            ) && (
+                                <div className="mb-4 rounded-lg border border-zinc-800 bg-zinc-900/60 divide-y divide-zinc-800">
+                                    {turns.operations
+                                        .filter(
+                                            (operation) =>
+                                                !['completed', 'failed', 'interrupted', 'cancelled'].includes(operation.status)
+                                        )
+                                        .map((operation) => {
+                                            const participant = currentMeeting.participants.find(
+                                                (item) => item.id === operation.participant_id
+                                            );
+                                            const isExecuting = operation.status === 'executing';
+                                            const isCanceling =
+                                                turns.cancelingOperationId === operation.operation_id ||
+                                                operation.cancel_requested;
+                                            return (
+                                                <div
+                                                    key={operation.operation_id}
+                                                    className="flex items-center gap-2 px-3 py-2 text-xs"
+                                                >
+                                                    {isExecuting ? (
+                                                        <Loader2 className="w-3.5 h-3.5 animate-spin text-indigo-400" />
+                                                    ) : (
+                                                        <Clock className="w-3.5 h-3.5 text-zinc-500" />
+                                                    )}
+                                                    <span
+                                                        className="font-medium"
+                                                        style={{ color: participant?.color }}
+                                                    >
+                                                        {participant?.name ?? 'Participant'}
+                                                    </span>
+                                                    <span className="text-zinc-500">
+                                                        {isExecuting
+                                                            ? operation.cancel_requested
+                                                                ? 'canceling…'
+                                                                : 'executing'
+                                                            : operation.queue_position
+                                                              ? `queued #${operation.queue_position}`
+                                                              : 'queued'}
+                                                    </span>
+                                                    <div className="flex-1" />
+                                                    {turns.projection?.observationInterrupted &&
+                                                        turns.activeOperation?.operation_id ===
+                                                            operation.operation_id && (
+                                                            <button
+                                                                onClick={turns.resumeObservation}
+                                                                className="text-indigo-400 hover:underline"
+                                                            >
+                                                                Resume observation
+                                                            </button>
+                                                        )}
+                                                    <Button
+                                                        variant="ghost"
+                                                        size="sm"
+                                                        className="h-6 px-2 text-zinc-400 hover:text-red-400"
+                                                        disabled={isCanceling}
+                                                        onClick={() =>
+                                                            void turns.cancel(operation.operation_id)
+                                                        }
+                                                        aria-label={`Cancel ${participant?.name ?? 'turn'}`}
+                                                    >
+                                                        <XCircle className="w-3.5 h-3.5 mr-1" />
+                                                        {isCanceling ? 'Canceling' : 'Cancel'}
+                                                    </Button>
+                                                </div>
+                                            );
+                                        })}
+                                </div>
+                            )}
 
                             {/* Message Input */}
                             <div className="flex gap-2">
@@ -331,6 +451,12 @@ export function ChatArea() {
                                     <Send className="w-4 h-4" />
                                 </Button>
                             </div>
+                            {turns.activeOperation && (
+                                <p className="mt-2 text-xs text-zinc-500">
+                                    The running response keeps the context it started with.
+                                    A message sent now will be seen by the next turn.
+                                </p>
+                            )}
                         </>
                     )}
                 </div>
@@ -433,6 +559,147 @@ interface MessageBubbleProps {
     participant?: AIParticipant;
 }
 
+function formatToolResult(value: unknown): string | undefined {
+    if (value === null || value === undefined) return undefined;
+    if (typeof value === 'string') return value;
+    try {
+        return JSON.stringify(value);
+    } catch {
+        return String(value);
+    }
+}
+
+interface TurnProjectionBubbleProps {
+    operation: TurnOperation;
+    projection: TurnProjection | undefined;
+    participant?: { name: string; color: string };
+    isObserving: boolean;
+    onResume: () => void;
+}
+
+function TurnProjectionBubble({
+    operation,
+    projection,
+    participant,
+    isObserving,
+    onResume,
+}: TurnProjectionBubbleProps) {
+    const name = participant?.name ?? 'Participant';
+    const color = participant?.color ?? '#71717a';
+    const isQueued = operation.status === 'queued';
+    const hasContent =
+        Boolean(projection?.text) ||
+        Boolean(projection?.thinking) ||
+        (projection?.toolCalls.length ?? 0) > 0;
+
+    return (
+        <div className="flex gap-3">
+            <div
+                className="w-8 h-8 rounded-full flex items-center justify-center shrink-0"
+                style={{ backgroundColor: color }}
+            >
+                <span className="text-white text-sm font-bold">{name.charAt(0)}</span>
+            </div>
+
+            <div className="flex-1 max-w-[80%]">
+                <div className="flex items-center gap-2 mb-1">
+                    <span className="text-sm font-medium" style={{ color }}>
+                        {name}
+                    </span>
+                    {isQueued ? (
+                        <Badge
+                            variant="secondary"
+                            className="text-xs bg-zinc-800 text-zinc-400"
+                        >
+                            <Clock className="w-3 h-3 mr-1" />
+                            Queued
+                            {operation.queue_position ? ` #${operation.queue_position}` : ''}
+                        </Badge>
+                    ) : (
+                        <Loader2 className="w-3 h-3 animate-spin text-zinc-500" />
+                    )}
+                    {!isQueued && isObserving && (
+                        <span className="text-xs text-zinc-500">live</span>
+                    )}
+                </div>
+
+                {projection?.thinking && (
+                    <ThinkingBlock
+                        content={projection.thinking}
+                        isStreaming={!projection.terminal && !projection.observationInterrupted}
+                    />
+                )}
+
+                {projection?.toolCalls.map((tool) => (
+                    <ToolUseBlock
+                        key={tool.identity}
+                        toolName={tool.name}
+                        arguments={
+                            tool.arguments && typeof tool.arguments === 'object'
+                                ? (tool.arguments as Record<string, unknown>)
+                                : undefined
+                        }
+                        result={formatToolResult(tool.result)}
+                        isExecuting={tool.isExecuting}
+                    />
+                ))}
+
+                {projection?.text && (
+                    <div className="rounded-2xl px-4 py-2.5 bg-zinc-800 text-zinc-100 rounded-bl-md">
+                        <div className="prose prose-sm prose-invert max-w-none prose-p:my-1 prose-headings:my-2 prose-ul:my-1 prose-ol:my-1 prose-li:my-0.5 prose-pre:my-2 prose-pre:bg-zinc-900 prose-pre:text-zinc-300 prose-code:bg-zinc-900 prose-code:px-1.5 prose-code:py-0.5 prose-code:rounded prose-code:text-indigo-300 prose-code:before:content-none prose-code:after:content-none">
+                            <ReactMarkdown remarkPlugins={[remarkGfm]}>
+                                {projection.text}
+                            </ReactMarkdown>
+                            {!projection.terminal && !projection.observationInterrupted && (
+                                <span className="inline-block w-2 h-4 ml-1 bg-zinc-400 animate-pulse" />
+                            )}
+                        </div>
+                    </div>
+                )}
+
+                {projection && projection.citations.length > 0 && (
+                    <CitationsBlock
+                        citations={projection.citations.map((citation) => ({
+                            source: citation.source,
+                            title: citation.title || undefined,
+                            url: citation.url || undefined,
+                            snippet: citation.snippet || undefined,
+                        }))}
+                    />
+                )}
+
+                {projection?.error && (
+                    <div className="mt-2 rounded-lg border border-red-800/60 bg-red-950/30 px-3 py-2 text-sm text-red-300">
+                        {projection.error.message}
+                    </div>
+                )}
+
+                {projection?.observationInterrupted && (
+                    <div className="mt-2 flex items-center gap-2 rounded-lg border border-amber-800/60 bg-amber-950/30 px-3 py-2 text-xs text-amber-300">
+                        <AlertTriangle className="w-3.5 h-3.5" />
+                        <span className="flex-1">
+                            Observation paused. The turn continues on the server; this is
+                            not a failure.
+                        </span>
+                        <button onClick={onResume} className="hover:underline">
+                            Resume
+                        </button>
+                    </div>
+                )}
+
+                {!hasContent && !projection?.error && !projection?.observationInterrupted && (
+                    <div className="rounded-2xl px-4 py-2.5 bg-zinc-800 text-zinc-500 rounded-bl-md">
+                        <div className="flex items-center gap-2 text-sm">
+                            <Loader2 className="w-4 h-4 animate-spin" />
+                            {isQueued ? 'Waiting in the meeting queue…' : 'Thinking…'}
+                        </div>
+                    </div>
+                )}
+            </div>
+        </div>
+    );
+}
+
 function MessageBubble({ message, participant }: MessageBubbleProps) {
     const isUser = message.sender_type === 'user';
     const isSystem = message.sender_type === 'system';
@@ -523,78 +790,6 @@ function MessageBubble({ message, participant }: MessageBubbleProps) {
                 {/* Citations */}
                 {message.citations && message.citations.length > 0 && (
                     <CitationsBlock citations={message.citations} />
-                )}
-            </div>
-        </div>
-    );
-}
-
-interface StreamingMessageBubbleProps {
-    streamingMessage: StreamingMessage;
-}
-
-function StreamingMessageBubble({ streamingMessage }: StreamingMessageBubbleProps) {
-    return (
-        <div className="flex gap-3">
-            {/* Avatar */}
-            <div
-                className="w-8 h-8 rounded-full flex items-center justify-center shrink-0"
-                style={{ backgroundColor: streamingMessage.participantColor }}
-            >
-                <span className="text-white text-sm font-bold">
-                    {streamingMessage.participantName.charAt(0)}
-                </span>
-            </div>
-
-            {/* Message Content */}
-            <div className="flex-1 max-w-[80%]">
-                {/* Sender Name */}
-                <div className="flex items-center gap-2 mb-1">
-                    <span
-                        className="text-sm font-medium"
-                        style={{ color: streamingMessage.participantColor }}
-                    >
-                        {streamingMessage.participantName}
-                    </span>
-                    <Loader2 className="w-3 h-3 animate-spin text-zinc-500" />
-                </div>
-
-                {/* Thinking block */}
-                {streamingMessage.thinkingContent && (
-                    <ThinkingBlock
-                        content={streamingMessage.thinkingContent}
-                        isStreaming={!streamingMessage.isComplete}
-                    />
-                )}
-
-                {/* Tool calls */}
-                {streamingMessage.toolCalls.map((tc, i) => (
-                    <ToolUseBlock
-                        key={i}
-                        toolName={tc.name}
-                        arguments={tc.arguments}
-                        result={tc.result}
-                        isExecuting={tc.isExecuting}
-                    />
-                ))}
-
-                {/* Message Text */}
-                {streamingMessage.content && (
-                    <div className="rounded-2xl px-4 py-2.5 bg-zinc-800 text-zinc-100 rounded-bl-md">
-                        <div className="prose prose-sm prose-invert max-w-none prose-p:my-1 prose-headings:my-2 prose-ul:my-1 prose-ol:my-1 prose-li:my-0.5 prose-pre:my-2 prose-pre:bg-zinc-900 prose-pre:text-zinc-300 prose-code:bg-zinc-900 prose-code:px-1.5 prose-code:py-0.5 prose-code:rounded prose-code:text-indigo-300 prose-code:before:content-none prose-code:after:content-none">
-                            <ReactMarkdown remarkPlugins={[remarkGfm]}>
-                                {streamingMessage.content}
-                            </ReactMarkdown>
-                            <span className="inline-block w-2 h-4 ml-1 bg-zinc-400 animate-pulse" />
-                        </div>
-                    </div>
-                )}
-
-                {/* Empty state while waiting for first content */}
-                {!streamingMessage.content && !streamingMessage.thinkingContent && streamingMessage.toolCalls.length === 0 && (
-                    <div className="rounded-2xl px-4 py-2.5 bg-zinc-800 text-zinc-500 rounded-bl-md">
-                        <Loader2 className="w-4 h-4 animate-spin" />
-                    </div>
                 )}
             </div>
         </div>

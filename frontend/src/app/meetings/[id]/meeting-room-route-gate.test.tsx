@@ -21,6 +21,32 @@ vi.mock('@/lib/api', () => ({
     default: {},
 }));
 
+// The queue controller is covered by its own suite; this suite only checks the
+// route gate, so keep it off the network and out of the query provider.
+vi.mock('@/features/meetings', async () => {
+    const actual = await vi.importActual<typeof import('@/features/meetings')>(
+        '@/features/meetings'
+    );
+    return {
+        ...actual,
+        useMeetingTurnController: () => ({
+            operations: [],
+            activeOperation: null,
+            queuedOperations: [],
+            activeParticipantId: null,
+            projection: undefined,
+            isObserving: false,
+            isSubmitting: false,
+            cancelingOperationId: null,
+            actionError: null,
+            submit: vi.fn(),
+            cancel: vi.fn(),
+            resumeObservation: vi.fn(),
+            clearActionError: vi.fn(),
+        }),
+    };
+});
+
 // The room's side tabs fetch their own data on mount; the gate under test is
 // in the route shell, so stub the children.
 vi.mock('@/components/chat/RosterTab', () => ({
