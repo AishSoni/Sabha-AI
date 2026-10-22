@@ -249,25 +249,3 @@ class TurnResponse(BaseModel):
     disagreements: List[Disagreement] = Field(default_factory=list)
     consensus: List[Consensus] = Field(default_factory=list)
 
-
-# ============== End Meeting Models ==============
-
-class EndMeetingVote(BaseModel):
-    """A vote from an AI on ending the meeting."""
-    participant_id: str
-    participant_name: str
-    vote: bool  # True = yes to end, False = no
-    reason: str
-
-
-class EndMeetingRequest(BaseModel):
-    """Request to end a meeting."""
-    force_end: bool = False
-
-
-class EndMeetingResponse(BaseModel):
-    """Response from ending a meeting."""
-    success: bool
-    votes: List[EndMeetingVote] = Field(default_factory=list)
-    summary: Optional[str] = None
-    message: str

@@ -23,21 +23,12 @@ from app.models import (
     SenderType,
     Disagreement,
     Consensus,
-    EndMeetingRequest,
-    EndMeetingResponse,
-    EndMeetingVote,
     MeetingStatus,
 )
 from app.core.config import settings
 from app.presentation.dependencies import get_turn_queue
 from app.services import MeetingManager
 from app.services.orchestrator import MissingProviderKeyError, MeetingClosedError
-from app.services.meeting_closer import (
-    EndAttemptIncomplete,
-    MeetingCloser,
-    MeetingClosedConflict,
-    MeetingNotFoundError,
-)
 from app.services.summary_service import EmptyConversationError, generate_meeting_summary
 from app.services.turn_queue import (
     QueueClosedError,
@@ -60,10 +51,6 @@ router = APIRouter()
 
 def get_meeting_manager() -> MeetingManager:
     return MeetingManager()
-
-
-def get_meeting_closer() -> MeetingCloser:
-    return MeetingCloser(get_meeting_manager())
 
 
 def _legacy_request_key() -> str:
@@ -482,34 +469,6 @@ async def get_context_stats(meeting_id: str):
         "message_count": len(meeting.messages),
         "participant_count": len(meeting.participants),
     }
-
-
-@router.post("/{meeting_id}/end", response_model=EndMeetingResponse)
-async def end_meeting(meeting_id: str, data: EndMeetingRequest):
-    """End a meeting, optionally collecting votes from AI participants.
-
-    Delegates to the recoverable closing flow: entry serialization, vote
-    phase, summary generation, and an atomic commit (ending message + status
-    flip in one transaction). Retrying a failed ending resumes at the summary
-    phase instead of re-collecting votes.
-    """
-    closer = get_meeting_closer()
-
-    try:
-        return await closer.end_meeting(meeting_id, force_end=data.force_end)
-    except MeetingNotFoundError:
-        raise HTTPException(status_code=404, detail="Meeting not found")
-    except MeetingClosedConflict as exc:
-        # Committed by another request; retry would find the meeting ended.
-        raise HTTPException(status_code=409, detail=str(exc))
-    except EndAttemptIncomplete as exc:
-        # Recoverable: keep success=False, explicitly retryable message.
-        return EndMeetingResponse(
-            success=False,
-            votes=[],
-            summary=None,
-            message=str(exc),
-        )
 
 
 @router.post("/{meeting_id}/archive")

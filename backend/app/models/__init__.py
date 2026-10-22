@@ -32,10 +32,6 @@ from app.models.schemas import (
     RequestProviderSettings,
     UserMessageRequest,
     TurnResponse,
-    # End Meeting
-    EndMeetingVote,
-    EndMeetingRequest,
-    EndMeetingResponse,
 )
 
 from app.models.turn_schemas import (
@@ -108,9 +104,6 @@ __all__ = [
     "RequestProviderSettings",
     "UserMessageRequest",
     "TurnResponse",
-    "EndMeetingVote",
-    "EndMeetingRequest",
-    "EndMeetingResponse",
     # Turn queue
     "TurnSubmitRequest",
     "TurnOperationResponse",
