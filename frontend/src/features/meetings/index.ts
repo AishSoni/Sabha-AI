@@ -14,6 +14,34 @@ export {
     useDeleteMeeting,
     useUnarchiveMeeting,
 } from './api/mutations';
+export { closingKeys } from './api/closing-keys';
+export {
+    closingClient,
+    type ClosingSummarySettings,
+    type RequestClosingInput,
+} from './api/closing-client';
+export {
+    isPollingClosingStage,
+    isSettledClosingStage,
+    type ClosingMode,
+    type ClosingReceipt,
+    type ClosingStage,
+    type ClosingView,
+    type ClosingVote,
+} from './api/closing-decoders';
+export { useClosing } from './api/closing-queries';
+export {
+    createClosingRequestKey,
+    useAbortClosing,
+    useRequestClosing,
+    useRetryClosing,
+    type RequestClosingVariables,
+} from './api/closing-mutations';
+export {
+    useClosingObservation,
+    type UseClosingObservationOptions,
+    type UseClosingObservationResult,
+} from './api/use-closing-observation';
 export {
     useMeetingCreation,
     type MeetingCreationInput,
@@ -27,4 +55,8 @@ export {
 export type { TurnGenerationSettings } from './api/turn-client';
 export type { TurnOperation, TurnStatus } from './api/turn-decoders';
 export type { TurnProjection, TurnToolProjection } from './api/turn-projection';
+export {
+    ClosingPanel,
+    type ClosingPanelProps,
+} from './components/ClosingPanel';
 export type { AIParticipant, Meeting, MeetingStatus, MeetingWithParticipants, Message } from './api/decoders';

@@ -3,7 +3,8 @@
 import { useState } from 'react';
 import { useMeetingStore } from '@/stores/meetingStore';
 import { useSettingsStore } from '@/stores/settings-store';
-import { api, EndMeetingVote, EndMeetingResponse } from '@/lib/api';
+import { api } from '@/lib/api';
+import { ClosingPanel, type ClosingView } from '@/features/meetings';
 import { deriveSummariesFromMessages } from '@/lib/summary-view';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Card } from '@/components/ui/card';
@@ -14,24 +15,18 @@ import {
     Scroll,
     Loader2,
     RefreshCw,
-    LogOut,
-    Vote,
     AlertTriangle,
     Clock,
     ListOrdered,
     CheckCircle2,
-    XCircle,
-    Users,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 
 export function SummaryTab() {
     const { currentMeeting, setCurrentMeeting } = useMeetingStore();
+    const systemAI = useSettingsStore((state) => state.systemAI);
     const [isGenerating, setIsGenerating] = useState(false);
     const [generateError, setGenerateError] = useState<string | null>(null);
-    const [showEndMeetingConfirm, setShowEndMeetingConfirm] = useState(false);
-    const [isEndingMeeting, setIsEndingMeeting] = useState(false);
-    const [endMeetingResult, setEndMeetingResult] = useState<EndMeetingResponse | null>(null);
 
     if (!currentMeeting) {
         return (
@@ -74,33 +69,18 @@ export function SummaryTab() {
         }
     };
 
-    const handleEndMeeting = async (forceEnd: boolean) => {
-        setIsEndingMeeting(true);
-        setEndMeetingResult(null);
-
+    const handleClosingSettled = async (view: ClosingView) => {
+        // Closing committed canonical messages and the lifecycle status. The
+        // old store is still the room's presentation cache until it migrates,
+        // so refresh it from the server (never invent a local final summary).
         try {
-            const response = await api.endMeeting(currentMeeting.id, forceEnd);
-            setEndMeetingResult(response);
-
-            if (response.success) {
-                // Refresh meeting data: the final executive summary is the
-                // persisted `📋 **MEETING ENDED**` message, so the derived
-                // list picks it up from the refetched meeting alone.
-                const updatedMeeting = await api.getMeeting(currentMeeting.id);
+            const updatedMeeting = await api.getMeeting(view.meeting_id);
+            const presentedId = useMeetingStore.getState().currentMeeting?.id;
+            if (presentedId != null && presentedId === (updatedMeeting as { id?: string }).id) {
                 setCurrentMeeting(updatedMeeting);
             }
-
-            setShowEndMeetingConfirm(false);
         } catch (err) {
-            console.error('Failed to end meeting:', err);
-            setEndMeetingResult({
-                success: false,
-                votes: [],
-                summary: null,
-                message: 'Failed to end meeting: ' + (err as Error).message,
-            });
-        } finally {
-            setIsEndingMeeting(false);
+            console.error('Failed to refresh the ended meeting:', err);
         }
     };
 
@@ -196,145 +176,23 @@ export function SummaryTab() {
 
                 <Separator className="bg-zinc-800" />
 
-                {/* Vote Results (if available) */}
-                {endMeetingResult && endMeetingResult.votes.length > 0 && (
-                    <div>
-                        <h4 className="text-sm font-semibold text-zinc-400 mb-3 flex items-center gap-2">
-                            <Users className="w-4 h-4" />
-                            Vote Results
-                        </h4>
-
-                        <Card className={cn(
-                            "p-4 border",
-                            endMeetingResult.success
-                                ? "bg-green-950/30 border-green-800/50"
-                                : "bg-amber-950/30 border-amber-800/50"
-                        )}>
-                            <div className="mb-3 text-sm font-medium">
-                                {endMeetingResult.message}
-                            </div>
-                            <div className="space-y-2">
-                                {endMeetingResult.votes.map((vote) => (
-                                    <VoteCard key={vote.participant_id} vote={vote} />
-                                ))}
-                            </div>
-                        </Card>
-                    </div>
-                )}
-
-                {/* End Meeting Section */}
-                {!isMeetingEnded && (
-                    <div>
-                        <h4 className="text-sm font-semibold text-zinc-400 mb-3 flex items-center gap-2">
-                            <LogOut className="w-4 h-4" />
-                            End Meeting
-                        </h4>
-
-                        {!showEndMeetingConfirm ? (
-                            <Card className="bg-zinc-900/50 border-zinc-800 p-4">
-                                <div className="flex items-center justify-between">
-                                    <div>
-                                        <h4 className="font-medium text-white mb-1">Conclude Meeting</h4>
-                                        <p className="text-xs text-zinc-500">
-                                            End the meeting and generate a final summary
-                                        </p>
-                                    </div>
-                                    <Button
-                                        variant="outline"
-                                        onClick={() => setShowEndMeetingConfirm(true)}
-                                        className="border-red-800 text-red-400 hover:bg-red-900/20"
-                                    >
-                                        <LogOut className="w-4 h-4 mr-2" />
-                                        End Meeting
-                                    </Button>
-                                </div>
-                            </Card>
-                        ) : (
-                            <Card className="bg-red-950/30 border-red-800/50 p-4">
-                                <div className="flex items-start gap-3 mb-4">
-                                    <AlertTriangle className="w-5 h-5 text-red-400 shrink-0 mt-0.5" />
-                                    <div>
-                                        <h4 className="font-medium text-white mb-1">End this meeting?</h4>
-                                        <p className="text-sm text-zinc-400">
-                                            Choose how you want to end the meeting:
-                                        </p>
-                                    </div>
-                                </div>
-
-                                {isEndingMeeting ? (
-                                    <div className="flex items-center justify-center py-6">
-                                        <Loader2 className="w-6 h-6 animate-spin text-indigo-400 mr-2" />
-                                        <span className="text-zinc-400">Processing...</span>
-                                    </div>
-                                ) : (
-                                    <>
-                                        <div className="grid grid-cols-2 gap-3 mb-3">
-                                            {/* Vote to End */}
-                                            <Button
-                                                variant="outline"
-                                                onClick={() => handleEndMeeting(false)}
-                                                className="h-auto py-3 flex-col items-center border-zinc-700 hover:bg-zinc-800"
-                                            >
-                                                <Vote className="w-5 h-5 mb-1 text-amber-400" />
-                                                <span className="font-medium">Vote to End</span>
-                                                <span className="text-xs text-zinc-500">Ask participants</span>
-                                            </Button>
-
-                                            {/* Force End */}
-                                            <Button
-                                                variant="outline"
-                                                onClick={() => handleEndMeeting(true)}
-                                                className="h-auto py-3 flex-col items-center border-red-800 hover:bg-red-900/20 text-red-400"
-                                            >
-                                                <LogOut className="w-5 h-5 mb-1" />
-                                                <span className="font-medium">Force End</span>
-                                                <span className="text-xs text-zinc-500">End immediately</span>
-                                            </Button>
-                                        </div>
-
-                                        <Button
-                                            variant="ghost"
-                                            onClick={() => setShowEndMeetingConfirm(false)}
-                                            className="w-full text-zinc-400 hover:text-white"
-                                        >
-                                            Cancel
-                                        </Button>
-                                    </>
-                                )}
-                            </Card>
-                        )}
-                    </div>
-                )}
+                <ClosingPanel
+                    meetingId={meetingId}
+                    meetingStatus={currentMeeting.status}
+                    summarySettings={
+                        systemAI.provider && systemAI.model
+                            ? {
+                                  provider: systemAI.provider,
+                                  model: systemAI.model,
+                                  temperature: systemAI.temperature,
+                                  maxTokens: systemAI.maxTokens,
+                              }
+                            : undefined
+                    }
+                    onSettled={handleClosingSettled}
+                />
             </div>
         </ScrollArea>
-    );
-}
-
-interface VoteCardProps {
-    vote: EndMeetingVote;
-}
-
-function VoteCard({ vote }: VoteCardProps) {
-    return (
-        <div className="flex items-start gap-2 p-2 bg-zinc-900/50 rounded-lg">
-            {vote.vote ? (
-                <CheckCircle2 className="w-4 h-4 text-green-400 shrink-0 mt-0.5" />
-            ) : (
-                <XCircle className="w-4 h-4 text-red-400 shrink-0 mt-0.5" />
-            )}
-            <div className="flex-1 min-w-0">
-                <div className="flex items-center gap-2">
-                    <span className="text-sm font-medium text-white">{vote.participant_name}</span>
-                    <Badge variant="secondary" className={cn(
-                        "text-xs",
-                        vote.vote ? "bg-green-900/50 text-green-400" : "bg-red-900/50 text-red-400"
-                    )}>
-                        {vote.vote ? 'Yes' : 'No'}
-                    </Badge>
-                </div>
-                <p className="text-xs text-zinc-500 mt-0.5">{vote.reason}</p>
-            </div>
-        </div>
     );
 }
 

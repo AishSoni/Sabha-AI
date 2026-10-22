@@ -10,16 +10,17 @@ import { act, fireEvent, render, screen, waitFor } from '@testing-library/react'
 
 const mocks = vi.hoisted(() => ({
     generateSummary: vi.fn(),
-    endMeeting: vi.fn(),
     getMeeting: vi.fn(),
 }));
 
 vi.mock('@/lib/api', () => ({
     api: mocks,
     default: mocks,
-    // The tab imports these as values only for typing; provide dummies.
-    EndMeetingVote: {},
-    EndMeetingResponse: {},
+}));
+
+// The closing workflow owns its own suite; the Summary tab only mounts it.
+vi.mock('@/features/meetings', () => ({
+    ClosingPanel: () => <div data-testid="closing-panel" />,
 }));
 
 import { SummaryTab } from '@/components/chat/SummaryTab';

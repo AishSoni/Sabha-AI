@@ -265,9 +265,13 @@ describe('archive and unarchive', () => {
         expect(queryClient.getQueryState(meetingKeys.list())?.isInvalidated).toBe(true);
     });
 
-    it('unarchive revises the cached detail status and invalidates the list', async () => {
+    it('unarchive invalidates instead of guessing a reopened status', async () => {
         scripted.install();
-        scripted.enqueueJson(200, { success: true, message: 'Meeting unarchived successfully' });
+        scripted.enqueueJson(200, {
+            success: true,
+            message: 'Meeting unarchived successfully',
+            status: 'ended',
+        });
 
         await act(async () => {
             queryClient.setQueryData(meetingKeys.detail('m-1'), detailJson({ status: 'archived' }));
@@ -284,9 +288,12 @@ describe('archive and unarchive', () => {
         await outcome;
 
         expect(scripted.calls[0]?.input).toBe(`${resolveApiBaseUrl()}/meetings/m-1/unarchive`);
+        // Unarchiving never reopens an ended meeting: the cache is refreshed
+        // from the server rather than patched to `active`.
         expect(queryClient.getQueryData(meetingKeys.detail('m-1'))).toMatchObject({
-            status: 'active',
+            status: 'archived',
         });
+        expect(queryClient.getQueryState(meetingKeys.detail('m-1'))?.isInvalidated).toBe(true);
         expect(queryClient.getQueryState(meetingKeys.list())?.isInvalidated).toBe(true);
     });
 });

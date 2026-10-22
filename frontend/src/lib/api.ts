@@ -246,16 +246,6 @@ export const api = {
         return handleResponse(response);
     },
 
-    // End meeting
-    async endMeeting(meetingId: string, forceEnd: boolean): Promise<EndMeetingResponse> {
-        const response = await fetch(`${API_BASE}/meetings/${meetingId}/end`, {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ force_end: forceEnd }),
-        });
-        return handleResponse(response);
-    },
-
     // Generate + persist an interim summary (real, paid, ledgered endpoint).
     // Same BYOK contract as turns: the key rides X-Provider-Key only.
     async generateSummary(meetingId: string, settings?: GenerationSettings): Promise<Message> {
@@ -281,21 +271,6 @@ export interface ContextStats {
 // Streaming event types — canonical definitions live in the shared transport
 // layer; these re-exports keep the legacy facade's type surface intact.
 export type { StreamEvent, StreamEventType } from '@/shared/api/sse';
-
-// End meeting types
-export interface EndMeetingVote {
-    participant_id: string;
-    participant_name: string;
-    vote: boolean;
-    reason: string;
-}
-
-export interface EndMeetingResponse {
-    success: boolean;
-    votes: EndMeetingVote[];
-    summary: string | null;
-    message: string;
-}
 
 // ============== PERSONA TYPES ==============
 
