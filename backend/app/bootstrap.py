@@ -20,12 +20,18 @@ from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
 from app.core.config import settings
+from app.modules.meetings.application.closing import ClosingService
+from app.modules.meetings.infrastructure.supabase_closing import (
+    SupabaseClosingRepository,
+    SupabaseInvocationFactory,
+)
 from app.modules.persona_catalog.application.contracts import (
     PersonaCatalogPort,
     PromptCatalogPort,
 )
 from app.presentation.errors import register_error_handlers
 from app.presentation.router import mount_routes
+from app.services.meeting_manager import MeetingManager
 from app.services.turn_queue import TurnQueueService
 from app.services.turn_runner import TurnRunner
 
@@ -45,6 +51,7 @@ class Container:
     # process. The runner is optional so tests can disable background work.
     turn_queue: TurnQueueService | None = None
     turn_runner: TurnRunner | None = None
+    closing: ClosingService | None = None
 
     @classmethod
     def production(cls) -> "Container":
@@ -56,12 +63,23 @@ class Container:
         )
 
         turn_queue = TurnQueueService()
-        runner = TurnRunner(turn_queue) if settings.turn_runner_enabled else None
+        closing = ClosingService(
+            SupabaseClosingRepository(MeetingManager()),
+            SupabaseInvocationFactory(),
+            lease_seconds=settings.closing_attempt_lease_seconds,
+            drain_timeout_seconds=settings.closing_drain_timeout_seconds,
+        )
+        runner = (
+            TurnRunner(turn_queue, on_turn_terminal=closing.advance)
+            if settings.turn_runner_enabled
+            else None
+        )
         return cls(
             prompt_catalog=SupabasePromptCatalog(get_supabase),
             persona_catalog=SupabasePersonaCatalog(get_supabase),
             turn_queue=turn_queue,
             turn_runner=runner,
+            closing=closing,
         )
 
 
@@ -98,6 +116,13 @@ async def lifespan(app: FastAPI):
             await container.turn_queue.recover()
     except Exception:
         logger.warning("Turn queue startup recovery failed", exc_info=True)
+
+    try:
+        closing = getattr(container, "closing", None)
+        if closing is not None:
+            await closing.reconcile_open_closings()
+    except Exception:
+        logger.warning("Closing startup reconciliation failed", exc_info=True)
 
     try:
         yield

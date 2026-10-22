@@ -462,7 +462,9 @@ class _Table:
     def _where_in(self, column: str, values) -> "_Table":
         if not _IDENT.match(column):
             raise ValueError(f"Unsafe column: {column}")
-        self._conditions.append(f"{column} = ANY (%s::uuid[])")
+        self._conditions.append(
+            f"{column} = ANY (%s::{'uuid' if column == 'id' or column.endswith('_id') else 'text'}[])"
+        )
         # psycopg adapts Python lists to SQL arrays natively.
         self._params.append(values)
         return self

@@ -14,7 +14,7 @@ import logging
 import os
 import socket
 import uuid
-from typing import Optional
+from typing import Awaitable, Callable, Optional
 
 from app.core.config import settings
 from app.services.turn_queue import TurnClaim, TurnQueueService
@@ -42,6 +42,7 @@ class TurnRunner:
         poll_seconds: Optional[float] = None,
         execution_timeout_seconds: Optional[int] = None,
         worker_id: Optional[str] = None,
+        on_turn_terminal: Optional[Callable[[str], Awaitable[None]]] = None,
     ) -> None:
         self.service = service
         self.concurrency = concurrency or settings.turn_global_concurrency
@@ -50,6 +51,7 @@ class TurnRunner:
             execution_timeout_seconds or settings.turn_execution_timeout_seconds
         )
         self.worker_id = worker_id or default_worker_id()
+        self.on_turn_terminal = on_turn_terminal
         self._stop = asyncio.Event()
         self._task: Optional[asyncio.Task] = None
         self._running: set[asyncio.Task] = set()
@@ -137,26 +139,47 @@ class TurnRunner:
 
     async def _execute(self, claim: TurnClaim) -> None:
         try:
-            await asyncio.wait_for(
-                self.service.execute_claim(claim),
-                timeout=self.execution_timeout_seconds,
-            )
-        except asyncio.TimeoutError:
-            logger.warning("Turn %s exceeded its execution deadline", claim.operation_id)
-            self.service.interrupt_claim(
-                claim,
-                "execution_timeout",
-                "The turn exceeded its execution deadline; its outcome is unknown.",
-            )
-        except asyncio.CancelledError:
-            # Shutdown or timeout cancellation. The lease will expire and
-            # recovery will mark a started attempt interrupted; never publish
-            # from a cancelled task.
-            raise
+            try:
+                await asyncio.wait_for(
+                    self.service.execute_claim(claim),
+                    timeout=self.execution_timeout_seconds,
+                )
+            except asyncio.TimeoutError:
+                logger.warning("Turn %s exceeded its execution deadline", claim.operation_id)
+                self.service.interrupt_claim(
+                    claim,
+                    "execution_timeout",
+                    "The turn exceeded its execution deadline; its outcome is unknown.",
+                )
+            except asyncio.CancelledError:
+                # Shutdown or timeout cancellation. The lease will expire and
+                # recovery will mark a started attempt interrupted; never publish
+                # from a cancelled task.
+                raise
+            except Exception:
+                logger.warning("Turn %s failed unexpectedly", claim.operation_id, exc_info=True)
+                self.service.interrupt_claim(
+                    claim,
+                    "runner_error",
+                    "The turn failed unexpectedly; its outcome is unknown.",
+                )
+        finally:
+            await self._after_terminal(claim)
+
+    async def _after_terminal(self, claim: TurnClaim) -> None:
+        """Let a closing operation drain once its executing turn is terminal.
+
+        The callback reads committed state; it never assumes the turn
+        succeeded. A failure here must not corrupt the turn outcome, and the
+        next closing request/startup reconciliation retries the guard.
+        """
+        if self.on_turn_terminal is None:
+            return
+        try:
+            await self.on_turn_terminal(claim.meeting_id)
         except Exception:
-            logger.warning("Turn %s failed unexpectedly", claim.operation_id, exc_info=True)
-            self.service.interrupt_claim(
-                claim,
-                "runner_error",
-                "The turn failed unexpectedly; its outcome is unknown.",
+            logger.warning(
+                "Closing advance after turn %s failed",
+                claim.operation_id,
+                exc_info=True,
             )

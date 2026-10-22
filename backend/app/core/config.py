@@ -58,6 +58,10 @@ class Settings(BaseSettings):
     turn_poll_seconds: float = 0.5
     turn_runner_enabled: bool = True
     turn_execution_timeout_seconds: int = 300
+
+    # Coordinated closing (spec 08)
+    closing_attempt_lease_seconds: int = 120
+    closing_drain_timeout_seconds: int = 300
     
     class Config:
         env_file = ".env"

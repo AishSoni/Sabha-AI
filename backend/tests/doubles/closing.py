@@ -13,6 +13,15 @@ from tests.doubles.durable_queue import DurableQueueWorld
 ENDING_MARKER = "📋 **MEETING ENDED**"
 
 
+def _closing_id(closing) -> str:
+    """Accept a raw closing row, a contract, or an id string."""
+    if isinstance(closing, str):
+        return closing
+    if isinstance(closing, dict):
+        return closing["id"]
+    return closing.id
+
+
 class ClosingWorld:
     def __init__(self, db, *, lease_seconds: int = 30):
         self.db = db
@@ -52,8 +61,10 @@ class ClosingWorld:
         return operation
 
     def complete_running(self, operation: dict, *, content: str = "Running turn finished.") -> dict:
+        operation = operation.get("operation", operation)
+        current = self.queue.operation(operation["id"])
         worker = self.worker("worker-1")
-        return worker.publish(operation, message=self.queue.final_message(operation, content))
+        return worker.publish(current, message=self.queue.final_message(current, content))
 
     def turn_status(self, operation_id: str) -> str | None:
         return self.queue.status(operation_id)
@@ -90,7 +101,7 @@ class ClosingWorld:
 
     def close_stage(self, closing: dict) -> str:
         current = self.db.query(
-            "SELECT stage FROM meeting_closings WHERE id = %s", (closing["id"],)
+            "SELECT stage FROM meeting_closings WHERE id = %s", (_closing_id(closing),)
         )
         assert current
         return current[0][0]
@@ -99,7 +110,7 @@ class ClosingWorld:
         result = self.stub.rpc(
             "mark_closing_stage",
             {
-                "p_closing_id": closing["id"],
+                "p_closing_id": _closing_id(closing),
                 "p_expected_stage": expected,
                 "p_next_stage": next_stage,
                 "p_now": self.clock.now(),
@@ -111,7 +122,7 @@ class ClosingWorld:
         result = self.stub.rpc(
             "fail_meeting_closing",
             {
-                "p_closing_id": closing["id"],
+                "p_closing_id": _closing_id(closing),
                 "p_expected_stage": expected,
                 "p_error_code": code,
                 "p_error_message": message,
@@ -123,21 +134,21 @@ class ClosingWorld:
     def retry(self, closing: dict) -> bool:
         result = self.stub.rpc(
             "retry_meeting_closing",
-            {"p_closing_id": closing["id"], "p_now": self.clock.now()},
+            {"p_closing_id": _closing_id(closing), "p_now": self.clock.now()},
         ).execute()
         return bool(result.data)
 
     def reject(self, closing: dict) -> bool:
         result = self.stub.rpc(
             "reject_meeting_closing",
-            {"p_closing_id": closing["id"], "p_now": self.clock.now()},
+            {"p_closing_id": _closing_id(closing), "p_now": self.clock.now()},
         ).execute()
         return bool(result.data)
 
     def abort(self, closing: dict) -> bool:
         result = self.stub.rpc(
             "abort_meeting_closing",
-            {"p_closing_id": closing["id"], "p_now": self.clock.now()},
+            {"p_closing_id": _closing_id(closing), "p_now": self.clock.now()},
         ).execute()
         return bool(result.data)
 
@@ -151,14 +162,14 @@ class ClosingWorld:
                 SET summary_text = %s, updated_at = %s
                 WHERE id = %s AND stage = 'summarizing'
                 """,
-                (text, self.clock.now(), closing["id"]),
+                (text, self.clock.now(), _closing_id(closing)),
             )
         return True
 
     def complete(self, closing: dict) -> dict:
         result = self.stub.rpc(
             "complete_meeting_closing",
-            {"p_closing_id": closing["id"], "p_now": self.clock.now()},
+            {"p_closing_id": _closing_id(closing), "p_now": self.clock.now()},
         ).execute()
         return result.data
 
@@ -166,7 +177,7 @@ class ClosingWorld:
     def start_voting(self, closing: dict) -> dict:
         result = self.stub.rpc(
             "start_closing_voting",
-            {"p_closing_id": closing["id"], "p_now": self.clock.now()},
+            {"p_closing_id": _closing_id(closing), "p_now": self.clock.now()},
         ).execute()
         return result.data
 
@@ -184,7 +195,7 @@ class ClosingWorld:
         result = self.stub.rpc(
             "begin_closing_vote_attempt",
             {
-                "p_closing_id": closing["id"],
+                "p_closing_id": _closing_id(closing),
                 "p_participant_id": participant_id,
                 "p_attempt_id": attempt_id,
                 "p_lease_seconds": lease_seconds,
@@ -218,7 +229,7 @@ class ClosingWorld:
         result = self.stub.rpc(
             "finish_closing_vote_attempt",
             {
-                "p_closing_id": closing["id"],
+                "p_closing_id": _closing_id(closing),
                 "p_participant_id": participant_id,
                 "p_attempt_id": attempt_id,
                 "p_provider": provider,
@@ -252,7 +263,7 @@ class ClosingWorld:
         result = self.stub.rpc(
             "reserve_closing_summary_attempt",
             {
-                "p_closing_id": closing["id"],
+                "p_closing_id": _closing_id(closing),
                 "p_attempt_id": attempt_id,
                 "p_lease_seconds": lease_seconds,
                 "p_now": self.clock.now(),
@@ -278,7 +289,7 @@ class ClosingWorld:
         result = self.stub.rpc(
             "save_closing_summary_checkpoint",
             {
-                "p_closing_id": closing["id"],
+                "p_closing_id": _closing_id(closing),
                 "p_attempt_id": attempt_id,
                 "p_summary_text": text,
                 "p_provider": provider,
@@ -294,7 +305,8 @@ class ClosingWorld:
         ).execute()
         return result.data
 
-    def vote_row(self, closing: dict, participant_id: str) -> dict:
+    def vote_row(self, closing: dict | str, participant_id: str) -> dict:
+        closing_id = closing if isinstance(closing, str) else _closing_id(closing)
         return self.db.query(
             """
             SELECT status, attempt_id, attempt_number, attempt_lease_expires_at,
@@ -303,7 +315,7 @@ class ClosingWorld:
             FROM closing_votes
             WHERE closing_id = %s AND participant_id = %s
             """,
-            (closing["id"], participant_id),
+            (closing_id, participant_id),
         )[0]
 
     def ledger_rows(self, meeting_id: str) -> list[tuple]:
