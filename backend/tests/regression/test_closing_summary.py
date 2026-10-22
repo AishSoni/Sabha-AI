@@ -199,4 +199,6 @@ def test_summary_ledger_purpose_follows_the_closing_mode(
     )
 
     rows = world.ledger_rows(meeting_id)
-    assert rows[-1][1] == purpose
+    summary_rows = [row for row in rows if row[1] in {"summary", "forced_summary"}]
+    assert len(summary_rows) == 1
+    assert summary_rows[0][1] == purpose
