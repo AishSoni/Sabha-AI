@@ -8,11 +8,13 @@ pinned without a hosted Supabase instance.
 from __future__ import annotations
 
 import uuid
+from datetime import datetime, timedelta, timezone
 
 import pytest
 
 from app.modules.knowledge.application.ports import NewUpload
 from app.modules.knowledge.domain.models import (
+    ChunkIdentity,
     IngestionState,
     KnowledgeOwner,
     RevisionState,
@@ -96,3 +98,70 @@ def test_missing_ingestion_reads_as_none(disposable_db):
     repository = SupabaseKnowledgeRepository(lambda: stub_for(disposable_db))
 
     assert repository.get_ingestion(uuid.uuid4()) is None
+
+
+def test_claim_publish_and_failure_roundtrip(disposable_db):
+    owner = KnowledgeOwner(kind="meeting", id=_seed_meeting(disposable_db))
+    repository = SupabaseKnowledgeRepository(lambda: stub_for(disposable_db))
+    upload = _upload(owner)
+    repository.admit_upload(upload)
+    now = datetime(2026, 10, 23, 12, 0, tzinfo=timezone.utc)
+
+    assert repository.recoverable_ingestions(now=now) == [upload.ingestion_id]
+
+    claim = repository.claim_ingestion(
+        upload.ingestion_id, lease_owner="worker-a", now=now, lease_seconds=30
+    )
+    assert claim.outcome == "claimed"
+    assert claim.document_id == upload.document_id
+    assert claim.revision_id == upload.revision_id
+    assert claim.file_name == "notes.txt"
+    assert claim.source_key == upload.source_key
+    assert claim.collection_name == owner.collection_name
+    assert claim.attempts == 1
+
+    busy = repository.claim_ingestion(
+        upload.ingestion_id,
+        lease_owner="worker-b",
+        now=now + timedelta(seconds=5),
+        lease_seconds=30,
+    )
+    assert busy.outcome == "busy"
+
+    assert repository.start_indexing(upload.ingestion_id, upload.revision_id)
+    chunk = ChunkIdentity(
+        id=uuid.uuid4(), chunk_index=0, content_sha256="b" * 64, char_count=5
+    )
+    published = repository.publish_revision(
+        upload.ingestion_id,
+        upload.revision_id,
+        chunk_count=1,
+        chunks=[chunk],
+    )
+    assert published.outcome == "ready"
+    record = repository.get_ingestion(upload.ingestion_id)
+    assert record is not None
+    assert record.state is IngestionState.READY
+    assert record.revision_state is RevisionState.READY
+    assert record.document_status == "ready"
+
+
+def test_failure_is_recorded_without_publishing(disposable_db):
+    owner = KnowledgeOwner(kind="meeting", id=_seed_meeting(disposable_db))
+    repository = SupabaseKnowledgeRepository(lambda: stub_for(disposable_db))
+    upload = _upload(owner)
+    repository.admit_upload(upload)
+    now = datetime(2026, 10, 23, 12, 0, tzinfo=timezone.utc)
+    repository.claim_ingestion(
+        upload.ingestion_id, lease_owner="worker-a", now=now, lease_seconds=30
+    )
+
+    assert repository.fail_ingestion(
+        upload.ingestion_id, upload.revision_id, "parser exploded"
+    )
+
+    record = repository.get_ingestion(upload.ingestion_id)
+    assert record is not None
+    assert record.state is IngestionState.FAILED
+    assert record.revision_state is RevisionState.FAILED
+    assert record.error_message == "parser exploded"

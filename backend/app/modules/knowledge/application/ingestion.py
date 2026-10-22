@@ -9,16 +9,21 @@ authority for publication; a pending receipt is not a success signal.
 from __future__ import annotations
 
 import asyncio
+import logging
 from dataclasses import dataclass
+from datetime import datetime, timezone
 from pathlib import PurePosixPath
 from typing import BinaryIO, Literal, Union
 from uuid import UUID, uuid4
 
 from app.modules.knowledge.application.ports import (
+    DocumentParser,
     KnowledgePersistence,
     NewUpload,
+    SourceNotFound,
     SourceStore,
     SourceStoreError,
+    VectorProjection,
 )
 from app.modules.knowledge.domain.errors import UploadRejected
 from app.modules.knowledge.domain.models import (
@@ -28,11 +33,18 @@ from app.modules.knowledge.domain.models import (
 )
 from app.modules.knowledge.domain.services import (
     MAX_SOURCE_BYTES,
+    chunk_identities,
     ingestion_id_for,
     revision_id_for,
     source_key_for,
     staging_key_for,
     validate_upload,
+)
+
+logger = logging.getLogger(__name__)
+
+MISSING_SOURCE_MESSAGE = (
+    "original source bytes are unavailable; re-upload the file"
 )
 
 
@@ -162,3 +174,153 @@ class UploadDocument:
             document_id=admission.document_id,
             operation_id=admission.ingestion_id,
         )
+
+
+class IngestionWorker:
+    """Restartable, idempotent ingestion over a leased durable job.
+
+    Publication is a conditional SQL commit. A vector write that loses the
+    race with a revocation is removed again; a late worker can never make a
+    revoked revision eligible.
+    """
+
+    def __init__(
+        self,
+        *,
+        source_store: SourceStore,
+        persistence: KnowledgePersistence,
+        parser: DocumentParser,
+        vectors: VectorProjection,
+        worker_id: str | None = None,
+        lease_seconds: int = 120,
+        parse_slots: int = 2,
+    ) -> None:
+        self._source_store = source_store
+        self._persistence = persistence
+        self._parser = parser
+        self._vectors = vectors
+        self._worker_id = worker_id or uuid4().hex
+        self._lease_seconds = lease_seconds
+        self._parse_slots = asyncio.Semaphore(max(1, parse_slots))
+
+    async def recover(self, *, limit: int = 20) -> int:
+        ids = await asyncio.to_thread(
+            self._persistence.recoverable_ingestions,
+            now=datetime.now(timezone.utc),
+            limit=limit,
+        )
+        processed = 0
+        for ingestion_id in ids:
+            try:
+                await self.process(ingestion_id)
+                processed += 1
+            except Exception:  # pragma: no cover - defensive sweep
+                logger.exception(
+                    "knowledge recovery failed for ingestion %s", ingestion_id
+                )
+        return processed
+
+    async def process(self, ingestion_id: UUID) -> None:
+        claim = await asyncio.to_thread(
+            self._persistence.claim_ingestion,
+            ingestion_id,
+            lease_owner=self._worker_id,
+            now=datetime.now(timezone.utc),
+            lease_seconds=self._lease_seconds,
+        )
+        if claim.outcome != "claimed":
+            return
+        assert claim.document_id and claim.revision_id
+        assert claim.source_key and claim.file_name and claim.file_type
+        assert claim.collection_name
+
+        try:
+            data = await asyncio.to_thread(
+                self._source_store.download,
+                claim.source_key,
+                max_bytes=MAX_SOURCE_BYTES,
+            )
+        except SourceNotFound:
+            await self._fail(ingestion_id, claim.revision_id, MISSING_SOURCE_MESSAGE)
+            return
+        except Exception as exc:
+            await self._fail(
+                ingestion_id,
+                claim.revision_id,
+                f"original source could not be read: {type(exc).__name__}",
+            )
+            return
+
+        try:
+            async with self._parse_slots:
+                parsed = await asyncio.to_thread(
+                    self._parser.parse,
+                    data,
+                    file_name=claim.file_name,
+                    file_type=claim.file_type,
+                )
+            identities = chunk_identities(
+                claim.revision_id, [chunk.text for chunk in parsed]
+            )
+            started = await asyncio.to_thread(
+                self._persistence.start_indexing,
+                ingestion_id,
+                claim.revision_id,
+            )
+            if not started:
+                return
+            await self._vectors.ensure_collection(claim.collection_name)
+            await self._vectors.upsert_revision(
+                claim.collection_name,
+                document_id=claim.document_id,
+                revision_id=claim.revision_id,
+                file_name=claim.file_name,
+                chunks=[
+                    (identity, chunk.text)
+                    for identity, chunk in zip(identities, parsed)
+                ],
+            )
+            published = await asyncio.to_thread(
+                self._persistence.publish_revision,
+                ingestion_id,
+                claim.revision_id,
+                chunk_count=len(identities),
+                chunks=identities,
+            )
+            if published.outcome != "ready":
+                await self._discard_vectors(
+                    claim.collection_name, claim.revision_id
+                )
+        except Exception as exc:
+            await self._discard_vectors(claim.collection_name, claim.revision_id)
+            await self._fail(
+                ingestion_id,
+                claim.revision_id,
+                _bounded_error(exc),
+            )
+
+    async def _discard_vectors(self, collection: str, revision_id: UUID) -> None:
+        try:
+            await self._vectors.delete_revision(collection, revision_id)
+        except Exception:  # pragma: no cover - cleanup is retried by intent
+            logger.warning(
+                "knowledge vector cleanup failed for revision %s", revision_id
+            )
+
+    async def _fail(self, ingestion_id: UUID, revision_id: UUID, message: str) -> None:
+        try:
+            await asyncio.to_thread(
+                self._persistence.fail_ingestion,
+                ingestion_id,
+                revision_id,
+                message,
+            )
+        except Exception:  # pragma: no cover - retried by the lease
+            logger.warning(
+                "knowledge failure record failed for ingestion %s", ingestion_id
+            )
+
+
+def _bounded_error(exc: Exception) -> str:
+    message = str(exc).strip() or type(exc).__name__
+    return message[:500]

@@ -8,6 +8,7 @@ decides eligibility from a vector payload.
 
 from __future__ import annotations
 
+from datetime import datetime
 from typing import Any, Callable
 from uuid import UUID
 
@@ -15,15 +16,27 @@ import httpx
 from postgrest.exceptions import APIError
 
 from app.modules.knowledge.application.ports import (
+    IngestionClaim,
     IngestionRecord,
     NewUpload,
+    PublishResult,
 )
 from app.modules.knowledge.domain.errors import KnowledgeUnavailable
 from app.modules.knowledge.domain.models import (
+    ChunkIdentity,
     IngestionState,
     RevisionState,
     UploadAdmission,
 )
+
+
+def _as_datetime(value: Any) -> datetime | None:
+    if value is None or isinstance(value, datetime):
+        return value
+    try:
+        return datetime.fromisoformat(str(value).replace("Z", "+00:00"))
+    except ValueError:
+        return None
 
 
 def _row(result: Any) -> dict[str, Any] | None:
@@ -158,3 +171,144 @@ class SupabaseKnowledgeRepository:
             raise KnowledgeUnavailable(
                 "knowledge ingestion returned an unexpected row shape"
             ) from exc
+
+    def _rpc_value(self, name: str, params: dict[str, Any]) -> Any:
+        try:
+            return self._client().rpc(name, params).execute().data
+        except (APIError, httpx.HTTPError) as exc:
+            raise KnowledgeUnavailable(
+                f"knowledge persistence failed during {name}"
+            ) from exc
+
+    def claim_ingestion(
+        self,
+        ingestion_id: UUID,
+        *,
+        lease_owner: str,
+        now: datetime,
+        lease_seconds: int,
+    ) -> IngestionClaim:
+        row = self._rpc(
+            "knowledge_claim_ingestion",
+            {
+                "p_ingestion_id": str(ingestion_id),
+                "p_lease_owner": lease_owner,
+                "p_now": now.isoformat(),
+                "p_lease_seconds": lease_seconds,
+            },
+        )
+        outcome = row.get("outcome")
+        if outcome not in ("claimed", "busy", "ready", "revoked", "not_found"):
+            raise KnowledgeUnavailable(
+                f"knowledge claim returned unexpected outcome {outcome!r}"
+            )
+        if outcome != "claimed":
+            return IngestionClaim(outcome=outcome)
+        try:
+            return IngestionClaim(
+                outcome="claimed",
+                document_id=UUID(str(row["document_id"])),
+                revision_id=UUID(str(row["revision_id"])),
+                file_name=str(row["file_name"]),
+                file_type=str(row["file_type"]),
+                source_key=str(row["source_key"]),
+                source_sha256=str(row["source_sha256"]),
+                source_size_bytes=int(row["source_size_bytes"]),
+                collection_name=str(row["collection_name"]),
+                embedding_provider=str(row["embedding_provider"]),
+                embedding_model=str(row["embedding_model"]),
+                embedding_dimension=int(row["embedding_dimension"]),
+                attempts=int(row.get("attempts") or 0),
+            )
+        except (KeyError, ValueError) as exc:
+            raise KnowledgeUnavailable(
+                "knowledge claim returned an unexpected row shape"
+            ) from exc
+
+    def start_indexing(self, ingestion_id: UUID, revision_id: UUID) -> bool:
+        value = self._rpc_value(
+            "knowledge_start_indexing",
+            {
+                "p_ingestion_id": str(ingestion_id),
+                "p_revision_id": str(revision_id),
+            },
+        )
+        if not isinstance(value, bool):
+            raise KnowledgeUnavailable(
+                "knowledge start_indexing returned an unexpected shape"
+            )
+        return value
+
+    def publish_revision(
+        self,
+        ingestion_id: UUID,
+        revision_id: UUID,
+        *,
+        chunk_count: int,
+        chunks: list[ChunkIdentity],
+    ) -> PublishResult:
+        row = self._rpc(
+            "knowledge_publish_revision",
+            {
+                "p_ingestion_id": str(ingestion_id),
+                "p_revision_id": str(revision_id),
+                "p_chunk_count": chunk_count,
+                "p_chunks": [
+                    {
+                        "id": str(chunk.id),
+                        "chunk_index": chunk.chunk_index,
+                        "content_sha256": chunk.content_sha256,
+                        "char_count": chunk.char_count,
+                    }
+                    for chunk in chunks
+                ],
+            },
+        )
+        outcome = row.get("outcome")
+        if outcome not in ("ready", "revoked", "not_found"):
+            raise KnowledgeUnavailable(
+                f"knowledge publication returned unexpected outcome {outcome!r}"
+            )
+        return PublishResult(outcome=outcome)
+
+    def fail_ingestion(
+        self, ingestion_id: UUID, revision_id: UUID, error: str
+    ) -> bool:
+        value = self._rpc_value(
+            "knowledge_fail_ingestion",
+            {
+                "p_ingestion_id": str(ingestion_id),
+                "p_revision_id": str(revision_id),
+                "p_error": error,
+            },
+        )
+        if not isinstance(value, bool):
+            raise KnowledgeUnavailable(
+                "knowledge failure record returned an unexpected shape"
+            )
+        return value
+
+    def recoverable_ingestions(
+        self, *, now: datetime, limit: int = 20
+    ) -> list[UUID]:
+        try:
+            result = (
+                self._client()
+                .table("document_ingestions")
+                .select("id,state,lease_expires_at")
+                .in_("state", ["pending", "processing"])
+                .order("id")
+                .limit(limit)
+                .execute()
+            )
+        except (APIError, httpx.HTTPError) as exc:
+            raise KnowledgeUnavailable(
+                "knowledge persistence failed while listing recoverable ingestions"
+            ) from exc
+        rows = getattr(result, "data", None) or []
+        recoverable: list[UUID] = []
+        for row in rows:
+            expires = _as_datetime(row.get("lease_expires_at"))
+            if row.get("state") == "pending" or expires is None or expires <= now:
+                recoverable.append(UUID(str(row["id"])))
+        return recoverable

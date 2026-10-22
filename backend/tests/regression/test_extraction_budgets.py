@@ -14,8 +14,8 @@ memory. Locked behavior:
 
 import pytest
 
-from app.services import document_processor as dp_module
-from app.services.document_processor import DocumentProcessor
+from app.modules.knowledge.infrastructure import parsers as dp_module
+from app.modules.knowledge.infrastructure.parsers import DocumentProcessor
 from tests.doubles.xlsx_helper import build_xlsx  # helper to create workbooks
 
 

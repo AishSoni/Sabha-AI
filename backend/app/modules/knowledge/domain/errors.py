@@ -42,3 +42,9 @@ class KnowledgeUnavailable(KnowledgeError):
     """The durable knowledge store cannot be reached or returned garbage."""
 
     code = "knowledge_unavailable"
+
+
+class ProjectionUnavailable(KnowledgeError):
+    """The derived vector projection cannot be read or written."""
+
+    code = "projection_unavailable"

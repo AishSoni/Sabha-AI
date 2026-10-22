@@ -7,11 +7,12 @@ here so callers never depend on an SDK or HTTP exception.
 from __future__ import annotations
 
 from dataclasses import dataclass
-from typing import BinaryIO, Protocol
+from datetime import datetime
+from typing import BinaryIO, Literal, Protocol
 from uuid import UUID
 
-from app.modules.knowledge.domain.errors import KnowledgeUnavailable
 from app.modules.knowledge.domain.models import (
+    ChunkIdentity,
     IngestionState,
     KnowledgeOwner,
     RevisionState,
@@ -135,3 +136,116 @@ class KnowledgePersistence(Protocol):
 
     def get_ingestion(self, ingestion_id: UUID) -> IngestionRecord | None:
         """Read the durable receipt state, or None when it never existed."""
+
+    def claim_ingestion(
+        self,
+        ingestion_id: UUID,
+        *,
+        lease_owner: str,
+        now: datetime,
+        lease_seconds: int,
+    ) -> "IngestionClaim":
+        """Lease one ingestion for a bounded worker attempt."""
+
+    def start_indexing(self, ingestion_id: UUID, revision_id: UUID) -> bool:
+        """Enter indexing unless the revision was revoked meanwhile."""
+
+    def publish_revision(
+        self,
+        ingestion_id: UUID,
+        revision_id: UUID,
+        *,
+        chunk_count: int,
+        chunks: list[ChunkIdentity],
+    ) -> "PublishResult":
+        """Commit chunk metadata and readiness in one conditional transaction."""
+
+    def fail_ingestion(
+        self, ingestion_id: UUID, revision_id: UUID, error: str
+    ) -> bool:
+        """Record an honest failure without overriding a revocation."""
+
+    def recoverable_ingestions(
+        self, *, now: datetime, limit: int = 20
+    ) -> list[UUID]:
+        """Pending or expired-lease ingestion ids eligible for a retry."""
+
+
+@dataclass(frozen=True)
+class IngestionClaim:
+    outcome: Literal["claimed", "busy", "ready", "revoked", "not_found"]
+    document_id: UUID | None = None
+    revision_id: UUID | None = None
+    file_name: str | None = None
+    file_type: str | None = None
+    source_key: str | None = None
+    source_sha256: str | None = None
+    source_size_bytes: int | None = None
+    collection_name: str | None = None
+    embedding_provider: str | None = None
+    embedding_model: str | None = None
+    embedding_dimension: int | None = None
+    attempts: int = 0
+
+
+@dataclass(frozen=True)
+class PublishResult:
+    outcome: Literal["ready", "revoked", "not_found"]
+
+
+@dataclass(frozen=True)
+class ParsedChunk:
+    """Extracted text before deterministic chunk identity is assigned."""
+
+    text: str
+    chunk_index: int
+
+
+class DocumentParser(Protocol):
+    """Extract ordered text from original bytes, off the event loop."""
+
+    def parse(
+        self, data: bytes, *, file_name: str, file_type: str
+    ) -> list[ParsedChunk]:
+        """Parse supported formats or raise a typed knowledge error."""
+
+
+class VectorProjection(Protocol):
+    """Derived Qdrant projection; SQL always decides eligibility."""
+
+    async def ensure_collection(self, collection_name: str) -> None: ...
+
+    async def upsert_revision(
+        self,
+        collection_name: str,
+        *,
+        document_id: UUID,
+        revision_id: UUID,
+        file_name: str,
+        chunks: list[tuple[ChunkIdentity, str]],
+    ) -> int: ...
+
+    async def delete_revision(
+        self, collection_name: str, revision_id: UUID
+    ) -> int: ...
+
+    async def search(
+        self,
+        collection_name: str,
+        *,
+        revision_ids: list[UUID],
+        query: str,
+        limit: int,
+    ) -> list["VectorHit"]: ...
+
+
+@dataclass(frozen=True)
+class VectorHit:
+    text: str
+    score: float
+    document_id: UUID
+    revision_id: UUID
+    chunk_id: UUID
+    chunk_index: int
+    content_sha256: str
+    file_name: str
