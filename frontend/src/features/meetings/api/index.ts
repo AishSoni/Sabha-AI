@@ -14,4 +14,32 @@ export {
     useDeleteMeeting,
     useUnarchiveMeeting,
 } from './mutations';
+export { closingKeys } from './closing-keys';
+export {
+    closingClient,
+    type ClosingSummarySettings,
+    type RequestClosingInput,
+} from './closing-client';
+export {
+    isPollingClosingStage,
+    isSettledClosingStage,
+    type ClosingMode,
+    type ClosingReceipt,
+    type ClosingStage,
+    type ClosingView,
+    type ClosingVote,
+} from './closing-decoders';
+export { useClosing } from './closing-queries';
+export {
+    createClosingRequestKey,
+    useAbortClosing,
+    useRequestClosing,
+    useRetryClosing,
+    type RequestClosingVariables,
+} from './closing-mutations';
+export {
+    useClosingObservation,
+    type UseClosingObservationOptions,
+    type UseClosingObservationResult,
+} from './use-closing-observation';
 export type { AIParticipant, Meeting, MeetingStatus, MeetingWithParticipants, Message } from './decoders';
