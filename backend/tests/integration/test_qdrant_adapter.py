@@ -9,7 +9,7 @@ exercised end-to-end, not merely mocked.
 import pytest
 from qdrant_client import AsyncQdrantClient
 
-from app.services.embedding import EmbeddingProvider
+from app.platform.providers.embeddings import EmbeddingProvider
 from app.services.document_processor import DocumentChunk
 from app.services.vector_store import VectorStoreManager
 

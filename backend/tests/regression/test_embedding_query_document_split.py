@@ -1,6 +1,6 @@
 """Regression: Cohere embeddings must differentiate query vs document modes.
 
-Evidence: app/services/embedding.py CohereEmbedding.embed_batch hardcodes
+Evidence: app/platform/providers/embeddings.py CohereEmbedding.embed_batch hardcodes
 `input_type='search_document'` for BOTH indexing and retrieval calls (embed_text
 delegates to embed_batch), so queries are embedded in document mode degrading
 retrieval quality. Indexing must use search_document; searching must use
@@ -12,7 +12,7 @@ import json
 import httpx
 import pytest
 
-from app.services.embedding import CohereEmbedding
+from app.platform.providers.embeddings import CohereEmbedding
 
 
 def _recording_transport(records):
@@ -66,7 +66,7 @@ async def test_payload_contract_stays_intact():
 def test_factory_returns_cohere_for_configured_settings(monkeypatch):
     """get_embedding_provider('cohere') must remain reachable."""
     from app.core.config import settings
-    from app.services import embedding as embedding_module
+    from app.platform.providers import embeddings as embedding_module
 
     monkeypatch.setattr(settings, "cohere_api_key", "fixture-key")
     provider = embedding_module.get_embedding_provider("cohere", "embed-english-v3.0")
