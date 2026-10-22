@@ -9,6 +9,7 @@ from fastapi import HTTPException, Request
 
 from app.services.turn_queue import TurnQueueService
 
+from app.modules.meetings.application.closing import ClosingService
 from app.modules.persona_catalog.application.use_cases import (
     ActivatePromptVersion,
     CreatePromptVersion,
@@ -26,6 +27,14 @@ def get_turn_queue(request: Request) -> TurnQueueService:
     service = getattr(request.app.state.container, "turn_queue", None)
     if service is None:
         raise HTTPException(status_code=503, detail="Turn queue is not configured")
+    return service
+
+
+def get_closing(request: Request) -> ClosingService:
+    """The composition root's coordinated closing service (spec-08)."""
+    service = getattr(request.app.state.container, "closing", None)
+    if service is None:
+        raise HTTPException(status_code=503, detail="Closing is not configured")
     return service
 
 

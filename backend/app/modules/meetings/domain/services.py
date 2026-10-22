@@ -48,6 +48,10 @@ class ClosingStage(str, Enum):
     def is_recoverable(self) -> bool:
         return self is ClosingStage.FAILED
 
+    @property
+    def is_abortable(self) -> bool:
+        return self in ABORTABLE_STAGES
+
 
 TERMINAL_STAGES = frozenset(
     {
@@ -68,6 +72,11 @@ OPEN_STAGES = frozenset(
 
 #: Stages a rejected/aborted operation may still be retried from.
 RECOVERABLE_STAGES = frozenset({ClosingStage.FAILED})
+
+#: Stages an operator may explicitly abandon back to active admission.
+ABORTABLE_STAGES = frozenset(
+    {ClosingStage.DRAINING, ClosingStage.VOTING, ClosingStage.FAILED}
+)
 
 #: Meeting lifecycle values that can start a closing operation.
 COORDINATED_STATUSES = frozenset({"active", "voting"})
