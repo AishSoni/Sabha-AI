@@ -62,6 +62,7 @@ SCHEMA_FILES = [
     BACKEND_ROOT / "migrations" / "020_meeting_closing_schema.sql",
     BACKEND_ROOT / "migrations" / "021_closing_lifecycle_rpcs.sql",
     BACKEND_ROOT / "migrations" / "022_closing_vote_checkpoints.sql",
+    BACKEND_ROOT / "migrations" / "023_closing_summary_checkpoints.sql",
 ]
 
 # Schema as it existed before the lifecycle-constraint fix. Upgrade-path tests

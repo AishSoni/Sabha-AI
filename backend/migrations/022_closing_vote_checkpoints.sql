@@ -443,9 +443,6 @@ BEGIN
         summary_attempt_id = CASE
             WHEN failed_from_stage = 'summarizing' AND summary_text IS NULL
             THEN NULL ELSE summary_attempt_id END,
-        summary_attempt_number = CASE
-            WHEN failed_from_stage = 'summarizing' AND summary_text IS NULL
-            THEN NULL ELSE summary_attempt_number END,
         summary_attempt_lease_expires_at = CASE
             WHEN failed_from_stage = 'summarizing' AND summary_text IS NULL
             THEN NULL ELSE summary_attempt_lease_expires_at END,

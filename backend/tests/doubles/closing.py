@@ -241,6 +241,59 @@ class ClosingWorld:
     def votes(self, meeting_id: str) -> list[dict]:
         return self.read(meeting_id)["votes"]
 
+    # -- summary checkpoints ------------------------------------------------
+    def reserve_summary(
+        self,
+        closing: dict,
+        *,
+        attempt_id: str,
+        lease_seconds: int = 30,
+    ) -> dict:
+        result = self.stub.rpc(
+            "reserve_closing_summary_attempt",
+            {
+                "p_closing_id": closing["id"],
+                "p_attempt_id": attempt_id,
+                "p_lease_seconds": lease_seconds,
+                "p_now": self.clock.now(),
+            },
+        ).execute()
+        return result.data
+
+    def save_summary(
+        self,
+        closing: dict,
+        *,
+        attempt_id: str,
+        text: str,
+        purpose: str = "summary",
+        usage: dict | None = None,
+        usage_kind: str | None = "reported",
+        price_kind: str | None = "metered",
+        estimated_cost: float = 0.02,
+        reported_cost: float | None = 0.025,
+        provider: str = "scripted",
+        model: str = "scripted",
+    ) -> dict:
+        result = self.stub.rpc(
+            "save_closing_summary_checkpoint",
+            {
+                "p_closing_id": closing["id"],
+                "p_attempt_id": attempt_id,
+                "p_summary_text": text,
+                "p_provider": provider,
+                "p_model": model,
+                "p_purpose": purpose,
+                "p_usage": usage,
+                "p_usage_kind": usage_kind,
+                "p_price_kind": price_kind,
+                "p_estimated_cost": estimated_cost,
+                "p_reported_cost": reported_cost,
+                "p_now": self.clock.now(),
+            },
+        ).execute()
+        return result.data
+
     def vote_row(self, closing: dict, participant_id: str) -> dict:
         return self.db.query(
             """
