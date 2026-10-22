@@ -119,7 +119,7 @@
           "meetings"
         ],
         "summary": "Delete Meeting",
-        "description": "Permanently delete a meeting and all its data \u2014 including the shared\nvector collection (recorded first as a pending cleanup so a Qdrant\noutage cannot block the SQL delete; reconciliation finishes the work).",
+        "description": "Permanently delete a meeting and all its data — including the shared\nvector collection (recorded first as a pending cleanup so a Qdrant\noutage cannot block the SQL delete; reconciliation finishes the work).",
         "operationId": "delete_meeting_api_meetings__meeting_id__delete",
         "parameters": [
           {
@@ -160,7 +160,7 @@
           "meetings"
         ],
         "summary": "Add User Message",
-        "description": "Add a user message to the meeting.",
+        "description": "Add a user message to the meeting through the locked write guard.",
         "operationId": "add_user_message_api_meetings__meeting_id__message_post",
         "parameters": [
           {
@@ -483,59 +483,6 @@
             "content": {
               "application/json": {
                 "schema": {}
-              }
-            }
-          },
-          "422": {
-            "description": "Validation Error",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/HTTPValidationError"
-                }
-              }
-            }
-          }
-        }
-      }
-    },
-    "/api/meetings/{meeting_id}/end": {
-      "post": {
-        "tags": [
-          "meetings"
-        ],
-        "summary": "End Meeting",
-        "description": "End a meeting, optionally collecting votes from AI participants.\n\nDelegates to the recoverable closing flow: entry serialization, vote\nphase, summary generation, and an atomic commit (ending message + status\nflip in one transaction). Retrying a failed ending resumes at the summary\nphase instead of re-collecting votes.",
-        "operationId": "end_meeting_api_meetings__meeting_id__end_post",
-        "parameters": [
-          {
-            "name": "meeting_id",
-            "in": "path",
-            "required": true,
-            "schema": {
-              "type": "string",
-              "title": "Meeting Id"
-            }
-          }
-        ],
-        "requestBody": {
-          "required": true,
-          "content": {
-            "application/json": {
-              "schema": {
-                "$ref": "#/components/schemas/EndMeetingRequest"
-              }
-            }
-          }
-        },
-        "responses": {
-          "200": {
-            "description": "Successful Response",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/EndMeetingResponse"
-                }
               }
             }
           },
@@ -1937,6 +1884,182 @@
         }
       }
     },
+    "/api/meetings/{meeting_id}/closing": {
+      "post": {
+        "tags": [
+          "closing"
+        ],
+        "summary": "Request Closing",
+        "operationId": "request_closing_api_meetings__meeting_id__closing_post",
+        "parameters": [
+          {
+            "name": "meeting_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Meeting Id"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ClosingRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "202": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ClosingReceipt"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      },
+      "get": {
+        "tags": [
+          "closing"
+        ],
+        "summary": "Read Closing",
+        "operationId": "read_closing_api_meetings__meeting_id__closing_get",
+        "parameters": [
+          {
+            "name": "meeting_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Meeting Id"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ClosingView"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/meetings/{meeting_id}/closing/retry": {
+      "post": {
+        "tags": [
+          "closing"
+        ],
+        "summary": "Retry Closing",
+        "operationId": "retry_closing_api_meetings__meeting_id__closing_retry_post",
+        "parameters": [
+          {
+            "name": "meeting_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Meeting Id"
+            }
+          }
+        ],
+        "responses": {
+          "202": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ClosingView"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/meetings/{meeting_id}/closing/abort": {
+      "post": {
+        "tags": [
+          "closing"
+        ],
+        "summary": "Abort Closing",
+        "operationId": "abort_closing_api_meetings__meeting_id__closing_abort_post",
+        "parameters": [
+          {
+            "name": "meeting_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Meeting Id"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ClosingView"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/": {
       "get": {
         "summary": "Root",
@@ -2198,6 +2321,420 @@
         ],
         "title": "Citation",
         "description": "A citation reference in a message."
+      },
+      "ClosingErrorView": {
+        "properties": {
+          "code": {
+            "type": "string",
+            "title": "Code"
+          },
+          "message": {
+            "type": "string",
+            "title": "Message"
+          }
+        },
+        "type": "object",
+        "required": [
+          "code",
+          "message"
+        ],
+        "title": "ClosingErrorView"
+      },
+      "ClosingReceipt": {
+        "properties": {
+          "meeting_id": {
+            "type": "string",
+            "title": "Meeting Id"
+          },
+          "closing_id": {
+            "type": "string",
+            "title": "Closing Id"
+          },
+          "stage": {
+            "type": "string",
+            "title": "Stage"
+          },
+          "meeting_status": {
+            "type": "string",
+            "enum": [
+              "active",
+              "voting",
+              "ended",
+              "archived"
+            ],
+            "title": "Meeting Status"
+          }
+        },
+        "type": "object",
+        "required": [
+          "meeting_id",
+          "closing_id",
+          "stage",
+          "meeting_status"
+        ],
+        "title": "ClosingReceipt",
+        "description": "Durable acknowledgement that a close operation exists."
+      },
+      "ClosingRequest": {
+        "properties": {
+          "mode": {
+            "type": "string",
+            "enum": [
+              "vote",
+              "force"
+            ],
+            "title": "Mode"
+          },
+          "request_key": {
+            "type": "string",
+            "maxLength": 200,
+            "minLength": 1,
+            "title": "Request Key"
+          },
+          "summary_settings": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/SummarySettingsRequest"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          }
+        },
+        "type": "object",
+        "required": [
+          "mode",
+          "request_key"
+        ],
+        "title": "ClosingRequest",
+        "description": "Ask to end a meeting through the coordinated closing workflow."
+      },
+      "ClosingView": {
+        "properties": {
+          "meeting_id": {
+            "type": "string",
+            "title": "Meeting Id"
+          },
+          "meeting_status": {
+            "type": "string",
+            "enum": [
+              "active",
+              "voting",
+              "ended",
+              "archived"
+            ],
+            "title": "Meeting Status"
+          },
+          "archived": {
+            "type": "boolean",
+            "title": "Archived"
+          },
+          "closing_id": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Closing Id"
+          },
+          "request_key": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Request Key"
+          },
+          "mode": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Mode"
+          },
+          "stage": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Stage"
+          },
+          "failed_from_stage": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Failed From Stage"
+          },
+          "votes": {
+            "items": {
+              "$ref": "#/components/schemas/ClosingVoteView"
+            },
+            "type": "array",
+            "title": "Votes"
+          },
+          "summary": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Summary"
+          },
+          "summary_message_id": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Summary Message Id"
+          },
+          "error": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/ClosingErrorView"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "retryable": {
+            "type": "boolean",
+            "title": "Retryable",
+            "default": false
+          },
+          "abortable": {
+            "type": "boolean",
+            "title": "Abortable",
+            "default": false
+          },
+          "created_at": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "date-time"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Created At"
+          },
+          "updated_at": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "date-time"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Updated At"
+          },
+          "completed_at": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "date-time"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Completed At"
+          }
+        },
+        "type": "object",
+        "required": [
+          "meeting_id",
+          "meeting_status",
+          "archived"
+        ],
+        "title": "ClosingView",
+        "description": "Canonical progress plus the committed result, if any."
+      },
+      "ClosingVoteView": {
+        "properties": {
+          "participant_id": {
+            "type": "string",
+            "title": "Participant Id"
+          },
+          "participant_name": {
+            "type": "string",
+            "title": "Participant Name"
+          },
+          "role": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Role"
+          },
+          "status": {
+            "type": "string",
+            "title": "Status"
+          },
+          "vote": {
+            "anyOf": [
+              {
+                "type": "boolean"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Vote"
+          },
+          "reason": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Reason"
+          },
+          "provider": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Provider"
+          },
+          "model": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Model"
+          },
+          "usage_kind": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Usage Kind"
+          },
+          "price_kind": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Price Kind"
+          },
+          "estimated_cost": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Estimated Cost"
+          },
+          "reported_cost": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Reported Cost"
+          },
+          "error_code": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Error Code"
+          },
+          "error_message": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Error Message"
+          },
+          "completed_at": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "date-time"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Completed At"
+          }
+        },
+        "type": "object",
+        "required": [
+          "participant_id",
+          "participant_name",
+          "status"
+        ],
+        "title": "ClosingVoteView"
       },
       "Consensus": {
         "properties": {
@@ -2562,84 +3099,6 @@
         ],
         "title": "DocumentUploadResponse",
         "description": "Response after uploading a document."
-      },
-      "EndMeetingRequest": {
-        "properties": {
-          "force_end": {
-            "type": "boolean",
-            "title": "Force End",
-            "default": false
-          }
-        },
-        "type": "object",
-        "title": "EndMeetingRequest",
-        "description": "Request to end a meeting."
-      },
-      "EndMeetingResponse": {
-        "properties": {
-          "success": {
-            "type": "boolean",
-            "title": "Success"
-          },
-          "votes": {
-            "items": {
-              "$ref": "#/components/schemas/EndMeetingVote"
-            },
-            "type": "array",
-            "title": "Votes"
-          },
-          "summary": {
-            "anyOf": [
-              {
-                "type": "string"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Summary"
-          },
-          "message": {
-            "type": "string",
-            "title": "Message"
-          }
-        },
-        "type": "object",
-        "required": [
-          "success",
-          "message"
-        ],
-        "title": "EndMeetingResponse",
-        "description": "Response from ending a meeting."
-      },
-      "EndMeetingVote": {
-        "properties": {
-          "participant_id": {
-            "type": "string",
-            "title": "Participant Id"
-          },
-          "participant_name": {
-            "type": "string",
-            "title": "Participant Name"
-          },
-          "vote": {
-            "type": "boolean",
-            "title": "Vote"
-          },
-          "reason": {
-            "type": "string",
-            "title": "Reason"
-          }
-        },
-        "type": "object",
-        "required": [
-          "participant_id",
-          "participant_name",
-          "vote",
-          "reason"
-        ],
-        "title": "EndMeetingVote",
-        "description": "A vote from an AI on ending the meeting."
       },
       "EnvironmentInfo": {
         "properties": {
@@ -3447,7 +3906,7 @@
         },
         "type": "object",
         "title": "RequestProviderSettings",
-        "description": "Browser-supplied generation overrides for one turn (BYOK contract).\n\nEvery field is optional: absent fields fall back to the participant's\npersisted provider_config, then to server defaults. The API key itself\nnever lives here \u2014 it rides the X-Provider-Key request header."
+        "description": "Browser-supplied generation overrides for one turn (BYOK contract).\n\nEvery field is optional: absent fields fall back to the participant's\npersisted provider_config, then to server defaults. The API key itself\nnever lives here — it rides the X-Provider-Key request header."
       },
       "SenderType": {
         "type": "string",
@@ -3474,6 +3933,68 @@
         "type": "object",
         "title": "SummaryRequest",
         "description": "Request to generate an interim meeting summary (real endpoint).\n\nSame BYOK contract as turns: browser overrides in the body, secret in\nthe X-Provider-Key header (read by the route, never persisted)."
+      },
+      "SummarySettingsRequest": {
+        "properties": {
+          "provider": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Provider"
+          },
+          "model": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Model"
+          },
+          "temperature": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Temperature"
+          },
+          "max_tokens": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Max Tokens"
+          },
+          "base_url": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Base Url"
+          }
+        },
+        "type": "object",
+        "title": "SummarySettingsRequest",
+        "description": "Optional per-request System AI override for the final summary."
       },
       "SystemAIConfig": {
         "properties": {
@@ -4042,6 +4563,17 @@
           "content": {
             "type": "string",
             "title": "Content"
+          },
+          "request_key": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Request Key"
           }
         },
         "type": "object",

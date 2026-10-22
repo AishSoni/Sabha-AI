@@ -65,7 +65,7 @@ export interface paths {
         put?: never;
         /**
          * Add User Message
-         * @description Add a user message to the meeting.
+         * @description Add a user message to the meeting through the locked write guard.
          */
         post: operations["add_user_message_api_meetings__meeting_id__message_post"];
         delete?: never;
@@ -199,31 +199,6 @@ export interface paths {
         get: operations["get_context_stats_api_meetings__meeting_id__context_stats_get"];
         put?: never;
         post?: never;
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
-    "/api/meetings/{meeting_id}/end": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        get?: never;
-        put?: never;
-        /**
-         * End Meeting
-         * @description End a meeting, optionally collecting votes from AI participants.
-         *
-         *     Delegates to the recoverable closing flow: entry serialization, vote
-         *     phase, summary generation, and an atomic commit (ending message + status
-         *     flip in one transaction). Retrying a failed ending resumes at the summary
-         *     phase instead of re-collecting votes.
-         */
-        post: operations["end_meeting_api_meetings__meeting_id__end_post"];
         delete?: never;
         options?: never;
         head?: never;
@@ -717,6 +692,58 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/meetings/{meeting_id}/closing": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Read Closing */
+        get: operations["read_closing_api_meetings__meeting_id__closing_get"];
+        put?: never;
+        /** Request Closing */
+        post: operations["request_closing_api_meetings__meeting_id__closing_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/meetings/{meeting_id}/closing/retry": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Retry Closing */
+        post: operations["retry_closing_api_meetings__meeting_id__closing_retry_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/meetings/{meeting_id}/closing/abort": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Abort Closing */
+        post: operations["abort_closing_api_meetings__meeting_id__closing_abort_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/": {
         parameters: {
             query?: never;
@@ -844,6 +871,125 @@ export interface components {
             url?: string | null;
             /** Snippet */
             snippet?: string | null;
+        };
+        /** ClosingErrorView */
+        ClosingErrorView: {
+            /** Code */
+            code: string;
+            /** Message */
+            message: string;
+        };
+        /**
+         * ClosingReceipt
+         * @description Durable acknowledgement that a close operation exists.
+         */
+        ClosingReceipt: {
+            /** Meeting Id */
+            meeting_id: string;
+            /** Closing Id */
+            closing_id: string;
+            /** Stage */
+            stage: string;
+            /**
+             * Meeting Status
+             * @enum {string}
+             */
+            meeting_status: "active" | "voting" | "ended" | "archived";
+        };
+        /**
+         * ClosingRequest
+         * @description Ask to end a meeting through the coordinated closing workflow.
+         */
+        ClosingRequest: {
+            /**
+             * Mode
+             * @enum {string}
+             */
+            mode: "vote" | "force";
+            /** Request Key */
+            request_key: string;
+            summary_settings?: components["schemas"]["SummarySettingsRequest"] | null;
+        };
+        /**
+         * ClosingView
+         * @description Canonical progress plus the committed result, if any.
+         */
+        ClosingView: {
+            /** Meeting Id */
+            meeting_id: string;
+            /**
+             * Meeting Status
+             * @enum {string}
+             */
+            meeting_status: "active" | "voting" | "ended" | "archived";
+            /** Archived */
+            archived: boolean;
+            /** Closing Id */
+            closing_id?: string | null;
+            /** Request Key */
+            request_key?: string | null;
+            /** Mode */
+            mode?: string | null;
+            /** Stage */
+            stage?: string | null;
+            /** Failed From Stage */
+            failed_from_stage?: string | null;
+            /** Votes */
+            votes?: components["schemas"]["ClosingVoteView"][];
+            /** Summary */
+            summary?: string | null;
+            /** Summary Message Id */
+            summary_message_id?: string | null;
+            error?: components["schemas"]["ClosingErrorView"] | null;
+            /**
+             * Retryable
+             * @default false
+             */
+            retryable: boolean;
+            /**
+             * Abortable
+             * @default false
+             */
+            abortable: boolean;
+            /** Created At */
+            created_at?: string | null;
+            /** Updated At */
+            updated_at?: string | null;
+            /** Completed At */
+            completed_at?: string | null;
+        };
+        /** ClosingVoteView */
+        ClosingVoteView: {
+            /** Participant Id */
+            participant_id: string;
+            /** Participant Name */
+            participant_name: string;
+            /** Role */
+            role?: string | null;
+            /** Status */
+            status: string;
+            /** Vote */
+            vote?: boolean | null;
+            /** Reason */
+            reason?: string | null;
+            /** Provider */
+            provider?: string | null;
+            /** Model */
+            model?: string | null;
+            /** Usage Kind */
+            usage_kind?: string | null;
+            /** Price Kind */
+            price_kind?: string | null;
+            /** Estimated Cost */
+            estimated_cost?: number | null;
+            /** Reported Cost */
+            reported_cost?: number | null;
+            /** Error Code */
+            error_code?: string | null;
+            /** Error Message */
+            error_message?: string | null;
+            /** Completed At */
+            completed_at?: string | null;
         };
         /**
          * Consensus
@@ -1005,45 +1151,6 @@ export interface components {
             chunk_count: number;
             /** Message */
             message: string;
-        };
-        /**
-         * EndMeetingRequest
-         * @description Request to end a meeting.
-         */
-        EndMeetingRequest: {
-            /**
-             * Force End
-             * @default false
-             */
-            force_end: boolean;
-        };
-        /**
-         * EndMeetingResponse
-         * @description Response from ending a meeting.
-         */
-        EndMeetingResponse: {
-            /** Success */
-            success: boolean;
-            /** Votes */
-            votes?: components["schemas"]["EndMeetingVote"][];
-            /** Summary */
-            summary?: string | null;
-            /** Message */
-            message: string;
-        };
-        /**
-         * EndMeetingVote
-         * @description A vote from an AI on ending the meeting.
-         */
-        EndMeetingVote: {
-            /** Participant Id */
-            participant_id: string;
-            /** Participant Name */
-            participant_name: string;
-            /** Vote */
-            vote: boolean;
-            /** Reason */
-            reason: string;
         };
         /**
          * EnvironmentInfo
@@ -1446,6 +1553,22 @@ export interface components {
             provider?: components["schemas"]["RequestProviderSettings"] | null;
         };
         /**
+         * SummarySettingsRequest
+         * @description Optional per-request System AI override for the final summary.
+         */
+        SummarySettingsRequest: {
+            /** Provider */
+            provider?: string | null;
+            /** Model */
+            model?: string | null;
+            /** Temperature */
+            temperature?: number | null;
+            /** Max Tokens */
+            max_tokens?: number | null;
+            /** Base Url */
+            base_url?: string | null;
+        };
+        /**
          * SystemAIConfig
          * @description Configuration for the System AI used for app-level functions.
          */
@@ -1667,6 +1790,8 @@ export interface components {
         UserMessageRequest: {
             /** Content */
             content: string;
+            /** Request Key */
+            request_key?: string | null;
         };
         /** ValidationError */
         ValidationError: {
@@ -2021,41 +2146,6 @@ export interface operations {
                 };
                 content: {
                     "application/json": unknown;
-                };
-            };
-            /** @description Validation Error */
-            422: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["HTTPValidationError"];
-                };
-            };
-        };
-    };
-    end_meeting_api_meetings__meeting_id__end_post: {
-        parameters: {
-            query?: never;
-            header?: never;
-            path: {
-                meeting_id: string;
-            };
-            cookie?: never;
-        };
-        requestBody: {
-            content: {
-                "application/json": components["schemas"]["EndMeetingRequest"];
-            };
-        };
-        responses: {
-            /** @description Successful Response */
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["EndMeetingResponse"];
                 };
             };
             /** @description Validation Error */
@@ -3063,6 +3153,134 @@ export interface operations {
                 };
                 content: {
                     "application/json": unknown;
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    read_closing_api_meetings__meeting_id__closing_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                meeting_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ClosingView"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    request_closing_api_meetings__meeting_id__closing_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                meeting_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["ClosingRequest"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            202: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ClosingReceipt"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    retry_closing_api_meetings__meeting_id__closing_retry_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                meeting_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            202: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ClosingView"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    abort_closing_api_meetings__meeting_id__closing_abort_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                meeting_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ClosingView"];
                 };
             };
             /** @description Validation Error */
