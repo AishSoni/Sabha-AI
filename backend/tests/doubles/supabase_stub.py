@@ -184,6 +184,56 @@ _RPC_SIGNATURES: dict[str, tuple[tuple[str, str], ...]] = {
         ("p_strength", ""),
         ("p_now", "::timestamptz"),
     ),
+    "request_meeting_closing": (
+        ("p_meeting_id", "::uuid"),
+        ("p_request_key", ""),
+        ("p_mode", ""),
+        ("p_summary_settings", "::jsonb"),
+        ("p_now", "::timestamptz"),
+    ),
+    "read_meeting_closing": (("p_meeting_id", "::uuid"),),
+    "mark_closing_stage": (
+        ("p_closing_id", "::uuid"),
+        ("p_expected_stage", ""),
+        ("p_next_stage", ""),
+        ("p_now", "::timestamptz"),
+    ),
+    "fail_meeting_closing": (
+        ("p_closing_id", "::uuid"),
+        ("p_expected_stage", ""),
+        ("p_error_code", ""),
+        ("p_error_message", ""),
+        ("p_now", "::timestamptz"),
+    ),
+    "retry_meeting_closing": (
+        ("p_closing_id", "::uuid"),
+        ("p_now", "::timestamptz"),
+    ),
+    "reject_meeting_closing": (
+        ("p_closing_id", "::uuid"),
+        ("p_now", "::timestamptz"),
+    ),
+    "abort_meeting_closing": (
+        ("p_closing_id", "::uuid"),
+        ("p_now", "::timestamptz"),
+    ),
+    "complete_meeting_closing": (
+        ("p_closing_id", "::uuid"),
+        ("p_now", "::timestamptz"),
+    ),
+    "archive_meeting_guarded": (
+        ("p_meeting_id", "::uuid"),
+        ("p_now", "::timestamptz"),
+    ),
+    "unarchive_meeting_guarded": (
+        ("p_meeting_id", "::uuid"),
+        ("p_now", "::timestamptz"),
+    ),
+    "append_user_message": (
+        ("p_meeting_id", "::uuid"),
+        ("p_message", "::jsonb"),
+        ("p_now", "::timestamptz"),
+    ),
     "read_persona_creation_snapshot": (("p_persona_id", ""),),
     "create_persona_transaction": (
         ("p_persona_id", ""),
