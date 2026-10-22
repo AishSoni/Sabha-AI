@@ -24,7 +24,9 @@ from app.modules.knowledge.application.ports import (
 from app.modules.knowledge.domain.errors import KnowledgeUnavailable
 from app.modules.knowledge.domain.models import (
     ChunkIdentity,
+    EligibleRevision,
     IngestionState,
+    PassageEvidence,
     RevisionState,
     UploadAdmission,
 )
@@ -56,6 +58,24 @@ class SupabaseKnowledgeRepository:
 
     def _client(self) -> Any:
         return self._client_provider()
+
+    def _rpc_rows(self, name: str, params: dict[str, Any]) -> list[dict[str, Any]]:
+        try:
+            result = self._client().rpc(name, params).execute()
+        except (APIError, httpx.HTTPError) as exc:
+            raise KnowledgeUnavailable(
+                f"knowledge persistence failed during {name}"
+            ) from exc
+        data = getattr(result, "data", None)
+        if data is None:
+            return []
+        if isinstance(data, dict):
+            return [data]
+        if not isinstance(data, list):
+            raise KnowledgeUnavailable(
+                f"knowledge persistence returned an unexpected shape for {name}"
+            )
+        return data
 
     def _rpc(self, name: str, params: dict[str, Any]) -> dict[str, Any]:
         try:
@@ -312,3 +332,84 @@ class SupabaseKnowledgeRepository:
             if row.get("state") == "pending" or expires is None or expires <= now:
                 recoverable.append(UUID(str(row["id"])))
         return recoverable
+
+    def eligible_revisions(
+        self, *, meeting_id: UUID | None, stack_ids: list[UUID]
+    ) -> list[EligibleRevision]:
+        rows = self._rpc_rows(
+            "knowledge_eligible_revisions",
+            {
+                "p_meeting_id": str(meeting_id) if meeting_id else None,
+                "p_stack_ids": [str(value) for value in stack_ids],
+            },
+        )
+        return _eligible_rows(rows)
+
+    def revalidate_revisions(
+        self,
+        revision_ids: list[UUID],
+        *,
+        meeting_id: UUID | None,
+        stack_ids: list[UUID],
+    ) -> set[UUID]:
+        if not revision_ids:
+            return set()
+        rows = self._rpc_rows(
+            "knowledge_revalidate_revisions",
+            {
+                "p_revision_ids": [str(value) for value in revision_ids],
+                "p_meeting_id": str(meeting_id) if meeting_id else None,
+                "p_stack_ids": [str(value) for value in stack_ids],
+            },
+        )
+        return {revision.revision_id for revision in _eligible_rows(rows)}
+
+    def record_evidence(self, passages: list[PassageEvidence]) -> None:
+        if not passages:
+            return
+        rows = [
+            {
+                "meeting_id": str(item.meeting_id) if item.meeting_id else None,
+                "participant_id": (
+                    str(item.participant_id) if item.participant_id else None
+                ),
+                "operation_id": (
+                    str(item.operation_id) if item.operation_id else None
+                ),
+                "tool_call_id": item.tool_call_id,
+                "message_id": str(item.message_id) if item.message_id else None,
+                "document_id": str(item.document_id),
+                "revision_id": str(item.revision_id),
+                "chunk_id": str(item.chunk_id) if item.chunk_id else None,
+                "chunk_sha256": item.chunk_sha256,
+                "source_name": item.source_name,
+                "raw_passage": item.raw_passage,
+                "score": item.score,
+            }
+            for item in passages
+        ]
+        try:
+            self._client().table("retrieved_passage_evidence").insert(rows).execute()
+        except (APIError, httpx.HTTPError) as exc:
+            raise KnowledgeUnavailable(
+                "knowledge persistence failed while recording evidence"
+            ) from exc
+
+
+def _eligible_rows(rows: list[dict[str, Any]]) -> list[EligibleRevision]:
+    eligible: list[EligibleRevision] = []
+    for row in rows:
+        try:
+            eligible.append(
+                EligibleRevision(
+                    document_id=UUID(str(row["document_id"])),
+                    revision_id=UUID(str(row["revision_id"])),
+                    collection_name=str(row["qdrant_collection"]),
+                    file_name=str(row["file_name"]),
+                )
+            )
+        except (KeyError, ValueError) as exc:
+            raise KnowledgeUnavailable(
+                "knowledge eligibility returned an unexpected row shape"
+            ) from exc
+    return eligible

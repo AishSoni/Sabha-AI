@@ -13,8 +13,10 @@ from uuid import UUID
 
 from app.modules.knowledge.domain.models import (
     ChunkIdentity,
+    EligibleRevision,
     IngestionState,
     KnowledgeOwner,
+    PassageEvidence,
     RevisionState,
     UploadAdmission,
 )
@@ -169,6 +171,23 @@ class KnowledgePersistence(Protocol):
         self, *, now: datetime, limit: int = 20
     ) -> list[UUID]:
         """Pending or expired-lease ingestion ids eligible for a retry."""
+
+    def eligible_revisions(
+        self, *, meeting_id: UUID | None, stack_ids: list[UUID]
+    ) -> list[EligibleRevision]:
+        """Ready, unrevoked revisions in the meeting or saved stack scope."""
+
+    def revalidate_revisions(
+        self,
+        revision_ids: list[UUID],
+        *,
+        meeting_id: UUID | None,
+        stack_ids: list[UUID],
+    ) -> set[UUID]:
+        """Intersect candidate revisions with current SQL eligibility."""
+
+    def record_evidence(self, passages: list[PassageEvidence]) -> None:
+        """Persist raw retrieved passages for later source-linked redaction."""
 
 
 @dataclass(frozen=True)
