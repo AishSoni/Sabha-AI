@@ -111,6 +111,46 @@ def test_pending_cancellation_prevents_execution(queue: DurableQueueWorld):
     assert queue.worker("worker-a").claim(meeting_id) is None
 
 
+def test_archived_meeting_rejects_admission_and_claim(queue: DurableQueueWorld):
+    """Archive is an overlay, so the queue must read `archived_at` explicitly.
+
+    The lifecycle status stays `active` underneath; both the admit guard and
+    the claim's post-lock recheck must refuse the meeting anyway.
+    """
+    meeting_id, participant_id = queue.seed_active_meeting()
+    waiting = queue.submit(meeting_id, participant_id, key="before-archive")["operation"]
+
+    with queue.db.connect() as conn:
+        conn.execute(
+            "UPDATE meetings SET archived_at = now() WHERE id = %s", (meeting_id,)
+        )
+
+    rejected = queue.submit(meeting_id, participant_id, key="after-archive")
+    assert rejected["outcome"] == "meeting_closed"
+    assert queue.worker("worker-a").claim(meeting_id) is None
+    assert queue.status(waiting["id"]) == "queued"
+
+
+def test_unarchiving_restores_admission_and_claim(queue: DurableQueueWorld):
+    meeting_id, participant_id = queue.seed_active_meeting()
+    waiting = queue.submit(meeting_id, participant_id, key="before-archive")["operation"]
+
+    with queue.db.connect() as conn:
+        conn.execute(
+            "UPDATE meetings SET archived_at = now() WHERE id = %s", (meeting_id,)
+        )
+    with queue.db.connect() as conn:
+        conn.execute(
+            "UPDATE meetings SET archived_at = NULL WHERE id = %s", (meeting_id,)
+        )
+
+    accepted = queue.submit(meeting_id, participant_id, key="after-unarchive")
+    assert accepted["outcome"] == "created"
+    claimed = queue.worker("worker-a").claim(meeting_id)
+    assert claimed is not None
+    assert claimed["id"] == waiting["id"]
+
+
 def test_recovery_requeues_a_claim_that_never_reached_a_provider(queue: DurableQueueWorld):
     meeting_id, participant_id = queue.seed_active_meeting()
     operation = queue.submit(meeting_id, participant_id, key="recover")["operation"]

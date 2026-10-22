@@ -39,6 +39,20 @@ def _status_value(status: "MeetingStatus | str") -> str:
     return status.value if isinstance(status, MeetingStatus) else status
 
 
+def _present_meeting_row(row: dict) -> dict:
+    """Project archive state into the public lifecycle status (spec-08).
+
+    ``status`` stays the lifecycle axis (active/voting/ended); ``archived_at``
+    is an overlay. API callers still see the single ``archived`` value they
+    have always used, without unarchive guessing a pre-archive status.
+    """
+    data = dict(row)
+    archived_at = data.pop("archived_at", None)
+    if archived_at is not None:
+        data["status"] = MeetingStatus.ARCHIVED.value
+    return data
+
+
 class MeetingManager:
     """Manages meeting lifecycle and database operations."""
 
@@ -127,7 +141,7 @@ class MeetingManager:
         if not meeting_result.data:
             return None
         
-        meeting_data = meeting_result.data[0]
+        meeting_data = _present_meeting_row(meeting_result.data[0])
         
         # Fetch participants
         participants_result = self.db.table("ai_participants") \
@@ -162,7 +176,7 @@ class MeetingManager:
         
         result = query.order("created_at", desc=True).execute()
         
-        return [Meeting(**m) for m in result.data]
+        return [Meeting(**_present_meeting_row(m)) for m in result.data]
     
     async def add_participant(self, data: AIParticipantCreate) -> AIParticipant:
         """Add an AI participant to a meeting.
@@ -382,6 +396,58 @@ class MeetingManager:
             .execute()
 
         return len(result.data) > 0
+
+    # ------------------------------------------------------------------
+    # Spec-08 guarded lifecycle writes
+    # ------------------------------------------------------------------
+
+    async def append_user_message(
+        self, meeting_id: str, data: MessageCreate
+    ) -> tuple[str, Optional[Message]]:
+        """Persist a user message through the meeting-locked guard.
+
+        Returns ``(outcome, message)`` where outcome is accepted, duplicate,
+        meeting_closed, not_found, or invalid. The guard reads the meeting row
+        under lock, so a close racing this write cannot slip through a stale
+        precheck.
+        """
+        payload = {
+            "id": str(uuid.uuid4()),
+            "content": data.content,
+            "sender_type": data.sender_type.value,
+            "sender_name": data.sender_name,
+            "sender_id": data.sender_id,
+            "request_key": data.request_key,
+            "created_at": datetime.utcnow().isoformat(),
+        }
+        result = self.db.rpc(
+            "append_user_message",
+            {
+                "p_meeting_id": meeting_id,
+                "p_message": payload,
+                "p_now": datetime.utcnow().isoformat(),
+            },
+        ).execute()
+        body = result.data or {}
+        outcome = str(body.get("outcome") or "invalid")
+        row = body.get("message")
+        return outcome, (Message(**row) if row else None)
+
+    async def archive_meeting(self, meeting_id: str) -> dict:
+        """Set the archive overlay without changing the lifecycle status."""
+        result = self.db.rpc(
+            "archive_meeting_guarded",
+            {"p_meeting_id": meeting_id, "p_now": datetime.utcnow().isoformat()},
+        ).execute()
+        return dict(result.data or {})
+
+    async def unarchive_meeting(self, meeting_id: str) -> dict:
+        """Clear the archive overlay; never reopens an ended meeting."""
+        result = self.db.rpc(
+            "unarchive_meeting_guarded",
+            {"p_meeting_id": meeting_id, "p_now": datetime.utcnow().isoformat()},
+        ).execute()
+        return dict(result.data or {})
 
     async def commit_meeting_ending(
         self,

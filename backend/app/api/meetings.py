@@ -227,35 +227,37 @@ async def get_meeting(meeting_id: str):
 
 @router.post("/{meeting_id}/message", response_model=Message)
 async def add_user_message(meeting_id: str, data: UserMessageRequest):
-    """Add a user message to the meeting."""
+    """Add a user message to the meeting through the locked write guard."""
     manager = get_meeting_manager()
-    
-    # Verify meeting exists
-    meeting = await manager.get_meeting(meeting_id)
-    if not meeting:
-        raise HTTPException(status_code=404, detail="Meeting not found")
 
-    # Closed meetings reject writes at the door: entry guard before any
-    # persistence (voting = ending in progress; ended/archived = read only).
-    if meeting.status != MeetingStatus.ACTIVE:
-        raise HTTPException(
-            status_code=409,
-            detail=(
-                f"Meeting is {meeting.status.value}; messages can only be sent "
-                "to an active meeting"
-            ),
-        )
-
-    # Save user message
-    message = await manager.save_message(
+    outcome, message = await manager.append_user_message(
+        meeting_id,
         MessageCreate(
             meeting_id=meeting_id,
             content=data.content,
             sender_type=SenderType.USER,
-            sender_name="User"
-        )
+            sender_name="User",
+            request_key=data.request_key,
+        ),
     )
-    
+
+    if outcome == "not_found":
+        raise HTTPException(status_code=404, detail="Meeting not found")
+    if outcome == "meeting_closed":
+        # Name the observed status for the client, but only after the guard
+        # already refused the write. Presentation never drives admission.
+        meeting = await manager.get_meeting(meeting_id)
+        status = meeting.status.value if meeting else "closed"
+        raise HTTPException(
+            status_code=409,
+            detail=(
+                f"Meeting is {status}; messages can only be sent "
+                "to an active meeting"
+            ),
+        )
+    if outcome == "invalid" or message is None:
+        raise HTTPException(status_code=422, detail="Invalid message")
+
     return message
 
 
@@ -514,41 +516,55 @@ async def end_meeting(meeting_id: str, data: EndMeetingRequest):
 async def archive_meeting(meeting_id: str):
     """Archive a meeting (move to archive folder)."""
     manager = get_meeting_manager()
-    
+
     meeting = await manager.get_meeting(meeting_id)
     if not meeting:
         raise HTTPException(status_code=404, detail="Meeting not found")
-    
     if meeting.status == MeetingStatus.ARCHIVED:
         raise HTTPException(status_code=400, detail="Meeting is already archived")
-    
-    success = await manager.update_meeting_status(meeting_id, MeetingStatus.ARCHIVED.value)
-    
-    if not success:
+
+    result = await manager.archive_meeting(meeting_id)
+    outcome = result.get("outcome")
+    if outcome == "not_found":
+        raise HTTPException(status_code=404, detail="Meeting not found")
+    if outcome == "closing_in_progress":
+        raise HTTPException(
+            status_code=409,
+            detail="The meeting is still closing and cannot be archived",
+        )
+    if outcome != "archived":
         raise HTTPException(status_code=500, detail="Failed to archive meeting")
-    
-    return {"success": True, "message": "Meeting archived successfully"}
+
+    return {
+        "success": True,
+        "message": "Meeting archived successfully",
+        "status": "archived",
+    }
 
 
 @router.post("/{meeting_id}/unarchive")
 async def unarchive_meeting(meeting_id: str):
     """Unarchive a meeting (restore from archive)."""
     manager = get_meeting_manager()
-    
+
     meeting = await manager.get_meeting(meeting_id)
     if not meeting:
         raise HTTPException(status_code=404, detail="Meeting not found")
-    
     if meeting.status != MeetingStatus.ARCHIVED:
         raise HTTPException(status_code=400, detail="Meeting is not archived")
-    
-    # Restore to active status
-    success = await manager.update_meeting_status(meeting_id, MeetingStatus.ACTIVE.value)
-    
-    if not success:
+
+    result = await manager.unarchive_meeting(meeting_id)
+    outcome = result.get("outcome")
+    if outcome == "not_found":
+        raise HTTPException(status_code=404, detail="Meeting not found")
+    if outcome != "unarchived":
         raise HTTPException(status_code=500, detail="Failed to unarchive meeting")
-    
-    return {"success": True, "message": "Meeting unarchived successfully"}
+
+    return {
+        "success": True,
+        "message": "Meeting unarchived successfully",
+        "status": result.get("status", "active"),
+    }
 
 
 @router.delete("/{meeting_id}")

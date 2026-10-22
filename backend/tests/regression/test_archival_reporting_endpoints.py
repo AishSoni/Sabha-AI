@@ -1,22 +1,18 @@
-"""Characterization of the archival and reporting endpoints (spec-03 C1 gap).
+"""Archival, listing, and reporting contracts (spec-03 C1; spec-08 overlay).
 
-Phase 1 covered the storage schema (`test_meeting_status_schema`) and the
-write-guards around closed meetings, but the archive/unarchive/delete routes
-and the reporting endpoint themselves had no endpoint-level contract. This
-suite records the accepted behavior as-is:
+Archive is now an overlay (`archived_at`) on the lifecycle status rather than
+a status overwrite. This suite records the accepted behavior:
 
-- POST /meetings/{id}/archive flips status to `archived` via a plain
-  last-writer-wins update (no CAS): archiving an `ended` meeting succeeds and
-  simply overwrites the status — read-only blocking lives in the per-route
-  write guards, not here;
+- POST /meetings/{id}/archive sets the overlay through a meeting-locked guard
+  and leaves `active`/`ended` untouched underneath;
+- archive is blocked while a meeting is voting or owns a failed closing (409);
 - re-archiving is a client error (400), unarchiving a non-archived meeting
   likewise;
-- unarchive restores to `active` — the pre-archive `ended` status is not
-  remembered (accepted current behavior; the "restore to ended" refinement is
-  NOT promised by the API);
+- unarchive only clears the overlay: an archived `ended` meeting returns as
+  `ended`, never reopened as active;
 - unknown meetings 404 without touching any row;
-- GET /meetings lists archived meetings too (no status filter server-side;
-  hiding archived meetings is a frontend concern today);
+- GET /meetings lists archived meetings too and projects the overlay as the
+  public `archived` status;
 - GET /context-stats answers with its stable reporting keys and exact counts;
 - DELETE /meetings/{id} records a pending vector cleanup FIRST, resolves it on
   success, and tolerates a Qdrant outage without blocking the SQL delete;
@@ -36,7 +32,12 @@ MEETING_ID = "aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa"
 SECOND_ID = "aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaa02"
 
 
-def seed_meeting(db, meeting_id: str = MEETING_ID, status: str = "active") -> None:
+def seed_meeting(
+    db,
+    meeting_id: str = MEETING_ID,
+    status: str = "active",
+    archived_at: str | None = None,
+) -> None:
     stub = stub_for(db)
     stub.table("meetings").insert(
         {
@@ -46,6 +47,7 @@ def seed_meeting(db, meeting_id: str = MEETING_ID, status: str = "active") -> No
             "status": status,
             "total_cost": 0.0,
             "created_at": "2026-01-01T00:00:00Z",
+            **({"archived_at": archived_at} if archived_at else {}),
         }
     ).execute()
     stub.table("ai_participants").insert(
@@ -90,20 +92,30 @@ def archive_env(disposable_db, monkeypatch):
     return disposable_db
 
 
-def persisted_status(db, meeting_id: str = MEETING_ID) -> str:
+def persisted_status(db, meeting_id: str = MEETING_ID) -> str | None:
     rows = stub_for(db).table("meetings").select("*").eq("id", meeting_id).execute().data
     return rows[0]["status"] if rows else None
 
 
-def test_archiving_an_active_meeting_flips_the_persisted_status(archive_env):
+def persisted_archive(db, meeting_id: str = MEETING_ID) -> str | None:
+    rows = stub_for(db).table("meetings").select("*").eq("id", meeting_id).execute().data
+    return rows[0]["archived_at"] if rows else None
+
+
+def test_archiving_an_active_meeting_sets_the_archive_overlay(archive_env):
     seed_meeting(archive_env)
 
     with TestClient(app) as client:
         response = client.post(f"/api/meetings/{MEETING_ID}/archive")
 
     assert response.status_code == 200
-    assert response.json() == {"success": True, "message": "Meeting archived successfully"}
-    assert persisted_status(archive_env) == "archived"
+    assert response.json() == {
+        "success": True,
+        "message": "Meeting archived successfully",
+        "status": "archived",
+    }
+    assert persisted_status(archive_env) == "active"
+    assert persisted_archive(archive_env) is not None
 
 
 def test_re_archiving_is_rejected_with_client_error(archive_env):
@@ -115,21 +127,17 @@ def test_re_archiving_is_rejected_with_client_error(archive_env):
 
     assert response.status_code == 400
     assert response.json() == {"detail": "Meeting is already archived"}
-    assert persisted_status(archive_env) == "archived"
 
 
-def test_archiving_an_ended_meeting_allowed_overwrites_the_status(archive_env):
-    """Accepted behavior: archive is an unconditional last-writer-wins status
-    update, so an `ended` meeting can be archived directly. The changed
-    status is exactly what the write-guards then enforce — this test records
-    the current contract rather than endorsing a refinement."""
+def test_archiving_an_ended_meeting_keeps_its_lifecycle_status(archive_env):
     seed_meeting(archive_env, MEETING_ID, status="ended")
 
     with TestClient(app) as client:
         response = client.post(f"/api/meetings/{MEETING_ID}/archive")
 
     assert response.status_code == 200
-    assert persisted_status(archive_env) == "archived"
+    assert persisted_status(archive_env) == "ended"
+    assert persisted_archive(archive_env) is not None
 
 
 def test_archiving_an_unknown_meeting_is_404(archive_env):
@@ -141,15 +149,36 @@ def test_archiving_an_unknown_meeting_is_404(archive_env):
     assert persisted_status(archive_env) is None
 
 
-def test_unarchive_restores_active_status(archive_env):
-    seed_meeting(archive_env, MEETING_ID, status="archived")
+def test_unarchive_restores_the_lifecycle_status(archive_env):
+    seed_meeting(
+        archive_env, MEETING_ID, status="active", archived_at="2026-02-01T00:00:00Z"
+    )
 
     with TestClient(app) as client:
         response = client.post(f"/api/meetings/{MEETING_ID}/unarchive")
 
     assert response.status_code == 200
-    assert response.json() == {"success": True, "message": "Meeting unarchived successfully"}
+    assert response.json() == {
+        "success": True,
+        "message": "Meeting unarchived successfully",
+        "status": "active",
+    }
     assert persisted_status(archive_env) == "active"
+    assert persisted_archive(archive_env) is None
+
+
+def test_unarchive_never_reopens_an_ended_meeting(archive_env):
+    seed_meeting(
+        archive_env, MEETING_ID, status="ended", archived_at="2026-02-01T00:00:00Z"
+    )
+
+    with TestClient(app) as client:
+        response = client.post(f"/api/meetings/{MEETING_ID}/unarchive")
+
+    assert response.status_code == 200
+    assert response.json()["status"] == "ended"
+    assert persisted_status(archive_env) == "ended"
+    assert persisted_archive(archive_env) is None
 
 
 def test_unarchive_rejects_meetings_that_are_not_archived(archive_env):
@@ -168,7 +197,9 @@ def test_listed_meetings_include_archived_ones(archive_env):
     meetings stay visible in GET /api/meetings. Sorting/hiding them is the
     caller's concern today."""
     seed_meeting(archive_env, MEETING_ID, status="active")
-    seed_meeting(archive_env, SECOND_ID, status="archived")
+    seed_meeting(
+        archive_env, SECOND_ID, status="active", archived_at="2026-02-01T00:00:00Z"
+    )
 
     with TestClient(app) as client:
         response = client.get("/api/meetings")
@@ -177,6 +208,7 @@ def test_listed_meetings_include_archived_ones(archive_env):
     meetings = response.json()
     assert [m["id"] for m in meetings] == [MEETING_ID, SECOND_ID]
     assert {m["status"] for m in meetings} == {"active", "archived"}
+    assert {m["id"]: m["status"] for m in meetings}[SECOND_ID] == "archived"
 
 
 STABLE_STATS_KEYS = {

@@ -87,6 +87,21 @@ def test_user_message_still_accepted_for_active_meeting(disposable_db, monkeypat
     assert message_count(disposable_db, MEETING) == 1
 
 
+def test_duplicate_user_message_request_key_returns_the_original(disposable_db, monkeypatch):
+    seed_meeting(disposable_db, status="active")
+    patch_manager(monkeypatch, disposable_db)
+    payload = {"content": "Send this exactly once.", "request_key": "message-key-1"}
+
+    with TestClient(app) as client:
+        first = client.post(f"/api/meetings/{MEETING}/message", json=payload)
+        second = client.post(f"/api/meetings/{MEETING}/message", json=payload)
+
+    assert first.status_code == 200, first.text
+    assert second.status_code == 200, second.text
+    assert second.json()["id"] == first.json()["id"]
+    assert message_count(disposable_db, MEETING) == 1
+
+
 @pytest.mark.parametrize("status", ["voting", "ended", "archived"])
 def test_turn_rejected_before_inference_for_non_active_meetings(turn_env, monkeypatch, status):
     db = turn_env["db"]

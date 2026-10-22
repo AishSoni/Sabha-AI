@@ -149,6 +149,27 @@ def test_summary_failure_is_retryable_through_the_api(closing_app):
     assert body["summary"].endswith("A concise executive summary.")
 
 
+def test_archiving_during_closing_is_rejected(closing_app):
+    client, world, _invocations, _service = closing_app
+    meeting_id, participant_id = world.seed_active_meeting()
+    world.submit(meeting_id, participant_id, key="turn-1")
+    world.claim_running(meeting_id)
+
+    requested = _request(client, meeting_id, mode="vote")
+    assert requested.status_code == 202
+    assert requested.json()["stage"] == "draining"
+
+    archived = client.post(f"/api/meetings/{meeting_id}/archive")
+    assert archived.status_code == 409
+    assert "closing" in archived.json()["detail"].lower()
+
+    with world.db.connect() as conn:
+        archived_at = conn.execute(
+            "SELECT archived_at FROM meetings WHERE id = %s", (meeting_id,)
+        ).fetchone()[0]
+    assert archived_at is None
+
+
 def test_abort_returns_the_meeting_to_active_admission(closing_app):
     client, world, _invocations, _service = closing_app
     meeting_id, participant_id = world.seed_active_meeting()

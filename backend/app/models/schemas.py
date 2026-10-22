@@ -240,6 +240,7 @@ class SummaryRequest(BaseModel):
 class UserMessageRequest(BaseModel):
     """Request to add a user message."""
     content: str
+    request_key: Optional[str] = None
 
 
 class TurnResponse(BaseModel):

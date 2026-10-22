@@ -47,10 +47,10 @@ export function useUnarchiveMeeting() {
     return useMutation({
         mutationFn: (meetingId: string) => meetingClient.unarchive(meetingId),
         onSuccess: (_result: void, meetingId: string) => {
-            queryClient.setQueryData<MeetingWithParticipants>(
-                meetingKeys.detail(meetingId),
-                (cached) => (cached ? { ...cached, status: 'active' } : cached)
-            );
+            // Unarchive only clears the archive overlay; the server keeps the
+            // lifecycle status (an ended meeting stays ended). Refetch instead
+            // of guessing "active" from the command.
+            queryClient.invalidateQueries({ queryKey: meetingKeys.detail(meetingId) });
             queryClient.invalidateQueries({ queryKey: meetingKeys.list() });
         },
     });
