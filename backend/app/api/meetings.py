@@ -40,8 +40,7 @@ from app.services.turn_queue import (
     TurnQueueService,
 )
 from app.services.turn_runner import TERMINAL_STATUSES, TurnRunner
-from app.services.vector_cleanup import get_vector_cleanup_ledger
-from app.services.vector_store import VectorStoreManager, get_vector_store
+from app.modules.knowledge.domain.errors import KnowledgeUnavailable
 import logging
 
 logger = logging.getLogger(__name__)
@@ -528,31 +527,28 @@ async def unarchive_meeting(meeting_id: str):
 
 @router.delete("/{meeting_id}")
 async def delete_meeting(meeting_id: str):
-    """Permanently delete a meeting and all its data — including the shared
-    vector collection (recorded first as a pending cleanup so a Qdrant
-    outage cannot block the SQL delete; reconciliation finishes the work)."""
+    """Permanently delete a meeting after Knowledge revokes its sources.
+
+    Revocation and cleanup intents commit before the meeting row cascades, so
+    an outage can defer physical cleanup but never resurrect eligibility.
+    """
+    from app.modules.knowledge.public import get_knowledge_lifecycle
+
     manager = get_meeting_manager()
 
     meeting = await manager.get_meeting(meeting_id)
     if not meeting:
         raise HTTPException(status_code=404, detail="Meeting not found")
 
-    ledger = get_vector_cleanup_ledger()
-    collection_name = VectorStoreManager.meeting_collection_name(meeting_id)
-    pending_id = await ledger.record(
-        collection_name=collection_name,
-        target_kind="meeting",
-        target_id=meeting_id,
-    )
     try:
-        await get_vector_store().delete_collection(collection_name)
-        await ledger.resolve(pending_id)
-    except Exception as exc:  # noqa: BLE001 - vector outage must not block deletion
-        logger.warning(
-            "Vector cleanup deferred for deleted meeting %s (%s): %s",
-            meeting_id, collection_name, exc,
+        await get_knowledge_lifecycle().delete_parent(
+            "meeting", meeting_id, reason="meeting_deleted"
         )
-        await ledger.set_last_error(pending_id, str(exc))
+    except KnowledgeUnavailable as exc:
+        raise HTTPException(
+            status_code=503,
+            detail="Knowledge cleanup is temporarily unavailable; try again",
+        ) from exc
 
     success = await manager.delete_meeting(meeting_id)
 

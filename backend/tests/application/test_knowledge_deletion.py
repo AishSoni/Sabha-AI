@@ -9,8 +9,12 @@ import pytest
 from app.modules.knowledge.application.deletion import (
     CleanupWorker,
     DeleteDocument,
+    DeleteParentKnowledge,
 )
-from app.modules.knowledge.application.ports import RevocationResult
+from app.modules.knowledge.application.ports import (
+    ParentRevocationResult,
+    RevocationResult,
+)
 from app.modules.knowledge.domain.errors import DocumentNotFound
 from app.modules.knowledge.domain.models import CleanupIntent
 
@@ -52,6 +56,15 @@ class FakePersistence:
     def revoke_document(self, document_id, *, reason):
         self.events.append("revoke")
         return RevocationResult(document_id=document_id, revisions=1)
+
+    def revoke_parent(self, parent_kind, parent_id, *, reason):
+        self.events.append("revoke_parent")
+        return ParentRevocationResult(
+            parent_kind=parent_kind,
+            parent_id=parent_id,
+            documents=2,
+            collection_name="meeting_m_shared",
+        )
 
     def list_cleanup_intents(self, *, limit=50):
         self.events.append("list")
@@ -175,3 +188,20 @@ async def test_missing_document_fails_without_running_cleanup():
         await delete.execute(uuid4())
 
     assert persistence.events == []
+
+
+async def test_parent_deletion_revokes_before_cleanup():
+    persistence = FakePersistence([])
+    worker = CleanupWorker(
+        persistence=persistence,
+        source_store=FakeSourceStore(),
+        vectors=FakeVectors(),
+    )
+    delete = DeleteParentKnowledge(persistence=persistence, cleanup=worker)
+    parent_id = uuid4()
+
+    result = await delete.execute("meeting", parent_id)
+
+    assert result.documents == 2
+    assert result.collection_name == "meeting_m_shared"
+    assert persistence.events == ["revoke_parent", "list"]

@@ -28,6 +28,7 @@ from fastapi import HTTPException
 from app.api import documents as documents_module
 from app.api import knowledge_stacks as stacks_module
 from app.api import meetings as meetings_module
+from app.modules.knowledge.domain.errors import KnowledgeUnavailable
 from app.services import vector_cleanup as vector_cleanup_module
 from tests.doubles.supabase_stub import stub_for
 
@@ -122,20 +123,33 @@ def seed_stack(db):
     }).execute()
 
 
+class FakeKnowledgeLifecycle:
+    def __init__(self) -> None:
+        self.deleted: list[tuple[str, str]] = []
+        self.error: Exception | None = None
+
+    async def delete_parent(self, kind, parent_id, *, reason="parent_deleted"):
+        if self.error is not None:
+            raise self.error
+        self.deleted.append((kind, str(parent_id)))
+
+
 @pytest.fixture()
 def cleanup_env(disposable_db, monkeypatch):
     stub = stub_for(disposable_db)
     store = FailureScriptedVectorStore()
-    monkeypatch.setattr(meetings_module, "get_vector_store", lambda: store)
-    # Routes that import get_vector_store at call time resolve this module
-    # attribute, so patch the source module too.
-    monkeypatch.setattr("app.services.vector_store.get_vector_store", lambda: store)
+    knowledge = FakeKnowledgeLifecycle()
+    monkeypatch.setattr(
+        "app.modules.knowledge.public.get_knowledge_lifecycle", lambda: knowledge
+    )
     monkeypatch.setattr(vector_cleanup_module, "get_supabase", lambda: stub)
     monkeypatch.setattr("app.services.meeting_manager.get_supabase", lambda: stub)
     monkeypatch.setattr(stacks_module, "get_supabase", lambda: stub)
     monkeypatch.setattr(documents_module, "get_supabase", lambda: stub)
     monkeypatch.setattr(documents_module, "get_vector_store", lambda: store)
-    return SimpleNamespace(db=disposable_db, store=store, stub=stub)
+    return SimpleNamespace(
+        db=disposable_db, store=store, stub=stub, knowledge=knowledge
+    )
 
 
 def meeting_rows(db, meeting_id=MEETING_ID):
@@ -166,10 +180,10 @@ async def test_meeting_delete_removes_collection_and_resolves_pending(cleanup_en
 
     await meetings_module.delete_meeting(MEETING_ID)
 
-    assert env.store.deleted_collections == [MEETING_COLLECTION]
+    assert env.knowledge.deleted == [("meeting", MEETING_ID)]
     assert meeting_rows(env.db) == []
     assert env.db.query("SELECT id FROM documents WHERE meeting_id = %s", (MEETING_ID,)) == []
-    assert pending_rows(env.db) == [], "happy-path cleanup resolves its pending row"
+    assert pending_rows(env.db) == [], "the legacy collection ledger stays unused"
 
 
 async def test_stack_delete_removes_collection_and_resolves_pending(cleanup_env):
@@ -178,33 +192,24 @@ async def test_stack_delete_removes_collection_and_resolves_pending(cleanup_env)
 
     await stacks_module.delete_knowledge_stack(STACK_ID)
 
-    assert env.store.deleted_collections == [STACK_COLLECTION]
+    assert env.knowledge.deleted == [("stack", STACK_ID)]
     assert env.db.query("SELECT id FROM knowledge_stacks WHERE id = %s", (STACK_ID,)) == []
     assert pending_rows(env.db) == []
 
 
-async def test_failed_cleanup_is_recorded_and_reconciler_recovers(cleanup_env):
+async def test_knowledge_outage_fails_closed_before_the_parent_delete(cleanup_env):
     env = cleanup_env
     seed_meeting_and_doc(env.db)
-    env.store.arm(collection_failures=1)
+    env.knowledge.error = KnowledgeUnavailable("knowledge database down")
 
-    response = await meetings_module.delete_meeting(MEETING_ID)
+    with pytest.raises(HTTPException) as error:
+        await meetings_module.delete_meeting(MEETING_ID)
 
-    # The SQL delete proceeds despite the vector outage.
-    assert response["success"] is True
-    assert meeting_rows(env.db) == []
-    items = pending_rows(env.db)
-    assert len(items) == 1
-    assert items[0]["collection_name"] == MEETING_COLLECTION
-    assert items[0]["target_kind"] == "meeting"
-    assert items[0]["resolved_at"] is None
-    assert "qdrant unreachable" in (items[0]["last_error"] or "")
-
-    # Vector store recovers; the next reconciliation pass finishes the job.
-    env.store.arm()
-    summary = await vector_cleanup_module.reconcile_pending_vector_cleanups(vector_store=env.store)
-    assert summary["resolved"] == 1
-    assert env.store.deleted_collections == [MEETING_COLLECTION]
+    assert error.value.status_code == 503
+    assert meeting_rows(env.db), "the meeting must survive an unavailable revocation"
+    assert len(
+        env.db.query("SELECT id FROM documents WHERE meeting_id = %s", (MEETING_ID,))
+    ) == 1
     assert pending_rows(env.db) == []
 
 

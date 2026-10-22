@@ -1,7 +1,6 @@
 from fastapi import APIRouter, HTTPException
 from typing import Optional
 from datetime import datetime
-import logging
 import uuid
 
 from app.core.database import get_supabase
@@ -11,8 +10,6 @@ from app.models.knowledge_stacks_schemas import (
     KnowledgeStackUpdate,
     KnowledgeStackListResponse
 )
-
-_log = logging.getLogger(__name__)
 
 router = APIRouter(prefix="/api/knowledge_stacks", tags=["knowledge_stacks"])
 
@@ -90,31 +87,31 @@ async def update_knowledge_stack(stack_id: str, data: KnowledgeStackUpdate):
 
 @router.delete("/{stack_id}", status_code=204)
 async def delete_knowledge_stack(stack_id: str):
-    """Delete a knowledge stack and its vector collection (pending-cleanup
-    recorded first; a transient vector-store failure only defers the
-    collection deletion to reconciliation, never blocks the SQL delete)."""
-    from app.services.vector_cleanup import get_vector_cleanup_ledger
-    from app.services.vector_store import VectorStoreManager, get_vector_store
+    """Delete a stack after Knowledge revokes its documents and collection.
+
+    Revocation and cleanup intents commit before the stack row cascades; a
+    transient physical failure stays retryable but never restores access.
+    """
+    from app.modules.knowledge.domain.errors import KnowledgeUnavailable
+    from app.modules.knowledge.public import get_knowledge_lifecycle
 
     db = get_supabase()
-    result = db.table("knowledge_stacks").delete().eq("id", stack_id).execute()
-
-    if not result.data:
+    existing = (
+        db.table("knowledge_stacks").select("id").eq("id", stack_id).execute()
+    )
+    if not existing.data:
         raise HTTPException(status_code=404, detail="Knowledge stack not found")
 
-    ledger = get_vector_cleanup_ledger()
-    collection_name = VectorStoreManager.stack_collection_name(stack_id)
-    pending_id = await ledger.record(
-        collection_name=collection_name,
-        target_kind="stack",
-        target_id=stack_id,
-    )
     try:
-        await get_vector_store().delete_collection(collection_name)
-        await ledger.resolve(pending_id)
-    except Exception as exc:
-        _log.warning(
-            "Vector cleanup deferred for deleted stack %s (%s): %s",
-            stack_id, collection_name, exc,
+        await get_knowledge_lifecycle().delete_parent(
+            "stack", stack_id, reason="stack_deleted"
         )
-        await ledger.set_last_error(pending_id, str(exc))
+    except KnowledgeUnavailable as exc:
+        raise HTTPException(
+            status_code=503,
+            detail="Knowledge cleanup is temporarily unavailable; try again",
+        ) from exc
+
+    result = db.table("knowledge_stacks").delete().eq("id", stack_id).execute()
+    if not result.data:
+        raise HTTPException(status_code=404, detail="Knowledge stack not found")

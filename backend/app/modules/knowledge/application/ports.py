@@ -190,6 +190,11 @@ class KnowledgePersistence(Protocol):
     def record_evidence(self, passages: list[PassageEvidence]) -> None:
         """Persist raw retrieved passages for later source-linked redaction."""
 
+    def revoke_parent(
+        self, parent_kind: str, parent_id: UUID, *, reason: str
+    ) -> "ParentRevocationResult":
+        """Revoke every document owned by a meeting, stack, or persona."""
+
     def revoke_document(
         self, document_id: UUID, *, reason: str
     ) -> "RevocationResult":
@@ -222,6 +227,14 @@ class KnowledgePersistence(Protocol):
 class RevocationResult:
     document_id: UUID
     revisions: int
+
+
+@dataclass(frozen=True)
+class ParentRevocationResult:
+    parent_kind: str
+    parent_id: UUID
+    documents: int
+    collection_name: str
 
 
 @dataclass(frozen=True)

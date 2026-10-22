@@ -51,6 +51,9 @@ class Settings(BaseSettings):
     runtime_mode: str = "local"  # local | hosted | demo - demo denies writes
     cors_origins: List[str] = ["http://localhost:3000"]
 
+    # Durable knowledge (spec 09)
+    knowledge_bucket: str = "knowledge-sources"
+
     # Durable turn queue (spec 07)
     turn_max_queued_per_meeting: int = 10
     turn_global_concurrency: int = 1

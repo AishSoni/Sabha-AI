@@ -125,6 +125,15 @@ async def lifespan(app: FastAPI):
         logger.warning("Closing startup reconciliation failed", exc_info=True)
 
     try:
+        from app.modules.knowledge.public import get_knowledge_lifecycle
+
+        report = await get_knowledge_lifecycle().run_cleanup()
+        if report.attempted:
+            logger.info("Knowledge cleanup reconciliation: %s", report)
+    except Exception:
+        logger.warning("Knowledge cleanup reconciliation failed", exc_info=True)
+
+    try:
         yield
     finally:
         if runner is not None:

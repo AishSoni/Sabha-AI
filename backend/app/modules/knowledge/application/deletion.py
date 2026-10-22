@@ -16,6 +16,7 @@ from uuid import UUID
 
 from app.modules.knowledge.application.ports import (
     KnowledgePersistence,
+    ParentRevocationResult,
     RevocationResult,
     SourceStore,
     VectorProjection,
@@ -147,6 +148,31 @@ class DeleteDocument:
         result = await asyncio.to_thread(
             self._persistence.revoke_document,
             document_id,
+            reason=reason,
+        )
+        await self._cleanup.run()
+        return result
+
+
+class DeleteParentKnowledge:
+    """Revoke all knowledge owned by a meeting/stack before the parent row goes."""
+
+    def __init__(
+        self,
+        *,
+        persistence: KnowledgePersistence,
+        cleanup: CleanupWorker,
+    ) -> None:
+        self._persistence = persistence
+        self._cleanup = cleanup
+
+    async def execute(
+        self, parent_kind: str, parent_id: UUID, *, reason: str = "parent_deleted"
+    ) -> ParentRevocationResult:
+        result = await asyncio.to_thread(
+            self._persistence.revoke_parent,
+            parent_kind,
+            parent_id,
             reason=reason,
         )
         await self._cleanup.run()

@@ -19,6 +19,7 @@ from app.modules.knowledge.application.ports import (
     IngestionClaim,
     IngestionRecord,
     NewUpload,
+    ParentRevocationResult,
     PublishResult,
     RevocationResult,
 )
@@ -400,6 +401,33 @@ class SupabaseKnowledgeRepository:
                 "knowledge persistence failed while recording evidence"
             ) from exc
 
+
+    def revoke_parent(
+        self, parent_kind: str, parent_id: UUID, *, reason: str
+    ) -> ParentRevocationResult:
+        result = self._rpc(
+            "knowledge_revoke_parent",
+            {
+                "p_parent_kind": parent_kind,
+                "p_parent_id": str(parent_id),
+                "p_reason": reason,
+            },
+        )
+        if result.get("outcome") != "revoked":
+            raise KnowledgeUnavailable(
+                "knowledge persistence returned an unexpected parent revocation outcome"
+            )
+        try:
+            return ParentRevocationResult(
+                parent_kind=parent_kind,
+                parent_id=parent_id,
+                documents=int(result.get("documents", 0)),
+                collection_name=str(result["collection_name"]),
+            )
+        except (KeyError, TypeError, ValueError) as exc:
+            raise KnowledgeUnavailable(
+                "knowledge persistence returned an unexpected parent revocation shape"
+            ) from exc
 
     def revoke_document(
         self, document_id: UUID, *, reason: str
