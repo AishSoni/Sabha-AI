@@ -233,34 +233,16 @@ Rationale recorded at decision time:
   replaceable — a direct-connection adapter could later implement the same
   ports without touching domain/application code.
 
-### 2. Original source-byte store — owner: Spec 09 (knowledge ingestion)
+### 2. Original source-byte store — owner: Spec 09 (knowledge ingestion) — DECIDED
 
-Uploads currently extract text immediately and persist only chunks/vectors;
-the original bytes live and die with the request. Once ingestion must be
-repriced/retried with new parameters, the bytes need a home:
+Decision recorded in `reference-architecture-contracts.md` (original document bytes,
+2026-10): **Supabase Storage** behind a `SourceStore` interface; no local-filesystem
+adapter is implemented. Uploads stage, hash, and finalize an object before returning a
+durable pending receipt; SQL is the eligibility authority and the object prefix plus a
+deletion/redaction manifest are part of the coordinated backup.
 
-- **Option A**: Supabase Storage bucket (server-side, integrates with the SQL
-  record row).
-- **Option B**: a persistent local filesystem (volume) behind a focused
-  source-store interface.
+### 2. Original source-byte store — owner: Spec 09 (knowledge ingestion) — SUPERSEDED
 
-Constraints: retention/backup posture, demo/hosted deployment parity, and
-the bounded-read doctrine (upload re-reads are budgeted). **Blocks Spec 09**
-(knowledge ingestion) — ingestion pricing/retries cannot land without this
-decision.
-
-### 2. Original source-byte store — owner: Spec 09 (knowledge ingestion)
-
-Uploads currently extract text immediately and persist only chunks/vectors;
-the original bytes live and die with the request. Once ingestion must be
-repriced/retried with new parameters, the bytes need a home:
-
-- **Option A**: Supabase Storage bucket (server-side, integrates with the SQL
-  record row).
-- **Option B**: a persistent local filesystem (volume) behind a focused
-  source-store interface.
-
-Constraints: retention/backup posture, demo/hosted deployment parity, and
-the bounded-read doctrine (upload re-reads are budgeted). **Blocks Spec 09**
-(knowledge ingestion) — ingestion pricing/retries cannot land without this
-decision.
+This duplicate decision section is retained only as history. See the decided entry above
+and the architecture decision in `reference-architecture-contracts.md`; the open
+question of Supabase Storage versus local filesystem is resolved.
