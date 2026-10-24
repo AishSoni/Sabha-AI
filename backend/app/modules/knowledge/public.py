@@ -169,6 +169,20 @@ class KnowledgeLifecycle:
     async def search(self, request: RetrievalRequest) -> list[RetrievedPassage]:
         return await self._search.execute(request)
 
+    async def attach_evidence_message(
+        self,
+        operation_id: UUID,
+        tool_call_id: str,
+        message_id: UUID,
+    ) -> int:
+        """Link already-recorded passages to the message that cited them."""
+        return await asyncio.to_thread(
+            self.persistence.attach_evidence_message,
+            operation_id,
+            tool_call_id,
+            message_id,
+        )
+
 
 _knowledge_lifecycle: KnowledgeLifecycle | None = None
 

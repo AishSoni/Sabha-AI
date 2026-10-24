@@ -144,6 +144,10 @@ def _now() -> str:
     return datetime.now(timezone.utc).isoformat()
 
 
+def _as_uuid(value) -> uuid.UUID:
+    return value if isinstance(value, uuid.UUID) else uuid.UUID(str(value))
+
+
 def _merge_usage(total: dict, usage: dict | None) -> dict:
     for key, value in (usage or {}).items():
         if isinstance(value, (int, float)):
@@ -622,6 +626,37 @@ class TurnQueueService:
         kept.reverse()
         return [system, *kept]
 
+    async def _attach_knowledge_evidence(
+        self,
+        claim: TurnClaim,
+        tool_calls_made: list[dict],
+        message_id: str,
+    ) -> None:
+        """Link retained retrieval evidence to the final message, best effort."""
+        calls = [
+            item["call_id"]
+            for item in tool_calls_made
+            if item.get("tool") == "search_knowledge_base" and item.get("call_id")
+        ]
+        if not calls:
+            return
+        try:
+            from app.modules.knowledge.public import get_knowledge_lifecycle
+
+            lifecycle = get_knowledge_lifecycle()
+            for call_id in calls:
+                await lifecycle.attach_evidence_message(
+                    _as_uuid(claim.operation_id),
+                    call_id,
+                    _as_uuid(message_id),
+                )
+        except Exception:  # noqa: BLE001 - evidence linking is not turn-fatal
+            logger.warning(
+                "Could not attach knowledge evidence for %s",
+                claim.operation_id,
+                exc_info=True,
+            )
+
     async def _run_loop(
         self,
         *,
@@ -819,10 +854,14 @@ class TurnQueueService:
         outcome = publication.get("outcome")
         if outcome in ("published", "already_published"):
             message = publication.get("message") or {}
+            final_message_id = str(message.get("id") or message_id)
+            await self._attach_knowledge_evidence(
+                claim, tool_calls_made, final_message_id
+            )
             return TurnExecutionResult(
                 claim.operation_id,
                 "completed",
-                message_id=str(message.get("id") or message_id),
+                message_id=final_message_id,
             )
         if outcome == "cancel_requested":
             return self._interrupt(
@@ -905,45 +944,99 @@ class TurnQueueService:
             if not query:
                 return "Search query is empty. Please provide a query.", True
             try:
-                factory = self.vector_store_factory
-                if factory is None:
-                    from app.services.vector_store import get_vector_store
-
-                    factory = get_vector_store
-                vector_store = factory()
-                collections: list[str] = []
-                from app.services.vector_store import VectorStoreManager
-
-                shared = VectorStoreManager.meeting_collection_name(claim.meeting_id)
-                if await vector_store.collection_exists(shared):
-                    collections.append(shared)
-                for stack_id in participant.stack_ids or []:
-                    stack_col = VectorStoreManager.stack_collection_name(stack_id)
-                    if await vector_store.collection_exists(stack_col):
-                        collections.append(stack_col)
-                if not collections:
-                    return (
-                        "No documents found in your knowledge stack or the meeting's "
-                        "shared documents. Please ask the user to upload documents.",
-                        True,
+                if self.vector_store_factory is not None:
+                    return await self._legacy_knowledge_search(
+                        participant, query, claim
                     )
-                results = await vector_store.search_multiple_collections(
-                    collection_names=collections, query=query, limit=5
-                )
-                if not results:
-                    return f"No relevant documents found for query: '{query}'", False
-                formatted = []
-                for index, item in enumerate(results, 1):
-                    file_name = item.metadata.get("file_name", "Unknown")
-                    formatted.append(
-                        f"[{index}] (Score: {item.score:.2f}, Source: {file_name})\n{item.text}"
-                    )
-                return (
-                    f"Found {len(results)} relevant passages:\n\n"
-                    + "\n\n---\n\n".join(formatted),
-                    False,
+                return await self._durable_knowledge_search(
+                    participant, query, claim, tool_call
                 )
             except Exception as exc:  # noqa: BLE001 - tool boundary
                 return f"Error searching knowledge base: {exc}", True
 
         return f"Unknown tool: {name}", True
+
+    async def _legacy_knowledge_search(
+        self, participant, query: str, claim: TurnClaim
+    ) -> tuple[str, bool]:
+        """Search the legacy vector store (used by injected test stores)."""
+        factory = self.vector_store_factory
+        vector_store = factory()
+        collections: list[str] = []
+        from app.services.vector_store import VectorStoreManager
+
+        shared = VectorStoreManager.meeting_collection_name(claim.meeting_id)
+        if await vector_store.collection_exists(shared):
+            collections.append(shared)
+        for stack_id in participant.stack_ids or []:
+            stack_col = VectorStoreManager.stack_collection_name(stack_id)
+            if await vector_store.collection_exists(stack_col):
+                collections.append(stack_col)
+        if not collections:
+            return (
+                "No documents found in your knowledge stack or the meeting's "
+                "shared documents. Please ask the user to upload documents.",
+                True,
+            )
+        results = await vector_store.search_multiple_collections(
+            collection_names=collections, query=query, limit=5
+        )
+        if not results:
+            return f"No relevant documents found for query: '{query}'", False
+        formatted = []
+        for index, item in enumerate(results, 1):
+            file_name = item.metadata.get("file_name", "Unknown")
+            formatted.append(
+                f"[{index}] (Score: {item.score:.2f}, Source: {file_name})\n{item.text}"
+            )
+        return (
+            f"Found {len(results)} relevant passages:\n\n"
+            + "\n\n---\n\n".join(formatted),
+            False,
+        )
+
+    async def _durable_knowledge_search(
+        self,
+        participant,
+        query: str,
+        claim: TurnClaim,
+        tool_call: ToolCall,
+    ) -> tuple[str, bool]:
+        """Search only eligible revisions in the meeting + saved stack scope."""
+        from app.modules.knowledge.application.retrieval import (
+            KnowledgeScope,
+            RetrievalIdentity,
+            RetrievalRequest,
+        )
+        from app.modules.knowledge.public import get_knowledge_lifecycle
+
+        lifecycle = get_knowledge_lifecycle()
+        passages = await lifecycle.search(
+            RetrievalRequest(
+                query=query,
+                scope=KnowledgeScope(
+                    meeting_id=_as_uuid(claim.meeting_id),
+                    stack_ids=[
+                        _as_uuid(stack_id)
+                        for stack_id in (participant.stack_ids or [])
+                    ],
+                ),
+                identity=RetrievalIdentity(
+                    operation_id=_as_uuid(claim.operation_id),
+                    participant_id=_as_uuid(participant.id),
+                    tool_call_id=tool_call.id,
+                ),
+                limit=5,
+            )
+        )
+        if not passages:
+            return f"No relevant documents found for query: '{query}'", False
+        formatted = [
+            f"[{index}] (Score: {item.score:.2f}, Source: {item.file_name})\n{item.text}"
+            for index, item in enumerate(passages, 1)
+        ]
+        return (
+            f"Found {len(passages)} relevant passages:\n\n"
+            + "\n\n---\n\n".join(formatted),
+            False,
+        )
