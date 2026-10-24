@@ -439,12 +439,25 @@ def live_knowledge_and_redaction(disposable_db):
 
 
 async def test_restored_backup_replays_newer_deletions_before_retrieval(disposable_db):
+    """Rehearse SQL + source-byte restore, then reconcile the deletion manifest.
+
+    The backup predates the deletion. Restoring it makes a revoked revision look
+    ready and brings the raw passage back. Retrieval may only resume after the
+    newer append-only manifest is replayed and cleanup drains the intents.
+    """
     meeting_id = _seed_meeting(disposable_db)
     repository = _repository(disposable_db)
     document_id = _make_ready(repository, meeting_id)
     revision_id = repository.eligible_revisions(
         meeting_id=meeting_id, stack_ids=[]
     )[0].revision_id
+    with disposable_db.connect() as conn:
+        source_key = conn.execute(
+            "SELECT source_key FROM document_revisions WHERE id = %s",
+            (str(revision_id),),
+        ).fetchone()[0]
+    store = MemorySourceStore()
+    store.objects[source_key] = b"sentinel passage"
     repository.record_evidence(
         [
             PassageEvidence(
@@ -460,32 +473,44 @@ async def test_restored_backup_replays_newer_deletions_before_retrieval(disposab
     )
     since = datetime.now(timezone.utc)
 
+    tables = (
+        "documents",
+        "document_revisions",
+        "document_ingestions",
+        "document_chunks",
+        "retrieved_passage_evidence",
+        "knowledge_cleanup",
+    )
+    with disposable_db.connect() as conn:
+        for table in tables:
+            conn.execute(f"DROP TABLE IF EXISTS {table}_spec09_backup")
+            conn.execute(
+                f"CREATE TABLE {table}_spec09_backup AS SELECT * FROM {table}"
+            )
+    backup_objects = dict(store.objects)
+
     repository.revoke_document(document_id, reason="user_requested")
 
-    # Restore an older SQL backup: the revision looks ready again and the
-    # evidence still contains the raw passage.
+    # Restore the older SQL snapshot and its source bytes. The append-only
+    # deletion manifest stays in place, as it would in a coordinated backup.
     with disposable_db.connect() as conn:
-        conn.execute(
-            "UPDATE document_revisions SET status = 'ready', revoked_at = NULL "
-            "WHERE id = %s",
-            (str(revision_id),),
-        )
-        conn.execute(
-            "UPDATE documents SET status = 'ready' WHERE id = %s",
-            (str(document_id),),
-        )
-        conn.execute(
-            "UPDATE document_ingestions SET state = 'ready' "
-            "WHERE revision_id = %s",
-            (str(revision_id),),
-        )
-        conn.execute(
-            "UPDATE retrieved_passage_evidence SET raw_passage = 'sentinel passage', "
-            "redacted_at = NULL, redaction_reason = NULL WHERE revision_id = %s",
-            (str(revision_id),),
-        )
-        conn.commit()
+        conn.execute("TRUNCATE TABLE documents CASCADE")
+        conn.execute("TRUNCATE TABLE retrieved_passage_evidence")
+        conn.execute("TRUNCATE TABLE knowledge_cleanup")
+        for table in tables:
+            conn.execute(
+                f"INSERT INTO {table} SELECT * FROM {table}_spec09_backup"
+            )
+    store.objects.clear()
+    store.objects.update(backup_objects)
+
     assert repository.eligible_revisions(meeting_id=meeting_id, stack_ids=[])
+    with disposable_db.connect() as conn:
+        raw = conn.execute(
+            "SELECT raw_passage FROM retrieved_passage_evidence WHERE revision_id = %s",
+            (str(revision_id),),
+        ).fetchone()[0]
+    assert raw == "sentinel passage"
 
     with disposable_db.connect() as conn:
         replay = conn.execute(
@@ -495,10 +520,6 @@ async def test_restored_backup_replays_newer_deletions_before_retrieval(disposab
             "SELECT status, revoked_at FROM document_revisions WHERE id = %s",
             (str(revision_id),),
         ).fetchone()
-        raw = conn.execute(
-            "SELECT raw_passage FROM retrieved_passage_evidence WHERE revision_id = %s",
-            (str(revision_id),),
-        ).fetchone()[0]
 
     assert replay["revoked_events"] >= 1
     assert row[0] == "revoked"
@@ -508,7 +529,7 @@ async def test_restored_backup_replays_newer_deletions_before_retrieval(disposab
     # restored system serves retrieval again.
     await CleanupWorker(
         persistence=repository,
-        source_store=MemorySourceStore(),
+        source_store=store,
         vectors=RecordingVectors(),
     ).run()
     with disposable_db.connect() as conn:
@@ -517,4 +538,5 @@ async def test_restored_backup_replays_newer_deletions_before_retrieval(disposab
             (str(revision_id),),
         ).fetchone()[0]
     assert raw is None
+    assert source_key not in store.objects
     assert repository.eligible_revisions(meeting_id=meeting_id, stack_ids=[]) == []
