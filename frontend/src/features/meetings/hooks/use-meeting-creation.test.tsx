@@ -12,7 +12,7 @@
  * - navigation happens once, only after every file reached a terminal state.
  */
 import { useState, type ReactNode } from 'react';
-import { render, renderHook, act, waitFor } from '@testing-library/react';
+import { renderHook, act, waitFor } from '@testing-library/react';
 import { QueryClientProvider } from '@tanstack/react-query';
 import { beforeEach, afterEach, describe, expect, it, vi } from 'vitest';
 import { useMeetingCreation } from '@/features/meetings';
@@ -38,6 +38,10 @@ const MEETING = {
 };
 
 const UPLOAD_OK = {
+    state: 'pending',
+    documentId: 'doc-1',
+    operationId: 'op-1',
+    revisionId: null,
     id: 'doc-1',
     file_name: 'market-scan.pdf',
     status: 'processing',
@@ -91,7 +95,7 @@ describe('useMeetingCreation resume semantics', () => {
         expect(push).not.toHaveBeenCalled();
 
         scripted.enqueueJson(201, MEETING);
-        scripted.enqueueJson(201, UPLOAD_OK);
+        scripted.enqueueJson(202, UPLOAD_OK);
         await act(async () => {
             await result.current.createMeeting(CREATE_INPUT);
         });
@@ -104,7 +108,7 @@ describe('useMeetingCreation resume semantics', () => {
 
     it('upload failures keep the created meeting and a retry re-uploads only the failed files', async () => {
         scripted.enqueueJson(201, MEETING); // create succeeds exactly once
-        scripted.enqueueJson(201, UPLOAD_OK); // market-scan.pdf reaches the server
+        scripted.enqueueJson(202, UPLOAD_OK); // market-scan.pdf reaches the server
         scripted.enqueueJson(500, { detail: 'storage down' }); // unit-economics.xlsx fails
         const { result } = renderHook(() => useMeetingCreation(), { wrapper: Wrapper });
 
@@ -124,7 +128,7 @@ describe('useMeetingCreation resume semantics', () => {
         const uploadCalls = scripted.calls.filter((call) => call.input.endsWith('/documents/upload'));
         expect(uploadCalls).toHaveLength(2);
 
-        scripted.enqueueJson(201, UPLOAD_OK); // unit-economics.xlsx reaches the server this time
+        scripted.enqueueJson(202, UPLOAD_OK); // unit-economics.xlsx reaches the server this time
         await act(async () => {
             await result.current.retryUploads();
         });
@@ -140,8 +144,8 @@ describe('useMeetingCreation resume semantics', () => {
 
     it('an all-success run navigates once after every file reached the server', async () => {
         scripted.enqueueJson(201, MEETING);
-        scripted.enqueueJson(201, UPLOAD_OK);
-        scripted.enqueueJson(201, UPLOAD_OK);
+        scripted.enqueueJson(202, UPLOAD_OK);
+        scripted.enqueueJson(202, UPLOAD_OK);
         const { result } = renderHook(() => useMeetingCreation(), { wrapper: Wrapper });
 
         act(() => {
@@ -156,5 +160,36 @@ describe('useMeetingCreation resume semantics', () => {
         expect(result.current.creationError).toBeNull();
         await waitFor(() => expect(push).toHaveBeenCalledTimes(1));
         expect(push).toHaveBeenCalledWith('/meetings/meeting-new-1');
+    });
+
+    it('keeps the accepted operation identity and never re-uploads an accepted file', async () => {
+        scripted.enqueueJson(201, MEETING);
+        scripted.enqueueJson(202, UPLOAD_OK);
+        const { result } = renderHook(() => useMeetingCreation(), { wrapper: Wrapper });
+
+        act(() => {
+            result.current.stageFiles([FILE_ONE()]);
+        });
+        await act(async () => {
+            await result.current.createMeeting(CREATE_INPUT);
+        });
+
+        expect(result.current.uploads[0]).toMatchObject({
+            status: 'uploaded',
+            documentId: 'doc-1',
+            operationId: 'op-1',
+            revisionId: null,
+        });
+        const uploadCalls = scripted.calls.filter((call) => call.input.endsWith('/documents/upload'));
+        expect(uploadCalls).toHaveLength(1);
+
+        await act(async () => {
+            await result.current.retryUploads();
+        });
+
+        // A pending receipt is accepted, not ready. Retrying an accepted file
+        // must not replay its bytes or create a second operation.
+        expect(scripted.calls.filter((call) => call.input.endsWith('/documents/upload'))).toHaveLength(1);
+        await waitFor(() => expect(push).toHaveBeenCalledTimes(1));
     });
 });

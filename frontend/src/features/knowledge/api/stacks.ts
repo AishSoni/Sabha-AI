@@ -1,5 +1,5 @@
 /**
- * HTTP client for knowledge-stack reads (spec-06).
+ * HTTP client for knowledge-stack reads and commands (spec-09).
  *
  * The roster screens pick the stacks a persona may query; the read lives in
  * the knowledge feature so persona-catalog consumes it through the feature
@@ -20,6 +20,17 @@ export interface KnowledgeStack {
 export interface KnowledgeStackListResponse {
     stacks: KnowledgeStack[];
     total: number;
+}
+
+export interface KnowledgeStackInput {
+    name: string;
+    description?: string;
+    user_id?: string;
+}
+
+export interface KnowledgeStackUpdate {
+    name?: string;
+    description?: string;
 }
 
 function decodeStack(value: unknown, path: string): KnowledgeStack {
@@ -49,6 +60,36 @@ export const stackClient = {
         const query = init?.userId ? { user_id: init.userId } : undefined;
         return requestJson('/knowledge_stacks', { query, ...init }).then((body) =>
             decodeStackListResponse(body, '/knowledge_stacks')
+        );
+    },
+
+    get(stackId: string, init?: { signal?: AbortSignal }): Promise<KnowledgeStack> {
+        return requestJson(`/knowledge_stacks/${stackId}`, init).then((body) =>
+            decodeStack(body, `/knowledge_stacks/${stackId}`)
+        );
+    },
+
+    create(input: KnowledgeStackInput, init?: { signal?: AbortSignal }): Promise<KnowledgeStack> {
+        return requestJson('/knowledge_stacks', { method: 'POST', body: input, ...init }).then((body) =>
+            decodeStack(body, '/knowledge_stacks')
+        );
+    },
+
+    update(
+        stackId: string,
+        input: KnowledgeStackUpdate,
+        init?: { signal?: AbortSignal }
+    ): Promise<KnowledgeStack> {
+        return requestJson(`/knowledge_stacks/${stackId}`, {
+            method: 'PUT',
+            body: input,
+            ...init,
+        }).then((body) => decodeStack(body, `/knowledge_stacks/${stackId}`));
+    },
+
+    delete(stackId: string, init?: { signal?: AbortSignal }): Promise<void> {
+        return requestJson(`/knowledge_stacks/${stackId}`, { method: 'DELETE', ...init }).then(
+            () => undefined
         );
     },
 };

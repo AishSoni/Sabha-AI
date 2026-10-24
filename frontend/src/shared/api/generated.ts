@@ -44,9 +44,10 @@ export interface paths {
         post?: never;
         /**
          * Delete Meeting
-         * @description Permanently delete a meeting and all its data — including the shared
-         *     vector collection (recorded first as a pending cleanup so a Qdrant
-         *     outage cannot block the SQL delete; reconciliation finishes the work).
+         * @description Permanently delete a meeting after Knowledge revokes its sources.
+         *
+         *     Revocation and cleanup intents commit before the meeting row cascades, so
+         *     an outage can defer physical cleanup but never resurrect eligibility.
          */
         delete: operations["delete_meeting_api_meetings__meeting_id__delete"];
         options?: never;
@@ -435,137 +436,6 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
-    "/api/documents/upload": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        get?: never;
-        put?: never;
-        /**
-         * Upload Document
-         * @description Upload a document for indexing.
-         *
-         *     Exactly one of meeting_id, persona_id, or stack_id must be provided.
-         *     - meeting_id: Document is shared with all AI participants in the meeting
-         *     - persona_id: Document is private to the persona's knowledge stack (legacy)
-         *     - stack_id: Document is part of a curated knowledge stack
-         */
-        post: operations["upload_document_api_documents_upload_post"];
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
-    "/api/documents/meeting/{meeting_id}": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        /**
-         * List Meeting Documents
-         * @description List all documents for a meeting.
-         */
-        get: operations["list_meeting_documents_api_documents_meeting__meeting_id__get"];
-        put?: never;
-        post?: never;
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
-    "/api/documents/persona/{persona_id}": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        /**
-         * List Persona Documents
-         * @description List all documents in a persona's knowledge stack.
-         */
-        get: operations["list_persona_documents_api_documents_persona__persona_id__get"];
-        put?: never;
-        post?: never;
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
-    "/api/documents/stack/{stack_id}": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        /**
-         * List Stack Documents
-         * @description List all documents in a knowledge stack.
-         */
-        get: operations["list_stack_documents_api_documents_stack__stack_id__get"];
-        put?: never;
-        post?: never;
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
-    "/api/documents/{document_id}": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        /**
-         * Get Document
-         * @description Get a single document by ID.
-         */
-        get: operations["get_document_api_documents__document_id__get"];
-        put?: never;
-        post?: never;
-        /**
-         * Delete Document
-         * @description Delete a document and its indexed vectors.
-         */
-        delete: operations["delete_document_api_documents__document_id__delete"];
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
-    "/api/documents/search": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        get?: never;
-        put?: never;
-        /**
-         * Search Documents
-         * @description Semantic search across documents.
-         *
-         *     Provide either meeting_id or persona_id to scope the search.
-         */
-        post: operations["search_documents_api_documents_search_post"];
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
     "/api/knowledge_stacks": {
         parameters: {
             query?: never;
@@ -610,9 +480,10 @@ export interface paths {
         post?: never;
         /**
          * Delete Knowledge Stack
-         * @description Delete a knowledge stack and its vector collection (pending-cleanup
-         *     recorded first; a transient vector-store failure only defers the
-         *     collection deletion to reconciliation, never blocks the SQL delete).
+         * @description Delete a stack after Knowledge revokes its documents and collection.
+         *
+         *     Revocation and cleanup intents commit before the stack row cascades; a
+         *     transient physical failure stays retryable but never restores access.
          */
         delete: operations["delete_knowledge_stack_api_knowledge_stacks__stack_id__delete"];
         options?: never;
@@ -738,6 +609,161 @@ export interface paths {
         put?: never;
         /** Abort Closing */
         post: operations["abort_closing_api_meetings__meeting_id__closing_abort_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/documents/upload": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Upload Document
+         * @description Persist original bytes and admit a durable ingestion.
+         *
+         *     A ``pending`` receipt means accepted, not ready. The caller observes
+         *     ``operationId`` until the ingestion reports an authoritative ready state.
+         */
+        post: operations["upload_document_api_documents_upload_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/documents/operations/{operation_id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Get Ingestion Status
+         * @description Observe durable progress for an accepted upload.
+         */
+        get: operations["get_ingestion_status_api_documents_operations__operation_id__get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/documents/operations/{operation_id}/retry": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Retry Ingestion
+         * @description Re-run a failed ingestion without changing its document/operation ids.
+         */
+        post: operations["retry_ingestion_api_documents_operations__operation_id__retry_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/documents/meeting/{meeting_id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** List Meeting Documents */
+        get: operations["list_meeting_documents_api_documents_meeting__meeting_id__get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/documents/persona/{persona_id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** List Persona Documents */
+        get: operations["list_persona_documents_api_documents_persona__persona_id__get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/documents/stack/{stack_id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** List Stack Documents */
+        get: operations["list_stack_documents_api_documents_stack__stack_id__get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/documents/{document_id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Get Document */
+        get: operations["get_document_api_documents__document_id__get"];
+        put?: never;
+        post?: never;
+        /**
+         * Delete Document
+         * @description Revoke eligibility, then attempt source/vector/evidence cleanup.
+         */
+        delete: operations["delete_document_api_documents__document_id__delete"];
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/documents/search": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Search Documents
+         * @description Search only currently eligible revisions in the requested scope.
+         */
+        post: operations["search_documents_api_documents_search_post"];
         delete?: never;
         options?: never;
         head?: never;
@@ -1051,24 +1077,21 @@ export interface components {
          */
         DisagreementStatus: "open" | "resolved" | "conceded";
         /**
-         * Document
-         * @description Full document schema from database.
+         * DocumentResponse
+         * @description Current document state plus its revision/operation identity.
          */
-        Document: {
+        DocumentResponse: {
+            /**
+             * Id
+             * Format: uuid
+             */
+            id: string;
             /** File Name */
             file_name: string;
             /** File Type */
             file_type: string;
             /** File Size Bytes */
             file_size_bytes: number;
-            /** Id */
-            id: string;
-            /** Meeting Id */
-            meeting_id?: string | null;
-            /** Persona Id */
-            persona_id?: string | null;
-            /** Stack Id */
-            stack_id?: string | null;
             /**
              * Chunk Count
              * @default 0
@@ -1078,28 +1101,32 @@ export interface components {
             qdrant_collection?: string | null;
             /**
              * Status
-             * @default processing
+             * @default pending
              */
             status: string;
             /** Error Message */
             error_message?: string | null;
-            /**
-             * Created At
-             * Format: date-time
-             */
-            created_at: string;
+            /** Created At */
+            created_at?: string | null;
+            /** Meeting Id */
+            meeting_id?: string | null;
+            /** Persona Id */
+            persona_id?: string | null;
+            /** Stack Id */
+            stack_id?: string | null;
+            /** Revision Id */
+            revision_id?: string | null;
+            /** Revision State */
+            revision_state?: string | null;
+            /** Operation Id */
+            operation_id?: string | null;
         };
-        /**
-         * DocumentSearchRequest
-         * @description Request body for document search.
-         */
+        /** DocumentSearchRequest */
         DocumentSearchRequest: {
             /** Query */
             query: string;
             /** Meeting Id */
             meeting_id?: string | null;
-            /** Persona Id */
-            persona_id?: string | null;
             /** Stack Ids */
             stack_ids?: string[] | null;
             /**
@@ -1108,10 +1135,7 @@ export interface components {
              */
             limit: number;
         };
-        /**
-         * DocumentSearchResponse
-         * @description Response from document search.
-         */
+        /** DocumentSearchResponse */
         DocumentSearchResponse: {
             /** Query */
             query: string;
@@ -1120,10 +1144,7 @@ export interface components {
             /** Total Results */
             total_results: number;
         };
-        /**
-         * DocumentSearchResult
-         * @description Single search result.
-         */
+        /** DocumentSearchResult */
         DocumentSearchResult: {
             /** Text */
             text: string;
@@ -1131,26 +1152,14 @@ export interface components {
             score: number;
             /** Document Id */
             document_id: string;
-            /** File Name */
-            file_name: string;
+            /** Revision Id */
+            revision_id: string;
+            /** Chunk Id */
+            chunk_id?: string | null;
             /** Chunk Index */
             chunk_index: number;
-        };
-        /**
-         * DocumentUploadResponse
-         * @description Response after uploading a document.
-         */
-        DocumentUploadResponse: {
-            /** Id */
-            id: string;
             /** File Name */
             file_name: string;
-            /** Status */
-            status: string;
-            /** Chunk Count */
-            chunk_count: number;
-            /** Message */
-            message: string;
         };
         /**
          * EnvironmentInfo
@@ -1217,6 +1226,41 @@ export interface components {
         HTTPValidationError: {
             /** Detail */
             detail?: components["schemas"]["ValidationError"][];
+        };
+        /**
+         * IngestionStatusResponse
+         * @description Durable progress for one upload operation.
+         */
+        IngestionStatusResponse: {
+            /**
+             * Operationid
+             * Format: uuid
+             */
+            operationId: string;
+            /**
+             * Documentid
+             * Format: uuid
+             */
+            documentId: string;
+            /**
+             * Revisionid
+             * Format: uuid
+             */
+            revisionId: string;
+            /** State */
+            state: string;
+            /** Revisionstate */
+            revisionState: string;
+            /** Documentstatus */
+            documentStatus: string;
+            /** Filename */
+            fileName: string;
+            /** Filetype */
+            fileType: string;
+            /** Chunkcount */
+            chunkCount: number;
+            /** Errormessage */
+            errorMessage?: string | null;
         };
         /**
          * KnowledgeStack
@@ -1782,6 +1826,42 @@ export interface components {
             /** Request Key */
             request_key: string;
             provider?: components["schemas"]["RequestProviderSettings"] | null;
+        };
+        /**
+         * UploadReceiptResponse
+         * @description Acknowledgement; only ``state=ready`` means eligible for retrieval.
+         */
+        UploadReceiptResponse: {
+            /**
+             * State
+             * @enum {string}
+             */
+            state: "pending" | "ready";
+            /**
+             * Documentid
+             * Format: uuid
+             */
+            documentId: string;
+            /** Operationid */
+            operationId?: string | null;
+            /** Revisionid */
+            revisionId?: string | null;
+            /**
+             * Id
+             * Format: uuid
+             */
+            id: string;
+            /** File Name */
+            file_name: string;
+            /** Status */
+            status: string;
+            /**
+             * Chunk Count
+             * @default 0
+             */
+            chunk_count: number;
+            /** Message */
+            message: string;
         };
         /**
          * UserMessageRequest
@@ -2528,227 +2608,6 @@ export interface operations {
             };
         };
     };
-    upload_document_api_documents_upload_post: {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        requestBody: {
-            content: {
-                "multipart/form-data": components["schemas"]["Body_upload_document_api_documents_upload_post"];
-            };
-        };
-        responses: {
-            /** @description Successful Response */
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["DocumentUploadResponse"];
-                };
-            };
-            /** @description Validation Error */
-            422: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["HTTPValidationError"];
-                };
-            };
-        };
-    };
-    list_meeting_documents_api_documents_meeting__meeting_id__get: {
-        parameters: {
-            query?: never;
-            header?: never;
-            path: {
-                meeting_id: string;
-            };
-            cookie?: never;
-        };
-        requestBody?: never;
-        responses: {
-            /** @description Successful Response */
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["Document"][];
-                };
-            };
-            /** @description Validation Error */
-            422: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["HTTPValidationError"];
-                };
-            };
-        };
-    };
-    list_persona_documents_api_documents_persona__persona_id__get: {
-        parameters: {
-            query?: never;
-            header?: never;
-            path: {
-                persona_id: string;
-            };
-            cookie?: never;
-        };
-        requestBody?: never;
-        responses: {
-            /** @description Successful Response */
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["Document"][];
-                };
-            };
-            /** @description Validation Error */
-            422: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["HTTPValidationError"];
-                };
-            };
-        };
-    };
-    list_stack_documents_api_documents_stack__stack_id__get: {
-        parameters: {
-            query?: never;
-            header?: never;
-            path: {
-                stack_id: string;
-            };
-            cookie?: never;
-        };
-        requestBody?: never;
-        responses: {
-            /** @description Successful Response */
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["Document"][];
-                };
-            };
-            /** @description Validation Error */
-            422: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["HTTPValidationError"];
-                };
-            };
-        };
-    };
-    get_document_api_documents__document_id__get: {
-        parameters: {
-            query?: never;
-            header?: never;
-            path: {
-                document_id: string;
-            };
-            cookie?: never;
-        };
-        requestBody?: never;
-        responses: {
-            /** @description Successful Response */
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["Document"];
-                };
-            };
-            /** @description Validation Error */
-            422: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["HTTPValidationError"];
-                };
-            };
-        };
-    };
-    delete_document_api_documents__document_id__delete: {
-        parameters: {
-            query?: never;
-            header?: never;
-            path: {
-                document_id: string;
-            };
-            cookie?: never;
-        };
-        requestBody?: never;
-        responses: {
-            /** @description Successful Response */
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": unknown;
-                };
-            };
-            /** @description Validation Error */
-            422: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["HTTPValidationError"];
-                };
-            };
-        };
-    };
-    search_documents_api_documents_search_post: {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        requestBody: {
-            content: {
-                "application/json": components["schemas"]["DocumentSearchRequest"];
-            };
-        };
-        responses: {
-            /** @description Successful Response */
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["DocumentSearchResponse"];
-                };
-            };
-            /** @description Validation Error */
-            422: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["HTTPValidationError"];
-                };
-            };
-        };
-    };
     list_knowledge_stacks_api_knowledge_stacks_get: {
         parameters: {
             query?: {
@@ -3281,6 +3140,289 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["ClosingView"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    upload_document_api_documents_upload_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "multipart/form-data": components["schemas"]["Body_upload_document_api_documents_upload_post"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["UploadReceiptResponse"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    get_ingestion_status_api_documents_operations__operation_id__get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                operation_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["IngestionStatusResponse"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    retry_ingestion_api_documents_operations__operation_id__retry_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                operation_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["UploadReceiptResponse"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    list_meeting_documents_api_documents_meeting__meeting_id__get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                meeting_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["DocumentResponse"][];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    list_persona_documents_api_documents_persona__persona_id__get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                persona_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["DocumentResponse"][];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    list_stack_documents_api_documents_stack__stack_id__get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                stack_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["DocumentResponse"][];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    get_document_api_documents__document_id__get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                document_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["DocumentResponse"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    delete_document_api_documents__document_id__delete: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                document_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": unknown;
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    search_documents_api_documents_search_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["DocumentSearchRequest"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["DocumentSearchResponse"];
                 };
             };
             /** @description Validation Error */

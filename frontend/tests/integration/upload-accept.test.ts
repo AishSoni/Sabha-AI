@@ -8,9 +8,8 @@ import { resolve } from "node:path";
 import { describe, expect, it } from "vitest";
 
 const UPLOAD_PAGES = [
-  "src/app/knowledge-stacks/[id]/page.tsx",
+  "src/features/knowledge/components/DocumentPanel.tsx",
   "src/app/meetings/new/page.tsx",
-  "src/components/chat/SharedDocumentsTab.tsx",
 ];
 
 function acceptTokens(source: string): string[] {

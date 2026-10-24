@@ -13,18 +13,36 @@
 import { useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { useCreateMeeting } from '../api/mutations';
-import { useUploadMeetingDocument } from '@/features/knowledge';
+import { useRetryIngestion, useUploadMeetingDocument, type UploadReceipt } from '@/features/knowledge';
 
 export interface MeetingUploadDraft {
     file: File;
     status: 'pending' | 'uploading' | 'uploaded' | 'failed';
     error: string | null;
+    documentId: string | null;
+    operationId: string | null;
+    revisionId: string | null;
 }
 
 export interface MeetingCreationInput {
     agenda: string;
     context: string;
     personaIds: string[];
+}
+
+function accepted(receipt: UploadReceipt): Pick<
+    MeetingUploadDraft,
+    'status' | 'error' | 'documentId' | 'operationId' | 'revisionId'
+> {
+    return {
+        // Accepted is not ready: pending receipts are observed by the meeting
+        // room, never re-uploaded. The retained operation id makes retry safe.
+        status: 'uploaded',
+        error: null,
+        documentId: receipt.documentId,
+        operationId: receipt.operationId,
+        revisionId: receipt.revisionId,
+    };
 }
 
 export function useMeetingCreation() {
@@ -35,6 +53,7 @@ export function useMeetingCreation() {
     const [isCreating, setIsCreating] = useState(false);
     const [uploads, setUploads] = useState<MeetingUploadDraft[]>([]);
     const [createdMeetingId, setCreatedMeetingId] = useState<string | null>(null);
+    const retryIngestion = useRetryIngestion({ meetingId: createdMeetingId ?? '' });
     const [creationError, setCreationError] = useState<string | null>(null);
     const [uploadError, setUploadError] = useState<string | null>(null);
     const [navigationDone, setNavigationDone] = useState(false);
@@ -44,6 +63,9 @@ export function useMeetingCreation() {
             file,
             status: 'pending' as const,
             error: null,
+            documentId: null,
+            operationId: null,
+            revisionId: null,
         }));
         setUploads((prev) => [...prev, ...incoming]);
     };
@@ -66,11 +88,15 @@ export function useMeetingCreation() {
         setUploadError(null);
 
         const results = await Promise.allSettled(
-            targets.map((item) => uploadDocument.mutateAsync({ file: item.file, meetingId }))
+            targets.map((item) =>
+                item.operationId
+                    ? retryIngestion.mutateAsync(item.operationId)
+                    : uploadDocument.mutateAsync({ file: item.file, meetingId })
+            )
         );
 
         // Reconcile by file identity so an out-of-order late success still lands.
-        const outcome = new Map<File, PromiseSettledResult<unknown>>();
+        const outcome = new Map<File, PromiseSettledResult<UploadReceipt>>();
         targets.forEach((item, i) => outcome.set(item.file, results[i]));
 
         setUploads((prev) =>
@@ -78,7 +104,7 @@ export function useMeetingCreation() {
                 if (item.status === 'uploaded') return item;
                 const result = outcome.get(item.file);
                 if (!result) return item;
-                if (result.status === 'fulfilled') return { ...item, status: 'uploaded', error: null };
+                if (result.status === 'fulfilled') return { ...item, ...accepted(result.value) };
                 return {
                     ...item,
                     status: 'failed',

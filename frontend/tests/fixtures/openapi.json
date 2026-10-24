@@ -119,7 +119,7 @@
           "meetings"
         ],
         "summary": "Delete Meeting",
-        "description": "Permanently delete a meeting and all its data — including the shared\nvector collection (recorded first as a pending cleanup so a Qdrant\noutage cannot block the SQL delete; reconciliation finishes the work).",
+        "description": "Permanently delete a meeting after Knowledge revokes its sources.\n\nRevocation and cleanup intents commit before the meeting row cascades, so\nan outage can defer physical cleanup but never resurrect eligibility.",
         "operationId": "delete_meeting_api_meetings__meeting_id__delete",
         "parameters": [
           {
@@ -1031,313 +1031,6 @@
         }
       }
     },
-    "/api/documents/upload": {
-      "post": {
-        "tags": [
-          "documents"
-        ],
-        "summary": "Upload Document",
-        "description": "Upload a document for indexing.\n\nExactly one of meeting_id, persona_id, or stack_id must be provided.\n- meeting_id: Document is shared with all AI participants in the meeting\n- persona_id: Document is private to the persona's knowledge stack (legacy)\n- stack_id: Document is part of a curated knowledge stack",
-        "operationId": "upload_document_api_documents_upload_post",
-        "requestBody": {
-          "content": {
-            "multipart/form-data": {
-              "schema": {
-                "$ref": "#/components/schemas/Body_upload_document_api_documents_upload_post"
-              }
-            }
-          },
-          "required": true
-        },
-        "responses": {
-          "200": {
-            "description": "Successful Response",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/DocumentUploadResponse"
-                }
-              }
-            }
-          },
-          "422": {
-            "description": "Validation Error",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/HTTPValidationError"
-                }
-              }
-            }
-          }
-        }
-      }
-    },
-    "/api/documents/meeting/{meeting_id}": {
-      "get": {
-        "tags": [
-          "documents"
-        ],
-        "summary": "List Meeting Documents",
-        "description": "List all documents for a meeting.",
-        "operationId": "list_meeting_documents_api_documents_meeting__meeting_id__get",
-        "parameters": [
-          {
-            "name": "meeting_id",
-            "in": "path",
-            "required": true,
-            "schema": {
-              "type": "string",
-              "title": "Meeting Id"
-            }
-          }
-        ],
-        "responses": {
-          "200": {
-            "description": "Successful Response",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "type": "array",
-                  "items": {
-                    "$ref": "#/components/schemas/Document"
-                  },
-                  "title": "Response List Meeting Documents Api Documents Meeting  Meeting Id  Get"
-                }
-              }
-            }
-          },
-          "422": {
-            "description": "Validation Error",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/HTTPValidationError"
-                }
-              }
-            }
-          }
-        }
-      }
-    },
-    "/api/documents/persona/{persona_id}": {
-      "get": {
-        "tags": [
-          "documents"
-        ],
-        "summary": "List Persona Documents",
-        "description": "List all documents in a persona's knowledge stack.",
-        "operationId": "list_persona_documents_api_documents_persona__persona_id__get",
-        "parameters": [
-          {
-            "name": "persona_id",
-            "in": "path",
-            "required": true,
-            "schema": {
-              "type": "string",
-              "title": "Persona Id"
-            }
-          }
-        ],
-        "responses": {
-          "200": {
-            "description": "Successful Response",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "type": "array",
-                  "items": {
-                    "$ref": "#/components/schemas/Document"
-                  },
-                  "title": "Response List Persona Documents Api Documents Persona  Persona Id  Get"
-                }
-              }
-            }
-          },
-          "422": {
-            "description": "Validation Error",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/HTTPValidationError"
-                }
-              }
-            }
-          }
-        }
-      }
-    },
-    "/api/documents/stack/{stack_id}": {
-      "get": {
-        "tags": [
-          "documents"
-        ],
-        "summary": "List Stack Documents",
-        "description": "List all documents in a knowledge stack.",
-        "operationId": "list_stack_documents_api_documents_stack__stack_id__get",
-        "parameters": [
-          {
-            "name": "stack_id",
-            "in": "path",
-            "required": true,
-            "schema": {
-              "type": "string",
-              "title": "Stack Id"
-            }
-          }
-        ],
-        "responses": {
-          "200": {
-            "description": "Successful Response",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "type": "array",
-                  "items": {
-                    "$ref": "#/components/schemas/Document"
-                  },
-                  "title": "Response List Stack Documents Api Documents Stack  Stack Id  Get"
-                }
-              }
-            }
-          },
-          "422": {
-            "description": "Validation Error",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/HTTPValidationError"
-                }
-              }
-            }
-          }
-        }
-      }
-    },
-    "/api/documents/{document_id}": {
-      "get": {
-        "tags": [
-          "documents"
-        ],
-        "summary": "Get Document",
-        "description": "Get a single document by ID.",
-        "operationId": "get_document_api_documents__document_id__get",
-        "parameters": [
-          {
-            "name": "document_id",
-            "in": "path",
-            "required": true,
-            "schema": {
-              "type": "string",
-              "title": "Document Id"
-            }
-          }
-        ],
-        "responses": {
-          "200": {
-            "description": "Successful Response",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/Document"
-                }
-              }
-            }
-          },
-          "422": {
-            "description": "Validation Error",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/HTTPValidationError"
-                }
-              }
-            }
-          }
-        }
-      },
-      "delete": {
-        "tags": [
-          "documents"
-        ],
-        "summary": "Delete Document",
-        "description": "Delete a document and its indexed vectors.",
-        "operationId": "delete_document_api_documents__document_id__delete",
-        "parameters": [
-          {
-            "name": "document_id",
-            "in": "path",
-            "required": true,
-            "schema": {
-              "type": "string",
-              "title": "Document Id"
-            }
-          }
-        ],
-        "responses": {
-          "200": {
-            "description": "Successful Response",
-            "content": {
-              "application/json": {
-                "schema": {}
-              }
-            }
-          },
-          "422": {
-            "description": "Validation Error",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/HTTPValidationError"
-                }
-              }
-            }
-          }
-        }
-      }
-    },
-    "/api/documents/search": {
-      "post": {
-        "tags": [
-          "documents"
-        ],
-        "summary": "Search Documents",
-        "description": "Semantic search across documents.\n\nProvide either meeting_id or persona_id to scope the search.",
-        "operationId": "search_documents_api_documents_search_post",
-        "requestBody": {
-          "content": {
-            "application/json": {
-              "schema": {
-                "$ref": "#/components/schemas/DocumentSearchRequest"
-              }
-            }
-          },
-          "required": true
-        },
-        "responses": {
-          "200": {
-            "description": "Successful Response",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/DocumentSearchResponse"
-                }
-              }
-            }
-          },
-          "422": {
-            "description": "Validation Error",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/HTTPValidationError"
-                }
-              }
-            }
-          }
-        }
-      }
-    },
     "/api/knowledge_stacks": {
       "get": {
         "tags": [
@@ -1526,7 +1219,7 @@
           "knowledge_stacks"
         ],
         "summary": "Delete Knowledge Stack",
-        "description": "Delete a knowledge stack and its vector collection (pending-cleanup\nrecorded first; a transient vector-store failure only defers the\ncollection deletion to reconciliation, never blocks the SQL delete).",
+        "description": "Delete a stack after Knowledge revokes its documents and collection.\n\nRevocation and cleanup intents commit before the stack row cascades; a\ntransient physical failure stays retryable but never restores access.",
         "operationId": "delete_knowledge_stack_api_knowledge_stacks__stack_id__delete",
         "parameters": [
           {
@@ -2043,6 +1736,402 @@
               "application/json": {
                 "schema": {
                   "$ref": "#/components/schemas/ClosingView"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/documents/upload": {
+      "post": {
+        "tags": [
+          "documents"
+        ],
+        "summary": "Upload Document",
+        "description": "Persist original bytes and admit a durable ingestion.\n\nA ``pending`` receipt means accepted, not ready. The caller observes\n``operationId`` until the ingestion reports an authoritative ready state.",
+        "operationId": "upload_document_api_documents_upload_post",
+        "requestBody": {
+          "content": {
+            "multipart/form-data": {
+              "schema": {
+                "$ref": "#/components/schemas/Body_upload_document_api_documents_upload_post"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/UploadReceiptResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/documents/operations/{operation_id}": {
+      "get": {
+        "tags": [
+          "documents"
+        ],
+        "summary": "Get Ingestion Status",
+        "description": "Observe durable progress for an accepted upload.",
+        "operationId": "get_ingestion_status_api_documents_operations__operation_id__get",
+        "parameters": [
+          {
+            "name": "operation_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid",
+              "title": "Operation Id"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/IngestionStatusResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/documents/operations/{operation_id}/retry": {
+      "post": {
+        "tags": [
+          "documents"
+        ],
+        "summary": "Retry Ingestion",
+        "description": "Re-run a failed ingestion without changing its document/operation ids.",
+        "operationId": "retry_ingestion_api_documents_operations__operation_id__retry_post",
+        "parameters": [
+          {
+            "name": "operation_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid",
+              "title": "Operation Id"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/UploadReceiptResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/documents/meeting/{meeting_id}": {
+      "get": {
+        "tags": [
+          "documents"
+        ],
+        "summary": "List Meeting Documents",
+        "operationId": "list_meeting_documents_api_documents_meeting__meeting_id__get",
+        "parameters": [
+          {
+            "name": "meeting_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid",
+              "title": "Meeting Id"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/DocumentResponse"
+                  },
+                  "title": "Response List Meeting Documents Api Documents Meeting  Meeting Id  Get"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/documents/persona/{persona_id}": {
+      "get": {
+        "tags": [
+          "documents"
+        ],
+        "summary": "List Persona Documents",
+        "operationId": "list_persona_documents_api_documents_persona__persona_id__get",
+        "parameters": [
+          {
+            "name": "persona_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid",
+              "title": "Persona Id"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/DocumentResponse"
+                  },
+                  "title": "Response List Persona Documents Api Documents Persona  Persona Id  Get"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/documents/stack/{stack_id}": {
+      "get": {
+        "tags": [
+          "documents"
+        ],
+        "summary": "List Stack Documents",
+        "operationId": "list_stack_documents_api_documents_stack__stack_id__get",
+        "parameters": [
+          {
+            "name": "stack_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid",
+              "title": "Stack Id"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/DocumentResponse"
+                  },
+                  "title": "Response List Stack Documents Api Documents Stack  Stack Id  Get"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/documents/{document_id}": {
+      "get": {
+        "tags": [
+          "documents"
+        ],
+        "summary": "Get Document",
+        "operationId": "get_document_api_documents__document_id__get",
+        "parameters": [
+          {
+            "name": "document_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid",
+              "title": "Document Id"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/DocumentResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      },
+      "delete": {
+        "tags": [
+          "documents"
+        ],
+        "summary": "Delete Document",
+        "description": "Revoke eligibility, then attempt source/vector/evidence cleanup.",
+        "operationId": "delete_document_api_documents__document_id__delete",
+        "parameters": [
+          {
+            "name": "document_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid",
+              "title": "Document Id"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/documents/search": {
+      "post": {
+        "tags": [
+          "documents"
+        ],
+        "summary": "Search Documents",
+        "description": "Search only currently eligible revisions in the requested scope.",
+        "operationId": "search_documents_api_documents_search_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/DocumentSearchRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/DocumentSearchResponse"
                 }
               }
             }
@@ -2846,8 +2935,13 @@
         ],
         "title": "DisagreementStatus"
       },
-      "Document": {
+      "DocumentResponse": {
         "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid",
+            "title": "Id"
+          },
           "file_name": {
             "type": "string",
             "title": "File Name"
@@ -2859,43 +2953,6 @@
           "file_size_bytes": {
             "type": "integer",
             "title": "File Size Bytes"
-          },
-          "id": {
-            "type": "string",
-            "title": "Id"
-          },
-          "meeting_id": {
-            "anyOf": [
-              {
-                "type": "string"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Meeting Id"
-          },
-          "persona_id": {
-            "anyOf": [
-              {
-                "type": "string"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Persona Id"
-          },
-          "stack_id": {
-            "anyOf": [
-              {
-                "type": "string"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Stack Id"
           },
           "chunk_count": {
             "type": "integer",
@@ -2916,7 +2973,7 @@
           "status": {
             "type": "string",
             "title": "Status",
-            "default": "processing"
+            "default": "pending"
           },
           "error_message": {
             "anyOf": [
@@ -2930,21 +2987,98 @@
             "title": "Error Message"
           },
           "created_at": {
-            "type": "string",
-            "format": "date-time",
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "date-time"
+              },
+              {
+                "type": "null"
+              }
+            ],
             "title": "Created At"
+          },
+          "meeting_id": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "uuid"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Meeting Id"
+          },
+          "persona_id": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "uuid"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Persona Id"
+          },
+          "stack_id": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "uuid"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Stack Id"
+          },
+          "revision_id": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "uuid"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Revision Id"
+          },
+          "revision_state": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Revision State"
+          },
+          "operation_id": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "uuid"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Operation Id"
           }
         },
         "type": "object",
         "required": [
+          "id",
           "file_name",
           "file_type",
-          "file_size_bytes",
-          "id",
-          "created_at"
+          "file_size_bytes"
         ],
-        "title": "Document",
-        "description": "Full document schema from database."
+        "title": "DocumentResponse",
+        "description": "Current document state plus its revision/operation identity."
       },
       "DocumentSearchRequest": {
         "properties": {
@@ -2964,17 +3098,6 @@
               }
             ],
             "title": "Meeting Id"
-          },
-          "persona_id": {
-            "anyOf": [
-              {
-                "type": "string"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Persona Id"
           },
           "stack_ids": {
             "anyOf": [
@@ -3002,8 +3125,7 @@
         "required": [
           "query"
         ],
-        "title": "DocumentSearchRequest",
-        "description": "Request body for document search."
+        "title": "DocumentSearchRequest"
       },
       "DocumentSearchResponse": {
         "properties": {
@@ -3029,8 +3151,7 @@
           "results",
           "total_results"
         ],
-        "title": "DocumentSearchResponse",
-        "description": "Response from document search."
+        "title": "DocumentSearchResponse"
       },
       "DocumentSearchResult": {
         "properties": {
@@ -3046,13 +3167,28 @@
             "type": "string",
             "title": "Document Id"
           },
-          "file_name": {
+          "revision_id": {
             "type": "string",
-            "title": "File Name"
+            "title": "Revision Id"
+          },
+          "chunk_id": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Chunk Id"
           },
           "chunk_index": {
             "type": "integer",
             "title": "Chunk Index"
+          },
+          "file_name": {
+            "type": "string",
+            "title": "File Name"
           }
         },
         "type": "object",
@@ -3060,45 +3196,11 @@
           "text",
           "score",
           "document_id",
-          "file_name",
-          "chunk_index"
+          "revision_id",
+          "chunk_index",
+          "file_name"
         ],
-        "title": "DocumentSearchResult",
-        "description": "Single search result."
-      },
-      "DocumentUploadResponse": {
-        "properties": {
-          "id": {
-            "type": "string",
-            "title": "Id"
-          },
-          "file_name": {
-            "type": "string",
-            "title": "File Name"
-          },
-          "status": {
-            "type": "string",
-            "title": "Status"
-          },
-          "chunk_count": {
-            "type": "integer",
-            "title": "Chunk Count"
-          },
-          "message": {
-            "type": "string",
-            "title": "Message"
-          }
-        },
-        "type": "object",
-        "required": [
-          "id",
-          "file_name",
-          "status",
-          "chunk_count",
-          "message"
-        ],
-        "title": "DocumentUploadResponse",
-        "description": "Response after uploading a document."
+        "title": "DocumentSearchResult"
       },
       "EnvironmentInfo": {
         "properties": {
@@ -3211,6 +3313,74 @@
         },
         "type": "object",
         "title": "HTTPValidationError"
+      },
+      "IngestionStatusResponse": {
+        "properties": {
+          "operationId": {
+            "type": "string",
+            "format": "uuid",
+            "title": "Operationid"
+          },
+          "documentId": {
+            "type": "string",
+            "format": "uuid",
+            "title": "Documentid"
+          },
+          "revisionId": {
+            "type": "string",
+            "format": "uuid",
+            "title": "Revisionid"
+          },
+          "state": {
+            "type": "string",
+            "title": "State"
+          },
+          "revisionState": {
+            "type": "string",
+            "title": "Revisionstate"
+          },
+          "documentStatus": {
+            "type": "string",
+            "title": "Documentstatus"
+          },
+          "fileName": {
+            "type": "string",
+            "title": "Filename"
+          },
+          "fileType": {
+            "type": "string",
+            "title": "Filetype"
+          },
+          "chunkCount": {
+            "type": "integer",
+            "title": "Chunkcount"
+          },
+          "errorMessage": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Errormessage"
+          }
+        },
+        "type": "object",
+        "required": [
+          "operationId",
+          "documentId",
+          "revisionId",
+          "state",
+          "revisionState",
+          "documentStatus",
+          "fileName",
+          "fileType",
+          "chunkCount"
+        ],
+        "title": "IngestionStatusResponse",
+        "description": "Durable progress for one upload operation."
       },
       "KnowledgeStack": {
         "properties": {
@@ -4557,6 +4727,80 @@
         ],
         "title": "TurnSubmitRequest",
         "description": "Submit one logical turn.\n\n``request_key`` is globally unique (migration 014). Reusing it with the\nsame payload returns the original operation; a different payload is a\nconflict. The provider key never appears here; it rides X-Provider-Key."
+      },
+      "UploadReceiptResponse": {
+        "properties": {
+          "state": {
+            "type": "string",
+            "enum": [
+              "pending",
+              "ready"
+            ],
+            "title": "State"
+          },
+          "documentId": {
+            "type": "string",
+            "format": "uuid",
+            "title": "Documentid"
+          },
+          "operationId": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "uuid"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Operationid"
+          },
+          "revisionId": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "uuid"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Revisionid"
+          },
+          "id": {
+            "type": "string",
+            "format": "uuid",
+            "title": "Id"
+          },
+          "file_name": {
+            "type": "string",
+            "title": "File Name"
+          },
+          "status": {
+            "type": "string",
+            "title": "Status"
+          },
+          "chunk_count": {
+            "type": "integer",
+            "title": "Chunk Count",
+            "default": 0
+          },
+          "message": {
+            "type": "string",
+            "title": "Message"
+          }
+        },
+        "type": "object",
+        "required": [
+          "state",
+          "documentId",
+          "id",
+          "file_name",
+          "status",
+          "message"
+        ],
+        "title": "UploadReceiptResponse",
+        "description": "Acknowledgement; only ``state=ready`` means eligible for retrieval."
       },
       "UserMessageRequest": {
         "properties": {
