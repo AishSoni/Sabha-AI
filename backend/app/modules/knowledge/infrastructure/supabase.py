@@ -16,6 +16,7 @@ import httpx
 from postgrest.exceptions import APIError
 
 from app.modules.knowledge.application.ports import (
+    DocumentRecord,
     IngestionClaim,
     IngestionRecord,
     NewUpload,
@@ -641,6 +642,142 @@ class SupabaseKnowledgeRepository:
                 ) from exc
             updated += 1
         return updated
+
+    def list_documents(
+        self, *, owner_kind: str, owner_id: UUID
+    ) -> list[DocumentRecord]:
+        column = {
+            "meeting": "meeting_id",
+            "persona": "persona_id",
+            "stack": "stack_id",
+        }.get(owner_kind)
+        if column is None:
+            raise ValueError(f"unsupported knowledge owner {owner_kind!r}")
+        try:
+            result = (
+                self._client()
+                .table("documents")
+                .select("*")
+                .eq(column, str(owner_id))
+                .order("created_at", desc=True)
+                .execute()
+            )
+        except (APIError, httpx.HTTPError) as exc:
+            raise KnowledgeUnavailable(
+                "knowledge persistence failed while listing documents"
+            ) from exc
+        rows = [row for row in (getattr(result, "data", None) or []) if isinstance(row, dict)]
+        return self._document_records(rows)
+
+    def get_document(self, document_id: UUID) -> DocumentRecord | None:
+        try:
+            result = (
+                self._client()
+                .table("documents")
+                .select("*")
+                .eq("id", str(document_id))
+                .limit(1)
+                .execute()
+            )
+        except (APIError, httpx.HTTPError) as exc:
+            raise KnowledgeUnavailable(
+                "knowledge persistence failed while reading a document"
+            ) from exc
+        rows = [row for row in (getattr(result, "data", None) or []) if isinstance(row, dict)]
+        records = self._document_records(rows)
+        return records[0] if records else None
+
+    def _document_records(
+        self, rows: list[dict[str, Any]]
+    ) -> list[DocumentRecord]:
+        if not rows:
+            return []
+        document_ids = [str(row["id"]) for row in rows]
+        try:
+            revision_result = (
+                self._client()
+                .table("document_revisions")
+                .select("id,document_id,revision_number,status,error_message")
+                .in_("document_id", document_ids)
+                .order("revision_number", desc=True)
+                .execute()
+            )
+            ingestion_result = (
+                self._client()
+                .table("document_ingestions")
+                .select("id,document_id,revision_id,state,last_error")
+                .in_("document_id", document_ids)
+                .order("created_at", desc=True)
+                .execute()
+            )
+        except (APIError, httpx.HTTPError) as exc:
+            raise KnowledgeUnavailable(
+                "knowledge persistence failed while reading document state"
+            ) from exc
+
+        revisions: dict[str, dict[str, Any]] = {}
+        for row in getattr(revision_result, "data", None) or []:
+            if isinstance(row, dict):
+                revisions.setdefault(str(row["document_id"]), row)
+        ingestions: dict[str, dict[str, Any]] = {}
+        for row in getattr(ingestion_result, "data", None) or []:
+            if isinstance(row, dict):
+                ingestions.setdefault(str(row["document_id"]), row)
+
+        records: list[DocumentRecord] = []
+        for row in rows:
+            document_id = str(row["id"])
+            revision = revisions.get(document_id)
+            ingestion = ingestions.get(document_id)
+            try:
+                records.append(
+                    DocumentRecord(
+                        document_id=UUID(document_id),
+                        file_name=str(row["file_name"]),
+                        file_type=str(row["file_type"]),
+                        file_size_bytes=int(row["file_size_bytes"]),
+                        status=str(row.get("status") or "pending"),
+                        chunk_count=int(row.get("chunk_count") or 0),
+                        created_at=_as_datetime(row.get("created_at")),
+                        qdrant_collection=row.get("qdrant_collection"),
+                        error_message=(
+                            row.get("error_message")
+                            or (revision or {}).get("error_message")
+                            or (ingestion or {}).get("last_error")
+                        ),
+                        revision_id=(
+                            UUID(str(revision["id"])) if revision else None
+                        ),
+                        revision_state=(
+                            RevisionState(str(revision["status"]))
+                            if revision
+                            else None
+                        ),
+                        operation_id=(
+                            UUID(str(ingestion["id"])) if ingestion else None
+                        ),
+                    )
+                )
+            except (KeyError, TypeError, ValueError) as exc:
+                raise KnowledgeUnavailable(
+                    "knowledge documents returned an unexpected row shape"
+                ) from exc
+        return records
+
+    def delete_document_row(self, document_id: UUID) -> bool:
+        try:
+            result = (
+                self._client()
+                .table("documents")
+                .delete()
+                .eq("id", str(document_id))
+                .execute()
+            )
+        except (APIError, httpx.HTTPError) as exc:
+            raise KnowledgeUnavailable(
+                "knowledge persistence failed while removing a document row"
+            ) from exc
+        return bool(getattr(result, "data", None))
 
 
 def _eligible_rows(rows: list[dict[str, Any]]) -> list[EligibleRevision]:

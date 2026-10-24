@@ -32,15 +32,21 @@ from app.platform.providers.embeddings import (
 _UPSERT_BATCH = 64
 
 
+def _default_client():
+    from app.core.qdrant import get_qdrant_client
+
+    return get_qdrant_client()
+
+
 class QdrantKnowledgeProjection:
     """``VectorProjection`` over the configured Qdrant collection scheme."""
 
     def __init__(
         self,
-        client_factory,
+        client_factory=None,
         embedding_provider: EmbeddingProvider | None = None,
     ) -> None:
-        self._client_factory = client_factory
+        self._client_factory = client_factory or _default_client
         self._embedding_provider = embedding_provider
 
     @property

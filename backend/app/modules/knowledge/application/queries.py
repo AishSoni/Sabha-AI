@@ -7,6 +7,7 @@ from dataclasses import dataclass
 from uuid import UUID
 
 from app.modules.knowledge.application.ports import (
+    DocumentRecord,
     IngestionRecord,
     KnowledgePersistence,
 )
@@ -38,6 +39,34 @@ class GetIngestionStatus:
             self._persistence.get_ingestion, operation_id
         )
         return None if record is None else _view(record)
+
+
+class ListDocuments:
+    """List documents in one meeting/persona/stack scope."""
+
+    def __init__(self, persistence: KnowledgePersistence) -> None:
+        self._persistence = persistence
+
+    async def execute(
+        self, *, owner_kind: str, owner_id: UUID
+    ) -> list[DocumentRecord]:
+        return await asyncio.to_thread(
+            self._persistence.list_documents,
+            owner_kind=owner_kind,
+            owner_id=owner_id,
+        )
+
+
+class GetDocument:
+    """Read one document with its current revision/operation identity."""
+
+    def __init__(self, persistence: KnowledgePersistence) -> None:
+        self._persistence = persistence
+
+    async def execute(self, document_id: UUID) -> DocumentRecord | None:
+        return await asyncio.to_thread(
+            self._persistence.get_document, document_id
+        )
 
 
 def _view(record: IngestionRecord) -> IngestionStatusView:

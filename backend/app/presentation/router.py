@@ -15,7 +15,6 @@ def mount_routes(app) -> None:
         meetings,
         participants,
         settings as settings_api,
-        documents,
         knowledge_stacks,
         turns,
     )
@@ -26,7 +25,6 @@ def mount_routes(app) -> None:
     app.include_router(turns.router, prefix="/api")
     app.include_router(participants.router, prefix="/api/participants", tags=["participants"])
     app.include_router(settings_api.router)
-    app.include_router(documents.router)
     app.include_router(knowledge_stacks.router)
 
     # Extracted module routes: their paths are absolute (the router carries
@@ -39,3 +37,7 @@ def mount_routes(app) -> None:
 
     app.include_router(persona_catalog_router)
     app.include_router(meetings_router, prefix="/api")
+
+    from app.modules.knowledge.presentation.http import router as knowledge_router
+
+    app.include_router(knowledge_router)

@@ -109,6 +109,24 @@ class NewUpload:
 
 
 @dataclass(frozen=True)
+class DocumentRecord:
+    """A document with its current revision and upload operation identity."""
+
+    document_id: UUID
+    file_name: str
+    file_type: str
+    file_size_bytes: int
+    status: str
+    chunk_count: int
+    created_at: datetime | None
+    qdrant_collection: str | None = None
+    error_message: str | None = None
+    revision_id: UUID | None = None
+    revision_state: RevisionState | None = None
+    operation_id: UUID | None = None
+
+
+@dataclass(frozen=True)
 class IngestionRecord:
     """Read model for an upload receipt and its publication state."""
 
@@ -221,6 +239,17 @@ class KnowledgePersistence(Protocol):
         self, operation_id: UUID, tool_call_id: str | None, message_id: UUID
     ) -> int:
         """Attach published message identity to evidence recorded mid-turn."""
+
+    def list_documents(
+        self, *, owner_kind: str, owner_id: UUID
+    ) -> list[DocumentRecord]:
+        """Documents owned by one meeting, persona, or stack, newest first."""
+
+    def get_document(self, document_id: UUID) -> DocumentRecord | None:
+        """One document with its current revision and operation identity."""
+
+    def delete_document_row(self, document_id: UUID) -> bool:
+        """Remove the document row after revocation; cleanup stays durable."""
 
 
 @dataclass(frozen=True)

@@ -14,9 +14,9 @@ a status overwrite. This suite records the accepted behavior:
 - GET /meetings lists archived meetings too and projects the overlay as the
   public `archived` status;
 - GET /context-stats answers with its stable reporting keys and exact counts;
-- DELETE /meetings/{id} records a pending vector cleanup FIRST, resolves it on
-  success, and tolerates a Qdrant outage without blocking the SQL delete;
-- deleting an unknown meeting is a 404 and records nothing.
+- DELETE /meetings/{id} revokes Knowledge first, then removes the meeting; a
+  Knowledge outage fails closed with 503 and leaves the meeting intact;
+- deleting an unknown meeting is a 404 and revokes nothing.
 """
 
 import json
@@ -25,7 +25,6 @@ import pytest
 from fastapi.testclient import TestClient
 
 from main import app
-from app.services.vector_store import VectorStoreManager
 from tests.doubles.supabase_stub import stub_for
 
 MEETING_ID = "aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa"
@@ -241,99 +240,59 @@ def test_context_stats_404_for_unknown_meeting(archive_env):
     assert response.status_code == 404
 
 
-class RecordingLedger:
-    def __init__(self):
-        self.recorded: list[dict] = []
-        self.resolved: list[str] = []
-        self.errors: list[tuple[str, str]] = []
+class FakeKnowledgeLifecycle:
+    def __init__(self, error: Exception | None = None):
+        self.deleted: list[tuple[str, str]] = []
+        self._error = error
 
-    async def record(self, collection_name, target_kind, target_id):
-        pending_id = f"pending-{len(self.recorded) + 1}"
-        self.recorded.append(
-            {
-                "pending_id": pending_id,
-                "collection_name": collection_name,
-                "target_kind": target_kind,
-                "target_id": target_id,
-            }
-        )
-        return pending_id
-
-    async def resolve(self, item_id):
-        self.resolved.append(item_id)
-
-    async def set_last_error(self, item_id, error):
-        self.errors.append((item_id, error))
+    async def delete_parent(self, parent_kind, parent_id, *, reason="parent_deleted"):
+        if self._error is not None:
+            raise self._error
+        self.deleted.append((parent_kind, str(parent_id)))
+        return None
 
 
-class RecordingVectorStore:
-    def __init__(self, outage: Exception | None = None):
-        self.deleted: list[str] = []
-        self._outage = outage
-
-    async def delete_collection(self, collection_name):
-        self.deleted.append(collection_name)
-        if self._outage is not None:
-            raise self._outage
-        return True
+def install_delete_fake(monkeypatch, lifecycle):
+    monkeypatch.setattr(
+        "app.modules.knowledge.public.get_knowledge_lifecycle",
+        lambda: lifecycle,
+        raising=True,
+    )
 
 
-def install_delete_fakes(monkeypatch, archive_env, vector_store, ledger):
-    import app.api.meetings as meetings_module
-
-    monkeypatch.setattr(meetings_module, "get_vector_store", lambda: vector_store)
-    monkeypatch.setattr(meetings_module, "get_vector_cleanup_ledger", lambda: ledger)
-
-
-def test_delete_records_pending_cleanup_then_resolves_and_deletes(archive_env, monkeypatch):
+def test_delete_revokes_knowledge_before_removing_the_meeting(archive_env, monkeypatch):
     seed_meeting(archive_env)
-    ledger = RecordingLedger()
-    store = RecordingVectorStore()
-    install_delete_fakes(monkeypatch, archive_env, store, ledger)
+    lifecycle = FakeKnowledgeLifecycle()
+    install_delete_fake(monkeypatch, lifecycle)
 
     with TestClient(app) as client:
         response = client.delete(f"/api/meetings/{MEETING_ID}")
 
     assert response.status_code == 200
     assert response.json() == {"success": True, "message": "Meeting deleted successfully"}
-
-    expected_collection = VectorStoreManager.meeting_collection_name(MEETING_ID)
-    assert [(r["collection_name"], r["target_kind"], r["target_id"]) for r in ledger.recorded] == [
-        (expected_collection, "meeting", MEETING_ID)
-    ]
-    assert store.deleted == [expected_collection]
-    assert ledger.resolved == [ledger.recorded[0]["pending_id"]]
-    assert ledger.errors == []
+    assert lifecycle.deleted == [("meeting", MEETING_ID)]
     assert persisted_status(archive_env) is None
 
 
-def test_delete_survives_a_vector_outage_without_blocking_sql(archive_env, monkeypatch):
-    """Accepted behavior: the pending-cleanup record is written BEFORE the
-    vector call, so a Qdrant outage defers the work (last_error recorded) but
-    the meeting still disappears."""
+def test_delete_fails_closed_when_knowledge_cannot_revoke(archive_env, monkeypatch):
+    from app.modules.knowledge.domain.errors import KnowledgeUnavailable
+
     seed_meeting(archive_env)
-    ledger = RecordingLedger()
-    store = RecordingVectorStore(outage=RuntimeError("qdrant unreachable"))
-    install_delete_fakes(monkeypatch, archive_env, store, ledger)
+    install_delete_fake(monkeypatch, FakeKnowledgeLifecycle(KnowledgeUnavailable("down")))
 
     with TestClient(app) as client:
         response = client.delete(f"/api/meetings/{MEETING_ID}")
 
-    assert response.status_code == 200
-    assert persisted_status(archive_env) is None
-    pending_id = ledger.recorded[0]["pending_id"]
-    assert ledger.resolved == []
-    assert ledger.errors == [(pending_id, "qdrant unreachable")]
+    assert response.status_code == 503
+    assert persisted_status(archive_env) == "active"
 
 
 def test_delete_unknown_meeting_is_404_and_records_nothing(archive_env, monkeypatch):
-    ledger = RecordingLedger()
-    store = RecordingVectorStore()
-    install_delete_fakes(monkeypatch, archive_env, store, ledger)
+    lifecycle = FakeKnowledgeLifecycle()
+    install_delete_fake(monkeypatch, lifecycle)
 
     with TestClient(app) as client:
         response = client.delete(f"/api/meetings/{MEETING_ID}")
 
     assert response.status_code == 404
-    assert ledger.recorded == []
-    assert store.deleted == []
+    assert lifecycle.deleted == []

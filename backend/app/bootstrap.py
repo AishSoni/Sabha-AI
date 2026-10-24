@@ -127,11 +127,15 @@ async def lifespan(app: FastAPI):
     try:
         from app.modules.knowledge.public import get_knowledge_lifecycle
 
-        report = await get_knowledge_lifecycle().run_cleanup()
+        lifecycle = get_knowledge_lifecycle()
+        report = await lifecycle.run_cleanup()
         if report.attempted:
             logger.info("Knowledge cleanup reconciliation: %s", report)
+        recovered = await lifecycle.recover_ingestions()
+        if recovered:
+            logger.info("Knowledge ingestion recovery: %s operations", recovered)
     except Exception:
-        logger.warning("Knowledge cleanup reconciliation failed", exc_info=True)
+        logger.warning("Knowledge startup reconciliation failed", exc_info=True)
 
     try:
         yield
