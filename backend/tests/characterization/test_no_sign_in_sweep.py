@@ -147,8 +147,15 @@ def sweep_env(disposable_db, monkeypatch):
     # Persona/knowledge/document API surfaces own their own database
     # construction sites (read remaining patch usage during cutover).
     monkeypatch.setattr("app.api.knowledge_stacks.get_supabase", _stub)
-    monkeypatch.setattr("app.api.documents.get_supabase", _stub)
-    return disposable_db
+    monkeypatch.setattr("app.modules.knowledge.public.get_supabase", _stub)
+
+    from app.modules.knowledge.public import set_knowledge_lifecycle
+
+    set_knowledge_lifecycle(None)
+    try:
+        yield disposable_db
+    finally:
+        set_knowledge_lifecycle(None)
 
 
 def assert_no_auth_challenge(response) -> None:
