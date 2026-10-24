@@ -626,6 +626,30 @@ class TurnQueueService:
         kept.reverse()
         return [system, *kept]
 
+    async def _knowledge_still_eligible(
+        self, claim: TurnClaim, participant, revisions: set
+    ) -> bool:
+        """Recheck SQL eligibility immediately before dispatching context."""
+        try:
+            from app.modules.knowledge.public import get_knowledge_lifecycle
+
+            allowed = await get_knowledge_lifecycle().revalidate_revisions(
+                revisions,
+                meeting_id=_as_uuid(claim.meeting_id),
+                stack_ids=[
+                    _as_uuid(stack_id)
+                    for stack_id in (participant.stack_ids or [])
+                ],
+            )
+        except Exception:  # noqa: BLE001 - fail closed on eligibility errors
+            logger.warning(
+                "Could not revalidate knowledge for %s",
+                claim.operation_id,
+                exc_info=True,
+            )
+            return False
+        return set(revisions).issubset(allowed)
+
     async def _attach_knowledge_evidence(
         self,
         claim: TurnClaim,
@@ -671,6 +695,7 @@ class TurnQueueService:
         accumulated_content = ""
         accumulated_thinking = ""
         tool_calls_made: list[dict] = []
+        knowledge_revisions: set = set()
         usage_total: dict = {}
         cost_total = 0.0
 
@@ -687,6 +712,15 @@ class TurnQueueService:
                 )
             if not self._renew(claim):
                 return TurnExecutionResult(claim.operation_id, "stale", error_code="lease_lost")
+
+            if knowledge_revisions and not await self._knowledge_still_eligible(
+                claim, participant, knowledge_revisions
+            ):
+                return self._interrupt(
+                    claim,
+                    "knowledge_revoked",
+                    "A knowledge source used in this turn was deleted; retry the turn.",
+                )
 
             attempt = self._begin_attempt(claim, gen["provider"], gen["model"] or "")
             if attempt is None:
@@ -799,7 +833,7 @@ class TurnQueueService:
                     )
                 )
                 result, is_error = await self._execute_tool(
-                    claim, participant, tool_call, invocation_id
+                    claim, participant, tool_call, invocation_id, knowledge_revisions
                 )
                 result = _truncate(result)
                 messages.append(
@@ -890,6 +924,7 @@ class TurnQueueService:
         participant: AIParticipant,
         tool_call: ToolCall,
         invocation_id: str,
+        knowledge_revisions: set | None = None,
     ) -> tuple[str, bool]:
         name = tool_call.name
         args = tool_call.arguments or {}
@@ -949,7 +984,7 @@ class TurnQueueService:
                         participant, query, claim
                     )
                 return await self._durable_knowledge_search(
-                    participant, query, claim, tool_call
+                    participant, query, claim, tool_call, knowledge_revisions
                 )
             except Exception as exc:  # noqa: BLE001 - tool boundary
                 return f"Error searching knowledge base: {exc}", True
@@ -1001,6 +1036,7 @@ class TurnQueueService:
         query: str,
         claim: TurnClaim,
         tool_call: ToolCall,
+        knowledge_revisions: set | None = None,
     ) -> tuple[str, bool]:
         """Search only eligible revisions in the meeting + saved stack scope."""
         from app.modules.knowledge.application.retrieval import (
@@ -1031,6 +1067,10 @@ class TurnQueueService:
         )
         if not passages:
             return f"No relevant documents found for query: '{query}'", False
+        if knowledge_revisions is not None:
+            knowledge_revisions.update(
+                passage.revision_id for passage in passages
+            )
         formatted = [
             f"[{index}] (Score: {item.score:.2f}, Source: {item.file_name})\n{item.text}"
             for index, item in enumerate(passages, 1)

@@ -246,12 +246,16 @@ class SupabaseSourceStore:
                 f"cannot reach Supabase Storage: {exc}"
             ) from exc
 
-    def list_prefix(self, prefix: str, *, limit: int = 100) -> list[StoredSource]:
+    def list_prefix(
+        self,
+        prefix: str,
+        *,
+        limit: int = 100,
+        recursive: bool = False,
+    ) -> list[StoredSource]:
         normalized = prefix.rstrip("/")
         try:
-            entries: list[dict[str, Any]] = self._bucket().list(
-                normalized, {"limit": limit}
-            )
+            return self._list(normalized, limit=limit, recursive=recursive, depth=4)
         except StorageApiError as exc:
             raise SourceStoreError(
                 f"cannot list source prefix {prefix!r}: {exc.message}"
@@ -261,16 +265,39 @@ class SupabaseSourceStore:
                 f"cannot reach Supabase Storage: {exc}"
             ) from exc
 
+    def _list(
+        self,
+        normalized: str,
+        *,
+        limit: int,
+        recursive: bool,
+        depth: int,
+    ) -> list[StoredSource]:
+        entries: list[dict[str, Any]] = self._bucket().list(
+            normalized, {"limit": limit}
+        )
         found: list[StoredSource] = []
         for entry in entries:
             name = entry.get("name")
-            if not name or entry.get("id") is None:
+            if not name:
+                continue
+            key = f"{normalized}/{name}" if normalized else name
+            if entry.get("id") is None:
                 # Folder entries carry no object id.
+                if recursive and depth > 0:
+                    found.extend(
+                        self._list(
+                            key,
+                            limit=limit,
+                            recursive=recursive,
+                            depth=depth - 1,
+                        )
+                    )
                 continue
             size = entry.get("size") or (entry.get("metadata") or {}).get("size")
             found.append(
                 StoredSource(
-                    key=f"{normalized}/{name}" if normalized else name,
+                    key=key,
                     size=int(size) if size is not None else None,
                 )
             )

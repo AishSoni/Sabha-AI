@@ -16,6 +16,8 @@ class FakeLifecycle:
         self.requests = []
         self.attached = []
         self.fail_attach = False
+        self.revalidated = []
+        self.allowed = None
 
     async def search(self, request):
         self.requests.append(request)
@@ -37,6 +39,12 @@ class FakeLifecycle:
             raise RuntimeError("evidence store unavailable")
         self.attached.append((operation_id, tool_call_id, message_id))
         return 1
+
+    async def revalidate_revisions(self, revision_ids, *, meeting_id, stack_ids):
+        self.revalidated.append((set(revision_ids), meeting_id, list(stack_ids)))
+        if self.allowed is None:
+            return set(revision_ids)
+        return set(self.allowed)
 
 
 @pytest.fixture
@@ -115,3 +123,26 @@ async def test_attach_failure_does_not_fail_the_turn(knowledge):
         [{"tool": "search_knowledge_base", "call_id": "call-1", "result": "x"}],
         str(uuid.uuid4()),
     )
+
+
+async def test_dispatch_guard_rejects_a_revoked_revision(knowledge):
+    revision_id = uuid.uuid4()
+    claim = _claim()
+    participant = SimpleNamespace(id=str(uuid.uuid4()), stack_ids=[])
+    knowledge.allowed = set()
+
+    allowed = await _service()._knowledge_still_eligible(
+        claim, participant, {revision_id}
+    )
+
+    assert allowed is False
+    assert knowledge.revalidated[0][0] == {revision_id}
+
+
+async def test_dispatch_guard_accepts_a_live_revision(knowledge):
+    revision_id = uuid.uuid4()
+    knowledge.allowed = {revision_id}
+
+    assert await _service()._knowledge_still_eligible(
+        _claim(), SimpleNamespace(id=str(uuid.uuid4()), stack_ids=[]), {revision_id}
+    ) is True

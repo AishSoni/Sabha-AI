@@ -85,7 +85,9 @@ class SourceStore(Protocol):
     def delete(self, key: str) -> None:
         """Remove an object; deleting an already-missing key is a no-op."""
 
-    def list_prefix(self, prefix: str, *, limit: int = 100) -> list[StoredSource]:
+    def list_prefix(
+        self, prefix: str, *, limit: int = 100, recursive: bool = False
+    ) -> list[StoredSource]:
         """List the immediate children under a prefix."""
 
 

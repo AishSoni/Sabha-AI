@@ -74,7 +74,7 @@ class MemorySourceStore:
         self.calls.append(("delete", key))
         self.objects.pop(key, None)
 
-    def list_prefix(self, prefix, *, limit=100):
+    def list_prefix(self, prefix, *, limit=100, recursive=False):
         return [
             StoredSource(key=key, size=len(value))
             for key, value in self.objects.items()

@@ -134,6 +134,9 @@ async def lifespan(app: FastAPI):
         recovered = await lifecycle.recover_ingestions()
         if recovered:
             logger.info("Knowledge ingestion recovery: %s operations", recovered)
+        staged = await lifecycle.sweep_staging()
+        if staged:
+            logger.info("Knowledge staging sweep removed %s objects", staged)
     except Exception:
         logger.warning("Knowledge startup reconciliation failed", exc_info=True)
 

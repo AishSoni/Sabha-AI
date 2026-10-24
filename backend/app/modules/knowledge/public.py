@@ -8,6 +8,7 @@ collections.
 from __future__ import annotations
 
 import asyncio
+import logging
 from uuid import UUID
 
 from app.core.config import settings
@@ -45,6 +46,8 @@ from app.modules.knowledge.infrastructure.parsers import LocalDocumentParser
 from app.modules.knowledge.infrastructure.qdrant import QdrantKnowledgeProjection
 from app.modules.knowledge.infrastructure.source_store import SupabaseSourceStore
 from app.modules.knowledge.infrastructure.supabase import SupabaseKnowledgeRepository
+
+logger = logging.getLogger(__name__)
 
 
 def _default_embedding_profile() -> EmbeddingProfile:
@@ -169,6 +172,17 @@ class KnowledgeLifecycle:
     async def search(self, request: RetrievalRequest) -> list[RetrievedPassage]:
         return await self._search.execute(request)
 
+    async def revalidate_revisions(
+        self, revision_ids, *, meeting_id: UUID, stack_ids: list[UUID]
+    ) -> set[UUID]:
+        """Authoritative eligibility check before dispatching context."""
+        return await asyncio.to_thread(
+            self.persistence.revalidate_revisions,
+            list(revision_ids),
+            meeting_id=meeting_id,
+            stack_ids=stack_ids,
+        )
+
     async def attach_evidence_message(
         self,
         operation_id: UUID,
@@ -182,6 +196,23 @@ class KnowledgeLifecycle:
             tool_call_id,
             message_id,
         )
+
+    async def sweep_staging(self, *, limit: int = 500) -> int:
+        """Delete upload staging objects left behind by an interrupted process."""
+        objects = await asyncio.to_thread(
+            self.source_store.list_prefix,
+            "staging/",
+            limit=limit,
+            recursive=True,
+        )
+        removed = 0
+        for item in objects:
+            try:
+                await asyncio.to_thread(self.source_store.delete, item.key)
+                removed += 1
+            except Exception:  # noqa: BLE001 - best effort, startup must proceed
+                logger.warning("Could not remove staging object %s", item.key)
+        return removed
 
 
 _knowledge_lifecycle: KnowledgeLifecycle | None = None
