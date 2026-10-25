@@ -7,7 +7,21 @@
  */
 import { requireArray } from '@/shared/api/decode';
 import { requestJson } from '@/shared/api/transport';
-import { decodeMeeting, decodeMeetingWithParticipants, type Meeting, type MeetingWithParticipants } from './decoders';
+import {
+    decodeConsensus,
+    decodeContextStats,
+    decodeDisagreement,
+    decodeMeeting,
+    decodeMeetingWithParticipants,
+    decodeMessage,
+    type Consensus,
+    type ContextStats,
+    type Disagreement,
+    type Meeting,
+    type MeetingWithParticipants,
+    type Message,
+} from './decoders';
+import type { TurnGenerationSettings } from './turn-client';
 
 export interface MeetingCreateInput {
     name: string;
@@ -70,5 +84,87 @@ export const meetingClient = {
             method: 'DELETE',
             signal: init.signal,
         });
+    },
+
+    /** Append one user message (POST /api/meetings/:id/message). */
+    async sendMessage(
+        meetingId: string,
+        content: string,
+        init: RequestInitOptional = {}
+    ): Promise<Message> {
+        const payload = await requestJson<unknown>(
+            `/meetings/${encodeURIComponent(meetingId)}/message`,
+            { method: 'POST', body: { content }, signal: init.signal }
+        );
+        return decodeMessage(payload, 'POST /meetings/:id/message');
+    },
+
+    /** Read the persisted disagreement ledger (GET /api/meetings/:id/disagreements). */
+    async disagreements(
+        meetingId: string,
+        init: RequestInitOptional = {}
+    ): Promise<Disagreement[]> {
+        const payload = await requestJson<unknown>(
+            `/meetings/${encodeURIComponent(meetingId)}/disagreements`,
+            { signal: init.signal }
+        );
+        return requireArray(payload, 'GET /meetings/:id/disagreements', (item, path) =>
+            decodeDisagreement(item, path)
+        );
+    },
+
+    /** Read the persisted consensus ledger (GET /api/meetings/:id/consensus). */
+    async consensus(meetingId: string, init: RequestInitOptional = {}): Promise<Consensus[]> {
+        const payload = await requestJson<unknown>(
+            `/meetings/${encodeURIComponent(meetingId)}/consensus`,
+            { signal: init.signal }
+        );
+        return requireArray(payload, 'GET /meetings/:id/consensus', (item, path) =>
+            decodeConsensus(item, path)
+        );
+    },
+
+    /** Read token usage statistics (GET /api/meetings/:id/context-stats). */
+    async contextStats(
+        meetingId: string,
+        init: RequestInitOptional = {}
+    ): Promise<ContextStats> {
+        const payload = await requestJson<unknown>(
+            `/meetings/${encodeURIComponent(meetingId)}/context-stats`,
+            { signal: init.signal }
+        );
+        return decodeContextStats(payload, 'GET /meetings/:id/context-stats');
+    },
+
+    /**
+     * Generate and persist one interim summary (POST /api/meetings/:id/summary).
+     * A paid command: callers issue it from explicit user intent only.
+     */
+    async generateSummary(
+        meetingId: string,
+        settings?: TurnGenerationSettings,
+        init: RequestInitOptional = {}
+    ): Promise<Message> {
+        const key = settings?.apiKey?.trim();
+        const headers = key ? { 'X-Provider-Key': key } : undefined;
+        const provider = settings
+            ? {
+                  provider: settings.provider ?? null,
+                  model: settings.model ?? null,
+                  temperature: settings.temperature ?? null,
+                  max_tokens: settings.maxTokens ?? null,
+                  base_url: settings.baseUrl ?? null,
+              }
+            : undefined;
+        const payload = await requestJson<unknown>(
+            `/meetings/${encodeURIComponent(meetingId)}/summary`,
+            {
+                method: 'POST',
+                headers,
+                body: provider ? { provider } : {},
+                signal: init.signal,
+            }
+        );
+        return decodeMessage(payload, 'POST /meetings/:id/summary');
     },
 };

@@ -48,7 +48,10 @@ export function useClosingObservation({
     const query = useClosing(meetingId, enabled);
     const settledStage = useRef<ClosingStage | null>(null);
     const settledCallback = useRef(onSettled);
-    settledCallback.current = onSettled;
+
+    useEffect(() => {
+        settledCallback.current = onSettled;
+    }, [onSettled]);
 
     const view = query.data;
     const stage = view?.stage ?? null;

@@ -10,4 +10,9 @@ export const meetingKeys = {
     all: ['meetings'] as const,
     list: () => ['meetings', 'list'] as const,
     detail: (meetingId: string) => ['meetings', 'detail', meetingId] as const,
+    disagreements: (meetingId: string) =>
+        ['meetings', 'detail', meetingId, 'disagreements'] as const,
+    consensus: (meetingId: string) => ['meetings', 'detail', meetingId, 'consensus'] as const,
+    contextStats: (meetingId: string) =>
+        ['meetings', 'detail', meetingId, 'context-stats'] as const,
 };

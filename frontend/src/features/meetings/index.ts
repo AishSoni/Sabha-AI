@@ -7,12 +7,22 @@
  */
 export { meetingKeys } from './api/keys';
 export { meetingClient, type MeetingCreateInput } from './api/client';
-export { useMeeting, useMeetingList } from './api/queries';
+export {
+    useMeeting,
+    useMeetingConsensus,
+    useMeetingContextStats,
+    useMeetingDisagreements,
+    useMeetingList,
+} from './api/queries';
 export {
     useArchiveMeeting,
     useCreateMeeting,
     useDeleteMeeting,
+    useGenerateSummary,
+    useSendMessage,
     useUnarchiveMeeting,
+    type GenerateSummaryVariables,
+    type SendMessageVariables,
 } from './api/mutations';
 export { closingKeys } from './api/closing-keys';
 export {
@@ -59,4 +69,17 @@ export {
     ClosingPanel,
     type ClosingPanelProps,
 } from './components/ClosingPanel';
-export type { AIParticipant, Meeting, MeetingStatus, MeetingWithParticipants, Message } from './api/decoders';
+export {
+    MeetingRoom,
+    type MeetingRoomProps,
+} from './components/MeetingRoom';
+export type {
+    AIParticipant,
+    Consensus,
+    ContextStats,
+    Disagreement,
+    Meeting,
+    MeetingStatus,
+    MeetingWithParticipants,
+    Message,
+} from './api/decoders';

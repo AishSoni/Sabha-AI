@@ -34,6 +34,9 @@ export default function NewMeetingPage() {
     // this screen only tracks which rows the director selected.
     useEffect(() => {
         if (!personaList.data) return;
+        // The query owns the source data; this mirrors it into editable
+        // selection state once per fetched catalog revision.
+        // eslint-disable-next-line react-hooks/set-state-in-effect
         setRoster(
             personaList.data.personas.map(p => ({
                 id: p.id,

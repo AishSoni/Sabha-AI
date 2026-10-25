@@ -13,9 +13,10 @@
  *   command waits for explicit user intent before replaying.
  */
 import { useMutation, useQueryClient } from '@tanstack/react-query';
-import type { MeetingWithParticipants } from './decoders';
+import type { MeetingWithParticipants, Message } from './decoders';
 import { meetingClient, type MeetingCreateInput } from './client';
 import { meetingKeys } from './keys';
+import type { TurnGenerationSettings } from './turn-client';
 
 export function useCreateMeeting() {
     const queryClient = useQueryClient();
@@ -52,6 +53,52 @@ export function useUnarchiveMeeting() {
             // of guessing "active" from the command.
             queryClient.invalidateQueries({ queryKey: meetingKeys.detail(meetingId) });
             queryClient.invalidateQueries({ queryKey: meetingKeys.list() });
+        },
+    });
+}
+
+export interface SendMessageVariables {
+    meetingId: string;
+    content: string;
+}
+
+export function useSendMessage() {
+    const queryClient = useQueryClient();
+    return useMutation({
+        mutationFn: ({ meetingId, content }: SendMessageVariables) =>
+            meetingClient.sendMessage(meetingId, content),
+        onSuccess: (message: Message, { meetingId }: SendMessageVariables) => {
+            queryClient.setQueryData<MeetingWithParticipants>(
+                meetingKeys.detail(meetingId),
+                (cached) =>
+                    cached
+                        ? { ...cached, messages: [...(cached.messages ?? []), message] }
+                        : cached
+            );
+            void queryClient.invalidateQueries({
+                queryKey: meetingKeys.contextStats(meetingId),
+            });
+        },
+    });
+}
+
+export interface GenerateSummaryVariables {
+    meetingId: string;
+    settings?: TurnGenerationSettings;
+}
+
+export function useGenerateSummary() {
+    const queryClient = useQueryClient();
+    return useMutation({
+        mutationFn: ({ meetingId, settings }: GenerateSummaryVariables) =>
+            meetingClient.generateSummary(meetingId, settings),
+        onSuccess: (_message: Message, { meetingId }: GenerateSummaryVariables) => {
+            // The summary is persisted as a canonical message; refetch the
+            // meeting rather than guessing its position in the transcript.
+            void queryClient.invalidateQueries({ queryKey: meetingKeys.detail(meetingId) });
+            void queryClient.invalidateQueries({
+                queryKey: meetingKeys.contextStats(meetingId),
+            });
         },
     });
 }

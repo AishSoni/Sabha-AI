@@ -13,6 +13,23 @@ export type Meeting = components['schemas']['Meeting'];
 export type MeetingWithParticipants = components['schemas']['MeetingWithParticipants'];
 export type AIParticipant = components['schemas']['AIParticipant'];
 export type Message = components['schemas']['Message'];
+export type Disagreement = components['schemas']['Disagreement'];
+export type Consensus = components['schemas']['Consensus'];
+
+/**
+ * The context-stats endpoint has an inline response schema, so this view is
+ * hand-written from the frozen contract rather than generated.
+ */
+export interface ContextStats {
+    current_tokens: number;
+    max_tokens: number;
+    usage_percent: number;
+    message_tokens?: number;
+    system_tokens?: number;
+    agenda_tokens?: number;
+    message_count: number;
+    participant_count: number;
+}
 
 const MEETING_STATUSES = ['active', 'voting', 'ended', 'archived'] as const;
 export type MeetingStatus = (typeof MEETING_STATUSES)[number];
@@ -113,6 +130,57 @@ export function decodeParticipant(value: unknown, path: string): AIParticipant {
                       requireString(item, childPath)
                   ),
         created_at: requireString(record.created_at, `${path}.created_at`),
+    };
+}
+
+const DISAGREEMENT_STATUSES = ['open', 'resolved', 'conceded'] as const;
+
+export function decodeDisagreement(value: unknown, path: string): Disagreement {
+    const record = decodeObject(value, path);
+    const rawStatus = requireString(record.status, `${path}.status`);
+    if (!(DISAGREEMENT_STATUSES as readonly string[]).includes(rawStatus)) {
+        throw new DecodeError(
+            `${path}.status: expected one of ${DISAGREEMENT_STATUSES.join(', ')}`
+        );
+    }
+    return {
+        id: requireString(record.id, `${path}.id`),
+        meeting_id: requireString(record.meeting_id, `${path}.meeting_id`),
+        source_ai_id: requireString(record.source_ai_id, `${path}.source_ai_id`),
+        target_name: requireString(record.target_name, `${path}.target_name`),
+        topic: requireString(record.topic, `${path}.topic`),
+        reasoning: requireString(record.reasoning, `${path}.reasoning`),
+        severity: requireNumber(record.severity, `${path}.severity`),
+        status: rawStatus as Disagreement['status'],
+        created_at: requireString(record.created_at, `${path}.created_at`),
+    };
+}
+
+export function decodeConsensus(value: unknown, path: string): Consensus {
+    const record = decodeObject(value, path);
+    return {
+        id: requireString(record.id, `${path}.id`),
+        meeting_id: requireString(record.meeting_id, `${path}.meeting_id`),
+        participants: requireArray(record.participants, `${path}.participants`, (item, childPath) =>
+            requireString(item, childPath)
+        ),
+        topic: requireString(record.topic, `${path}.topic`),
+        strength: requireNumber(record.strength, `${path}.strength`),
+        created_at: requireString(record.created_at, `${path}.created_at`),
+    };
+}
+
+export function decodeContextStats(value: unknown, path: string): ContextStats {
+    const record = decodeObject(value, path);
+    return {
+        current_tokens: requireNumber(record.current_tokens, `${path}.current_tokens`),
+        max_tokens: requireNumber(record.max_tokens, `${path}.max_tokens`),
+        usage_percent: requireNumber(record.usage_percent, `${path}.usage_percent`),
+        message_tokens: optionalNumber(record.message_tokens, `${path}.message_tokens`),
+        system_tokens: optionalNumber(record.system_tokens, `${path}.system_tokens`),
+        agenda_tokens: optionalNumber(record.agenda_tokens, `${path}.agenda_tokens`),
+        message_count: requireNumber(record.message_count, `${path}.message_count`),
+        participant_count: requireNumber(record.participant_count, `${path}.participant_count`),
     };
 }
 

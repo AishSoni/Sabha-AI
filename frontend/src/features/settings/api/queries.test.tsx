@@ -69,7 +69,7 @@ const providersPayload = {
 describe('settings metadata environment query', () => {
     let scripted: ScriptedFetch;
 
-    function wrapper({ children }: { children: ReactNode }) {
+    function Wrapper({ children }: { children: ReactNode }) {
         const [client] = useState(() => makeQueryClient());
         return <QueryClientProvider client={client}>{children}</QueryClientProvider>;
     }
@@ -93,7 +93,7 @@ describe('settings metadata environment query', () => {
     it('reads the environment over a no-sign-in GET and decodes camelCase view', async () => {
         scripted.enqueueJson(200, providersPayload);
 
-        const { result } = renderHook(() => useProvidersEnvironment(), { wrapper });
+        const { result } = renderHook(() => useProvidersEnvironment(), { wrapper: Wrapper });
         await waitFor(() => expect(result.current.data).toBeTruthy());
 
         expect(result.current.data!.providers).toHaveLength(2);

@@ -3,6 +3,8 @@
  * settings (provider/model/temperature + BYOK key) into the meeting store's
  * API calls, so what the user configured is what actually generates.
  */
+import { readFileSync } from 'node:fs';
+import { resolve } from 'node:path';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
 const mocks = vi.hoisted(() => ({
@@ -113,11 +115,7 @@ describe('meeting store generation settings', () => {
         // Exit-gate evidence (credential_handoff): the vault key travels as
         // a request header set from settings.apiKey, and the non-secret
         // generation fields land in the body's provider object.
-        const { readFileSync } = require('node:fs');
-        const source = readFileSync(
-            require('node:path').resolve(__dirname, '../lib/api.ts'),
-            'utf8'
-        );
+        const source = readFileSync(resolve(__dirname, '../lib/api.ts'), 'utf8');
 
         expect(source).toContain("headers['X-Provider-Key'] = settings.apiKey");
         expect(source).toContain('max_tokens: settings.maxTokens');
