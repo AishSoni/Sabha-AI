@@ -45,7 +45,7 @@ import {
 import { RateLimitedButton } from '@/components/ui/rate-limited-button';
 import { cn, formatCost, formatRelativeTime } from '@/lib/utils';
 import { DocumentPanel } from '@/features/knowledge';
-import { useSettingsStore } from '@/features/settings';
+import { useProvidersEnvironment, useSettingsStore } from '@/features/settings';
 import {
     useGenerateSummary,
     useMeeting,
@@ -851,22 +851,26 @@ function ParticipantDetailCard({ participant }: { participant: AIParticipant }) 
 }
 
 function SummaryPanel({ meeting }: { meeting: MeetingWithParticipants }) {
-    const systemAI = useSettingsStore((state) => state.systemAI);
+    const providersQuery = useProvidersEnvironment();
+    const getProviderApiKey = useSettingsStore((state) => state.getProviderApiKey);
     const generateSummary = useGenerateSummary();
     const summaries = (meeting.messages ?? [])
         .filter((message) => message.sender_type === 'system')
         .slice()
         .reverse();
 
+    const systemAiProvider =
+        providersQuery.data?.systemAI.provider ||
+        providersQuery.data?.environment.defaultProvider ||
+        '';
+    const providerKey = systemAiProvider ? getProviderApiKey(systemAiProvider) : undefined;
+
     const generate = () => {
+        // Provider/model/temperature belong to server-owned System AI. The
+        // browser contributes only its transient BYOK key, when it has one.
         void generateSummary.mutateAsync({
             meetingId: meeting.id,
-            settings: {
-                provider: systemAI.provider || undefined,
-                model: systemAI.model || undefined,
-                temperature: systemAI.temperature,
-                maxTokens: systemAI.maxTokens,
-            },
+            settings: providerKey ? { apiKey: providerKey } : undefined,
         });
     };
 

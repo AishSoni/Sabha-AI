@@ -149,19 +149,27 @@ export const meetingClient = {
         const headers = key ? { 'X-Provider-Key': key } : undefined;
         const provider = settings
             ? {
-                  provider: settings.provider ?? null,
-                  model: settings.model ?? null,
-                  temperature: settings.temperature ?? null,
-                  max_tokens: settings.maxTokens ?? null,
-                  base_url: settings.baseUrl ?? null,
+                  ...(settings.provider !== undefined
+                      ? { provider: settings.provider }
+                      : {}),
+                  ...(settings.model !== undefined ? { model: settings.model } : {}),
+                  ...(settings.temperature !== undefined
+                      ? { temperature: settings.temperature }
+                      : {}),
+                  ...(settings.maxTokens !== undefined
+                      ? { max_tokens: settings.maxTokens }
+                      : {}),
+                  ...(settings.baseUrl !== undefined
+                      ? { base_url: settings.baseUrl }
+                      : {}),
               }
-            : undefined;
+            : {};
         const payload = await requestJson<unknown>(
             `/meetings/${encodeURIComponent(meetingId)}/summary`,
             {
                 method: 'POST',
                 headers,
-                body: provider ? { provider } : {},
+                body: Object.keys(provider).length > 0 ? { provider } : {},
                 signal: init.signal,
             }
         );

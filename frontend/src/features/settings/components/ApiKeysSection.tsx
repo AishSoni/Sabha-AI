@@ -39,12 +39,6 @@ export function ApiKeysSection() {
             configuredProviders: metadata.environment.configuredProviders,
             defaultProvider: metadata.environment.defaultProvider,
             defaultModels: metadata.environment.defaultModels,
-            systemAI: {
-                provider: metadata.systemAI.provider,
-                model: metadata.systemAI.model,
-                temperature: metadata.systemAI.temperature,
-                maxTokens: metadata.systemAI.maxTokens,
-            },
         });
     }, [metadata, initializeFromServer]);
 
@@ -83,13 +77,19 @@ export function ApiKeysSection() {
             </div>
 
             {/* System AI Section */}
-            <div className="space-y-3">
-                <div className="flex items-center gap-2 text-zinc-300">
-                    <Cpu className="w-4 h-4" />
-                    <span className="text-sm font-medium">System AI</span>
+            {metadata && (
+                <div className="space-y-3">
+                    <div className="flex items-center gap-2 text-zinc-300">
+                        <Cpu className="w-4 h-4" />
+                        <span className="text-sm font-medium">System AI</span>
+                    </div>
+                    <SystemAiCard
+                        providers={providers}
+                        systemAI={metadata.systemAI}
+                        defaultProvider={metadata.environment.defaultProvider}
+                    />
                 </div>
-                <SystemAiCard providers={providers} />
-            </div>
+            )}
 
             {/* Provider Cards */}
             <div className="space-y-3">

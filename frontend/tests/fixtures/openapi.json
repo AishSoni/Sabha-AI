@@ -947,6 +947,48 @@
         }
       }
     },
+    "/api/settings/system-ai": {
+      "put": {
+        "tags": [
+          "settings"
+        ],
+        "summary": "Update System Ai",
+        "description": "Persist the validated System AI policy.\n\nThe request model owns field validation (supported provider, trimming,\ntemperature and token bounds), so an invalid policy is a 422 before any\nwrite. Credentials are not part of this contract.",
+        "operationId": "update_system_ai_api_settings_system_ai_put",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/SystemAIConfig"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SystemAIConfig"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/api/settings/models": {
       "post": {
         "tags": [
@@ -4076,7 +4118,7 @@
         },
         "type": "object",
         "title": "RequestProviderSettings",
-        "description": "Browser-supplied generation overrides for one turn (BYOK contract).\n\nEvery field is optional: absent fields fall back to the participant's\npersisted provider_config, then to server defaults. The API key itself\nnever lives here — it rides the X-Provider-Key request header."
+        "description": "Browser-supplied generation overrides for one turn (BYOK contract).\n\nEvery field is optional: absent fields fall back to the participant's\npersisted provider_config, then to server defaults. The API key itself\nnever lives here \u2014 it rides the X-Provider-Key request header."
       },
       "SenderType": {
         "type": "string",
@@ -4175,23 +4217,28 @@
           },
           "model": {
             "type": "string",
+            "maxLength": 200,
             "title": "Model",
             "default": ""
           },
           "temperature": {
             "type": "number",
+            "maximum": 1.0,
+            "minimum": 0.0,
             "title": "Temperature",
             "default": 0.5
           },
           "max_tokens": {
             "type": "integer",
+            "maximum": 16000.0,
+            "minimum": 256.0,
             "title": "Max Tokens",
             "default": 2048
           }
         },
         "type": "object",
         "title": "SystemAIConfig",
-        "description": "Configuration for the System AI used for app-level functions."
+        "description": "Configuration for the System AI used for app-level functions.\n\nThe empty provider means \"use the environment default\"; an empty model\nmeans \"use the provider's default model\". Values are validated here\nbecause this model is both the persisted server state and the mutation\nrequest body, so an invalid policy can never be stored."
       },
       "TemplateCreate": {
         "properties": {

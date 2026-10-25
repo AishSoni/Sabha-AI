@@ -8,9 +8,11 @@ import { requestJson } from '@/shared/api/transport';
 import {
     decodeFetchModelsResult,
     decodeProvidersEnvironment,
+    decodeSystemAIConfig,
     decodeTestProviderKeyResult,
     type FetchModelsResultView,
     type ProvidersEnvironment,
+    type SystemAIConfigView,
     type TestProviderKeyResultView,
 } from './decoders';
 
@@ -29,6 +31,14 @@ export interface TestProviderKeyInput {
     provider: string;
     apiKey?: string;
     baseUrl?: string;
+}
+
+/** Server-owned app-level generation defaults; never contains a key. */
+export interface UpdateSystemAIInput {
+    provider: string;
+    model: string;
+    temperature: number;
+    maxTokens: number;
 }
 
 export const settingsClient = {
@@ -72,5 +82,22 @@ export const settingsClient = {
                 base_url: input.baseUrl || undefined,
             },
         }).then((payload) => decodeTestProviderKeyResult(payload, 'POST /settings/test-key'));
+    },
+
+    /** Replace the validated, server-owned System AI policy. */
+    updateSystemAI(
+        input: UpdateSystemAIInput,
+        init: RequestInitOptional = {},
+    ): Promise<SystemAIConfigView> {
+        return requestJson<unknown>('/settings/system-ai', {
+            method: 'PUT',
+            signal: init.signal,
+            body: {
+                provider: input.provider,
+                model: input.model,
+                temperature: input.temperature,
+                max_tokens: input.maxTokens,
+            },
+        }).then((payload) => decodeSystemAIConfig(payload, 'PUT /settings/system-ai'));
     },
 };

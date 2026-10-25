@@ -55,6 +55,16 @@ export interface ProvidersEnvironment {
     systemAI: SystemAIConfigView;
 }
 
+export function decodeSystemAIConfig(value: unknown, path: string): SystemAIConfigView {
+    const record = decodeObject(value, path);
+    return {
+        provider: requireString(record.provider, `${path}.provider`),
+        model: requireString(record.model, `${path}.model`),
+        temperature: requireNumber(record.temperature, `${path}.temperature`),
+        maxTokens: requireNumber(record.max_tokens, `${path}.max_tokens`),
+    };
+}
+
 /** One model discovered by proxying a provider's model directory. */
 export interface FetchedModelInfoView {
     id: string;
@@ -169,11 +179,6 @@ export function decodeProvidersEnvironment(value: unknown, path: string): Provid
             defaultProvider: requireString(environment.default_provider, `${path}.environment.default_provider`),
             defaultModels: decodeDefaultModels(environment.default_models ?? {}, `${path}.environment.default_models`),
         },
-        systemAI: {
-            provider: requireString(systemAI.provider, `${path}.system_ai.provider`),
-            model: requireString(systemAI.model, `${path}.system_ai.model`),
-            temperature: requireNumber(systemAI.temperature, `${path}.system_ai.temperature`),
-            maxTokens: requireNumber(systemAI.max_tokens, `${path}.system_ai.max_tokens`),
-        },
+        systemAI: decodeSystemAIConfig(systemAI, `${path}.system_ai`),
     };
 }

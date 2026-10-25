@@ -1,6 +1,9 @@
 /**
- * Settings Store - Manages provider configurations with localStorage persistence
- * Supports environment-aware settings and System AI configuration.
+ * Settings Store - Local provider preferences with encrypted BYOK vault.
+ *
+ * Server-owned metadata (environment, System AI) lives in the settings query,
+ * never here. This store persists only browser preferences and sealed key
+ * envelopes; the System AI policy was removed in v2.
  */
 
 import { create } from 'zustand';
@@ -38,13 +41,6 @@ export interface ProviderConfig {
     serverConfigured?: boolean; // True if key is configured on server
 }
 
-export interface SystemAIConfig {
-    provider: string;
-    model: string;
-    temperature: number;
-    maxTokens: number;
-}
-
 export interface SettingsState {
     providers: {
         openrouter: ProviderConfig;
@@ -52,7 +48,6 @@ export interface SettingsState {
         ollama: ProviderConfig;
     };
     defaultProvider: 'openrouter' | 'gemini' | 'ollama' | null;
-    systemAI: SystemAIConfig;
 
     // Environment info (loaded from backend; always re-applied on hydration)
     isProduction: boolean;
@@ -67,19 +62,18 @@ export interface SettingsState {
     // Actions
     setProviderConfig: (providerId: keyof SettingsState['providers'], config: Partial<ProviderConfig>) => Promise<void>;
     setDefaultProvider: (providerId: keyof SettingsState['providers'] | null) => void;
-    setSystemAI: (config: Partial<SystemAIConfig>) => void;
     getActiveProvider: () => { id: string; config: ProviderConfig } | null;
     clearProviderConfig: (providerId: keyof SettingsState['providers']) => void;
     resetAllSettings: () => void;
     unlockVault: (passphrase: string) => Promise<boolean>;
     lockVault: () => void;
     composeGenerationSettings: () => GenerationSettings | null;
+    getProviderApiKey: (providerId: string) => string | undefined;
     initializeFromServer: (data: {
         isProduction: boolean;
         configuredProviders: string[];
         defaultProvider: string;
         defaultModels: Record<string, string>;
-        systemAI: SystemAIConfig;
     }) => void;
 }
 
@@ -99,12 +93,6 @@ const initialState = {
         ollama: { ...defaultProviderConfig, model: 'llama3.2', baseUrl: 'http://localhost:11434', enabled: true },
     },
     defaultProvider: null as SettingsState['defaultProvider'],
-    systemAI: {
-        provider: '',
-        model: '',
-        temperature: 0.5,
-        maxTokens: 2048,
-    },
     isProduction: false,
     serverConfiguredProviders: [] as string[],
     vaultUnlocked: false,
@@ -184,12 +172,6 @@ export const useSettingsStore = create<SettingsState>()(
                 set({ defaultProvider: providerId });
             },
 
-            setSystemAI: (config) => {
-                set((state) => ({
-                    systemAI: { ...state.systemAI, ...config },
-                }));
-            },
-
             getActiveProvider: () => {
                 const state = get();
                 if (state.defaultProvider && state.providers[state.defaultProvider].enabled) {
@@ -266,9 +248,10 @@ export const useSettingsStore = create<SettingsState>()(
                 };
             },
 
+            getProviderApiKey: (providerId) => revealFromVault(providerId),
+
             initializeFromServer: (data) => {
                 const state = get();
-                const pristine = initialState.systemAI;
 
                 // Server metadata is authoritative on EVERY hydration: a
                 // persisted view must never pin the environment or the
@@ -283,20 +266,6 @@ export const useSettingsStore = create<SettingsState>()(
                 // none is set locally.
                 if (!state.defaultProvider && data.defaultProvider) {
                     updates.defaultProvider = data.defaultProvider as SettingsState['defaultProvider'];
-                }
-
-                // System AI is a local preference once customized; a pristine
-                // (untouched) one adopts the server default.
-                if (
-                    state.systemAI.provider === pristine.provider
-                    && state.systemAI.model === pristine.model
-                    && state.systemAI.temperature === pristine.temperature
-                    && state.systemAI.maxTokens === pristine.maxTokens
-                ) {
-                    updates.systemAI = {
-                        ...state.systemAI,
-                        ...data.systemAI,
-                    };
                 }
 
                 // Auto-enable and set models for server-configured providers;
@@ -332,20 +301,19 @@ export const useSettingsStore = create<SettingsState>()(
         }),
         {
             name: SETTINGS_STORAGE_KEY,
-            // Version 1: legacy payloads carried an `initialized` flag which
-            // gated hydration forever; it is no longer stored at all.
-            version: 1,
+            // Version 2: Server AI became server-owned, and legacy payloads
+            // carried an `initialized` flag that gated hydration forever.
+            // Both are stripped; user preferences and vault data survive.
+            version: 2,
             migrate: (persisted) => {
-                // Prefers 1 (current): strip the stale flag, keep everything
-                // else so user preferences and vault ciphertexts survive.
                 const legacy = persisted as Record<string, unknown> & Partial<SettingsState>;
                 delete legacy.initialized;
+                delete legacy.systemAI;
                 return legacy as SettingsState;
             },
             partialize: (state) => ({
                 providers: state.providers,
                 defaultProvider: state.defaultProvider,
-                systemAI: state.systemAI,
                 // Vault: ciphertext + salt only; never the passphrase, the
                 // derived key, or the unlocked flag.
                 vaultSalt: state.vaultSalt,

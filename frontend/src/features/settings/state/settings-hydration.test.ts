@@ -10,9 +10,9 @@
  *   model; providers the server no longer configures lose serverConfigured
  *   (and their enablement, unless the user owns a local key);
  * - the local defaultProvider choice survives hydration;
- * - a locally-customized System AI survives hydration; the pristine one
- *   adopts the server default;
- * - legacy persisted payloads carrying `initialized` migrate cleanly.
+ * - server-owned System AI is not persisted or adopted as a local preference;
+ * - legacy persisted payloads carrying `initialized` or `systemAI` migrate
+ *   cleanly to v2.
  */
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { useSettingsStore } from './settings-store';
@@ -23,7 +23,6 @@ const hydrateFirst = () =>
         configuredProviders: ['openrouter'],
         defaultProvider: 'openrouter',
         defaultModels: { openrouter: 'anthropic/claude-sonnet-4' },
-        systemAI: { provider: 'openrouter', model: 'anthropic/claude-sonnet-4', temperature: 0.4, maxTokens: 1024 },
     });
 
 const hydrateSecond = () =>
@@ -32,7 +31,6 @@ const hydrateSecond = () =>
         configuredProviders: ['ollama'],
         defaultProvider: 'ollama',
         defaultModels: { ollama: 'llama3.2' },
-        systemAI: { provider: 'ollama', model: 'llama3.2', temperature: 0.5, maxTokens: 2048 },
     });
 
 describe('settings hydration (store)', () => {
@@ -52,7 +50,8 @@ describe('settings hydration (store)', () => {
         expect(first.providers.openrouter.enabled).toBe(true);
         expect(first.providers.openrouter.model).toBe('anthropic/claude-sonnet-4');
         expect(first.defaultProvider).toBe('openrouter'); // none set locally yet
-        expect(first.systemAI.temperature).toBe(0.4);
+        // System AI is server state, never a local hydration preference.
+        expect((first as unknown as Record<string, unknown>).systemAI).toBeUndefined();
 
         // The server configuration changed; the stale local view must not pin it.
         hydrateSecond();
@@ -89,16 +88,12 @@ describe('settings hydration (store)', () => {
         expect(useSettingsStore.getState().providers.ollama.serverConfigured).toBe(false);
     });
 
-    it('keeps a customized System AI and adopts the server default of a pristine one', () => {
-        // Pristine: adopt server metadata.
+    it('does not invent a local System AI preference', () => {
         hydrateFirst();
-        expect(useSettingsStore.getState().systemAI.temperature).toBe(0.4);
-
-        // Once the user customizes it, hydration must not clobber the choice.
-        useSettingsStore.getState().setSystemAI({ temperature: 0.9 });
-        hydrateSecond();
-        expect(useSettingsStore.getState().systemAI.temperature).toBe(0.9);
-        expect(useSettingsStore.getState().systemAI.provider).toBe('openrouter');
+        expect((useSettingsStore.getState() as unknown as Record<string, unknown>).systemAI).toBeUndefined();
+        expect(
+            (useSettingsStore.getState() as unknown as Record<string, unknown>).setSystemAI
+        ).toBeUndefined();
     });
 
     it('keeps the user-set default provider over the server default', () => {
@@ -109,7 +104,7 @@ describe('settings hydration (store)', () => {
 });
 
 describe('legacy persisted payload migration', () => {
-    it('strips the stale initialized flag and preserves user preferences', async () => {
+    it('strips stale flags and server-owned System AI while preserving user preferences', async () => {
         // A payload written by the pre-migration store: version 0 with a
         // persisted `initialized` flag that used to block hydration forever.
         window.localStorage.setItem(
@@ -159,15 +154,16 @@ describe('legacy persisted payload migration', () => {
         const state = migrated.useSettingsStore.getState();
 
         expect(state.defaultProvider).toBe('ollama');
-        expect(state.systemAI.temperature).toBe(0.6);
+        expect((state as unknown as Record<string, unknown>).systemAI).toBeUndefined();
         expect((state as unknown as Record<string, unknown>).initialized).toBeUndefined();
         expect(state.isProduction).toBe(true); // carried through migration
 
-        // The next persist write stores the new version, without the flag.
+        // The next persist write stores the new version, without either field.
         migrated.useSettingsStore.getState().setDefaultProvider('gemini');
         const stored = JSON.parse(window.localStorage.getItem('sabha-settings') ?? '{}');
-        expect(stored.version).toBe(1);
+        expect(stored.version).toBe(2);
         expect(stored.state.initialized).toBeUndefined();
+        expect(stored.state.systemAI).toBeUndefined();
         expect(stored.state.defaultProvider).toBe('gemini');
     });
 });

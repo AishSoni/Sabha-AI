@@ -8,9 +8,10 @@ export { settingsClient } from './client';
 export type {
     FetchProviderModelsInput,
     TestProviderKeyInput,
+    UpdateSystemAIInput,
 } from './client';
 export { useProvidersEnvironment } from './queries';
-export { useFetchProviderModels, useTestProviderKey } from './mutations';
+export { useFetchProviderModels, useTestProviderKey, useUpdateSystemAI } from './mutations';
 export type {
     FetchedModelInfoView,
     FetchModelsResultView,

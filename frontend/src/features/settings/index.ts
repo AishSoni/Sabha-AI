@@ -7,10 +7,12 @@ export {
     useFetchProviderModels,
     useProvidersEnvironment,
     useTestProviderKey,
+    useUpdateSystemAI,
 } from './api';
 export type {
     FetchProviderModelsInput,
     TestProviderKeyInput,
+    UpdateSystemAIInput,
     FetchedModelInfoView,
     FetchModelsResultView,
     ProviderInfoView,
@@ -26,5 +28,4 @@ export {
     type GenerationSettings,
     type ProviderConfig,
     type SettingsState,
-    type SystemAIConfig,
 } from './state/settings-store';

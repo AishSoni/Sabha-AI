@@ -394,6 +394,30 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/settings/system-ai": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        /**
+         * Update System Ai
+         * @description Persist the validated System AI policy.
+         *
+         *     The request model owns field validation (supported provider, trimming,
+         *     temperature and token bounds), so an invalid policy is a 422 before any
+         *     write. Credentials are not part of this contract.
+         */
+        put: operations["update_system_ai_api_settings_system_ai_put"];
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/settings/models": {
         parameters: {
             query?: never;
@@ -1615,6 +1639,11 @@ export interface components {
         /**
          * SystemAIConfig
          * @description Configuration for the System AI used for app-level functions.
+         *
+         *     The empty provider means "use the environment default"; an empty model
+         *     means "use the provider's default model". Values are validated here
+         *     because this model is both the persisted server state and the mutation
+         *     request body, so an invalid policy can never be stored.
          */
         SystemAIConfig: {
             /**
@@ -2538,6 +2567,39 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["ProvidersListResponse"];
+                };
+            };
+        };
+    };
+    update_system_ai_api_settings_system_ai_put: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["SystemAIConfig"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["SystemAIConfig"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
                 };
             };
         };
