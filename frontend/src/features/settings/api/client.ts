@@ -5,10 +5,30 @@
  * attached, and failures surface as plain {@link ApiError}s.
  */
 import { requestJson } from '@/shared/api/transport';
-import { decodeProvidersEnvironment, type ProvidersEnvironment } from './decoders';
+import {
+    decodeFetchModelsResult,
+    decodeProvidersEnvironment,
+    decodeTestProviderKeyResult,
+    type FetchModelsResultView,
+    type ProvidersEnvironment,
+    type TestProviderKeyResultView,
+} from './decoders';
 
 interface RequestInitOptional {
     signal?: AbortSignal;
+}
+
+export interface FetchProviderModelsInput {
+    provider: string;
+    /** BYOK key; transmitted only for this explicit user-triggered request. */
+    apiKey?: string;
+    baseUrl?: string;
+}
+
+export interface TestProviderKeyInput {
+    provider: string;
+    apiKey?: string;
+    baseUrl?: string;
 }
 
 export const settingsClient = {
@@ -16,5 +36,41 @@ export const settingsClient = {
         return requestJson<unknown>('/settings/providers', { signal: init.signal }).then((payload) =>
             decodeProvidersEnvironment(payload, 'providers'),
         );
+    },
+
+    /**
+     * Discover models through the backend's provider proxy. Not a query:
+     * the request may carry a decrypted BYOK key, so it must never enter a
+     * shared cache and only runs on explicit user intent.
+     */
+    fetchModels(
+        input: FetchProviderModelsInput,
+        init: RequestInitOptional = {},
+    ): Promise<FetchModelsResultView> {
+        return requestJson<unknown>('/settings/models', {
+            method: 'POST',
+            signal: init.signal,
+            body: {
+                provider: input.provider,
+                api_key: input.apiKey || undefined,
+                base_url: input.baseUrl || undefined,
+            },
+        }).then((payload) => decodeFetchModelsResult(payload, 'POST /settings/models'));
+    },
+
+    /** Test a provider credential. Same no-cache, explicit-intent rule. */
+    testKey(
+        input: TestProviderKeyInput,
+        init: RequestInitOptional = {},
+    ): Promise<TestProviderKeyResultView> {
+        return requestJson<unknown>('/settings/test-key', {
+            method: 'POST',
+            signal: init.signal,
+            body: {
+                provider: input.provider,
+                api_key: input.apiKey || undefined,
+                base_url: input.baseUrl || undefined,
+            },
+        }).then((payload) => decodeTestProviderKeyResult(payload, 'POST /settings/test-key'));
     },
 };

@@ -5,11 +5,19 @@
  */
 export { settingsKeys } from './keys';
 export { settingsClient } from './client';
-export { useProvidersEnvironment } from './queries';
 export type {
+    FetchProviderModelsInput,
+    TestProviderKeyInput,
+} from './client';
+export { useProvidersEnvironment } from './queries';
+export { useFetchProviderModels, useTestProviderKey } from './mutations';
+export type {
+    FetchedModelInfoView,
+    FetchModelsResultView,
     ProviderInfoView,
     ProviderModelInfoView,
     ProvidersEnvironment,
     EnvironmentInfoView,
     SystemAIConfigView,
+    TestProviderKeyResultView,
 } from './decoders';

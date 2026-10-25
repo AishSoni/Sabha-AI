@@ -5,7 +5,7 @@
  * memory and vanish on lock or refresh.
  */
 import { beforeEach, describe, expect, it } from 'vitest';
-import { useSettingsStore } from '@/stores/settings-store';
+import { useSettingsStore } from './settings-store';
 
 const STORAGE_KEY = 'sabha-settings';
 

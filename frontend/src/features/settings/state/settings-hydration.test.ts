@@ -15,7 +15,7 @@
  * - legacy persisted payloads carrying `initialized` migrate cleanly.
  */
 import { beforeEach, describe, expect, it, vi } from 'vitest';
-import { useSettingsStore } from '@/stores/settings-store';
+import { useSettingsStore } from './settings-store';
 
 const hydrateFirst = () =>
     useSettingsStore.getState().initializeFromServer({
@@ -155,7 +155,7 @@ describe('legacy persisted payload migration', () => {
 
         // Fresh module instance rebuilds (and rehydrates) from storage.
         vi.resetModules();
-        const migrated = await import('@/stores/settings-store');
+        const migrated = await import('./settings-store');
         const state = migrated.useSettingsStore.getState();
 
         expect(state.defaultProvider).toBe('ollama');

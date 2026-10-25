@@ -1,11 +1,18 @@
 'use client';
 
+/**
+ * Provider section of the settings screen (spec-10).
+ *
+ * Server metadata is read through the settings query and hydrated into the
+ * local preference store on every successful fetch. Secrets stay in the
+ * vault; the metadata response never contains one.
+ */
 import { useEffect } from 'react';
 import { Loader2, Cpu } from 'lucide-react';
-import { ProviderCard } from './provider-card';
-import { SystemAICard } from './system-ai-card';
-import { useProvidersEnvironment } from '@/features/settings';
-import { useSettingsStore } from '@/stores/settings-store';
+import { ProviderCard } from './ProviderCard';
+import { SystemAiCard } from './SystemAiCard';
+import { useProvidersEnvironment } from '../api';
+import { useSettingsStore } from '../state/settings-store';
 
 export function ApiKeysSection() {
     // Server-owned metadata read — TanStack Query owns this fetch; the
@@ -81,7 +88,7 @@ export function ApiKeysSection() {
                     <Cpu className="w-4 h-4" />
                     <span className="text-sm font-medium">System AI</span>
                 </div>
-                <SystemAICard providers={providers} />
+                <SystemAiCard providers={providers} />
             </div>
 
             {/* Provider Cards */}
@@ -91,6 +98,10 @@ export function ApiKeysSection() {
                     {providers.map((provider) => {
                         const providerId = provider.id as keyof typeof providerConfigs;
                         const config = providerConfigs[providerId];
+
+                        // A provider the client does not know how to configure
+                        // is left out rather than rendered with undefined state.
+                        if (!config) return null;
 
                         return (
                             <ProviderCard
@@ -112,7 +123,7 @@ export function ApiKeysSection() {
                 <p>
                     {isProduction
                         ? 'API keys are stored securely on the server and never exposed to the browser.'
-                        : 'API keys are stored in your browser\'s local storage and only transmitted directly to the respective LLM provider APIs.'}
+                        : "API keys are stored in your browser's local storage and only transmitted directly to the respective LLM provider APIs."}
                 </p>
             </div>
         </div>

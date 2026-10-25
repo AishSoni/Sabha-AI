@@ -1,7 +1,26 @@
 /**
- * Public surface of the settings feature (spec-05).
+ * Public surface of the settings feature (spec-05, spec-10).
  */
-export { settingsKeys, settingsClient, useProvidersEnvironment } from './api';
+export {
+    settingsKeys,
+    settingsClient,
+    useFetchProviderModels,
+    useProvidersEnvironment,
+    useTestProviderKey,
+} from './api';
+export type {
+    FetchProviderModelsInput,
+    TestProviderKeyInput,
+    FetchedModelInfoView,
+    FetchModelsResultView,
+    ProviderInfoView,
+    ProviderModelInfoView,
+    ProvidersEnvironment,
+    EnvironmentInfoView,
+    SystemAIConfigView,
+    TestProviderKeyResultView,
+} from './api';
+export { SettingsScreen } from './components/SettingsScreen';
 export {
     useSettingsStore,
     type GenerationSettings,
@@ -9,10 +28,3 @@ export {
     type SettingsState,
     type SystemAIConfig,
 } from './state/settings-store';
-export type {
-    ProviderInfoView,
-    ProviderModelInfoView,
-    ProvidersEnvironment,
-    EnvironmentInfoView,
-    SystemAIConfigView,
-} from './api';

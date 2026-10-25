@@ -34,7 +34,7 @@ const mocks = vi.hoisted(() => ({
     },
 }));
 
-vi.mock('@/features/settings', () => ({
+vi.mock('../api', () => ({
     useProvidersEnvironment: () => {
         const [, setTick] = useState(0);
         useEffect(() => {
@@ -56,17 +56,17 @@ vi.mock('@/features/settings', () => ({
     },
 }));
 
-vi.mock('@/components/settings/provider-card', () => ({
+vi.mock('./ProviderCard', () => ({
     ProviderCard: () => <div data-testid="provider-card" />,
 }));
 
-vi.mock('@/components/settings/system-ai-card', () => ({
-    SystemAICard: () => <div data-testid="system-ai-card" />,
+vi.mock('./SystemAiCard', () => ({
+    SystemAiCard: () => <div data-testid="system-ai-card" />,
 }));
 
 import { useEffect, useState } from 'react';
-import { ApiKeysSection } from './api-keys-section';
-import { useSettingsStore } from '@/stores/settings-store';
+import { ApiKeysSection } from './ApiKeysSection';
+import { useSettingsStore } from '../state/settings-store';
 
 const metadataView = {
     providers: [],

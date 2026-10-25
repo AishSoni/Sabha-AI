@@ -1,6 +1,13 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+/**
+ * System AI configuration card (spec-10).
+ *
+ * Until the server-owned settings contract lands, the card edits the local
+ * preference for app-level functions. Model discovery is a feature command
+ * and never stores the provider key in query state.
+ */
+import { useCallback, useEffect, useRef } from 'react';
 import { Loader2, RefreshCw } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Label } from '@/components/ui/label';
@@ -8,45 +15,47 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Slider } from '@/components/ui/slider';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
-import { ProviderInfo, FetchedModelInfo, settingsApi } from '@/lib/api';
-import { useSettingsStore } from '@/stores/settings-store';
+import { useFetchProviderModels } from '../api';
+import type { ProviderInfoView } from '../api';
+import { useSettingsStore } from '../state/settings-store';
 
-interface SystemAICardProps {
-    providers: ProviderInfo[];
+interface SystemAiCardProps {
+    providers: ProviderInfoView[];
 }
 
-export function SystemAICard({ providers }: SystemAICardProps) {
-    const { systemAI, setSystemAI, defaultProvider, providers: providerConfigs } = useSettingsStore();
-    const [models, setModels] = useState<FetchedModelInfo[]>([]);
-    const [loadingModels, setLoadingModels] = useState(false);
+export function SystemAiCard({ providers }: SystemAiCardProps) {
+    const { systemAI, setSystemAI, defaultProvider, providers: providerConfigs } =
+        useSettingsStore();
+    const { mutateAsync: fetchModelsRequest, data: modelsResult, isPending: loadingModels } =
+        useFetchProviderModels();
 
     const selectedProvider = systemAI.provider || defaultProvider || 'openrouter';
-
-    // Fetch models when provider changes
+    const latestConfigs = useRef(providerConfigs);
     useEffect(() => {
-        fetchModelsForProvider(selectedProvider);
-    }, [selectedProvider]);
+        latestConfigs.current = providerConfigs;
+    }, [providerConfigs]);
 
-    const fetchModelsForProvider = async (providerId: string) => {
-        setLoadingModels(true);
-        try {
-            const providerConfig = providerConfigs[providerId as keyof typeof providerConfigs];
-            const result = await settingsApi.fetchModels({
-                provider: providerId as 'openrouter' | 'gemini' | 'ollama',
-                api_key: providerConfig?.apiKey || undefined,
-                base_url: providerConfig?.baseUrl || undefined,
-            });
-            if (result.success) {
-                setModels(result.models);
-            } else {
-                setModels([]);
+    const fetchModelsForProvider = useCallback(
+        async (providerId: string) => {
+            const providerConfig =
+                latestConfigs.current[providerId as keyof typeof latestConfigs.current];
+            try {
+                await fetchModelsRequest({
+                    provider: providerId,
+                    apiKey: providerConfig?.apiKey || undefined,
+                    baseUrl: providerConfig?.baseUrl || undefined,
+                });
+            } catch {
+                // An empty model list renders the failure as "No models".
             }
-        } catch (error) {
-            setModels([]);
-        } finally {
-            setLoadingModels(false);
-        }
-    };
+        },
+        [fetchModelsRequest],
+    );
+
+    // Fetch models when the selected provider changes.
+    useEffect(() => {
+        void fetchModelsForProvider(selectedProvider);
+    }, [selectedProvider, fetchModelsForProvider]);
 
     const handleProviderChange = (value: string) => {
         const provider = value === '__default__' ? '' : value;
@@ -57,6 +66,8 @@ export function SystemAICard({ providers }: SystemAICardProps) {
         setSystemAI({ model: value === '__default__' ? '' : value });
     };
 
+    const models = modelsResult?.success ? modelsResult.models : [];
+
     return (
         <Card className="bg-gradient-to-br from-violet-500/20 to-violet-600/10 border-violet-500/30">
             <CardHeader className="pb-3">
@@ -64,7 +75,9 @@ export function SystemAICard({ providers }: SystemAICardProps) {
                     <span className="text-2xl">🧠</span>
                     <div>
                         <CardTitle className="text-white text-lg">System AI</CardTitle>
-                        <p className="text-xs text-zinc-400">Used for app-level functions like summarization</p>
+                        <p className="text-xs text-zinc-400">
+                            Used for app-level functions like summarization
+                        </p>
                     </div>
                 </div>
             </CardHeader>
@@ -80,11 +93,18 @@ export function SystemAICard({ providers }: SystemAICardProps) {
                             <SelectValue placeholder="Use default" />
                         </SelectTrigger>
                         <SelectContent className="bg-zinc-900 border-zinc-700">
-                            <SelectItem value="__default__" className="text-zinc-400 hover:bg-zinc-800">
+                            <SelectItem
+                                value="__default__"
+                                className="text-zinc-400 hover:bg-zinc-800"
+                            >
                                 Use Default ({defaultProvider || 'none'})
                             </SelectItem>
                             {providers.map((provider) => (
-                                <SelectItem key={provider.id} value={provider.id} className="text-white hover:bg-zinc-800">
+                                <SelectItem
+                                    key={provider.id}
+                                    value={provider.id}
+                                    className="text-white hover:bg-zinc-800"
+                                >
                                     {provider.name}
                                 </SelectItem>
                             ))}
@@ -99,7 +119,7 @@ export function SystemAICard({ providers }: SystemAICardProps) {
                         <Button
                             variant="ghost"
                             size="sm"
-                            onClick={() => fetchModelsForProvider(selectedProvider)}
+                            onClick={() => void fetchModelsForProvider(selectedProvider)}
                             disabled={loadingModels}
                             className="h-6 px-2 text-xs text-zinc-400 hover:text-white"
                         >
@@ -117,7 +137,9 @@ export function SystemAICard({ providers }: SystemAICardProps) {
                             Fetching models...
                         </div>
                     ) : models.length === 0 ? (
-                        <div className="text-xs text-zinc-500">No models available for this provider</div>
+                        <div className="text-xs text-zinc-500">
+                            No models available for this provider
+                        </div>
                     ) : (
                         <Select
                             value={systemAI.model || '__default__'}
@@ -127,11 +149,18 @@ export function SystemAICard({ providers }: SystemAICardProps) {
                                 <SelectValue placeholder="Use provider default" />
                             </SelectTrigger>
                             <SelectContent className="bg-zinc-900 border-zinc-700 max-h-60">
-                                <SelectItem value="__default__" className="text-zinc-400 hover:bg-zinc-800">
+                                <SelectItem
+                                    value="__default__"
+                                    className="text-zinc-400 hover:bg-zinc-800"
+                                >
                                     Use Provider Default
                                 </SelectItem>
                                 {models.map((model) => (
-                                    <SelectItem key={model.id} value={model.id} className="text-white hover:bg-zinc-800">
+                                    <SelectItem
+                                        key={model.id}
+                                        value={model.id}
+                                        className="text-white hover:bg-zinc-800"
+                                    >
                                         <span className="flex items-center gap-2">
                                             {model.name}
                                             {model.context_length && (
@@ -151,7 +180,9 @@ export function SystemAICard({ providers }: SystemAICardProps) {
                 <div className="space-y-2">
                     <div className="flex justify-between">
                         <Label className="text-zinc-300">Temperature</Label>
-                        <span className="text-xs text-zinc-500">{systemAI.temperature.toFixed(1)}</span>
+                        <span className="text-xs text-zinc-500">
+                            {systemAI.temperature.toFixed(1)}
+                        </span>
                     </div>
                     <Slider
                         value={[systemAI.temperature]}

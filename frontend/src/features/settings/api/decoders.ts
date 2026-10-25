@@ -1,14 +1,13 @@
 /**
  * Decoders for the settings metadata wire (spec-05).
  *
- * The decoded views are structurally identical to the legacy `ProviderInfo`
- * interfaces the provider cards consume, so the section can pass them
- * through unchanged while '@/lib/api' remains on the legacy path. Only the
- * environment and system-AI projections — the parts initializeFromServer
- * consumes — are decoded into camelCase server state.
+ * The decoded views are the feature's own wire shapes: the provider cards
+ * consume them directly, and the environment/system-AI projections are
+ * camelCase views of server state.
  */
 import {
     decodeObject,
+    optionalNumber,
     optionalString,
     requireArray,
     requireBoolean,
@@ -56,6 +55,25 @@ export interface ProvidersEnvironment {
     systemAI: SystemAIConfigView;
 }
 
+/** One model discovered by proxying a provider's model directory. */
+export interface FetchedModelInfoView {
+    id: string;
+    name: string;
+    context_length?: number;
+}
+
+export interface FetchModelsResultView {
+    success: boolean;
+    models: FetchedModelInfoView[];
+    message: string;
+}
+
+export interface TestProviderKeyResultView {
+    valid: boolean;
+    message: string;
+    models?: string[];
+}
+
 export function decodeProviderModel(value: unknown, path: string): ProviderModelInfoView {
     const record = decodeObject(value, path);
     return {
@@ -91,6 +109,43 @@ export function decodeDefaultModels(value: unknown, path: string): Record<string
         models[key] = requireString(entry, `${path}.${key}`);
     }
     return models;
+}
+
+export function decodeFetchedModel(value: unknown, path: string): FetchedModelInfoView {
+    const record = decodeObject(value, path);
+    return {
+        id: requireString(record.id, `${path}.id`),
+        name: requireString(record.name, `${path}.name`),
+        context_length: optionalNumber(record.context_length, `${path}.context_length`),
+    };
+}
+
+export function decodeFetchModelsResult(value: unknown, path: string): FetchModelsResultView {
+    const record = decodeObject(value, path);
+    return {
+        success: requireBoolean(record.success, `${path}.success`),
+        models: requireArray(record.models ?? [], `${path}.models`, (item, itemPath) =>
+            decodeFetchedModel(item, itemPath),
+        ),
+        message: requireString(record.message, `${path}.message`),
+    };
+}
+
+export function decodeTestProviderKeyResult(
+    value: unknown,
+    path: string,
+): TestProviderKeyResultView {
+    const record = decodeObject(value, path);
+    return {
+        valid: requireBoolean(record.valid, `${path}.valid`),
+        message: requireString(record.message, `${path}.message`),
+        models:
+            record.models === undefined
+                ? undefined
+                : requireArray(record.models, `${path}.models`, (item, itemPath) =>
+                      requireString(item, itemPath),
+                  ),
+    };
 }
 
 export function decodeProvidersEnvironment(value: unknown, path: string): ProvidersEnvironment {
