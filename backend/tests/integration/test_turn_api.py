@@ -19,7 +19,7 @@ from app.capabilities.inference.contracts import StreamEvent, StreamEventType
 from app.services import meeting_manager as meeting_manager_module
 from app.services.meeting_manager import MeetingManager
 from app.services.turn_queue import TurnQueueService
-from app.services.turn_runner import TurnRunner
+from app.capabilities.runtime.runner import TurnRunner
 from tests.doubles.durable_queue import DurableQueueWorld
 from tests.doubles.providers import ScriptedProvider
 from tests.doubles.supabase_stub import stub_for

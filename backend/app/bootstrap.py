@@ -33,7 +33,7 @@ from app.presentation.errors import register_error_handlers
 from app.presentation.router import mount_routes
 from app.services.meeting_manager import MeetingManager
 from app.services.turn_queue import TurnQueueService
-from app.services.turn_runner import TurnRunner
+from app.capabilities.runtime.runner import TurnRunner
 
 
 @dataclass(frozen=True)

@@ -30,7 +30,7 @@ from app.services.turn_queue import (
     TurnNotFoundError,
     TurnQueueService,
 )
-from app.services.turn_runner import TERMINAL_STATUSES, TurnRunner
+from app.capabilities.runtime.runner import TERMINAL_STATUSES, TurnRunner
 import logging
 
 logger = logging.getLogger(__name__)

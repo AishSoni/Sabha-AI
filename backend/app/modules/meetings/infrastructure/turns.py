@@ -1001,13 +1001,12 @@ class TurnQueueService:
         factory = self.vector_store_factory
         vector_store = factory()
         collections: list[str] = []
-        from app.services.vector_store import VectorStoreManager
 
-        shared = VectorStoreManager.meeting_collection_name(claim.meeting_id)
+        shared = f"meeting_{claim.meeting_id}_shared"
         if await vector_store.collection_exists(shared):
             collections.append(shared)
         for stack_id in participant.stack_ids or []:
-            stack_col = VectorStoreManager.stack_collection_name(stack_id)
+            stack_col = f"stack_{stack_id}_knowledge"
             if await vector_store.collection_exists(stack_col):
                 collections.append(stack_col)
         if not collections:
