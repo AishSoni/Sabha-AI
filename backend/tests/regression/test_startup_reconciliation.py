@@ -1,7 +1,7 @@
 """Regression (spec-02, ingestion_recovery): restart reconciliation recovers
 honestly from interrupted document lifecycles.
 
-Policies (documented in app/services/recovery.py):
+Policies (documented in app/modules/knowledge/infrastructure/reconciliation.py):
 - files whose ingestion was interrupted by a restart are marked failed with an
   actionable re-upload message (no byte retention across restarts, by design);
 - deferred vector-collection cleanups are retried through the pending ledger;
@@ -16,9 +16,11 @@ import pytest
 import psycopg
 from fastapi.testclient import TestClient
 
-from app.services import vector_cleanup as vector_cleanup_module
-from app.services import recovery as recovery_module
-from app.services.vector_cleanup import VectorCleanupLedger
+from app.modules.knowledge.infrastructure import (
+    reconciliation as recovery_module,
+)
+from app.modules.knowledge.infrastructure import vector_cleanup as vector_cleanup_module
+from app.modules.knowledge.infrastructure.vector_cleanup import VectorCleanupLedger
 from main import app
 from tests.doubles.supabase_stub import stub_for
 
@@ -207,7 +209,9 @@ def test_app_lifespan_runs_reconciliation(monkeypatch, disposable_db):
         calls.append({"vector_store": vector_store})
         return {"documents_failed": 0, "cleanups_attempted": 0, "cleanups_resolved": 0}
 
-    monkeypatch.setattr(recovery_module, "reconcile_startup_state", spy)
+    monkeypatch.setattr(
+        "app.modules.knowledge.public.reconcile_startup_state", spy
+    )
 
     with TestClient(app) as client:
         response = client.get("/health")

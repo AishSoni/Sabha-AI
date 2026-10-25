@@ -63,8 +63,12 @@ def settings_env(disposable_db, monkeypatch):
         "app.services.system_ai_settings.get_supabase_admin", lambda: stub
     )
     monkeypatch.setattr("app.services.meeting_manager.get_supabase", lambda: stub)
-    monkeypatch.setattr("app.services.recovery.get_supabase", lambda: stub)
-    monkeypatch.setattr("app.services.vector_cleanup.get_supabase", lambda: stub)
+    monkeypatch.setattr(
+        "app.modules.knowledge.infrastructure.reconciliation.get_supabase", lambda: stub
+    )
+    monkeypatch.setattr(
+        "app.modules.knowledge.infrastructure.vector_cleanup.get_supabase", lambda: stub
+    )
     return disposable_db
 
 

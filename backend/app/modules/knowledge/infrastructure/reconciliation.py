@@ -57,7 +57,9 @@ async def reconcile_startup_state(vector_store=None, ledger=None) -> dict:
             logger.warning("Could not mark orphaned document %s failed: %s", row["id"], exc)
 
     try:
-        from app.services.vector_cleanup import reconcile_pending_vector_cleanups
+        from app.modules.knowledge.infrastructure.vector_cleanup import (
+            reconcile_pending_vector_cleanups,
+        )
 
         cleanup = await reconcile_pending_vector_cleanups(vector_store=vector_store, ledger=ledger)
         summary["cleanups_attempted"] = cleanup["attempted"]

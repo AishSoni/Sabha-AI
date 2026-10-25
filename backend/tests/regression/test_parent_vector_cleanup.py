@@ -29,7 +29,7 @@ from app.api import documents as documents_module
 from app.modules.knowledge.presentation import stacks_http as stacks_module
 from app.modules.meetings.presentation import meetings_http as meetings_module
 from app.modules.knowledge.domain.errors import KnowledgeUnavailable
-from app.services import vector_cleanup as vector_cleanup_module
+from app.modules.knowledge.infrastructure import vector_cleanup as vector_cleanup_module
 from tests.doubles.supabase_stub import stub_for
 
 MEETING_ID = "aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaa01"

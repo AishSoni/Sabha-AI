@@ -142,8 +142,12 @@ def sweep_env(disposable_db, monkeypatch):
         return stub_for(disposable_db)
 
     monkeypatch.setattr("app.services.meeting_manager.get_supabase", _stub)
-    monkeypatch.setattr("app.services.recovery.get_supabase", _stub)
-    monkeypatch.setattr("app.services.vector_cleanup.get_supabase", _stub)
+    monkeypatch.setattr(
+        "app.modules.knowledge.infrastructure.reconciliation.get_supabase", _stub
+    )
+    monkeypatch.setattr(
+        "app.modules.knowledge.infrastructure.vector_cleanup.get_supabase", _stub
+    )
     # Persona/knowledge/document API surfaces own their own database
     # construction sites (read remaining patch usage during cutover).
     monkeypatch.setattr(

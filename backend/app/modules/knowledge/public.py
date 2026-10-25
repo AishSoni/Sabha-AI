@@ -44,8 +44,18 @@ from app.modules.knowledge.application.retrieval import (
 )
 from app.modules.knowledge.infrastructure.parsers import LocalDocumentParser
 from app.modules.knowledge.infrastructure.qdrant import QdrantKnowledgeProjection
+from app.modules.knowledge.infrastructure.reconciliation import (
+    ORPHANED_INGESTION_MESSAGE,
+    reconcile_startup_state,
+)
 from app.modules.knowledge.infrastructure.source_store import SupabaseSourceStore
 from app.modules.knowledge.infrastructure.supabase import SupabaseKnowledgeRepository
+from app.modules.knowledge.infrastructure.vector_cleanup import (
+    VectorCleanupLedger,
+    get_vector_cleanup_ledger,
+    record_pending_cleanup,
+    reconcile_pending_vector_cleanups,
+)
 
 logger = logging.getLogger(__name__)
 

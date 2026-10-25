@@ -97,7 +97,7 @@ async def lifespan(app: FastAPI):
     placements safe.
     """
     import logging
-    from app.services.recovery import reconcile_startup_state
+    from app.modules.knowledge.public import reconcile_startup_state
 
     logger = logging.getLogger("sabha.startup")
     try:

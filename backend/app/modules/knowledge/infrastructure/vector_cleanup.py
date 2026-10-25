@@ -89,8 +89,9 @@ async def reconcile_pending_vector_cleanups(
     pending for the next pass. One poisoned item never stops the pass.
     """
     if vector_store is None:
-        from app.services.vector_store import get_vector_store
-        vector_store = get_vector_store()
+        from app.modules.knowledge.infrastructure.qdrant import QdrantKnowledgeProjection
+
+        vector_store = QdrantKnowledgeProjection()
     ledger = ledger or get_vector_cleanup_ledger()
 
     items = await ledger.pending_items()
