@@ -64,3 +64,17 @@ Use fixed valid UUIDs in the actual API fixture. Add late A events while B is se
 Every supported workflow uses declared ownership and public boundaries. Thin routes do not access infrastructure; components do not implement raw SSE/provider persistence; no duplicate canonical store or legacy compatibility writer remains in migrated production paths. Full frontend/backend Phase 1 regressions, architecture checks, hosted/local no-sign-in behavior, and coordinated feature tests pass.
 
 Next: [Upgrade rehearsal and architecture acceptance](spec-11-upgrade-and-architecture-acceptance.md).
+
+## Completion record
+
+Spec-10 cutover is complete for the production workflows in scope:
+
+- **Settings:** the screen, provider cards, System AI card, commands, decoders and tests live under `frontend/src/features/settings/`. The legacy `@/lib/api` facade, `components/settings/`, `stores/settings-store.ts` compatibility writer, and their tests are gone.
+- **Server-owned System AI:** migration `028_system_ai_settings.sql`, validated `PUT /api/settings/system-ai`, environment fallback on read, and summary/closing-summary resolution through the saved policy. The browser keeps only a transient BYOK header; the key never enters server state.
+- **Meeting room:** the route is a thin shell over the feature-owned `MeetingRoom`; canonical queries and the durable turn controller own reads and commands. The legacy meeting store, chat components, sidebars and dialogs were deleted.
+- **Backend settings ownership:** the settings route and DTOs moved to `app/modules/settings/presentation/`; the legacy `app/api/settings.py` and `app/models/settings_schemas.py` were deleted, with public `/api/settings/*` paths unchanged.
+- **Preferences persistence:** store schema v2 strips the retired local System AI and the legacy `initialized` flag while preserving providers, the user default provider, and encrypted vault envelopes.
+
+Evidence at the cutover commits: frontend **215 tests / 37 files** and `tsc` clean; settings/System AI, summary, demo-guard, Ollama-origin and architecture backend suites green (26 targeted regression + 16 architecture); OpenAPI fixture and generated types regenerated with the System AI PUT path. Guided replay remains deferred by decision and is not claimed as part of this record; the existing demo write guard and no-sign-in behavior are unchanged.
+
+No `shared/layout/` was introduced: no production caller needs a shared shell, and spec-10 forbids moving stable primitives for symmetry. `shared/state/preferencesStore.ts` was not introduced for the same reason; the only justified UI preference store remains the curated `rateLimitStore` allowlist.
