@@ -12,7 +12,7 @@ import json
 
 import pytest
 
-from app.llm.base import StreamEvent, StreamEventType
+from app.capabilities.inference.contracts import StreamEvent, StreamEventType
 
 # Re-export the proven streaming fixture namespace (same dir is on sys.path)
 # together with the seeded identity constants it uses.

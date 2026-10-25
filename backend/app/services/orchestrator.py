@@ -5,7 +5,8 @@ Orchestrator service - handles AI turn-taking and response generation.
 import json
 import uuid as uuid_module
 from typing import List, Optional
-from app.llm import get_provider, LLMMessage, LLMResponse, ToolCall
+from app.capabilities.inference.contracts import LLMMessage, LLMResponse, ToolCall
+from app.platform.providers import get_provider
 from app.models import (
     AIParticipant,
     Message,
@@ -402,7 +403,8 @@ class Orchestrator:
         Execute an AI participant's turn with streaming.
         Yields StreamEvent objects for real-time UI updates.
         """
-        from app.llm import get_provider, StreamEvent, StreamEventType
+        from app.capabilities.inference.contracts import StreamEvent, StreamEventType
+        from app.platform.providers import get_provider
         
         # Load meeting data
         meeting = await self.meeting_manager.get_meeting(meeting_id)
@@ -483,7 +485,7 @@ class Orchestrator:
                 # the UI sees the activity, then correlate the result to it.
                 if event.type == StreamEventType.TOOL_CALL and event.tool_name:
                     had_tool_calls = True
-                    from app.llm.base import ToolCall
+                    from app.capabilities.inference.contracts import ToolCall
                     call_id = event.tool_call_id or f"call-{call_counter}"
                     call_counter += 1
                     tool_call = ToolCall(

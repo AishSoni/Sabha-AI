@@ -23,7 +23,7 @@ from app.capabilities.configuration.ports import (
 )
 from app.platform.config import settings
 
-# Providers the runtime transports actually implement (app.llm factory).
+# Providers the runtime transports actually implement (platform provider factory).
 SUPPORTED_PROVIDERS = ("ollama", "openrouter", "gemini")
 
 CLOUD_PROVIDERS = ("openrouter", "gemini")
@@ -94,7 +94,7 @@ def resolve_generation_settings(
 # inference path cuts over (spec 06, slice G); new code resolves through
 # resolve_effective_settings below.
 
-# Static catalog mirroring the app.llm factory: any other provider name
+# Static catalog mirroring the provider factory: any other provider name
 # raises "Unknown provider" at construction time — refusing it during
 # resolution turns that late failure into a typed, pre-transport one.
 _DEFAULT_CATALOG = None

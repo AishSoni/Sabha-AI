@@ -25,7 +25,7 @@ from test_tool_continuation_loop import (  # noqa: E402
     turn_env,
 )
 
-from app.llm.base import LLMResponse  # noqa: E402
+from app.capabilities.inference.contracts import LLMResponse  # noqa: E402
 from app.models import MessageCreate, RequestProviderSettings  # noqa: E402
 from app.services.meeting_manager import MeetingManager  # noqa: E402
 from app.services.orchestrator import Orchestrator  # noqa: E402

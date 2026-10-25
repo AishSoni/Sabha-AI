@@ -6,7 +6,7 @@ import httpx
 from typing import List, Optional
 import json
 
-from app.llm.base import (
+from app.capabilities.inference.contracts import (
     LLMProvider,
     LLMMessage,
     LLMResponse,
@@ -182,7 +182,7 @@ class GeminiProvider(LLMProvider):
         max_tokens: int = 2048,
     ):
         """Stream completion via Gemini API with thinking block support."""
-        from app.llm.base import StreamEvent, StreamEventType
+        from app.capabilities.inference.contracts import StreamEvent, StreamEventType
         
         system_instruction, contents = self._convert_messages(messages)
         

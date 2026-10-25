@@ -167,7 +167,7 @@ def parse_file(path: Path) -> ast.Module:
 
 def package_of(file_path: Path, project_root: Path) -> str:
     """The dotted package used to resolve relative imports from this file:
-    for ``app/llm/__init__.py`` -> ``app.llm``, for
+    for ``app/platform/providers/__init__.py`` -> ``app.platform.providers``, for
     ``app/services/orchestrator.py`` -> ``app.services``."""
     parts = file_path.resolve().relative_to(project_root.resolve()).with_suffix("").parts
     return ".".join(parts[:-1])

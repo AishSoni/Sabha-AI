@@ -15,7 +15,7 @@ import pytest
 from fastapi.testclient import TestClient
 
 from app.bootstrap import Container, create_app
-from app.llm.base import StreamEvent, StreamEventType
+from app.capabilities.inference.contracts import StreamEvent, StreamEventType
 from app.services import meeting_manager as meeting_manager_module
 from app.services.meeting_manager import MeetingManager
 from app.services.turn_queue import TurnQueueService

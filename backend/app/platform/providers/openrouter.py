@@ -2,7 +2,7 @@ import httpx
 from typing import List, Optional, AsyncGenerator
 import json
 
-from app.llm.base import (
+from app.capabilities.inference.contracts import (
     LLMProvider,
     LLMMessage,
     LLMResponse,

@@ -14,7 +14,7 @@ from datetime import datetime
 
 import pytest
 
-from app.llm import ToolCall
+from app.capabilities.inference.contracts import ToolCall
 from app.models import AIParticipant, ProviderConfig
 from app.services.meeting_manager import MeetingManager
 from app.services.orchestrator import Orchestrator

@@ -22,10 +22,10 @@ from test_tool_continuation_loop import (  # noqa: F401  (fixture re-export)
     turn_env,
 )
 
-import app.llm as llm_module
+import app.platform.providers as llm_module
 import app.services.orchestrator as orchestrator_module
 from app.platform.config import settings
-from app.llm.base import LLMResponse, StreamEvent, StreamEventType
+from app.capabilities.inference.contracts import LLMResponse, StreamEvent, StreamEventType
 from main import app
 
 BYOK_KEY = "fixture-byok-key"

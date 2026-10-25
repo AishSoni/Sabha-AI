@@ -4,7 +4,7 @@ Streaming service - SSE streaming for AI responses.
 
 import json
 from typing import AsyncGenerator
-from app.llm.base import StreamEvent, StreamEventType
+from app.capabilities.inference.contracts import StreamEvent, StreamEventType
 
 
 def format_sse_event(event: StreamEvent) -> dict:

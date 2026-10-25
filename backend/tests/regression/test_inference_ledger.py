@@ -20,10 +20,10 @@ Rules captured here:
 import json
 
 import pytest
-import app.llm as llm_module
+import app.platform.providers as llm_module
 import app.services.orchestrator as orchestrator_module
 import app.services.meeting_manager as meeting_manager_module
-from app.llm.base import LLMResponse, StreamEvent, StreamEventType
+from app.capabilities.inference.contracts import LLMResponse, StreamEvent, StreamEventType
 from app.services.meeting_manager import MeetingManager
 from app.services.orchestrator import Orchestrator
 from tests.doubles.providers import ScriptedProvider
@@ -114,7 +114,7 @@ def ledger_env(disposable_db, monkeypatch):
 
 
 def _tool_round(query="pricing"):
-    from app.llm.base import ToolCall
+    from app.capabilities.inference.contracts import ToolCall
 
     return LLMResponse(
         content="",

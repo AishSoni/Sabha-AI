@@ -107,7 +107,7 @@ def template_env(disposable_db, monkeypatch):
 def _search_knowledge_base_recorded(monkeypatch, template_env, meeting_id, participant):
     """Drive the knowledge-base branch through _handle_tool_call with the
     orchestrator's vector store seam replaced by a recording store."""
-    from app.llm.base import ToolCall
+    from app.capabilities.inference.contracts import ToolCall
 
     vector_store = RecordingVectorStore(
         {SHARED_COLLECTION, STACK_A_COLLECTION, STACK_B_COLLECTION}
@@ -208,7 +208,7 @@ async def test_legacy_row_without_snapshot_falls_back_to_template(template_env, 
     # template join before inference starts; the tool execution path itself
     # never reads template tables.
     await template_env["manager"].ensure_participant_knowledge_scope(legacy_participant)
-    from app.llm.base import ToolCall
+    from app.capabilities.inference.contracts import ToolCall
 
     call = ToolCall(
         id="call-fallback-1",
@@ -236,7 +236,7 @@ async def test_default_roster_participant_searches_only_shared(template_env, mon
         raising=True,
     )
     orchestrator = Orchestrator(template_env["manager"])
-    from app.llm.base import ToolCall
+    from app.capabilities.inference.contracts import ToolCall
 
     call = ToolCall(
         id="call-shared-1",

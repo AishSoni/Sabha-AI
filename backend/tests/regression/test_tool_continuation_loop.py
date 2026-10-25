@@ -16,9 +16,9 @@ import pytest
 import app.services.orchestrator as orchestrator_module
 import app.services.meeting_manager as meeting_manager_module
 import app.services.vector_store as vector_store_module
-import app.llm as llm_module
+import app.platform.providers as llm_module
 from app.bootstrap import Container
-from app.llm.base import LLMResponse, StreamEvent, StreamEventType, ToolCall
+from app.capabilities.inference.contracts import LLMResponse, StreamEvent, StreamEventType, ToolCall
 from app.services.meeting_manager import MeetingManager
 from app.services.orchestrator import Orchestrator
 from app.services.turn_queue import TurnQueueService

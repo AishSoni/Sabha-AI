@@ -7,7 +7,7 @@ and replay scripted responses in order. They never touch the network.
 
 from typing import Any, AsyncGenerator, Dict, List, Optional, Sequence
 
-from app.llm.base import (
+from app.capabilities.inference.contracts import (
     LLMMessage,
     LLMProvider,
     LLMResponse,

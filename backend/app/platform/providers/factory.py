@@ -1,4 +1,4 @@
-from app.llm.base import (
+from app.capabilities.inference.contracts import (
     LLMProvider,
     LLMMessage,
     LLMResponse,
@@ -7,9 +7,9 @@ from app.llm.base import (
     StreamEvent,
     StreamEventType,
 )
-from app.llm.openrouter import OpenRouterProvider
-from app.llm.ollama import OllamaProvider
-from app.llm.gemini import GeminiProvider
+from app.platform.providers.openrouter import OpenRouterProvider
+from app.platform.providers.ollama import OllamaProvider
+from app.platform.providers.gemini import GeminiProvider
 from app.platform.config import settings
 
 

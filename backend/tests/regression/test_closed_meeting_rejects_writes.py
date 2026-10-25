@@ -21,7 +21,7 @@ from datetime import datetime, timezone
 import pytest
 from fastapi.testclient import TestClient
 
-from app.llm.base import LLMResponse
+from app.capabilities.inference.contracts import LLMResponse
 from app.services.meeting_manager import MeetingManager
 from app.services.orchestrator import Orchestrator
 from main import app
@@ -174,7 +174,7 @@ async def test_completed_turn_persists_after_close_midflight(turn_env, monkeypat
         )]
     )
     monkeypatch.setattr("app.services.orchestrator.get_provider", lambda *a, **kw: provider)
-    monkeypatch.setattr("app.llm.get_provider", lambda *a, **kw: provider)
+    monkeypatch.setattr("app.platform.providers.get_provider", lambda *a, **kw: provider)
 
     orchestrator = turn_env["orchestrator"]
 

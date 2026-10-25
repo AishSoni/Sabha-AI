@@ -2,7 +2,7 @@ import httpx
 from typing import List, Optional
 import json
 
-from app.llm.base import (
+from app.capabilities.inference.contracts import (
     LLMProvider,
     LLMMessage,
     LLMResponse,
@@ -130,7 +130,7 @@ class OllamaProvider(LLMProvider):
         max_tokens: int = 2048,
     ):
         """Stream completion via Ollama API."""
-        from app.llm.base import StreamEvent, StreamEventType
+        from app.capabilities.inference.contracts import StreamEvent, StreamEventType
         
         payload = {
             "model": self.model,

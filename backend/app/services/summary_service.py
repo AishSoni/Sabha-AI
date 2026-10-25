@@ -20,7 +20,8 @@ the real contract behind POST /meetings/{id}/summary:
 import logging
 from typing import List, Optional
 
-from app.llm import LLMMessage, get_provider
+from app.capabilities.inference.contracts import LLMMessage
+from app.platform.providers import get_provider
 from app.models import (
     MeetingStatus,
     Message,

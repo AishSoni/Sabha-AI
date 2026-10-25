@@ -13,7 +13,7 @@ from datetime import datetime, timedelta
 
 import pytest
 
-from app.llm.base import StreamEvent, StreamEventType
+from app.capabilities.inference.contracts import StreamEvent, StreamEventType
 from tests.doubles.barriers import AsyncBarrier, WaitEvent
 from tests.doubles.clock import DEFAULT_START, FakeClock
 from tests.doubles.transports import (

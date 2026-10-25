@@ -10,7 +10,7 @@ import json
 from fastapi.testclient import TestClient
 
 import app.services.orchestrator as orchestrator_module
-from app.llm.base import LLMResponse, StreamEvent, StreamEventType
+from app.capabilities.inference.contracts import LLMResponse, StreamEvent, StreamEventType
 from main import app
 
 from test_tool_continuation_loop import (  # noqa: F401  (fixture re-export)

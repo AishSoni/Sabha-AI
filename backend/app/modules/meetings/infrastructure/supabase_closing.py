@@ -20,7 +20,8 @@ from app.capabilities.configuration.service import (
 )
 from app.services.system_ai_settings import SYSTEM_AI_DEFAULTS
 from app.platform.config import settings
-from app.llm import LLMMessage, get_provider
+from app.capabilities.inference.contracts import LLMMessage
+from app.platform.providers import get_provider
 from app.modules.meetings.application.contracts import (
     ClosingRecord,
     ClosingSnapshot,

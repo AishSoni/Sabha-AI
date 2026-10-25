@@ -20,7 +20,7 @@ from datetime import datetime, timezone
 import pytest
 
 import app.services.meeting_manager as meeting_manager_module
-from app.llm import ToolCall
+from app.capabilities.inference.contracts import ToolCall
 from app.models import MeetingCreate
 from app.modules.persona_catalog.infrastructure.supabase import (
     SupabasePersonaCatalog,

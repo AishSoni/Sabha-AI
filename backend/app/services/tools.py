@@ -3,7 +3,7 @@ Tool definitions for Sabha AI agents.
 These tools are injected into the LLM context for function calling.
 """
 
-from app.llm.base import ToolDefinition
+from app.capabilities.inference.contracts import ToolDefinition
 
 
 # Web search tool - for Phase 2 with Tavily
