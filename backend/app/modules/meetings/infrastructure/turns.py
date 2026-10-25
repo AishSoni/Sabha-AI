@@ -1,5 +1,11 @@
 """Durable turn queue service (spec 07).
 
+This workflow lives in ``infrastructure`` rather than ``application`` because
+it composes the provider factory, configuration resolution and platform
+settings; the reference architecture's application layer forbids those
+adapters. The durable rules remain module-owned and are exercised through the
+same public HTTP and queue contracts.
+
 The database owns admission, ordering, leases, fences, attempts and events.
 This module is the application-side workflow: submit a turn, claim one, run
 the bounded inference/tool loop, publish exactly one final message, or record

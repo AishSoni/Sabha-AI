@@ -1,9 +1,7 @@
-"""HTTP surface assembly (spec-04).
+"""Final HTTP surface assembly.
 
-Mounts the legacy routers exactly as ``main.py`` did. Extracted module
-routes mount here as their vertical slices accept; a caller's duplicate
-legacy route is removed in the same cutover commit so exactly one handler
-answers each path/model combination.
+Every public route is owned by a business module. This file only chooses the
+mount point and tag set so the composed paths keep their Phase 1 URLs.
 """
 
 

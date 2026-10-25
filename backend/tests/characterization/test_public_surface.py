@@ -1,13 +1,13 @@
-"""Pins the public HTTP surface while the legacy backend is cut over.
+"""Pins the final public HTTP surface.
 
-The spec-11 cutover moves implementation files, but it must not move a URL,
-method, request/response model, or error envelope.  The frontend fixture is the
-frozen cross-stack contract; comparing ``app.openapi()`` to it makes an
-accidental public change fail before the frontend notices.
+The spec-11 cutover moved implementation files without moving a URL, method,
+request/response model, or error envelope. The frontend fixture is the frozen
+cross-stack contract; comparing ``app.openapi()`` to it makes an accidental
+public change fail before the frontend notices.
 
-The legacy roots have been deleted; imports of them must never return.  The
-OpenAPI comparison and the legacy-import assertion are the remaining pins
-until the architecture suite takes over the boundary at A16.
+The legacy roots are gone and must never return. The architecture suite also
+enforces that boundary; this module keeps the contract pin next to the HTTP
+characterization tests.
 """
 
 import ast

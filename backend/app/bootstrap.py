@@ -6,10 +6,9 @@ Defaults to the production container; tests inject their own
 ``Container`` with replacement adapters, which is what makes the use case
 provable end-to-end without SDK reach.
 
-Assembly mirrors the previous ``main.py`` exactly (CORS, demo write
-guard, startup-recovery lifespan, legacy router mounting). Extracted
-module routes mount in the same place as the legacy routers until each
-caller's own cutover commit removes its duplicate.
+Assembly owns the CORS policy, the demo write guard, the startup-recovery
+lifespan and the final module router set. ``main.py`` and ``worker.py`` are
+thin entry points over this root; application layers never import it.
 """
 
 from contextlib import asynccontextmanager
