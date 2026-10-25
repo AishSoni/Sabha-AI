@@ -19,7 +19,7 @@ from typing import Any
 from app.capabilities.configuration.contracts import GenerationDefaults
 from app.core.config import settings
 from app.core.database import get_supabase_admin
-from app.models.settings_schemas import SystemAIConfig
+from app.modules.settings.presentation.schemas import SystemAIConfig
 
 logger = logging.getLogger(__name__)
 

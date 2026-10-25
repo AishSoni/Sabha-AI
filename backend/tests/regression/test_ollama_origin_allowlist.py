@@ -1,7 +1,7 @@
 """Regression: Ollama settings endpoints must only contact trusted configured
 destinations (`network_spy` fixture contract).
 
-Evidence: app/api/settings.py hands a user-supplied `base_url` straight to
+Evidence: app/modules/settings/presentation/http.py hands a user-supplied `base_url` straight to
 httpx (fetch models + test-key), letting anyone make the server issue requests
 to arbitrary internal endpoints. Fix enforces a trusted configured-origin
 allowlist before any request, pins DNS resolution classes, and never follows
@@ -14,7 +14,7 @@ import httpx
 import pytest
 from fastapi.testclient import TestClient
 
-from app.api import settings as settings_api
+from app.modules.settings.presentation import http as settings_api
 from app.core import config as config_module
 from main import app
 

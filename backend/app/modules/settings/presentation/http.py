@@ -12,7 +12,7 @@ from fastapi import APIRouter, HTTPException
 from pydantic import BaseModel
 import httpx
 
-from app.models.settings_schemas import (
+from .schemas import (
     ProvidersListResponse,
     TestKeyRequest,
     TestKeyResponse,
