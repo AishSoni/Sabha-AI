@@ -29,9 +29,13 @@ def mount_routes(app) -> None:
         router as persona_catalog_router,
     )
     from app.modules.meetings.presentation.http import router as meetings_router
+    from app.modules.meetings.presentation.meetings_http import (
+        router as meeting_lifecycle_router,
+    )
 
     app.include_router(persona_catalog_router)
     app.include_router(meetings_router, prefix="/api")
+    app.include_router(meeting_lifecycle_router, prefix="/api")
 
     from app.modules.knowledge.presentation.http import router as knowledge_router
 
