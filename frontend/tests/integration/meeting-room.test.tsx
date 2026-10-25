@@ -6,7 +6,7 @@
  * own confirmed revision.
  */
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
-import { fireEvent, render, screen, waitFor } from '@testing-library/react';
+import { fireEvent, render, screen } from '@testing-library/react';
 import { Providers, getQueryClient } from '@/app/providers';
 import { MeetingRoom } from '@/features/meetings';
 

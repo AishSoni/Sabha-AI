@@ -17,7 +17,7 @@ import {
     isCurrent,
     isSameDraftInFlight,
     shouldClearAfterSend,
-} from '@/lib/op-scope';
+} from './draft';
 
 describe('operations', () => {
     it('records the meeting an operation was started for', () => {
