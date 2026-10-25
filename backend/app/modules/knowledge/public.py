@@ -11,8 +11,8 @@ import asyncio
 import logging
 from uuid import UUID
 
-from app.core.config import settings
-from app.core.database import get_supabase
+from app.platform.config import settings
+from app.platform.database import get_supabase
 from app.modules.knowledge.application.deletion import (
     CleanupReport,
     CleanupWorker,

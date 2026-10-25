@@ -80,7 +80,7 @@ def test_relative_import_is_resolved_and_flags_the_forbidden_chain(tmp_path):
         tmp_path,
         {
             "app/modules/meetings/domain/policy.py": (
-                "from ....core.database import get_supabase\n"
+                "from ....platform.database import get_supabase\n"
             ),
         },
     )
@@ -88,8 +88,8 @@ def test_relative_import_is_resolved_and_flags_the_forbidden_chain(tmp_path):
 
     violations = check_file(file_path, domain_policy("app.modules.meetings.domain"), root, check_reach=False)
 
-    assert violations, "a four-dot relative import must climb to app.core.database"
-    assert all("app.core.database" in v.message for v in violations), violations
+    assert violations, "a four-dot relative import must climb to app.platform.database"
+    assert all("app.platform.database" in v.message for v in violations), violations
 
 
 def test_legal_relative_imports_inside_the_own_domain_pass(tmp_path):
@@ -121,9 +121,9 @@ def test_transitive_sdk_reach_walks_in_tree_files(tmp_path):
     root = _build(
         tmp_path,
         {
-            "app/core/database.py": "from supabase import create_client\n",
+            "app/platform/database.py": "from supabase import create_client\n",
             "app/services/store.py": (
-                "from app.core.database import get_supabase\n"
+                "from app.platform.database import get_supabase\n"
             ),
             "app/services/facade.py": (
                 "from app.services import store\n"
@@ -140,7 +140,7 @@ def test_transitive_sdk_reach_walks_in_tree_files(tmp_path):
     joined = "\n".join(v.message for v in reach)
     assert "supabase" in joined
     # The chain is proven, not asserted: store -> database carries the SDK.
-    assert "app/services/store.py" in joined and "app/core/database.py" in joined
+    assert "app/services/store.py" in joined and "app/platform/database.py" in joined
 
 
 def test_unresolvable_relative_import_outside_any_package(tmp_path):
@@ -233,8 +233,8 @@ def test_capability_policy_shape(tmp_path):
     violations = check_file(file_path, policy, root, check_reach=False)
     assert violations == []  # an empty file is trivially clean
 
-    assert policy.violation_for("app.core.config") is None
-    assert policy.violation_for("app.core.database") is not None
+    assert policy.violation_for("app.platform.config") is None
+    assert policy.violation_for("app.platform.database") is not None
     assert policy.violation_for("app.services.tools") is not None
     assert policy.violation_for("app.capabilities.configuration.service") is None
     assert policy.violation_for("app.capabilities.inference.contracts") is None

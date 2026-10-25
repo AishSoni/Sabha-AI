@@ -3,7 +3,7 @@ from typing import Optional
 from datetime import datetime
 import uuid
 
-from app.core.database import get_supabase
+from app.platform.database import get_supabase
 from app.models.knowledge_stacks_schemas import (
     KnowledgeStack,
     KnowledgeStackCreate,

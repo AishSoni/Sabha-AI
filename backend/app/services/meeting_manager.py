@@ -6,7 +6,7 @@ from typing import Optional, List
 from datetime import datetime
 import uuid
 
-from app.core.database import get_supabase
+from app.platform.database import get_supabase
 from app.models import (
     Meeting,
     MeetingCreate,

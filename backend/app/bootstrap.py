@@ -19,7 +19,7 @@ from typing import Optional
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
-from app.core.config import settings
+from app.platform.config import settings
 from app.modules.meetings.application.closing import ClosingService
 from app.modules.meetings.infrastructure.supabase_closing import (
     SupabaseClosingRepository,
@@ -56,7 +56,7 @@ class Container:
     @classmethod
     def production(cls) -> "Container":
         """Real composition: one Supabase client, adapters built once."""
-        from app.core.database import get_supabase
+        from app.platform.database import get_supabase
         from app.modules.persona_catalog.infrastructure.supabase import (
             SupabasePersonaCatalog,
             SupabasePromptCatalog,

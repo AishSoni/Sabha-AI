@@ -16,7 +16,7 @@ import socket
 import uuid
 from typing import Awaitable, Callable, Optional
 
-from app.core.config import settings
+from app.platform.config import settings
 from app.services.turn_queue import TurnClaim, TurnQueueService
 
 logger = logging.getLogger(__name__)

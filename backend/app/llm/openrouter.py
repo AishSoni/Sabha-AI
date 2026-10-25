@@ -11,7 +11,7 @@ from app.llm.base import (
     StreamEvent,
     StreamEventType,
 )
-from app.core.config import settings
+from app.platform.config import settings
 
 
 class OpenRouterProvider(LLMProvider):

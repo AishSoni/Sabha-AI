@@ -20,7 +20,7 @@ from .schemas import (
     SystemAIConfig,
     DEFAULT_PROVIDERS,
 )
-from app.core.config import settings
+from app.platform.config import settings
 from app.services.system_ai_settings import (
     load_system_ai_config,
     save_system_ai_config,

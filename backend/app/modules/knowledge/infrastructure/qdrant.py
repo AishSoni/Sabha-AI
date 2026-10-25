@@ -33,7 +33,7 @@ _UPSERT_BATCH = 64
 
 
 def _default_client():
-    from app.core.qdrant import get_qdrant_client
+    from app.platform.qdrant import get_qdrant_client
 
     return get_qdrant_client()
 

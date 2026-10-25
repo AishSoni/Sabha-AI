@@ -4,7 +4,7 @@ Provides a singleton async client for vector database operations.
 """
 
 from qdrant_client import AsyncQdrantClient
-from app.core.config import settings
+from app.platform.config import settings
 
 # Singleton client instance
 _client: AsyncQdrantClient | None = None

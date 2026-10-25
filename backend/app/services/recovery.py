@@ -17,7 +17,7 @@ are logged loudly and retried on the next startup.
 
 import logging
 
-from app.core.database import get_supabase
+from app.platform.database import get_supabase
 
 logger = logging.getLogger(__name__)
 

@@ -9,7 +9,7 @@ from app.llm.base import (
     ToolDefinition,
     ToolCall,
 )
-from app.core.config import settings
+from app.platform.config import settings
 
 
 class OllamaProvider(LLMProvider):

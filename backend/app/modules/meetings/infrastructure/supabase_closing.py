@@ -19,7 +19,7 @@ from app.capabilities.configuration.service import (
     resolve_effective_settings,
 )
 from app.services.system_ai_settings import SYSTEM_AI_DEFAULTS
-from app.core.config import settings
+from app.platform.config import settings
 from app.llm import LLMMessage, get_provider
 from app.modules.meetings.application.contracts import (
     ClosingRecord,

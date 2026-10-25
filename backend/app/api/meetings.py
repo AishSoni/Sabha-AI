@@ -25,7 +25,7 @@ from app.models import (
     Consensus,
     MeetingStatus,
 )
-from app.core.config import settings
+from app.platform.config import settings
 from app.presentation.dependencies import get_turn_queue
 from app.services import MeetingManager
 from app.services.orchestrator import MissingProviderKeyError, MeetingClosedError

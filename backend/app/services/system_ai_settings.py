@@ -17,8 +17,8 @@ from datetime import datetime, timezone
 from typing import Any
 
 from app.capabilities.configuration.contracts import GenerationDefaults
-from app.core.config import settings
-from app.core.database import get_supabase_admin
+from app.platform.config import settings
+from app.platform.database import get_supabase_admin
 from app.modules.settings.presentation.schemas import SystemAIConfig
 
 logger = logging.getLogger(__name__)

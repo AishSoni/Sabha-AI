@@ -7,7 +7,7 @@ from abc import ABC, abstractmethod
 from typing import List
 import httpx
 
-from app.core.config import settings
+from app.platform.config import settings
 
 
 class EmbeddingProvider(ABC):

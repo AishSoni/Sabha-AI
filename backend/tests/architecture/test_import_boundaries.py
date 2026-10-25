@@ -27,9 +27,9 @@ pytestmark = pytest.mark.architecture
 BACKEND_ROOT = Path(__file__).resolve().parents[2]
 
 
-def test_legacy_database_anchor_still_carries_the_supabase_root():
-    roots = direct_sdk_roots(BACKEND_ROOT / "app" / "core" / "database.py", BACKEND_ROOT)
-    assert roots == ["supabase"], "the legacy adapter state changed; re-record the anchor"
+def test_platform_database_anchor_still_carries_the_supabase_root():
+    roots = direct_sdk_roots(BACKEND_ROOT / "app" / "platform" / "database.py", BACKEND_ROOT)
+    assert roots == ["supabase"], "the platform adapter state changed; re-record the anchor"
 
 
 def test_legacy_service_anchors_reach_supabase_transitively_today():

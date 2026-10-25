@@ -24,7 +24,7 @@ from test_tool_continuation_loop import (  # noqa: F401  (fixture re-export)
 
 import app.llm as llm_module
 import app.services.orchestrator as orchestrator_module
-from app.core.config import settings
+from app.platform.config import settings
 from app.llm.base import LLMResponse, StreamEvent, StreamEventType
 from main import app
 

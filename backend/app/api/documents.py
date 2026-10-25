@@ -11,7 +11,7 @@ import threading
 import uuid
 from weakref import WeakKeyDictionary
 
-from app.core.database import get_supabase
+from app.platform.database import get_supabase
 from app.models.document_schemas import (
     Document,
     DocumentUploadResponse,

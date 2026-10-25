@@ -65,7 +65,7 @@ async def test_payload_contract_stays_intact():
 
 def test_factory_returns_cohere_for_configured_settings(monkeypatch):
     """get_embedding_provider('cohere') must remain reachable."""
-    from app.core.config import settings
+    from app.platform.config import settings
     from app.platform.providers import embeddings as embedding_module
 
     monkeypatch.setattr(settings, "cohere_api_key", "fixture-key")

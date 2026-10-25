@@ -1,5 +1,5 @@
 from supabase import create_client, Client
-from app.core.config import settings
+from app.platform.config import settings
 
 _supabase_client: Client | None = None
 

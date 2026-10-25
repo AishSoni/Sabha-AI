@@ -15,7 +15,7 @@ from typing import AsyncGenerator, Optional
 from fastapi import APIRouter, Depends, HTTPException, Query, Request, Response
 from sse_starlette.sse import EventSourceResponse
 
-from app.core.config import settings
+from app.platform.config import settings
 from app.models import (
     TurnCancelResponse,
     TurnOperationResponse,

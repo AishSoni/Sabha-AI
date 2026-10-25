@@ -129,7 +129,7 @@ def capability_policy(own_capability: str) -> LayerPolicy:
     return LayerPolicy(
         name=f"capabilities/{own_capability}",
         own_prefixes=(f"app.capabilities.{own_capability}",),
-        app_readable=("app.core.config",),
+        app_readable=("app.platform.config",),
         capability_contracts=contracts,
     )
 

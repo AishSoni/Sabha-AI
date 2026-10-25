@@ -16,8 +16,8 @@ from qdrant_client.models import (
     MatchValue,
 )
 
-from app.core.qdrant import get_qdrant_client
-from app.core.config import settings
+from app.platform.qdrant import get_qdrant_client
+from app.platform.config import settings
 from app.platform.providers.embeddings import get_embedding_provider, EmbeddingProvider
 from app.services.document_processor import DocumentChunk
 

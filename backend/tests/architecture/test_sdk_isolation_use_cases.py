@@ -95,7 +95,7 @@ def main():
     contracts = importlib.import_module(CONTRACTS_MODULE)
     MissingProviderKeyError = contracts.MissingProviderKeyError
 
-    from app.core.config import settings
+    from app.platform.config import settings
 
     # Pin the synthetic no-server-key state. conftest intends empty provider
     # keys, but Windows drops empty-string env vars when a child process env

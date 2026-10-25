@@ -7,7 +7,7 @@ API, including writes.
 import pytest
 from fastapi.testclient import TestClient
 
-from app.core import config as config_module
+from app.platform import config as config_module
 from main import app
 
 MEETING_PAYLOAD = {"name": "Guarded Council", "persona_ids": []}

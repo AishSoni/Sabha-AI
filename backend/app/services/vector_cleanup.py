@@ -13,7 +13,7 @@ import logging
 from datetime import datetime, timezone
 from typing import Optional
 
-from app.core.database import get_supabase
+from app.platform.database import get_supabase
 
 logger = logging.getLogger(__name__)
 

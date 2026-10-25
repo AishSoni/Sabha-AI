@@ -15,7 +15,7 @@ import pytest
 from fastapi.testclient import TestClient
 
 from app.modules.settings.presentation import http as settings_api
-from app.core import config as config_module
+from app.platform import config as config_module
 from main import app
 
 EVIL_URL = "http://169.254.169.254/latest/meta-data"

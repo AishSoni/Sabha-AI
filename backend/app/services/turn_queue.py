@@ -25,7 +25,7 @@ from app.capabilities.configuration.contracts import (
     MissingProviderKeyError,
 )
 from app.capabilities.configuration.service import resolve_effective_settings
-from app.core.config import settings
+from app.platform.config import settings
 from app.llm import LLMMessage, StreamEventType, ToolCall, get_provider
 from app.models import (
     AIParticipant,

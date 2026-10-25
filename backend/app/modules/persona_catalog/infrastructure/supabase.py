@@ -7,7 +7,7 @@ answer with a safe 503. Business refusals stay boolean values; nothing
 here leaks SQL or provider details upward.
 
 The client resolves through an injected provider callable (the
-``app.core.database.get_supabase`` singleton accessor, normally built
+``app.platform.database.get_supabase`` singleton accessor, normally built
 once at composition). Regressions patch that accessor per request; the
 adapter itself is constructed once in the composition root. The sync
 ``execute()`` call keeps the PostgREST-compatible access pattern

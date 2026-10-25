@@ -21,7 +21,7 @@ from app.capabilities.configuration.ports import (
     GenerationDefaultsSource,
     ProviderCatalogPort,
 )
-from app.core.config import settings
+from app.platform.config import settings
 
 # Providers the runtime transports actually implement (app.llm factory).
 SUPPORTED_PROVIDERS = ("ollama", "openrouter", "gemini")

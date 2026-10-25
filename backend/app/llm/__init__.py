@@ -10,7 +10,7 @@ from app.llm.base import (
 from app.llm.openrouter import OpenRouterProvider
 from app.llm.ollama import OllamaProvider
 from app.llm.gemini import GeminiProvider
-from app.core.config import settings
+from app.platform.config import settings
 
 
 def get_provider(
