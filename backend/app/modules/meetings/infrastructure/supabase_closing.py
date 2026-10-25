@@ -18,6 +18,7 @@ from app.capabilities.configuration.service import (
     SETTING_NAMES,
     resolve_effective_settings,
 )
+from app.services.system_ai_settings import SYSTEM_AI_DEFAULTS
 from app.core.config import settings
 from app.llm import LLMMessage, get_provider
 from app.modules.meetings.application.contracts import (
@@ -615,6 +616,7 @@ class SupabaseInvocationFactory:
         effective = resolve_effective_settings(
             None,
             provider_settings=overrides if (provider or model or _has_overrides(overrides)) else None,
+            defaults=SYSTEM_AI_DEFAULTS,
         )
         return SupabaseInvoker(effective)
 

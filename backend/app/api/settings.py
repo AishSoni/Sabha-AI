@@ -21,6 +21,10 @@ from app.models.settings_schemas import (
     DEFAULT_PROVIDERS,
 )
 from app.core.config import settings
+from app.services.system_ai_settings import (
+    load_system_ai_config,
+    save_system_ai_config,
+)
 
 
 # --------------------------------------------------------------------------
@@ -151,19 +155,27 @@ async def list_providers():
         default_models=_get_default_models(),
     )
     
-    # System AI defaults (can be overridden in frontend)
-    system_ai = SystemAIConfig(
-        provider=settings.default_llm_provider,
-        model="",  # Use provider default
-        temperature=0.5,
-        max_tokens=2048,
-    )
-    
+    # System AI is shared server policy. A saved mutation wins; otherwise the
+    # deployment environment remains the fallback.
+    system_ai = load_system_ai_config()
+
     return ProvidersListResponse(
         providers=DEFAULT_PROVIDERS,
         environment=environment,
         system_ai=system_ai,
     )
+
+
+@router.put("/system-ai", response_model=SystemAIConfig)
+async def update_system_ai(config: SystemAIConfig):
+    """Persist the validated System AI policy.
+
+    The request model owns field validation (supported provider, trimming,
+    temperature and token bounds), so an invalid policy is a 422 before any
+    write. Credentials are not part of this contract.
+    """
+
+    return save_system_ai_config(config)
 
 
 class FetchModelsRequest(BaseModel):

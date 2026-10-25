@@ -32,6 +32,7 @@ from app.services.accounting import record_inference_attempt
 from app.services.meeting_manager import MeetingManager
 from app.services.orchestrator import MeetingClosedError
 from app.capabilities.configuration.service import resolve_effective_settings
+from app.services.system_ai_settings import SYSTEM_AI_DEFAULTS
 
 logger = logging.getLogger(__name__)
 
@@ -107,7 +108,12 @@ async def generate_meeting_summary(
 
     # No participant here: the browser's composed settings (or server defaults)
     # decide who generates. BYOK key rides the header, never storage.
-    resolved = resolve_effective_settings(None, provider_settings, provider_api_key)
+    resolved = resolve_effective_settings(
+        None,
+        provider_settings,
+        provider_api_key,
+        defaults=SYSTEM_AI_DEFAULTS,
+    )
     gen = resolved.as_gen_dict()
 
     provider = get_provider(

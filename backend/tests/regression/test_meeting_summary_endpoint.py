@@ -119,6 +119,10 @@ def api_env(disposable_db, monkeypatch):
     # (both modules own a private client factory).
     monkeypatch.setattr("app.services.recovery.get_supabase", lambda: stub)
     monkeypatch.setattr("app.services.vector_cleanup.get_supabase", lambda: stub)
+    # Summary defaults are server-owned now; keep that read on the fixture DB.
+    monkeypatch.setattr(
+        "app.services.system_ai_settings.get_supabase_admin", lambda: stub
+    )
     return disposable_db
 
 
