@@ -11,13 +11,18 @@ def mount_routes(app) -> None:
     """Include every router the composed API serves."""
     from fastapi import FastAPI  # noqa: F401  (type only)
 
-    from app.api import meetings, turns
+    from app.modules.meetings.presentation.compat_http import (
+        router as meeting_compat_router,
+    )
+    from app.modules.meetings.presentation.turns_http import router as turn_router
     from app.modules.settings.presentation import http as settings_module
 
-    app.include_router(meetings.router, prefix="/api/meetings", tags=["meetings"])
-    # Spec-07 turn routes are additive; both legacy turn routes stay mounted
-    # until the frontend cutover removes their duplicate policy.
-    app.include_router(turns.router, prefix="/api")
+    # The meeting lifecycle router owns durable work; the compatibility router
+    # keeps the interim summary and the synchronous/streaming turn adapters.
+    app.include_router(
+        meeting_compat_router, prefix="/api/meetings", tags=["meetings"]
+    )
+    app.include_router(turn_router, prefix="/api")
     app.include_router(settings_module.router)
 
     # Extracted module routes: their paths are absolute (the router carries

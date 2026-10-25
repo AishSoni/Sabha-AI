@@ -1,3 +1,1 @@
-from app.api.meetings import router as meetings_router
-
-__all__ = ["meetings_router"]
+"""Legacy HTTP adapters awaiting the final cutover."""

@@ -1,9 +1,8 @@
 app/api/__init__.py
 app/api/documents.py
 app/api/knowledge_stacks.py
-app/api/meetings.py
-app/api/participants.py
-app/api/turns.py
+app/modules/meetings/presentation/compat_http.py
+app/modules/meetings/presentation/turns_http.py
 app/bootstrap.py
 app/capabilities/configuration/service.py
 app/core/database.py
