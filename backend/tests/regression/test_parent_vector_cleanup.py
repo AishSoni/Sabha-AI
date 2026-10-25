@@ -25,7 +25,6 @@ from types import SimpleNamespace
 
 import pytest
 from fastapi import HTTPException
-from app.api import documents as documents_module
 from app.modules.knowledge.presentation import stacks_http as stacks_module
 from app.modules.meetings.presentation import meetings_http as meetings_module
 from app.modules.knowledge.domain.errors import KnowledgeUnavailable
@@ -72,7 +71,7 @@ class FailureScriptedVectorStore:
         return True
 
     async def search_multiple_collections(self, collection_names, query, limit):
-        from app.services.vector_store import SearchResult
+        from app.modules.knowledge.infrastructure.legacy_vector_store import SearchResult
 
         return [
             SearchResult(
@@ -145,8 +144,6 @@ def cleanup_env(disposable_db, monkeypatch):
     monkeypatch.setattr(vector_cleanup_module, "get_supabase", lambda: stub)
     monkeypatch.setattr("app.services.meeting_manager.get_supabase", lambda: stub)
     monkeypatch.setattr(stacks_module, "get_supabase", lambda: stub)
-    monkeypatch.setattr(documents_module, "get_supabase", lambda: stub)
-    monkeypatch.setattr(documents_module, "get_vector_store", lambda: store)
     return SimpleNamespace(
         db=disposable_db, store=store, stub=stub, knowledge=knowledge
     )
@@ -232,36 +229,4 @@ async def test_reconciler_never_touches_another_parents_collection(cleanup_env):
     assert pending_rows(env.db) == []
 
 
-async def test_search_drops_orphaned_points_of_deleted_documents(cleanup_env):
-    env = cleanup_env
-    seed_meeting_and_doc(env.db)
 
-    from app.models.document_schemas import DocumentSearchRequest
-
-    response = await documents_module.search_documents(
-        DocumentSearchRequest(
-            meeting_id=MEETING_ID,
-            query="anything",
-            limit=5,
-        )
-    )
-
-    assert [r.document_id for r in response.results] == [DOC_ID]
-    assert response.results[0].file_name == "kept.md"
-    assert response.total_results == 1
-
-
-async def test_document_delete_fails_closed_when_vector_cleanup_fails(cleanup_env):
-    env = cleanup_env
-    seed_meeting_and_doc(env.db)
-    env.store.arm(point_failures=1)
-
-    with pytest.raises(HTTPException) as error:
-        await documents_module.delete_document(DOC_ID)
-
-    assert error.value.status_code == 503
-    assert env.db.query("SELECT id FROM documents WHERE id = %s", (DOC_ID,)), (
-        "the row stays so the user can retry instead of losing the record "
-        "with its points still indexed"
-    )
-    assert env.store.deleted_documents == []

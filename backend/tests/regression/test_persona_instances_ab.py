@@ -27,7 +27,7 @@ from app.modules.persona_catalog.infrastructure.supabase import (
 )
 from app.services.meeting_manager import MeetingManager
 from app.services.orchestrator import Orchestrator
-from app.services.vector_store import SearchResult
+from app.modules.knowledge.infrastructure.legacy_vector_store import SearchResult
 from tests.doubles.supabase_stub import stub_for
 
 TEMPLATE_ID = "00000000-0000-4000-8000-00000000a001"
@@ -219,7 +219,7 @@ async def test_search_scope_follows_each_participants_own_bindings(
     names_b = _collections_for(str(meeting_b.id))
     vector_store = RecordingVectorStore({*names_a.values(), *names_b.values()})
     monkeypatch.setattr(
-        "app.services.vector_store.get_vector_store", lambda: vector_store
+        "app.modules.knowledge.infrastructure.legacy_vector_store.get_vector_store", lambda: vector_store
     )
     orchestrator = Orchestrator(MeetingManager())
     call = ToolCall(
@@ -291,7 +291,7 @@ async def test_template_deletion_spares_both_surviving_instances(
     names_b = _collections_for(str(meeting_b.id))
     vector_store = RecordingVectorStore({*names_a.values(), *names_b.values()})
     monkeypatch.setattr(
-        "app.services.vector_store.get_vector_store", lambda: vector_store
+        "app.modules.knowledge.infrastructure.legacy_vector_store.get_vector_store", lambda: vector_store
     )
     orchestrator = Orchestrator(MeetingManager())
     call = ToolCall(

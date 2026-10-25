@@ -28,7 +28,7 @@ from app.services.orchestrator import (
 )
 from app.services.meeting_manager import MeetingManager
 from tests.doubles.supabase_stub import stub_for
-from app.services.vector_store import SearchResult
+from app.modules.knowledge.infrastructure.legacy_vector_store import SearchResult
 
 PERSONA_ID = "66666666-6666-4666-8666-666666666666"
 TEMPLATE_STACK_A = "77777777-7777-4777-8777-777777777771"
@@ -113,7 +113,7 @@ def _search_knowledge_base_recorded(monkeypatch, template_env, meeting_id, parti
         {SHARED_COLLECTION, STACK_A_COLLECTION, STACK_B_COLLECTION}
     )
     monkeypatch.setattr(
-        "app.services.vector_store.get_vector_store",
+        "app.modules.knowledge.infrastructure.legacy_vector_store.get_vector_store",
         lambda: vector_store,
         raising=True,
     )
@@ -199,7 +199,7 @@ async def test_legacy_row_without_snapshot_falls_back_to_template(template_env, 
             (PERSONA_ID, TEMPLATE_STACK_B),
         )
     monkeypatch.setattr(
-        "app.services.vector_store.get_vector_store",
+        "app.modules.knowledge.infrastructure.legacy_vector_store.get_vector_store",
         lambda: vector_store,
         raising=True,
     )
@@ -231,7 +231,7 @@ async def test_default_roster_participant_searches_only_shared(template_env, mon
 
     vector_store = RecordingVectorStore({SHARED_COLLECTION})
     monkeypatch.setattr(
-        "app.services.vector_store.get_vector_store",
+        "app.modules.knowledge.infrastructure.legacy_vector_store.get_vector_store",
         lambda: vector_store,
         raising=True,
     )

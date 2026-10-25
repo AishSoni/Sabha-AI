@@ -24,9 +24,9 @@ from typing import List
 
 import pytest
 
-from app.services.document_processor import DocumentChunk
-from app.services import vector_store as vector_store_module
-from app.services.vector_store import VectorStoreManager
+from app.modules.knowledge.infrastructure.parsers import DocumentChunk
+from app.modules.knowledge.infrastructure import legacy_vector_store as vector_store_module
+from app.modules.knowledge.infrastructure.legacy_vector_store import VectorStoreManager
 from qdrant_client.models import Distance, VectorParams
 
 COLLECTION = "meeting_aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaa01_shared"

@@ -21,7 +21,7 @@ from .schemas import (
     DEFAULT_PROVIDERS,
 )
 from app.platform.config import settings
-from app.services.system_ai_settings import (
+from app.modules.settings.infrastructure.system_ai import (
     load_system_ai_config,
     save_system_ai_config,
 )

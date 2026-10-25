@@ -11,7 +11,7 @@ import pytest
 from fastapi.testclient import TestClient
 
 from app.modules.knowledge.application.ingestion import PendingReceipt
-from app.services.document_processor import DocumentProcessor
+from app.modules.knowledge.infrastructure.parsers import DocumentProcessor
 from main import app
 
 MEETING_ID = "aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa"

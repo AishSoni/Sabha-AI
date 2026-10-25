@@ -7,8 +7,8 @@ inside a route/dependency is forbidden by spec-04.
 
 from fastapi import HTTPException, Request
 
+from app.modules.meetings.infrastructure.turns import TurnQueueService
 from app.services.meeting_manager import MeetingManager
-from app.services.turn_queue import TurnQueueService
 
 from app.modules.meetings.application.closing import ClosingService
 from app.modules.persona_catalog.application.use_cases import (

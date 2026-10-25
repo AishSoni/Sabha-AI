@@ -13,16 +13,16 @@ from datetime import datetime, timezone
 
 import pytest
 
-import app.services.orchestrator as orchestrator_module
+import app.modules.meetings.infrastructure.orchestrator as orchestrator_module
 import app.services.meeting_manager as meeting_manager_module
-import app.services.vector_store as vector_store_module
+import app.modules.knowledge.infrastructure.legacy_vector_store as vector_store_module
 import app.platform.providers as llm_module
 from app.bootstrap import Container
 from app.capabilities.inference.contracts import LLMResponse, StreamEvent, StreamEventType, ToolCall
 from app.services.meeting_manager import MeetingManager
-from app.services.orchestrator import Orchestrator
+from app.modules.meetings.infrastructure.orchestrator import Orchestrator
 from app.services.turn_queue import TurnQueueService
-from app.services.vector_store import SearchResult
+from app.modules.knowledge.infrastructure.legacy_vector_store import SearchResult
 from main import app  # noqa: F401  (ensures app import works before stubs)
 from tests.doubles.providers import ScriptedProvider
 from tests.doubles.supabase_stub import stub_for

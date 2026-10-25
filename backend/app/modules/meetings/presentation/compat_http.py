@@ -17,11 +17,17 @@ from app.modules.meetings.domain.models import (
 )
 from app.modules.meetings.presentation.schemas import SummaryRequest, TurnRequest
 from app.platform.config import settings
+from app.platform.database import get_supabase
 from app.presentation.dependencies import get_turn_queue
-from app.services import MeetingManager
-from app.services.orchestrator import MissingProviderKeyError, MeetingClosedError
-from app.services.summary_service import EmptyConversationError, generate_meeting_summary
-from app.services.turn_queue import (
+from app.capabilities.configuration.contracts import MissingProviderKeyError
+from app.modules.meetings.domain.errors import MeetingClosedError
+from app.modules.meetings.infrastructure.orchestrator import Orchestrator
+from app.modules.meetings.infrastructure.summary import (
+    EmptyConversationError,
+    generate_meeting_summary,
+)
+from app.modules.meetings.infrastructure.supabase_meetings import build_meeting_service
+from app.modules.meetings.infrastructure.turns import (
     QueueClosedError,
     QueueConflictError,
     QueueLimitError,
@@ -38,8 +44,8 @@ logger = logging.getLogger(__name__)
 router = APIRouter()
 
 
-def get_meeting_manager() -> MeetingManager:
-    return MeetingManager()
+def get_meeting_manager():
+    return build_meeting_service(get_supabase())
 
 
 def _legacy_request_key() -> str:

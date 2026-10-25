@@ -31,8 +31,8 @@ from app.modules.persona_catalog.application.contracts import (
 )
 from app.presentation.errors import register_error_handlers
 from app.presentation.router import mount_routes
-from app.services.meeting_manager import MeetingManager
-from app.services.turn_queue import TurnQueueService
+from app.modules.meetings.infrastructure.supabase_meetings import build_meeting_service
+from app.modules.meetings.infrastructure.turns import TurnQueueService
 from app.capabilities.runtime.runner import TurnRunner
 
 
@@ -64,7 +64,7 @@ class Container:
 
         turn_queue = TurnQueueService()
         closing = ClosingService(
-            SupabaseClosingRepository(MeetingManager()),
+            SupabaseClosingRepository(build_meeting_service(get_supabase())),
             SupabaseInvocationFactory(),
             lease_seconds=settings.closing_attempt_lease_seconds,
             drain_timeout_seconds=settings.closing_drain_timeout_seconds,

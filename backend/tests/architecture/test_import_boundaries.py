@@ -32,13 +32,14 @@ def test_platform_database_anchor_still_carries_the_supabase_root():
     assert roots == ["supabase"], "the platform adapter state changed; re-record the anchor"
 
 
-def test_legacy_service_anchors_reach_supabase_transitively_today():
-    for service in ("orchestrator.py", "meeting_manager.py"):
-        hits = scan_sdk_reach(
-            BACKEND_ROOT / "app" / "services" / service, BACKEND_ROOT
-        )
+def test_module_infrastructure_anchors_reach_supabase_transitively():
+    for module_path in (
+        "modules/meetings/infrastructure/summary.py",
+        "modules/knowledge/infrastructure/reconciliation.py",
+    ):
+        hits = scan_sdk_reach(BACKEND_ROOT / "app" / module_path, BACKEND_ROOT)
         supabase_hits = [hit for hit in hits if hit.sdk_root == "supabase"]
-        assert supabase_hits, f"the checker lost the legacy reach from {service}"
+        assert supabase_hits, f"the checker lost the reach from {module_path}"
         chains = [hit.render() for hit in supabase_hits]
         assert all("database.py" in chain for chain in chains), chains
 

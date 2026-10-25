@@ -10,8 +10,8 @@ import pytest
 from qdrant_client import AsyncQdrantClient
 
 from app.platform.providers.embeddings import EmbeddingProvider
-from app.services.document_processor import DocumentChunk
-from app.services.vector_store import VectorStoreManager
+from app.modules.knowledge.infrastructure.parsers import DocumentChunk
+from app.modules.knowledge.infrastructure.legacy_vector_store import VectorStoreManager
 
 COLLECTION = "meeting_probe_shared"
 
@@ -51,7 +51,7 @@ def store(monkeypatch) -> VectorStoreManager:
     """VectorStoreManager bound to a REAL in-memory Qdrant instance."""
     client = AsyncQdrantClient(":memory:")
     monkeypatch.setattr(
-        "app.services.vector_store.get_qdrant_client", lambda: client
+        "app.modules.knowledge.infrastructure.legacy_vector_store.get_qdrant_client", lambda: client
     )
     return VectorStoreManager(embedding_provider=DeterministicEmbedding())
 

@@ -18,7 +18,7 @@ from app.capabilities.inference.contracts import ToolCall
 from app.modules.meetings.domain.models import AIParticipant, ProviderConfig
 from app.services.meeting_manager import MeetingManager
 from app.services.orchestrator import Orchestrator
-from app.services.vector_store import SearchResult
+from app.modules.knowledge.infrastructure.legacy_vector_store import SearchResult
 from tests.doubles.supabase_stub import stub_for
 
 MEETING_ID = "aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa"
@@ -120,7 +120,7 @@ def knowledge_env(disposable_db, monkeypatch):
     }
     recorder = RecordingVectorStore(existing)
     monkeypatch.setattr(
-        "app.services.vector_store.get_vector_store", lambda: recorder
+        "app.modules.knowledge.infrastructure.legacy_vector_store.get_vector_store", lambda: recorder
     )
 
     orchestrator = Orchestrator(MeetingManager())

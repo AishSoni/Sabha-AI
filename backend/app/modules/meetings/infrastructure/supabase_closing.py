@@ -18,7 +18,7 @@ from app.capabilities.configuration.service import (
     SETTING_NAMES,
     resolve_effective_settings,
 )
-from app.services.system_ai_settings import SYSTEM_AI_DEFAULTS
+from app.modules.settings.infrastructure.system_ai import SYSTEM_AI_DEFAULTS
 from app.platform.config import settings
 from app.capabilities.inference.contracts import LLMMessage
 from app.platform.providers import get_provider

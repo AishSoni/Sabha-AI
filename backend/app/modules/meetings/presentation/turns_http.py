@@ -22,7 +22,7 @@ from app.modules.meetings.presentation.schemas import (
     TurnSubmitRequest,
 )
 from app.presentation.dependencies import get_turn_queue
-from app.services.turn_queue import (
+from app.modules.meetings.infrastructure.turns import (
     NotCancellableError,
     QueueClosedError,
     QueueConflictError,
