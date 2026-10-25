@@ -146,7 +146,9 @@ def sweep_env(disposable_db, monkeypatch):
     monkeypatch.setattr("app.services.vector_cleanup.get_supabase", _stub)
     # Persona/knowledge/document API surfaces own their own database
     # construction sites (read remaining patch usage during cutover).
-    monkeypatch.setattr("app.api.knowledge_stacks.get_supabase", _stub)
+    monkeypatch.setattr(
+        "app.modules.knowledge.presentation.stacks_http.get_supabase", _stub
+    )
     monkeypatch.setattr("app.modules.knowledge.public.get_supabase", _stub)
 
     from app.modules.knowledge.public import set_knowledge_lifecycle

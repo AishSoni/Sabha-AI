@@ -4,7 +4,7 @@ from datetime import datetime
 import uuid
 
 from app.platform.database import get_supabase
-from app.models.knowledge_stacks_schemas import (
+from app.modules.knowledge.presentation.stacks_schemas import (
     KnowledgeStack,
     KnowledgeStackCreate,
     KnowledgeStackUpdate,

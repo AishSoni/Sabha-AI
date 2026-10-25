@@ -1,8 +1,11 @@
-"""Legacy schema package retained for personas and knowledge stacks.
+"""Legacy schema package retained for personas.
 
 Meeting contracts now live in the meetings module:
 - domain entities/commands: ``app.modules.meetings.domain.models``
 - HTTP request/response DTOs: ``app.modules.meetings.presentation.schemas``
+
+Knowledge-stack contracts now live in the knowledge module:
+``app.modules.knowledge.presentation.stacks_schemas``.
 """
 
 from app.models.persona_schemas import (
@@ -19,14 +22,6 @@ from app.models.persona_schemas import (
     PersonaListResponse,
 )
 
-from app.models.knowledge_stacks_schemas import (
-    KnowledgeStackBase,
-    KnowledgeStackCreate,
-    KnowledgeStackUpdate,
-    KnowledgeStack,
-    KnowledgeStackListResponse,
-)
-
 __all__ = [
     # Personas
     "PersonaBase",
@@ -38,10 +33,4 @@ __all__ = [
     "PromptVersionCreate",
     "PromptVersion",
     "PersonaListResponse",
-    # Knowledge Stacks
-    "KnowledgeStackBase",
-    "KnowledgeStackCreate",
-    "KnowledgeStackUpdate",
-    "KnowledgeStack",
-    "KnowledgeStackListResponse",
 ]

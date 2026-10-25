@@ -26,7 +26,7 @@ from types import SimpleNamespace
 import pytest
 from fastapi import HTTPException
 from app.api import documents as documents_module
-from app.api import knowledge_stacks as stacks_module
+from app.modules.knowledge.presentation import stacks_http as stacks_module
 from app.modules.meetings.presentation import meetings_http as meetings_module
 from app.modules.knowledge.domain.errors import KnowledgeUnavailable
 from app.services import vector_cleanup as vector_cleanup_module

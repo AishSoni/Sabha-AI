@@ -11,7 +11,7 @@ def mount_routes(app) -> None:
     """Include every router the composed API serves."""
     from fastapi import FastAPI  # noqa: F401  (type only)
 
-    from app.api import meetings, knowledge_stacks, turns
+    from app.api import meetings, turns
     from app.modules.settings.presentation import http as settings_module
 
     app.include_router(meetings.router, prefix="/api/meetings", tags=["meetings"])
@@ -19,7 +19,6 @@ def mount_routes(app) -> None:
     # until the frontend cutover removes their duplicate policy.
     app.include_router(turns.router, prefix="/api")
     app.include_router(settings_module.router)
-    app.include_router(knowledge_stacks.router)
 
     # Extracted module routes: their paths are absolute (the router carries
     # no prefix), and each one replaces the legacy route removed in its
@@ -41,5 +40,9 @@ def mount_routes(app) -> None:
     app.include_router(participants_router, prefix="/api")
 
     from app.modules.knowledge.presentation.http import router as knowledge_router
+    from app.modules.knowledge.presentation.stacks_http import (
+        router as knowledge_stacks_router,
+    )
 
     app.include_router(knowledge_router)
+    app.include_router(knowledge_stacks_router)
