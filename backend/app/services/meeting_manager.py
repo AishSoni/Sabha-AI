@@ -7,20 +7,20 @@ from datetime import datetime
 import uuid
 
 from app.platform.database import get_supabase
-from app.models import (
-    Meeting,
-    MeetingCreate,
-    MeetingWithParticipants,
+from app.modules.meetings.domain.models import (
     AIParticipant,
     AIParticipantCreate,
-    Message,
-    MessageCreate,
-    Disagreement,
-    DisagreementCreate,
     Consensus,
     ConsensusCreate,
-    SenderType,
+    Disagreement,
+    DisagreementCreate,
+    Meeting,
+    MeetingCreate,
     MeetingStatus,
+    MeetingWithParticipants,
+    Message,
+    MessageCreate,
+    SenderType,
 )
 from app.modules.meetings.public import (
     ConstructParticipants,

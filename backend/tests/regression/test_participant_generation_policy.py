@@ -15,7 +15,7 @@ from pathlib import Path
 import psycopg
 from psycopg.types.json import Json
 
-from app.models import MeetingCreate
+from app.modules.meetings.domain.models import MeetingCreate
 from app.services.meeting_manager import MeetingManager
 from tests.doubles.supabase_stub import stub_for
 

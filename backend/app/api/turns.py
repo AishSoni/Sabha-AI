@@ -16,7 +16,7 @@ from fastapi import APIRouter, Depends, HTTPException, Query, Request, Response
 from sse_starlette.sse import EventSourceResponse
 
 from app.platform.config import settings
-from app.models import (
+from app.modules.meetings.presentation.schemas import (
     TurnCancelResponse,
     TurnOperationResponse,
     TurnSubmitRequest,

@@ -245,8 +245,8 @@ async def test_messages_no_longer_mutate_meeting_total(disposable_db, monkeypatc
     stub = stub_for(disposable_db)
     monkeypatch.setattr(meeting_manager_module, "get_supabase", lambda: stub)
 
-    from app.models import MessageCreate
-    from app.models.schemas import SenderType
+    from app.modules.meetings.domain.models import MessageCreate
+    from app.modules.meetings.domain.models import SenderType
 
     manager = MeetingManager()
     await manager.save_message(

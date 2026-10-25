@@ -18,7 +18,7 @@ import pytest
 import psycopg
 from fastapi.testclient import TestClient
 
-from app.models import MeetingCreate
+from app.modules.meetings.domain.models import MeetingCreate
 from app.services.meeting_manager import MeetingManager
 from main import app
 from tests.doubles.supabase_stub import stub_for

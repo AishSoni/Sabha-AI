@@ -10,20 +10,22 @@ import uuid
 from fastapi import APIRouter, Depends, HTTPException, Request
 from typing import List
 
-from app.models import (
+from app.modules.meetings.domain.models import (
+    Consensus,
+    Disagreement,
     Meeting,
     MeetingCreate,
+    MeetingStatus,
     MeetingWithParticipants,
     Message,
-    UserMessageRequest,
-    TurnRequest,
-    SummaryRequest,
-    TurnResponse,
     MessageCreate,
     SenderType,
-    Disagreement,
-    Consensus,
-    MeetingStatus,
+    TurnResponse,
+)
+from app.modules.meetings.presentation.schemas import (
+    SummaryRequest,
+    TurnRequest,
+    UserMessageRequest,
 )
 from app.platform.config import settings
 from app.presentation.dependencies import get_turn_queue

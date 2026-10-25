@@ -22,7 +22,7 @@ from typing import List, Optional
 
 from app.capabilities.inference.contracts import LLMMessage
 from app.platform.providers import get_provider
-from app.models import (
+from app.modules.meetings.domain.models import (
     MeetingStatus,
     Message,
     MessageCreate,

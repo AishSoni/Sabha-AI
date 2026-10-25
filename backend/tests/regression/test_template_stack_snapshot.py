@@ -20,7 +20,7 @@ from fastapi.testclient import TestClient
 import app.services.orchestrator as orchestrator_module
 import app.services.meeting_manager as meeting_manager_module
 from main import app
-from app.models.schemas import AIParticipant, AIParticipantCreate, MeetingCreate
+from app.modules.meetings.domain.models import AIParticipant, AIParticipantCreate, MeetingCreate
 from app.services.orchestrator import (
     Disagreement,
     Consensus,

@@ -21,7 +21,7 @@ import pytest
 
 import app.services.meeting_manager as meeting_manager_module
 from app.capabilities.inference.contracts import ToolCall
-from app.models import MeetingCreate
+from app.modules.meetings.domain.models import MeetingCreate
 from app.modules.persona_catalog.infrastructure.supabase import (
     SupabasePersonaCatalog,
 )

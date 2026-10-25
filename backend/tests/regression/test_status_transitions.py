@@ -17,7 +17,7 @@ import uuid
 
 import pytest
 
-from app.models.schemas import MeetingStatus
+from app.modules.meetings.domain.models import MeetingStatus
 from app.services.meeting_manager import MeetingManager
 from tests.doubles.supabase_stub import stub_for
 

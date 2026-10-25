@@ -5,7 +5,7 @@ Participants API routes.
 from fastapi import APIRouter, HTTPException
 from typing import List
 
-from app.models import AIParticipant, AIParticipantCreate
+from app.modules.meetings.domain.models import AIParticipant, AIParticipantCreate
 from app.services import MeetingManager, DEFAULT_ROSTER
 
 router = APIRouter()

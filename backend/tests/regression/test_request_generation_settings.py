@@ -115,7 +115,7 @@ async def test_turn_requires_key_for_cloud_provider_without_any(turn_env):
     from app.services.orchestrator import MissingProviderKeyError
 
     orchestrator = turn_env["orchestrator"]
-    from app.models import RequestProviderSettings
+    from app.modules.meetings.domain.models import RequestProviderSettings
 
     with pytest.raises(MissingProviderKeyError) as excinfo:
         await orchestrator.execute_turn(
@@ -153,7 +153,7 @@ async def test_orchestrator_resolution_honors_local_base_url(turn_env, monkeypat
     provider = recorder.providers  # populated on construction
 
     orchestrator = turn_env["orchestrator"]
-    from app.models import RequestProviderSettings
+    from app.modules.meetings.domain.models import RequestProviderSettings
 
     response = await orchestrator.execute_turn(
         MEETING_ID,

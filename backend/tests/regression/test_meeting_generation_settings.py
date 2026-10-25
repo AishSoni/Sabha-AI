@@ -11,7 +11,7 @@ import uuid
 
 import pytest
 
-from app.models import MeetingCreate, ProviderConfig
+from app.modules.meetings.domain.models import MeetingCreate, ProviderConfig
 from main import app
 
 PERSONA_ID = "22222222-2222-4222-8222-222222222222"

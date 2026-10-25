@@ -7,18 +7,18 @@ import uuid as uuid_module
 from typing import List, Optional
 from app.capabilities.inference.contracts import LLMMessage, LLMResponse, ToolCall
 from app.platform.providers import get_provider
-from app.models import (
+from app.modules.meetings.domain.models import (
     AIParticipant,
-    Message,
-    MessageCreate,
-    SenderType,
-    DisagreementCreate,
+    Consensus,
     ConsensusCreate,
     Disagreement,
-    Consensus,
-    TurnResponse,
-    RequestProviderSettings,
+    DisagreementCreate,
     MeetingStatus,
+    Message,
+    MessageCreate,
+    RequestProviderSettings,
+    SenderType,
+    TurnResponse,
 )
 from app.services.meeting_manager import MeetingManager
 from app.capabilities.configuration.contracts import MissingProviderKeyError

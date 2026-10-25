@@ -28,10 +28,10 @@ from app.capabilities.configuration.service import resolve_effective_settings
 from app.platform.config import settings
 from app.capabilities.inference.contracts import LLMMessage, StreamEventType, ToolCall
 from app.platform.providers import get_provider
-from app.models import (
+from app.modules.meetings.domain.models import (
     AIParticipant,
-    Message,
     MeetingStatus,
+    Message,
     RequestProviderSettings,
     SenderType,
 )

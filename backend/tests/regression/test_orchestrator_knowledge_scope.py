@@ -15,7 +15,7 @@ from datetime import datetime
 import pytest
 
 from app.capabilities.inference.contracts import ToolCall
-from app.models import AIParticipant, ProviderConfig
+from app.modules.meetings.domain.models import AIParticipant, ProviderConfig
 from app.services.meeting_manager import MeetingManager
 from app.services.orchestrator import Orchestrator
 from app.services.vector_store import SearchResult
