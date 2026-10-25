@@ -29,7 +29,7 @@ from app.modules.meetings.domain.models import (
     RequestProviderSettings,
     SenderType,
 )
-from app.services.accounting import record_inference_attempt
+from app.capabilities.inference.usage import record_inference_attempt
 from app.services.meeting_manager import MeetingManager
 from app.services.orchestrator import MeetingClosedError
 from app.capabilities.configuration.service import resolve_effective_settings

@@ -24,7 +24,7 @@ from app.services.meeting_manager import MeetingManager
 from app.capabilities.configuration.contracts import MissingProviderKeyError
 from app.capabilities.configuration.service import resolve_effective_settings
 from app.services.tools import get_default_tools
-from app.services.accounting import record_inference_attempt
+from app.capabilities.inference.usage import record_inference_attempt
 
 
 # Upper bound on provider round-trips within one turn so a model that keeps
