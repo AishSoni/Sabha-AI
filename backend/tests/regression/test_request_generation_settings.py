@@ -23,7 +23,7 @@ from test_tool_continuation_loop import (  # noqa: F401  (fixture re-export)
 )
 
 import app.platform.providers as llm_module
-import app.services.orchestrator as orchestrator_module
+import app.modules.meetings.infrastructure.orchestrator as orchestrator_module
 from app.platform.config import settings
 from app.capabilities.inference.contracts import LLMResponse, StreamEvent, StreamEventType
 from main import app
@@ -112,7 +112,7 @@ def test_turn_forwards_request_settings_with_byok_header(turn_env, monkeypatch):
 
 
 async def test_turn_requires_key_for_cloud_provider_without_any(turn_env):
-    from app.services.orchestrator import MissingProviderKeyError
+    from app.capabilities.configuration.contracts import MissingProviderKeyError
 
     orchestrator = turn_env["orchestrator"]
     from app.modules.meetings.domain.models import RequestProviderSettings

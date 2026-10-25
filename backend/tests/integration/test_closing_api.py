@@ -19,8 +19,9 @@ from app.modules.meetings.application.contracts import ProviderOutput
 from app.modules.meetings.infrastructure.supabase_closing import (
     SupabaseClosingRepository,
 )
-from app.services import meeting_manager as meeting_manager_module
-from app.services.meeting_manager import MeetingManager
+import app.modules.meetings.infrastructure.supabase_meetings as meeting_manager_module
+from app.modules.meetings.application.meeting_service import MeetingService
+from app.modules.meetings.infrastructure.supabase_meetings import build_default_meeting_service
 from tests.doubles.closing import ClosingWorld
 from tests.doubles.supabase_stub import stub_for
 
@@ -67,7 +68,7 @@ def closing_app(disposable_db, monkeypatch):
     world = ClosingWorld(disposable_db)
     invocations = _FakeInvocations()
     service = ClosingService(
-        SupabaseClosingRepository(MeetingManager()),
+        SupabaseClosingRepository(build_default_meeting_service()),
         invocations,
         lease_seconds=30,
         drain_timeout_seconds=300,

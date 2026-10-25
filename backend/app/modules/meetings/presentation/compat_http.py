@@ -17,7 +17,6 @@ from app.modules.meetings.domain.models import (
 )
 from app.modules.meetings.presentation.schemas import SummaryRequest, TurnRequest
 from app.platform.config import settings
-from app.platform.database import get_supabase
 from app.presentation.dependencies import get_turn_queue
 from app.capabilities.configuration.contracts import MissingProviderKeyError
 from app.modules.meetings.domain.errors import MeetingClosedError
@@ -26,7 +25,9 @@ from app.modules.meetings.infrastructure.summary import (
     EmptyConversationError,
     generate_meeting_summary,
 )
-from app.modules.meetings.infrastructure.supabase_meetings import build_meeting_service
+from app.modules.meetings.infrastructure.supabase_meetings import (
+    build_default_meeting_service,
+)
 from app.modules.meetings.infrastructure.turns import (
     QueueClosedError,
     QueueConflictError,
@@ -45,7 +46,7 @@ router = APIRouter()
 
 
 def get_meeting_manager():
-    return build_meeting_service(get_supabase())
+    return build_default_meeting_service()
 
 
 def _legacy_request_key() -> str:

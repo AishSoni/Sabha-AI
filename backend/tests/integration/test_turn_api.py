@@ -16,9 +16,10 @@ from fastapi.testclient import TestClient
 
 from app.bootstrap import Container, create_app
 from app.capabilities.inference.contracts import StreamEvent, StreamEventType
-from app.services import meeting_manager as meeting_manager_module
-from app.services.meeting_manager import MeetingManager
-from app.services.turn_queue import TurnQueueService
+import app.modules.meetings.infrastructure.supabase_meetings as meeting_manager_module
+from app.modules.meetings.application.meeting_service import MeetingService
+from app.modules.meetings.infrastructure.supabase_meetings import build_default_meeting_service
+from app.modules.meetings.infrastructure.turns import TurnQueueService
 from app.capabilities.runtime.runner import TurnRunner
 from tests.doubles.durable_queue import DurableQueueWorld
 from tests.doubles.providers import ScriptedProvider
@@ -32,7 +33,7 @@ def turn_app(disposable_db, monkeypatch):
     )
     provider = ScriptedProvider()
     service = TurnQueueService(
-        MeetingManager(),
+        build_default_meeting_service(),
         provider_factory=lambda **kwargs: provider,
         max_queued=2,
     )

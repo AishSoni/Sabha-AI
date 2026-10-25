@@ -85,7 +85,7 @@ def archive_env(disposable_db, monkeypatch):
     def _stub():
         return stub_for(disposable_db)
 
-    monkeypatch.setattr("app.services.meeting_manager.get_supabase", _stub)
+    monkeypatch.setattr("app.modules.meetings.infrastructure.supabase_meetings.get_supabase", _stub)
     monkeypatch.setattr(
         "app.modules.knowledge.infrastructure.reconciliation.get_supabase", _stub
     )

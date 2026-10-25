@@ -16,7 +16,8 @@ import psycopg
 from psycopg.types.json import Json
 
 from app.modules.meetings.domain.models import MeetingCreate
-from app.services.meeting_manager import MeetingManager
+from app.modules.meetings.application.meeting_service import MeetingService
+from app.modules.meetings.infrastructure.supabase_meetings import build_default_meeting_service
 from tests.doubles.supabase_stub import stub_for
 
 MIGRATION_DIR = Path(__file__).resolve().parents[2] / "migrations"
@@ -107,14 +108,14 @@ def test_a_participant_payload_without_policy_content_writes_null(disposable_db)
 
 async def test_created_meeting_participants_carry_a_policy_on_the_fresh_path(disposable_db, monkeypatch):
     stub = stub_for(disposable_db)
-    monkeypatch.setattr("app.services.meeting_manager.get_supabase", lambda: stub)
+    monkeypatch.setattr("app.modules.meetings.infrastructure.supabase_meetings.get_supabase", lambda: stub)
     with disposable_db.connect() as conn:
         conn.execute(
             "INSERT INTO personas (id, name, provider_config) VALUES (%s, 'Probe Advisor', %s)",
             (PERSONA_ID, Json({"provider": "openrouter", "temperature": 0.2})),
         )
 
-    meeting = await MeetingManager().create_meeting(
+    meeting = await build_default_meeting_service().create_meeting(
         MeetingCreate(name="Policy fresh probe", persona_ids=[PERSONA_ID])
     )
 

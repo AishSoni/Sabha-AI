@@ -24,7 +24,8 @@ from app.modules.meetings.domain.services import ClosingStage
 from app.modules.meetings.infrastructure.supabase_closing import (
     SupabaseClosingRepository,
 )
-from app.services.meeting_manager import MeetingManager
+from app.modules.meetings.application.meeting_service import MeetingService
+from app.modules.meetings.infrastructure.supabase_meetings import build_default_meeting_service
 from tests.doubles.closing import ClosingWorld
 from tests.doubles.supabase_stub import stub_for
 
@@ -107,8 +108,8 @@ class FakeInvocations:
 def build(disposable_db, monkeypatch):
     world = ClosingWorld(disposable_db, lease_seconds=30)
     stub = stub_for(disposable_db)
-    monkeypatch.setattr("app.services.meeting_manager.get_supabase", lambda: stub)
-    manager = MeetingManager()
+    monkeypatch.setattr("app.modules.meetings.infrastructure.supabase_meetings.get_supabase", lambda: stub)
+    manager = build_default_meeting_service()
     repository = SupabaseClosingRepository(manager, now=world.clock.now)
     factory = FakeInvocations()
     service = ClosingService(

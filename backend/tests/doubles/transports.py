@@ -1,7 +1,7 @@
 """`split_event_transport` / `scripted_failure` contracts: a scripted SSE
 byte-stream fake matching the wire format production emits today
 (`data: <json>` lines terminated by a blank line, JSON payloads as in
-`app.services.streaming.format_sse_event`).
+`app.capabilities.inference.streaming.format_sse_event`).
 
 The stream can be chopped at arbitrary byte boundaries (network-sized
 chunks), inject failures mid-script, or end mid-frame — exactly the

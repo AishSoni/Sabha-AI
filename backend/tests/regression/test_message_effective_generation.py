@@ -27,8 +27,9 @@ from test_tool_continuation_loop import (  # noqa: E402
 
 from app.capabilities.inference.contracts import LLMResponse  # noqa: E402
 from app.modules.meetings.domain.models import MessageCreate, RequestProviderSettings  # noqa: E402
-from app.services.meeting_manager import MeetingManager  # noqa: E402
-from app.services.orchestrator import Orchestrator  # noqa: E402
+from app.modules.meetings.application.meeting_service import MeetingService
+from app.modules.meetings.infrastructure.supabase_meetings import build_default_meeting_service  # noqa: E402
+from app.modules.meetings.infrastructure.orchestrator import Orchestrator  # noqa: E402
 
 RECORD_KEYS = {
     "provider",
@@ -146,7 +147,7 @@ async def test_messages_that_did_not_run_inference_honestly_stay_null(turn_env):
     orchestrator: Orchestrator = env["orchestrator"]
 
     # A user message has no inference: it must persist without a record.
-    manager: MeetingManager = env["orchestrator"].meeting_manager
+    manager: MeetingService = env["orchestrator"].meeting_manager
     saved = await manager.save_message(
         MessageCreate(meeting_id=MEETING_ID, content="Question from the floor",
                       sender_type="user", sender_name="Director")

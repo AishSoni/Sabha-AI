@@ -17,6 +17,7 @@ from app.modules.persona_catalog.infrastructure.supabase import (
     SupabasePersonaCatalog,
 )
 from app.modules.persona_catalog.public import GetCreationSnapshot
+from app.platform.database import get_supabase
 
 
 def build_meeting_service(db, *, service_factory=MeetingService) -> MeetingService:
@@ -24,3 +25,12 @@ def build_meeting_service(db, *, service_factory=MeetingService) -> MeetingServi
     snapshots = GetCreationSnapshot(SupabasePersonaCatalog(lambda: db))
     construct = ConstructParticipants(snapshots, prompt_composer=get_full_prompt)
     return service_factory(db, snapshots, construct)
+
+
+def build_default_meeting_service() -> MeetingService:
+    """Build the process-wide service over the platform's Supabase client.
+
+    ``get_supabase`` stays in this module's namespace so deployment tests can
+    replace it with a disposable-database stub without reaching into routes.
+    """
+    return build_meeting_service(get_supabase())

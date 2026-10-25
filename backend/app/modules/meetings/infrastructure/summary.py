@@ -31,9 +31,10 @@ from app.modules.meetings.domain.models import (
 )
 from app.capabilities.inference.usage import record_inference_attempt
 from app.modules.meetings.application.meeting_service import MeetingService
-from app.modules.meetings.infrastructure.supabase_meetings import build_meeting_service
+from app.modules.meetings.infrastructure.supabase_meetings import (
+    build_default_meeting_service,
+)
 from app.modules.meetings.domain.errors import MeetingClosedError
-from app.platform.database import get_supabase
 from app.capabilities.configuration.service import resolve_effective_settings
 from app.modules.settings.infrastructure.system_ai import SYSTEM_AI_DEFAULTS
 
@@ -91,7 +92,7 @@ async def generate_meeting_summary(
     manager: Optional[MeetingService] = None,
 ) -> Message:
     """Generate and persist one interim summary message for the meeting."""
-    manager = manager or build_meeting_service(get_supabase())
+    manager = manager or build_default_meeting_service()
 
     meeting = await manager.get_meeting(meeting_id)
     if not meeting:

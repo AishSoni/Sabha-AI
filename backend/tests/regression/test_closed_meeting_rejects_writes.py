@@ -22,8 +22,9 @@ import pytest
 from fastapi.testclient import TestClient
 
 from app.capabilities.inference.contracts import LLMResponse
-from app.services.meeting_manager import MeetingManager
-from app.services.orchestrator import Orchestrator
+from app.modules.meetings.application.meeting_service import MeetingService
+from app.modules.meetings.infrastructure.supabase_meetings import build_default_meeting_service
+from app.modules.meetings.infrastructure.orchestrator import Orchestrator
 from main import app
 from tests.doubles.providers import ScriptedProvider
 from tests.doubles.supabase_stub import stub_for
@@ -52,10 +53,10 @@ def message_count(disposable_db, meeting_id) -> int:
     )[0][0]
 
 
-def patch_manager(monkeypatch, disposable_db) -> MeetingManager:
+def patch_manager(monkeypatch, disposable_db) -> MeetingService:
     stub = stub_for(disposable_db)
-    monkeypatch.setattr("app.services.meeting_manager.get_supabase", lambda: stub)
-    return MeetingManager()
+    monkeypatch.setattr("app.modules.meetings.infrastructure.supabase_meetings.get_supabase", lambda: stub)
+    return build_default_meeting_service()
 
 
 @pytest.mark.parametrize("status", ["voting", "ended", "archived"])
@@ -173,7 +174,7 @@ async def test_completed_turn_persists_after_close_midflight(turn_env, monkeypat
             usage={"prompt_tokens": 10, "completion_tokens": 5, "total_tokens": 15},
         )]
     )
-    monkeypatch.setattr("app.services.orchestrator.get_provider", lambda *a, **kw: provider)
+    monkeypatch.setattr("app.modules.meetings.infrastructure.orchestrator.get_provider", lambda *a, **kw: provider)
     monkeypatch.setattr("app.platform.providers.get_provider", lambda *a, **kw: provider)
 
     orchestrator = turn_env["orchestrator"]

@@ -9,7 +9,7 @@ import json
 
 from fastapi.testclient import TestClient
 
-import app.services.orchestrator as orchestrator_module
+import app.modules.meetings.infrastructure.orchestrator as orchestrator_module
 from app.capabilities.inference.contracts import LLMResponse, StreamEvent, StreamEventType
 from main import app
 

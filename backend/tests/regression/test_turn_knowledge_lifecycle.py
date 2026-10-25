@@ -8,7 +8,7 @@ from types import SimpleNamespace
 import pytest
 
 from app.modules.knowledge.application.retrieval import RetrievedPassage
-from app.services.turn_queue import TurnClaim, TurnQueueService
+from app.modules.meetings.infrastructure.turns import TurnClaim, TurnQueueService
 
 
 class FakeLifecycle:

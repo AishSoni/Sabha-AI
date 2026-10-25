@@ -18,17 +18,18 @@ import uuid
 import pytest
 
 from app.modules.meetings.domain.models import MeetingStatus
-from app.services.meeting_manager import MeetingManager
+from app.modules.meetings.application.meeting_service import MeetingService
+from app.modules.meetings.infrastructure.supabase_meetings import build_default_meeting_service
 from tests.doubles.supabase_stub import stub_for
 
 MEETING_A = "aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaa01"
 UNKNOWN_MEETING = "99999999-9999-4999-9999-999999999999"
 
 
-def patch_manager(monkeypatch, disposable_db) -> MeetingManager:
+def patch_manager(monkeypatch, disposable_db) -> MeetingService:
     stub = stub_for(disposable_db)
-    monkeypatch.setattr("app.services.meeting_manager.get_supabase", lambda: stub)
-    return MeetingManager()
+    monkeypatch.setattr("app.modules.meetings.infrastructure.supabase_meetings.get_supabase", lambda: stub)
+    return build_default_meeting_service()
 
 
 def seed_meeting(disposable_db, *, meeting_id: str = MEETING_A, status: str = "active") -> None:
@@ -76,7 +77,7 @@ async def test_transition_loses_when_status_moved_on(disposable_db, monkeypatch)
 async def test_transition_loses_for_unknown_meeting(disposable_db, monkeypatch):
     patch_manager(monkeypatch, disposable_db)
 
-    won = await MeetingManager().transition_meeting_status(
+    won = await build_default_meeting_service().transition_meeting_status(
         UNKNOWN_MEETING, expected_from=MeetingStatus.ACTIVE, next_status=MeetingStatus.VOTING
     )
 

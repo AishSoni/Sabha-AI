@@ -21,11 +21,12 @@ import json
 
 import pytest
 import app.platform.providers as llm_module
-import app.services.orchestrator as orchestrator_module
-import app.services.meeting_manager as meeting_manager_module
+import app.modules.meetings.infrastructure.orchestrator as orchestrator_module
+import app.modules.meetings.infrastructure.supabase_meetings as meeting_manager_module
 from app.capabilities.inference.contracts import LLMResponse, StreamEvent, StreamEventType
-from app.services.meeting_manager import MeetingManager
-from app.services.orchestrator import Orchestrator
+from app.modules.meetings.application.meeting_service import MeetingService
+from app.modules.meetings.infrastructure.supabase_meetings import build_default_meeting_service
+from app.modules.meetings.infrastructure.orchestrator import Orchestrator
 from tests.doubles.providers import ScriptedProvider
 from tests.doubles.supabase_stub import stub_for
 
@@ -109,7 +110,7 @@ def ledger_env(disposable_db, monkeypatch):
         "db": disposable_db,
         "stub": stub,
         "install_provider": install,
-        "orchestrator": Orchestrator(MeetingManager()),
+        "orchestrator": Orchestrator(build_default_meeting_service()),
     }
 
 
@@ -129,7 +130,7 @@ async def test_repeated_submission_of_same_inference_id_counts_once(disposable_d
     _seed(disposable_db, LEDGER_MEETING)
     stub = stub_for(disposable_db)
     monkeypatch.setattr(meeting_manager_module, "get_supabase", lambda: stub)
-    manager = MeetingManager()
+    manager = build_default_meeting_service()
 
     first = await manager.record_inference_cost(
         inference_id="55555555-5555-4555-8555-555555550001",
@@ -248,7 +249,7 @@ async def test_messages_no_longer_mutate_meeting_total(disposable_db, monkeypatc
     from app.modules.meetings.domain.models import MessageCreate
     from app.modules.meetings.domain.models import SenderType
 
-    manager = MeetingManager()
+    manager = build_default_meeting_service()
     await manager.save_message(
         MessageCreate(
             meeting_id=LEDGER_MEETING,

@@ -30,7 +30,7 @@ def meeting_env(disposable_db, monkeypatch):
     from tests.doubles.supabase_stub import SupabaseStub
 
     stub = SupabaseStub(disposable_db.uri)
-    monkeypatch.setattr("app.services.meeting_manager.get_supabase", lambda: stub)
+    monkeypatch.setattr("app.modules.meetings.infrastructure.supabase_meetings.get_supabase", lambda: stub)
     return disposable_db, stub
 
 
@@ -65,9 +65,11 @@ def seed_persona(db, provider_config=_OMIT_CONFIG):
 
 
 async def _create_meeting(db, persona_ids):
-    from app.services.meeting_manager import MeetingManager
+    from app.modules.meetings.infrastructure.supabase_meetings import (
+        build_default_meeting_service,
+    )
 
-    manager = MeetingManager()
+    manager = build_default_meeting_service()
     return await manager.create_meeting(
         MeetingCreate(name="Probe", persona_ids=persona_ids)
     )

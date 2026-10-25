@@ -114,7 +114,7 @@ def seed_meeting(db, status: str = "active", with_messages: bool = True) -> None
 @pytest.fixture()
 def api_env(disposable_db, monkeypatch):
     stub = stub_for(disposable_db)
-    monkeypatch.setattr("app.services.meeting_manager.get_supabase", lambda: stub)
+    monkeypatch.setattr("app.modules.meetings.infrastructure.supabase_meetings.get_supabase", lambda: stub)
     # The TestClient boots the lifespan reconciler; point it at the stub too
     # (both modules own a private client factory).
     monkeypatch.setattr(
@@ -125,7 +125,7 @@ def api_env(disposable_db, monkeypatch):
     )
     # Summary defaults are server-owned now; keep that read on the fixture DB.
     monkeypatch.setattr(
-        "app.services.system_ai_settings.get_supabase_admin", lambda: stub
+        "app.modules.settings.infrastructure.system_ai.get_supabase_admin", lambda: stub
     )
     return disposable_db
 
@@ -153,7 +153,7 @@ def test_summary_is_generated_persisted_and_accounted(api_env, monkeypatch):
         providers.append(RecordingProvider().configure(provider_name, model, api_key))
         return providers[-1]
 
-    monkeypatch.setattr("app.services.summary_service.get_provider", factory)
+    monkeypatch.setattr("app.modules.meetings.infrastructure.summary.get_provider", factory)
 
     db = api_env
     seed_meeting(db)
@@ -196,7 +196,7 @@ def test_summary_is_generated_persisted_and_accounted(api_env, monkeypatch):
 
 def test_empty_conversation_is_rejected_with_422(api_env, monkeypatch):
     monkeypatch.setattr(
-        "app.services.summary_service.get_provider", lambda *a, **k: RecordingProvider()
+        "app.modules.meetings.infrastructure.summary.get_provider", lambda *a, **k: RecordingProvider()
     )
     seed_meeting(api_env, with_messages=False)
 
@@ -215,7 +215,7 @@ def test_empty_conversation_is_rejected_with_422(api_env, monkeypatch):
 def test_system_only_conversation_is_rejected_with_422(api_env, monkeypatch):
     """Only system events exist (e.g. an ended marker) — nothing to summarize."""
     monkeypatch.setattr(
-        "app.services.summary_service.get_provider", lambda *a, **k: RecordingProvider()
+        "app.modules.meetings.infrastructure.summary.get_provider", lambda *a, **k: RecordingProvider()
     )
     seed_meeting(api_env, with_messages=False)
     stub = stub_for(api_env)
@@ -237,7 +237,7 @@ def test_system_only_conversation_is_rejected_with_422(api_env, monkeypatch):
 @pytest.mark.parametrize("status", ["ended", "archived"])
 def test_closed_meetings_reject_summary_generation(api_env, monkeypatch, status):
     monkeypatch.setattr(
-        "app.services.summary_service.get_provider", lambda *a, **k: RecordingProvider()
+        "app.modules.meetings.infrastructure.summary.get_provider", lambda *a, **k: RecordingProvider()
     )
     seed_meeting(api_env, status=status)
 
@@ -250,7 +250,7 @@ def test_closed_meetings_reject_summary_generation(api_env, monkeypatch, status)
 
 def test_voting_meeting_still_generates_summaries(api_env, monkeypatch):
     monkeypatch.setattr(
-        "app.services.summary_service.get_provider", lambda *a, **k: RecordingProvider()
+        "app.modules.meetings.infrastructure.summary.get_provider", lambda *a, **k: RecordingProvider()
     )
     seed_meeting(api_env, status="voting")
 
@@ -262,7 +262,7 @@ def test_voting_meeting_still_generates_summaries(api_env, monkeypatch):
 
 def test_missing_browser_key_for_cloud_provider_is_rejected(api_env, monkeypatch):
     monkeypatch.setattr(
-        "app.services.summary_service.get_provider", lambda *a, **k: RecordingProvider()
+        "app.modules.meetings.infrastructure.summary.get_provider", lambda *a, **k: RecordingProvider()
     )
     seed_meeting(api_env)
 
@@ -277,7 +277,7 @@ def test_missing_browser_key_for_cloud_provider_is_rejected(api_env, monkeypatch
 
 def test_unknown_meeting_is_404(api_env, monkeypatch):
     monkeypatch.setattr(
-        "app.services.summary_service.get_provider", lambda *a, **k: RecordingProvider()
+        "app.modules.meetings.infrastructure.summary.get_provider", lambda *a, **k: RecordingProvider()
     )
     with TestClient(app) as client:
         response = client.post(
@@ -290,7 +290,7 @@ def test_unknown_meeting_is_404(api_env, monkeypatch):
 def test_summary_displays_accumulated_costs_in_message(api_env, monkeypatch):
     """The per-message estimated_cost is display data mirroring the ledger."""
     monkeypatch.setattr(
-        "app.services.summary_service.get_provider", lambda *a, **k: RecordingProvider()
+        "app.modules.meetings.infrastructure.summary.get_provider", lambda *a, **k: RecordingProvider()
     )
     seed_meeting(api_env)
 

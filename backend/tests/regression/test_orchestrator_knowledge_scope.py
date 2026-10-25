@@ -16,8 +16,9 @@ import pytest
 
 from app.capabilities.inference.contracts import ToolCall
 from app.modules.meetings.domain.models import AIParticipant, ProviderConfig
-from app.services.meeting_manager import MeetingManager
-from app.services.orchestrator import Orchestrator
+from app.modules.meetings.application.meeting_service import MeetingService
+from app.modules.meetings.infrastructure.supabase_meetings import build_default_meeting_service
+from app.modules.meetings.infrastructure.orchestrator import Orchestrator
 from app.modules.knowledge.infrastructure.legacy_vector_store import SearchResult
 from tests.doubles.supabase_stub import stub_for
 
@@ -109,7 +110,7 @@ def knowledge_env(disposable_db, monkeypatch):
     # Spec 06: the template join lives in MeetingManager (assembly time);
     # the orchestrator module itself exposes no database accessor.
     monkeypatch.setattr(
-        "app.services.meeting_manager.get_supabase", lambda: stub, raising=True
+        "app.modules.meetings.infrastructure.supabase_meetings.get_supabase", lambda: stub, raising=True
     )
 
     existing = {
@@ -123,14 +124,14 @@ def knowledge_env(disposable_db, monkeypatch):
         "app.modules.knowledge.infrastructure.legacy_vector_store.get_vector_store", lambda: recorder
     )
 
-    orchestrator = Orchestrator(MeetingManager())
+    orchestrator = Orchestrator(build_default_meeting_service())
     return orchestrator, recorder, db
 
 
 async def test_orchestrator_keeps_no_database_client():
     """Inverted spec-01 finding, per spec 06: the execution path owns no
     database accessor — its scope is handed over at assembly time."""
-    import app.services.orchestrator as orchestrator_module
+    import app.modules.meetings.infrastructure.orchestrator as orchestrator_module
 
     assert getattr(orchestrator_module, "get_supabase", None) is None, (
         "orchestrator must not reach the database directly (spec 06)"

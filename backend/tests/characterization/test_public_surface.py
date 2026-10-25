@@ -5,9 +5,9 @@ method, request/response model, or error envelope.  The frontend fixture is the
 frozen cross-stack contract; comparing ``app.openapi()`` to it makes an
 accidental public change fail before the frontend notices.
 
-The legacy-caller inventory is a ratchet: new imports of the modules scheduled
-for deletion are rejected, while callers may disappear as slices land.  The
-inventory is deleted when the legacy roots are gone (A16).
+The legacy roots have been deleted; imports of them must never return.  The
+OpenAPI comparison and the legacy-import assertion are the remaining pins
+until the architecture suite takes over the boundary at A16.
 """
 
 import ast
@@ -29,7 +29,7 @@ LEGACY_ROOTS = (
     "app.core",
 )
 
-LEGACY_CALLERS = Path(__file__).resolve().parents[1] / "fixtures" / "spec11" / "legacy_callers.txt"
+
 
 
 def _legacy_imports(path: Path) -> set[str]:
@@ -68,15 +68,8 @@ def test_route_table_contains_the_pinned_public_paths():
     assert len([p for p in paths if p.startswith("/api/")]) == 38
 
 
-def test_legacy_caller_inventory_does_not_grow():
-    allowed = {
-        line.strip()
-        for line in LEGACY_CALLERS.read_text(encoding="utf-8").splitlines()
-        if line.strip()
-    }
-    current = _legacy_callers()
-    assert current <= allowed, f"new legacy callers: {sorted(current - allowed)}"
-    assert allowed  # non-vacuous baseline while the cutover is in progress
+def test_legacy_roots_have_no_callers():
+    assert _legacy_callers() == set()
 
 
 def test_error_envelopes_stay_safe_json_detail():

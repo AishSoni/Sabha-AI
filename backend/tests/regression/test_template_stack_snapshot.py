@@ -17,16 +17,17 @@ import psycopg.errors
 import pytest
 from fastapi.testclient import TestClient
 
-import app.services.orchestrator as orchestrator_module
-import app.services.meeting_manager as meeting_manager_module
+import app.modules.meetings.infrastructure.orchestrator as orchestrator_module
+import app.modules.meetings.infrastructure.supabase_meetings as meeting_manager_module
 from main import app
 from app.modules.meetings.domain.models import AIParticipant, AIParticipantCreate, MeetingCreate
-from app.services.orchestrator import (
+from app.modules.meetings.infrastructure.orchestrator import (
     Disagreement,
     Consensus,
     Orchestrator,
 )
-from app.services.meeting_manager import MeetingManager
+from app.modules.meetings.application.meeting_service import MeetingService
+from app.modules.meetings.infrastructure.supabase_meetings import build_default_meeting_service
 from tests.doubles.supabase_stub import stub_for
 from app.modules.knowledge.infrastructure.legacy_vector_store import SearchResult
 
@@ -101,7 +102,7 @@ def template_env(disposable_db, monkeypatch):
     )
     # Spec 06: the orchestrator no longer reaches the database directly —
     # the legacy template join moved behind MeetingManager (assembly-time).
-    return {"db": disposable_db, "manager": MeetingManager()}
+    return {"db": disposable_db, "manager": build_default_meeting_service()}
 
 
 def _search_knowledge_base_recorded(monkeypatch, template_env, meeting_id, participant):

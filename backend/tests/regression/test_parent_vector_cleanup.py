@@ -142,7 +142,7 @@ def cleanup_env(disposable_db, monkeypatch):
         "app.modules.knowledge.public.get_knowledge_lifecycle", lambda: knowledge
     )
     monkeypatch.setattr(vector_cleanup_module, "get_supabase", lambda: stub)
-    monkeypatch.setattr("app.services.meeting_manager.get_supabase", lambda: stub)
+    monkeypatch.setattr("app.modules.meetings.infrastructure.supabase_meetings.get_supabase", lambda: stub)
     monkeypatch.setattr(stacks_module, "get_supabase", lambda: stub)
     return SimpleNamespace(
         db=disposable_db, store=store, stub=stub, knowledge=knowledge

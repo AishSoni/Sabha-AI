@@ -21,7 +21,7 @@ from test_tool_continuation_loop import (  # noqa: E402
 )
 
 from app.capabilities.inference.contracts import LLMResponse  # noqa: E402
-from app.services.orchestrator import Orchestrator  # noqa: E402
+from app.modules.meetings.infrastructure.orchestrator import Orchestrator  # noqa: E402
 
 
 def _answer(content: str) -> LLMResponse:

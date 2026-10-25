@@ -60,9 +60,9 @@ def seed_meeting(db) -> None:
 def settings_env(disposable_db, monkeypatch):
     stub = stub_for(disposable_db)
     monkeypatch.setattr(
-        "app.services.system_ai_settings.get_supabase_admin", lambda: stub
+        "app.modules.settings.infrastructure.system_ai.get_supabase_admin", lambda: stub
     )
-    monkeypatch.setattr("app.services.meeting_manager.get_supabase", lambda: stub)
+    monkeypatch.setattr("app.modules.meetings.infrastructure.supabase_meetings.get_supabase", lambda: stub)
     monkeypatch.setattr(
         "app.modules.knowledge.infrastructure.reconciliation.get_supabase", lambda: stub
     )
@@ -176,7 +176,7 @@ def test_summary_resolves_the_saved_system_ai_when_the_request_has_no_override(
         providers.append(RecordingProvider().configure(provider_name, model, api_key, base_url))
         return providers[-1]
 
-    monkeypatch.setattr("app.services.summary_service.get_provider", factory)
+    monkeypatch.setattr("app.modules.meetings.infrastructure.summary.get_provider", factory)
     seed_meeting(settings_env)
 
     with TestClient(app) as client:

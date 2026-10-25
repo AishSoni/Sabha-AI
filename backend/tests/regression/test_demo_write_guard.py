@@ -43,7 +43,7 @@ def test_local_mode_keeps_writes_enabled(disposable_db, monkeypatch):
     # reach the route (stub-backed meeting creation succeeds).
     from tests.doubles.supabase_stub import stub_for
 
-    import app.services.meeting_manager as meeting_manager_module
+    import app.modules.meetings.infrastructure.supabase_meetings as meeting_manager_module
 
     monkeypatch.setattr(
         meeting_manager_module, "get_supabase", lambda: stub_for(disposable_db)
@@ -58,7 +58,7 @@ def test_hosted_mode_is_also_a_write_enabled_runtime(disposable_db, monkeypatch)
     # no-auth write API as local; only the demo workspace is read-only.
     from tests.doubles.supabase_stub import stub_for
 
-    import app.services.meeting_manager as meeting_manager_module
+    import app.modules.meetings.infrastructure.supabase_meetings as meeting_manager_module
 
     monkeypatch.setattr(config_module.settings, "runtime_mode", "hosted")
     monkeypatch.setattr(

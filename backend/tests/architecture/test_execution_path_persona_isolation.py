@@ -12,7 +12,12 @@ why spec requirements were maintained on new projects").
 from pathlib import Path
 
 ORCHESTRATOR = (
-    Path(__file__).resolve().parents[2] / "app" / "services" / "orchestrator.py"
+    Path(__file__).resolve().parents[2]
+    / "app"
+    / "modules"
+    / "meetings"
+    / "infrastructure"
+    / "orchestrator.py"
 )
 
 FORBIDDEN_TOKENS = ("persona_knowledge_stacks", "get_supabase")

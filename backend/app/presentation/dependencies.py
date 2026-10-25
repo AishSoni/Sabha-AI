@@ -7,8 +7,11 @@ inside a route/dependency is forbidden by spec-04.
 
 from fastapi import HTTPException, Request
 
+from app.modules.meetings.application.meeting_service import MeetingService
+from app.modules.meetings.infrastructure.supabase_meetings import (
+    build_default_meeting_service,
+)
 from app.modules.meetings.infrastructure.turns import TurnQueueService
-from app.services.meeting_manager import MeetingManager
 
 from app.modules.meetings.application.closing import ClosingService
 from app.modules.persona_catalog.application.use_cases import (
@@ -23,9 +26,9 @@ from app.modules.persona_catalog.application.use_cases import (
 )
 
 
-def get_meeting_manager() -> MeetingManager:
+def get_meeting_manager() -> MeetingService:
     """The meeting lifecycle service for the module-owned routes."""
-    return MeetingManager()
+    return build_default_meeting_service()
 
 
 def get_turn_queue(request: Request) -> TurnQueueService:

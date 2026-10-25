@@ -19,14 +19,15 @@ from datetime import datetime, timezone
 
 import pytest
 
-import app.services.meeting_manager as meeting_manager_module
+import app.modules.meetings.infrastructure.supabase_meetings as meeting_manager_module
 from app.capabilities.inference.contracts import ToolCall
 from app.modules.meetings.domain.models import MeetingCreate
 from app.modules.persona_catalog.infrastructure.supabase import (
     SupabasePersonaCatalog,
 )
-from app.services.meeting_manager import MeetingManager
-from app.services.orchestrator import Orchestrator
+from app.modules.meetings.application.meeting_service import MeetingService
+from app.modules.meetings.infrastructure.supabase_meetings import build_default_meeting_service
+from app.modules.meetings.infrastructure.orchestrator import Orchestrator
 from app.modules.knowledge.infrastructure.legacy_vector_store import SearchResult
 from tests.doubles.supabase_stub import stub_for
 
@@ -116,7 +117,7 @@ def instance_env(disposable_db, monkeypatch):
 
     return {
         "db": db,
-        "meetings": MeetingManager(),
+        "meetings": build_default_meeting_service(),
         "catalog": SupabasePersonaCatalog(lambda: stub),
     }
 
@@ -221,7 +222,7 @@ async def test_search_scope_follows_each_participants_own_bindings(
     monkeypatch.setattr(
         "app.modules.knowledge.infrastructure.legacy_vector_store.get_vector_store", lambda: vector_store
     )
-    orchestrator = Orchestrator(MeetingManager())
+    orchestrator = Orchestrator(build_default_meeting_service())
     call = ToolCall(
         id="call-instances-2",
         name="search_knowledge_base",
@@ -293,7 +294,7 @@ async def test_template_deletion_spares_both_surviving_instances(
     monkeypatch.setattr(
         "app.modules.knowledge.infrastructure.legacy_vector_store.get_vector_store", lambda: vector_store
     )
-    orchestrator = Orchestrator(MeetingManager())
+    orchestrator = Orchestrator(build_default_meeting_service())
     call = ToolCall(
         id="call-instances-3",
         name="search_knowledge_base",

@@ -14,14 +14,15 @@ from datetime import datetime, timezone
 import pytest
 
 import app.modules.meetings.infrastructure.orchestrator as orchestrator_module
-import app.services.meeting_manager as meeting_manager_module
+import app.modules.meetings.infrastructure.supabase_meetings as meeting_manager_module
 import app.modules.knowledge.infrastructure.legacy_vector_store as vector_store_module
 import app.platform.providers as llm_module
 from app.bootstrap import Container
 from app.capabilities.inference.contracts import LLMResponse, StreamEvent, StreamEventType, ToolCall
-from app.services.meeting_manager import MeetingManager
+from app.modules.meetings.application.meeting_service import MeetingService
+from app.modules.meetings.infrastructure.supabase_meetings import build_default_meeting_service
 from app.modules.meetings.infrastructure.orchestrator import Orchestrator
-from app.services.turn_queue import TurnQueueService
+from app.modules.meetings.infrastructure.turns import TurnQueueService
 from app.modules.knowledge.infrastructure.legacy_vector_store import SearchResult
 from main import app  # noqa: F401  (ensures app import works before stubs)
 from tests.doubles.providers import ScriptedProvider
@@ -107,7 +108,7 @@ def turn_env(disposable_db, monkeypatch):
         return provider
 
     queue_service = TurnQueueService(
-        MeetingManager(),
+        build_default_meeting_service(),
         provider_factory=lambda **kwargs: orchestrator_module.get_provider(**kwargs),
         vector_store_factory=lambda: vector_store,
     )
@@ -122,7 +123,7 @@ def turn_env(disposable_db, monkeypatch):
         "stub": stub,
         "vector_store": vector_store,
         "install_provider": _install_provider,
-        "orchestrator": Orchestrator(MeetingManager()),
+        "orchestrator": Orchestrator(build_default_meeting_service()),
         "queue": queue_service,
     }
 
