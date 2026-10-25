@@ -36,8 +36,8 @@ from app.modules.meetings.domain.models import (
     SenderType,
 )
 from app.services.meeting_manager import MeetingManager
-from app.services.orchestrator import Orchestrator
-from app.services.tools import get_default_tools
+from app.modules.meetings.application.context import build_context
+from app.modules.meetings.application.tools import get_default_tools
 
 logger = logging.getLogger(__name__)
 
@@ -608,9 +608,7 @@ class TurnQueueService:
             for message in messages
             if message.sequence is None or message.sequence <= boundary
         ]
-        context = Orchestrator(self.meeting_manager)._build_context(
-            participant, eligible, agenda
-        )
+        context = build_context(participant, eligible, agenda)
         # Keep the newest messages up to a deterministic character budget.
         if not context:
             return context

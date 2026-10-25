@@ -114,6 +114,12 @@ def application_policy(own_module: str) -> LayerPolicy:
         own_prefixes=(f"app.modules.{own_module}",),
         app_readable=(),
         public_interfaces=others,
+        # Reference architecture line 319: application code may use focused
+        # capability contracts, but not capability internals/adapters.
+        capability_contracts=tuple(
+            f"app.capabilities.{capability}.contracts"
+            for capability in CAPABILITIES
+        ),
     )
 
 

@@ -23,7 +23,8 @@ from app.modules.meetings.domain.models import (
 from app.services.meeting_manager import MeetingManager
 from app.capabilities.configuration.contracts import MissingProviderKeyError
 from app.capabilities.configuration.service import resolve_effective_settings
-from app.services.tools import get_default_tools
+from app.modules.meetings.application.context import build_context
+from app.modules.meetings.application.tools import get_default_tools
 from app.capabilities.inference.usage import record_inference_attempt
 
 
@@ -76,44 +77,7 @@ class Orchestrator:
         agenda: str
     ) -> List[LLMMessage]:
         """Build the LLM message context from system prompt and chat history."""
-        
-        context = []
-        
-        # System message with persona
-        system_content = participant.system_prompt
-        if agenda:
-            system_content += f"\n\nMEETING AGENDA:\n{agenda}"
-        
-        context.append(LLMMessage(role="system", content=system_content))
-        
-        # Convert chat history to LLM messages
-        for msg in messages:
-            if msg.sender_type == SenderType.USER:
-                context.append(LLMMessage(
-                    role="user",
-                    content=f"User: {msg.content}"
-                ))
-            elif msg.sender_type == SenderType.AI:
-                # Other AI messages appear as "assistant" context
-                if msg.sender_id == participant.id:
-                    # This AI's own previous messages
-                    context.append(LLMMessage(
-                        role="assistant",
-                        content=msg.content
-                    ))
-                else:
-                    # Other AI's messages (include in user context)
-                    context.append(LLMMessage(
-                        role="user",
-                        content=f"AI [{msg.sender_name}]: {msg.content}"
-                    ))
-            elif msg.sender_type == SenderType.SYSTEM:
-                context.append(LLMMessage(
-                    role="user",
-                    content=f"System: {msg.content}"
-                ))
-        
-        return context
+        return build_context(participant, messages, agenda)
     
     async def _handle_tool_call(
         self,
