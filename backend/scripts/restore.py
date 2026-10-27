@@ -8,12 +8,15 @@ succeeds after both steps complete and no unresolved intents remain.
 
 from __future__ import annotations
 
+import argparse
 import asyncio
 import hashlib
 import inspect
 import io
 import json
+import os
 import subprocess
+import sys
 from dataclasses import asdict, is_dataclass
 from datetime import datetime, timezone
 from pathlib import Path
@@ -281,3 +284,118 @@ def restore_backup(
             encoding="utf-8",
         )
     return result
+
+
+# --------------------------------------------------------------------------
+# Operator CLI
+# --------------------------------------------------------------------------
+
+CLEANUP_PASS_LIMIT = 200
+CLEANUP_MAX_PASSES = 10
+
+
+def _production_lifecycle():
+    """Build the same Knowledge composition the running application uses."""
+    from app.platform.config import settings
+
+    if not settings.supabase_service_key:
+        raise RestoreError(
+            "SUPABASE_SERVICE_KEY is required to restore original source bytes"
+        )
+
+    from app.modules.knowledge.public import get_knowledge_lifecycle
+
+    return get_knowledge_lifecycle()
+
+
+def _drain_lifecycle_cleanup(lifecycle) -> dict[str, Any]:
+    """Drain cleanup intents in bounded passes until none remain or no progress."""
+    passes = 0
+    resolved = 0
+    failed = 0
+    for _ in range(CLEANUP_MAX_PASSES):
+        report = asyncio.run(lifecycle.run_cleanup(limit=CLEANUP_PASS_LIMIT))
+        passes += 1
+        resolved += report.resolved
+        failed = report.failed
+        if report.attempted == 0 or report.resolved == 0:
+            break
+    return {"passes": passes, "resolved": resolved, "failed": failed}
+
+
+def main(argv: list[str] | None = None) -> int:
+    parser = argparse.ArgumentParser(
+        description=(
+            "Restore a Sabha backup, replay the retained deletion ledger, and "
+            "drain cleanup before retrieval reopens."
+        )
+    )
+    parser.add_argument("--backup", required=True, type=Path, help="backup directory")
+    parser.add_argument(
+        "--database-url",
+        default=None,
+        help="target PostgreSQL connection URL (defaults to DATABASE_URL)",
+    )
+    parser.add_argument(
+        "--ledger",
+        default=None,
+        type=Path,
+        help=(
+            "independently retained deletion ledger including deletions after "
+            "the backup (defaults to the copy inside the backup)"
+        ),
+    )
+    parser.add_argument(
+        "--marker",
+        default=None,
+        type=Path,
+        help="write a completion marker JSON after cleanup has fully drained",
+    )
+    parser.add_argument(
+        "--pg-restore",
+        default=None,
+        help="path to pg_restore (defaults to PATH, SABHA_PG_BIN, or pgserver)",
+    )
+    parser.add_argument(
+        "--max-source-bytes",
+        type=int,
+        default=DEFAULT_MAX_SOURCE_BYTES,
+        help="per-object byte budget while restoring original sources",
+    )
+    args = parser.parse_args(argv)
+
+    database_url = args.database_url or os.environ.get("DATABASE_URL")
+    if not database_url:
+        print(
+            "restore error: --database-url or DATABASE_URL is required",
+            file=sys.stderr,
+        )
+        return 1
+
+    try:
+        lifecycle = _production_lifecycle()
+        result = restore_backup(
+            args.backup,
+            database_url,
+            source_store=lifecycle.source_store,
+            pg_restore=args.pg_restore,
+            ledger_path=args.ledger,
+            cleanup=lambda: _drain_lifecycle_cleanup(lifecycle),
+            marker_path=args.marker,
+            max_source_bytes=args.max_source_bytes,
+        )
+    except Exception as exc:  # operator boundary: report and fail closed
+        print(f"restore error: {type(exc).__name__}: {exc}", file=sys.stderr)
+        return 1
+
+    print(
+        "Restore complete: "
+        f"{result['deletion_events']} deletion events, "
+        f"{len(result['source_objects'])} source objects, "
+        f"cleanup {result['cleanup']}"
+    )
+    return 0
+
+
+if __name__ == "__main__":
+    raise SystemExit(main())

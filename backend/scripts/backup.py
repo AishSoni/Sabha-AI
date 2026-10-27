@@ -420,7 +420,7 @@ def main(argv: list[str] | None = None) -> int:
         default=None,
         help="PostgreSQL connection URL (defaults to DATABASE_URL)",
     )
-    parser.add_argument("--output", required=True, type=Path, help="backup directory")
+    parser.add_argument("--output", type=Path, help="backup directory")
     parser.add_argument("--label", default=None, help="human-readable backup label")
     parser.add_argument(
         "--pg-dump",
@@ -432,9 +432,30 @@ def main(argv: list[str] | None = None) -> int:
         action="store_true",
         help="verify an existing backup instead of creating one",
     )
+    parser.add_argument(
+        "--export-ledger",
+        type=Path,
+        default=None,
+        help=(
+            "write the append-only deletion ledger outside the backup; keep it "
+            "across backup rotations so a restore cannot resurrect deletions"
+        ),
+    )
     args = parser.parse_args(argv)
 
     try:
+        if args.export_ledger is not None:
+            database_url = args.database_url or os.environ.get("DATABASE_URL")
+            if not database_url:
+                raise BackupError("--database-url or DATABASE_URL is required")
+            ledger = export_deletion_events(database_url, args.export_ledger)
+            print(
+                f"Deletion ledger written: {ledger['row_count']} events, "
+                f"sha256 {ledger['events_sha256']}"
+            )
+            return 0
+        if not args.output:
+            raise BackupError("--output is required")
         if args.verify:
             manifest = verify_backup(args.output)
             print(

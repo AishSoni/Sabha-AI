@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import asyncio
 import hashlib
+import json
 from pathlib import Path
 
 import httpx
@@ -13,7 +14,8 @@ from storage3 import SyncStorageClient
 from app.modules.knowledge.application.deletion import CleanupWorker
 from app.modules.knowledge.infrastructure.source_store import SupabaseSourceStore
 from app.modules.knowledge.infrastructure.supabase import SupabaseKnowledgeRepository
-from scripts.backup import create_backup, export_deletion_events
+from scripts.backup import create_backup, export_deletion_events, verify_deletion_ledger
+from scripts import restore as restore_module
 from scripts.restore import RestoreError, restore_backup
 from tests.doubles.storage_api import FakeStorageApi
 from tests.doubles.supabase_stub import stub_for
@@ -249,3 +251,81 @@ def test_restore_fails_closed_when_source_bytes_are_missing_or_tampered(phase_on
             source_store=_store(FakeStorageApi("sabha-sources")),
             cleanup=lambda: None,
         )
+
+
+class _CliLifecycle:
+    """Stands in for the production Knowledge composition the CLI builds."""
+
+    def __init__(self, store, worker):
+        self.source_store = store
+        self._worker = worker
+
+    async def run_cleanup(self, *, limit=50):
+        return await self._worker.run(limit=limit)
+
+
+def test_operator_restore_cli_drains_cleanup_before_reporting_success(
+    phase_one_db, empty_db, tmp_path, monkeypatch
+):
+    backup_dir, fresh_ledger = _prepare_backup(phase_one_db, tmp_path)
+    fake = FakeStorageApi("sabha-sources")
+    store = _store(fake)
+    worker = CleanupWorker(
+        persistence=SupabaseKnowledgeRepository(lambda: stub_for(empty_db)),
+        source_store=store,
+        vectors=RecordingVectors(),
+    )
+    monkeypatch.setattr(
+        restore_module,
+        "_production_lifecycle",
+        lambda: _CliLifecycle(store, worker),
+    )
+
+    marker = tmp_path / "restore-complete.json"
+    exit_code = restore_module.main(
+        [
+            "--backup",
+            str(backup_dir),
+            "--database-url",
+            empty_db.uri,
+            "--ledger",
+            str(fresh_ledger),
+            "--marker",
+            str(marker),
+        ]
+    )
+
+    assert exit_code == 0
+    payload = json.loads(marker.read_text(encoding="utf-8"))
+    assert payload["complete"] is True
+    assert payload["cleanup"]["resolved"] >= 2
+    assert _revision_status(empty_db, REVISION_ID) == "revoked"
+    assert _raw_passage(empty_db, EVIDENCE_ID) is None
+    assert SOURCE_KEY not in fake.keys("sabha-sources")
+
+
+def test_operator_restore_cli_refuses_to_guess_a_database(tmp_path, capsys):
+    exit_code = restore_module.main(["--backup", str(tmp_path)])
+
+    assert exit_code == 1
+    assert "--database-url or DATABASE_URL is required" in capsys.readouterr().err
+
+
+def test_operator_exports_the_ledger_outside_the_backup(phase_one_db, tmp_path, capsys):
+    from scripts import backup as backup_module
+
+    _prepare_backup(phase_one_db, tmp_path)
+    ledger_path = tmp_path / "ledgers" / "deletion-events.json"
+    exit_code = backup_module.main(
+        [
+            "--export-ledger",
+            str(ledger_path),
+            "--database-url",
+            phase_one_db.uri,
+        ]
+    )
+
+    assert exit_code == 0
+    ledger = verify_deletion_ledger(ledger_path)
+    assert ledger["row_count"] >= 1
+    assert "Deletion ledger written" in capsys.readouterr().out
