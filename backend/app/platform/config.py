@@ -15,6 +15,8 @@ class Settings(BaseSettings):
     supabase_url: str
     supabase_key: str
     supabase_service_key: str = ""
+    # Direct/session PostgreSQL URL used by the operator scripts and restore.
+    database_url: str = ""
     
     # OpenRouter
     openrouter_api_key: str = ""

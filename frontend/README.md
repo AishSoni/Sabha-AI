@@ -1,36 +1,59 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# Sabha Frontend
 
-## Getting Started
+Next.js 16 + React 19 client for the Sabha advisory board.
 
-First, run the development server:
+## Setup
 
 ```bash
+npm ci
 npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
 ```
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+Open <http://localhost:3000>.
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+Create `.env.local` only when the API is not on the default URL:
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+```env
+NEXT_PUBLIC_API_URL=http://localhost:8000/api
+```
 
-## Learn More
+There are no Supabase keys in the browser bundle: every database, storage and
+vector call is server-side. `NEXT_PUBLIC_API_URL` falls back to
+`http://localhost:8000/api` when unset.
 
-To learn more about Next.js, take a look at the following resources:
+## Contract and generated types
 
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
+`tests/fixtures/openapi.json` is the frozen backend contract (40 paths). After a
+backend contract change:
 
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
+```bash
+# from the repository root
+cd backend && python -m scripts.export_openapi
+cd ../frontend && npm run sync:openapi
+```
 
-## Deploy on Vercel
+`python -m scripts.export_openapi --check` fails on drift, and
+`npm run test:architecture` guards the transport/state boundaries.
 
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
+## State ownership
 
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+- TanStack Query owns server state (meetings, participants, operations, streams).
+- Zustand owns client/UI preferences.
+- Turn execution and observation are separate: submitting returns an operation
+  receipt; status and SSE events are replayed from a sequence cursor.
+
+## Commands
+
+```bash
+npm run dev                 # development server
+npm test                    # full vitest suite
+npm run test:unit           # src-only unit tests
+npm run test:architecture   # boundary checks
+npx tsc --noEmit            # type check
+npm run build               # production build
+npm start                   # production server
+npm run lint                # eslint
+```
+
+Required tests do not call paid providers or a live backend; they use controlled
+fetch transports and fixtures.

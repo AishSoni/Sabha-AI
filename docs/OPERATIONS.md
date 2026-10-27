@@ -331,7 +331,7 @@ runs the backend/frontend suites, builds and starts both entry points.
   real Postgres. Live hosted upload, signed-byte restore and Qdrant deletion
   must be re-run by an operator with real credentials before that claim is
   made. The procedure is documented in
-  [the README](../README.md#hosted-verification-manual-gate).
+  [the README](../README.md#-hosted-verification-manual-gate).
 - **No down-migrations.** Recovery is forward, or a restore into a fresh
   database. Irreversible redaction is never undone.
 - **No accounts or tenancy.** The workspace is deliberately shared; `anon` and
