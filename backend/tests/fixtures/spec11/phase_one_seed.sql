@@ -143,7 +143,7 @@ VALUES
     ('f3400000-0000-4000-8000-000000000002', 'f3000000-0000-4000-8000-000000000002',
      'vote', 'ollama', 'llama3.2', 0.000000, '2025-02-02T10:03:00Z'),
     ('f3400000-0000-4000-8000-000000000003', 'f3000000-0000-4000-8000-000000000003',
-     'summary', 'gemini', 'gemini-2.0-flash', 0.010000, '2025-02-03T10:03:00Z');
+     'summary', 'gemini', 'gemini-2.0-flash', 0.000000, '2025-02-03T10:03:00Z');
 
 INSERT INTO pending_vector_cleanup
     (id, collection_name, target_kind, target_id, attempts, last_error, created_at, resolved_at)

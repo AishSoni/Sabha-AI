@@ -35,6 +35,19 @@ DOCUMENT_FAILED = "f3300000-0000-4000-8000-000000000003"
 DOCUMENT_STACK = "f3300000-0000-4000-8000-000000000004"
 DOCUMENT_PERSONA = "f3300000-0000-4000-8000-000000000005"
 
+INFERENCE_METERED = "f3400000-0000-4000-8000-000000000001"
+INFERENCE_ZERO_LOCAL = "f3400000-0000-4000-8000-000000000002"
+INFERENCE_UNPRICED = "f3400000-0000-4000-8000-000000000003"
+
+LEGACY_REUPLOAD_MESSAGE = (
+    "Original bytes were not retained by the legacy pipeline; "
+    "re-upload this document to make it retrievable."
+)
+LEGACY_INTERRUPTED_MESSAGE = (
+    "Ingestion was interrupted before durable source storage existed; "
+    "re-upload this document."
+)
+
 
 def _dict_rows(db: DisposableDb, sql: str, params: Any = None) -> list[dict[str, Any]]:
     with db.connect() as conn:
@@ -61,7 +74,8 @@ class UpgradeDataset:
             "meetings": _dict_rows(
                 self.db,
                 """
-                SELECT id::text AS id, status, total_cost, archived_at, created_at
+                SELECT id::text AS id, name, agenda, status, total_cost,
+                       archived_at, created_at
                 FROM public.meetings
                 ORDER BY id
                 """,
@@ -69,7 +83,9 @@ class UpgradeDataset:
             "participants": _dict_rows(
                 self.db,
                 """
-                SELECT id::text AS id, provider_config, stack_ids, generation_policy, created_at
+                SELECT id::text AS id, meeting_id::text AS meeting_id, name, role,
+                       system_prompt, provider_config, color, persona_id::text AS persona_id,
+                       stack_ids, generation_policy, created_at
                 FROM public.ai_participants
                 ORDER BY id
                 """,
@@ -77,8 +93,10 @@ class UpgradeDataset:
             "messages": _dict_rows(
                 self.db,
                 """
-                SELECT id::text AS id, content, citations, tool_artifacts, thinking_content,
-                       estimated_cost, effective_generation, created_at
+                SELECT id::text AS id, meeting_id::text AS meeting_id, sender_type,
+                       sender_id::text AS sender_id, sender_name, content, citations,
+                       tool_artifacts, thinking_content, estimated_cost,
+                       effective_generation, created_at
                 FROM public.messages
                 ORDER BY id
                 """,
@@ -86,7 +104,10 @@ class UpgradeDataset:
             "documents": _dict_rows(
                 self.db,
                 """
-                SELECT id::text AS id, status, error_message, file_size_bytes, chunk_count
+                SELECT id::text AS id, meeting_id::text AS meeting_id,
+                       persona_id::text AS persona_id, stack_id::text AS stack_id,
+                       file_name, file_type, file_size_bytes, chunk_count,
+                       qdrant_collection, status, error_message, created_at
                 FROM public.documents
                 ORDER BY id
                 """,
@@ -94,8 +115,82 @@ class UpgradeDataset:
             "inference_events": _dict_rows(
                 self.db,
                 """
-                SELECT id::text AS id, estimated_cost, usage_kind, price_kind, reported_cost
+                SELECT id::text AS id, purpose, provider, model, estimated_cost,
+                       usage_kind, price_kind, reported_cost, created_at
                 FROM public.inference_events
+                ORDER BY id
+                """,
+            ),
+        }
+
+    def phase_one_snapshot(self) -> dict[str, Any]:
+        """Every immutable Phase 1 column, read before and after the upgrade."""
+        return {
+            "meetings": _dict_rows(
+                self.db,
+                """
+                SELECT id::text AS id, user_id::text AS user_id, name, agenda,
+                       total_cost, created_at
+                FROM public.meetings
+                ORDER BY id
+                """,
+            ),
+            "participants": _dict_rows(
+                self.db,
+                """
+                SELECT id::text AS id, meeting_id::text AS meeting_id, name, role,
+                       system_prompt, provider_config, color, persona_id::text AS persona_id,
+                       stack_ids, created_at
+                FROM public.ai_participants
+                ORDER BY id
+                """,
+            ),
+            "messages": _dict_rows(
+                self.db,
+                """
+                SELECT id::text AS id, meeting_id::text AS meeting_id, sender_type,
+                       sender_id::text AS sender_id, sender_name, content, citations,
+                       tool_artifacts, thinking_content, estimated_cost, created_at
+                FROM public.messages
+                ORDER BY id
+                """,
+            ),
+            "documents": _dict_rows(
+                self.db,
+                """
+                SELECT id::text AS id, meeting_id::text AS meeting_id,
+                       persona_id::text AS persona_id, stack_id::text AS stack_id,
+                       file_name, file_type, file_size_bytes, chunk_count,
+                       qdrant_collection, created_at
+                FROM public.documents
+                ORDER BY id
+                """,
+            ),
+            "inference_events": _dict_rows(
+                self.db,
+                """
+                SELECT id::text AS id, meeting_id::text AS meeting_id, purpose,
+                       provider, model, estimated_cost, created_at
+                FROM public.inference_events
+                ORDER BY id
+                """,
+            ),
+            "disagreements": _dict_rows(
+                self.db,
+                """
+                SELECT id::text AS id, meeting_id::text AS meeting_id,
+                       source_ai_id::text AS source_ai_id, target_name, topic,
+                       reasoning, severity, status, created_at
+                FROM public.disagreements
+                ORDER BY id
+                """,
+            ),
+            "consensus": _dict_rows(
+                self.db,
+                """
+                SELECT id::text AS id, meeting_id::text AS meeting_id, participants,
+                       topic, strength, created_at
+                FROM public.consensus
                 ORDER BY id
                 """,
             ),
