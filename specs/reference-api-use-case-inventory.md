@@ -1,248 +1,212 @@
 # Reference: API use-case and contract inventory
 
-Recorded at Spec 03 (post capability extraction `e7d2507`, archive/reporting
-characterization `3251a4e`). This is the authoritative inventory of the
-accepted contract surface that later specs cut and rebuild. Every row cites
-the backend route (`backend/app/api/*`) and the client shape the frontend
-already depends on (`frontend/src/lib/api.ts`).
+Recorded at the Spec 11 final cutover (2026-10). This is the authoritative
+inventory of the public HTTP surface after the backend became module-owned.
+Every live route is listed here; the contract test
+`backend/tests/contract/test_api_inventory.py` fails when this table and the
+running `app.routes` disagree.
 
 Maintenance rules:
 
 - New routes and stream events must be added here in the same commit that
-  ships them (this file travels with the code, not behind it).
+  ships them.
 - "Class" is the target-architecture vocabulary: **command** (causes a
   durable write or a paid side effect), **observation** (read-only record
   fetch), **status** (derived/read-only view computed on demand), **probe**
   (side-effecting but non-durable check against an external service).
-- When a row's shape changes in a coordinated frontend/backend cut, move its
-  row to the cut tracker below instead of silently rewriting history.
+- Response model names below are the OpenAPI schema names frozen in
+  `frontend/tests/fixtures/openapi.json`.
+- The running schema can be checked with
+  `python -m scripts.export_openapi --check` from `backend/`.
 
 ## Cross-cutting conventions
 
 ### Error envelope (safe errors)
 
-Every failure is `{ "detail": "<human readable>" }` — `handleResponse`
-(`api.ts`) throws `new Error(detail || "API Error: <status>")`. Unsupported
-browsers still see the generic `API Error: <status>` fallback. Nothing else
-(error codes, field maps) is currently part of the contract.
+Every HTTP failure is `{ "detail": "<human readable>" }`. Validation failures
+produced by FastAPI are `{ "detail": [ ... ] }`. A central exception handler
+maps infrastructure failures to a safe `503` without leaking credentials or
+driver messages. No endpoint returns a provider response body verbatim.
 
-### BYOK generation contract (turns + summary only)
+### Access and runtime modes
 
-- Non-secret settings ride the JSON body as `provider`: `{ provider, model,
-  temperature, max_tokens, base_url }` (all fields optional, `null` allowed).
-- The secret key rides the `X-Provider-Key` header and is **never persisted**
-  (`resolve_generation_settings`, now owned by
-  `app.capabilities.configuration.service`).
-- `base_url` is **request-only** (Ollama-style local inference); it is never
-  saved to the database.
-- Cloud providers (`openrouter`, `gemini`) require a browser key or a server
-  key (`{provider}_api_key` in app config) or fail with `422` and message
-  "No API key available for {provider}. Provide a browser key (BYOK) or
-  configure the server key."
-- Known conscious exception: the setting probes `POST /settings/test-key` and
-  `POST /settings/models` carry `api_key` **in the request body** (non-
-  durable provider checks, not generation).
+No endpoint declares an auth dependency. `local` and `hosted` runtimes are
+shared, writable, no-sign-in workspaces; every visitor sees the same records.
+`runtime_mode=demo` is a strict read-only guided-replay workspace: middleware
+returns `403` for any non-GET/HEAD/OPTIONS request under `/api` with
+`"Demo workspace is read-only — mutations are disabled"`. Guided replay itself
+remains deferred and is not implemented by these routes.
 
-### Anonymous access
+### BYOK generation contract
 
-No endpoint declares auth dependencies (`Depends`/`Security`/headers) —
-verified by `tests/characterization/test_no_sign_in_sweep.py`. The only 403
-is the demo-mode write guard middleware ("Demo workspace is read-only —
-mutations are disabled") for non-GET/HEAD/OPTIONS `/api` requests when
-`settings.runtime_mode == "demo"`.
+- Non-secret overrides ride the JSON body as `provider`:
+  `{ provider, model, temperature, max_tokens, base_url }`; every field is
+  optional and `null` means "inherit".
+- The secret key rides `X-Provider-Key` and is never persisted.
+- `base_url` is request-only and is never written to the database.
+- Cloud providers require a browser key or a configured server key; otherwise
+  the request fails with `422` and
+  `"No API key available for {provider}. Provide a browser key (BYOK) or configure the server key."`
+- The settings probes `POST /api/settings/models` and
+  `POST /api/settings/test-key` are the conscious exception: their `api_key`
+  is in the body because they are non-durable provider checks.
 
-### Meeting status lifecycle
+### Meeting lifecycle and accounting
 
-`active -> voting -> ended -> archived` (legacy AND fresh schemas accept all
-four). Writes to a `voting`/`ended`/`archived` meeting are rejected with
-`409` (`MeetingClosedError`), except `PUT`s that the closing flow itself
-performs. `archive`/`unarchive` use a plain last-writer-wins status update
-(`update_meeting_status`); the argue-worthy CAS path
-(`transition_meeting_status`) is reserved for the end-acquisition race. An
-`ended` meeting that is archived and later unarchived becomes **`active`
-again** (pre-archive state is not remembered).
+`active -> voting -> ended -> archived`. Writes to a `voting`, `ended`, or
+`archived` meeting are rejected with `409` (`MeetingClosedError`), except the
+closing workflow's own writes. Archiving an ended meeting is allowed;
+unarchiving restores public status `active` (the pre-archive state is not
+remembered).
 
-### Money and usage accounting
-
-Paid inference is always ledgered: `Message.estimated_cost`, meeting
-`total_cost`, and per-turn usage events (`done.usage` =
-`{prompt_tokens, completion_tokens}` on the stream). Embedding/moderation
-side effects are accounted separately by the inference ledger
-(`tests/.../test_inference_ledger.py`, `test_orchestrator_knowledge_scope.py`).
+Paid inference is ledgered through `inference_events`, `Message.estimated_cost`,
+and `meeting.total_cost`. A failed ledger write is logged and never turns a
+successful provider response into a failed request. The closing flow is paid:
+a `GET` never calls a provider.
 
 ### Ordering and pagination
 
-No pagination anywhere. Message lists are created_at-ordered; meeting and
-document lists are newest-first (`created_at desc`). The meeting list is
-**not** filtered by status — archived meetings keep being listed; hiding is
-a presentation concern today.
+There is no pagination except the durable turn list's `limit` (1–200).
+Messages are `created_at` ordered; meetings and documents are newest-first.
+`GET /api/meetings` is not status-filtered; archived meetings remain listed.
+
+### Document lifecycle
+
+A document has an immutable revision id plus a current revision state:
+`pending`, `parsing`, `indexing`, `ready`, `failed`, `revoked`, or
+`unavailable`. Ingestion operations expose `pending`, `processing`, `ready`,
+`failed`, or `revoked`. Original bytes live in the configured source store
+(Supabase Storage by default); SQL is the eligibility authority. Legacy rows
+without retained bytes are honestly `unavailable`, never reconstructed.
+
+### SSE transport
+
+`POST /api/meetings/{meeting_id}/turn/stream` (legacy compatibility) and
+`GET /api/meetings/{meeting_id}/turns/{operation_id}/events` (durable replay)
+both use `sse-starlette`. Each frame is `data: {json}\n\n`.
+
+Legacy stream event union (`type` is required; other fields are optional):
+
+| Event | Payload | Semantics |
+|---|---|---|
+| `text` | `content` | Assistant visible chunk, rendered in arrival order |
+| `thinking` | `content` | Reasoning chunk, separate buffer |
+| `tool_call` | `tool_name`, `tool_arguments`, `tool_call_id` | Announced before execution; duplicate names are legal |
+| `tool_result` | `tool_call_id`, `tool_result` | Paired by id; may be followed by more text |
+| `citation` | `source`, `title?`, `url?`, `snippet?` | Knowledge evidence |
+| `done` | `message_id`, `usage: {prompt_tokens, completion_tokens}` | Successful terminal |
+| `error` | `content` | Failure terminal; `interrupted` is synthesized only client-side |
+
+Durable `/events` frames add `event_id`, `operation_id`, `meeting_id`,
+`sequence`, `type`. Exactly one terminal event ends a healthy legacy stream.
+A disconnect never cancels accepted work; EOF without a terminal is a client
+recovered-interruption state, not an automatic re-inference.
 
 ## Endpoint inventory
 
-### Meetings — `/api/meetings` (`app/api/meetings.py`)
+### Meetings — lifecycle (`app/modules/meetings/presentation/meetings_http.py`, tag `meetings`)
 
 | Method & path | Class | Receipt / shape | Request keys | Safe errors | Notes |
 |---|---|---|---|---|---|
-| `POST ""` | command | `MeetingWithParticipants` (participants materialized from personas) | name (+agenda, persona_ids) | 422 str(exc) w/ "Unknown personas" | Validation happens **before** any write; persona knowledge-stack assignments snapshotted at creation |
-| `GET ""` | observation | `Meeting[]` | — | — | Not status-filtered; archived stay listed |
-| `GET /{meeting_id}` | status | `MeetingWithParticipants` | meeting_id | 404 "Meeting not found" | Canonical record feed for detail views |
-| `POST /{meeting_id}/message` | command | `Message` | meeting_id, content | 404 "Meeting not found"; 403 demo-guard | Content-only body (`UserMessageRequest`); closed meetings 409 via write guard |
-| `POST /{meeting_id}/summary` | command (paid) | `Message` | meeting_id, BYOK | 409 closed; 422 `EmptyConversationError` / missing key; 404 "Meeting not found"; 500 `Error generating summary: ...` | Interim summary is persisted + ledgered; system-only conversations are 422 |
-| `POST /{meeting_id}/turn` | command (paid) | `TurnResponse {message, disagreements, consensus}` | meeting_id, participant_id, BYOK | 409 closed (entry-time guard); 422 missing key; 404 "Meeting not found"; 500 `Error executing turn: ...` | Non-streaming turn; closing mid-turn persists the paid response (spec-02 policy, `test_end_meeting_recovery`) |
-| `POST /{meeting_id}/turn/stream` | command (paid) | SSE stream (see stream contract) | meeting_id, participant_id, BYOK | same pre-stream failures as `/turn` (raised before stream starts) | Exactly one terminal (`done`/`error`) on a healthy stream |
-| `GET /{meeting_id}/disagreements` | observation | `Disagreement[]` | meeting_id | — | Scoreboard source |
-| `GET /{meeting_id}/consensus` | observation | `Consensus[]` | meeting_id | — | Scoreboard source |
-| `GET /{meeting_id}/context-stats` | status | `ContextStats` | meeting_id | 404 "Meeting not found" | Stable keys `{current_tokens, max_tokens, usage_percent, message_count, participant_count}`; `message_tokens`/`system_tokens`/`agenda_tokens` appear only when tiktoken resolves `cl100k_base`; `max_tokens` is the fixed 128000 budget |
-| `POST /{meeting_id}/end` | command (paid during summary) | `EndMeetingResponse {success, votes: EndMeetingVote[], summary, message}` | meeting_id, force_end | 404 "Meeting not found"; 409 `MeetingClosedConflict`; 403 demo-guard | Recoverable closing flow: entry serialization → votes → summary → atomic commit; **`EndAttemptIncomplete` is NOT an HTTP error** — it returns 200 with `success: false` and an explicitly retryable message (retry resumes at the summary phase) |
-| `POST /{meeting_id}/archive` | command | `{success: true, message: "Meeting archived successfully"}` | meeting_id | 404 "Meeting not found"; 400 "Meeting is already archived"; 500 "Failed to archive meeting" | Last-writer-wins; archiving an `ended` meeting is allowed |
-| `POST /{meeting_id}/unarchive` | command | `{success: true, message: "Meeting unarchived successfully"}` | meeting_id | 404; 400 "Meeting is not archived"; 500 | Restores to `active` unconditionally |
-| `DELETE /{meeting_id}` | command | `{success: true, message: "Meeting deleted successfully"}` | meeting_id | 404; 500 "Failed to delete meeting" | Order: `vector_cleanup_ledger.record(collection, kind="meeting", id)` → `vector_store.delete_collection(...)` → SQL delete; Qdrant outage degrades to a `last_error` ledger row, **never** blocks the SQL delete (reconciliation finishes) |
+| `POST /api/meetings` | command | `MeetingWithParticipants` | `name`, `agenda`, `persona_ids` | `422` unknown personas | Validation happens before any write; persona stack assignments are snapshotted at creation |
+| `GET /api/meetings` | observation | `Meeting[]` | — | — | Not status-filtered; archived meetings stay listed |
+| `GET /api/meetings/{meeting_id}` | status | `MeetingWithParticipants` | — | `404` "Meeting not found" | Canonical detail feed with participants and messages |
+| `POST /api/meetings/{meeting_id}/message` | command | `Message` | `content`, `request_key` | `404`; `409` closed; `422` invalid | Idempotent user write; closed meetings reject writes |
+| `GET /api/meetings/{meeting_id}/disagreements` | observation | `Disagreement[]` | — | — | Scoreboard source |
+| `GET /api/meetings/{meeting_id}/consensus` | observation | `Consensus[]` | — | — | Scoreboard source |
+| `GET /api/meetings/{meeting_id}/context-stats` | status | `{current_tokens,max_tokens,usage_percent,message_count,participant_count}` plus per-part detail when tiktoken resolves | — | `404` | `max_tokens` is the fixed 128000 budget; fallback is 4 chars/token and omits `message_tokens`/`system_tokens`/`agenda_tokens` |
+| `POST /api/meetings/{meeting_id}/archive` | command | `{success,message,status}` | — | `404`; `400` already archived; `409` closing in progress; `500` | Last-writer-wins archive overlay |
+| `POST /api/meetings/{meeting_id}/unarchive` | command | `{success,message,status}` | — | `404`; `400` not archived; `500` | Public status becomes `active` |
+| `DELETE /api/meetings/{meeting_id}` | command | `{success,message}` | — | `404`; `500`; `503` knowledge cleanup unavailable | Cascades meeting rows and records parent knowledge deletion before SQL delete |
 
-### Participants — `/api/participants` (`app/api/participants.py`)
+### Meetings — compatibility adapters (`app/modules/meetings/presentation/compat_http.py`, tag `meetings`)
 
-| Method & path | Class | Receipt | Notes |
-|---|---|---|---|
-| `GET /templates` | observation | `[{name, role, system_prompt, color}]` | Default roster templates for the "New Meeting" wizard |
-| `POST ""` | command | `AIParticipant` | Participant added to an existing meeting |
+| Method & path | Class | Receipt / shape | Request keys | Safe errors | Notes |
+|---|---|---|---|---|---|
+| `POST /api/meetings/{meeting_id}/summary` | command (paid) | `Message` | optional BYOK | `404`; `409` closed; `422` empty conversation or missing key; `500` `Error generating summary: ...` | Interim summary is persisted and ledgered; system-only conversation is `422` |
+| `POST /api/meetings/{meeting_id}/turn` | command (paid) | `TurnResponse {message,disagreements,consensus}` | `participant_id`, optional BYOK | `404`; `409`; `422`; `504` still accepted; `500` | Synchronous compatibility adapter over the durable queue; disconnect does not cancel accepted work |
+| `POST /api/meetings/{meeting_id}/turn/stream` | command (paid) | SSE legacy event union above | `participant_id`, optional BYOK | pre-stream `404`/`409`/`422`; post-stream `error` event | Durable events are translated to legacy `text/thinking/tool_call/tool_result/citation/done/error` |
 
-### Personas — `/api/personas` (`app/api/personas.py`)
+### Meetings — durable turns (`app/modules/meetings/presentation/turns_http.py`, tag `turns`)
 
-| Method & path | Class | Receipt | Safe errors | Notes |
-|---|---|---|---|---|
-| `GET ""` | observation | `PersonaListResponse {personas, total}` | — | `user_id` + `include_defaults` query params (`include_defaults=true` default) |
-| `POST ""` | command | `PersonaWithPrompt` (201) | 422 str(exc) | Creates initial prompt version |
-| `GET /{persona_id}` | status | `PersonaWithPrompt` | 404 "Persona not found" | |
-| `PUT /{persona_id}` | command | `PersonaWithPrompt` | 422 str(exc); 404 | System prompt is NOT editable here — it is versioned (see prompts). Stack assignments update via `stack_ids` |
-| `DELETE /{persona_id}` | command | 204 empty | 404 | |
-| `GET /{persona_id}/prompts` | observation | `PromptVersion[]` | — (no explicit 404 observed on this route today) | Version history |
-| `POST /{persona_id}/prompts` | command | `PromptVersion` (201) | 404; 422 | New version (content body) |
-| `POST /{persona_id}/prompts/{version}/activate` | command | 200 `{...}` | 404 "Prompt version not found"; 404 "Persona not found" | Activation flips `is_active`; reads pick `active_prompt` + `active_prompt_version` |
+| Method & path | Class | Receipt / shape | Request keys | Safe errors | Notes |
+|---|---|---|---|---|---|
+| `POST /api/meetings/{meeting_id}/turns` | command (paid) | `TurnOperationResponse`, `202` new / `200` replay | `participant_id`, `request_key`, optional BYOK | `404` meeting/participant; `409` closed/conflict; `429` queue limit | Admission only; execution is server-owned |
+| `GET /api/meetings/{meeting_id}/turns` | observation | `TurnOperationResponse[]` | `limit` 1–200 | — | Queue and recent terminal operations |
+| `GET /api/meetings/{meeting_id}/turns/{operation_id}` | observation | `TurnOperationResponse` | — | `404` | Never starts work |
+| `POST /api/meetings/{meeting_id}/turns/{operation_id}/cancel` | command | `TurnCancelResponse {outcome,status}` | — | `404`; `409` not cancellable | Cooperative while executing |
+| `GET /api/meetings/{meeting_id}/turns/{operation_id}/events` | observation | SSE durable event stream | `after` cursor | `404` before stream | Replay and follow survive reconnects and worker/API separation |
 
-### Settings — `/api/settings` (`app/api/settings.py`)
+Status vocabulary: `queued`, `executing`, `completed`, `failed`, `interrupted`,
+`cancelled`. The durable `request_key` is globally unique; replaying it with
+the same payload returns the original operation, while a different payload is
+`409`.
 
-| Method & path | Class | Receipt | Safe errors | Notes |
-|---|---|---|---|---|
-| `GET /providers` | observation | `ProvidersListResponse {providers: ProviderInfo[], environment: EnvironmentInfo, system_ai: SystemAIConfig}` | — | The canonical server-side capability snapshot (defaults, which providers are configured); drives the settings UI and BYOK validation |
-| `POST /models` | probe | `FetchModelsResponse {success, models: [{id, name, context_length?}], message}` | failure is returned as a receipt: `success: false, message: "Unknown provider: {provider}"` (NOT an HTTP error); 403 demo-guard for POST | Optional `api_key` rides the **body** (probe exception); external catalog call; Ollama destinations validated by `_ensure_trusted_ollama_destination` (`test_ollama_origin_allowlist`) |
-| `POST /test-key` | probe | `TestKeyResponse {valid, message, models?}` | 400 `Unknown provider: {provider}` (raised here, unlike `/models`); 403 demo-guard | Same probe exception for the key; exercises the same Ollama destination allowlist |
+### Meetings — coordinated closing (`app/modules/meetings/presentation/http.py`, tag `closing`)
 
-### Documents — `/api/documents` (`app/api/documents.py`)
+| Method & path | Class | Receipt / shape | Request keys | Safe errors | Notes |
+|---|---|---|---|---|---|
+| `POST /api/meetings/{meeting_id}/closing` | command (paid) | `ClosingReceipt`, `202` | `mode` (`vote`/`force`), `request_key`, optional `summary_settings` | `404`; `409` | Admission plus best-effort drive; returns a durable receipt, not a promised summary |
+| `GET /api/meetings/{meeting_id}/closing` | observation | `ClosingView` | — | `404` | Read-only progress and committed result |
+| `POST /api/meetings/{meeting_id}/closing/retry` | command (paid) | `ClosingView`, `202` | — | `404`; `409` | Resumes a recoverable stage |
+| `POST /api/meetings/{meeting_id}/closing/abort` | command | `ClosingView` | — | `404`; `409` | Aborts an abortable close |
 
-| Method & path | Class | Receipt | Safe errors | Notes |
-|---|---|---|---|---|
-| `POST /upload` | command | `DocumentUploadResponse {id, file_name, status, chunk_count, message}` | 400 "Invalid target for document upload"; 403 demo-guard; 422 | multipart FormData with `file` + optional `meeting_id`/`persona_id`/`stack_id`; extraction budget + bounded upload read enforced (Phase 1 tests); legacy formats (.xls) rejected |
-| `GET /meeting/{meeting_id}` | observation | `Document[]` | — | Scope = shared meeting knowledge |
-| `GET /persona/{persona_id}` | observation | `Document[]` | — | Scope = private persona stack knowledge |
-| `GET /stack/{stack_id}` | observation | `Document[]` | — | Scope = stack-owned knowledge |
-| `GET /{document_id}` | status | `Document` | 404 "Document not found" | `status ∈ {processing, indexed, failed}`; `error_message` for failed |
-| `DELETE /{document_id}` | command | `{message, id}` | 404; 403 demo-guard | Deletes vector points + record |
-| `POST /search` | observation (embedding side effect) | `DocumentSearchResponse {query, results: [{text, score, document_id, file_name, chunk_index}], total_results}` | 422 | Query scope is the intersection rules proven in `tests/.../test_document_search_scope.py` (`meeting_id`/`persona_id`/`stack_ids` + limit default 5) |
+### Participants (`app/modules/meetings/presentation/participants_http.py`, tag `participants`)
 
-### Knowledge stacks — `/api/knowledge_stacks` (`app/api/knowledge_stacks.py`)
+| Method & path | Class | Receipt / shape | Request keys | Safe errors | Notes |
+|---|---|---|---|---|---|
+| `GET /api/participants/templates` | observation | `list[dict]` | — | — | Default roster for the new-meeting wizard |
+| `POST /api/participants` | command | `AIParticipant` | participant fields | `422` validation | Adds a participant to an existing meeting |
 
-| Method & path | Class | Receipt | Safe errors |
-|---|---|---|---|
-| `GET ""` | observation | `KnowledgeStackListResponse` | — |
-| `POST ""` | command | `KnowledgeStack` (201) | 422 |
-| `GET /{stack_id}` | status | `KnowledgeStack` | 404 "Knowledge stack not found" |
-| `PUT /{stack_id}` | command | `KnowledgeStack` | 404 |
-| `DELETE /{stack_id}` | command | 204 | 404; 403 demo-guard |
+### Personas (`app/modules/persona_catalog/presentation/http.py`, no tag)
 
-## Stream turn contract
+| Method & path | Class | Receipt / shape | Request keys | Safe errors | Notes |
+|---|---|---|---|---|---|
+| `GET /api/personas` | observation | `{personas,total}` | `user_id`, `include_defaults` | — | Catalog read |
+| `POST /api/personas` | command | `TemplateView`, `201` | persona fields, `stack_ids` | `422` unknown stack/validation; `503` catalog unavailable | Creates the initial prompt version |
+| `GET /api/personas/{persona_id}` | status | `TemplateView` | — | `404` "Persona not found" | |
+| `PUT /api/personas/{persona_id}` | command | `TemplateView` | editable persona fields | `404`; `409` lost edit race; `422` | System prompt is versioned separately; stack assignments update here |
+| `DELETE /api/personas/{persona_id}` | command | `204` | — | `404`; `503` | |
+| `GET /api/personas/{persona_id}/prompts` | observation | `PromptVersion[]` | — | `404` | Version history |
+| `POST /api/personas/{persona_id}/prompts` | command | `PromptVersion`, `201` | prompt content | `404`; `422` | New immutable version |
+| `POST /api/personas/{persona_id}/prompts/{version}/activate` | command | `{message}` | — | `404` prompt/persona | Flips the active prompt version |
 
-`POST /{meeting_id}/turn/stream` (SSE via `sse-starlette`) is the canonical
-turn transport. The client is `api.streamTurn` (`api.ts`); the parser rules
-below are pinned by `frontend/tests/fixtures/sse-envelopes.test.ts` and the
-backend fakes in `backend/tests/doubles/transports.py`.
+### Settings (`app/modules/settings/presentation/http.py`, tag `settings`)
 
-- **Wire format**: each frame is `data: {json}\n\n`. `format_sse_event`
-  returns `{"data": json.dumps(model_dump)}` for `sse-starlette`.
-- **Event union** (`StreamEvent`, fields optional except `type`):
+| Method & path | Class | Receipt / shape | Request keys | Safe errors | Notes |
+|---|---|---|---|---|---|
+| `GET /api/settings/providers` | observation | `ProvidersListResponse {providers,environment,system_ai}` | — | — | Server capability snapshot; drives BYOK validation |
+| `PUT /api/settings/system-ai` | command | `SystemAIConfig` | provider, model, temperature, max_tokens | `422` | `provider` is `''`, `ollama`, `openrouter`, or `gemini`; temperature 0–1; max_tokens 256–16000 |
+| `POST /api/settings/models` | probe | `FetchModelsResponse {success,models,message}` | provider, optional `api_key`, `base_url` | Provider failures are returned in the body with `success: false` | External catalog probe; Ollama destinations are origin-allowlisted |
+| `POST /api/settings/test-key` | probe | `TestKeyResponse {valid,message,models?}` | provider, optional `api_key`, `base_url` | `400` unknown provider; `422` validation | Same probe exception and Ollama allowlist |
 
-  | Event | Payload fields | Semantics |
-  |---|---|---|
-  | `text` | `content` | Assistant visible chunk; rendered in order of arrival |
-  | `thinking` | `content` | Chain-of-thought chunk; separate buffer |
-  | `tool_call` | `tool_name`, `tool_arguments`, `tool_call_id` | Tool invocation announced **before** execution; duplicate tool names are legal and disambiguated by `tool_call_id` |
-  | `tool_result` | `tool_call_id`, `tool_result` | Paired by id; may appear split/followed by more `text` |
-  | `citation` | `source`, `title?`, `url?`, `snippet?` | Knowledge-grounding evidence; can interleave between text chunks |
-  | `done` | `message_id`, `usage: {prompt_tokens, completion_tokens}` | Successful terminal; the persisted message id lets the client reconcile the store |
-  | `error` | `content` (+ `interrupted` only when synthesized client-side) | Failure terminal |
+### Documents (`app/modules/knowledge/presentation/http.py`, tag `documents`)
 
-- **Parser rules** (client-side, `api.ts`):
-  - Stream is decoded as text, split on `\n`; empty lines skipped; only
-    `data:` lines carry events (SSE `\n\n` separators are structural).
-  - **Exactly one terminal** (`done` or `error`) ends a healthy stream;
-    non-terminal events after the terminal are ignored with a console warn
-    (never replayed to the UI).
-  - A final unterminated frame (truncated leftover) is still attempted as a
-    parsed event.
-  - EOF **without** a terminal synthesizes a recovered-interruption error:
-    `{type: "error", interrupted: true, content: "The stream was
-    interrupted before the turn completed. Any partial result may already be
-    saved — retry when ready to continue."}` — the store clears its busy
-    state; there is **no auto re-inference** (the user decides whether to
-    retry).
-  - Malformed JSON is logged (`[SSE Parse Error]`) and skipped, never thrown.
+| Method & path | Class | Receipt / shape | Request keys | Safe errors | Notes |
+|---|---|---|---|---|---|
+| `POST /api/documents/upload` | command | `UploadReceiptResponse`, `202` pending / `200` ready | multipart `file` plus exactly one of `meeting_id`, `persona_id`, `stack_id` | `400` invalid owner/type; `409` rejected; `413` too large; `422`; `503` unavailable | Bounded read, source-byte staging, and hash before acknowledgement |
+| `GET /api/documents/operations/{operation_id}` | observation | `IngestionStatusResponse` | — | `404`; `503` | Operation progress, not a provider call |
+| `POST /api/documents/operations/{operation_id}/retry` | command | `UploadReceiptResponse`, `202` pending / `200` ready | — | `404`; `503` | Retries a failed or unavailable ingestion |
+| `GET /api/documents/meeting/{meeting_id}` | observation | `DocumentResponse[]` | — | `503` | Shared meeting knowledge |
+| `GET /api/documents/persona/{persona_id}` | observation | `DocumentResponse[]` | — | `503` | Private persona knowledge |
+| `GET /api/documents/stack/{stack_id}` | observation | `DocumentResponse[]` | — | `503` | Stack-owned knowledge |
+| `GET /api/documents/{document_id}` | status | `DocumentResponse` | — | `404`; `503` | Includes revision and operation ids |
+| `DELETE /api/documents/{document_id}` | command | `{message,id}` | — | `404`; `503` | Deletes eligibility and records revocation before retrieval reopens |
+| `POST /api/documents/search` | observation (embedding side effect) | `DocumentSearchResponse {query,results,total_results}` | scope ids, query, limit | `400` missing scope; `422`; `503` | Results include text, score, document/revision/chunk ids, chunk index, file name |
 
-## Coordinated compatibility cuts (tracked)
+### Knowledge stacks (`app/modules/knowledge/presentation/stacks_http.py`, tag `knowledge_stacks`)
 
-Cuts below keep the two clients working while the target architecture is
-built. Each names its **removal owner** — the spec that is expected to delete
-the compatibility surface.
+| Method & path | Class | Receipt / shape | Request keys | Safe errors | Notes |
+|---|---|---|---|---|---|
+| `GET /api/knowledge_stacks` | observation | `{stacks,total}` | `user_id` | — | Stack directory |
+| `POST /api/knowledge_stacks` | command | `KnowledgeStack`, `201` | name, optional description | `422` | Name max 100 characters |
+| `GET /api/knowledge_stacks/{stack_id}` | status | `KnowledgeStack` | — | `404` "Knowledge stack not found" | |
+| `PUT /api/knowledge_stacks/{stack_id}` | command | `KnowledgeStack` | name, optional description | `404`; `422` | |
+| `DELETE /api/knowledge_stacks/{stack_id}` | command | `204` | — | `404`; `503` Knowledge cleanup unavailable | Deletes stack-owned knowledge through the lifecycle |
 
-| Cut (current shape) | Why it exists | Removal owner | Planned target |
-|---|---|---|---|
-| `frontend/src/lib/api.ts` monolith (702 lines, meetings/personas/settings/documents/stacks/constants in one file) | Single owner of transport today | **Spec 05** (frontend API seams) | `src/features/*/api/{client,keys,queries,mutations}.ts` + `src/shared/api/*` |
-| `frontend/src/stores/meetingStore.ts` mixes canonical record fetch + transport buffering + stream buffers | Store grew around the monolith API | **Spec 05/07** | React local state for transient input; Zustand for provisional stream state only; TanStack Query owns server records |
-| 17 suites under `frontend/src/test/*` instead of colocated tests | Historical layout; moved setup already | **Spec 05** (fixture relocation happens alongside feature extraction) | Colocated `*.test.ts(x)` beside feature files; `tests/` keeps architecture + fixtures |
-| `Orchestrator` monolith service (588 lines: turn lifecycle, tools, streaming, accounting in one class) | Original turn engine | **Spec 07/08** | `app.modules.meetings.application` use cases + capabilities (configuration already extracted) |
-| Route-level business logic in `app/api/*` (context-stats computing, archive policy inline) | Meh API-era shortcut | **Spec 04+** (composition lands use-case boundaries) | presentation layer delegates to application services |
-| `app.services.orchestrator` re-exports `MissingProviderKeyError`/`resolve_generation_settings` + `summary_service` imports them from the old location | Keeps every import site stable while capabilities exist | **Spec 07/08** | Importers move to `app.capabilities.configuration` directly |
-| `app.models.schemas` mixes meeting/persona/document/DTO shapes untyped-ish | Historical single-module DTO bag | ongoing per-module tightening (first touched by Specs 07/08) | Module-owned DTOs in `app.modules.*.presentation` |
-| `app/core/__init__` re-exported `get_supabase` (removed in spec-03 `e7d2507`) | Made `app.core.config` import drag the Supabase SDK into every consumer | **Done in Spec 03** — new rule: platform `__init__` packages stay side-effect-free; import submodules directly | — |
+### Root and health (`app/bootstrap.py`)
 
-## Open decision gates
-
-Spec 03 left these two load-bearing decisions open, each with an owner that
-blocks named downstream specs until it lands.
-
-### 1. Real transaction strategy — **DECIDED (spec 04, 2026-10-19)**
-
-**Decision: Option A — narrow Postgres RPCs invoked through the Supabase
-client.** One SQL function per atomic multi-table invariant
-(`security invoker`, pinned `search_path`, execution granted only to the
-verified backend service role, revoked from anonymous roles). Ordinary
-single-table writes stay on the standard Supabase client calls.
-
-Rationale recorded at decision time:
-
-- Phase 1 already built and proved the pattern: `activate_prompt_version`,
-  `create_prompt_version` (007), `replace_persona_stacks` (005),
-  `create_meeting_transaction` (008), `commit_meeting_ending` (010),
-  `record_inference_cost` (011) — each with rollback semantics validated
-  against disposable embedded Postgres (fake + real contract parity).
-- Option B (direct psycopg transaction adapter) would add connection-pool
-  configuration and lifecycle responsibilities without a requirement the
-  RPCs fail to meet, and would re-validate every seam the RPCs already do.
-- Rollback-safety constraints checked: the embedded-Postgres test harness
-  executes the same functions SQL-side, so tests exercise the real
-  transactions; the RLS posture stays table-managed; the RPCs contain no
-  cross-database side effects.
-- Escape hatch: module `application/ports.py` interfaces keep the transport
-  replaceable — a direct-connection adapter could later implement the same
-  ports without touching domain/application code.
-
-### 2. Original source-byte store — owner: Spec 09 (knowledge ingestion) — DECIDED
-
-Decision recorded in `reference-architecture-contracts.md` (original document bytes,
-2026-10): **Supabase Storage** behind a `SourceStore` interface; no local-filesystem
-adapter is implemented. Uploads stage, hash, and finalize an object before returning a
-durable pending receipt; SQL is the eligibility authority and the object prefix plus a
-deletion/redaction manifest are part of the coordinated backup.
-
-### 2. Original source-byte store — owner: Spec 09 (knowledge ingestion) — SUPERSEDED
-
-This duplicate decision section is retained only as history. See the decided entry above
-and the architecture decision in `reference-architecture-contracts.md`; the open
-question of Supabase Storage versus local filesystem is resolved.
+| Method & path | Class | Receipt / shape | Request keys | Safe errors | Notes |
+|---|---|---|---|---|---|
+| `GET /` | observation | `{message:"Sabha API",version:"0.1.0"}` | — | — | Service identity |
+| `GET /health` | observation | `{status:"healthy"}` | — | — | Liveness only; does not probe providers or storage |
