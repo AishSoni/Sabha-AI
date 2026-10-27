@@ -68,6 +68,7 @@ SCHEMA_FILES = [
     BACKEND_ROOT / "migrations" / "026_knowledge_cleanup_rpcs.sql",
     BACKEND_ROOT / "migrations" / "027_parent_knowledge_cleanup.sql",
     BACKEND_ROOT / "migrations" / "028_system_ai_settings.sql",
+    BACKEND_ROOT / "migrations" / "029_internal_table_rls.sql",
 ]
 
 # Phase 1 shipped before migration tracking existed. The baseline plus

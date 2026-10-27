@@ -33,6 +33,14 @@ A Phase 1 database without `schema_migrations` history is adopted explicitly:
 python -m scripts.migrate --adopt-phase-one
 ```
 
+A database that stopped at the older knowledge-stack schema (no queue, closing,
+or cleanup tables yet) uses the legacy path, which verifies the 003 markers,
+records `000..003`, and applies the rest:
+
+```bash
+python -m scripts.migrate --adopt-legacy
+```
+
 Each migration commits atomically with its tracking row, applied files are
 checksum-verified, and concurrent deployers serialize on an advisory lock. There
 are no down-migrations: recover forward, or restore a verified backup.

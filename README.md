@@ -179,7 +179,7 @@ Sabha/
 │   ├── main.py                     # FastAPI entry point
 │   ├── worker.py                   # Optional dedicated turn worker
 │   ├── supabase_schema.sql         # Baseline migration (000_baseline)
-│   ├── migrations/                 # Ordered 002…028 SQL history
+│   ├── migrations/                 # Ordered 002…029 SQL history
 │   ├── scripts/
 │   │   ├── migrate.py              # Checksummed migration runner
 │   │   ├── backup.py               # SQL + bytes + deletion ledger
@@ -263,6 +263,18 @@ must be adopted deliberately:
 python -m scripts.migrate --adopt-phase-one
 ```
 
+A database that stopped at the older knowledge-stack schema (the state produced
+by pasting `supabase_schema.sql` and the first numbered files by hand) uses the
+legacy adoption path instead. It verifies the complete 003 markers, records
+`000..003`, and applies `004..028`:
+
+```bash
+python -m scripts.migrate --adopt-legacy
+```
+
+Both adoption paths are idempotent and refuse to record history for a schema
+whose markers do not match what they claim to adopt.
+
 The runner records a checksum per version, commits each file atomically with its
 tracking row, and serializes deployers with a Postgres advisory lock. See
 [Database, Migrations, and Access](#-database-migrations-and-access).
@@ -318,8 +330,8 @@ All backend variables live in `backend/.env` (see `.env.example`).
 | Variable | Default | Purpose |
 |---|---|---|
 | `SUPABASE_URL` | required | Supabase project URL |
-| `SUPABASE_KEY` | required | Server-side anonymous key |
-| `SUPABASE_SERVICE_KEY` | empty | Byte access, backup and restore; server-only |
+| `SUPABASE_KEY` | required | Anonymous key; used by the server only when `SUPABASE_SERVICE_KEY` is empty |
+| `SUPABASE_SERVICE_KEY` | empty | Server database client, byte access, backup and restore. Required on hosted Supabase: migrations after `003` revoke `anon`; never expose it to the browser |
 | `DATABASE_URL` | scripts | Direct/session PostgreSQL URL for scripts and restore |
 | `DEFAULT_LLM_PROVIDER` | `ollama` | `ollama`, `openrouter` or `gemini` |
 | `OLLAMA_BASE_URL` / `OLLAMA_DEFAULT_MODEL` | `http://localhost:11434` / `llama3.2` | Local inference |
@@ -371,7 +383,7 @@ access is server-side.
 
 - `backend/supabase_schema.sql` is recorded as `000_baseline`.
 - Numbered files in `backend/migrations/` follow in lexical order (through
-  `028_system_ai_settings`).
+  `029_internal_table_rls`).
 - `schema_migrations` stores version, checksum, applied time and duration.
 - Each migration and its tracking row commit in one transaction; a failure
   leaves no partial DDL and no tracking row.
@@ -400,6 +412,7 @@ access is server-side.
 |---|---|
 | Empty database | `python -m scripts.migrate` |
 | Phase 1 database without history | `python -m scripts.migrate --adopt-phase-one` |
+| Knowledge-stack-era database without history | `python -m scripts.migrate --adopt-legacy` |
 | Database with history | `python -m scripts.migrate` (resumes pending versions) |
 | Inspect only | `python -m scripts.migrate --status` |
 

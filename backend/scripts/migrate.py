@@ -10,12 +10,14 @@ from __future__ import annotations
 
 import argparse
 import hashlib
+import os
 import sys
 import time
 from dataclasses import dataclass
 from pathlib import Path
 
 import psycopg
+from dotenv import load_dotenv
 
 
 BACKEND_ROOT = Path(__file__).resolve().parents[1]
@@ -44,6 +46,36 @@ PHASE_ONE_COLUMNS = (
 PHASE_ONE_FUNCTIONS = (
     "activate_prompt_version",
     "create_prompt_version",
+)
+
+# Databases deployed before migration tracking existed stop at different
+# points in the history. The legacy prefix is everything through the
+# knowledge-stack schema (003); deployments built by pasting the first files
+# by hand carry exactly this schema and no history.
+LEGACY_VERSION = "003_knowledge_stacks"
+LEGACY_TABLES = (
+    "public.personas",
+    "public.prompt_versions",
+    "public.knowledge_stacks",
+    "public.persona_knowledge_stacks",
+)
+LEGACY_COLUMNS = (
+    ("public.ai_participants", "persona_id"),
+    ("public.documents", "stack_id"),
+)
+
+# Objects first introduced after 003. A database that already has one of these
+# legitimately moved further than the legacy prefix, so recording 004..007
+# blindly could hide a half-applied migration. Those deployments belong to
+# --adopt-phase-one instead.
+LEGACY_BOUNDARY_TABLES = (
+    "public.inference_events",  # 011
+    "public.pending_vector_cleanup",  # 012
+    "public.operations",  # 014
+    "public.meeting_closings",  # 020
+)
+LEGACY_BOUNDARY_COLUMNS = (
+    ("public.ai_participants", "stack_ids"),  # 008
 )
 
 
@@ -138,44 +170,86 @@ def _application_tables_exist(conn: psycopg.Connection) -> bool:
     return bool(row and row[0])
 
 
+def _has_table(conn: psycopg.Connection, qualified: str) -> bool:
+    row = conn.execute(
+        "SELECT to_regclass(%s) IS NOT NULL", (qualified,)
+    ).fetchone()
+    return bool(row and row[0])
+
+
+def _has_column(conn: psycopg.Connection, qualified: str, column: str) -> bool:
+    schema, table = qualified.split(".", 1)
+    row = conn.execute(
+        """
+        SELECT 1
+        FROM information_schema.columns
+        WHERE table_schema = %s AND table_name = %s AND column_name = %s
+        """,
+        (schema, table, column),
+    ).fetchone()
+    return bool(row)
+
+
+def _has_function(conn: psycopg.Connection, name: str) -> bool:
+    row = conn.execute(
+        """
+        SELECT 1
+        FROM pg_proc p
+        JOIN pg_namespace n ON n.oid = p.pronamespace
+        WHERE n.nspname = 'public' AND p.proname = %s
+        LIMIT 1
+        """,
+        (name,),
+    ).fetchone()
+    return bool(row)
+
+
+def _missing_markers(
+    conn: psycopg.Connection,
+    *,
+    tables: tuple[str, ...] = (),
+    columns: tuple[tuple[str, str], ...] = (),
+    functions: tuple[str, ...] = (),
+) -> list[str]:
+    """Return the markers that are absent from an untracked database."""
+    missing = [f"table {table}" for table in tables if not _has_table(conn, table)]
+    missing.extend(
+        f"column {qualified}.{column}"
+        for qualified, column in columns
+        if not _has_column(conn, qualified, column)
+    )
+    missing.extend(
+        f"function public.{function}"
+        for function in functions
+        if not _has_function(conn, function)
+    )
+    return missing
+
+
+def _present_markers(
+    conn: psycopg.Connection,
+    *,
+    tables: tuple[str, ...] = (),
+    columns: tuple[tuple[str, str], ...] = (),
+) -> list[str]:
+    """Return the markers that already exist in an untracked database."""
+    present = [f"table {table}" for table in tables if _has_table(conn, table)]
+    present.extend(
+        f"column {qualified}.{column}"
+        for qualified, column in columns
+        if _has_column(conn, qualified, column)
+    )
+    return present
+
+
 def _missing_phase_one_sentinels(conn: psycopg.Connection) -> list[str]:
     """Return the Phase 1 markers that are absent from an untracked database."""
-    missing: list[str] = []
-    for table in PHASE_ONE_TABLES:
-        found = conn.execute(
-            "SELECT to_regclass(%s) IS NOT NULL", (table,)
-        ).fetchone()
-        if not found or not found[0]:
-            missing.append(f"table {table}")
-
-    for qualified, column in PHASE_ONE_COLUMNS:
-        schema, table = qualified.split(".", 1)
-        found = conn.execute(
-            """
-            SELECT 1
-            FROM information_schema.columns
-            WHERE table_schema = %s AND table_name = %s AND column_name = %s
-            """,
-            (schema, table, column),
-        ).fetchone()
-        if not found:
-            missing.append(f"column {qualified}.{column}")
-
-    for function in PHASE_ONE_FUNCTIONS:
-        found = conn.execute(
-            """
-            SELECT 1
-            FROM pg_proc p
-            JOIN pg_namespace n ON n.oid = p.pronamespace
-            WHERE n.nspname = 'public' AND p.proname = %s
-            LIMIT 1
-            """,
-            (function,),
-        ).fetchone()
-        if not found:
-            missing.append(f"function public.{function}")
-
-    return missing
+    return _missing_markers(
+        conn,
+        tables=PHASE_ONE_TABLES,
+        columns=PHASE_ONE_COLUMNS,
+        functions=PHASE_ONE_FUNCTIONS,
+    )
 
 
 def _verify_applied(
@@ -302,8 +376,8 @@ def adopt_phase_one(
 
     The Phase 1 schema was deployed before migration tracking existed. We
     verify the complete Phase 1 marker set, record the baseline and 002..013
-    without replaying them, then apply 014..028 normally. Anything less than
-    the full marker set is rejected rather than guessed.
+    without replaying them, then apply every later migration normally. Anything
+    less than the full marker set is rejected rather than guessed.
     """
     migrations = discover_migrations(
         baseline_path=baseline_path, migrations_dir=migrations_dir
@@ -354,6 +428,105 @@ def adopt_phase_one(
             conn.execute("SELECT pg_advisory_unlock(%s)", (LOCK_KEY,))
 
 
+def adopt_legacy(
+    database_url: str,
+    *,
+    baseline_path: Path = BASELINE_PATH,
+    migrations_dir: Path = MIGRATIONS_DIR,
+) -> list[str]:
+    """Adopt an untracked database that stopped at the 003 schema.
+
+    Deployments that predate migration tracking were created by pasting
+    ``supabase_schema.sql`` followed by the first numbered files by hand. They
+    carry the knowledge-stack schema but no ``schema_migrations`` rows, so the
+    runner cannot tell whether the post-003 history ever ran. We verify the
+    complete 003 marker set, refuse databases that reached later objects, record
+    000..003 without replaying them, then apply the post-003 history normally.
+    Replaying 004..008 on a database that already has their effects is safe:
+    they are written as idempotent upgrades.
+    """
+    migrations = discover_migrations(
+        baseline_path=baseline_path, migrations_dir=migrations_dir
+    )
+    legacy_index = _target_index(migrations, LEGACY_VERSION)
+    if legacy_index is None:
+        raise MigrationError("the repository does not contain the legacy history")
+    legacy = migrations[: legacy_index + 1]
+
+    with psycopg.connect(database_url, autocommit=True) as conn:
+        conn.execute("SELECT pg_advisory_lock(%s)", (LOCK_KEY,))
+        try:
+            _ensure_tracking_table(conn)
+            applied = _applied(conn)
+            _verify_applied(applied, migrations)
+
+            if applied:
+                missing_history = [
+                    migration.version
+                    for migration in legacy
+                    if migration.version not in applied
+                ]
+                if missing_history:
+                    raise MigrationError(
+                        "database has partial migration history; missing "
+                        + ", ".join(missing_history)
+                    )
+                return _apply_pending(conn, migrations, applied, None)
+
+            if not _application_tables_exist(conn):
+                raise MigrationError(
+                    "database has no legacy application schema to adopt"
+                )
+
+            later = _present_markers(
+                conn,
+                tables=LEGACY_BOUNDARY_TABLES,
+                columns=LEGACY_BOUNDARY_COLUMNS,
+            )
+            if later:
+                raise MigrationError(
+                    "database has moved past the legacy schema and is not "
+                    "safe to adopt here; found " + ", ".join(later)
+                )
+
+            missing = _missing_markers(
+                conn, tables=LEGACY_TABLES, columns=LEGACY_COLUMNS
+            )
+            if missing:
+                raise MigrationError(
+                    "database does not have the complete 003 schema; missing "
+                    + ", ".join(missing)
+                )
+
+            with conn.transaction():
+                for migration in legacy:
+                    _insert_applied(conn, migration, 0)
+            adopted = [migration.version for migration in legacy]
+            applied = _applied(conn)
+            return adopted + _apply_pending(conn, migrations, applied, None)
+        finally:
+            conn.execute("SELECT pg_advisory_unlock(%s)", (LOCK_KEY,))
+
+
+def _database_url_from_environment() -> str | None:
+    """Return ``DATABASE_URL`` from the process, falling back to backend/.env.
+
+    The runner is documented as picking up the same ``backend/.env`` the API
+    reads, but importing the application settings just to get one value would
+    drag the whole config (and its provider requirements) into an operational
+    script. Reading the file directly keeps the runner standalone while still
+    matching what operators configure.
+    """
+    value = os.environ.get("DATABASE_URL")
+    if value:
+        return value
+    env_file = BACKEND_ROOT / ".env"
+    if not env_file.is_file():
+        return None
+    load_dotenv(env_file)
+    return os.environ.get("DATABASE_URL")
+
+
 def _status_text(
     database_url: str,
     *,
@@ -390,7 +563,15 @@ def main(argv: list[str] | None = None) -> int:
         action="store_true",
         help=(
             "record an untracked, fully-migrated Phase 1 database "
-            "(000..013) after verifying its markers, then apply 014..028"
+            "(000..013) after verifying its markers, then apply everything later"
+        ),
+    )
+    parser.add_argument(
+        "--adopt-legacy",
+        action="store_true",
+        help=(
+            "record an untracked database that stopped at the 003 schema "
+            "(000..003) after verifying its markers, then apply everything later"
         ),
     )
     parser.add_argument(
@@ -412,13 +593,19 @@ def main(argv: list[str] | None = None) -> int:
     )
     args = parser.parse_args(argv)
 
-    database_url = args.database_url or __import__("os").environ.get("DATABASE_URL")
+    database_url = args.database_url or _database_url_from_environment()
     if not database_url:
-        parser.error("--database-url or DATABASE_URL is required")
-    if args.status and args.adopt_phase_one:
-        parser.error("--status and --adopt-phase-one cannot be combined")
-    if args.adopt_phase_one and args.to:
-        parser.error("--to cannot be combined with --adopt-phase-one")
+        parser.error(
+            "--database-url, DATABASE_URL, or backend/.env with DATABASE_URL is required"
+        )
+    if args.status and (args.adopt_phase_one or args.adopt_legacy):
+        parser.error(
+            "--status cannot be combined with --adopt-phase-one or --adopt-legacy"
+        )
+    if args.adopt_phase_one and args.adopt_legacy:
+        parser.error("--adopt-phase-one and --adopt-legacy cannot be combined")
+    if args.to and (args.adopt_phase_one or args.adopt_legacy):
+        parser.error("--to cannot be combined with an adoption flag")
 
     try:
         if args.status:
@@ -432,6 +619,12 @@ def main(argv: list[str] | None = None) -> int:
             return 0
         if args.adopt_phase_one:
             applied = adopt_phase_one(
+                database_url,
+                baseline_path=args.baseline,
+                migrations_dir=args.migrations_dir,
+            )
+        elif args.adopt_legacy:
+            applied = adopt_legacy(
                 database_url,
                 baseline_path=args.baseline,
                 migrations_dir=args.migrations_dir,

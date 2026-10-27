@@ -69,8 +69,8 @@ Create `backend/.env` (or export the variables) from `.env.example`:
 | Variable | Required | Notes |
 | --- | --- | --- |
 | `SUPABASE_URL` | yes | Project URL |
-| `SUPABASE_KEY` | yes | Anonymous key used by the server client |
-| `SUPABASE_SERVICE_KEY` | for bytes, backup, restore | Server-only; never expose to the browser |
+| `SUPABASE_KEY` | yes | Anonymous key; the server uses it only when `SUPABASE_SERVICE_KEY` is empty |
+| `SUPABASE_SERVICE_KEY` | yes for hosted | Server database client, bytes, backup, restore. Migrations after `003` revoke `anon`, so the API returns `42501` without it. Server-only; never expose to the browser |
 | `QDRANT_URL`, `QDRANT_API_KEY` | yes / cloud only | Vector projection |
 | `DEFAULT_LLM_PROVIDER` | yes | `ollama`, `openrouter` or `gemini` |
 | `EMBEDDING_PROVIDER`, `EMBEDDING_MODEL`, `EMBEDDING_DIMENSION` | yes | `gemini`, `openai`, `cohere` or `ollama` |
@@ -166,6 +166,15 @@ Order of operations:
    ```
    Adoption records the Phase 1 history without replaying DDL; it refuses when
    any Phase 1 sentinel table, column or function is missing.
+
+   A database that stopped earlier, at the knowledge-stack schema (no queue,
+   closing or cleanup tables), uses the legacy path. It verifies the 003
+   sentinels, records `000..003`, then applies `004..029`:
+   ```powershell
+   python -m scripts.migrate --adopt-legacy
+   ```
+   If it reports a missing 003 marker, finish that migration first: the legacy
+   history was pasted by hand, so it can stop half-way through a file.
 4. Apply the migrations:
    ```powershell
    python -m scripts.migrate
@@ -188,8 +197,11 @@ Order of operations:
 | --- | --- | --- |
 | `migration failed: checksum mismatch ...` | An already-applied file changed | Restore the original file from the release tag; never edit applied SQL |
 | `migration failed: database contains application tables but no migration history` | Phase 1 database, untracked | `--adopt-phase-one` after verifying sentinels |
+| `migration failed: database does not have the complete 003 schema; missing …` | Legacy paste stopped mid-file | Apply the missing 003 statements, then `--adopt-legacy` |
+| `migration failed: database has moved past the legacy schema …` | Untracked database newer than 003 | `--adopt-phase-one` after verifying its sentinels |
 | Migration raises part-way | That file rolled back; earlier files remain applied | Fix the file in a new release and rerun; the runner resumes at the first pending version |
 | Two deployers ran | Advisory lock serialized them | Expect one to report `applied N ...`, the other `database is up to date` |
+| API logs `permission denied for table …` / `for function …` (`42501`) at startup | The server connected with the anonymous key. Migrations after `003` revoke `anon` and `authenticated` and grant the objects to `service_role` | Set `SUPABASE_SERVICE_KEY` to the service role key and restart; the schema is already correct, so `--status` will show every version applied |
 
 There are **no down-migrations**. Rolling the schema back means restoring a
 verified backup into a fresh database (section 7), not running a reverse

@@ -99,3 +99,60 @@ def test_upgrade_migration_replaces_allow_all(legacy_db):
             _insert_meeting(probe)
     finally:
         probe.close()
+
+
+INTERNAL_TABLES = ["documents", "inference_events", "pending_vector_cleanup"]
+
+
+def test_every_public_table_enables_rls(disposable_db) -> None:
+    """The advisor lint 'RLS disabled in public' must stay at zero.
+
+    Migration 029 backfills the four tables that predated the internal-table
+    convention; this sweep fails on any future table that skips the block.
+    """
+    unprotected = disposable_db.query(
+        "SELECT c.relname FROM pg_class c "
+        "JOIN pg_namespace n ON n.oid = c.relnamespace "
+        "WHERE n.nspname = 'public' AND c.relkind = 'r' "
+        "AND NOT c.relrowsecurity ORDER BY c.relname"
+    )
+    assert unprotected == [], f"public tables without RLS: {unprotected}"
+
+
+def test_internal_tables_deny_rows_and_writes_behind_a_grant(
+    disposable_db,
+) -> None:
+    """RLS with no policy is deny-all even for a role holding table privileges.
+
+    The anonymous key is the credential the security advisor models, so the
+    probe role is over-provisioned on purpose: the policy layer must still win.
+    """
+    with disposable_db.connect() as conn:
+        conn.execute(
+            "INSERT INTO pending_vector_cleanup (collection_name, target_kind) "
+            "VALUES ('probe_collection', 'stack')"
+        )
+        conn.execute(
+            "DO $$ BEGIN "
+            "IF NOT EXISTS (SELECT FROM pg_roles WHERE rolname = 'sabha_probe') THEN "
+            "CREATE ROLE sabha_probe NOSUPERUSER NOBYPASSRLS NOLOGIN; "
+            "END IF; END $$"
+        )
+        conn.execute("GRANT USAGE ON SCHEMA public TO sabha_probe")
+        conn.execute(f"GRANT ALL ON {', '.join(INTERNAL_TABLES)} TO sabha_probe")
+
+    probe = psycopg.connect(disposable_db.uri, autocommit=True)
+    probe.execute("SET ROLE sabha_probe")
+    try:
+        # No policy means default-deny: the row exists but stays invisible.
+        visible = probe.execute(
+            "SELECT count(*) FROM pending_vector_cleanup"
+        ).fetchone()[0]
+        assert visible == 0
+        with pytest.raises(psycopg.errors.InsufficientPrivilege):
+            probe.execute(
+                "INSERT INTO pending_vector_cleanup (collection_name, target_kind) "
+                "VALUES ('planted_collection', 'stack')"
+            )
+    finally:
+        probe.close()

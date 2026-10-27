@@ -42,6 +42,7 @@ REQUIRED_TRACKED_FILES = (
     "backend/requirements.txt",
     "backend/supabase_schema.sql",
     "backend/migrations/028_system_ai_settings.sql",
+    "backend/migrations/029_internal_table_rls.sql",
     "backend/scripts/migrate.py",
     "frontend/package.json",
     "frontend/package-lock.json",
