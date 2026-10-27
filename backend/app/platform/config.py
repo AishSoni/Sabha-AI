@@ -1,5 +1,11 @@
+from pydantic import field_validator
 from pydantic_settings import BaseSettings
 from typing import List
+
+
+RUNTIME_MODES = ("local", "hosted", "demo")
+SUPPORTED_LLM_PROVIDERS = ("ollama", "openrouter", "gemini")
+SUPPORTED_EMBEDDING_PROVIDERS = ("gemini", "openai", "cohere", "ollama")
 
 
 class Settings(BaseSettings):
@@ -65,7 +71,39 @@ class Settings(BaseSettings):
     # Coordinated closing (spec 08)
     closing_attempt_lease_seconds: int = 120
     closing_drain_timeout_seconds: int = 300
-    
+
+    @field_validator("runtime_mode")
+    @classmethod
+    def validate_runtime_mode(cls, value: str) -> str:
+        normalized = value.strip().lower()
+        if normalized not in RUNTIME_MODES:
+            raise ValueError(
+                f"runtime_mode must be one of {', '.join(RUNTIME_MODES)}"
+            )
+        return normalized
+
+    @field_validator("default_llm_provider")
+    @classmethod
+    def validate_default_llm_provider(cls, value: str) -> str:
+        normalized = value.strip().lower()
+        if normalized not in SUPPORTED_LLM_PROVIDERS:
+            raise ValueError(
+                "default_llm_provider must be one of "
+                f"{', '.join(SUPPORTED_LLM_PROVIDERS)}"
+            )
+        return normalized
+
+    @field_validator("embedding_provider")
+    @classmethod
+    def validate_embedding_provider(cls, value: str) -> str:
+        normalized = value.strip().lower()
+        if normalized not in SUPPORTED_EMBEDDING_PROVIDERS:
+            raise ValueError(
+                "embedding_provider must be one of "
+                f"{', '.join(SUPPORTED_EMBEDDING_PROVIDERS)}"
+            )
+        return normalized
+
     class Config:
         env_file = ".env"
         env_file_encoding = "utf-8"
