@@ -86,6 +86,18 @@ CREATE SCHEMA IF NOT EXISTS auth;
 CREATE TABLE IF NOT EXISTS auth.users (
     id UUID PRIMARY KEY DEFAULT gen_random_uuid()
 );
+DO $$ BEGIN
+    IF NOT EXISTS (SELECT FROM pg_roles WHERE rolname = 'anon') THEN
+        CREATE ROLE anon NOSUPERUSER NOBYPASSRLS NOLOGIN;
+    END IF;
+    IF NOT EXISTS (SELECT FROM pg_roles WHERE rolname = 'authenticated') THEN
+        CREATE ROLE authenticated NOSUPERUSER NOBYPASSRLS NOLOGIN;
+    END IF;
+    IF NOT EXISTS (SELECT FROM pg_roles WHERE rolname = 'service_role') THEN
+        CREATE ROLE service_role NOSUPERUSER BYPASSRLS NOLOGIN;
+    END IF;
+END $$;
+GRANT USAGE ON SCHEMA public TO anon, authenticated, service_role;
 """
 
 
@@ -175,6 +187,18 @@ def _make_schema_db(pg_server, schema_files):
         for sql in (AUTH_STUB_SQL, *[p.read_text(encoding="utf-8") for p in schema_files]):
             conn.execute(sql)
     return db, base_uri
+
+
+@pytest.fixture()
+def empty_db(pg_server):
+    """Disposable database with only the Supabase auth stub (no Sabha schema)."""
+    db, base_uri = _make_schema_db(pg_server, [])
+    try:
+        yield db
+    finally:
+        cleanup = psycopg.connect(base_uri, autocommit=True)
+        cleanup.execute(f'DROP DATABASE IF EXISTS "{db.name}" WITH (FORCE)')
+        cleanup.close()
 
 
 @pytest.fixture()
