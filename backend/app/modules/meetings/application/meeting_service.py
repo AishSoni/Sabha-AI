@@ -3,7 +3,7 @@ Meeting manager service - handles meeting lifecycle and persistence.
 """
 
 from typing import Optional, List
-from datetime import datetime
+from datetime import datetime, timezone
 import uuid
 
 from app.modules.meetings.domain.models import (
@@ -26,6 +26,11 @@ from app.modules.meetings.application.construct_participants import (
     generation_policy_for,
 )
 from app.modules.meetings.application.prompts import DEFAULT_ROSTER, get_full_prompt
+
+
+def _now_iso() -> str:
+    """UTC timestamp in the same wire format as the rest of the modules."""
+    return datetime.now(timezone.utc).isoformat()
 
 
 def _status_value(status: "MeetingStatus | str") -> str:
@@ -69,7 +74,7 @@ class MeetingService:
         """
 
         meeting_id = str(uuid.uuid4())
-        now = datetime.utcnow().isoformat()
+        now = _now_iso()
 
         meeting_data = {
             "id": meeting_id,
@@ -176,7 +181,7 @@ class MeetingService:
         """
 
         participant_id = str(uuid.uuid4())
-        now = datetime.utcnow().isoformat()
+        now = _now_iso()
 
         stack_ids: List[str] = []
         if data.persona_id:
@@ -236,7 +241,7 @@ class MeetingService:
         """Save a message to the database."""
         
         message_id = str(uuid.uuid4())
-        now = datetime.utcnow().isoformat()
+        now = _now_iso()
         
         message_data = {
             "id": message_id,
@@ -295,7 +300,7 @@ class MeetingService:
         """Save a disagreement to the database."""
         
         disagreement_id = str(uuid.uuid4())
-        now = datetime.utcnow().isoformat()
+        now = _now_iso()
         
         disagreement_data = {
             "id": disagreement_id,
@@ -317,7 +322,7 @@ class MeetingService:
         """Save a consensus to the database."""
         
         consensus_id = str(uuid.uuid4())
-        now = datetime.utcnow().isoformat()
+        now = _now_iso()
         
         consensus_data = {
             "id": consensus_id,
@@ -407,14 +412,14 @@ class MeetingService:
             "sender_name": data.sender_name,
             "sender_id": data.sender_id,
             "request_key": data.request_key,
-            "created_at": datetime.utcnow().isoformat(),
+            "created_at": _now_iso(),
         }
         result = self.db.rpc(
             "append_user_message",
             {
                 "p_meeting_id": meeting_id,
                 "p_message": payload,
-                "p_now": datetime.utcnow().isoformat(),
+                "p_now": _now_iso(),
             },
         ).execute()
         body = result.data or {}
@@ -426,7 +431,7 @@ class MeetingService:
         """Set the archive overlay without changing the lifecycle status."""
         result = self.db.rpc(
             "archive_meeting_guarded",
-            {"p_meeting_id": meeting_id, "p_now": datetime.utcnow().isoformat()},
+            {"p_meeting_id": meeting_id, "p_now": _now_iso()},
         ).execute()
         return dict(result.data or {})
 
@@ -434,7 +439,7 @@ class MeetingService:
         """Clear the archive overlay; never reopens an ended meeting."""
         result = self.db.rpc(
             "unarchive_meeting_guarded",
-            {"p_meeting_id": meeting_id, "p_now": datetime.utcnow().isoformat()},
+            {"p_meeting_id": meeting_id, "p_now": _now_iso()},
         ).execute()
         return dict(result.data or {})
 

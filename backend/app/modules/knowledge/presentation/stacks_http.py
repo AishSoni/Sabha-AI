@@ -1,6 +1,6 @@
 from fastapi import APIRouter, HTTPException
 from typing import Optional
-from datetime import datetime
+from datetime import datetime, timezone
 import uuid
 
 from app.platform.database import get_supabase
@@ -34,7 +34,7 @@ async def create_knowledge_stack(data: KnowledgeStackCreate):
     """Create a new knowledge stack."""
     db = get_supabase()
     stack_id = str(uuid.uuid4())
-    now = datetime.utcnow().isoformat()
+    now = datetime.now(timezone.utc).isoformat()
     
     stack_data = {
         "id": stack_id,
@@ -75,7 +75,7 @@ async def update_knowledge_stack(stack_id: str, data: KnowledgeStackUpdate):
     if not update_data:
         return await get_knowledge_stack(stack_id)
         
-    update_data["updated_at"] = datetime.utcnow().isoformat()
+    update_data["updated_at"] = datetime.now(timezone.utc).isoformat()
     
     result = db.table("knowledge_stacks").update(update_data).eq("id", stack_id).execute()
     

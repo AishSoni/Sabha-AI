@@ -75,9 +75,11 @@ Skipped/proposed checks, historical test counts, empty scaffolding, source inspe
 
 ## Completion record
 
-Recorded 2026-10-27 on the acceptance host at commit `8bfb308`. Every number
-below comes from a command that was run in this session; nothing is projected,
-estimated, or carried over from an earlier report.
+Recorded 2026-10-27 on the acceptance host at commit `8bfb308`, then re-executed
+after the timestamp cleanup that follows `cb70410`; the numbers below are from
+the re-executed run against the tree this record ships with. Every number comes
+from a command that was run in this session; nothing is projected, estimated, or
+carried over from an earlier report.
 
 ### Verdict
 
@@ -101,7 +103,7 @@ today would be untrue.
 
 | Command | Working directory | Result |
 | --- | --- | --- |
-| `python -m pytest -q` | `backend/` | **583 passed**, 103 warnings, 1138.35 s (18:58) |
+| `python -m pytest -q` | `backend/` | **583 passed**, 27 warnings, 1145.10 s (19:05) |
 | `npm test` | `frontend/` | **37 files / 215 tests passed**, 22.51 s |
 | `node node_modules/typescript/bin/tsc --noEmit` | `frontend/` | exit 0, no diagnostics |
 | `npm run build` | `frontend/` | exit 0, 12 routes exported, Turbopack compile 6.0 s |
@@ -111,7 +113,9 @@ today would be untrue.
 The backend suite ran alone, against a **fresh** disposable cluster
 (`SABHA_TEST_PG_HOME=C:\conda_tmp\opencode\sabha-test-pg-b4`). Two concurrent
 runs against the shared cluster are known to produce fixture errors, not product
-failures; the recorded result is the isolated run.
+failures; the recorded result is the isolated run. All 27 remaining warnings come
+from third-party packages (`supabase` client `timeout`/`verify` parameters,
+`pyiceberg`'s `pyparsing` arguments); Sabha code emits none.
 
 Acceptance slice (45 tests, collected counts; all executed inside the 583):
 
@@ -231,4 +235,6 @@ Phase 1 adoption · `2edb66b` Phase 1 dataset · `90a9961` upgrade preservation 
 clean-checkout rehearsal · `c1e5420` shared anonymous workspace · `cd157d8`
 interruption/cleanup recovery · `2d41512` failed deploy and unsafe restore ·
 `c5feca6` runbook with executable restore/ledger CLI · `8bfb308` corrected
-README/setup and hosted gate · this record.
+README/setup and hosted gate · `cb70410` this record · the timestamp cleanup that
+removed the last deprecated `datetime.utcnow()` calls from
+`meetings/application/meeting_service.py` and `knowledge/presentation/stacks_http.py`.
