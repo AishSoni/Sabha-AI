@@ -23,10 +23,12 @@ from typing import Any
 import psycopg
 from psycopg import sql
 
-BACKUP_FORMAT = "sabha-backup/1"
+BACKUP_FORMAT = "sabha-backup/2"
 MANIFEST_NAME = "manifest.json"
 DUMP_NAME = "database.dump"
 SOURCE_DIR = "source"
+DELETION_EVENTS_NAME = "deletion_events.json"
+LEDGER_FORMAT = "sabha-deletion-ledger/1"
 DEFAULT_MAX_SOURCE_BYTES = 100 * 1024 * 1024
 
 
@@ -124,6 +126,99 @@ def _source_keys(conn: psycopg.Connection) -> list[str]:
     return [str(row[0]) for row in rows]
 
 
+def _events_sha256(events: list[dict[str, Any]]) -> str:
+    canonical = json.dumps(events, sort_keys=True, separators=(",", ":"))
+    return hashlib.sha256(canonical.encode("utf-8")).hexdigest()
+
+
+def _ledger_document(events: list[dict[str, Any]]) -> dict[str, Any]:
+    return {
+        "format": LEDGER_FORMAT,
+        "exported_at": datetime.now(timezone.utc).isoformat(),
+        "row_count": len(events),
+        "events": events,
+        "events_sha256": _events_sha256(events),
+    }
+
+
+def _deletion_events(conn: psycopg.Connection) -> list[dict[str, Any]]:
+    exists = conn.execute(
+        "SELECT to_regclass('public.knowledge_deletion_events') IS NOT NULL"
+    ).fetchone()
+    if not exists or not exists[0]:
+        return []
+    rows = conn.execute(
+        """
+        SELECT id, event_kind, target_id, document_id, revision_id,
+               source_key, reason, occurred_at
+        FROM public.knowledge_deletion_events
+        ORDER BY occurred_at, id
+        """
+    ).fetchall()
+    events: list[dict[str, Any]] = []
+    for row in rows:
+        occurred_at = row[7]
+        events.append(
+            {
+                "id": str(row[0]),
+                "event_kind": row[1],
+                "target_id": str(row[2]),
+                "document_id": str(row[3]) if row[3] is not None else None,
+                "revision_id": str(row[4]) if row[4] is not None else None,
+                "source_key": row[5],
+                "reason": row[6],
+                "occurred_at": (
+                    occurred_at.isoformat()
+                    if hasattr(occurred_at, "isoformat")
+                    else str(occurred_at)
+                ),
+            }
+        )
+    return events
+
+
+def export_deletion_events(database_url: str, output: str | Path) -> dict[str, Any]:
+    """Write the append-only deletion ledger outside the SQL dump."""
+    with psycopg.connect(database_url) as conn:
+        events = _deletion_events(conn)
+    ledger = _ledger_document(events)
+    target = Path(output)
+    target.parent.mkdir(parents=True, exist_ok=True)
+    target.write_text(
+        json.dumps(ledger, indent=2, sort_keys=True) + "\n", encoding="utf-8"
+    )
+    return ledger
+
+
+def verify_deletion_ledger(path: str | Path) -> dict[str, Any]:
+    """Verify a deletion ledger's own integrity, or fail closed."""
+    ledger_path = Path(path)
+    try:
+        ledger = json.loads(ledger_path.read_text(encoding="utf-8"))
+    except FileNotFoundError as exc:
+        raise BackupVerificationError(
+            f"missing deletion ledger: {ledger_path}"
+        ) from exc
+    except json.JSONDecodeError as exc:
+        raise BackupVerificationError(
+            f"invalid deletion ledger: {exc}"
+        ) from exc
+
+    if ledger.get("format") != LEDGER_FORMAT:
+        raise BackupVerificationError(
+            f"unsupported deletion ledger format {ledger.get('format')!r}"
+        )
+    events = ledger.get("events")
+    if not isinstance(events, list):
+        raise BackupVerificationError("deletion ledger events must be a list")
+    row_count = ledger.get("row_count")
+    if row_count is None or int(row_count) != len(events):
+        raise BackupVerificationError("deletion ledger row count does not match")
+    if _events_sha256(events) != ledger.get("events_sha256"):
+        raise BackupVerificationError("deletion ledger event checksum does not match")
+    return ledger
+
+
 def _database_name(database_url: str) -> str | None:
     try:
         import urllib.parse
@@ -179,6 +274,13 @@ def create_backup(
     with psycopg.connect(database_url) as conn:
         row_counts = _row_counts(conn)
         source_keys = _source_keys(conn)
+        deletion_events = _deletion_events(conn)
+
+    deletion_events_path = destination / DELETION_EVENTS_NAME
+    deletion_events_path.write_text(
+        json.dumps(_ledger_document(deletion_events), indent=2, sort_keys=True) + "\n",
+        encoding="utf-8",
+    )
 
     source_store.ensure_ready()
     source_entries: list[dict[str, Any]] = []
@@ -212,6 +314,13 @@ def create_backup(
             "size": dump_path.stat().st_size,
         },
         "row_counts": row_counts,
+        "deletion_events": {
+            "path": DELETION_EVENTS_NAME,
+            "sha256": _sha256_file(deletion_events_path),
+            "size": deletion_events_path.stat().st_size,
+            "row_count": len(deletion_events),
+            "events_sha256": _events_sha256(deletion_events),
+        },
         "source_objects": source_entries,
     }
     (destination / MANIFEST_NAME).write_text(
@@ -245,6 +354,32 @@ def verify_backup(backup_dir: str | Path) -> dict[str, Any]:
         raise BackupVerificationError("backup dump size does not match the manifest")
     if _sha256_file(dump_path) != dump.get("sha256"):
         raise BackupVerificationError("backup dump checksum does not match the manifest")
+
+    ledger_entry = manifest.get("deletion_events") or {}
+    ledger_path = destination / str(ledger_entry.get("path") or "")
+    if not ledger_path.is_file():
+        raise BackupVerificationError("deletion ledger is missing from the backup")
+    if ledger_path.stat().st_size != int(ledger_entry.get("size") or -1):
+        raise BackupVerificationError("deletion ledger size does not match the manifest")
+    if _sha256_file(ledger_path) != ledger_entry.get("sha256"):
+        raise BackupVerificationError(
+            "deletion ledger checksum does not match the manifest"
+        )
+    ledger = verify_deletion_ledger(ledger_path)
+    ledger_row_count = ledger.get("row_count")
+    manifest_row_count = ledger_entry.get("row_count")
+    if (
+        ledger_row_count is None
+        or manifest_row_count is None
+        or int(ledger_row_count) != int(manifest_row_count)
+    ):
+        raise BackupVerificationError(
+            "deletion ledger row count does not match the manifest"
+        )
+    if ledger.get("events_sha256") != ledger_entry.get("events_sha256"):
+        raise BackupVerificationError(
+            "deletion ledger event checksum does not match the manifest"
+        )
 
     for entry in manifest.get("source_objects") or []:
         path = destination / str(entry.get("path") or "")
