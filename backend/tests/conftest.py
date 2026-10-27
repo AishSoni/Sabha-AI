@@ -70,6 +70,30 @@ SCHEMA_FILES = [
     BACKEND_ROOT / "migrations" / "028_system_ai_settings.sql",
 ]
 
+# Phase 1 shipped before migration tracking existed. The baseline plus
+# 002..013 is the exact schema of an untracked Phase 1 deployment; spec-11
+# adoption tests build this state and then adopt the remaining history.
+PHASE_ONE_SCHEMA_FILES = [
+    BACKEND_ROOT / "supabase_schema.sql",
+    *[
+        BACKEND_ROOT / "migrations" / name
+        for name in (
+            "002_personas.sql",
+            "003_knowledge_stacks.sql",
+            "004_meeting_status_states.sql",
+            "005_persona_stack_replacement.sql",
+            "006_participant_role_capacity.sql",
+            "007_prompt_version_activation.sql",
+            "008_participant_stack_snapshot.sql",
+            "009_tighten_rls_to_backend_writes.sql",
+            "010_atomic_meeting_close.sql",
+            "011_inference_accounting.sql",
+            "012_pending_vector_cleanup.sql",
+            "013_persona_prompt_locks.sql",
+        )
+    ],
+]
+
 # Schema as it existed before the lifecycle-constraint fix. Upgrade-path tests
 # build this state, seed pre-existing rows against it, then apply the new
 # migration — proving upgraded deployments behave like fresh ones.
@@ -193,6 +217,18 @@ def _make_schema_db(pg_server, schema_files):
 def empty_db(pg_server):
     """Disposable database with only the Supabase auth stub (no Sabha schema)."""
     db, base_uri = _make_schema_db(pg_server, [])
+    try:
+        yield db
+    finally:
+        cleanup = psycopg.connect(base_uri, autocommit=True)
+        cleanup.execute(f'DROP DATABASE IF EXISTS "{db.name}" WITH (FORCE)')
+        cleanup.close()
+
+
+@pytest.fixture()
+def phase_one_db(pg_server):
+    """Disposable database holding the complete untracked Phase 1 schema."""
+    db, base_uri = _make_schema_db(pg_server, PHASE_ONE_SCHEMA_FILES)
     try:
         yield db
     finally:

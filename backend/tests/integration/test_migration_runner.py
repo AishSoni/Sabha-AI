@@ -8,9 +8,12 @@ import psycopg
 import pytest
 
 from scripts.migrate import (
+    BASELINE_PATH,
     BASELINE_VERSION,
     MigrationError,
+    adopt_phase_one,
     apply_migrations,
+    discover_migrations,
     status,
 )
 
@@ -139,3 +142,82 @@ def test_status_reports_pending_then_applied(empty_db) -> None:
 
     applied = status(empty_db.uri)
     assert all(applied for _, applied in applied)
+
+
+def _schema_signature(db) -> tuple:
+    columns = db.query(
+        """
+        SELECT table_name, column_name, data_type, udt_name,
+               is_nullable, column_default
+        FROM information_schema.columns
+        WHERE table_schema = 'public' AND table_name <> 'schema_migrations'
+        ORDER BY table_name, ordinal_position
+        """
+    )
+    functions = db.query(
+        """
+        SELECT p.proname, pg_get_function_identity_arguments(p.oid)
+        FROM pg_proc p
+        JOIN pg_namespace n ON n.oid = p.pronamespace
+        WHERE n.nspname = 'public'
+        ORDER BY 1, 2
+        """
+    )
+    policies = db.query(
+        """
+        SELECT tablename, policyname, cmd, qual, with_check
+        FROM pg_policies
+        WHERE schemaname = 'public'
+        ORDER BY tablename, policyname
+        """
+    )
+    return columns, functions, policies
+
+
+def test_adopt_untracked_phase_one_database(phase_one_db) -> None:
+    pending = status(phase_one_db.uri)
+    assert all(not applied for _, applied in pending)
+
+    adopted = adopt_phase_one(phase_one_db.uri)
+
+    assert adopted[0] == BASELINE_VERSION
+    assert adopted[-1] == "028_system_ai_settings"
+    assert len(adopted) == 28
+    assert phase_one_db.query(
+        "SELECT to_regclass('public.system_ai_settings')"
+    )[0][0] is not None
+
+    versions = [
+        row[0]
+        for row in phase_one_db.query(
+            "SELECT version FROM schema_migrations ORDER BY version"
+        )
+    ]
+    assert versions == [migration.version for migration in discover_migrations()]
+    assert adopt_phase_one(phase_one_db.uri) == []
+
+
+def test_adoption_rejects_incomplete_phase_one_schema(empty_db) -> None:
+    with empty_db.connect() as conn:
+        conn.execute(BASELINE_PATH.read_text(encoding="utf-8"))
+
+    with pytest.raises(MigrationError, match="complete Phase 1 schema"):
+        adopt_phase_one(empty_db.uri)
+
+
+def test_adopted_schema_matches_a_fresh_install(empty_db, phase_one_db) -> None:
+    apply_migrations(empty_db.uri)
+    adopt_phase_one(phase_one_db.uri)
+
+    assert _schema_signature(empty_db) == _schema_signature(phase_one_db)
+
+
+def test_adoption_rejects_partial_history(phase_one_db) -> None:
+    adopt_phase_one(phase_one_db.uri)
+    with phase_one_db.connect() as conn:
+        conn.execute(
+            "DELETE FROM schema_migrations WHERE version = '010_atomic_meeting_close'"
+        )
+
+    with pytest.raises(MigrationError, match="partial migration history"):
+        adopt_phase_one(phase_one_db.uri)
