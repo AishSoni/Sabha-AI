@@ -2,6 +2,8 @@
 
 This is the shared design reference, **not a single implementation assignment**. Follow the [Phase 2 roadmap](roadmap-phase-2-domain-architecture-and-frontend-resilience.md) for Spec 03 through Spec 11, their prerequisites, code examples, and acceptance gates. Read the relevant contract sections for the slice being implemented; do not scaffold or implement this whole reference at once.
 
+For deferred replay, follow the [Phase 3 roadmap](roadmap-phase-3-hosted-guided-replay.md). The [runtime contract](reference-runtime-modes-and-credentials.md) supersedes historical writable-demo/server-only-provider-key language: live and strict read-only replay coexist in the same app, with distinct dependency graphs. Historical path maps and completion evidence below are not claims that replay is implemented.
+
 ## Purpose, prerequisite, and scope
 
 After [Phase 1: Fixing Existing Project Issues](roadmap-phase-1-existing-issues.md), reorganize Sabha around explicit domain ownership, application workflows, infrastructure boundaries, and resilient frontend state ownership. Implement incrementally, with executable contracts and test-driven development throughout; this is not a wholesale rewrite or a directory-renaming exercise.
@@ -14,10 +16,10 @@ Phase 1 fixes and their regression tests are the behavioral baseline. Architectu
 | --- | --- |
 | Application stack | Retain FastAPI, Next.js/React, Supabase/Postgres, and Qdrant. No database or vector-store replacement is part of this work. |
 | Backend style | Modular monolith with anemic domain models and explicit domain/application services. Enforce invariants without requiring behavior-rich entities or elaborate patterns for simple CRUD. |
-| Access | The hosted and local demo are completely no-sign-in: one shared workspace, no accounts, login/signup UI, user-auth tokens, required Supabase Auth session, or anonymous sign-in bootstrap. This supersedes the earlier mandatory entry gate; authentication is outside this implementation sequence. Keep infrastructure credentials server-side, direct database permissions restricted, server-side operation/resource limits, participant-private knowledge, and trusted local Ollama integration. |
+| Access | Live is a shared writable no-sign-in workspace; replay is separate, preprovisioned no-write data behind a server-bound graph in the same app. Neither requires accounts, user-auth tokens, Supabase Auth sessions or anonymous Auth bootstrap. The entry choice is not authorization. Keep infrastructure credentials server-side, direct database permissions restricted, server-side resource limits, participant-private retrieval scopes and trusted local Ollama integration. |
 | Participant identity | Identity, prompt, explicit generation overrides, and knowledge-stack assignments are fixed when a participant joins. Later template edits do not propagate to that participant. |
 | Default generation settings | Preserve an explicit inheritance policy. Resolve inherited settings at each turn's execution start, not participant creation or queue submission. Record the effective configuration for that operation. Credential rotation is independent. |
-| Knowledge contents | Assigned stack IDs are fixed, but their eligible document contents remain live. Record the sources/revisions and passages used; exact historical replay is not promised. |
+| Knowledge contents | In live operation, assigned stack IDs are fixed but eligible document contents remain live. Record sources/revisions/passages; exact historical live re-execution is not promised. Guided replay instead serves approved immutable prepared retrieval, not live search. |
 | Intentional deletion | Revoke future retrieval and redact retained retrieved-passage evidence tied to the deleted source. Do not automatically erase existing conversation text. |
 | AI turns | One executing turn per meeting, with other requests in a visible, cancellable queue. Different meetings may execute independently, subject to explicit resource limits. |
 | User messages during a turn | Accept messages while the meeting is active. The running turn keeps its captured conversation boundary; subsequent turns see later committed messages. |
@@ -32,7 +34,7 @@ Phase 1 fixes and their regression tests are the behavioral baseline. Architectu
 - Do not require microservices, event sourcing, a CQRS framework, a message broker, or a generic event bus. Separate command/query functions are permitted without a framework.
 - A worker may run in the same deployment or another process from the same codebase; this does not turn a bounded context into a separate service. Local startup must remain straightforward.
 - Preserve the global base prompt, persona extensions, agent read-only-world restriction, and participant-specific knowledge boundaries described in `AGENTS.md:1-29`. Internal persistence tools do not authorize real-world agent actions.
-- Keep provider credentials server-side and retain environment-based local configuration. No secrets in browser persistence, query caches, stream events, audit payloads, logs, or generated API artifacts.
+- Keep infrastructure credentials server-only and retain trusted local configuration. Hosted live provider credentials use the encrypted browser vault and transient handoff defined in the runtime contract. Only the encrypted envelope may persist; never persist plaintext keys, passphrases or derived unlock keys. No secrets in query caches, stream events, audit payloads, logs or generated API artifacts. Replay does not access the vault.
 - Preserve IDs, historical records, and valid configuration during migration. Do not fabricate historical snapshots, effective settings, source passages, or costs that were never recorded.
 
 ### Decision: original document bytes (recorded 2026-10, Spec 09)
@@ -192,7 +194,7 @@ Inference is an application workflow. Domain services decide business policies; 
 - Separate command submission from operation observation. Queue cancellation, navigation detach, and interrupted stream recovery have distinct behavior. Render waiting turns and pending uploads honestly after remount.
 - Prevent stale refetches from regressing newly committed records, using canonical ordering/revisions and reconciliation rules. Tool activity matches call IDs, not tool names, and is not duplicated after final refetch.
 - Persist only justified client preferences, with versioned migration and explicit hydration. Do not persist active stream flags, server initialization gates, raw credentials, or canonical server records. React Server Components must not share mutable client stores across requests.
-- Hosted and local demo visitors use ordinary fetches, uploads, status reads, and SSE initiation without accounts, auth headers/cookies, login redirects, or Auth bootstrap. Do not add a login boundary or require an authentication SDK. Server-side workflow, admission, resource, and private-knowledge controls still apply; browser state cannot disable them. Settings/stream/error responses must not disclose server credential values.
+- Hosted/local live visitors use ordinary fetches, uploads, status reads and SSE without accounts, user-auth sessions or Auth bootstrap. Replay reuses the real features but selects recorded reads/events locally rather than sending live upload/mutation commands. Do not add a login boundary or authentication SDK. Server workflow/resource/private-knowledge controls still apply; browser state cannot disable them. Settings/stream/errors must not disclose credentials.
 
 ## API, schema, and migration policy
 
@@ -481,7 +483,7 @@ Reuse Phase 1 contracts such as `meetings_ab`, `persona_instances`, `provider_sc
 | `source_store_contract` | Selected real adapter and fake agree on bounded writes, durable receipt, missing-source errors, deletion, stage cleanup, restart, and backup/restore. |
 | `live_knowledge_and_redaction` | Template assignment edits cannot change A's scope; eligible new stack content is live; deleted sources cannot be newly retrieved/reused; all declared stored passage copies redact while existing messages remain. |
 | `upgrade_dataset` | Existing IDs/messages/costs survive; explicit configuration remains explicit; unknown assignments/originals are honest; no migration restores deleted content. |
-| `shared_workspace_access` | Two independent fresh visitors see the same records without accounts, auth headers/cookies, login redirects, or Auth bootstrap in hosted and local demos. Cover fetch/upload/status/SSE; direct table/internal RPC bypass is denied, server secrets stay private, resource limits apply, and supplied user IDs/headers do not expand private knowledge scopes or disable guards. |
+| `shared_workspace_access` | Two fresh live visitors see the shared records without accounts or Auth bootstrap; live fetch/upload/status/SSE retain backend controls. Two replay visitors read the same immutable package with independent ephemeral cursors and no live reads/mutations. Direct live table/internal RPC bypass is denied; IDs/headers cannot expand scopes or disable guards. |
 | `frontend_ownership` | Server records have one owner; provisional buffers reconcile once; stale completions cannot clear newer operations; draft edit versions and pending-upload identity survive the required failure paths. |
 
 ## Completion criteria
@@ -500,7 +502,7 @@ Reuse Phase 1 contracts such as `meetings_ab`, `persona_instances`, `provider_sc
 These references inform adapter/state choices, not a requirement to copy example architectures or add a framework:
 
 - [Supabase database functions](https://supabase.com/docs/guides/database/functions): narrow transactional operations and execution permissions.
-- [Supabase Storage](https://supabase.com/docs/guides/storage): candidate original-file adapter; selection remains the decision gate above.
+- [Supabase Storage](https://supabase.com/docs/guides/storage): selected original-file adapter; hosted verification is distinct from local evidence.
 - [TanStack Query: server state versus client state](https://tanstack.com/query/latest/docs/framework/react/guides/does-this-replace-client-state): why backend records and UI state have different owners.
 - [TanStack Query cancellation](https://tanstack.com/query/latest/docs/framework/react/guides/query-cancellation): propagate cancellation through transport rather than assuming a cache cancels external effects.
 - [Zustand with Next.js](https://zustand.docs.pmnd.rs/guides/nextjs): store scope and server/client boundaries.

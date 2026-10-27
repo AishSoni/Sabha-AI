@@ -32,10 +32,17 @@ driver messages. No endpoint returns a provider response body verbatim.
 
 No endpoint declares an auth dependency. `local` and `hosted` runtimes are
 shared, writable, no-sign-in workspaces; every visitor sees the same records.
-`runtime_mode=demo` is a strict read-only guided-replay workspace: middleware
+`runtime_mode=demo` currently enables a read-only HTTP guard: middleware
 returns `403` for any non-GET/HEAD/OPTIONS request under `/api` with
 `"Demo workspace is read-only — mutations are disabled"`. Guided replay itself
-remains deferred and is not implemented by these routes.
+remains deferred and is not implemented by these routes. This guard alone does
+not isolate read dependencies or startup recovery.
+
+Phase 3 plans cohosted live and replay request graphs; the global demo write
+guard alone is not that composition. Proposed replay endpoints are specified in
+[the package reference](reference-replay-package-and-playback.md), not listed as
+shipped routes here. Add them and their event contracts when implemented. The
+entry choice is UX, not authorization over the intentionally shared live API.
 
 ### BYOK generation contract
 
@@ -53,11 +60,12 @@ remains deferred and is not implemented by these routes.
 
 ### Meeting lifecycle and accounting
 
-`active -> voting -> ended -> archived`. Writes to a `voting`, `ended`, or
-`archived` meeting are rejected with `409` (`MeetingClosedError`), except the
-closing workflow's own writes. Archiving an ended meeting is allowed;
-unarchiving restores public status `active` (the pre-archive state is not
-remembered).
+The underlying lifecycle is `active -> voting -> ended`; archive is an overlay
+represented by `archived_at` and public status `archived`. Writes to a `voting`,
+`ended`, or `archived` meeting are rejected with `409` (`MeetingClosedError`),
+except the closing workflow's own writes. Archiving an ended meeting is allowed;
+unarchiving removes the overlay and preserves the underlying state. It does not
+reopen an ended meeting.
 
 Paid inference is ledgered through `inference_events`, `Message.estimated_cost`,
 and `meeting.total_cost`. A failed ledger write is logged and never turns a
@@ -116,7 +124,7 @@ recovered-interruption state, not an automatic re-inference.
 | `GET /api/meetings/{meeting_id}/consensus` | observation | `Consensus[]` | — | — | Scoreboard source |
 | `GET /api/meetings/{meeting_id}/context-stats` | status | `{current_tokens,max_tokens,usage_percent,message_count,participant_count}` plus per-part detail when tiktoken resolves | — | `404` | `max_tokens` is the fixed 128000 budget; fallback is 4 chars/token and omits `message_tokens`/`system_tokens`/`agenda_tokens` |
 | `POST /api/meetings/{meeting_id}/archive` | command | `{success,message,status}` | — | `404`; `400` already archived; `409` closing in progress; `500` | Last-writer-wins archive overlay |
-| `POST /api/meetings/{meeting_id}/unarchive` | command | `{success,message,status}` | — | `404`; `400` not archived; `500` | Public status becomes `active` |
+| `POST /api/meetings/{meeting_id}/unarchive` | command | `{success,message,status}` | — | `404`; `400` not archived; `500` | Removes archive overlay; preserves underlying lifecycle state |
 | `DELETE /api/meetings/{meeting_id}` | command | `{success,message}` | — | `404`; `500`; `503` knowledge cleanup unavailable | Cascades meeting rows and records parent knowledge deletion before SQL delete |
 
 ### Meetings — compatibility adapters (`app/modules/meetings/presentation/compat_http.py`, tag `meetings`)

@@ -65,6 +65,8 @@ Every supported workflow uses declared ownership and public boundaries. Thin rou
 
 Next: [Upgrade rehearsal and architecture acceptance](spec-11-upgrade-and-architecture-acceptance.md).
 
+Forward ownership: guided replay was deferred from this cutover and is assigned to [Phase 3, Spec 12–19](roadmap-phase-3-hosted-guided-replay.md). The completion record below is historical production-cutover evidence, not replay acceptance. Earlier broad demo/credential wording is governed by the shared runtime contract.
+
 ## Completion record
 
 Spec-10 cutover is complete for the production workflows in scope:

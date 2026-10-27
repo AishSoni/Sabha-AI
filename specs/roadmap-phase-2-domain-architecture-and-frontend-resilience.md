@@ -15,7 +15,7 @@ Continue with **Spec 03 through Spec 11, in that order**, following the [ordered
 | [Spec 07: Durable turn queue and inference](spec-07-durable-turn-queue-and-inference.md) | Participant/configuration and operation persistence contracts | Durable queue, one execution pipeline, scoped observation |
 | [Spec 08: Closing, summaries, and accounting](spec-08-closing-summaries-and-accounting.md) | Queue accepted | Drain/cancel coordination, recoverable closing, atomic finalization, usage |
 | [Spec 09: Durable knowledge and redaction](spec-09-durable-knowledge-and-redaction.md) | Prior slices; explicit source-store/retention decision | Durable ready publication, live scoped retrieval, revocation/redaction/cleanup |
-| [Spec 10: Guided replay, feature cutover, and legacy removal](spec-10-feature-cutover-and-legacy-removal.md) | Persona, queue, closing, knowledge gates; validated fixed replay package | User-paced tutorial through the same UI/core, no writes/live effects, remaining screens migrated, caller-proven removal |
+| [Spec 10: Feature cutover and legacy ownership removal](spec-10-feature-cutover-and-legacy-removal.md) | Persona, queue, closing, knowledge gates | Remaining production screens migrated and caller-proven removal; guided replay explicitly deferred in its completion record |
 | [Spec 11: Upgrade and architecture acceptance](spec-11-upgrade-and-architecture-acceptance.md) | All feature gates | Fresh/upgrade/restore/deployment evidence and final acceptance |
 
 ## Shared references, not additional implementation phases
@@ -33,7 +33,9 @@ Retain FastAPI, Next.js/React, Supabase/Postgres, and Qdrant. Use anemic domain 
 
 React owns drafts; TanStack Query owns backend records; Zustand owns scoped UI/provisional observation only. A separate non-persisted credential capability owns unlocked material; query/cache identities distinguish live from replay and its package/workspace. Live AI turns queue server-side; user messages commit immediately within active admission; closing cancels pending turns and drains the executing turn. Missing transient credentials pause the same operation for re-provision, not operator-key fallback or repeated paid work. Upload acknowledgement is not readiness. Breaking API cuts are coordinated and migration-tested.
 
-**Still undecided:** the original-byte source-store adapter. The knowledge spec cannot begin implementation until the Supabase Storage versus persistent-filesystem decision, durability/retention, local operation, and backup/restore policy are recorded. Keeping Supabase for application records does not settle file storage.
+**Recorded decision:** Spec 09 selected Supabase Storage for original bytes, with durability/retention/local operation/backup policy in the [architecture reference](reference-architecture-contracts.md#decision-original-document-bytes-recorded-2026-10-spec-09). Do not reopen this as an undecided adapter gate. Real hosted verification remains separate from local/test evidence.
+
+**Forward ownership:** [Phase 3](roadmap-phase-3-hosted-guided-replay.md) owns the deferred guided replay in the same hosted app, effective database read hardening and the new shared-product integration fixes. Preserve Phase 2 completion records; they do not establish replay delivery or resolve Spec 11's conditional hosted checks.
 
 ## Mandatory TDD and evidence
 
