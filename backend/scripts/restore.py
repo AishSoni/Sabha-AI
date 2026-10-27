@@ -14,6 +14,7 @@ import inspect
 import io
 import json
 import subprocess
+from dataclasses import asdict, is_dataclass
 from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any, Callable
@@ -195,6 +196,19 @@ def _unresolved_cleanup(conn: psycopg.Connection) -> int:
     return int(row[0]) if row else 0
 
 
+def _json_safe(value: Any) -> Any:
+    """Normalize a callback result so a completion marker is always writable."""
+    if value is None or isinstance(value, (bool, int, float, str)):
+        return value
+    if isinstance(value, dict):
+        return {str(key): _json_safe(item) for key, item in value.items()}
+    if isinstance(value, (list, tuple, set)):
+        return [_json_safe(item) for item in value]
+    if is_dataclass(value) and not isinstance(value, type):
+        return _json_safe(asdict(value))
+    return str(value)
+
+
 def restore_backup(
     backup_dir: str | Path,
     database_url: str,
@@ -256,7 +270,7 @@ def restore_backup(
         "inserted_events": inserted,
         "replay": replay,
         "source_objects": restored_sources,
-        "cleanup": cleanup_result,
+        "cleanup": _json_safe(cleanup_result),
         "completed_at": datetime.now(timezone.utc).isoformat(),
     }
     if marker_path is not None:
