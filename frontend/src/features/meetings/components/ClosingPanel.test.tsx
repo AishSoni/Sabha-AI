@@ -15,6 +15,7 @@ import {
     type ScriptedFetch,
 } from '../../../../tests/fixtures/transport';
 import { LiveMeetingsRuntimeProvider } from '../runtime/live';
+import type { ClosingTextView } from '../model/closing-text';
 import { ClosingPanel } from './ClosingPanel';
 
 const MEETING_ID = 'meeting-close-1';
@@ -50,16 +51,28 @@ const receiptJson = {
 let scripted: ScriptedFetch;
 let queryClient: ReturnType<typeof makeQueryClient>;
 
-function renderPanel(
-    status: 'active' | 'voting' | 'ended' | 'archived' = 'voting'
+function panelElement(
+    status: 'active' | 'voting' | 'ended' | 'archived' = 'voting',
+    textProjection?: ClosingTextView | null
 ) {
-    return render(
+    return (
         <QueryClientProvider client={queryClient}>
             <LiveMeetingsRuntimeProvider>
-                <ClosingPanel meetingId={MEETING_ID} meetingStatus={status} />
+                <ClosingPanel
+                    meetingId={MEETING_ID}
+                    meetingStatus={status}
+                    textProjection={textProjection}
+                />
             </LiveMeetingsRuntimeProvider>
         </QueryClientProvider>
     );
+}
+
+function renderPanel(
+    status: 'active' | 'voting' | 'ended' | 'archived' = 'voting',
+    textProjection?: ClosingTextView | null
+) {
+    return render(panelElement(status, textProjection));
 }
 
 function postBodies(): unknown[] {
@@ -120,6 +133,143 @@ describe('closing panel observation', () => {
         expect(screen.getByText('Meeting ended')).toBeInTheDocument();
         expect(postBodies()).toHaveLength(0);
         expect(screen.queryByRole('button', { name: /Force End/ })).toBeNull();
+    });
+
+    it('renders one scoped recorded item and replaces it with canonical text', async () => {
+        scripted.enqueueJson(
+            200,
+            viewJson({
+                stage: 'voting',
+                summary: 'Snapshot summary that must stay hidden.',
+                summary_message_id: 'summary-1',
+                votes: [
+                    {
+                        participant_id: 'investor',
+                        participant_name: 'The Investor',
+                        vote: true,
+                        reason: 'Snapshot reason that must stay hidden.',
+                        status: 'completed',
+                    },
+                ],
+            })
+        );
+
+        const provisional: ClosingTextView = {
+            closingId: 'closing-1',
+            provenance: 'recorded-stream',
+            items: [
+                {
+                    closingId: 'closing-1',
+                    itemId: 'ballot:investor',
+                    kind: 'ballot',
+                    sequence: 1,
+                    text: 'Provisional reason',
+                    provisional: true,
+                    terminal: false,
+                    result: null,
+                    provenance: 'recorded-stream',
+                    subjectId: 'investor',
+                },
+                {
+                    closingId: 'closing-1',
+                    itemId: 'summary:summary-1',
+                    kind: 'summary',
+                    sequence: 2,
+                    text: 'Provisional brief',
+                    provisional: true,
+                    terminal: false,
+                    result: null,
+                    provenance: 'recorded-stream',
+                },
+            ],
+        };
+        const view = renderPanel('voting', provisional);
+
+        expect(await screen.findByText('Provisional reason')).toBeInTheDocument();
+        expect(screen.getByText('Provisional brief')).toBeInTheDocument();
+        expect(screen.queryByText(/Snapshot reason that must stay hidden/)).toBeNull();
+        expect(screen.queryByText(/Snapshot summary that must stay hidden/)).toBeNull();
+        expect(
+            document.querySelectorAll('[data-closing-item-id="ballot:investor"]')
+        ).toHaveLength(1);
+
+        view.rerender(
+            panelElement('voting', {
+                ...provisional,
+                items: [
+                    {
+                        ...provisional.items[0],
+                        sequence: 3,
+                        text: 'Canonical reason',
+                        provisional: false,
+                        terminal: true,
+                        result: 'yes',
+                    },
+                    {
+                        ...provisional.items[1],
+                        sequence: 4,
+                        text: 'Canonical brief',
+                        provisional: false,
+                        terminal: true,
+                        result: 'completed',
+                    },
+                ],
+            })
+        );
+
+        expect(screen.getByText('Canonical reason')).toBeInTheDocument();
+        expect(screen.getByText('Canonical brief')).toBeInTheDocument();
+        expect(screen.queryByText('Provisional reason')).toBeNull();
+        expect(screen.queryByText('Provisional brief')).toBeNull();
+        expect(
+            document.querySelectorAll('[data-closing-item-id="ballot:investor"]')
+        ).toHaveLength(1);
+        expect(
+            document.querySelector('[data-closing-item-id="ballot:investor"]')
+        ).toHaveAttribute('data-closing-text-state', 'terminal');
+    });
+
+    it('ignores a projection scoped to a different closing instead of showing snapshot text', async () => {
+        scripted.enqueueJson(
+            200,
+            viewJson({
+                stage: 'voting',
+                summary: 'Snapshot summary that must stay hidden.',
+                votes: [
+                    {
+                        participant_id: 'investor',
+                        participant_name: 'The Investor',
+                        vote: true,
+                        reason: 'Snapshot reason that must stay hidden.',
+                        status: 'completed',
+                    },
+                ],
+            })
+        );
+
+        renderPanel('voting', {
+            closingId: 'another-closing',
+            provenance: 'recorded-stream',
+            items: [
+                {
+                    closingId: 'another-closing',
+                    itemId: 'ballot:investor',
+                    kind: 'ballot',
+                    sequence: 1,
+                    text: 'Text from another closing',
+                    provisional: false,
+                    terminal: true,
+                    result: 'yes',
+                    provenance: 'recorded-stream',
+                    subjectId: 'investor',
+                },
+            ],
+        });
+
+        expect(await screen.findByText('The Investor')).toBeInTheDocument();
+        expect(screen.queryByText('Text from another closing')).toBeNull();
+        expect(screen.queryByText(/Snapshot reason that must stay hidden/)).toBeNull();
+        expect(screen.queryByText(/Snapshot summary that must stay hidden/)).toBeNull();
     });
 
     it('keeps an archived meeting read-only', async () => {

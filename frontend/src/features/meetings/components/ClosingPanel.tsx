@@ -37,12 +37,26 @@ import {
     type ClosingVote,
 } from '../api';
 import type { MeetingStatus } from '../api/decoders';
+import {
+    findClosingBallotText,
+    findClosingSummaryText,
+    snapshotClosingText,
+    type ClosingTextItem,
+    type ClosingTextView,
+} from '../model/closing-text';
 import { useMeetingsRuntime } from '../runtime/context';
+import { ClosingGeneratedText } from './ClosingGeneratedText';
 
 export interface ClosingPanelProps {
     meetingId: string;
     meetingStatus: MeetingStatus;
     summarySettings?: ClosingSummarySettings;
+    /**
+     * Spec 17 supplies recorded stream items here. When omitted, live polling
+     * keeps projecting the canonical snapshot; an explicit projection never
+     * falls back to snapshot prose.
+     */
+    textProjection?: ClosingTextView | null;
 }
 
 interface PendingIntent {
@@ -82,7 +96,13 @@ function voteLabel(vote: ClosingVote): string {
     return 'No vote';
 }
 
-function VoteRow({ vote }: { vote: ClosingVote }) {
+function VoteRow({
+    vote,
+    textItem,
+}: {
+    vote: ClosingVote;
+    textItem: ClosingTextItem | undefined;
+}) {
     const yes = vote.vote === true;
     const no = vote.vote === false;
     const pending = vote.status === 'pending';
@@ -137,9 +157,10 @@ function VoteRow({ vote }: { vote: ClosingVote }) {
                         <span className="text-xs text-zinc-500">{usageNote}</span>
                     ) : null}
                 </div>
-                {vote.reason ? (
-                    <p className="mt-0.5 text-xs text-zinc-500">{vote.reason}</p>
-                ) : null}
+                <ClosingGeneratedText
+                    item={textItem}
+                    className="mt-0.5 text-xs text-zinc-500"
+                />
                 {vote.error_message ? (
                     <p className="mt-0.5 text-xs text-amber-400">{vote.error_message}</p>
                 ) : null}
@@ -188,6 +209,7 @@ export function ClosingPanel({
     meetingId,
     meetingStatus,
     summarySettings,
+    textProjection,
 }: ClosingPanelProps) {
     const runtime = useMeetingsRuntime();
     const [confirmMode, setConfirmMode] = useState<ClosingMode | null>(null);
@@ -200,6 +222,17 @@ export function ClosingPanel({
     const abort = useAbortClosing(runtime);
 
     const closing = closingQuery.data;
+    const projection =
+        textProjection === undefined
+            ? closing
+                ? snapshotClosingText(closing)
+                : null
+            : textProjection &&
+                closing &&
+                textProjection.closingId === closing.closing_id
+              ? textProjection
+              : null;
+    const summaryText = projection ? findClosingSummaryText(projection) : undefined;
     const stage = closing?.stage ?? null;
     const status = closing?.meeting_status ?? meetingStatus;
     const archived = status === 'archived' || Boolean(closing?.archived);
@@ -425,19 +458,31 @@ export function ClosingPanel({
                         whether any proposal is approved.
                     </p>
                     {votes.map((vote) => (
-                        <VoteRow key={vote.participant_id} vote={vote} />
+                        <VoteRow
+                            key={vote.participant_id}
+                            vote={vote}
+                            textItem={
+                                projection
+                                    ? findClosingBallotText(
+                                          projection,
+                                          vote.participant_id
+                                      )
+                                    : undefined
+                            }
+                        />
                     ))}
                 </div>
             ) : null}
 
-            {closing?.summary ? (
+            {summaryText ? (
                 <Card id="closing-final-summary" className="border-zinc-800 bg-zinc-900/50 p-4">
                     <h5 className="mb-2 text-xs font-semibold uppercase tracking-wide text-zinc-500">
                         Final summary
                     </h5>
-                    <p className="whitespace-pre-wrap text-sm text-zinc-300">
-                        {closing.summary}
-                    </p>
+                    <ClosingGeneratedText
+                        item={summaryText}
+                        className="whitespace-pre-wrap text-sm text-zinc-300"
+                    />
                 </Card>
             ) : null}
 
