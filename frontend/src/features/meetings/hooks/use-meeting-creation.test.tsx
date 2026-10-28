@@ -159,6 +159,42 @@ describe('useMeetingCreation resume semantics', () => {
         expect(scripted.calls.filter((call) => call.input.endsWith('/documents/upload'))).toHaveLength(0);
     });
 
+    it('does not create, upload, or navigate again when the work set is already complete', async () => {
+        scripted.enqueueJson(201, MEETING);
+        const { result } = renderHook(() => useMeetingCreation(), { wrapper: Wrapper });
+
+        await act(async () => {
+            await result.current.createMeeting(CREATE_INPUT);
+        });
+        expect(result.current.navigationDone).toBe(true);
+        expect(push).toHaveBeenCalledTimes(1);
+
+        await act(async () => {
+            await result.current.createMeeting(CREATE_INPUT);
+            await result.current.retryUploads();
+        });
+
+        expect(scripted.calls.filter((call) => call.input === `${resolveApiBaseUrl()}/meetings`)).toHaveLength(1);
+        expect(scripted.calls.filter((call) => call.input.endsWith('/documents/upload'))).toHaveLength(0);
+        expect(push).toHaveBeenCalledTimes(1);
+        expect(result.current.isCreating).toBe(false);
+    });
+
+    it('coalesces a second submit that lands before the first render', async () => {
+        scripted.enqueueJson(201, MEETING);
+        const { result } = renderHook(() => useMeetingCreation(), { wrapper: Wrapper });
+
+        await act(async () => {
+            const first = result.current.createMeeting(CREATE_INPUT);
+            const second = result.current.createMeeting(CREATE_INPUT);
+            await Promise.all([first, second]);
+        });
+
+        expect(scripted.calls.filter((call) => call.input === `${resolveApiBaseUrl()}/meetings`)).toHaveLength(1);
+        expect(push).toHaveBeenCalledTimes(1);
+        expect(push).toHaveBeenCalledWith('/meetings/meeting-new-1');
+    });
+
     it('an all-success run navigates once after every file reached the server', async () => {
         scripted.enqueueJson(201, MEETING);
         scripted.enqueueJson(202, UPLOAD_OK);

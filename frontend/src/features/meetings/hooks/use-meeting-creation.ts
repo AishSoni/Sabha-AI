@@ -8,9 +8,10 @@
  *   retry never creates a clone;
  * - documents upload through the knowledge capability with explicit per-file
  *   staging so a failed upload never discards the created meeting;
- * - navigation happens once, only after every file reached the server.
+ * - navigation happens once, only after every staged file reached an
+ *   accepted receipt (or when there were no files to upload).
  */
-import { useState } from 'react';
+import { useRef, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { useCreateMeeting } from '../api/mutations';
 import { useRetryIngestion, useUploadMeetingDocument, type UploadReceipt } from '@/features/knowledge';
@@ -58,6 +59,19 @@ export function useMeetingCreation() {
     const [uploadError, setUploadError] = useState<string | null>(null);
     const [navigationDone, setNavigationDone] = useState(false);
 
+    // Refs, not render state, own the one-shot guarantees: a second click can
+    // land before React re-renders the disabled button.
+    const workInFlight = useRef(false);
+    const navigationStarted = useRef(false);
+    const retainedMeetingId = useRef<string | null>(null);
+
+    const navigateOnce = (meetingId: string) => {
+        if (navigationStarted.current) return;
+        navigationStarted.current = true;
+        setNavigationDone(true);
+        router.push(`/meetings/${meetingId}`);
+    };
+
     const stageFiles = (files: FileList | File[]) => {
         const incoming: MeetingUploadDraft[] = Array.from(files).map((file) => ({
             file,
@@ -75,12 +89,16 @@ export function useMeetingCreation() {
     };
 
     /**
-     * Uploads every file that has not reached the server yet; returns the
-     * file list attempted (for tests/telemetry).
+     * Uploads every file that has not reached the server yet. Returns true
+     * only when every staged file now has an accepted receipt: no files at
+     * all is a complete set, not an early exit.
      */
-    const runPendingUploads = async (meetingId: string) => {
+    const runPendingUploads = async (meetingId: string): Promise<boolean> => {
         const targets = uploads.filter((item) => item.status !== 'uploaded');
-        if (targets.length === 0) return;
+        if (targets.length === 0) {
+            setUploadError(null);
+            return true;
+        }
 
         setUploads((prev) =>
             prev.map((item) => (item.status !== 'uploaded' ? { ...item, status: 'uploading', error: null } : item))
@@ -118,23 +136,21 @@ export function useMeetingCreation() {
             setUploadError(
                 `${failedCount} of ${targets.length} files failed to upload. You can retry below; nothing was lost.`
             );
-            return;
+            return false;
         }
 
-        // Everything reached the server — navigate to the meeting once.
-        if (!navigationDone) {
-            setNavigationDone(true);
-            router.push(`/meetings/${meetingId}`);
-        }
+        return true;
     };
 
     const createMeeting = async (input: MeetingCreationInput): Promise<void> => {
+        if (workInFlight.current) return;
+        workInFlight.current = true;
         setIsCreating(true);
         setCreationError(null);
         try {
             // The meeting row exists exactly once: retries after a failed
             // upload resume from the retained id instead of creating a clone.
-            let meetingId = createdMeetingId;
+            let meetingId = createdMeetingId ?? retainedMeetingId.current;
             if (!meetingId) {
                 const meeting = await createMeetingMutation.mutateAsync({
                     name: input.agenda,
@@ -142,23 +158,34 @@ export function useMeetingCreation() {
                     personaIds: input.personaIds,
                 });
                 meetingId = meeting.id ?? null;
+                retainedMeetingId.current = meetingId;
                 setCreatedMeetingId(meetingId);
             }
-            await runPendingUploads(meetingId);
+            if (!meetingId) {
+                throw new Error('The meeting service did not return a meeting id.');
+            }
+
+            const everyFileAccepted = await runPendingUploads(meetingId);
+            if (everyFileAccepted) navigateOnce(meetingId);
         } catch (err) {
             console.error('Failed to create meeting:', err);
             setCreationError(`Failed to create the meeting: ${(err as Error).message}`);
         } finally {
+            workInFlight.current = false;
             setIsCreating(false);
         }
     };
 
     const retryUploads = async () => {
-        if (!createdMeetingId) return;
+        const meetingId = createdMeetingId ?? retainedMeetingId.current;
+        if (!meetingId || workInFlight.current) return;
+        workInFlight.current = true;
         setIsCreating(true);
         try {
-            await runPendingUploads(createdMeetingId);
+            const everyFileAccepted = await runPendingUploads(meetingId);
+            if (everyFileAccepted) navigateOnce(meetingId);
         } finally {
+            workInFlight.current = false;
             setIsCreating(false);
         }
     };
