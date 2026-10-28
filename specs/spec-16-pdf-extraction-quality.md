@@ -102,6 +102,7 @@ and this record follow in a separate commit.
 | `venv\Scripts\python.exe -m pytest tests\regression\test_knowledge_routes.py tests\regression\test_turn_knowledge_lifecycle.py -q` | `backend/` | **20 passed**, 3.12 s |
 | `venv\Scripts\python.exe -m pytest tests\architecture -q` | `backend/` | **32 passed**, 5.87 s |
 | `venv\Scripts\python.exe -m pytest tests\integration\test_database_permissions.py tests\integration\test_permission_inventory.py -q` | `backend/` | **12 passed**, 28.95 s; confirms the pre-isolation fixture still includes the baseline |
+| `venv\Scripts\python.exe -m pytest -q --durations=10` (full suite) | `backend/` | **656 passed**, 0 failed, 23 warnings, 705.66 s |
 | `venv\Scripts\python.exe -m pytest tests\integration\test_replay_surface.py::test_replay_only_startup_never_constructs_the_live_composition -q` | `backend/` | **1 passed**, 1.04 s |
 | `venv\Scripts\python.exe -m scripts.pdf_extraction_probe` | `backend/` | `"status": "ok"`; pypdf 6.6.2, pypdfium2 5.14.0, Pillow 13.0.0, rapidocr 3.10.0, onnxruntime 1.31.1, psutil 7.2.2; bundled models present; OCR probe score 1.0 |
 | `venv\Scripts\python.exe scripts\pdf_extraction_benchmark.py` | `backend/` | `text.pdf` plain text, `letter-spaced.pdf` repaired to usable text, `image-only.pdf` OCR mean score 0.993, `mixed.pdf` text/OCR/text, `non-latin.pdf` rejected |
@@ -116,9 +117,8 @@ developer-only files were used as evidence, never as test dependencies.
 
 ### Deliberate scope and outstanding gates
 
-- The full 630-test backend suite was not re-run for this record; focused
-  parser, ingestion, lifecycle, contract, migration, architecture and replay
-  suites were run instead. The full suite remains an operator/CI gate.
+- The full backend suite passes: **656 passed**, 0 failed, 23 pre-existing
+  warnings, 705.66 s. No test was skipped for this result.
 - The probe and benchmark were executed on the native Windows acceptance host.
   A hosted worker must repeat both after installing the pinned wheels and record
   the result. This record does not claim hosted OCR throughput, memory headroom
