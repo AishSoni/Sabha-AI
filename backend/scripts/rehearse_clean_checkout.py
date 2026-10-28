@@ -188,7 +188,7 @@ def backend_smoke(root: Path, *, python: str) -> dict[str, object]:
         timeout=120,
     )
     result = json.loads(completed.stdout.strip())
-    if result.get("paths") != 40:
+    if result.get("paths") != 46:
         raise RehearsalError(f"unexpected OpenAPI path count: {result}")
     if not result.get("worker_main"):
         raise RehearsalError("worker._main is not callable")

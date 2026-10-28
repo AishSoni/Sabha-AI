@@ -211,7 +211,7 @@ Order of operations:
    commit in one transaction; the whole run is serialized by a Postgres
    advisory lock, so a second deployer waits instead of interleaving DDL.
 5. Start the API, confirm `/health` and one authenticated-free read, then start
-   the worker. Confirm `OpenAPI matches ... (40 paths)`:
+   the worker. Confirm `OpenAPI matches ... (46 paths)`:
    ```powershell
    python -m scripts.export_openapi --check
    ```
