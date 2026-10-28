@@ -300,6 +300,68 @@ describe('recorded replay runtime', () => {
         ).toBe(liveReadsBefore);
     });
 
+    it('cannot repopulate a new epoch with a late recorded read', async () => {
+        let resolveStale: (response: Response) => void = () => {};
+        const stale = new Promise<Response>((resolve) => {
+            resolveStale = resolve;
+        });
+        let sessions = 0;
+        let disagreementReads = 0;
+        const calls: string[] = [];
+        vi.stubGlobal(
+            'fetch',
+            vi.fn(async (input: unknown) => {
+                const url = String(input);
+                calls.push(url);
+                if (url === `${API}/replay/session`) {
+                    sessions += 1;
+                    return json(200, sessionWire(sessions));
+                }
+                if (url.endsWith(`/replay/meetings/${MEETING_ID}`)) {
+                    return json(200, meetingWire('Recorded product review'));
+                }
+                if (url.endsWith(`/replay/meetings/${MEETING_ID}/disagreements`)) {
+                    disagreementReads += 1;
+                    if (disagreementReads === 1) return stale;
+                    return json(200, []);
+                }
+                if (url.endsWith(`/replay/meetings/${MEETING_ID}/consensus`)) {
+                    return json(200, []);
+                }
+                throw new Error(`Unexpected replay request: ${url}`);
+            })
+        );
+        renderReplay();
+        expect(await screen.findByText('Recorded product review')).toBeInTheDocument();
+
+        fireEvent.click(screen.getByRole('tab', { name: /Disagreements/ }));
+        fireEvent.click(screen.getByRole('button', { name: 'Restart' }));
+        await waitFor(() =>
+            expect(calls.filter((url) => url === `${API}/replay/session`).length).toBe(2)
+        );
+
+        resolveStale(
+            json(200, [
+                {
+                    id: '44444444-4444-4444-8444-444444444444',
+                    meeting_id: MEETING_ID,
+                    source_ai_id: PARTICIPANT_ID,
+                    target_name: 'You',
+                    topic: 'Stale epoch disagreement',
+                    reasoning: 'This read belongs to the replaced replay epoch.',
+                    severity: 3,
+                    status: 'open',
+                    created_at: '2026-10-20T10:02:00.000000Z',
+                },
+            ])
+        );
+
+        await waitFor(() =>
+            expect(screen.getByText('Recorded session 2')).toBeInTheDocument()
+        );
+        expect(screen.queryByText('Stale epoch disagreement')).not.toBeInTheDocument();
+    });
+
     it('shows an honest unavailable state when replay is not configured', async () => {
         vi.stubGlobal(
             'fetch',
