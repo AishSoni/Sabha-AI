@@ -77,7 +77,9 @@ SCHEMA_FILES = [
 # to reproduce the inherited-PUBLIC leak that the forward migration closes,
 # independently of the current full history.
 PRE_ISOLATION_SCHEMA_FILES = [
-    path for path in SCHEMA_FILES if path.name < "030_"
+    path
+    for path in SCHEMA_FILES
+    if path.name == "supabase_schema.sql" or path.name < "030_"
 ]
 
 # Phase 1 shipped before migration tracking existed. The baseline plus
