@@ -74,7 +74,7 @@ def _ensure_group_role(conn: psycopg.Connection, role: str) -> None:
     )
 
 
-def _ensure_login_role(conn: psycopg.Connection, role: str) -> None:
+def _ensure_login_role(conn: psycopg.Connection, role: str, group: str = READER_ROLE) -> None:
     if not role:
         return
     if not _role_exists(conn, role):
@@ -89,7 +89,7 @@ def _ensure_login_role(conn: psycopg.Connection, role: str) -> None:
     )
     conn.execute(
         sql.SQL("GRANT {} TO {}").format(
-            sql.Identifier(READER_ROLE), sql.Identifier(role)
+            sql.Identifier(group), sql.Identifier(role)
         )
     )
 
@@ -214,6 +214,7 @@ def provision(
     conn: psycopg.Connection,
     *,
     reader_login: str | None = DEFAULT_READER_LOGIN,
+    provisioner_login: str | None = None,
     replay_schema: str = DEFAULT_REPLAY_SCHEMA,
 ) -> dict[str, Any]:
     """Create or repair the replay role/schema contract. Idempotent."""
@@ -225,12 +226,26 @@ def provision(
     if reader_login:
         if not reader_login.replace("_", "").isalnum():
             raise ReplayRoleError(f"invalid reader login name: {reader_login!r}")
-        _ensure_login_role(conn, reader_login)
+        _ensure_login_role(conn, reader_login, READER_ROLE)
+    if provisioner_login:
+        if not provisioner_login.replace("_", "").isalnum():
+            raise ReplayRoleError(
+                f"invalid provisioner login name: {provisioner_login!r}"
+            )
+        if provisioner_login == reader_login:
+            raise ReplayRoleError("reader and provisioner logins must be separate")
+        _ensure_login_role(conn, provisioner_login, PROVISIONER_ROLE)
 
     _assert_not_privileged_member(conn, READER_ROLE)
     _assert_not_privileged_member(conn, PROVISIONER_ROLE)
     if reader_login:
         _assert_not_privileged_member(conn, reader_login, privileges=("service_role", "authenticator", "postgres", "supabase_admin"))
+    if provisioner_login:
+        _assert_not_privileged_member(
+            conn,
+            provisioner_login,
+            privileges=("service_role", "authenticator", "postgres", "supabase_admin"),
+        )
 
     schema_ident = sql.Identifier(replay_schema)
     conn.execute(sql.SQL("CREATE SCHEMA IF NOT EXISTS {}").format(schema_ident))
@@ -272,11 +287,14 @@ def provision(
         _deny_live_access(conn, role)
     if reader_login:
         _deny_live_access(conn, reader_login)
+    if provisioner_login:
+        _deny_live_access(conn, provisioner_login)
 
     return {
         "reader_role": READER_ROLE,
         "provisioner_role": PROVISIONER_ROLE,
         "reader_login": reader_login or None,
+        "provisioner_login": provisioner_login or None,
         "replay_schema": replay_schema,
         "owner": owner,
     }
@@ -286,6 +304,7 @@ def check(
     conn: psycopg.Connection,
     *,
     reader_login: str | None = DEFAULT_READER_LOGIN,
+    provisioner_login: str | None = None,
     replay_schema: str = DEFAULT_REPLAY_SCHEMA,
 ) -> list[str]:
     """Return contract violations without changing anything."""
@@ -348,6 +367,29 @@ def check(
                     "SELECT pg_has_role(%s, %s, 'MEMBER')", (reader_login, group)
                 ).fetchone()[0]:
                     issues.append(f"{reader_login} is a member of {group}")
+
+    if provisioner_login:
+        if not _role_exists(conn, provisioner_login):
+            issues.append(f"missing provisioner login role {provisioner_login}")
+        else:
+            if not conn.execute(
+                "SELECT pg_has_role(%s, %s, 'MEMBER')",
+                (provisioner_login, PROVISIONER_ROLE),
+            ).fetchone()[0]:
+                issues.append(f"{provisioner_login} is not a member of {PROVISIONER_ROLE}")
+            if reader_login and conn.execute(
+                "SELECT pg_has_role(%s, %s, 'MEMBER')",
+                (provisioner_login, READER_ROLE),
+            ).fetchone()[0]:
+                issues.append(
+                    f"{provisioner_login} must not inherit the reader group"
+                )
+            for group in ("service_role", "authenticator"):
+                if _role_exists(conn, group) and conn.execute(
+                    "SELECT pg_has_role(%s, %s, 'MEMBER')",
+                    (provisioner_login, group),
+                ).fetchone()[0]:
+                    issues.append(f"{provisioner_login} is a member of {group}")
     return issues
 
 
@@ -362,6 +404,11 @@ def main(argv: list[str] | None = None) -> int:
         "--reader-login",
         default=DEFAULT_READER_LOGIN,
         help="optional LOGIN role to create and add to the reader group",
+    )
+    parser.add_argument(
+        "--provisioner-login",
+        default="",
+        help="optional LOGIN role to create and add to the provisioner group",
     )
     parser.add_argument(
         "--replay-schema",
@@ -385,6 +432,7 @@ def main(argv: list[str] | None = None) -> int:
                 issues = check(
                     conn,
                     reader_login=args.reader_login,
+                    provisioner_login=args.provisioner_login or None,
                     replay_schema=args.replay_schema,
                 )
                 print(json.dumps({"ok": not issues, "issues": issues}, indent=2))
@@ -392,6 +440,7 @@ def main(argv: list[str] | None = None) -> int:
             summary = provision(
                 conn,
                 reader_login=args.reader_login,
+                provisioner_login=args.provisioner_login or None,
                 replay_schema=args.replay_schema,
             )
             print(json.dumps({"ok": True, **summary}, indent=2))

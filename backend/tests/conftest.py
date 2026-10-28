@@ -71,6 +71,7 @@ SCHEMA_FILES = [
     BACKEND_ROOT / "migrations" / "029_internal_table_rls.sql",
     BACKEND_ROOT / "migrations" / "030_database_read_isolation.sql",
     BACKEND_ROOT / "migrations" / "031_pdf_extraction_provenance.sql",
+    BACKEND_ROOT / "migrations" / "032_replay_package.sql",
 ]
 
 # The chain immediately before Spec 12's isolation migration. Tests use this
@@ -186,6 +187,24 @@ def pg_server():
     yield server
 
 
+def _provision_replay_roles(conn) -> None:
+    """Cluster roles must exist before migration 032 applies.
+
+    Roles are cluster-level, so provisioning is idempotent across the
+    disposable databases; the replay schema itself is per-database.
+    """
+    from scripts.replay_roles import provision
+
+    provision(conn)
+
+
+def _apply_schema(conn, schema_files) -> None:
+    conn.execute(AUTH_STUB_SQL)
+    _provision_replay_roles(conn)
+    for path in schema_files:
+        conn.execute(path.read_text(encoding="utf-8"))
+
+
 @pytest.fixture()
 def disposable_db(pg_server):
     """Create a throwaway database, apply auth stub + full current schema, drop it after."""
@@ -197,8 +216,7 @@ def disposable_db(pg_server):
 
     db = DisposableDb(_uri_for_database(base_uri, name), name)
     with db.connect() as conn:
-        for sql in (AUTH_STUB_SQL, *[p.read_text(encoding="utf-8") for p in SCHEMA_FILES]):
-            conn.execute(sql)
+        _apply_schema(conn, SCHEMA_FILES)
 
     try:
         yield db
@@ -220,8 +238,7 @@ def _make_schema_db(pg_server, schema_files):
 
     db = DisposableDb(_uri_for_database(base_uri, name), name)
     with db.connect() as conn:
-        for sql in (AUTH_STUB_SQL, *[p.read_text(encoding="utf-8") for p in schema_files]):
-            conn.execute(sql)
+        _apply_schema(conn, schema_files)
     return db, base_uri
 
 
