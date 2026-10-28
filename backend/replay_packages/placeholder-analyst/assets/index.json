@@ -1,0 +1,18 @@
+{
+  "assets": [
+    {
+      "asset_id": "brief",
+      "path": "synthetic-issuer-brief.md",
+      "media_type": "text/markdown",
+      "sha256": "6cc4a95f1019fd4c53ecd9abc90b6c058f77dd6bdd1a25b36a518232dca4b4f7",
+      "size": 351,
+      "locator": "package:assets/synthetic-issuer-brief.md",
+      "source": "synthetic fixture authored for the replay slice",
+      "capture_date": "2026-01-15",
+      "rights": "synthetic demo content; no third-party rights",
+      "authored": true,
+      "public_demo": true,
+      "extraction": null
+    }
+  ]
+}

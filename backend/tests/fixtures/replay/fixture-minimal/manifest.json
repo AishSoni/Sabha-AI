@@ -1,0 +1,26 @@
+{
+  "package_id": "fixture-minimal",
+  "version": "1",
+  "schema_version": 1,
+  "read_version": 1,
+  "event_version": 1,
+  "title": "Fixture minimal v1",
+  "as_of": "2026-01-15",
+  "content_sha256": "a17dad569249af149a7b45d0391d243924c9b77bdafa89b4358864e9bdb4ab00",
+  "meeting_id": "11111111-1111-4111-8111-111111111111",
+  "initial_checkpoint": "checkpoint-initial",
+  "checkpoints": [
+    "checkpoint-initial"
+  ],
+  "tapes": [],
+  "closing_tapes": [],
+  "retrieval": [],
+  "provenance": {
+    "kind": "recorded",
+    "authored": true,
+    "synthetic": true
+  },
+  "label": "Recorded placeholder",
+  "intents": [],
+  "beats": []
+}

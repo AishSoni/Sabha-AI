@@ -1,0 +1,115 @@
+{
+  "checkpoint_id": "checkpoint-initial",
+  "ordinal": 0,
+  "phase": "initial",
+  "meeting_id": "11111111-1111-4111-8111-111111111111",
+  "reads": {
+    "meeting": {
+      "id": "11111111-1111-4111-8111-111111111111",
+      "name": "Recorded placeholder: synthetic credit review",
+      "agenda": "Assess a synthetic issuer's coverage and liquidity. Placeholder content only; the outcome is a research checklist.",
+      "user_id": null,
+      "status": "active",
+      "total_cost": 0.0,
+      "created_at": "2026-01-15T10:00:00Z",
+      "participants": [
+        {
+          "id": "22222222-2222-4222-8222-222222222222",
+          "meeting_id": "11111111-1111-4111-8111-111111111111",
+          "name": "The Credit Analyst",
+          "role": "Credit Analyst",
+          "system_prompt": "You are a recorded placeholder participant focused on synthetic credit analysis. You never present placeholder content as advice.",
+          "provider_config": {
+            "provider": "recorded",
+            "model": "recorded"
+          },
+          "color": "#6366f1",
+          "persona_id": null,
+          "stack_ids": [],
+          "created_at": "2026-01-15T10:00:00Z",
+          "generation_policy": {}
+        }
+      ],
+      "messages": []
+    },
+    "meetings": [
+      {
+        "id": "11111111-1111-4111-8111-111111111111",
+        "name": "Recorded placeholder: synthetic credit review",
+        "agenda": "Assess a synthetic issuer's coverage and liquidity. Placeholder content only; the outcome is a research checklist.",
+        "user_id": null,
+        "status": "active",
+        "total_cost": 0.0,
+        "created_at": "2026-01-15T10:00:00Z",
+        "participants": [
+          {
+            "id": "22222222-2222-4222-8222-222222222222",
+            "meeting_id": "11111111-1111-4111-8111-111111111111",
+            "name": "The Credit Analyst",
+            "role": "Credit Analyst",
+            "system_prompt": "You are a recorded placeholder participant focused on synthetic credit analysis. You never present placeholder content as advice.",
+            "provider_config": {
+              "provider": "recorded",
+              "model": "recorded"
+            },
+            "color": "#6366f1",
+            "persona_id": null,
+            "stack_ids": [],
+            "created_at": "2026-01-15T10:00:00Z",
+            "generation_policy": {}
+          }
+        ],
+        "messages": []
+      }
+    ],
+    "disagreements": [],
+    "consensus": [],
+    "context_stats": {
+      "current_tokens": 1200,
+      "max_tokens": 128000,
+      "usage_percent": 0.9,
+      "message_tokens": 0,
+      "system_tokens": 1100,
+      "agenda_tokens": 100,
+      "message_count": 0,
+      "participant_count": 1
+    },
+    "documents": [],
+    "closing": {
+      "meeting_id": "11111111-1111-4111-8111-111111111111",
+      "meeting_status": "active",
+      "archived": false,
+      "closing_id": null,
+      "request_key": null,
+      "mode": null,
+      "stage": null,
+      "failed_from_stage": null,
+      "votes": [],
+      "summary": null,
+      "summary_message_id": null,
+      "error": null,
+      "retryable": false,
+      "abortable": false,
+      "created_at": null,
+      "updated_at": null,
+      "completed_at": null
+    },
+    "operations": [],
+    "safe_config": {
+      "participants": [
+        {
+          "participant_id": "22222222-2222-4222-8222-222222222222",
+          "name": "The Credit Analyst",
+          "role": "Credit Analyst",
+          "stack_ids": [],
+          "provider": "recorded",
+          "model": "recorded"
+        }
+      ],
+      "settings": {
+        "runtime": "recorded",
+        "notice": "Placeholder replay package; not live research."
+      }
+    }
+  }
+}

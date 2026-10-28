@@ -1,0 +1,168 @@
+{
+  "checkpoint_id": "checkpoint-active",
+  "ordinal": 1,
+  "phase": "active",
+  "meeting_id": "11111111-1111-4111-8111-111111111111",
+  "reads": {
+    "meeting": {
+      "id": "11111111-1111-4111-8111-111111111111",
+      "name": "Recorded placeholder: synthetic credit review",
+      "agenda": "Assess a synthetic issuer's coverage and liquidity. Placeholder content only; the outcome is a research checklist.",
+      "user_id": null,
+      "status": "active",
+      "total_cost": 0.0,
+      "created_at": "2026-01-15T10:00:00Z",
+      "participants": [
+        {
+          "id": "22222222-2222-4222-8222-222222222222",
+          "meeting_id": "11111111-1111-4111-8111-111111111111",
+          "name": "The Credit Analyst",
+          "role": "Credit Analyst",
+          "system_prompt": "You are a recorded placeholder participant focused on synthetic credit analysis. You never present placeholder content as advice.",
+          "provider_config": {
+            "provider": "recorded",
+            "model": "recorded"
+          },
+          "color": "#6366f1",
+          "persona_id": null,
+          "stack_ids": [],
+          "created_at": "2026-01-15T10:00:00Z",
+          "generation_policy": {}
+        }
+      ],
+      "messages": [
+        {
+          "id": "aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa",
+          "meeting_id": "11111111-1111-4111-8111-111111111111",
+          "content": "Please assess the synthetic issuer brief and list what you would verify.",
+          "sender_type": "user",
+          "sender_id": null,
+          "sender_name": "Director",
+          "citations": [],
+          "tool_artifacts": null,
+          "thinking_content": null,
+          "estimated_cost": 0.0,
+          "effective_generation": null,
+          "sequence": 0,
+          "request_key": "director-brief-1",
+          "operation_id": null,
+          "created_at": "2026-01-15T10:00:05Z"
+        }
+      ]
+    },
+    "meetings": [
+      {
+        "id": "11111111-1111-4111-8111-111111111111",
+        "name": "Recorded placeholder: synthetic credit review",
+        "agenda": "Assess a synthetic issuer's coverage and liquidity. Placeholder content only; the outcome is a research checklist.",
+        "user_id": null,
+        "status": "active",
+        "total_cost": 0.0,
+        "created_at": "2026-01-15T10:00:00Z",
+        "participants": [
+          {
+            "id": "22222222-2222-4222-8222-222222222222",
+            "meeting_id": "11111111-1111-4111-8111-111111111111",
+            "name": "The Credit Analyst",
+            "role": "Credit Analyst",
+            "system_prompt": "You are a recorded placeholder participant focused on synthetic credit analysis. You never present placeholder content as advice.",
+            "provider_config": {
+              "provider": "recorded",
+              "model": "recorded"
+            },
+            "color": "#6366f1",
+            "persona_id": null,
+            "stack_ids": [],
+            "created_at": "2026-01-15T10:00:00Z",
+            "generation_policy": {}
+          }
+        ],
+        "messages": []
+      }
+    ],
+    "disagreements": [],
+    "consensus": [],
+    "context_stats": {
+      "current_tokens": 1480,
+      "max_tokens": 128000,
+      "usage_percent": 1.2,
+      "message_tokens": 280,
+      "system_tokens": 1100,
+      "agenda_tokens": 100,
+      "message_count": 1,
+      "participant_count": 1
+    },
+    "documents": [
+      {
+        "id": "33333333-3333-4333-8333-333333333333",
+        "file_name": "synthetic-issuer-brief.md",
+        "file_type": "markdown",
+        "file_size_bytes": 351,
+        "chunk_count": 1,
+        "qdrant_collection": null,
+        "status": "ready",
+        "error_message": null,
+        "created_at": "2026-01-15T10:00:00Z",
+        "meeting_id": "11111111-1111-4111-8111-111111111111",
+        "persona_id": null,
+        "stack_id": null,
+        "revision_id": "44444444-4444-4444-8444-444444444444",
+        "revision_state": "ready",
+        "operation_id": "55555555-5555-4555-8555-555555555555"
+      }
+    ],
+    "closing": {
+      "meeting_id": "11111111-1111-4111-8111-111111111111",
+      "meeting_status": "active",
+      "archived": false,
+      "closing_id": null,
+      "request_key": null,
+      "mode": null,
+      "stage": null,
+      "failed_from_stage": null,
+      "votes": [],
+      "summary": null,
+      "summary_message_id": null,
+      "error": null,
+      "retryable": false,
+      "abortable": false,
+      "created_at": null,
+      "updated_at": null,
+      "completed_at": null
+    },
+    "operations": [
+      {
+        "operation_id": "66666666-6666-4666-8666-666666666666",
+        "meeting_id": "11111111-1111-4111-8111-111111111111",
+        "participant_id": "22222222-2222-4222-8222-222222222222",
+        "request_key": "turn-credit-analyst-1",
+        "status": "executing",
+        "admission": "unrestricted",
+        "queue_position": 0,
+        "created_at": "2026-01-15T10:00:05Z",
+        "started_at": "2026-01-15T10:00:05Z",
+        "completed_at": null,
+        "final_message_id": null,
+        "cancel_requested": false,
+        "error": null,
+        "effective_generation": null
+      }
+    ],
+    "safe_config": {
+      "participants": [
+        {
+          "participant_id": "22222222-2222-4222-8222-222222222222",
+          "name": "The Credit Analyst",
+          "role": "Credit Analyst",
+          "stack_ids": [],
+          "provider": "recorded",
+          "model": "recorded"
+        }
+      ],
+      "settings": {
+        "runtime": "recorded",
+        "notice": "Placeholder replay package; not live research."
+      }
+    }
+  }
+}

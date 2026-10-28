@@ -1,0 +1,97 @@
+{
+  "tape_id": "tape-credit-analyst",
+  "meeting_id": "11111111-1111-4111-8111-111111111111",
+  "operation_id": "66666666-6666-4666-8666-666666666666",
+  "participant_id": "22222222-2222-4222-8222-222222222222",
+  "request_key": "turn-credit-analyst-1",
+  "initial_checkpoint": "checkpoint-active",
+  "completed_checkpoint": "checkpoint-completed",
+  "events": [
+    {
+      "event_id": "evt-1",
+      "sequence": 1,
+      "type": "tool_call",
+      "delay_ms": 120,
+      "payload": {
+        "invocation_id": "inv-1",
+        "call_id": "call-1",
+        "tool_name": "search_knowledge_base",
+        "arguments": {
+          "query": "synthetic issuer coverage and liquidity"
+        }
+      }
+    },
+    {
+      "event_id": "evt-2",
+      "sequence": 2,
+      "type": "tool_result",
+      "delay_ms": 180,
+      "payload": {
+        "invocation_id": "inv-1",
+        "call_id": "call-1",
+        "result": {
+          "retrieval_key": "retrieval-credit-analyst",
+          "hits": 1
+        },
+        "is_error": false
+      }
+    },
+    {
+      "event_id": "evt-3",
+      "sequence": 3,
+      "type": "citation",
+      "delay_ms": 80,
+      "payload": {
+        "source": "meeting-document",
+        "title": "Synthetic issuer brief",
+        "url": null,
+        "snippet": "Illustrative coverage ratio: 1.8x and liquidity buffer: 12% of obligations. The recording requires cash-flow verification before any conclusion."
+      }
+    },
+    {
+      "event_id": "evt-4",
+      "sequence": 4,
+      "type": "text",
+      "delay_ms": 0,
+      "payload": {
+        "content": "Placeholder recording. "
+      }
+    },
+    {
+      "event_id": "evt-5",
+      "sequence": 5,
+      "type": "text",
+      "delay_ms": 140,
+      "payload": {
+        "content": "The synthetic brief shows coverage of 1.8x and a 12% liquidity buffer. "
+      }
+    },
+    {
+      "event_id": "evt-6",
+      "sequence": 6,
+      "type": "text",
+      "delay_ms": 140,
+      "payload": {
+        "content": "I would verify the underlying cash flow before relying on either number. "
+      }
+    },
+    {
+      "event_id": "evt-7",
+      "sequence": 7,
+      "type": "text",
+      "delay_ms": 140,
+      "payload": {
+        "content": "This is a research checklist, not a recommendation."
+      }
+    },
+    {
+      "event_id": "evt-8",
+      "sequence": 8,
+      "type": "done",
+      "delay_ms": 60,
+      "payload": {
+        "message_id": "77777777-7777-4777-8777-777777777777"
+      }
+    }
+  ]
+}
