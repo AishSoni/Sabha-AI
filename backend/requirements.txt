@@ -16,9 +16,16 @@ psycopg[binary]>=3.1.0
 qdrant-client>=1.16,<2
 
 # RAG Pipeline - Document Parsing
-pypdf>=3.17.0
+pypdf>=6.0.0,<7
 python-docx>=1.1.0
 openpyxl>=3.1.0
+
+# RAG Pipeline - Bounded PDF OCR fallback (see docs/PDF_EXTRACTION.md)
+pypdfium2>=5.0.0,<6
+Pillow>=13.0.0,<14
+rapidocr==3.10.0
+onnxruntime==1.31.1
+psutil>=7.0.0,<8
 
 # RAG Pipeline - Text Chunking
 langchain-text-splitters>=0.0.1
