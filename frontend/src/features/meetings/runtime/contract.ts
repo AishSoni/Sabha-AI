@@ -234,6 +234,7 @@ export interface MeetingsRuntimeSlots {
     documentPanel?: ComponentType<{ meetingId: string }>;
     summaryPanel?: ComponentType<{ meeting: MeetingWithParticipants }>;
     participantAction?: ComponentType<ParticipantActionProps>;
+    directorAction?: ComponentType;
 }
 
 export interface MeetingsPresentation {

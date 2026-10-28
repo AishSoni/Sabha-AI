@@ -1,10 +1,32 @@
 'use client';
 
+import { useEffect, useState } from 'react';
 import Link from 'next/link';
 import { Users, MessageSquare, Settings, ArrowRight, Sparkles, BookOpen } from 'lucide-react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 
 export default function HomePage() {
+  const [experience, setExperience] = useState<string | null>(null);
+  const [ready, setReady] = useState(false);
+
+  useEffect(() => {
+    try {
+      setExperience(window.localStorage.getItem('sabha:experience'));
+    } catch {
+      setExperience(null);
+    }
+    setReady(true);
+  }, []);
+
+  const choose = (value: 'live' | 'guided') => {
+    setExperience(value);
+    try {
+      window.localStorage.setItem('sabha:experience', value);
+    } catch {
+      // A preference is optional; the live app remains usable without storage.
+    }
+  };
+
   return (
     <div className="min-h-screen bg-gradient-to-br from-zinc-950 via-zinc-900 to-zinc-950">
       {/* Header */}
@@ -19,6 +41,17 @@ export default function HomePage() {
               <p className="text-xs text-zinc-500">AI Advisory Board</p>
             </div>
           </div>
+          <nav className="flex items-center gap-4 text-sm">
+            <Link href="/meetings" className="text-zinc-400 hover:text-white">
+              Live
+            </Link>
+            <Link
+              href="/demo"
+              className="rounded-lg border border-indigo-800 px-3 py-1.5 text-indigo-300 hover:bg-indigo-950/40"
+            >
+              Guided replay
+            </Link>
+          </nav>
         </div>
       </header>
 
@@ -33,6 +66,39 @@ export default function HomePage() {
             Create meeting rooms, invite AI personas, and facilitate insightful discussions.
           </p>
         </div>
+
+        {/* First-visit choice */}
+        {ready && !experience ? (
+          <section className="mb-10 rounded-2xl border border-indigo-900/60 bg-indigo-950/20 p-6">
+            <h3 className="text-lg font-semibold text-white">How would you like to start?</h3>
+            <p className="mt-1 text-sm text-zinc-400">
+              You can switch at any time. The guided replay is a prepared historical
+              journey; the live workspace uses your own meetings and knowledge.
+            </p>
+            <div className="mt-4 grid gap-3 md:grid-cols-2">
+              <Link
+                href="/meetings/new"
+                onClick={() => choose('live')}
+                className="rounded-xl border border-zinc-700 bg-zinc-900/60 p-4 hover:border-indigo-500/60"
+              >
+                <p className="font-medium text-white">Set up live</p>
+                <p className="mt-1 text-sm text-zinc-400">
+                  Create a meeting with your own roster and documents.
+                </p>
+              </Link>
+              <Link
+                href="/demo"
+                onClick={() => choose('guided')}
+                className="rounded-xl border border-indigo-700 bg-indigo-950/40 p-4 hover:border-indigo-500"
+              >
+                <p className="font-medium text-white">Guided replay</p>
+                <p className="mt-1 text-sm text-zinc-400">
+                  Walk through a prepared historical bond meeting, step by step.
+                </p>
+              </Link>
+            </div>
+          </section>
+        ) : null}
 
         {/* Navigation Cards */}
         <div className="grid md:grid-cols-2 lg:grid-cols-4 gap-6">

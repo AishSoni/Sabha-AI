@@ -84,6 +84,7 @@ import { ClosingPanel } from './ClosingPanel';
 
 export interface MeetingRoomProps {
     meetingId: string;
+    initialTab?: string;
 }
 
 const TERMINAL_STATUSES = ['completed', 'failed', 'interrupted', 'cancelled'];
@@ -92,7 +93,7 @@ function isTerminal(status: string): boolean {
     return TERMINAL_STATUSES.includes(status);
 }
 
-export function MeetingRoom({ meetingId }: MeetingRoomProps) {
+export function MeetingRoom({ meetingId, initialTab }: MeetingRoomProps) {
     const runtime = useMeetingsRuntime();
     const meetingQuery = useRuntimeMeeting(meetingId);
     const disagreementsQuery = useRuntimeDisagreements(meetingId);
@@ -166,6 +167,7 @@ export function MeetingRoom({ meetingId }: MeetingRoomProps) {
                     meeting={meeting}
                     disagreements={disagreementsQuery.data ?? []}
                     consensus={consensusQuery.data ?? []}
+                    initialTab={initialTab}
                 />
                 <RoomDetailsPanel
                     meeting={meeting}
@@ -206,9 +208,10 @@ interface ConversationProps {
     meeting: MeetingWithParticipants;
     disagreements: Disagreement[];
     consensus: Consensus[];
+    initialTab?: string;
 }
 
-function MeetingConversation({ meeting, disagreements, consensus }: ConversationProps) {
+function MeetingConversation({ meeting, disagreements, consensus, initialTab }: ConversationProps) {
     const runtime = useMeetingsRuntime();
     const { capabilities, slots } = runtime;
     const turns = useMeetingTurnController({
@@ -226,7 +229,10 @@ function MeetingConversation({ meeting, disagreements, consensus }: Conversation
         closingId: closingObservation.closing?.closing_id ?? null,
         enabled: capabilities.closing,
     });
-    const [tab, setTab] = useState('chat');
+    const [tab, setTab] = useState(initialTab ?? 'chat');
+    useEffect(() => {
+        if (initialTab) setTab(initialTab);
+    }, [initialTab]);
     const DocumentsPanel = slots.documentPanel;
     const SummaryPanel = slots.summaryPanel;
 
@@ -582,6 +588,7 @@ interface RoomControlsProps {
 function RoomControls({ meeting, turns }: RoomControlsProps) {
     const runtime = useMeetingsRuntime();
     const ParticipantAction = runtime.slots.participantAction;
+    const DirectorAction = runtime.slots.directorAction;
 
     const handleStartTurn = (
         participantId: string,
@@ -627,6 +634,8 @@ function RoomControls({ meeting, turns }: RoomControlsProps) {
                         );
                     })}
                 </div>
+
+                {DirectorAction ? <DirectorAction /> : null}
 
                 {nonTerminal.length > 0 && (
                     <div className="mb-4 rounded-lg border border-zinc-800 bg-zinc-900/60 divide-y divide-zinc-800">
@@ -980,6 +989,8 @@ function ParticipantRoster({ participants }: { participants: AIParticipant[] }) 
 }
 
 function ParticipantDetailCard({ participant }: { participant: AIParticipant }) {
+    const runtime = useMeetingsRuntime();
+    const stackLabels = runtime.replay?.stackLabels ?? {};
     const [promptOpen, setPromptOpen] = useState(false);
     const [knowledgeOpen, setKnowledgeOpen] = useState(false);
     const stackCount = participant.stack_ids?.length ?? 0;
@@ -1045,7 +1056,7 @@ function ParticipantDetailCard({ participant }: { participant: AIParticipant }) 
                     >
                         <span className="flex items-center gap-2">
                             <Lock className="w-4 h-4" />
-                            Private Knowledge Stack
+                            Knowledge assignments
                             <Badge variant="secondary" className="text-xs bg-zinc-800 text-zinc-400">
                                 {stackCount} stack{stackCount === 1 ? '' : 's'}
                             </Badge>
@@ -1061,15 +1072,15 @@ function ParticipantDetailCard({ participant }: { participant: AIParticipant }) 
                     <div className="px-4 py-3 bg-zinc-950/50 border-t border-zinc-800">
                         {stackCount === 0 ? (
                             <p className="text-xs text-zinc-500 italic">
-                                No private knowledge stacks linked to this AI.
+                                No knowledge stacks linked to this AI.
                             </p>
                         ) : (
                             <ul className="space-y-2">
                                 {participant.stack_ids?.map((stackId) => (
                                     <li key={stackId} className="flex items-center gap-2 text-sm">
                                         <FileText className="w-4 h-4 text-zinc-500" />
-                                        <span className="text-zinc-300 font-mono text-xs">
-                                            {stackId}
+                                        <span className="text-zinc-300">
+                                            {stackLabels[stackId] ?? "Unlabeled knowledge stack"}
                                         </span>
                                     </li>
                                 ))}

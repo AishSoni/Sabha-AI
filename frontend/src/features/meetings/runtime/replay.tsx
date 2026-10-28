@@ -64,9 +64,10 @@ import type {
 } from "./contract";
 import { MeetingsRuntimeProvider } from "./context";
 import { RecordedParticipantAction } from "./recorded-participant-action";
+import { RecordedDirectorAction } from "./recorded-director-action";
 import { RecordedDocumentsPanel } from "./recorded-documents-panel";
 
-interface ReplaySession {
+export interface ReplaySession {
     run_id: string;
     package_version: string;
     meeting_id: string;
@@ -392,7 +393,7 @@ export interface ReplayBundle {
     turns: TurnOperation[];
 }
 
-async function fetchReplayBundle(
+export async function fetchReplayBundle(
     session: ReplaySession,
     meetingId: string,
     checkpoint: string,
@@ -441,9 +442,11 @@ interface ReplayRuntimeOptions {
         options?: { expectedMessageId?: string | null; expectedOperationId?: string | null }
     ) => Promise<void>;
     startIntent: (intentId: string) => Promise<void>;
+    onTurnSettled?: (intentId: string) => void;
+    onClosingTerminal?: () => void;
 }
 
-function createReplayRuntime(
+export function createReplayRuntime(
     session: ReplaySession,
     scope: RuntimeScope,
     options: ReplayRuntimeOptions
@@ -663,6 +666,7 @@ function createReplayRuntime(
         },
         slots: {
             participantAction: RecordedParticipantAction,
+            directorAction: RecordedDirectorAction,
             documentPanel: RecordedDocumentsPanel,
         },
         signal: options.signal,
@@ -697,6 +701,10 @@ function createReplayRuntime(
                     expectedMessageId: event?.messageId ?? null,
                     expectedOperationId: operationId,
                 });
+                const intent = session.intents.find(
+                    (item) => item.operation_id === operationId
+                );
+                if (intent) options.onTurnSettled?.(intent.intent_id);
             },
         },
         closingStream: {
@@ -716,7 +724,14 @@ function createReplayRuntime(
                         signal: combineSignals(options.signal, observeOptions.signal),
                     }
                 );
-                yield* decodeClosingTextStream(response);
+                let terminalSeen = false;
+                for await (const event of decodeClosingTextStream(response)) {
+                    if (event.terminal && event.kind === "summary" && !terminalSeen) {
+                        terminalSeen = true;
+                        options.onClosingTerminal?.();
+                    }
+                    yield event;
+                }
             },
         },
     };
