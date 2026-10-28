@@ -263,7 +263,14 @@ def test_direct_roles_cannot_write_shared_records(workspace):
     for role in ("anon", "authenticated"):
         with db.connect() as conn:
             conn.execute(f"SET ROLE {role}")
-            with pytest.raises(psycopg.errors.InsufficientPrivilege):
+            # After 030 the role lacks schema USAGE, so Postgres may report a
+            # missing relation before it reports a table privilege failure.
+            with pytest.raises(
+                (
+                    psycopg.errors.InsufficientPrivilege,
+                    psycopg.errors.UndefinedTable,
+                )
+            ):
                 conn.execute(
                     "INSERT INTO meetings (id, name, agenda, status) "
                     "VALUES (gen_random_uuid(), 'forbidden', '', 'active')"

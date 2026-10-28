@@ -1,28 +1,43 @@
-"""Integration: direct database permissions are tightened to backend-only
-writes. Public/anon clients get no live access (the API stays no-auth), but the
-previous FOR ALL USING (true) RLS policies must not exist anymore: even a role
-WITH granted table privileges must be denied mutations at the policy layer, on
-both fresh and upgraded databases.
+"""Integration: the live database is backend-only after migration 030.
+
+Anonymous, authenticated and plain unprivileged roles have no schema USAGE and
+no table, sequence or function privileges on ``public``. RLS stays enabled with
+no permissive policy, so even an accidental future grant cannot restore reads.
+The service role keeps the live backend capability (DML plus RPC execution).
 
 The pre-isolation chain is kept in the suite as evidence of what migrations 009
 and 013 actually did: a role with no table grant at all still read every live
-row through ``PUBLIC``. Migration 030 closes that inheritance; the historical
-test must stay green against the pre-030 chain.
+row through ``PUBLIC``. Migration 030 closes that inheritance, and the
+historical tests stay green against the chain they describe.
 """
+
+from pathlib import Path
 
 import psycopg
 import pytest
 
-LEGACY_MIGRATION = (
-    __import__("pathlib")
-    .Path(__file__)
-    .resolve()
-    .parents[2]
-    / "migrations"
-    / "009_tighten_rls_to_backend_writes.sql"
-)
+BACKEND_ROOT = Path(__file__).resolve().parents[2]
+LEGACY_MIGRATION = BACKEND_ROOT / "migrations" / "009_tighten_rls_to_backend_writes.sql"
+ISOLATION_MIGRATION = BACKEND_ROOT / "migrations" / "030_database_read_isolation.sql"
 
 GUARDED_TABLES = ["meetings", "ai_participants", "messages", "disagreements", "consensus"]
+LIVE_TABLES = [
+    "meetings",
+    "ai_participants",
+    "messages",
+    "disagreements",
+    "consensus",
+    "personas",
+    "prompt_versions",
+    "persona_knowledge_stacks",
+    "knowledge_stacks",
+]
+UNTRUSTED_ROLES = ("anon", "authenticated", "sabha_unprivileged")
+PROTECTED_FUNCTIONS = [
+    "increment_meeting_cost",
+    "create_meeting_transaction",
+    "publish_operation",
+]
 
 
 def _fetch_policies(db, action=None):
@@ -61,13 +76,151 @@ def _insert_meeting(probe) -> None:
     )
 
 
-def test_fresh_schema_has_no_allow_all_policies(disposable_db):
+def _ensure_unprivileged_role(db) -> None:
+    """A fresh role with the normal cluster defaults and no Sabha grants."""
+    with db.connect() as conn:
+        conn.execute(
+            "DO $$ BEGIN "
+            "IF NOT EXISTS (SELECT FROM pg_roles WHERE rolname = 'sabha_unprivileged') THEN "
+            "CREATE ROLE sabha_unprivileged NOSUPERUSER NOBYPASSRLS NOLOGIN; "
+            "END IF; END $$"
+        )
+
+
+def _seed_live_sentinels(db) -> dict:
+    """Live rows the untrusted roles must never see, plus a persona family."""
+    with db.connect() as conn:
+        meeting_id = conn.execute(
+            "INSERT INTO meetings (name, agenda) "
+            "VALUES ('Live sentinel meeting', 'restricted agenda') RETURNING id"
+        ).fetchone()[0]
+        conn.execute(
+            "INSERT INTO messages (meeting_id, sender_type, sender_name, content) "
+            "VALUES (%s, 'user', 'Director', 'restricted message')",
+            (meeting_id,),
+        )
+        persona_id = conn.execute(
+            "INSERT INTO personas (name) VALUES ('Sentinel Persona') RETURNING id"
+        ).fetchone()[0]
+        conn.execute(
+            "INSERT INTO prompt_versions (persona_id, version, content) "
+            "VALUES (%s, 1, 'restricted prompt')",
+            (persona_id,),
+        )
+        stack_id = conn.execute(
+            "INSERT INTO knowledge_stacks (name) VALUES ('Sentinel Stack') RETURNING id"
+        ).fetchone()[0]
+        conn.execute(
+            "INSERT INTO persona_knowledge_stacks (persona_id, stack_id) "
+            "VALUES (%s, %s)",
+            (persona_id, stack_id),
+        )
+    return {"meeting": meeting_id, "persona": persona_id, "stack": stack_id}
+
+
+def _probe_role(db, role: str) -> psycopg.Connection:
+    probe = psycopg.connect(db.uri, autocommit=True)
+    probe.execute(f"SET ROLE {role}")
+    return probe
+
+
+def _table_privilege(db, role: str, relation: str, privilege: str) -> bool:
+    rows = db.query(
+        """
+        SELECT has_table_privilege(%s, c.oid, %s)
+        FROM pg_catalog.pg_class c
+        JOIN pg_catalog.pg_namespace n ON n.oid = c.relnamespace
+        WHERE n.nspname = 'public' AND c.relname = %s
+        """,
+        (role, privilege, relation),
+    )
+    assert rows, f"relation public.{relation} not found"
+    return rows[0][0]
+
+
+def _function_privilege(db, role: str, function: str) -> bool:
+    rows = db.query(
+        """
+        SELECT has_function_privilege(%s, p.oid, 'EXECUTE')
+        FROM pg_catalog.pg_proc p
+        JOIN pg_catalog.pg_namespace n ON n.oid = p.pronamespace
+        WHERE n.nspname = 'public' AND p.proname = %s
+        """,
+        (role, function),
+    )
+    assert rows, f"function public.{function} not found"
+    return rows[0][0]
+
+
+def _assert_untrusted_role_denied(db, role: str) -> None:
+    """No live read, write, DDL, internal read or RPC execution for a role."""
+    assert not db.query(
+        "SELECT has_schema_privilege(%s, 'public', 'USAGE')", (role,)
+    )[0][0]
+    assert not db.query(
+        "SELECT has_schema_privilege(%s, 'public', 'CREATE')", (role,)
+    )[0][0]
+
+    for table in LIVE_TABLES:
+        assert not _table_privilege(db, role, table, "SELECT"), table
+        assert not _table_privilege(db, role, table, "INSERT,UPDATE,DELETE"), table
+    for fn in PROTECTED_FUNCTIONS:
+        assert not _function_privilege(db, role, fn), fn
+
+    probe = _probe_role(db, role)
+    try:
+        for table in LIVE_TABLES:
+            with pytest.raises(
+                (psycopg.errors.InsufficientPrivilege, psycopg.errors.UndefinedTable)
+            ):
+                probe.execute(f"SELECT count(*) FROM public.{table}")
+
+        with pytest.raises(
+            (psycopg.errors.InsufficientPrivilege, psycopg.errors.UndefinedTable)
+        ):
+            probe.execute("INSERT INTO public.meetings (name) VALUES ('blocked')")
+        with pytest.raises(
+            (psycopg.errors.InsufficientPrivilege, psycopg.errors.UndefinedTable)
+        ):
+            probe.execute("UPDATE public.meetings SET name = 'blocked'")
+        with pytest.raises(
+            (psycopg.errors.InsufficientPrivilege, psycopg.errors.UndefinedTable)
+        ):
+            probe.execute("DELETE FROM public.meetings")
+        with pytest.raises(
+            (psycopg.errors.InsufficientPrivilege, psycopg.errors.UndefinedTable)
+        ):
+            probe.execute("TRUNCATE public.meetings")
+
+        # Internal table and RPC paths, not just the nine live table families.
+        with pytest.raises(
+            (psycopg.errors.InsufficientPrivilege, psycopg.errors.UndefinedTable)
+        ):
+            probe.execute("SELECT count(*) FROM public.documents")
+        with pytest.raises(
+            (psycopg.errors.InsufficientPrivilege, psycopg.errors.UndefinedFunction)
+        ):
+            probe.execute("SELECT public.increment_meeting_cost(NULL, 1.0)")
+
+        with pytest.raises(psycopg.errors.InsufficientPrivilege):
+            probe.execute(
+                f"CREATE TABLE public.sabha_denied_{role} (id integer)"
+            )
+    finally:
+        probe.close()
+
+
+def test_fresh_schema_has_no_permissive_policies(disposable_db):
+    """Migration 030 removes the SELECT-true policies, not just the grants.
+
+    RLS stays enabled on every live table, so a future accidental table grant
+    still cannot restore all-row reads.
+    """
     allow_all = _fetch_policies(disposable_db, action="ALL")
     assert allow_all == [], f"allow-all policies remain: {allow_all}"
 
     read_policies = _fetch_policies(disposable_db, action="SELECT")
-    guarded = {row[0] for row in read_policies}
-    assert set(GUARDED_TABLES) <= guarded, f"missing read policies for: {set(GUARDED_TABLES) - guarded}"
+    assert read_policies == [], f"permissive read policies remain: {read_policies}"
 
 
 def test_writes_denied_even_with_table_privileges_fresh(disposable_db):
@@ -77,6 +230,141 @@ def test_writes_denied_even_with_table_privileges_fresh(disposable_db):
             _insert_meeting(probe)
     finally:
         probe.close()
+
+
+def test_full_chain_denies_every_untrusted_live_path(disposable_db):
+    """Spec 12 matrix: anon, authenticated and a plain role are all outside."""
+    _ensure_unprivileged_role(disposable_db)
+    _seed_live_sentinels(disposable_db)
+    for role in UNTRUSTED_ROLES:
+        _assert_untrusted_role_denied(disposable_db, role)
+
+
+def test_service_role_keeps_live_backend_capability(disposable_db):
+    ids = _seed_live_sentinels(disposable_db)
+    probe = _probe_role(disposable_db, "service_role")
+    try:
+        assert probe.execute(
+            "SELECT count(*) FROM public.meetings"
+        ).fetchone()[0] == 1
+        assert probe.execute(
+            "SELECT count(*) FROM public.persona_knowledge_stacks"
+        ).fetchone()[0] == 1
+
+        probe.execute(
+            "UPDATE public.meetings SET agenda = 'backend update' WHERE id = %s",
+            (ids["meeting"],),
+        )
+        probe.execute(
+            "SELECT public.increment_meeting_cost(%s, 1.25)", (ids["meeting"],)
+        )
+        total = probe.execute(
+            "SELECT total_cost FROM public.meetings WHERE id = %s",
+            (ids["meeting"],),
+        ).fetchone()[0]
+        assert float(total) == pytest.approx(1.25)
+    finally:
+        probe.close()
+
+
+def test_future_owner_objects_follow_safe_defaults(disposable_db):
+    """Objects created after 030 stay closed unless explicitly granted."""
+    _ensure_unprivileged_role(disposable_db)
+    with disposable_db.connect() as conn:
+        conn.execute(
+            "CREATE TABLE public.spec12_future_probe "
+            "(id integer PRIMARY KEY, name text NOT NULL)"
+        )
+        conn.execute(
+            "INSERT INTO public.spec12_future_probe (id, name) VALUES (1, 'future')"
+        )
+        conn.execute(
+            "CREATE VIEW public.spec12_future_probe_view AS "
+            "SELECT id, name FROM public.spec12_future_probe"
+        )
+        conn.execute(
+            "CREATE SEQUENCE public.spec12_future_probe_seq"
+        )
+        conn.execute(
+            "CREATE FUNCTION public.spec12_future_probe_fn() RETURNS integer "
+            "LANGUAGE sql AS 'SELECT 42'"
+        )
+
+    for role in UNTRUSTED_ROLES:
+        assert not _table_privilege(
+            disposable_db, role, "spec12_future_probe", "SELECT"
+        )
+        assert not _table_privilege(
+            disposable_db, role, "spec12_future_probe_view", "SELECT"
+        )
+        assert not _function_privilege(
+            disposable_db, role, "spec12_future_probe_fn"
+        )
+        probe = _probe_role(disposable_db, role)
+        try:
+            for relation in ("spec12_future_probe", "spec12_future_probe_view"):
+                with pytest.raises(
+                    (
+                        psycopg.errors.InsufficientPrivilege,
+                        psycopg.errors.UndefinedTable,
+                    )
+                ):
+                    probe.execute(f"SELECT count(*) FROM public.{relation}")
+            with pytest.raises(
+                (
+                    psycopg.errors.InsufficientPrivilege,
+                    psycopg.errors.UndefinedFunction,
+                )
+            ):
+                probe.execute("SELECT public.spec12_future_probe_fn()")
+            with pytest.raises(
+                (
+                    psycopg.errors.InsufficientPrivilege,
+                    psycopg.errors.UndefinedTable,
+                )
+            ):
+                probe.execute("SELECT nextval('public.spec12_future_probe_seq')")
+        finally:
+            probe.close()
+
+    service = _probe_role(disposable_db, "service_role")
+    try:
+        assert service.execute(
+            "SELECT count(*) FROM public.spec12_future_probe_view"
+        ).fetchone()[0] == 1
+        service.execute(
+            "INSERT INTO public.spec12_future_probe (id, name) VALUES (2, 'backend')"
+        )
+        assert service.execute(
+            "SELECT public.spec12_future_probe_fn()"
+        ).fetchone()[0] == 42
+        assert service.execute(
+            "SELECT nextval('public.spec12_future_probe_seq')"
+        ).fetchone()[0] == 1
+    finally:
+        service.close()
+
+
+def test_isolation_upgrade_preserves_live_data(pre_isolation_db):
+    """Pre-030 data and IDs survive; the public read path does not."""
+    ids = _seed_live_sentinels(pre_isolation_db)
+    with pre_isolation_db.connect() as conn:
+        conn.execute(ISOLATION_MIGRATION.read_text(encoding="utf-8"))
+
+    assert pre_isolation_db.query(
+        "SELECT name, agenda FROM meetings WHERE id = %s", (ids["meeting"],)
+    ) == [("Live sentinel meeting", "restricted agenda")]
+    assert pre_isolation_db.query(
+        "SELECT name FROM personas WHERE id = %s", (ids["persona"],)
+    ) == [("Sentinel Persona",)]
+    assert pre_isolation_db.query(
+        "SELECT content FROM prompt_versions WHERE persona_id = %s",
+        (ids["persona"],),
+    ) == [("restricted prompt",)]
+
+    _ensure_unprivileged_role(pre_isolation_db)
+    for role in UNTRUSTED_ROLES:
+        _assert_untrusted_role_denied(pre_isolation_db, role)
 
 
 def test_public_grant_exposes_live_rows_before_isolation(pre_isolation_db):

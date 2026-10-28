@@ -69,6 +69,7 @@ SCHEMA_FILES = [
     BACKEND_ROOT / "migrations" / "027_parent_knowledge_cleanup.sql",
     BACKEND_ROOT / "migrations" / "028_system_ai_settings.sql",
     BACKEND_ROOT / "migrations" / "029_internal_table_rls.sql",
+    BACKEND_ROOT / "migrations" / "030_database_read_isolation.sql",
 ]
 
 # The chain immediately before Spec 12's isolation migration. Tests use this

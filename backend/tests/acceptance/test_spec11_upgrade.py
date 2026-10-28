@@ -45,11 +45,11 @@ def test_target_history_upgrades_the_seeded_dataset(phase_one_db) -> None:
     applied = dataset.apply_target_migrations()
 
     assert applied[0] == "000_baseline"
-    assert applied[-1] == "029_internal_table_rls"
-    assert len(applied) == 29
+    assert applied[-1] == "030_database_read_isolation"
+    assert len(applied) == 30
     assert phase_one_db.query(
         "SELECT count(*) FROM schema_migrations"
-    ) == [(29,)]
+    ) == [(30,)]
 
     history = dataset.read_preserved_history()
     meetings = {row["id"]: row for row in history["meetings"]}

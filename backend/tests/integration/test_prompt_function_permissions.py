@@ -8,15 +8,18 @@ privileges would then let a browser client write those tables directly,
 bypassing backend validation entirely.
 
 Contract under test (migration 013 persona prompt locks + function
-permissions):
+permissions, tightened by migration 030 database read isolation):
 - with the hosted-shaped roles present, anon/authenticated are denied
   EXECUTE on the prompt RPCs even though the functions exist;
 - the same roles are denied table WRITEs on the persona family even when
   table privileges are handed to them (policy-layer denial, mirroring the
   migration-009 contract for the meeting tables);
-- reads stay open (the no-sign-in shared workspace is preserved) for both
-  fresh and upgraded databases;
-- the backend service role (BYPASSRLS on hosted) can execute the RPCs.
+- anon/authenticated are denied live reads entirely after 030;
+- the backend service role (BYPASSRLS on hosted) can read and execute the RPCs.
+
+The migration-013-in-isolation test is historical evidence: applying 013 to
+the legacy chain still produces its original read-open behaviour. The current
+full chain ends closed because 030 runs after it.
 """
 
 from pathlib import Path
@@ -27,7 +30,6 @@ import pytest
 BACKEND_ROOT = Path(__file__).resolve().parents[2]
 
 MIGRATION_013 = BACKEND_ROOT / "migrations" / "013_persona_prompt_locks.sql"
-MIGRATION_014 = BACKEND_ROOT / "migrations" / "014_operations_primitive.sql"
 
 # The prompt functions this slice owns; every other RPC gains the same
 # execution denial in migration 013, asserted through the shared role sweep.
@@ -46,15 +48,10 @@ GUARDED_FUNCTIONS = [
 PERSONA_TABLES = ["personas", "prompt_versions", "persona_knowledge_stacks", "knowledge_stacks"]
 
 
-def _apply_migration(db) -> None:
-    for migration in (MIGRATION_013, MIGRATION_014):
-        assert migration.exists(), (
-            "migration does not exist yet - write it before this contract "
-            "can pass (intended red for the permissions slice)"
-        )
+def _apply_migration(db, migration) -> None:
+    assert migration.exists(), f"missing migration {migration.name}"
     with db.connect() as conn:
-        for migration in (MIGRATION_013, MIGRATION_014):
-            conn.execute(migration.read_text(encoding="utf-8"))
+        conn.execute(migration.read_text(encoding="utf-8"))
 
 
 def _ensure_hosted_roles(conn: psycopg.Connection):
@@ -83,37 +80,34 @@ def _probe(db, role: str) -> psycopg.Connection:
     return probe
 
 
-def _function_exists(probe, fn: str) -> bool:
-    # RPC names are unique inside public; name-level check is sufficient.
-    return probe.execute(
-        """
-        SELECT EXISTS (
-            SELECT 1 FROM pg_catalog.pg_proc p
+def _assert_execute_denied(probe, role: str) -> None:
+    for fn, _sig in GUARDED_FUNCTIONS:
+        # Resolve the OID without schema-qualified text: after 030 the role has
+        # no USAGE on public, and Postgres refuses to resolve 'public.fn(...)'.
+        row = probe.execute(
+            """
+            SELECT p.oid
+            FROM pg_catalog.pg_proc p
             JOIN pg_catalog.pg_namespace n ON n.oid = p.pronamespace
             WHERE n.nspname = 'public' AND p.proname = %s
-        )
-        """,
-        (fn,),
-    ).fetchone()[0]
-
-
-def _assert_execute_denied(probe, role: str) -> None:
-    for fn, sig in GUARDED_FUNCTIONS:
-        # Upgrade chains may predate a function's introducing migration;
-        # denial of a nonexistent function is satisfied trivially.
-        if not _function_exists(probe, fn):
+            """,
+            (fn,),
+        ).fetchone()
+        if row is None:
+            # Upgrade chains may predate a function's introducing migration.
             continue
         granted = probe.execute(
-            "SELECT has_function_privilege(%s, %s)",
-            (f"public.{fn}({sig})", "EXECUTE"),
+            "SELECT has_function_privilege(%s::oid, 'EXECUTE')", (row[0],)
         ).fetchone()[0]
         assert not granted, f"{role} still has EXECUTE on {fn}"
 
 
 def _assert_table_write_denied(db, probe, role: str) -> None:
-    # Hand out table privileges on purpose: the denial must come from the
-    # policy layer, not from missing grants (mirrors the 009 probe design).
+    # Hand out schema and table privileges on purpose: the denial must come
+    # from the policy layer, not from missing grants (mirrors the 009 probe
+    # design). Migration 030 leaves RLS enabled with no policy.
     with db.connect() as conn:
+        conn.execute(f"GRANT USAGE ON SCHEMA public TO {role}")
         conn.execute(
             f"GRANT INSERT, UPDATE, DELETE ON {', '.join(PERSONA_TABLES)} TO {role}"
         )
@@ -125,9 +119,16 @@ def _assert_table_write_denied(db, probe, role: str) -> None:
         )
 
 
-def _assert_reads_open(probe) -> None:
-    count = probe.execute("SELECT COUNT(*) FROM personas").fetchone()[0]
-    assert count >= 0  # SELECT must simply succeed
+def _assert_live_read_denied(probe, role: str) -> None:
+    assert not probe.execute(
+        "SELECT has_schema_privilege(%s, 'public', 'USAGE')", (role,)
+    ).fetchone()[0]
+    # Without USAGE the planner reports either a missing relation or a schema
+    # privilege failure; both mean the live read is unreachable.
+    with pytest.raises(
+        (psycopg.errors.InsufficientPrivilege, psycopg.errors.UndefinedTable)
+    ):
+        probe.execute("SELECT COUNT(*) FROM personas")
 
 
 def _assert_service_role_can_execute(probe) -> None:
@@ -141,8 +142,6 @@ def _assert_service_role_can_execute(probe) -> None:
 
 
 def test_fresh_schema_denies_anonymous_function_execute(disposable_db):
-    _ensure_hosted_roles_hosted_first(disposable_db)
-    _apply_migration(disposable_db)
     for role in ("anon", "authenticated"):
         probe = _probe(disposable_db, role)
         try:
@@ -151,46 +150,49 @@ def test_fresh_schema_denies_anonymous_function_execute(disposable_db):
             probe.close()
 
 
+def test_fresh_schema_denies_anonymous_reads(disposable_db):
+    for role in ("anon", "authenticated"):
+        probe = _probe(disposable_db, role)
+        try:
+            _assert_live_read_denied(probe, role)
+        finally:
+            probe.close()
+
+
 def test_fresh_schema_denies_anonymous_table_writes(disposable_db):
-    _ensure_hosted_roles_hosted_first(disposable_db)
-    _apply_migration(disposable_db)
     for role in ("anon", "authenticated"):
         probe = _probe(disposable_db, role)
         try:
             _assert_table_write_denied(disposable_db, probe, role)
-            _assert_reads_open(probe)
         finally:
             probe.close()
 
 
 def test_service_role_execution_survives(disposable_db):
-    _ensure_hosted_roles_hosted_first(disposable_db)
-    _apply_migration(disposable_db)
     probe = _probe(disposable_db, "service_role")
     try:
         _assert_service_role_can_execute(probe)
-        _assert_reads_open(probe)
+        assert probe.execute("SELECT COUNT(*) FROM personas").fetchone()[0] >= 0
     finally:
         probe.close()
 
 
-def test_upgrade_chain_gains_the_same_denials(legacy_db):
+def test_migration_013_in_isolation_kept_historical_reads(legacy_db):
+    """What 013 did on its own, before 030 closed the PUBLIC inheritance."""
     _ensure_hosted_roles_hosted_first(legacy_db)
-    with legacy_db.connect() as conn:
-        conn.execute(MIGRATION_013.read_text(encoding="utf-8"))
+    _apply_migration(legacy_db, MIGRATION_013)
 
     for role in ("anon", "authenticated"):
         probe = _probe(legacy_db, role)
         try:
             _assert_execute_denied(probe, role)
             _assert_table_write_denied(legacy_db, probe, role)
-            _assert_reads_open(probe)
+            assert probe.execute("SELECT COUNT(*) FROM personas").fetchone()[0] >= 0
         finally:
             probe.close()
 
 
 def _ensure_hosted_roles_hosted_first(db) -> None:
-    """Roles and schema usage must exist before the migration's guarded
-    role statements run, so the revokes are verified, not merely no-ops."""
+    """Roles and schema usage must exist before the historical migration runs."""
     with db.connect() as conn:
         _ensure_hosted_roles(conn)
