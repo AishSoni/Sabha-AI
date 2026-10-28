@@ -1,4 +1,4 @@
-from pydantic import field_validator
+from pydantic import field_validator, model_validator
 from pydantic_settings import BaseSettings
 from typing import List
 
@@ -11,9 +11,10 @@ SUPPORTED_EMBEDDING_PROVIDERS = ("gemini", "openai", "cohere", "ollama")
 class Settings(BaseSettings):
     """Application settings loaded from environment variables."""
     
-    # Supabase
-    supabase_url: str
-    supabase_key: str
+    # Supabase. Required for live composition; a replay-only process may start
+    # without live credentials and is validated by ``validate_live_config``.
+    supabase_url: str = ""
+    supabase_key: str = ""
     supabase_service_key: str = ""
     # Direct/session PostgreSQL URL used by the operator scripts and restore.
     database_url: str = ""
@@ -60,6 +61,9 @@ class Settings(BaseSettings):
     # App
     app_env: str = "development"
     runtime_mode: str = "local"  # local | hosted | demo - demo denies writes
+    # Serve only the recorded replay graph. No live container, recovery
+    # workers, Qdrant, providers, or service-role client is constructed.
+    replay_only: bool = False
     cors_origins: List[str] = ["http://localhost:3000"]
 
     # Durable knowledge (spec 09)
@@ -86,6 +90,14 @@ class Settings(BaseSettings):
                 f"runtime_mode must be one of {', '.join(RUNTIME_MODES)}"
             )
         return normalized
+
+    @model_validator(mode="after")
+    def validate_live_config(self):
+        if not self.replay_only and (not self.supabase_url or not self.supabase_key):
+            raise ValueError(
+                "SUPABASE_URL and SUPABASE_KEY are required unless REPLAY_ONLY=true"
+            )
+        return self
 
     @field_validator("default_llm_provider")
     @classmethod

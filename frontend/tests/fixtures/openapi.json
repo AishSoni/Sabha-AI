@@ -6,207 +6,6 @@
     "version": "0.1.0"
   },
   "paths": {
-    "/api/meetings": {
-      "get": {
-        "tags": [
-          "meetings"
-        ],
-        "summary": "List Meetings",
-        "description": "List all meetings.",
-        "operationId": "list_meetings_api_meetings_get",
-        "responses": {
-          "200": {
-            "description": "Successful Response",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "items": {
-                    "$ref": "#/components/schemas/Meeting"
-                  },
-                  "type": "array",
-                  "title": "Response List Meetings Api Meetings Get"
-                }
-              }
-            }
-          }
-        }
-      },
-      "post": {
-        "tags": [
-          "meetings"
-        ],
-        "summary": "Create Meeting",
-        "description": "Create a new meeting with default AI participants.",
-        "operationId": "create_meeting_api_meetings_post",
-        "requestBody": {
-          "content": {
-            "application/json": {
-              "schema": {
-                "$ref": "#/components/schemas/MeetingCreate"
-              }
-            }
-          },
-          "required": true
-        },
-        "responses": {
-          "200": {
-            "description": "Successful Response",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/MeetingWithParticipants"
-                }
-              }
-            }
-          },
-          "422": {
-            "description": "Validation Error",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/HTTPValidationError"
-                }
-              }
-            }
-          }
-        }
-      }
-    },
-    "/api/meetings/{meeting_id}": {
-      "get": {
-        "tags": [
-          "meetings"
-        ],
-        "summary": "Get Meeting",
-        "description": "Get a meeting with its participants and messages.",
-        "operationId": "get_meeting_api_meetings__meeting_id__get",
-        "parameters": [
-          {
-            "name": "meeting_id",
-            "in": "path",
-            "required": true,
-            "schema": {
-              "type": "string",
-              "title": "Meeting Id"
-            }
-          }
-        ],
-        "responses": {
-          "200": {
-            "description": "Successful Response",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/MeetingWithParticipants"
-                }
-              }
-            }
-          },
-          "422": {
-            "description": "Validation Error",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/HTTPValidationError"
-                }
-              }
-            }
-          }
-        }
-      },
-      "delete": {
-        "tags": [
-          "meetings"
-        ],
-        "summary": "Delete Meeting",
-        "description": "Permanently delete a meeting after Knowledge revokes its sources.\n\nRevocation and cleanup intents commit before the meeting row cascades, so\nan outage can defer physical cleanup but never resurrect eligibility.",
-        "operationId": "delete_meeting_api_meetings__meeting_id__delete",
-        "parameters": [
-          {
-            "name": "meeting_id",
-            "in": "path",
-            "required": true,
-            "schema": {
-              "type": "string",
-              "title": "Meeting Id"
-            }
-          }
-        ],
-        "responses": {
-          "200": {
-            "description": "Successful Response",
-            "content": {
-              "application/json": {
-                "schema": {}
-              }
-            }
-          },
-          "422": {
-            "description": "Validation Error",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/HTTPValidationError"
-                }
-              }
-            }
-          }
-        }
-      }
-    },
-    "/api/meetings/{meeting_id}/message": {
-      "post": {
-        "tags": [
-          "meetings"
-        ],
-        "summary": "Add User Message",
-        "description": "Add a user message to the meeting through the locked write guard.",
-        "operationId": "add_user_message_api_meetings__meeting_id__message_post",
-        "parameters": [
-          {
-            "name": "meeting_id",
-            "in": "path",
-            "required": true,
-            "schema": {
-              "type": "string",
-              "title": "Meeting Id"
-            }
-          }
-        ],
-        "requestBody": {
-          "required": true,
-          "content": {
-            "application/json": {
-              "schema": {
-                "$ref": "#/components/schemas/UserMessageRequest"
-              }
-            }
-          }
-        },
-        "responses": {
-          "200": {
-            "description": "Successful Response",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/Message"
-                }
-              }
-            }
-          },
-          "422": {
-            "description": "Validation Error",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/HTTPValidationError"
-                }
-              }
-            }
-          }
-        }
-      }
-    },
     "/api/meetings/{meeting_id}/summary": {
       "post": {
         "tags": [
@@ -342,223 +141,6 @@
             }
           }
         },
-        "responses": {
-          "200": {
-            "description": "Successful Response",
-            "content": {
-              "application/json": {
-                "schema": {}
-              }
-            }
-          },
-          "422": {
-            "description": "Validation Error",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/HTTPValidationError"
-                }
-              }
-            }
-          }
-        }
-      }
-    },
-    "/api/meetings/{meeting_id}/disagreements": {
-      "get": {
-        "tags": [
-          "meetings"
-        ],
-        "summary": "Get Disagreements",
-        "description": "Get all disagreements for a meeting.",
-        "operationId": "get_disagreements_api_meetings__meeting_id__disagreements_get",
-        "parameters": [
-          {
-            "name": "meeting_id",
-            "in": "path",
-            "required": true,
-            "schema": {
-              "type": "string",
-              "title": "Meeting Id"
-            }
-          }
-        ],
-        "responses": {
-          "200": {
-            "description": "Successful Response",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "type": "array",
-                  "items": {
-                    "$ref": "#/components/schemas/Disagreement"
-                  },
-                  "title": "Response Get Disagreements Api Meetings  Meeting Id  Disagreements Get"
-                }
-              }
-            }
-          },
-          "422": {
-            "description": "Validation Error",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/HTTPValidationError"
-                }
-              }
-            }
-          }
-        }
-      }
-    },
-    "/api/meetings/{meeting_id}/consensus": {
-      "get": {
-        "tags": [
-          "meetings"
-        ],
-        "summary": "Get Consensus",
-        "description": "Get all consensus entries for a meeting.",
-        "operationId": "get_consensus_api_meetings__meeting_id__consensus_get",
-        "parameters": [
-          {
-            "name": "meeting_id",
-            "in": "path",
-            "required": true,
-            "schema": {
-              "type": "string",
-              "title": "Meeting Id"
-            }
-          }
-        ],
-        "responses": {
-          "200": {
-            "description": "Successful Response",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "type": "array",
-                  "items": {
-                    "$ref": "#/components/schemas/Consensus"
-                  },
-                  "title": "Response Get Consensus Api Meetings  Meeting Id  Consensus Get"
-                }
-              }
-            }
-          },
-          "422": {
-            "description": "Validation Error",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/HTTPValidationError"
-                }
-              }
-            }
-          }
-        }
-      }
-    },
-    "/api/meetings/{meeting_id}/context-stats": {
-      "get": {
-        "tags": [
-          "meetings"
-        ],
-        "summary": "Get Context Stats",
-        "description": "Get context/token usage statistics for a meeting.",
-        "operationId": "get_context_stats_api_meetings__meeting_id__context_stats_get",
-        "parameters": [
-          {
-            "name": "meeting_id",
-            "in": "path",
-            "required": true,
-            "schema": {
-              "type": "string",
-              "title": "Meeting Id"
-            }
-          }
-        ],
-        "responses": {
-          "200": {
-            "description": "Successful Response",
-            "content": {
-              "application/json": {
-                "schema": {}
-              }
-            }
-          },
-          "422": {
-            "description": "Validation Error",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/HTTPValidationError"
-                }
-              }
-            }
-          }
-        }
-      }
-    },
-    "/api/meetings/{meeting_id}/archive": {
-      "post": {
-        "tags": [
-          "meetings"
-        ],
-        "summary": "Archive Meeting",
-        "description": "Archive a meeting (move to archive folder).",
-        "operationId": "archive_meeting_api_meetings__meeting_id__archive_post",
-        "parameters": [
-          {
-            "name": "meeting_id",
-            "in": "path",
-            "required": true,
-            "schema": {
-              "type": "string",
-              "title": "Meeting Id"
-            }
-          }
-        ],
-        "responses": {
-          "200": {
-            "description": "Successful Response",
-            "content": {
-              "application/json": {
-                "schema": {}
-              }
-            }
-          },
-          "422": {
-            "description": "Validation Error",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/HTTPValidationError"
-                }
-              }
-            }
-          }
-        }
-      }
-    },
-    "/api/meetings/{meeting_id}/unarchive": {
-      "post": {
-        "tags": [
-          "meetings"
-        ],
-        "summary": "Unarchive Meeting",
-        "description": "Unarchive a meeting (restore from archive).",
-        "operationId": "unarchive_meeting_api_meetings__meeting_id__unarchive_post",
-        "parameters": [
-          {
-            "name": "meeting_id",
-            "in": "path",
-            "required": true,
-            "schema": {
-              "type": "string",
-              "title": "Meeting Id"
-            }
-          }
-        ],
         "responses": {
           "200": {
             "description": "Successful Response",
@@ -856,75 +438,6 @@
         }
       }
     },
-    "/api/participants/templates": {
-      "get": {
-        "tags": [
-          "participants"
-        ],
-        "summary": "Get Templates",
-        "description": "Get available AI participant templates (the default roster).",
-        "operationId": "get_templates_api_participants_templates_get",
-        "responses": {
-          "200": {
-            "description": "Successful Response",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "items": {
-                    "additionalProperties": true,
-                    "type": "object"
-                  },
-                  "type": "array",
-                  "title": "Response Get Templates Api Participants Templates Get"
-                }
-              }
-            }
-          }
-        }
-      }
-    },
-    "/api/participants": {
-      "post": {
-        "tags": [
-          "participants"
-        ],
-        "summary": "Add Participant",
-        "description": "Add a new AI participant to a meeting.",
-        "operationId": "add_participant_api_participants_post",
-        "requestBody": {
-          "content": {
-            "application/json": {
-              "schema": {
-                "$ref": "#/components/schemas/AIParticipantCreate"
-              }
-            }
-          },
-          "required": true
-        },
-        "responses": {
-          "200": {
-            "description": "Successful Response",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/AIParticipant"
-                }
-              }
-            }
-          },
-          "422": {
-            "description": "Validation Error",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/HTTPValidationError"
-                }
-              }
-            }
-          }
-        }
-      }
-    },
     "/api/settings/providers": {
       "get": {
         "tags": [
@@ -1059,224 +572,6 @@
                 }
               }
             }
-          },
-          "422": {
-            "description": "Validation Error",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/HTTPValidationError"
-                }
-              }
-            }
-          }
-        }
-      }
-    },
-    "/api/knowledge_stacks": {
-      "get": {
-        "tags": [
-          "knowledge_stacks"
-        ],
-        "summary": "List Knowledge Stacks",
-        "description": "List all knowledge stacks, optionally filtered by user.",
-        "operationId": "list_knowledge_stacks_api_knowledge_stacks_get",
-        "parameters": [
-          {
-            "name": "user_id",
-            "in": "query",
-            "required": false,
-            "schema": {
-              "anyOf": [
-                {
-                  "type": "string"
-                },
-                {
-                  "type": "null"
-                }
-              ],
-              "title": "User Id"
-            }
-          }
-        ],
-        "responses": {
-          "200": {
-            "description": "Successful Response",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/KnowledgeStackListResponse"
-                }
-              }
-            }
-          },
-          "422": {
-            "description": "Validation Error",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/HTTPValidationError"
-                }
-              }
-            }
-          }
-        }
-      },
-      "post": {
-        "tags": [
-          "knowledge_stacks"
-        ],
-        "summary": "Create Knowledge Stack",
-        "description": "Create a new knowledge stack.",
-        "operationId": "create_knowledge_stack_api_knowledge_stacks_post",
-        "requestBody": {
-          "required": true,
-          "content": {
-            "application/json": {
-              "schema": {
-                "$ref": "#/components/schemas/KnowledgeStackCreate"
-              }
-            }
-          }
-        },
-        "responses": {
-          "201": {
-            "description": "Successful Response",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/KnowledgeStack"
-                }
-              }
-            }
-          },
-          "422": {
-            "description": "Validation Error",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/HTTPValidationError"
-                }
-              }
-            }
-          }
-        }
-      }
-    },
-    "/api/knowledge_stacks/{stack_id}": {
-      "get": {
-        "tags": [
-          "knowledge_stacks"
-        ],
-        "summary": "Get Knowledge Stack",
-        "description": "Get a specific knowledge stack.",
-        "operationId": "get_knowledge_stack_api_knowledge_stacks__stack_id__get",
-        "parameters": [
-          {
-            "name": "stack_id",
-            "in": "path",
-            "required": true,
-            "schema": {
-              "type": "string",
-              "title": "Stack Id"
-            }
-          }
-        ],
-        "responses": {
-          "200": {
-            "description": "Successful Response",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/KnowledgeStack"
-                }
-              }
-            }
-          },
-          "422": {
-            "description": "Validation Error",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/HTTPValidationError"
-                }
-              }
-            }
-          }
-        }
-      },
-      "put": {
-        "tags": [
-          "knowledge_stacks"
-        ],
-        "summary": "Update Knowledge Stack",
-        "description": "Update a knowledge stack.",
-        "operationId": "update_knowledge_stack_api_knowledge_stacks__stack_id__put",
-        "parameters": [
-          {
-            "name": "stack_id",
-            "in": "path",
-            "required": true,
-            "schema": {
-              "type": "string",
-              "title": "Stack Id"
-            }
-          }
-        ],
-        "requestBody": {
-          "required": true,
-          "content": {
-            "application/json": {
-              "schema": {
-                "$ref": "#/components/schemas/KnowledgeStackUpdate"
-              }
-            }
-          }
-        },
-        "responses": {
-          "200": {
-            "description": "Successful Response",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/KnowledgeStack"
-                }
-              }
-            }
-          },
-          "422": {
-            "description": "Validation Error",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/HTTPValidationError"
-                }
-              }
-            }
-          }
-        }
-      },
-      "delete": {
-        "tags": [
-          "knowledge_stacks"
-        ],
-        "summary": "Delete Knowledge Stack",
-        "description": "Delete a stack after Knowledge revokes its documents and collection.\n\nRevocation and cleanup intents commit before the stack row cascades; a\ntransient physical failure stays retryable but never restores access.",
-        "operationId": "delete_knowledge_stack_api_knowledge_stacks__stack_id__delete",
-        "parameters": [
-          {
-            "name": "stack_id",
-            "in": "path",
-            "required": true,
-            "schema": {
-              "type": "string",
-              "title": "Stack Id"
-            }
-          }
-        ],
-        "responses": {
-          "204": {
-            "description": "Successful Response"
           },
           "422": {
             "description": "Validation Error",
@@ -1795,6 +1090,493 @@
         }
       }
     },
+    "/api/meetings": {
+      "get": {
+        "tags": [
+          "meetings"
+        ],
+        "summary": "List Meetings",
+        "description": "List all meetings.",
+        "operationId": "list_meetings_api_meetings_get",
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "items": {
+                    "$ref": "#/components/schemas/Meeting"
+                  },
+                  "type": "array",
+                  "title": "Response List Meetings Api Meetings Get"
+                }
+              }
+            }
+          }
+        }
+      },
+      "post": {
+        "tags": [
+          "meetings"
+        ],
+        "summary": "Create Meeting",
+        "description": "Create a new meeting with default AI participants.",
+        "operationId": "create_meeting_api_meetings_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/MeetingCreate"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/MeetingWithParticipants"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/meetings/{meeting_id}": {
+      "get": {
+        "tags": [
+          "meetings"
+        ],
+        "summary": "Get Meeting",
+        "description": "Get a meeting with its participants and messages.",
+        "operationId": "get_meeting_api_meetings__meeting_id__get",
+        "parameters": [
+          {
+            "name": "meeting_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Meeting Id"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/MeetingWithParticipants"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      },
+      "delete": {
+        "tags": [
+          "meetings"
+        ],
+        "summary": "Delete Meeting",
+        "description": "Permanently delete a meeting after Knowledge revokes its sources.\n\nRevocation and cleanup intents commit before the meeting row cascades, so\nan outage can defer physical cleanup but never resurrect eligibility.",
+        "operationId": "delete_meeting_api_meetings__meeting_id__delete",
+        "parameters": [
+          {
+            "name": "meeting_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Meeting Id"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/meetings/{meeting_id}/message": {
+      "post": {
+        "tags": [
+          "meetings"
+        ],
+        "summary": "Add User Message",
+        "description": "Add a user message to the meeting through the locked write guard.",
+        "operationId": "add_user_message_api_meetings__meeting_id__message_post",
+        "parameters": [
+          {
+            "name": "meeting_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Meeting Id"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/UserMessageRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Message"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/meetings/{meeting_id}/disagreements": {
+      "get": {
+        "tags": [
+          "meetings"
+        ],
+        "summary": "Get Disagreements",
+        "description": "Get all disagreements for a meeting.",
+        "operationId": "get_disagreements_api_meetings__meeting_id__disagreements_get",
+        "parameters": [
+          {
+            "name": "meeting_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Meeting Id"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/Disagreement"
+                  },
+                  "title": "Response Get Disagreements Api Meetings  Meeting Id  Disagreements Get"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/meetings/{meeting_id}/consensus": {
+      "get": {
+        "tags": [
+          "meetings"
+        ],
+        "summary": "Get Consensus",
+        "description": "Get all consensus entries for a meeting.",
+        "operationId": "get_consensus_api_meetings__meeting_id__consensus_get",
+        "parameters": [
+          {
+            "name": "meeting_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Meeting Id"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/Consensus"
+                  },
+                  "title": "Response Get Consensus Api Meetings  Meeting Id  Consensus Get"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/meetings/{meeting_id}/context-stats": {
+      "get": {
+        "tags": [
+          "meetings"
+        ],
+        "summary": "Get Context Stats",
+        "description": "Get context/token usage statistics for a meeting.",
+        "operationId": "get_context_stats_api_meetings__meeting_id__context_stats_get",
+        "parameters": [
+          {
+            "name": "meeting_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Meeting Id"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/meetings/{meeting_id}/archive": {
+      "post": {
+        "tags": [
+          "meetings"
+        ],
+        "summary": "Archive Meeting",
+        "description": "Archive a meeting (move to archive folder).",
+        "operationId": "archive_meeting_api_meetings__meeting_id__archive_post",
+        "parameters": [
+          {
+            "name": "meeting_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Meeting Id"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/meetings/{meeting_id}/unarchive": {
+      "post": {
+        "tags": [
+          "meetings"
+        ],
+        "summary": "Unarchive Meeting",
+        "description": "Unarchive a meeting (restore from archive).",
+        "operationId": "unarchive_meeting_api_meetings__meeting_id__unarchive_post",
+        "parameters": [
+          {
+            "name": "meeting_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Meeting Id"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/participants/templates": {
+      "get": {
+        "tags": [
+          "participants"
+        ],
+        "summary": "Get Templates",
+        "description": "Get available AI participant templates (the default roster).",
+        "operationId": "get_templates_api_participants_templates_get",
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "items": {
+                    "additionalProperties": true,
+                    "type": "object"
+                  },
+                  "type": "array",
+                  "title": "Response Get Templates Api Participants Templates Get"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/participants": {
+      "post": {
+        "tags": [
+          "participants"
+        ],
+        "summary": "Add Participant",
+        "description": "Add a new AI participant to a meeting.",
+        "operationId": "add_participant_api_participants_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/AIParticipantCreate"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AIParticipant"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/api/documents/upload": {
       "post": {
         "tags": [
@@ -2175,6 +1957,487 @@
                 "schema": {
                   "$ref": "#/components/schemas/DocumentSearchResponse"
                 }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/knowledge_stacks": {
+      "get": {
+        "tags": [
+          "knowledge_stacks"
+        ],
+        "summary": "List Knowledge Stacks",
+        "description": "List all knowledge stacks, optionally filtered by user.",
+        "operationId": "list_knowledge_stacks_api_knowledge_stacks_get",
+        "parameters": [
+          {
+            "name": "user_id",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "User Id"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/KnowledgeStackListResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      },
+      "post": {
+        "tags": [
+          "knowledge_stacks"
+        ],
+        "summary": "Create Knowledge Stack",
+        "description": "Create a new knowledge stack.",
+        "operationId": "create_knowledge_stack_api_knowledge_stacks_post",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/KnowledgeStackCreate"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/KnowledgeStack"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/knowledge_stacks/{stack_id}": {
+      "get": {
+        "tags": [
+          "knowledge_stacks"
+        ],
+        "summary": "Get Knowledge Stack",
+        "description": "Get a specific knowledge stack.",
+        "operationId": "get_knowledge_stack_api_knowledge_stacks__stack_id__get",
+        "parameters": [
+          {
+            "name": "stack_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Stack Id"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/KnowledgeStack"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      },
+      "put": {
+        "tags": [
+          "knowledge_stacks"
+        ],
+        "summary": "Update Knowledge Stack",
+        "description": "Update a knowledge stack.",
+        "operationId": "update_knowledge_stack_api_knowledge_stacks__stack_id__put",
+        "parameters": [
+          {
+            "name": "stack_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Stack Id"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/KnowledgeStackUpdate"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/KnowledgeStack"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      },
+      "delete": {
+        "tags": [
+          "knowledge_stacks"
+        ],
+        "summary": "Delete Knowledge Stack",
+        "description": "Delete a stack after Knowledge revokes its documents and collection.\n\nRevocation and cleanup intents commit before the stack row cascades; a\ntransient physical failure stays retryable but never restores access.",
+        "operationId": "delete_knowledge_stack_api_knowledge_stacks__stack_id__delete",
+        "parameters": [
+          {
+            "name": "stack_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Stack Id"
+            }
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": "Successful Response"
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/replay/session": {
+      "get": {
+        "tags": [
+          "replay"
+        ],
+        "summary": "Read Session",
+        "operationId": "read_session_api_replay_session_get",
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ReplaySessionView"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/replay/meetings/{meeting_id}": {
+      "get": {
+        "tags": [
+          "replay"
+        ],
+        "summary": "Read Meeting",
+        "operationId": "read_meeting_api_replay_meetings__meeting_id__get",
+        "parameters": [
+          {
+            "name": "meeting_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Meeting Id"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/MeetingWithParticipants"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/replay/meetings/{meeting_id}/disagreements": {
+      "get": {
+        "tags": [
+          "replay"
+        ],
+        "summary": "Read Disagreements",
+        "operationId": "read_disagreements_api_replay_meetings__meeting_id__disagreements_get",
+        "parameters": [
+          {
+            "name": "meeting_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Meeting Id"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/Disagreement"
+                  },
+                  "title": "Response Read Disagreements Api Replay Meetings  Meeting Id  Disagreements Get"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/replay/meetings/{meeting_id}/consensus": {
+      "get": {
+        "tags": [
+          "replay"
+        ],
+        "summary": "Read Consensus",
+        "operationId": "read_consensus_api_replay_meetings__meeting_id__consensus_get",
+        "parameters": [
+          {
+            "name": "meeting_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Meeting Id"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/Consensus"
+                  },
+                  "title": "Response Read Consensus Api Replay Meetings  Meeting Id  Consensus Get"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/replay/meetings/{meeting_id}/turns/{operation_id}": {
+      "get": {
+        "tags": [
+          "replay"
+        ],
+        "summary": "Read Turn",
+        "operationId": "read_turn_api_replay_meetings__meeting_id__turns__operation_id__get",
+        "parameters": [
+          {
+            "name": "meeting_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Meeting Id"
+            }
+          },
+          {
+            "name": "operation_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Operation Id"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/replay/meetings/{meeting_id}/turns/{operation_id}/events": {
+      "get": {
+        "tags": [
+          "replay"
+        ],
+        "summary": "Observe Turn",
+        "operationId": "observe_turn_api_replay_meetings__meeting_id__turns__operation_id__events_get",
+        "parameters": [
+          {
+            "name": "meeting_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Meeting Id"
+            }
+          },
+          {
+            "name": "operation_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Operation Id"
+            }
+          },
+          {
+            "name": "after",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "default": 0,
+              "title": "After"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {}
               }
             }
           },
@@ -4058,6 +4321,111 @@
         "title": "ProvidersListResponse",
         "description": "Response with all available providers and environment info."
       },
+      "ReplayCapabilitiesView": {
+        "properties": {
+          "meetingRead": {
+            "type": "boolean",
+            "title": "Meetingread"
+          },
+          "turnObservation": {
+            "type": "boolean",
+            "title": "Turnobservation"
+          },
+          "disagreements": {
+            "type": "boolean",
+            "title": "Disagreements"
+          },
+          "consensus": {
+            "type": "boolean",
+            "title": "Consensus"
+          },
+          "contextStats": {
+            "type": "boolean",
+            "title": "Contextstats"
+          },
+          "createMeeting": {
+            "type": "boolean",
+            "title": "Createmeeting"
+          },
+          "sendMessage": {
+            "type": "boolean",
+            "title": "Sendmessage"
+          },
+          "submitTurn": {
+            "type": "boolean",
+            "title": "Submitturn"
+          },
+          "cancelTurn": {
+            "type": "boolean",
+            "title": "Cancelturn"
+          },
+          "summary": {
+            "type": "boolean",
+            "title": "Summary"
+          },
+          "documents": {
+            "type": "boolean",
+            "title": "Documents"
+          },
+          "closing": {
+            "type": "boolean",
+            "title": "Closing"
+          }
+        },
+        "type": "object",
+        "required": [
+          "meetingRead",
+          "turnObservation",
+          "disagreements",
+          "consensus",
+          "contextStats",
+          "createMeeting",
+          "sendMessage",
+          "submitTurn",
+          "cancelTurn",
+          "summary",
+          "documents",
+          "closing"
+        ],
+        "title": "ReplayCapabilitiesView"
+      },
+      "ReplaySessionView": {
+        "properties": {
+          "run_id": {
+            "type": "string",
+            "title": "Run Id"
+          },
+          "package_version": {
+            "type": "string",
+            "title": "Package Version"
+          },
+          "meeting_id": {
+            "type": "string",
+            "title": "Meeting Id"
+          },
+          "label": {
+            "type": "string",
+            "title": "Label"
+          },
+          "provenance": {
+            "additionalProperties": true,
+            "type": "object",
+            "title": "Provenance"
+          },
+          "capabilities": {
+            "$ref": "#/components/schemas/ReplayCapabilitiesView"
+          }
+        },
+        "type": "object",
+        "required": [
+          "run_id",
+          "package_version",
+          "meeting_id",
+          "label",
+          "capabilities"
+        ],
+        "title": "ReplaySessionView"
+      },
       "RequestProviderSettings": {
         "properties": {
           "provider": {
@@ -4118,7 +4486,7 @@
         },
         "type": "object",
         "title": "RequestProviderSettings",
-        "description": "Browser-supplied generation overrides for one turn (BYOK contract).\n\nEvery field is optional: absent fields fall back to the participant's\npersisted provider_config, then to server defaults. The API key itself\nnever lives here \u2014 it rides the X-Provider-Key request header."
+        "description": "Browser-supplied generation overrides for one turn (BYOK contract).\n\nEvery field is optional: absent fields fall back to the participant's\npersisted provider_config, then to server defaults. The API key itself\nnever lives here — it rides the X-Provider-Key request header."
       },
       "SenderType": {
         "type": "string",

@@ -81,7 +81,7 @@ def test_every_api_route_is_owned_by_a_module():
             continue
         endpoint = getattr(route, "endpoint", None)
         module = getattr(endpoint, "__module__", "")
-        if not module.startswith("app.modules."):
+        if not module.startswith(("app.modules.", "app.replay.")):
             unowned.append((path, module))
     assert unowned == []
 

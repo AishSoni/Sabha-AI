@@ -1,0 +1,70 @@
+"""Composition contract for the read-only replay runtime (spec-14).
+
+Replay owns a separate request graph. A ``ReplayContainer`` never references
+the live container, and its ports are satisfied only by a recorded source.
+The production surface is honest about that: until a validated recorded source
+is configured (Spec 17), replay requests return 503 rather than falling back
+to live data.
+"""
+
+from __future__ import annotations
+
+from dataclasses import dataclass, field
+from typing import Any
+
+from app.modules.meetings.application.ports import MeetingReads, TurnObservation
+
+
+class ReplayNotFound(Exception):
+    """The recorded package has no such recorded view."""
+
+
+@dataclass(frozen=True)
+class ReplayCapabilities:
+    meeting_read: bool = True
+    turn_observation: bool = True
+    disagreements: bool = True
+    consensus: bool = True
+    context_stats: bool = False
+    create_meeting: bool = False
+    send_message: bool = False
+    submit_turn: bool = False
+    cancel_turn: bool = False
+    summary: bool = False
+    documents: bool = False
+    closing: bool = False
+
+    def as_dict(self) -> dict[str, bool]:
+        return {
+            "meetingRead": self.meeting_read,
+            "turnObservation": self.turn_observation,
+            "disagreements": self.disagreements,
+            "consensus": self.consensus,
+            "contextStats": self.context_stats,
+            "createMeeting": self.create_meeting,
+            "sendMessage": self.send_message,
+            "submitTurn": self.submit_turn,
+            "cancelTurn": self.cancel_turn,
+            "summary": self.summary,
+            "documents": self.documents,
+            "closing": self.closing,
+        }
+
+
+@dataclass(frozen=True)
+class ReplaySession:
+    run_id: str
+    package_version: str
+    meeting_id: str
+    label: str = "Recorded session"
+    provenance: dict[str, Any] = field(default_factory=dict)
+    capabilities: ReplayCapabilities = field(default_factory=ReplayCapabilities)
+
+
+@dataclass(frozen=True)
+class ReplayContainer:
+    """The replay request graph, deliberately independent of ``Container``."""
+
+    session: ReplaySession
+    reads: MeetingReads
+    observation: TurnObservation

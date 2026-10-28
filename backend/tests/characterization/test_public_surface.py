@@ -65,7 +65,21 @@ def test_route_table_contains_the_pinned_public_paths():
     paths = {getattr(route, "path", "") for route in app.routes}
     assert "/" in paths
     assert "/health" in paths
-    assert len([p for p in paths if p.startswith("/api/")]) == 38
+    live_paths = {
+        p for p in paths if p.startswith("/api/") and not p.startswith("/api/replay")
+    }
+    assert len(live_paths) == 38
+    assert {
+        p for p in paths if p.startswith("/api/replay")
+    } == {
+        "/api/replay/session",
+        "/api/replay/meetings/{meeting_id}",
+        "/api/replay/meetings/{meeting_id}/disagreements",
+        "/api/replay/meetings/{meeting_id}/consensus",
+        "/api/replay/meetings/{meeting_id}/turns/{operation_id}",
+        "/api/replay/meetings/{meeting_id}/turns/{operation_id}/events",
+        "/api/replay/{path:path}",
+    }
 
 
 def test_legacy_roots_have_no_callers():

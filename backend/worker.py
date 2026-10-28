@@ -15,10 +15,13 @@ import asyncio
 import logging
 
 from app.bootstrap import Container
+from app.platform.config import settings
 
 
 async def _main() -> None:
     logging.basicConfig(level=logging.INFO)
+    if settings.replay_only:
+        raise SystemExit("Refusing to run a live turn worker with REPLAY_ONLY=true")
     container = Container.production()
     runner = container.turn_runner
     if runner is None:

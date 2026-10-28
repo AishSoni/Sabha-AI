@@ -30,9 +30,22 @@ def _container(request: Request):
     return request.app.state.container
 
 
+def _meeting_service_from_container(container):
+    """The lifecycle service, falling back to the queue's owned service.
+
+    The durable turn service is constructed around a meeting service, so a
+    container that wires only the queue still exposes one live composition.
+    """
+    service = getattr(container, "meeting_service", None)
+    if service is None:
+        queue = getattr(container, "turn_queue", None)
+        service = getattr(queue, "meeting_manager", None)
+    return service
+
+
 def get_meeting_manager(request: Request) -> MeetingService:
     """The composition root's meeting lifecycle service."""
-    service = getattr(_container(request), "meeting_service", None)
+    service = _meeting_service_from_container(_container(request))
     if service is None:
         raise HTTPException(status_code=503, detail="Meeting service is not configured")
     return service
@@ -43,7 +56,7 @@ def get_meeting_reads(request: Request) -> MeetingReads:
     container = _container(request)
     reads = getattr(container, "meeting_reads", None)
     if reads is None:
-        reads = getattr(container, "meeting_service", None)
+        reads = _meeting_service_from_container(container)
     if reads is None:
         raise HTTPException(status_code=503, detail="Meeting reads are not configured")
     return reads

@@ -32,6 +32,8 @@ from app.modules.persona_catalog.application.contracts import (
 )
 from app.presentation.errors import register_error_handlers
 from app.presentation.router import mount_routes
+from app.replay.contracts import ReplayContainer
+from app.replay.http import router as replay_router
 from app.modules.meetings.infrastructure.supabase_meetings import build_meeting_service
 from app.modules.meetings.infrastructure.turns import TurnQueueService
 from app.capabilities.runtime.runner import TurnRunner
@@ -140,7 +142,11 @@ async def lifespan(app: FastAPI):
     import logging
 
     logger = logging.getLogger("sabha.startup")
-    container: Container = app.state.container
+    container: Container | None = getattr(app.state, "container", None)
+    if container is None:
+        yield
+        return
+
     reconciler = getattr(container, "startup_reconciliation", None)
     if reconciler is not None:
         try:
@@ -166,22 +172,21 @@ async def lifespan(app: FastAPI):
     except Exception:
         logger.warning("Closing startup reconciliation failed", exc_info=True)
 
-    try:
-        factory = getattr(container, "knowledge_lifecycle_factory", None)
-        if factory is None:
-            raise RuntimeError("Knowledge lifecycle is not configured")
-        lifecycle = factory()
-        report = await lifecycle.run_cleanup()
-        if report.attempted:
-            logger.info("Knowledge cleanup reconciliation: %s", report)
-        recovered = await lifecycle.recover_ingestions()
-        if recovered:
-            logger.info("Knowledge ingestion recovery: %s operations", recovered)
-        staged = await lifecycle.sweep_staging()
-        if staged:
-            logger.info("Knowledge staging sweep removed %s objects", staged)
-    except Exception:
-        logger.warning("Knowledge startup reconciliation failed", exc_info=True)
+    factory = getattr(container, "knowledge_lifecycle_factory", None)
+    if factory is not None:
+        try:
+            lifecycle = factory()
+            report = await lifecycle.run_cleanup()
+            if report.attempted:
+                logger.info("Knowledge cleanup reconciliation: %s", report)
+            recovered = await lifecycle.recover_ingestions()
+            if recovered:
+                logger.info("Knowledge ingestion recovery: %s operations", recovered)
+            staged = await lifecycle.sweep_staging()
+            if staged:
+                logger.info("Knowledge staging sweep removed %s objects", staged)
+        except Exception:
+            logger.warning("Knowledge startup reconciliation failed", exc_info=True)
 
     try:
         yield
@@ -215,13 +220,24 @@ def _ensure_demo_guard(app: FastAPI) -> None:
         return await call_next(request)
 
 
-def create_app(container: Optional[Container] = None) -> FastAPI:
+def create_app(
+    container: Optional[Container] = None,
+    replay: Optional[ReplayContainer] = None,
+    *,
+    mount_live: bool | None = None,
+) -> FastAPI:
     """Assemble the application.
 
-    ``container=None`` selects the production composition; tests inject
-    their own ``Container`` built with double adapters.
+    ``container=None`` selects the production live composition; tests inject
+    their own ``Container`` built with double adapters. ``replay`` is always a
+    separate graph stored at ``app.state.replay``; it is never derived from the
+    live container. ``mount_live=False`` (or ``REPLAY_ONLY=true``) produces a
+    replay-only process that constructs no live adapters.
     """
-    active = container if container is not None else Container.production()
+    live_enabled = (not settings.replay_only) if mount_live is None else mount_live
+    active = None
+    if live_enabled:
+        active = container if container is not None else Container.production()
 
     app = FastAPI(
         title="Sabha API",
@@ -240,12 +256,17 @@ def create_app(container: Optional[Container] = None) -> FastAPI:
     )
 
     app.state.container = active
+    app.state.replay = replay
     register_error_handlers(app)
 
-    # Include routers (unchanged order; cutover will remove migrated
-    # duplicates from the legacy routers)
-    mount_routes(app)
-    _ensure_demo_guard(app)
+    if live_enabled:
+        # Include routers (unchanged order; cutover will remove migrated
+        # duplicates from the legacy routers)
+        mount_routes(app)
+        _ensure_demo_guard(app)
+    # The replay namespace is present in every composition. Without a
+    # configured source it answers 503; it never falls back to live data.
+    app.include_router(replay_router)
 
     @app.get("/")
     async def root():

@@ -32,17 +32,17 @@ driver messages. No endpoint returns a provider response body verbatim.
 
 No endpoint declares an auth dependency. `local` and `hosted` runtimes are
 shared, writable, no-sign-in workspaces; every visitor sees the same records.
-`runtime_mode=demo` currently enables a read-only HTTP guard: middleware
-returns `403` for any non-GET/HEAD/OPTIONS request under `/api` with
-`"Demo workspace is read-only — mutations are disabled"`. Guided replay itself
-remains deferred and is not implemented by these routes. This guard alone does
-not isolate read dependencies or startup recovery.
+`runtime_mode=demo` enables a read-only HTTP guard: middleware returns `403`
+for any non-GET/HEAD/OPTIONS request under `/api` with
+`"Demo workspace is read-only — mutations are disabled"`.
 
-Phase 3 plans cohosted live and replay request graphs; the global demo write
-guard alone is not that composition. Proposed replay endpoints are specified in
-[the package reference](reference-replay-package-and-playback.md), not listed as
-shipped routes here. Add them and their event contracts when implemented. The
-entry choice is UX, not authorization over the intentionally shared live API.
+Phase 3 adds a separate replay request graph under `/api/replay`. It is not a
+mode switch for the live graph: replay requests read only the recorded source
+in `app.state.replay` through a dedicated reader, and every non-GET replay
+request is rejected before an adapter. When no replay package is configured,
+`/api/replay/*` returns `503 replay_not_configured`; it never falls back to
+live data. The entry choice remains UX, not authorization over the
+intentionally shared live API.
 
 ### BYOK generation contract
 
@@ -211,6 +211,26 @@ the same payload returns the original operation, while a different payload is
 | `GET /api/knowledge_stacks/{stack_id}` | status | `KnowledgeStack` | — | `404` "Knowledge stack not found" | |
 | `PUT /api/knowledge_stacks/{stack_id}` | command | `KnowledgeStack` | name, optional description | `404`; `422` | |
 | `DELETE /api/knowledge_stacks/{stack_id}` | command | `204` | — | `404`; `503` Knowledge cleanup unavailable | Deletes stack-owned knowledge through the lifecycle |
+
+### Replay (`app/replay/http.py`, tag `replay`)
+
+Replay routes resolve `request.app.state.replay` only. They never consult
+`app.state.container`, a runtime header, a workspace id, or a provider key.
+Recorded reads are limited to the meeting named by the configured package.
+Every non-GET path returns `403 replay_read_only` before an adapter is called.
+
+| Method & path | Class | Receipt / shape | Request keys | Safe errors | Notes |
+|---|---|---|---|---|---|
+| `GET /api/replay/session` | observation | `ReplaySessionView` | — | `503 replay_not_configured` | Run/package identity, recorded meeting id, capabilities, provenance |
+| `GET /api/replay/meetings/{meeting_id}` | observation | `MeetingWithParticipants` | — | `404`; `503` | Recorded detail; ids outside the package are not found |
+| `GET /api/replay/meetings/{meeting_id}/disagreements` | observation | `Disagreement[]` | — | `404`; `503` | Recorded scoreboard |
+| `GET /api/replay/meetings/{meeting_id}/consensus` | observation | `Consensus[]` | — | `404`; `503` | Recorded scoreboard |
+| `GET /api/replay/meetings/{meeting_id}/turns/{operation_id}` | observation | `TurnOperationResponse` | — | `404`; `503` | Recorded operation status; never starts work |
+| `GET /api/replay/meetings/{meeting_id}/turns/{operation_id}/events` | observation | SSE durable event stream | `after` cursor | `404` before stream; `503` | Recorded events only; no live polling or provider call |
+| `POST /api/replay/{path:path}` | command rejection | `{detail:"replay_read_only"}` | — | `403` | Catch-all rejects before any adapter |
+| `PUT /api/replay/{path:path}` | command rejection | `{detail:"replay_read_only"}` | — | `403` | Same |
+| `PATCH /api/replay/{path:path}` | command rejection | `{detail:"replay_read_only"}` | — | `403` | Same |
+| `DELETE /api/replay/{path:path}` | command rejection | `{detail:"replay_read_only"}` | — | `403` | Same |
 
 ### Root and health (`app/bootstrap.py`)
 
