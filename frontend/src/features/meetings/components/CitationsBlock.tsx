@@ -8,6 +8,8 @@ interface Citation {
     title?: string;
     url?: string;
     snippet?: string;
+    claim_id?: string;
+    locator?: string;
 }
 
 interface CitationsBlockProps {
@@ -59,11 +61,19 @@ export function CitationsBlock({ citations }: CitationsBlockProps) {
                                     </span>
                                 )}
                             </div>
-                            {citation.snippet && (
-                                <p className="text-xs text-zinc-400 mt-1 line-clamp-2">
+                            <p className="mt-1 text-[11px] uppercase tracking-wide text-blue-500/80">
+                                {citation.source}
+                            </p>
+                            {citation.locator ? (
+                                <p className="mt-1 text-xs text-zinc-500">
+                                    Locator: {citation.locator}
+                                </p>
+                            ) : null}
+                            {citation.snippet ? (
+                                <p className="mt-1 whitespace-pre-wrap text-xs text-zinc-400">
                                     {citation.snippet}
                                 </p>
-                            )}
+                            ) : null}
                         </div>
                     ))}
                 </div>

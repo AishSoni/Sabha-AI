@@ -75,6 +75,8 @@ export function decodeCitation(
         title: optionalString(record.title, `${path}.title`),
         url: optionalString(record.url, `${path}.url`),
         snippet: optionalString(record.snippet, `${path}.snippet`),
+        claim_id: optionalString(record.claim_id, `${path}.claim_id`),
+        locator: optionalString(record.locator, `${path}.locator`),
     };
 }
 
