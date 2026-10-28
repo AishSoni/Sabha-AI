@@ -464,6 +464,58 @@ def list_packages(conn: psycopg.Connection) -> list[dict[str, Any]]:
     ]
 
 
+def prune_retired(
+    conn: psycopg.Connection,
+    storage: StoragePublisher,
+    *,
+    older_than_days: int,
+) -> list[dict[str, str]]:
+    """Remove retired versions past the retention window.
+
+    The deletion is explicit: active versions cannot be retired, and a registry
+    row still referencing a version makes the delete fail instead of stranding
+    a pinned run. Asset objects are deleted after the database commit.
+    """
+    if older_than_days < 0:
+        raise PublicationError("retention window must be non-negative")
+    rows = conn.execute(
+        """
+        SELECT package_id, version
+        FROM replay.package
+        WHERE status = 'retired'
+          AND retired_at IS NOT NULL
+          AND retired_at < now() - make_interval(days => %s)
+        ORDER BY package_id, version
+        """,
+        (older_than_days,),
+    ).fetchall()
+    pruned: list[dict[str, str]] = []
+    asset_paths: list[str] = []
+    for package_id, version in rows:
+        asset_paths.extend(
+            row[0]
+            for row in conn.execute(
+                "SELECT storage_path FROM replay.asset "
+                "WHERE package_id = %s AND version = %s",
+                (package_id, version),
+            ).fetchall()
+        )
+        conn.execute(
+            "DELETE FROM replay.package WHERE package_id = %s AND version = %s",
+            (package_id, version),
+        )
+        pruned.append({"package_id": package_id, "version": version})
+    conn.commit()
+    for path in asset_paths:
+        try:
+            storage.delete(path)
+        except Exception:
+            # The database is authoritative; an orphan object is cleaned up by
+            # a later operator pass rather than resurrecting the package.
+            pass
+    return pruned
+
+
 def _storage_from_env() -> SupabaseStoragePublisher:
     url = os.environ.get("REPLAY_STORAGE_URL") or os.environ.get("SUPABASE_URL", "")
     service_key = os.environ.get("REPLAY_STORAGE_SERVICE_KEY", "")
@@ -491,6 +543,8 @@ def main(argv: list[str] | None = None) -> int:
     retire_parser = subparsers.add_parser("retire")
     retire_parser.add_argument("package_id")
     retire_parser.add_argument("version")
+    prune_parser = subparsers.add_parser("prune")
+    prune_parser.add_argument("--older-than-days", type=int, default=30)
     subparsers.add_parser("list")
     args = parser.parse_args(argv)
 
@@ -538,6 +592,13 @@ def main(argv: list[str] | None = None) -> int:
             elif args.command == "retire":
                 retire_package(conn, args.package_id, args.version)
                 _print({"ok": True})
+            elif args.command == "prune":
+                pruned = prune_retired(
+                    conn,
+                    _storage_from_env(),
+                    older_than_days=args.older_than_days,
+                )
+                _print({"ok": True, "pruned": pruned})
             else:
                 _print({"ok": True, "packages": list_packages(conn)})
         return 0

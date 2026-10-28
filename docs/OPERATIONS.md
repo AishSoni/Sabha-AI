@@ -524,6 +524,8 @@ python -m scripts.replay_package --database-url $env:REPLAY_PROVISIONER_DATABASE
     activate placeholder-analyst 1
 python -m scripts.replay_package --database-url $env:REPLAY_PROVISIONER_DATABASE_URL `
     retire placeholder-analyst 1
+python -m scripts.replay_package --database-url $env:REPLAY_PROVISIONER_DATABASE_URL `
+    prune --older-than-days 30
 python -m scripts.replay_package --database-url $env:REPLAY_PROVISIONER_DATABASE_URL list
 ```
 
@@ -533,7 +535,10 @@ the version in one transaction. Publishing the same version with different
 content is refused. `retire` refuses the active version; activate another
 published version first. A missing, corrupt, incompatible, or unregistered
 package answers `503 replay_package_unavailable` (retired active runs that are
-still pinned keep serving); there is no live fallback.
+still pinned keep serving); there is no live fallback. `prune` deletes retired
+versions past the retention window and their asset objects; the active version
+can never be retired or pruned, and a registry reference makes the delete fail
+rather than strand a pinned run.
 
 Runtime configuration:
 

@@ -19,6 +19,7 @@ from scripts.replay_package import (
     activate_package,
     assert_provisioner_identity,
     list_packages,
+    prune_retired,
     publish_package,
     retire_package,
 )
@@ -232,6 +233,31 @@ def test_publication_refuses_an_admin_identity(replay_db) -> None:
     with replay_db.connect() as admin:
         with pytest.raises(PublicationError):
             assert_provisioner_identity(admin)
+
+
+def test_prune_removes_only_retired_packages_past_retention(replay_db) -> None:
+    storage = FakeStorage()
+    with _publisher(replay_db) as conn:
+        publish_package(conn, load_package(FIXTURE_V1), storage)
+        publish_package(conn, load_package(FIXTURE_V2), storage)
+        activate_package(conn, "fixture-minimal", "2")
+        retire_package(conn, "fixture-minimal", "1")
+
+    with replay_db.connect() as admin:
+        admin.execute(
+            "UPDATE replay.package SET retired_at = now() - interval '90 days' "
+            "WHERE package_id = 'fixture-minimal' AND version = '1'"
+        )
+
+    with _publisher(replay_db) as conn:
+        pruned = prune_retired(conn, storage, older_than_days=30)
+
+    assert pruned == [{"package_id": "fixture-minimal", "version": "1"}]
+    with _reader(replay_db) as reader:
+        assert reader.execute(
+            "SELECT version FROM replay.v_published_package ORDER BY version"
+        ).fetchall() == [("2",)]
+    assert all("fixture-minimal/1/" not in path for path in storage.objects)
 
 
 BASE_TABLES = (
