@@ -98,6 +98,27 @@ function installRouter(overrides: Record<string, () => Response> = {}) {
                     participant_count: 1,
                 });
             }
+            if (url.endsWith(`/meetings/${MEETING_ID}/closing`)) {
+                return json(200, {
+                    meeting_id: MEETING_ID,
+                    meeting_status: 'active',
+                    archived: false,
+                    closing_id: null,
+                    request_key: null,
+                    mode: null,
+                    stage: null,
+                    failed_from_stage: null,
+                    votes: [],
+                    summary: null,
+                    summary_message_id: null,
+                    error: null,
+                    retryable: false,
+                    abortable: false,
+                    created_at: null,
+                    updated_at: null,
+                    completed_at: null,
+                });
+            }
             if (url.includes('/turns')) return json(200, []);
             throw new Error(`Unexpected request: ${method} ${url}`);
         })

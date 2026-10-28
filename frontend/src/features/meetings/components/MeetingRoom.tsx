@@ -24,6 +24,7 @@ import {
     FileText,
     Loader2,
     Lock,
+    LogOut,
     MessageSquare,
     Scroll,
     Send,
@@ -54,6 +55,9 @@ import type {
 } from '../api/decoders';
 import type { TurnOperation } from '../api/turn-decoders';
 import type { TurnProjection } from '../api/turn-projection';
+import type { ClosingStage } from '../api/closing-decoders';
+import { isPollingClosingStage } from '../api/closing-decoders';
+import { useClosingObservation } from '../api/use-closing-observation';
 import { useMeetingTurnController } from '../hooks/use-meeting-turn-controller';
 import { useMeetingsRuntime } from '../runtime/context';
 import {
@@ -74,6 +78,7 @@ import {
 import { ThinkingBlock } from './ThinkingBlock';
 import { ToolUseBlock } from './ToolUseBlock';
 import { CitationsBlock } from './CitationsBlock';
+import { ClosingPanel } from './ClosingPanel';
 
 export interface MeetingRoomProps {
     meetingId: string;
@@ -208,9 +213,26 @@ function MeetingConversation({ meeting, disagreements, consensus }: Conversation
         meetingId: meeting.id,
         runtime,
     });
+    const closingObservation = useClosingObservation({
+        meetingId: meeting.id,
+        enabled: capabilities.closing,
+        runtime,
+    });
     const [tab, setTab] = useState('chat');
     const DocumentsPanel = slots.documentPanel;
     const SummaryPanel = slots.summaryPanel;
+
+    const closingStage: ClosingStage | null = closingObservation.closing?.stage ?? null;
+    const closingOpen =
+        isPollingClosingStage(closingStage) || closingStage === 'failed';
+    const closingCompleted = closingStage === 'completed';
+    const ended =
+        meeting.status === 'ended' ||
+        meeting.status === 'archived' ||
+        closingCompleted;
+    const readOnly = ended || !capabilities.submitTurn;
+
+    const openClosing = () => setTab('closing');
 
     return (
         <div className="flex-1 flex flex-col bg-zinc-950 min-h-0 overflow-hidden">
@@ -249,6 +271,14 @@ function MeetingConversation({ meeting, disagreements, consensus }: Conversation
                                 value="summary"
                                 icon={<Scroll className="w-4 h-4" />}
                                 label="Summary"
+                            />
+                        )}
+                        {capabilities.closing && (
+                            <RoomTab
+                                id="closing-tab"
+                                value="closing"
+                                icon={<LogOut className="w-4 h-4" />}
+                                label="Close"
                             />
                         )}
                     </TabsList>
@@ -301,30 +331,115 @@ function MeetingConversation({ meeting, disagreements, consensus }: Conversation
                         <SummaryPanel meeting={meeting} />
                     </TabsContent>
                 )}
+
+                {capabilities.closing && (
+                    <TabsContent value="closing" className="flex-1 m-0 min-h-0">
+                        <div className="h-full overflow-y-auto p-4">
+                            <div className="mx-auto max-w-3xl">
+                                <ClosingPanel
+                                    meetingId={meeting.id}
+                                    meetingStatus={meeting.status}
+                                />
+                            </div>
+                        </div>
+                    </TabsContent>
+                )}
             </Tabs>
 
-            {meeting.status === 'ended' ||
-            meeting.status === 'archived' ||
-            !capabilities.submitTurn ? (
+            {closingOpen ? (
+                tab !== 'closing' ? (
+                    <ClosingRoomNotice stage={closingStage} onOpen={openClosing} />
+                ) : null
+            ) : readOnly ? (
                 <div className="p-4 border-t border-zinc-800 shrink-0 bg-zinc-950">
                     <p className="text-center text-sm text-zinc-500">
                         {runtime.presentation.readOnlyNotice}
                     </p>
                 </div>
             ) : (
-                <RoomControls meeting={meeting} turns={turns} />
+                <>
+                    {capabilities.closing && (
+                        <div className="border-t border-zinc-800 bg-zinc-950 px-4 py-2 shrink-0">
+                            <div className="mx-auto flex max-w-3xl justify-end">
+                                <Button
+                                    id="closing-entry"
+                                    type="button"
+                                    variant="ghost"
+                                    size="sm"
+                                    className="text-zinc-400 hover:text-white"
+                                    onClick={openClosing}
+                                >
+                                    <LogOut className="mr-2 h-4 w-4" />
+                                    Close meeting
+                                </Button>
+                            </div>
+                        </div>
+                    )}
+                    <RoomControls meeting={meeting} turns={turns} />
+                </>
             )}
         </div>
     );
 }
 
+function ClosingRoomNotice({
+    stage,
+    onOpen,
+}: {
+    stage: ClosingStage | null;
+    onOpen: () => void;
+}) {
+    const title =
+        stage === 'failed'
+            ? 'Closing failed'
+            : stage === 'draining'
+              ? 'Finishing queued work'
+              : stage === 'voting'
+                ? 'Voting on whether to end'
+                : stage === 'summarizing'
+                  ? 'Writing the final summary'
+                  : 'Closing in progress';
+    const detail =
+        stage === 'failed'
+            ? 'Turn submission is paused until you retry or abort the close.'
+            : 'Turn submission is paused while the close is in progress. You can leave and come back; observation resumes without regenerating work.';
+
+    return (
+        <div
+            id="closing-room-status"
+            role="status"
+            aria-live="polite"
+            className="border-t border-zinc-800 bg-zinc-950 px-4 py-3 shrink-0"
+        >
+            <div className="mx-auto flex max-w-3xl flex-wrap items-center gap-3">
+                <div className="min-w-0 flex-1">
+                    <p className="text-sm font-medium text-white">{title}</p>
+                    <p className="text-xs text-zinc-500">{detail}</p>
+                </div>
+                <Button
+                    id="closing-room-view"
+                    type="button"
+                    variant="outline"
+                    size="sm"
+                    className="border-zinc-700 text-zinc-300"
+                    onClick={onOpen}
+                >
+                    View closing
+                </Button>
+            </div>
+        </div>
+    );
+}
+
 function RoomTab({
+    id,
     value,
     icon,
     label,
     count,
     tone,
 }: {
+    id?: string;
     value: string;
     icon: React.ReactNode;
     label: string;
@@ -333,6 +448,7 @@ function RoomTab({
 }) {
     return (
         <TabsTrigger
+            id={id}
             value={value}
             className="data-[state=active]:bg-zinc-800 data-[state=active]:text-white text-zinc-400 px-3"
         >

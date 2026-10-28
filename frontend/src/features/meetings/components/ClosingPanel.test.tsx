@@ -14,6 +14,7 @@ import {
     createScriptedFetch,
     type ScriptedFetch,
 } from '../../../../tests/fixtures/transport';
+import { LiveMeetingsRuntimeProvider } from '../runtime/live';
 import { ClosingPanel } from './ClosingPanel';
 
 const MEETING_ID = 'meeting-close-1';
@@ -54,7 +55,9 @@ function renderPanel(
 ) {
     return render(
         <QueryClientProvider client={queryClient}>
-            <ClosingPanel meetingId={MEETING_ID} meetingStatus={status} />
+            <LiveMeetingsRuntimeProvider>
+                <ClosingPanel meetingId={MEETING_ID} meetingStatus={status} />
+            </LiveMeetingsRuntimeProvider>
         </QueryClientProvider>
     );
 }

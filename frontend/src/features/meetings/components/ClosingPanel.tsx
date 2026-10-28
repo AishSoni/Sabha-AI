@@ -28,23 +28,21 @@ import { isApiError } from '@/shared/api/errors';
 import {
     createClosingRequestKey,
     useAbortClosing,
-    useClosingObservation,
+    useClosing,
     useRequestClosing,
     useRetryClosing,
     type ClosingMode,
     type ClosingStage,
     type ClosingSummarySettings,
-    type ClosingView,
     type ClosingVote,
 } from '../api';
 import type { MeetingStatus } from '../api/decoders';
+import { useMeetingsRuntime } from '../runtime/context';
 
 export interface ClosingPanelProps {
     meetingId: string;
     meetingStatus: MeetingStatus;
     summarySettings?: ClosingSummarySettings;
-    /** Called once when an operation reaches a settled stage. */
-    onSettled?: (view: ClosingView) => void;
 }
 
 interface PendingIntent {
@@ -164,18 +162,18 @@ export function ClosingPanel({
     meetingId,
     meetingStatus,
     summarySettings,
-    onSettled,
 }: ClosingPanelProps) {
+    const runtime = useMeetingsRuntime();
     const [confirmMode, setConfirmMode] = useState<ClosingMode | null>(null);
     const [actionError, setActionError] = useState<string | null>(null);
     const pendingIntent = useRef<PendingIntent | null>(null);
 
-    const observation = useClosingObservation({ meetingId, onSettled });
-    const request = useRequestClosing();
-    const retry = useRetryClosing();
-    const abort = useAbortClosing();
+    const closingQuery = useClosing(meetingId, true, runtime);
+    const request = useRequestClosing(runtime);
+    const retry = useRetryClosing(runtime);
+    const abort = useAbortClosing(runtime);
 
-    const closing = observation.closing;
+    const closing = closingQuery.data;
     const stage = closing?.stage ?? null;
     const status = closing?.meeting_status ?? meetingStatus;
     const archived = status === 'archived' || Boolean(closing?.archived);
@@ -237,7 +235,7 @@ export function ClosingPanel({
     };
 
     return (
-        <div className="space-y-3">
+        <div id="closing-panel" className="space-y-3">
             <h4 className="flex items-center gap-2 text-sm font-semibold text-zinc-400">
                 <LogOut className="h-4 w-4" />
                 Close Meeting
@@ -286,6 +284,25 @@ export function ClosingPanel({
                         This is safe to leave. Reloading resumes observation, not
                         generation.
                     </p>
+                    {closing?.abortable ? (
+                        <div className="mt-3">
+                            <Button
+                                id="closing-abort"
+                                size="sm"
+                                variant="outline"
+                                onClick={abortClose}
+                                disabled={busy}
+                                className="border-zinc-700 text-zinc-300"
+                            >
+                                {abort.isPending ? (
+                                    <Loader2 className="mr-2 h-4 w-4 motion-safe:animate-spin" />
+                                ) : (
+                                    <Ban className="mr-2 h-4 w-4" />
+                                )}
+                                Abort closing
+                            </Button>
+                        </div>
+                    ) : null}
                 </StatusCard>
             ) : null}
 
@@ -306,13 +323,14 @@ export function ClosingPanel({
                     <div className="mt-3 flex flex-wrap gap-2">
                         {closing?.retryable ? (
                             <Button
+                                id="closing-retry"
                                 size="sm"
                                 onClick={retryClose}
                                 disabled={busy}
                                 className="bg-indigo-600 hover:bg-indigo-700"
                             >
                                 {retry.isPending ? (
-                                    <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                                    <Loader2 className="mr-2 h-4 w-4 motion-safe:animate-spin" />
                                 ) : (
                                     <RotateCcw className="mr-2 h-4 w-4" />
                                 )}
@@ -321,6 +339,7 @@ export function ClosingPanel({
                         ) : null}
                         {closing?.abortable ? (
                             <Button
+                                id="closing-abort"
                                 size="sm"
                                 variant="outline"
                                 onClick={abortClose}
@@ -328,7 +347,7 @@ export function ClosingPanel({
                                 className="border-zinc-700 text-zinc-300"
                             >
                                 {abort.isPending ? (
-                                    <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                                    <Loader2 className="mr-2 h-4 w-4 motion-safe:animate-spin" />
                                 ) : (
                                     <Ban className="mr-2 h-4 w-4" />
                                 )}
@@ -360,10 +379,14 @@ export function ClosingPanel({
             ) : null}
 
             {votes.length > 0 ? (
-                <div className="space-y-2">
+                <div id="closing-ballots" className="space-y-2">
                     <h5 className="text-xs font-semibold uppercase tracking-wide text-zinc-500">
                         Ballots
                     </h5>
+                    <p className="text-xs text-zinc-500">
+                        Each ballot answers only whether this meeting should end, not
+                        whether any proposal is approved.
+                    </p>
                     {votes.map((vote) => (
                         <VoteRow key={vote.participant_id} vote={vote} />
                     ))}
@@ -371,7 +394,7 @@ export function ClosingPanel({
             ) : null}
 
             {closing?.summary ? (
-                <Card className="border-zinc-800 bg-zinc-900/50 p-4">
+                <Card id="closing-final-summary" className="border-zinc-800 bg-zinc-900/50 p-4">
                     <h5 className="mb-2 text-xs font-semibold uppercase tracking-wide text-zinc-500">
                         Final summary
                     </h5>
@@ -395,16 +418,16 @@ export function ClosingPanel({
                 </div>
             ) : null}
 
-            {observation.error ? (
+            {closingQuery.error ? (
                 <div className="flex items-center gap-2 rounded-lg border border-amber-800 bg-amber-900/30 p-3 text-amber-300">
                     <AlertTriangle className="h-4 w-4 shrink-0" />
                     <span className="flex-1 text-sm">
-                        Closing progress could not be read: {observation.error.message}
+                        Closing progress could not be read: {closingQuery.error.message}
                     </span>
                     <Button
                         size="sm"
                         variant="ghost"
-                        onClick={observation.resume}
+                        onClick={() => void closingQuery.refetch()}
                         className="text-amber-300 hover:text-white"
                     >
                         Reconnect
@@ -424,6 +447,7 @@ export function ClosingPanel({
                         </div>
                         <div className="grid grid-cols-2 gap-3">
                             <Button
+                                id="closing-start-vote"
                                 variant="outline"
                                 onClick={() => setConfirmMode('vote')}
                                 disabled={busy}
@@ -436,6 +460,7 @@ export function ClosingPanel({
                                 </span>
                             </Button>
                             <Button
+                                id="closing-start-force"
                                 variant="outline"
                                 onClick={() => setConfirmMode('force')}
                                 disabled={busy}
@@ -468,6 +493,7 @@ export function ClosingPanel({
                         </div>
                         <div className="flex gap-2">
                             <Button
+                                id="closing-confirm"
                                 onClick={() => startClose(confirmMode)}
                                 disabled={busy}
                                 className={
@@ -477,11 +503,12 @@ export function ClosingPanel({
                                 }
                             >
                                 {busy ? (
-                                    <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                                    <Loader2 className="mr-2 h-4 w-4 motion-safe:animate-spin" />
                                 ) : null}
                                 {confirmMode === 'force' ? 'Force End' : 'Start Vote'}
                             </Button>
                             <Button
+                                id="closing-cancel"
                                 variant="ghost"
                                 onClick={() => setConfirmMode(null)}
                                 disabled={busy}
