@@ -85,15 +85,33 @@ function voteLabel(vote: ClosingVote): string {
 function VoteRow({ vote }: { vote: ClosingVote }) {
     const yes = vote.vote === true;
     const no = vote.vote === false;
+    const pending = vote.status === 'pending';
     const cost = vote.reported_cost ?? vote.estimated_cost;
+    const usageNote =
+        typeof cost === 'number' && cost > 0
+            ? null
+            : vote.usage_kind === 'unknown'
+              ? 'Usage not reported'
+              : vote.price_kind === 'unpriced'
+                ? 'Usage unpriced'
+                : vote.price_kind === 'zero_local'
+                  ? 'No provider cost'
+                  : null;
     return (
-        <div className="flex items-start gap-2 rounded-lg bg-zinc-900/50 p-2">
+        <div
+            className="flex items-start gap-2 rounded-lg bg-zinc-900/50 p-2"
+            data-vote-status={
+                pending ? 'pending' : yes ? 'yes' : no ? 'no' : 'no-vote'
+            }
+        >
             {yes ? (
                 <CheckCircle2 className="mt-0.5 h-4 w-4 shrink-0 text-green-400" />
             ) : no ? (
                 <XCircle className="mt-0.5 h-4 w-4 shrink-0 text-red-400" />
+            ) : pending ? (
+                <Loader2 className="mt-0.5 h-4 w-4 shrink-0 motion-safe:animate-spin text-amber-400" />
             ) : (
-                <Loader2 className="mt-0.5 h-4 w-4 shrink-0 animate-spin text-amber-400" />
+                <AlertTriangle className="mt-0.5 h-4 w-4 shrink-0 text-amber-400" />
             )}
             <div className="min-w-0 flex-1">
                 <div className="flex flex-wrap items-center gap-2">
@@ -115,12 +133,20 @@ function VoteRow({ vote }: { vote: ClosingVote }) {
                     {typeof cost === 'number' && cost > 0 ? (
                         <span className="text-xs text-zinc-500">${cost.toFixed(4)}</span>
                     ) : null}
+                    {usageNote ? (
+                        <span className="text-xs text-zinc-500">{usageNote}</span>
+                    ) : null}
                 </div>
                 {vote.reason ? (
                     <p className="mt-0.5 text-xs text-zinc-500">{vote.reason}</p>
                 ) : null}
                 {vote.error_message ? (
                     <p className="mt-0.5 text-xs text-amber-400">{vote.error_message}</p>
+                ) : null}
+                {vote.error_code ? (
+                    <p className="mt-0.5 text-xs text-zinc-500">
+                        Error code: {vote.error_code}
+                    </p>
                 ) : null}
             </div>
         </div>
@@ -365,6 +391,11 @@ export function ClosingPanel({
                     title="Closing rejected"
                 >
                     <p className="text-sm text-zinc-300">{STAGE_COPY.rejected}</p>
+                    {canStart ? (
+                        <p className="mt-1 text-xs text-zinc-500">
+                            You can start another close request below.
+                        </p>
+                    ) : null}
                 </StatusCard>
             ) : null}
 
@@ -375,6 +406,12 @@ export function ClosingPanel({
                     title="Closing abandoned"
                 >
                     <p className="text-sm text-zinc-300">{STAGE_COPY.aborted}</p>
+                    {canStart ? (
+                        <p className="mt-1 text-xs text-zinc-500">
+                            Turn submission is available again. You can start another
+                            close request below.
+                        </p>
+                    ) : null}
                 </StatusCard>
             ) : null}
 

@@ -184,6 +184,60 @@ describe('closing panel observation', () => {
         expect(screen.getByText('No vote')).toBeInTheDocument();
         expect(screen.getByText('provider timeout')).toBeInTheDocument();
         expect(screen.getByText('$0.0100')).toBeInTheDocument();
+        expect(screen.getByText('Usage not reported')).toBeInTheDocument();
+        expect(postBodies()).toHaveLength(0);
+    });
+
+    it('keeps the spinner only on a pending ballot and labels unknown usage', async () => {
+        scripted.enqueueJson(
+            200,
+            viewJson({
+                stage: 'voting',
+                votes: [
+                    {
+                        participant_id: 'p-1',
+                        participant_name: 'The Investor',
+                        vote: null,
+                        reason: null,
+                        status: 'pending',
+                        usage_kind: null,
+                        price_kind: null,
+                        estimated_cost: null,
+                        reported_cost: null,
+                        error_message: null,
+                    },
+                    {
+                        participant_id: 'p-2',
+                        participant_name: 'The CTO',
+                        vote: null,
+                        reason: null,
+                        status: 'completed',
+                        usage_kind: 'reported',
+                        price_kind: 'unpriced',
+                        estimated_cost: null,
+                        reported_cost: null,
+                        error_message: 'No usable vote was returned.',
+                        error_code: 'no_vote',
+                    },
+                ],
+            })
+        );
+
+        renderPanel();
+
+        await waitFor(() => expect(screen.getByText('The Investor')).toBeInTheDocument());
+        expect(screen.getByText('Usage unpriced')).toBeInTheDocument();
+        expect(screen.getByText('Error code: no_vote')).toBeInTheDocument();
+        expect(
+            document.querySelector(
+                '[data-vote-status="pending"] [class*="animate-spin"]'
+            )
+        ).not.toBeNull();
+        expect(
+            document.querySelector(
+                '[data-vote-status="no-vote"] [class*="animate-spin"]'
+            )
+        ).toBeNull();
         expect(postBodies()).toHaveLength(0);
     });
 });
@@ -301,6 +355,58 @@ describe('closing commands', () => {
             `http://localhost:8000/api/meetings/${MEETING_ID}/closing/retry`
         );
         await waitFor(() => expect(screen.getByText('Writing summary')).toBeInTheDocument());
+    });
+
+    it('aborts an advancing close explicitly without replaying work', async () => {
+        scripted.enqueueJson(
+            200,
+            viewJson({ stage: 'voting', abortable: true })
+        );
+        scripted.enqueueJson(
+            200,
+            viewJson({
+                stage: 'aborted',
+                meeting_status: 'active',
+                abortable: false,
+            })
+        );
+
+        renderPanel();
+
+        await waitFor(() =>
+            expect(screen.getByRole('button', { name: /Abort closing/ })).toBeInTheDocument()
+        );
+        fireEvent.click(screen.getByRole('button', { name: /Abort closing/ }));
+
+        await waitFor(() => expect(postBodies()).toHaveLength(1));
+        expect(scripted.calls.at(-1)?.input).toBe(
+            `http://localhost:8000/api/meetings/${MEETING_ID}/closing/abort`
+        );
+        await waitFor(() => expect(screen.getByText('Closing abandoned')).toBeInTheDocument());
+        expect(screen.getByRole('button', { name: /Vote to End/ })).toBeInTheDocument();
+    });
+
+    it('submits only one close when the confirm control is clicked twice', async () => {
+        scripted.enqueueJson(200, viewJson());
+        scripted.enqueueJson(202, receiptJson);
+        scripted.enqueueJson(200, viewJson({ stage: 'draining', abortable: true }));
+        scripted.enqueueJson(202, receiptJson);
+        scripted.enqueueJson(200, viewJson({ stage: 'draining', abortable: true }));
+
+        renderPanel();
+
+        await waitFor(() =>
+            expect(screen.getByRole('button', { name: /Vote to End/ })).toBeInTheDocument()
+        );
+        fireEvent.click(screen.getByRole('button', { name: /Vote to End/ }));
+        const confirm = screen.getByRole('button', { name: /Start Vote/ });
+        fireEvent.click(confirm);
+        fireEvent.click(confirm);
+
+        await waitFor(() => expect(postBodies()).toHaveLength(1));
+        await waitFor(() =>
+            expect(screen.getByText('Finishing queued work')).toBeInTheDocument()
+        );
     });
 
     it('allows starting again after a rejected vote while the meeting stays active', async () => {
