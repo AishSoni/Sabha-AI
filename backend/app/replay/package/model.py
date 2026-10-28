@@ -11,7 +11,7 @@ from __future__ import annotations
 
 from typing import Any, Literal
 
-from pydantic import BaseModel, ConfigDict, Field, field_validator
+from pydantic import BaseModel, ConfigDict, Field, field_validator, model_validator
 
 SCHEMA_VERSION = 1
 READ_VERSION = 1
@@ -95,6 +95,13 @@ BEAT_TABS = (
     "documents",
     "summary",
     "closing",
+)
+
+CLAIM_KINDS = (
+    "fact",
+    "derived",
+    "judgment",
+    "unknown",
 )
 
 CLOSING_EVENT_KINDS = ("ballot", "summary")
@@ -241,6 +248,92 @@ class BeatRecord(StrictModel):
         return value
 
 
+class ClaimRecord(StrictModel):
+    """One approved factual, derived, judgment, or unknown statement.
+
+    A claim is content-side provenance: the exact displayed statement, the
+    retained evidence that supports it, and an honest locator. It is never
+    executable and never resolves live data.
+    """
+
+    claim_id: str
+    kind: Literal[CLAIM_KINDS]
+    text: str
+    evidence_asset_id: str | None = None
+    locator: str | None = None
+    excerpt: str | None = None
+    source_url: str | None = None
+    source_title: str | None = None
+    capture_date: str | None = None
+
+    @field_validator("claim_id", "evidence_asset_id")
+    @classmethod
+    def validate_claim_id(cls, value: str | None) -> str | None:
+        if value is not None and not _is_safe_slug(value):
+            raise ValueError("claim references must be safe identifiers")
+        return value
+
+    @field_validator("text", "locator", "excerpt", "source_title")
+    @classmethod
+    def validate_claim_text(cls, value: str | None) -> str | None:
+        if value is not None and not value.strip():
+            raise ValueError("claim text fields must not be empty")
+        return value
+
+    @field_validator("source_url")
+    @classmethod
+    def validate_source_url(cls, value: str | None) -> str | None:
+        if value is not None and resolve_passive_url(value) is None:
+            raise ValueError("source_url must be a passive http(s) URL")
+        return value
+
+    @field_validator("capture_date")
+    @classmethod
+    def validate_capture_date(cls, value: str | None) -> str | None:
+        if value is None:
+            return None
+        from datetime import date
+
+        try:
+            date.fromisoformat(value)
+        except ValueError as exc:
+            raise ValueError("capture_date must be an ISO date") from exc
+        return value
+
+    @model_validator(mode="after")
+    def validate_evidence_shape(self) -> "ClaimRecord":
+        if self.kind == "fact":
+            missing = [
+                name
+                for name, value in (
+                    ("evidence_asset_id", self.evidence_asset_id),
+                    ("locator", self.locator),
+                    ("excerpt", self.excerpt),
+                    ("source_url", self.source_url),
+                )
+                if not value
+            ]
+            if missing:
+                raise ValueError(
+                    "fact claims require " + ", ".join(missing)
+                )
+        elif self.kind in ("derived", "judgment"):
+            if not self.evidence_asset_id or not self.locator:
+                raise ValueError(
+                    f"{self.kind} claims require evidence_asset_id and locator"
+                )
+            if self.kind == "judgment" and self.source_url:
+                raise ValueError("judgment claims must not carry a source_url")
+        else:
+            if self.source_url:
+                raise ValueError("unknown claims must not carry a source_url")
+            if bool(self.evidence_asset_id) != bool(self.locator):
+                raise ValueError(
+                    "unknown claims require both evidence_asset_id and locator, or neither"
+                )
+        return self
+
+
 class Manifest(StrictModel):
     package_id: str
     version: str
@@ -260,6 +353,7 @@ class Manifest(StrictModel):
     label: str = "Recorded session"
     intents: list[IntentRecord] = Field(default_factory=list)
     beats: list[BeatRecord] = Field(default_factory=list)
+    claims: list[ClaimRecord] = Field(default_factory=list)
 
     @field_validator("package_id", "version")
     @classmethod
@@ -294,6 +388,14 @@ class Manifest(StrictModel):
         for item in value:
             if not _is_safe_slug(item):
                 raise ValueError(f"unsafe reference: {item!r}")
+        return value
+
+    @field_validator("claims")
+    @classmethod
+    def validate_claim_ids(cls, value: list[ClaimRecord]) -> list[ClaimRecord]:
+        claim_ids = [claim.claim_id for claim in value]
+        if len(set(claim_ids)) != len(claim_ids):
+            raise ValueError("claim_ids must be unique")
         return value
 
 

@@ -51,6 +51,38 @@ def _finalize(root: Path) -> None:
     manifest_path.write_text(json.dumps(manifest, indent=2) + "\n", encoding="utf-8")
 
 
+def _guided_claims() -> list[dict]:
+    return [
+        {
+            "claim_id": "c1-coverage",
+            "kind": "fact",
+            "text": "The synthetic brief states an illustrative coverage ratio of 1.8x.",
+            "evidence_asset_id": "brief",
+            "locator": "Synthetic issuer brief, coverage ratio",
+            "excerpt": "Illustrative coverage ratio: 1.8x",
+            "source_url": "https://example.com/synthetic-brief",
+            "source_title": "Synthetic issuer brief",
+            "capture_date": "2026-01-15",
+        }
+    ]
+
+
+def _add_claim_citation(claim_id: str):
+    def mutate(payload):
+        payload["reads"]["meeting"]["messages"][0]["citations"] = [
+            {
+                "source": "Synthetic issuer brief",
+                "title": "Synthetic issuer brief",
+                "url": "https://example.com/synthetic-brief",
+                "snippet": "Illustrative coverage ratio: 1.8x",
+                "claim_id": claim_id,
+                "locator": "Synthetic issuer brief, coverage ratio",
+            }
+        ]
+
+    return mutate
+
+
 def _guided_beats() -> list[dict]:
     return [
         {
@@ -74,7 +106,7 @@ def _guided_beats() -> list[dict]:
                     "requires_tab": "roster",
                 }
             ],
-            "claim_ids": [],
+            "claim_ids": ["c1-coverage"],
             "input_asset_ids": [],
         },
         {
@@ -169,6 +201,7 @@ def _install_guided_manifest(root: Path, extra=None) -> None:
             }
         )
         payload["beats"] = _guided_beats()
+        payload["claims"] = _guided_claims()
 
     _edit_json(root, "manifest.json", mutate)
     if extra is not None:
@@ -474,3 +507,69 @@ def test_guided_multi_step_beat_rejects_wrong_start(tmp_path: Path) -> None:
     _install_guided_manifest(root, start_at_completed)
     _, codes = _load(root)
     assert "invalid_beat" in codes
+
+
+def test_guided_claim_citation_resolves_to_retained_evidence(tmp_path: Path) -> None:
+    root = _copy(tmp_path)
+    _install_guided_manifest(root)
+    _edit_json(root, "checkpoints/checkpoint-active.json", _add_claim_citation("c1-coverage"))
+    _finalize(root)
+    _, codes = _load(root)
+    assert codes == set()
+
+
+def test_guided_claim_citation_must_reference_a_known_claim(tmp_path: Path) -> None:
+    root = _copy(tmp_path)
+    _install_guided_manifest(root)
+    _edit_json(
+        root,
+        "checkpoints/checkpoint-active.json",
+        _add_claim_citation("missing-claim"),
+    )
+    _finalize(root)
+    _, codes = _load(root)
+    assert "dangling_id" in codes
+
+
+def test_guided_claim_evidence_asset_must_exist(tmp_path: Path) -> None:
+    root = _copy(tmp_path)
+
+    def missing_asset(payload):
+        payload["claims"][0]["evidence_asset_id"] = "missing-asset"
+
+    _install_guided_manifest(root, missing_asset)
+    _, codes = _load(root)
+    assert "dangling_id" in codes
+
+
+def test_guided_claim_excerpt_must_appear_in_retained_asset(tmp_path: Path) -> None:
+    root = _copy(tmp_path)
+
+    def missing_excerpt(payload):
+        payload["claims"][0]["excerpt"] = "A claim that is not in the retained brief."
+
+    _install_guided_manifest(root, missing_excerpt)
+    _, codes = _load(root)
+    assert "invalid_claim" in codes
+
+
+def test_guided_claim_reference_needs_readable_snippet_and_locator(tmp_path: Path) -> None:
+    root = _copy(tmp_path)
+
+    def strip_citation(payload):
+        payload["reads"]["meeting"]["messages"][0]["citations"] = [
+            {
+                "source": "Synthetic issuer brief",
+                "title": "Synthetic issuer brief",
+                "url": "https://example.com/synthetic-brief",
+                "snippet": "",
+                "claim_id": "c1-coverage",
+                "locator": "",
+            }
+        ]
+
+    _install_guided_manifest(root)
+    _edit_json(root, "checkpoints/checkpoint-active.json", strip_citation)
+    _finalize(root)
+    _, codes = _load(root)
+    assert "invalid_claim" in codes

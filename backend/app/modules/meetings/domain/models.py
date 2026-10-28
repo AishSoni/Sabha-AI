@@ -175,6 +175,8 @@ class Citation(BaseModel):
     title: Optional[str] = None
     url: Optional[str] = None
     snippet: Optional[str] = None
+    claim_id: Optional[str] = None
+    locator: Optional[str] = None
 
 
 class MessageBase(BaseModel):

@@ -790,6 +790,113 @@ def _validate_retrieval(record, package: LoadedPackage, issues: _Issues) -> None
             )
 
 
+def _iter_claim_references(value: Any, path: str) -> Iterable[tuple[dict[str, Any], str]]:
+    """Yield citation-like mappings that carry a claim reference."""
+
+    if isinstance(value, dict):
+        if "claim_id" in value:
+            yield value, path
+        for key, child in value.items():
+            yield from _iter_claim_references(child, f"{path}/{key}")
+    elif isinstance(value, list):
+        for index, child in enumerate(value):
+            yield from _iter_claim_references(child, f"{path}[{index}]")
+
+
+def _validate_claims(package: LoadedPackage, issues: _Issues) -> None:
+    manifest = package.manifest
+    claims = {claim.claim_id: claim for claim in manifest.claims}
+    asset_ids = {record.asset_id for record in package.assets.assets}
+
+    for index, claim in enumerate(manifest.claims):
+        claim_path = f"manifest.json#/claims[{index}]"
+        if claim.evidence_asset_id is not None and claim.evidence_asset_id not in asset_ids:
+            issues.add(
+                "dangling_id",
+                claim_path,
+                f"evidence asset {claim.evidence_asset_id} is missing",
+            )
+            continue
+        if (
+            claim.excerpt
+            and claim.evidence_asset_id
+            and claim.evidence_asset_id in asset_ids
+        ):
+            record = next(
+                record
+                for record in package.assets.assets
+                if record.asset_id == claim.evidence_asset_id
+            )
+            raw = package.asset_bytes.get(record.path)
+            if raw is not None and (
+                record.media_type.startswith("text/")
+                or record.media_type in ("application/json", "application/xml")
+            ):
+                try:
+                    text = raw.decode("utf-8")
+                except UnicodeDecodeError:
+                    text = ""
+                if claim.excerpt not in text:
+                    issues.add(
+                        "invalid_claim",
+                        claim_path,
+                        "claim excerpt is not present in the retained evidence asset",
+                    )
+
+    for index, beat in enumerate(manifest.beats):
+        beat_path = f"manifest.json#/beats[{index}]"
+        for claim_id in beat.claim_ids:
+            if claim_id not in claims:
+                issues.add(
+                    "dangling_id",
+                    beat_path,
+                    f"beat claim {claim_id} is missing",
+                )
+
+    for checkpoint_id, checkpoint in package.checkpoints.items():
+        for reference, path in _iter_claim_references(
+            checkpoint.reads, f"checkpoints/{checkpoint_id}.json#/reads"
+        ):
+            _validate_claim_reference(reference, path, claims, issues)
+
+    for tape_id, tape in package.tapes.items():
+        for index, event in enumerate(tape.events):
+            for reference, path in _iter_claim_references(
+                event.payload, f"tapes/{tape_id}.json#/events[{index}]/payload"
+            ):
+                _validate_claim_reference(reference, path, claims, issues)
+
+    for retrieval_key, record in package.retrievals.items():
+        for index, hit in enumerate(record.hits):
+            for reference, path in _iter_claim_references(
+                hit.citation, f"retrieval/{retrieval_key}.json#/hits[{index}]/citation"
+            ):
+                _validate_claim_reference(reference, path, claims, issues)
+
+
+def _validate_claim_reference(
+    reference: dict[str, Any],
+    path: str,
+    claims: dict[str, Any],
+    issues: _Issues,
+) -> None:
+    claim_id = reference.get("claim_id")
+    if claim_id is None:
+        return
+    if not isinstance(claim_id, str) or not claim_id:
+        issues.add("invalid_claim", path, "claim_id must be a non-empty string")
+        return
+    if claim_id not in claims:
+        issues.add("dangling_id", path, f"citation claim {claim_id} is missing")
+        return
+    snippet = reference.get("snippet")
+    locator = reference.get("locator")
+    if not isinstance(snippet, str) or not snippet.strip():
+        issues.add("invalid_claim", path, "claim citation needs a readable snippet")
+    if not isinstance(locator, str) or not locator.strip():
+        issues.add("invalid_claim", path, "claim citation needs a locator")
+
+
 def _validate_guided_intents(package: LoadedPackage, issues: _Issues) -> None:
     manifest = package.manifest
     for index, intent in enumerate(manifest.intents):
@@ -1078,6 +1185,7 @@ def validate_package(package: LoadedPackage) -> list[PackageIssue]:
     checkpoint_ids = set(checkpoints)
     tape_ids = set(package.tapes)
     closing_ids = set(package.closing_tapes)
+    _validate_claims(package, issues)
     intent_ids: set[str] = set()
     for index, intent in enumerate(manifest.intents):
         intent_path = f"manifest.json#/intents[{index}]"

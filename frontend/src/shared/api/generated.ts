@@ -1159,6 +1159,10 @@ export interface components {
             url?: string | null;
             /** Snippet */
             snippet?: string | null;
+            /** Claim Id */
+            claim_id?: string | null;
+            /** Locator */
+            locator?: string | null;
         };
         /** ClosingErrorView */
         ClosingErrorView: {
