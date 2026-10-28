@@ -100,24 +100,27 @@ function voteLabel(vote: ClosingVote): string {
 function VoteRow({
     vote,
     textItem,
+    replay = false,
 }: {
     vote: ClosingVote;
     textItem: ClosingTextItem | undefined;
+    replay?: boolean;
 }) {
     const yes = vote.vote === true;
     const no = vote.vote === false;
     const pending = vote.status === 'pending';
     const cost = vote.reported_cost ?? vote.estimated_cost;
-    const usageNote =
-        typeof cost === 'number' && cost > 0
-            ? null
-            : vote.usage_kind === 'unknown'
-              ? 'Usage not reported'
-              : vote.price_kind === 'unpriced'
-                ? 'Usage unpriced'
-                : vote.price_kind === 'zero_local'
-                  ? 'No provider cost'
-                  : null;
+    const usageNote = replay
+        ? null
+        : typeof cost === 'number' && cost > 0
+          ? null
+          : vote.usage_kind === 'unknown'
+            ? 'Usage not reported'
+            : vote.price_kind === 'unpriced'
+              ? 'Usage unpriced'
+              : vote.price_kind === 'zero_local'
+                ? 'No provider cost'
+                : null;
     return (
         <div
             className="flex items-start gap-2 rounded-lg bg-zinc-900/50 p-2"
@@ -353,8 +356,9 @@ export function ClosingPanel({
                     title="Meeting ended"
                 >
                     <p className="text-sm text-zinc-400">
-                        The final summary is committed below and in Summary History.
-                        The chat is now read-only.
+                        {runtime.replay
+                            ? 'The recorded final summary is shown below.'
+                            : 'The final summary is committed below and in Summary History. The chat is now read-only.'}
                     </p>
                 </StatusCard>
             ) : null}
@@ -498,6 +502,7 @@ export function ClosingPanel({
                         <VoteRow
                             key={vote.participant_id}
                             vote={vote}
+                            replay={Boolean(runtime.replay)}
                             textItem={
                                 projection
                                     ? findClosingBallotText(

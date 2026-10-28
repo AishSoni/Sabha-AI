@@ -1332,7 +1332,9 @@ function TurnProjectionBubble({
                         <Loader2 className="w-3 h-3 animate-spin text-zinc-500" />
                     )}
                     {!isQueued && isObserving && (
-                        <span className="text-xs text-zinc-500">live</span>
+                        <span className="text-xs text-zinc-500">
+                            {runtime.replay ? "recording" : "live"}
+                        </span>
                     )}
                 </div>
 
