@@ -54,3 +54,103 @@ Review managed Supabase role/Storage constraints using current official document
 Real fresh/upgrade tests prove the effective matrix and preserved live backend behavior. Existing knowledge/settings/internal-table protections remain intact. Operational instructions distinguish local evidence from outstanding hosted checks. No new role is advertised as isolated merely because its explicit grants look small.
 
 Next: [Meeting creation regressions](spec-13-meeting-creation-regressions.md).
+
+## Completion record
+
+Recorded 2026-10-28 at commit `76fffe6` (implementation commits `502002d`,
+`1cd8a90`, `00a4b2a`, `8f27b36`, `1214f7f`, `a7297eb`, `38d008f`, `df36f84`,
+`76fffe6`). Every result below was produced by a command run against the
+checked-out tree; no hosted database was contacted.
+
+### Verdict
+
+Spec 12 exits for the checked-in/local evidence. The effective live matrix,
+the forward upgrade, the replay reader/provisioner contract and the reader
+adapter boundary are proven on real disposable PostgreSQL.
+
+Hosted acceptance remains conditional and is recorded rather than implied:
+
+- Migration `030` has **not** been applied to the configured hosted Supabase
+  project. That requires separate operational authorization.
+- Hosted default ACLs, role/schema creation permissions, the reader network
+  path/TLS and Storage policies must be confirmed with the operator inventory.
+  Local tests prove the role model, not the managed project's behavior.
+- Replay package tables and asset/Storage authorization arrive in Spec 17; the
+  local tests exercise a representative published table and a `storage`
+  schema stub.
+
+### Executed evidence
+
+| Command | Working directory | Result |
+| --- | --- | --- |
+| `pytest -q` | `backend/` | **611 passed**, 27 warnings |
+| `pytest tests/integration/test_database_permissions.py -q` | `backend/` | **10 passed** |
+| `pytest tests/integration/test_prompt_function_permissions.py -q` | `backend/` | **5 passed** |
+| `pytest tests/integration/test_replay_reader_permissions.py -q` | `backend/` | **8 passed** |
+| `pytest tests/integration/test_permission_inventory.py -q` | `backend/` | **2 passed** |
+| `pytest tests/unit/test_database_client.py tests/unit/test_replay_database_client.py -q` | `backend/` | **6 passed** |
+| `pytest tests/acceptance/test_spec11_cutover.py tests/acceptance/test_spec11_fresh_checkout.py -q` | `backend/` | **7 passed** |
+
+The full suite ran alone against a fresh disposable cluster
+(`SABHA_TEST_PG_HOME=C:\conda_tmp\opencode\sabha-test-pg-spec12d`), because the
+shared acceptance cluster can retain processes between runs. Warnings are
+third-party (`pyiceberg`, `supabase`) plus the existing pydantic class-config
+deprecation; Sabha code adds none.
+
+What the tests prove:
+
+1. **Pre-isolation reproduction.** A role with no explicit table grants reads
+   live `meetings` through the historical `PUBLIC` grant on the chain before
+   `030`; `documents` is already denied. The inventory records the nine open
+   families.
+2. **Fresh full chain.** `anon`, `authenticated` and a new unprivileged role
+   have no live schema usage, table read/write, sequence or RPC capability.
+   Direct reads, writes, truncates, internal-table reads and `CREATE TABLE`
+   fail under the real role.
+3. **Populated upgrade.** Applying `030` to the pre-isolation schema preserves
+   meeting/persona/stack IDs and values and the live backend's reads, updates
+   and `increment_meeting_cost`.
+4. **Future objects.** A table, view, sequence and function created by the real
+   migration owner inherit safe defaults: browser/unprivileged roles are
+   denied, `service_role` reads/writes/executes.
+5. **Replay roles.** `scripts/replay_roles.py` is idempotent and `--check`
+   reports no violations. The reader selects only its explicitly published
+   object, cannot read unpublished replay objects, live tables, a live view,
+   the `storage` schema stub, or execute live RPCs, and cannot write, truncate,
+   create objects or create schemas. The provisioner can publish replay objects
+   but cannot read live data.
+6. **Real reader identity.** A dedicated LOGIN member of
+   `sabha_replay_reader` connects through
+   `app/platform/replay_database.py`; the adapter verifies the effective
+   identity, rejects superuser/`BYPASSRLS`/live identities, forces a read-only
+   session, and fails clearly when `REPLAY_DATABASE_URL` is missing without
+   consulting `DATABASE_URL` or the service key.
+
+### Deliberate scope and manual rollback
+
+- No historical migration was rewritten. The historical `009`-in-isolation and
+  `013`-in-isolation tests remain as evidence of their original behavior.
+- The live backend now requires `SUPABASE_SERVICE_KEY`; the anon fallback is
+  gone. The frontend never used a Supabase client, so no browser surface lost a
+  capability it relied on.
+- `030` has no down migration. Manual rollback would re-grant live reads and
+  recreate the old policies, which is not a supported security state; restore a
+  verified backup instead.
+- Replay roles/schema are operator-provisioned, not migration history, because
+  role creation is cluster-level and hosted needs operator authorization.
+
+### Outstanding hosted gates
+
+- Apply `030` through the normal migration runner with an operator-approved
+  backup and maintenance window; then run
+  `python -m scripts.inventory_permissions --format markdown` against the
+  hosted project.
+- Confirm the migration owner's `ALTER DEFAULT PRIVILEGES` entries in
+  `pg_default_acl` and test a new object created by that owner.
+- Provision or authorize `sabha_replay_reader`, `sabha_replay_provisioner` and
+  the `replay` schema on hosted; set the reader password and server-only
+  `REPLAY_DATABASE_URL` through the secret manager, not source control.
+- Confirm the chosen direct/session connection path, TLS, rotation and
+  `--check` behavior against the hosted topology.
+- Spec 17 must re-run the matrix for real replay package tables, views and
+  Storage assets, including signed-asset access limited to replay.
