@@ -10,6 +10,7 @@ import { useState } from "react";
 import { Play } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { useMeetingsRuntime } from "./context";
+import { useActiveReplayIntentId } from "./active-intent";
 import type { ParticipantActionProps } from "./contract";
 
 export function RecordedParticipantAction({
@@ -19,11 +20,13 @@ export function RecordedParticipantAction({
 }: ParticipantActionProps) {
     const runtime = useMeetingsRuntime();
     const replay = runtime.replay;
+    const activeIntentId = useActiveReplayIntentId();
     const [busy, setBusy] = useState(false);
     const intent = replay?.intents.find(
         (item) =>
             item.kind === "start_participant" &&
-            item.participant_id === participant.id
+            item.participant_id === participant.id &&
+            (activeIntentId === null || item.intent_id === activeIntentId)
     );
 
     if (!intent) return null;

@@ -45,6 +45,7 @@ import {
     type ClosingTextView,
 } from '../model/closing-text';
 import { useMeetingsRuntime } from '../runtime/context';
+import { useActiveReplayIntentId } from '../runtime/active-intent';
 import { ClosingGeneratedText } from './ClosingGeneratedText';
 
 export interface ClosingPanelProps {
@@ -219,6 +220,7 @@ export function ClosingPanel({
     textProjection,
 }: ClosingPanelProps) {
     const runtime = useMeetingsRuntime();
+    const activeIntentId = useActiveReplayIntentId();
     const [confirmMode, setConfirmMode] = useState<ClosingMode | null>(null);
     const [actionError, setActionError] = useState<string | null>(null);
     const pendingIntent = useRef<PendingIntent | null>(null);
@@ -246,17 +248,38 @@ export function ClosingPanel({
     const ended = status === 'ended' || stage === 'completed';
     const votes = closing?.votes ?? [];
     const busy = request.isPending || retry.isPending || abort.isPending;
+    const replayClosingIntent = runtime.replay?.intents.find(
+        (intent) => intent.kind === 'request_closing'
+    );
+    const replayCloseActive = Boolean(
+        runtime.replay &&
+            replayClosingIntent &&
+            activeIntentId === replayClosingIntent.intent_id
+    );
     const canStart =
         !archived &&
         !ended &&
         (status === 'active' || status === 'voting') &&
         !isAdvancing(stage) &&
         stage !== 'failed' &&
-        !(runtime.replay && !closing?.closing_id);
+        (runtime.replay ? replayCloseActive : true);
 
     const startClose = async (mode: ClosingMode) => {
         setConfirmMode(null);
         setActionError(null);
+
+        if (runtime.replay) {
+            if (!replayClosingIntent) {
+                setActionError('This recording has no supported closing step.');
+                return;
+            }
+            try {
+                await runtime.replay.startIntent(replayClosingIntent.intent_id);
+            } catch (error) {
+                setActionError(errorMessage(error));
+            }
+            return;
+        }
 
         const previous = pendingIntent.current;
         const intent =
@@ -541,7 +564,7 @@ export function ClosingPanel({
                                 before writing the final summary.
                             </p>
                         </div>
-                        <div className="grid grid-cols-2 gap-3">
+                        <div className={runtime.replay ? 'grid gap-3' : 'grid grid-cols-2 gap-3'}>
                             <Button
                                 id="closing-start-vote"
                                 variant="outline"
@@ -555,20 +578,28 @@ export function ClosingPanel({
                                     Ask participants
                                 </span>
                             </Button>
-                            <Button
-                                id="closing-start-force"
-                                variant="outline"
-                                onClick={() => setConfirmMode('force')}
-                                disabled={busy}
-                                className="h-auto flex-col items-center border-red-800 py-3 text-red-400 hover:bg-red-900/20"
-                            >
-                                <LogOut className="mb-1 h-5 w-5" />
-                                <span className="font-medium">Force End</span>
-                                <span className="text-xs text-zinc-500">
-                                    Skip the vote
-                                </span>
-                            </Button>
+                            {!runtime.replay ? (
+                                <Button
+                                    id="closing-start-force"
+                                    variant="outline"
+                                    onClick={() => setConfirmMode('force')}
+                                    disabled={busy}
+                                    className="h-auto flex-col items-center border-red-800 py-3 text-red-400 hover:bg-red-900/20"
+                                >
+                                    <LogOut className="mb-1 h-5 w-5" />
+                                    <span className="font-medium">Force End</span>
+                                    <span className="text-xs text-zinc-500">
+                                        Skip the vote
+                                    </span>
+                                </Button>
+                            ) : null}
                         </div>
+                        {runtime.replay ? (
+                            <p className="mt-3 text-xs text-zinc-500">
+                                Guided replay uses the recorded vote. Force end, retry,
+                                and abort are not available.
+                            </p>
+                        ) : null}
                     </Card>
                 ) : (
                     <Card className="border-red-800/50 bg-red-950/30 p-4">
