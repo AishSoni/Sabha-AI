@@ -48,6 +48,9 @@ class StreamLimiter:
             self._counts[client] = current - 1
         self._global.release()
 
+    def active(self, client: str) -> int:
+        return self._counts.get(client, 0)
+
 
 class ReplayTurnStream:
     def __init__(
