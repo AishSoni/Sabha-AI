@@ -82,6 +82,13 @@ def main(argv: list[str] | None = None) -> int:
     parser.add_argument("--env-out", default="")
     parser.add_argument("--port", type=int, default=8123)
     parser.add_argument("--home", default=DEFAULT_HOME)
+    parser.add_argument(
+        "--package",
+        default=os.environ.get(
+            "REPLAY_PACKAGE_DIR",
+            str(BACKEND_ROOT / "replay_packages" / "hdfc-ine001a07rw5"),
+        ),
+    )
     args = parser.parse_args(argv)
 
     os.environ.setdefault("SUPABASE_URL", "http://127.0.0.1:54321")
@@ -114,15 +121,15 @@ def main(argv: list[str] | None = None) -> int:
         )
     apply_migrations(database_uri)
 
-    package = load_package(BACKEND_ROOT / "replay_packages" / "placeholder-analyst")
+    package = load_package(Path(args.package))
     with psycopg.connect(login_uri(database_uri, PUBLISHER_LOGIN)) as conn:
         publish_package(conn, package, MemoryStorage())
 
     env = {
         "REPLAY_ONLY": "true",
         "REPLAY_DATABASE_URL": login_uri(database_uri, READER_LOGIN),
-        "REPLAY_PACKAGE_ID": "placeholder-analyst",
-        "REPLAY_PACKAGE_VERSION": "1",
+        "REPLAY_PACKAGE_ID": package.manifest.package_id,
+        "REPLAY_PACKAGE_VERSION": package.manifest.version,
         "REPLAY_PACKAGE_SHA256": package.content_sha256,
         "REPLAY_STREAM_MAX_PER_CLIENT": "4",
         "CORS_ORIGINS": '["http://127.0.0.1:3100"]',
