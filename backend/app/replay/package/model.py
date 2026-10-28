@@ -102,6 +102,7 @@ CLAIM_KINDS = (
     "derived",
     "judgment",
     "unknown",
+    "demo_authored",
 )
 
 CLOSING_EVENT_KINDS = ("ballot", "summary")
@@ -317,13 +318,15 @@ class ClaimRecord(StrictModel):
                 raise ValueError(
                     "fact claims require " + ", ".join(missing)
                 )
-        elif self.kind in ("derived", "judgment"):
+        elif self.kind in ("derived", "judgment", "demo_authored"):
             if not self.evidence_asset_id or not self.locator:
                 raise ValueError(
                     f"{self.kind} claims require evidence_asset_id and locator"
                 )
-            if self.kind == "judgment" and self.source_url:
-                raise ValueError("judgment claims must not carry a source_url")
+            if self.kind in ("judgment", "demo_authored") and self.source_url:
+                raise ValueError(
+                    f"{self.kind} claims must not carry a source_url"
+                )
         else:
             if self.source_url:
                 raise ValueError("unknown claims must not carry a source_url")

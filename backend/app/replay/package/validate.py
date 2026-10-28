@@ -934,6 +934,30 @@ def _validate_guided_intents(package: LoadedPackage, issues: _Issues) -> None:
                 intent_path,
                 "closing intents cannot reference a turn operation or tape",
             )
+        if (
+            intent.kind == "director_follow_up"
+            and not intent.operation_id
+            and not intent.tape_id
+        ):
+            if intent.closing_tape_id:
+                issues.add(
+                    "invalid_intent",
+                    intent_path,
+                    "a checkpoint follow-up cannot reference a closing tape",
+                )
+            if checkpoint is not None:
+                if checkpoint.phase != "active":
+                    issues.add(
+                        "invalid_intent",
+                        intent_path,
+                        "a checkpoint follow-up must select an active checkpoint",
+                    )
+                if "meeting" not in checkpoint.reads:
+                    issues.add(
+                        "invalid_intent",
+                        intent_path,
+                        "a checkpoint follow-up must select a meeting checkpoint",
+                    )
 
 
 def _validate_guided_beats(package: LoadedPackage, issues: _Issues) -> None:
@@ -946,7 +970,7 @@ def _validate_guided_beats(package: LoadedPackage, issues: _Issues) -> None:
     completion_intents = {
         "turn_terminal": {"start_participant", "director_follow_up"},
         "closing_completed": {"request_closing"},
-        "checkpoint": {"create_meeting", "archive_meeting"},
+        "checkpoint": {"create_meeting", "archive_meeting", "director_follow_up"},
     }
 
     for index, beat in enumerate(manifest.beats):
@@ -1198,7 +1222,10 @@ def validate_package(package: LoadedPackage) -> list[PackageIssue]:
             issues.add("dangling_id", intent_path, "intent tape is missing")
         if intent.closing_tape_id is not None and intent.closing_tape_id not in closing_ids:
             issues.add("dangling_id", intent_path, "intent closing tape is missing")
-        if intent.kind in ("start_participant", "director_follow_up"):
+        if intent.kind == "start_participant" or (
+            intent.kind == "director_follow_up"
+            and (intent.operation_id or intent.tape_id)
+        ):
             if not intent.operation_id:
                 issues.add("invalid_intent", intent_path, "turn intents need an operation id")
             if not intent.tape_id:
