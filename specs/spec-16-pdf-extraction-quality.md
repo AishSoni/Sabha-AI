@@ -101,6 +101,7 @@ and this record follow in a separate commit.
 | `venv\Scripts\python.exe -m pytest tests\acceptance\test_spec11_upgrade.py tests\acceptance\test_spec11_cutover.py tests\application\test_knowledge_ingestion_worker.py tests\regression\test_document_search_scope.py tests\regression\test_offloop_ingestion.py tests\contract\test_durable_knowledge_schema.py -q` | `backend/` | **41 passed**, 47.31 s |
 | `venv\Scripts\python.exe -m pytest tests\regression\test_knowledge_routes.py tests\regression\test_turn_knowledge_lifecycle.py -q` | `backend/` | **20 passed**, 3.12 s |
 | `venv\Scripts\python.exe -m pytest tests\architecture -q` | `backend/` | **32 passed**, 5.87 s |
+| `venv\Scripts\python.exe -m pytest tests\integration\test_database_permissions.py tests\integration\test_permission_inventory.py -q` | `backend/` | **12 passed**, 28.95 s; confirms the pre-isolation fixture still includes the baseline |
 | `venv\Scripts\python.exe -m pytest tests\integration\test_replay_surface.py::test_replay_only_startup_never_constructs_the_live_composition -q` | `backend/` | **1 passed**, 1.04 s |
 | `venv\Scripts\python.exe -m scripts.pdf_extraction_probe` | `backend/` | `"status": "ok"`; pypdf 6.6.2, pypdfium2 5.14.0, Pillow 13.0.0, rapidocr 3.10.0, onnxruntime 1.31.1, psutil 7.2.2; bundled models present; OCR probe score 1.0 |
 | `venv\Scripts\python.exe scripts\pdf_extraction_benchmark.py` | `backend/` | `text.pdf` plain text, `letter-spaced.pdf` repaired to usable text, `image-only.pdf` OCR mean score 0.993, `mixed.pdf` text/OCR/text, `non-latin.pdf` rejected |
