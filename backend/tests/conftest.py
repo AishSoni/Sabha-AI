@@ -71,6 +71,13 @@ SCHEMA_FILES = [
     BACKEND_ROOT / "migrations" / "029_internal_table_rls.sql",
 ]
 
+# The chain immediately before Spec 12's isolation migration. Tests use this
+# to reproduce the inherited-PUBLIC leak that the forward migration closes,
+# independently of the current full history.
+PRE_ISOLATION_SCHEMA_FILES = [
+    path for path in SCHEMA_FILES if not path.name.startswith("030_")
+]
+
 # Phase 1 shipped before migration tracking existed. The baseline plus
 # 002..013 is the exact schema of an untracked Phase 1 deployment; spec-11
 # adoption tests build this state and then adopt the remaining history.
@@ -218,6 +225,18 @@ def _make_schema_db(pg_server, schema_files):
 def empty_db(pg_server):
     """Disposable database with only the Supabase auth stub (no Sabha schema)."""
     db, base_uri = _make_schema_db(pg_server, [])
+    try:
+        yield db
+    finally:
+        cleanup = psycopg.connect(base_uri, autocommit=True)
+        cleanup.execute(f'DROP DATABASE IF EXISTS "{db.name}" WITH (FORCE)')
+        cleanup.close()
+
+
+@pytest.fixture()
+def pre_isolation_db(pg_server):
+    """Disposable database holding the history just before read isolation."""
+    db, base_uri = _make_schema_db(pg_server, PRE_ISOLATION_SCHEMA_FILES)
     try:
         yield db
     finally:
