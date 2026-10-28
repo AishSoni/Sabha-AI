@@ -54,4 +54,26 @@ Validate the approved package offline; every displayed factual citation must res
 
 Exit when one polished linear journey works with the production package, copy and claims are approved, and no extra scenario/platform work is required. This gate does not replace Spec 19's deployment/security acceptance.
 
+## Implementation evidence (29 October 2026)
+
+The approved package is `backend/replay_packages/hdfc-ine001a07rw5` version `1`, content hash `ced67209984ff87088119f58f5b2bcc643fd9240623dfbe02e03ab761c1fb07f`. It is generated only by `backend/scripts/build_guided_package.py` and is recorded in [the content ledger](spec-18-guided-bond-journey-content.md).
+
+Evidence run:
+
+- `python -m scripts.replay_package validate replay_packages/hdfc-ine001a07rw5` → `ok: true`.
+- `pytest tests/unit tests/integration/test_replay_package_runtime.py tests/integration/test_replay_publication.py tests/integration/test_replay_sse_socket.py -q` → 122 passed.
+- `npm run test:unit` → 213 passed.
+- `npm run test:architecture` → 15 passed.
+- `npm run build` → compiled successfully; routes `/demo`, `/demo/new`, `/demo/meetings`, `/demo/meetings/[id]` are present.
+- `npm run test:e2e -- e2e/guided-journey.spec.ts` → 2 passed. The isolated backend publishes the guided package by default; `--package replay_packages/placeholder-analyst` remains available for the backend fixture.
+
+The journey now has a route-level run provider, a client guide with eight recorded beats, real room/list/form surfaces, recorded intake, source locators, shared/private stack labels, replay closing, archive overlay, first-visit live/replay choice, and a browser acceptance slice covering source disclosure, private scope, keyboard use, reduced motion, a small viewport, back/restart, deep-link reset, and the absence of live meeting mutations.
+
+Known limitations at this gate:
+
+- A nonterminal recorded turn is observed when its checkpoint becomes visible, so the Credit Analyst, Downside Reviewer, and consensus turns can begin without a separate participant-button click. The guide still gates progression on the recorded settlement; the participant buttons remain part of the real UI but are not required for those turns.
+- The replay closing action installs the canonical completed closing checkpoint so the recorded ballots and final brief are shown from the completed snapshot. It does not replay the Spec 17 closing tape's timed presentation in this journey; the transport itself remains covered by the Spec 17 tests.
+
+These limitations do not affect the live graph or the recorded data, but they are not a full claim of the streamed-closing/premise-click acceptance described above. They remain follow-up work before this gate can be called fully closed.
+
 Next: [Replay release acceptance](spec-19-replay-release-acceptance.md).

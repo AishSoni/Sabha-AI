@@ -517,13 +517,11 @@ Publish from a clean checkout with the offline provisioner credential:
 cd backend
 python -m scripts.replay_roles --reader-login sabha_replay_login `
     --provisioner-login sabha_replay_publisher
-python -m scripts.replay_package validate replay_packages/placeholder-analyst
+python -m scripts.replay_package validate replay_packages/hdfc-ine001a07rw5
 python -m scripts.replay_package --database-url $env:REPLAY_PROVISIONER_DATABASE_URL `
-    publish replay_packages/placeholder-analyst
+    publish replay_packages/hdfc-ine001a07rw5
 python -m scripts.replay_package --database-url $env:REPLAY_PROVISIONER_DATABASE_URL `
-    activate placeholder-analyst 1
-python -m scripts.replay_package --database-url $env:REPLAY_PROVISIONER_DATABASE_URL `
-    retire placeholder-analyst 1
+    activate hdfc-ine001a07rw5 1
 python -m scripts.replay_package --database-url $env:REPLAY_PROVISIONER_DATABASE_URL `
     prune --older-than-days 30
 python -m scripts.replay_package --database-url $env:REPLAY_PROVISIONER_DATABASE_URL list
@@ -544,9 +542,9 @@ Runtime configuration:
 
 ```text
 REPLAY_DATABASE_URL=postgresql://sabha_replay_login:<password>@<host>:5432/postgres
-REPLAY_PACKAGE_ID=placeholder-analyst
+REPLAY_PACKAGE_ID=hdfc-ine001a07rw5
 REPLAY_PACKAGE_VERSION=1              # optional; registry default otherwise
-REPLAY_PACKAGE_SHA256=<64 hex>        # optional content pin
+REPLAY_PACKAGE_SHA256=ced67209984ff87088119f58f5b2bcc643fd9240623dfbe02e03ab761c1fb07f
 REPLAY_ONLY=true                      # serve no live graph
 REPLAY_STREAM_MAX_PER_CLIENT=2
 REPLAY_STREAM_MAX_GLOBAL=8
@@ -555,9 +553,46 @@ REPLAY_STREAM_MAX_SECONDS=120
 ```
 
 `python -m scripts.e2e_provision --serve` provisions a disposable local
-database, publishes the placeholder package, and serves the replay-only app for
-`npm run test:e2e`; it owns the embedded Postgres for the lifetime of the
-process. Install the browser once with `npx playwright install chromium`.
+database, publishes the guided package by default, and serves the replay-only app
+for `npm run test:e2e`; it owns the embedded Postgres for the lifetime of the
+process. Pass `--package replay_packages/placeholder-analyst` to exercise the
+synthetic backend fixture instead. Install the browser once with
+`npx playwright install chromium`.
+
+### Guided bond journey (spec 18)
+
+The guided package is `backend/replay_packages/hdfc-ine001a07rw5` version `1`
+with content hash `ced67209984ff87088119f58f5b2bcc643fd9240623dfbe02e03ab761c1fb07f`.
+It was approved through
+[the content ledger](../specs/spec-18-guided-bond-journey-content.md): short
+attributed source excerpts, exact locators, a source register, and no untracked
+research bytes. Regenerate it only with the tracked builder:
+
+```powershell
+cd backend
+python -m scripts.build_guided_package
+python -m scripts.replay_package validate replay_packages/hdfc-ine001a07rw5
+```
+
+The browser routes are `/demo` (prepared board), `/demo/new` (locked creation
+preset and recorded intake), `/demo/meetings` (recorded list and archive), and
+`/demo/meetings/[id]` (real room with guide tab hints). The guide owns only the
+step order, anchors, Continue/Back/Restart, and route/tab coordination; it never
+synthesizes clicks or writes progress. Refresh and deep links reset to the entry
+checkpoint. A non-secret `sabha:experience` browser preference only controls the
+first-visit live/replay prompt.
+
+The isolated browser suite is `frontend/e2e/guided-journey.spec.ts`:
+
+```powershell
+cd frontend
+npm run test:e2e -- e2e/guided-journey.spec.ts
+```
+
+It covers the full eight-beat journey, source disclosure, private-scope
+separation, small screens, reduced motion, keyboard operation, back/restart,
+deep-link reset, and the absence of live meeting mutations. The placeholder
+package remains a backend fixture; it is not the demo default.
 
 On hosted Supabase, applying `032`, creating the bucket, publishing with the
 provisioner key, and confirming Storage/network policy remain operator steps.
@@ -580,10 +615,10 @@ credential separation; those remain in the hosted checklist and Spec 19.
   reader is limited to explicitly published replay objects.
 - **Packaged replay is local-first.** Spec 17 ships the package format, offline
   publication, checkpoint reads, paced SSE, closing transport, and the
-  packaged analyst slice. The placeholder package is explicitly synthetic and
-  Spec 18 replaces its content with the approved journey. Hosted reader grants,
+  packaged analyst slice. Spec 18 adds the approved `hdfc-ine001a07rw5`
+  journey and its browser acceptance slice. Hosted reader grants,
   Storage bucket visibility, and a deployed proxy/pacing check remain operator
-  steps for Specs 18–19; local Postgres and a real local socket are proven.
+  steps for Spec 19; local Postgres and a real local socket are proven.
 - **OCR deployment proof is host-specific.** The probe and benchmark run on
   the Windows acceptance host; a hosted worker must repeat both after installing
   the pinned wheels and record the result. Passing local tests does not prove
