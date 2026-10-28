@@ -161,6 +161,7 @@ Versions measured on the acceptance host (see [Testing and Acceptance](#-testing
 | `sse-starlette` | 3.2+ | Server-Sent Events |
 | `tiktoken` | 0.5+ | Token counting |
 | `pypdf`, `python-docx`, `openpyxl` | latest | Document parsing |
+| `pypdfium2`, `Pillow`, `RapidOCR`, `onnxruntime`, `psutil` | pinned | Bounded local PDF OCR fallback |
 | `langchain-text-splitters` | latest | Text chunking |
 | `cohere`, `openai` | latest | Embedding providers |
 
@@ -386,7 +387,7 @@ access is server-side.
 
 - `backend/supabase_schema.sql` is recorded as `000_baseline`.
 - Numbered files in `backend/migrations/` follow in lexical order (through
-  `030_database_read_isolation`).
+  `031_pdf_extraction_provenance`).
 - `schema_migrations` stores version, checksum, applied time and duration.
 - Each migration and its tracking row commit in one transaction; a failure
   leaves no partial DDL and no tracking row.
@@ -485,14 +486,22 @@ Upload → staged source object → parse → chunk → embed → revision publi
   Restore replays the ledger and drains cleanup before retrieval reopens, so an
   older backup cannot resurrect deleted knowledge or raw passages.
 
-Supported formats: `.pdf`, `.docx`, `.xlsx`.
+PDFs are parsed page by page. Usable embedded text wins; pages with no usable
+text are rendered locally and transcribed by RapidOCR in a bounded child
+process. The chosen method, page count, OCR page count and each chunk's
+1-based page locator are retained through retrieval and the search API. OCR
+models ship inside the RapidOCR wheel, so no system OCR package or runtime
+model download is required. A page that cannot be read fails the revision
+instead of publishing an empty or partial document.
+
+Supported formats: `.pdf`, `.docx`, `.xlsx`, `.csv`, `.txt`, `.md`.
 
 ---
 
 ## 📡 API Reference
 
 Interactive docs: `http://localhost:8000/docs`. The frozen contract is
-`frontend/tests/fixtures/openapi.json` (40 paths) and is checked by
+`frontend/tests/fixtures/openapi.json` (46 paths) and is checked by
 `python -m scripts.export_openapi --check`. The frontend regenerates types with
 `npm run sync:openapi`.
 

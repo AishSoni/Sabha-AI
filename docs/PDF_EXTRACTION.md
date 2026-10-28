@@ -92,6 +92,15 @@ returned only 17 non-space characters and 2 word-like tokens, so the page is
 not accepted. The revision will fail with an actionable extraction error rather
 than publishing Cyrillic source as Latin garbage.
 
+## Supported language boundary
+
+The accepted extraction contract is **English/Latin-script text**. The OCR
+model is multilingual, but the quality gate requires a primarily Latin
+alphabet page (at least 85% Latin alphabetic characters) and rejects pages that
+do not meet it. Sabha therefore does not advertise general multilingual PDF
+support in this spec. A non-Latin page fails explicitly rather than publishing
+unreviewed transcription; adding a language policy is a separate decision.
+
 ## Dependency and licensing record
 
 | Package | Version | License | Notes |

@@ -47,3 +47,87 @@ Characterize current text extraction, record the decision experiment, implement 
 Exit when the selected approach is deployable and tested, poor/empty output cannot silently count as useful extraction, and existing text-document ingestion remains correct. The replay package will contain approved offline outputs; it must not construct this live parser during playback. Do not claim a whole source document or all financial claims reviewed merely because extraction succeeds.
 
 Next: [Replay package and streaming](spec-17-replay-package-and-streaming.md).
+
+## Completion record
+
+### Verdict
+
+Spec 16 is implemented for the native acceptance worker. PDF ingestion now
+selects plain or layout text per page, repairs letter-spacing artifacts,
+falls back to local RapidOCR only for pages without usable text, and refuses
+to publish a revision when a non-blank page cannot be read. Extraction method,
+version, page count, OCR page count and each chunk's 1-based page locator are
+persisted through Postgres, Qdrant, retrieval and the search API.
+
+The decision gate selected pure-pip `rapidocr` + `onnxruntime` + `pypdfium2`;
+Tesseract and cloud OCR were rejected. Models are bundled in the RapidOCR wheel,
+so there is no system package and no runtime model download. The accepted
+language boundary is English/Latin-script text; non-Latin pages fail explicitly.
+Full details and licensing are in [PDF_EXTRACTION.md](../docs/PDF_EXTRACTION.md).
+
+Source bytes remain immutable. Extraction provenance is not a claim review, and
+this record does not assert that any financial term in a source document is
+correct.
+
+### What changed
+
+- `backend/app/modules/knowledge/infrastructure/pdf_extraction.py`: page-aware
+  pypdf extraction, normalization, quality gate, RapidOCR fallback, page/render/
+  character budgets, spawned child process with deadline and RSS watchdog.
+- `parsers.py`: page-aware chunking and provenance; `LocalDocumentParser` now
+  returns `ParsedDocument`.
+- Ingestion: zero usable chunks fail as `EmptyExtraction` before
+  `start_indexing`; identities and publication carry page and extraction
+  metadata.
+- Migration `031_pdf_extraction_provenance.sql`; Qdrant payload; retrieval
+  passage; `page_number` in `POST /api/documents/search`; regenerated OpenAPI
+  fixture (46 paths) and frontend types.
+- `docs/OPERATIONS.md` covers installation, probe, budgets, failure recovery,
+  replay isolation and the host-specific deployment gate.
+- Generated fixtures and characterization tests remain independent of
+  `untracked-bond-research/`.
+
+Commits: `7a98feb` (characterization), `f828867` (decision record and probe),
+`4dde8c9` (page locators, provenance, migration and API contract). Documentation
+and this record follow in a separate commit.
+
+### Executed evidence
+
+| Command | Working directory | Result |
+| --- | --- | --- |
+| `venv\Scripts\python.exe -m pytest tests\regression\test_pdf_extraction.py -q` | `backend/` | **19 passed**, 1.36 s (includes bounded-child deadline cleanup) |
+| `venv\Scripts\python.exe -m pytest tests\characterization\test_pdf_extraction_characterization.py -q` | `backend/` | **4 passed**, 0.38 s |
+| `venv\Scripts\python.exe -m scripts.export_openapi --check` | `backend/` | OpenAPI matches fixture, 46 paths |
+| `venv\Scripts\python.exe -m pytest tests\acceptance\test_spec11_upgrade.py tests\acceptance\test_spec11_cutover.py tests\application\test_knowledge_ingestion_worker.py tests\regression\test_document_search_scope.py tests\regression\test_offloop_ingestion.py tests\contract\test_durable_knowledge_schema.py -q` | `backend/` | **41 passed**, 47.31 s |
+| `venv\Scripts\python.exe -m pytest tests\regression\test_knowledge_routes.py tests\regression\test_turn_knowledge_lifecycle.py -q` | `backend/` | **20 passed**, 3.12 s |
+| `venv\Scripts\python.exe -m pytest tests\architecture -q` | `backend/` | **32 passed**, 5.87 s |
+| `venv\Scripts\python.exe -m pytest tests\integration\test_replay_surface.py::test_replay_only_startup_never_constructs_the_live_composition -q` | `backend/` | **1 passed**, 1.04 s |
+| `venv\Scripts\python.exe -m scripts.pdf_extraction_probe` | `backend/` | `"status": "ok"`; pypdf 6.6.2, pypdfium2 5.14.0, Pillow 13.0.0, rapidocr 3.10.0, onnxruntime 1.31.1, psutil 7.2.2; bundled models present; OCR probe score 1.0 |
+| `venv\Scripts\python.exe scripts\pdf_extraction_benchmark.py` | `backend/` | `text.pdf` plain text, `letter-spaced.pdf` repaired to usable text, `image-only.pdf` OCR mean score 0.993, `mixed.pdf` text/OCR/text, `non-latin.pdf` rejected |
+| `npx tsc --noEmit` | `frontend/` | exit 0 |
+| `npm run lint` | `frontend/` | exit 0, 0 errors, 19 pre-existing warnings |
+
+The real image-only `TS-V-007.pdf` page produced 1,924 characters at OCR mean
+score 0.961 including the term-sheet header, issuer, instrument name, amount and
+coupon. The real `SE-V007-intimation-150719.pdf` changed from 96-99%
+single-character tokens in plain mode to readable layout text on page 1. These
+developer-only files were used as evidence, never as test dependencies.
+
+### Deliberate scope and outstanding gates
+
+- The full 630-test backend suite was not re-run for this record; focused
+  parser, ingestion, lifecycle, contract, migration, architecture and replay
+  suites were run instead. The full suite remains an operator/CI gate.
+- The probe and benchmark were executed on the native Windows acceptance host.
+  A hosted worker must repeat both after installing the pinned wheels and record
+  the result. This record does not claim hosted OCR throughput, memory headroom
+  or process-policy compatibility.
+- OCR is intentionally bounded to 30 pages and 90 seconds per document. Larger
+  scanned documents fail with an actionable limit error rather than silently
+  publishing partial text.
+- The quality gate supports English/Latin-script text. Multilingual extraction
+  requires a separate decision and benchmark.
+- No Docker/CI deployment manifest exists in the repository, so no image-level
+  install was exercised.
+- Successful extraction is not document-claim approval; exact claim review
+  remains Spec 18 work.

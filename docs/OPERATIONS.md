@@ -57,7 +57,7 @@ stale `__pycache__` directories there; no Python source remains.
 
 ## 3. Supported versions
 
-Measured on the acceptance host with the commands in section 10:
+Measured on the acceptance host with the commands in section 11:
 
 | Component | Version |
 | --- | --- |
@@ -72,6 +72,11 @@ Measured on the acceptance host with the commands in section 10:
 | Next.js | 16.1.4 (pinned) |
 | React / React DOM | 19.2.3 (pinned) |
 | TypeScript | 5.x |
+| pypdf | 6.6.2 |
+| pypdfium2 / Pillow | 5.14.0 / 13.0.0 |
+| RapidOCR | 3.10.0 (bundled PP-OCRv6 models) |
+| onnxruntime | 1.31.1 |
+| psutil | 7.2.2 |
 
 `backend/requirements.txt` uses lower-bound ranges; the frontend is pinned by
 `frontend/package-lock.json`. `pg_dump`/`pg_restore` must be the same major
@@ -340,7 +345,87 @@ independently of storage/vector availability, and retrying the cleanup worker
 resolves the remaining source and vector intents. Uploads left in `staging/`
 are swept at startup and by `KnowledgeLifecycle.sweep_staging`.
 
-## 10. Verification commands
+## 10. PDF extraction and OCR
+
+PDF extraction runs inside the ingestion worker, not the request path. The
+bounded extractor tries the embedded text layer first (plain, then layout
+mode) and uses local OCR only for pages whose text is missing or unusable.
+Text PDFs never load the OCR engine. Mixed documents are decided page by page,
+so a document can publish with `extraction_method = "pypdf+ocr"` and an
+`ocr_page_count` below its `page_count`.
+
+### Installation and probe
+
+`pip install -r requirements.txt` is sufficient. There is no Tesseract,
+Poppler, Ghostscript, cloud OCR or runtime model download. RapidOCR ships the
+three PP-OCRv6/PP-OCRv4 models inside its wheel; the extractor checks those
+files before constructing the engine and fails as a dependency error if they
+are absent. OCR runs with network access irrelevant and ONNX/OMP threading
+pinned to one thread.
+
+Run the startup probe on every worker host after installation:
+
+```powershell
+cd backend
+python -m scripts.pdf_extraction_probe
+```
+
+It prints `"status": "ok"` with package versions, the model directory, the
+bundled model names, probe text and scores. Failures exit non-zero: missing
+package (2), missing models (3), OCR execution error (4), or empty OCR output
+(5). A successful probe proves the dependency is installed and can execute; it
+does not prove throughput on that host.
+
+Re-run the decision benchmark on the target worker before advertising
+scanned-PDF support:
+
+```powershell
+python scripts/pdf_extraction_benchmark.py
+```
+
+Record its output with the deployment. The recorded Windows acceptance
+measurement and the selected/rejected alternatives are in
+[PDF_EXTRACTION.md](PDF_EXTRACTION.md).
+
+### Budgets
+
+| Limit | Value |
+| --- | --- |
+| Upload size | 50 MiB (existing admission limit) |
+| Pages per PDF | 200 |
+| OCR pages per PDF | 30 |
+| OCR render | 200 DPI, at most 8,000,000 pixels per page |
+| Extracted characters | 2,000,000 |
+| OCR page timeout | 20 seconds |
+| Whole-extraction deadline | 90 seconds, below the 120-second ingestion lease |
+| OCR child RSS | 1 GiB |
+| Concurrent parses | 2 per worker process (`parse_slots`) |
+
+Each PDF is extracted in a spawned child process with bounded pipes. On
+deadline, cancellation or RSS excess the parent terminates, joins, and if
+needed kills the child; no OCR process or partial vector write survives the
+attempt. The source bytes remain immutable and the extracted text is recorded
+separately with its page locator and extraction method/version.
+
+A blank or decorative page may be accepted without OCR. Any other page that
+still has no usable text — unsupported script, low OCR confidence, malformed
+content — fails the whole revision with an actionable `error_message` rather
+than publishing an empty or partial revision. Retry uses the same durable
+operation/revision contract and republishes only after extraction succeeds.
+
+### Replay and failure boundaries
+
+The live parser is constructed only inside the live knowledge composition.
+`REPLAY_ONLY=true` builds no live container or parser, and the replay namespace
+resolves only recorded data. This is covered by
+`tests/integration/test_replay_surface.py::test_replay_only_startup_never_constructs_the_live_composition`.
+
+If OCR is unavailable, image-only pages fail clearly while text-layer pages
+continue to ingest. Hosted worker deployment still requires the operator to run
+the probe and benchmark in that environment; local evidence alone is not a
+deployment proof.
+
+## 11. Verification commands
 
 ```powershell
 # backend
@@ -348,6 +433,7 @@ cd backend
 python -m pytest -q
 python -m scripts.migrate --status
 python -m scripts.export_openapi --check
+python -m scripts.pdf_extraction_probe
 python -m scripts.rehearse_clean_checkout
 
 # frontend
@@ -362,7 +448,7 @@ npm run build
 `node_modules`, `.next` and untracked files. It then installs, generates types,
 runs the backend/frontend suites, builds and starts both entry points.
 
-## 11. Database roles and replay reader
+## 12. Database roles and replay reader
 
 Migration `030_database_read_isolation` runs in the normal ordered history. It
 removes live `USAGE`, table, sequence and function privileges from `PUBLIC`,
@@ -410,7 +496,7 @@ default privileges are operator-authorized steps. Local evidence does not
 prove the hosted project's default ACLs, network path or Storage policy; those
 remain in the hosted checklist and Spec 17.
 
-## 12. Unresolved limitations
+## 13. Unresolved limitations
 
 - **Hosted source-store and vector verification is a manual gate.** The
   acceptance host has no Docker and no managed Supabase/Qdrant instance, so the
@@ -430,6 +516,10 @@ remain in the hosted checklist and Spec 17.
   answers `503 replay_not_configured` and the route shows an honest unavailable
   state. The packaged reader, checkpoint engine, paced streaming and full
   guided journey belong to Specs 17 and 18.
+- **OCR deployment proof is host-specific.** The probe and benchmark run on
+  the Windows acceptance host; a hosted worker must repeat both after installing
+  the pinned wheels and record the result. Passing local tests does not prove
+  that host's CPU, memory or process policy can run the OCR fallback.
 - **`/health` is shallow.** It does not probe dependencies.
 - **Restore markers do not gate traffic.** Closing retrieval is an operator
   step, not a platform-enforced state.

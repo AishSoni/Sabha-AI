@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import multiprocessing
 from pathlib import Path
 
 import pytest
@@ -10,6 +11,7 @@ from app.modules.knowledge.infrastructure.pdf_extraction import (
     ExtractedPage,
     ExtractionOptions,
     OcrResult,
+    PdfDeadlineExceeded,
     PdfEncryptedError,
     PdfExtractionError,
     PdfLimitError,
@@ -17,6 +19,7 @@ from app.modules.knowledge.infrastructure.pdf_extraction import (
     PdfPageUnreadable,
     assess_text,
     extract_pdf,
+    extract_pdf_bounded,
     normalize_extracted_text,
 )
 
@@ -205,6 +208,20 @@ def test_ocr_dependency_error_is_not_silently_ignored():
 
     with pytest.raises(PdfExtractionError, match="OCR dependency"):
         _extract("image-only.pdf", ocr=MissingOcr())
+
+
+def test_bounded_extraction_terminates_the_child_on_deadline():
+    with pytest.raises(PdfDeadlineExceeded):
+        extract_pdf_bounded(
+            (FIXTURES / "image-only.pdf").read_bytes(),
+            options=ExtractionOptions(deadline_seconds=0.25),
+        )
+
+    assert not [
+        child
+        for child in multiprocessing.active_children()
+        if child.name == "sabha-pdf-extraction"
+    ]
 
 
 def test_extracted_page_exposes_its_source_locator():
