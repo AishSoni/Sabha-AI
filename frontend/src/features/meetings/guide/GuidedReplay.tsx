@@ -27,12 +27,38 @@ function beatHref(beat: ReplayBeat, meetingId: string): string {
 
 function stepSatisfied(
     step: ReplayBeatStep,
+    beat: ReplayBeat,
     run: ReturnType<typeof useReplayRun>
 ): boolean {
     if (step.completion === "acknowledge") return true;
-    if (step.completion === "closing_completed") return run.closingSettled;
     if (!step.intent_id) return false;
-    return run.settledIntents.has(step.intent_id);
+    if (step.completion === "closing_completed" && !run.closingSettled) {
+        return false;
+    }
+    if (!run.settledIntents.has(step.intent_id)) return false;
+    const intent = run.session.intents.find(
+        (item) => item.intent_id === step.intent_id
+    );
+    if (!intent) return false;
+    let destination: string | null = null;
+    if (step.completion === "closing_completed") {
+        destination = beat.completed_checkpoint;
+    } else if (step.completion === "checkpoint") {
+        destination = intent.checkpoint;
+    } else {
+        const tape = run.session.tapes.find(
+            (item) => item.tape_id === intent.tape_id
+        );
+        destination = tape?.completed_checkpoint ?? null;
+    }
+    if (!destination) return false;
+    const destinationIndex = run.session.checkpoints.indexOf(destination);
+    const currentIndex = run.session.checkpoints.indexOf(run.checkpoint);
+    return (
+        destinationIndex >= 0 &&
+        currentIndex >= 0 &&
+        destinationIndex <= currentIndex
+    );
 }
 
 export function GuidedReplay({ children }: { children: ReactNode }) {
@@ -51,14 +77,16 @@ export function GuidedReplay({ children }: { children: ReactNode }) {
     }, [run.session.beats]);
 
     const current = beats[index] ?? null;
-    const activeStep = current?.steps.find(
-        (step) => step.intent_id && !stepSatisfied(step, run)
-    );
+    const activeStep = current
+        ? current.steps.find(
+              (step) => step.intent_id && !stepSatisfied(step, current, run)
+          )
+        : undefined;
     const activeIntentId = current
         ? (activeStep?.intent_id ?? "__guided-none__")
         : null;
     const satisfied = current
-        ? current.steps.every((step) => stepSatisfied(step, run))
+        ? current.steps.every((step) => stepSatisfied(step, current, run))
         : false;
     const targetHref = current
         ? beatHref(current, run.session.meeting_id)

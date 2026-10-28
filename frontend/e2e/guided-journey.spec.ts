@@ -99,6 +99,12 @@ test.describe("guided bond journey", () => {
         ).toBeVisible();
         await page.getByRole("button", { name: "Finish" }).click();
         await expect(page.getByText("Journey complete")).toBeVisible();
+
+        await page.getByRole("button", { name: "Back" }).click();
+        await expect(page).toHaveURL(/\/demo\/meetings\/[^/]+\?tab=closing$/);
+        await page.getByRole("button", { name: "Continue" }).click();
+        await expect(page).toHaveURL(/\/demo\/meetings$/);
+        await expect(page.getByTestId("archive-meeting")).toBeEnabled();
         expect(liveMutations).toEqual([]);
     });
 
