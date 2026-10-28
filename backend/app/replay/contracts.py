@@ -59,6 +59,15 @@ class ReplaySession:
     label: str = "Recorded session"
     provenance: dict[str, Any] = field(default_factory=dict)
     capabilities: ReplayCapabilities = field(default_factory=ReplayCapabilities)
+    package_id: str = ""
+    content_sha256: str = ""
+    checkpoint_id: str = ""
+    initial_checkpoint: str = ""
+    checkpoints: tuple[str, ...] = ()
+    intents: tuple[dict[str, Any], ...] = ()
+    tapes: tuple[dict[str, Any], ...] = ()
+    assets: tuple[dict[str, Any], ...] = ()
+    retired: bool = False
 
 
 @dataclass(frozen=True)
@@ -68,3 +77,8 @@ class ReplayContainer:
     session: ReplaySession
     reads: MeetingReads
     observation: TurnObservation
+    # Spec-17 recorded sources; absent on the spec-14 sentinel containers.
+    stream: Any | None = None
+    closing_events: Any | None = None
+    checkpoint_id: str = ""
+    limiter: Any | None = None

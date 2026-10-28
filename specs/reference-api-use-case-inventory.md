@@ -37,12 +37,14 @@ for any non-GET/HEAD/OPTIONS request under `/api` with
 `"Demo workspace is read-only — mutations are disabled"`.
 
 Phase 3 adds a separate replay request graph under `/api/replay`. It is not a
-mode switch for the live graph: replay requests read only the recorded source
-in `app.state.replay` through a dedicated reader, and every non-GET replay
-request is rejected before an adapter. When no replay package is configured,
-`/api/replay/*` returns `503 replay_not_configured`; it never falls back to
-live data. The entry choice remains UX, not authorization over the
-intentionally shared live API.
+mode switch for the live graph: replay requests read only a published package
+in `app.state.replay` through the dedicated spec-12 reader, and every non-GET
+replay request is rejected before an adapter. The server pins one package and
+version; a visitor may select an approved checkpoint, never a package outside
+the pin. When no replay package is configured, `/api/replay/*` returns
+`503 replay_not_configured`; a missing, retired, or corrupt package returns
+`503` and never falls back to live data. The entry choice remains UX, not
+authorization over the intentionally shared live API.
 
 ### BYOK generation contract
 
@@ -216,17 +218,26 @@ the same payload returns the original operation, while a different payload is
 
 Replay routes resolve `request.app.state.replay` only. They never consult
 `app.state.container`, a runtime header, a workspace id, or a provider key.
-Recorded reads are limited to the meeting named by the configured package.
-Every non-GET path returns `403 replay_read_only` before an adapter is called.
+Recorded reads are limited to the published package pinned by the server;
+`package`, `version`, and `checkpoint` are allowlisted selectors and invalid
+values return `400 replay_selector_invalid`. Every non-GET path returns
+`403 replay_read_only` before an adapter is called.
 
 | Method & path | Class | Receipt / shape | Request keys | Safe errors | Notes |
 |---|---|---|---|---|---|
-| `GET /api/replay/session` | observation | `ReplaySessionView` | — | `503 replay_not_configured` | Run/package identity, recorded meeting id, capabilities, provenance |
-| `GET /api/replay/meetings/{meeting_id}` | observation | `MeetingWithParticipants` | — | `404`; `503` | Recorded detail; ids outside the package are not found |
-| `GET /api/replay/meetings/{meeting_id}/disagreements` | observation | `Disagreement[]` | — | `404`; `503` | Recorded scoreboard |
-| `GET /api/replay/meetings/{meeting_id}/consensus` | observation | `Consensus[]` | — | `404`; `503` | Recorded scoreboard |
-| `GET /api/replay/meetings/{meeting_id}/turns/{operation_id}` | observation | `TurnOperationResponse` | — | `404`; `503` | Recorded operation status; never starts work |
-| `GET /api/replay/meetings/{meeting_id}/turns/{operation_id}/events` | observation | SSE durable event stream | `after` cursor | `404` before stream; `503` | Recorded events only; no live polling or provider call |
+| `GET /api/replay/session` | observation | `ReplaySessionView` | `package`, `version`, `checkpoint` | `400` selector; `503` | Run/package identity, checkpoints, intents, tapes, assets, capabilities, provenance |
+| `GET /api/replay/meetings` | observation | `Meeting[]` | `checkpoint` | `503` | Recorded meeting list |
+| `GET /api/replay/meetings/{meeting_id}` | observation | `MeetingWithParticipants` | `checkpoint` | `404`; `503` | Recorded detail; ids outside the package are not found |
+| `GET /api/replay/meetings/{meeting_id}/disagreements` | observation | `Disagreement[]` | `checkpoint` | `404`; `503` | Recorded scoreboard |
+| `GET /api/replay/meetings/{meeting_id}/consensus` | observation | `Consensus[]` | `checkpoint` | `404`; `503` | Recorded scoreboard |
+| `GET /api/replay/meetings/{meeting_id}/context-stats` | observation | context stats object | `checkpoint` | `404`; `503` | Recorded token statistics |
+| `GET /api/replay/meetings/{meeting_id}/documents` | observation | `DocumentResponse[]` | `checkpoint` | `404`; `503` | Recorded document status; assets are passive URLs |
+| `GET /api/replay/meetings/{meeting_id}/closing` | observation | `ClosingView` | `checkpoint` | `404`; `503` | Recorded closing snapshot |
+| `GET /api/replay/meetings/{meeting_id}/closing/events` | observation | typed closing SSE | `checkpoint`, `after` cursor | `404` before stream; `503` | Ballot/summary text only; never a participant turn |
+| `GET /api/replay/meetings/{meeting_id}/turns` | observation | `TurnOperationResponse[]` | `checkpoint`, `limit` | `404`; `503` | Recorded operation list |
+| `GET /api/replay/meetings/{meeting_id}/turns/{operation_id}` | observation | `TurnOperationResponse` | `checkpoint` | `404`; `503` | Recorded operation status; never starts work |
+| `GET /api/replay/meetings/{meeting_id}/turns/{operation_id}/events` | observation | SSE recorded event stream | `checkpoint`, `after` cursor | `404` before stream; `429` stream limit; `503` | Paced recorded events; no live polling or provider call |
+| `GET /api/replay/assets/{asset_id}` | observation | recorded asset metadata | — | `404`; `503` | Passive public URL and provenance; no bytes proxied |
 | `POST /api/replay/{path:path}` | command rejection | `{detail:"replay_read_only"}` | — | `403` | Catch-all rejects before any adapter |
 | `PUT /api/replay/{path:path}` | command rejection | `{detail:"replay_read_only"}` | — | `403` | Same |
 | `PATCH /api/replay/{path:path}` | command rejection | `{detail:"replay_read_only"}` | — | `403` | Same |

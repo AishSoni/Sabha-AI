@@ -21,6 +21,15 @@ class Settings(BaseSettings):
     # Server-only replay reader URL (dedicated LOGIN role, never the live
     # service credential). Empty until a strict replay runtime is configured.
     replay_database_url: str = ""
+    # The one published journey this process may serve. A visitor may select
+    # an approved checkpoint, never a package or version outside this pin.
+    replay_package_id: str = ""
+    replay_package_version: str = ""
+    replay_package_sha256: str = ""
+    replay_stream_max_bytes: int = 262144
+    replay_stream_max_seconds: float = 120.0
+    replay_stream_max_global: int = 8
+    replay_stream_max_per_client: int = 2
     
     # OpenRouter
     openrouter_api_key: str = ""

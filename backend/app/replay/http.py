@@ -1,25 +1,42 @@
-"""Read-only replay HTTP surface (spec-14).
+"""Read-only replay HTTP surface (spec-14/17).
 
 Every route depends on ``app.state.replay``; none imports the live container,
 database client, provider adapter, or recovery workers. Non-GET replay intents
-are rejected here, before any live adapter can be reached. Guide steps and
-recorded package provisioning belong to Specs 17/18.
+are rejected here, before any live adapter can be reached. The package runtime
+resolves the pinned package/version plus one allowlisted checkpoint selector.
 """
 
 from __future__ import annotations
 
-from fastapi import APIRouter, Depends, HTTPException, Request
+from typing import Any
+
+from fastapi import APIRouter, Depends, HTTPException, Query, Request
 from pydantic import BaseModel, Field
 from sse_starlette.sse import EventSourceResponse
 
-from app.modules.meetings.domain.models import Consensus, Disagreement, MeetingWithParticipants
+from app.modules.knowledge.presentation.schemas import DocumentResponse
+from app.modules.meetings.domain.models import (
+    Consensus,
+    Disagreement,
+    Meeting,
+    MeetingWithParticipants,
+)
+from app.modules.meetings.presentation.schemas import ClosingView
 from app.modules.meetings.presentation.turn_stream import (
     operation_dto,
     turn_event_stream,
 )
 from app.replay.contracts import ReplayContainer, ReplayNotFound
+from app.replay.source import (
+    ReplayNotConfigured,
+    ReplayPackageUnavailable,
+    ReplaySelectorInvalid,
+)
+from app.replay.streaming import ReplayStreamLimit
 
 router = APIRouter(prefix="/api/replay", tags=["replay"])
+
+SSE_HEADERS = {"Cache-Control": "no-cache", "X-Accel-Buffering": "no"}
 
 
 class ReplayCapabilitiesView(BaseModel):
@@ -44,18 +61,76 @@ class ReplaySessionView(BaseModel):
     label: str
     provenance: dict = Field(default_factory=dict)
     capabilities: ReplayCapabilitiesView
+    package_id: str = ""
+    content_sha256: str = ""
+    checkpoint_id: str = ""
+    initial_checkpoint: str = ""
+    checkpoints: list[str] = Field(default_factory=list)
+    intents: list[dict] = Field(default_factory=list)
+    tapes: list[dict] = Field(default_factory=list)
+    assets: list[dict] = Field(default_factory=list)
+    retired: bool = False
 
 
-def get_replay(request: Request) -> ReplayContainer:
+def _unavailable(exc: Exception) -> HTTPException:
+    return HTTPException(status_code=503, detail=str(exc) or "replay_package_unavailable")
+
+
+async def get_replay(
+    request: Request,
+    checkpoint: str | None = Query(default=None),
+    package: str | None = Query(default=None),
+    version: str | None = Query(default=None),
+) -> ReplayContainer:
     replay = getattr(request.app.state, "replay", None)
     if replay is None:
         raise HTTPException(status_code=503, detail="replay_not_configured")
+    if hasattr(replay, "for_request"):
+        try:
+            return await replay.for_request(package, version, checkpoint)
+        except ReplayNotConfigured as exc:
+            raise HTTPException(status_code=503, detail="replay_not_configured") from exc
+        except ReplaySelectorInvalid as exc:
+            raise HTTPException(
+                status_code=400, detail="replay_selector_invalid"
+            ) from exc
+        except ReplayPackageUnavailable as exc:
+            raise _unavailable(exc) from exc
     return replay
 
 
 def _require_recorded_meeting(replay: ReplayContainer, meeting_id: str) -> None:
     if meeting_id != replay.session.meeting_id:
         raise HTTPException(status_code=404, detail="Recorded meeting not found")
+
+
+def _recorded_method(reads: Any, name: str):
+    method = getattr(reads, name, None)
+    if method is None:
+        raise HTTPException(status_code=404, detail="replay_read_unavailable")
+    return method
+
+
+def _client(request: Request) -> str:
+    return request.client.host if request.client is not None else "unknown"
+
+
+async def _acquire_stream(request: Request, replay: ReplayContainer) -> None:
+    limiter = getattr(replay, "limiter", None)
+    if limiter is None:
+        return
+    try:
+        await limiter.acquire(_client(request))
+    except ReplayStreamLimit as exc:
+        raise HTTPException(
+            status_code=429, detail="replay_stream_limit"
+        ) from exc
+
+
+def _release_stream(request: Request, replay: ReplayContainer) -> None:
+    limiter = getattr(replay, "limiter", None)
+    if limiter is not None:
+        limiter.release(_client(request))
 
 
 @router.get("/session", response_model=ReplaySessionView)
@@ -68,7 +143,21 @@ async def read_session(replay: ReplayContainer = Depends(get_replay)):
         label=session.label,
         provenance=session.provenance,
         capabilities=ReplayCapabilitiesView(**session.capabilities.as_dict()),
+        package_id=session.package_id,
+        content_sha256=session.content_sha256,
+        checkpoint_id=session.checkpoint_id,
+        initial_checkpoint=session.initial_checkpoint,
+        checkpoints=list(session.checkpoints),
+        intents=list(session.intents),
+        tapes=list(session.tapes),
+        assets=list(session.assets),
+        retired=session.retired,
     )
+
+
+@router.get("/meetings", response_model=list[Meeting])
+async def list_meetings(replay: ReplayContainer = Depends(get_replay)):
+    return await replay.reads.list_meetings()
 
 
 @router.get(
@@ -110,6 +199,50 @@ async def read_consensus(
     return await replay.reads.get_consensus_list(meeting_id)
 
 
+@router.get("/meetings/{meeting_id}/context-stats")
+async def read_context_stats(
+    meeting_id: str,
+    replay: ReplayContainer = Depends(get_replay),
+):
+    _require_recorded_meeting(replay, meeting_id)
+    return await _recorded_method(replay.reads, "context_stats")(meeting_id)
+
+
+@router.get(
+    "/meetings/{meeting_id}/documents",
+    response_model=list[DocumentResponse],
+)
+async def read_documents(
+    meeting_id: str,
+    replay: ReplayContainer = Depends(get_replay),
+):
+    _require_recorded_meeting(replay, meeting_id)
+    return await _recorded_method(replay.reads, "documents")(meeting_id)
+
+
+@router.get(
+    "/meetings/{meeting_id}/closing",
+    response_model=ClosingView,
+)
+async def read_closing(
+    meeting_id: str,
+    replay: ReplayContainer = Depends(get_replay),
+):
+    _require_recorded_meeting(replay, meeting_id)
+    return await _recorded_method(replay.reads, "closing")(meeting_id)
+
+
+@router.get("/meetings/{meeting_id}/turns")
+async def list_turns(
+    meeting_id: str,
+    limit: int = 100,
+    replay: ReplayContainer = Depends(get_replay),
+):
+    _require_recorded_meeting(replay, meeting_id)
+    rows = await replay.observation.list_operations(meeting_id, limit)
+    return [operation_dto(row) for row in rows]
+
+
 @router.get("/meetings/{meeting_id}/turns/{operation_id}")
 async def read_turn(
     meeting_id: str,
@@ -126,6 +259,7 @@ async def read_turn(
 
 @router.get("/meetings/{meeting_id}/turns/{operation_id}/events")
 async def observe_turn(
+    request: Request,
     meeting_id: str,
     operation_id: str,
     after: int = 0,
@@ -137,16 +271,73 @@ async def observe_turn(
     except ReplayNotFound as exc:
         raise HTTPException(status_code=404, detail=str(exc) or "Recorded turn not found")
 
-    return EventSourceResponse(
-        turn_event_stream(
-            replay.observation,
-            meeting_id,
-            operation_id,
-            after=after,
-            poll_seconds=0.01,
-        ),
-        headers={"Cache-Control": "no-cache", "X-Accel-Buffering": "no"},
-    )
+    stream = getattr(replay, "stream", None)
+    if stream is None:
+        return EventSourceResponse(
+            turn_event_stream(
+                replay.observation,
+                meeting_id,
+                operation_id,
+                after=after,
+                poll_seconds=0.01,
+            ),
+            headers=SSE_HEADERS,
+        )
+
+    await _acquire_stream(request, replay)
+
+    async def body():
+        try:
+            async for frame in stream.events(
+                meeting_id, operation_id, after=max(0, after)
+            ):
+                yield frame
+        finally:
+            _release_stream(request, replay)
+
+    return EventSourceResponse(body(), headers=SSE_HEADERS)
+
+
+@router.get("/meetings/{meeting_id}/closing/events")
+async def observe_closing(
+    request: Request,
+    meeting_id: str,
+    after: int = 0,
+    replay: ReplayContainer = Depends(get_replay),
+):
+    _require_recorded_meeting(replay, meeting_id)
+    closing = await _recorded_method(replay.reads, "closing")(meeting_id)
+    closing_id = getattr(closing, "closing_id", None)
+    if not closing_id:
+        raise HTTPException(status_code=404, detail="Recorded closing not found")
+
+    stream = getattr(replay, "closing_events", None)
+    if stream is None:
+        raise HTTPException(status_code=404, detail="replay_read_unavailable")
+
+    await _acquire_stream(request, replay)
+
+    async def body():
+        try:
+            async for frame in stream.events(
+                meeting_id, closing_id, after=max(0, after)
+            ):
+                yield frame
+        finally:
+            _release_stream(request, replay)
+
+    return EventSourceResponse(body(), headers=SSE_HEADERS)
+
+
+@router.get("/assets/{asset_id}")
+async def read_asset(
+    asset_id: str,
+    replay: ReplayContainer = Depends(get_replay),
+):
+    for asset in replay.session.assets:
+        if str(asset.get("asset_id")) == asset_id:
+            return asset
+    raise HTTPException(status_code=404, detail="Recorded asset not found")
 
 
 @router.api_route(

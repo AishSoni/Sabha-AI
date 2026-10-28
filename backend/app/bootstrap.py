@@ -126,6 +126,28 @@ class Container:
         )
 
 
+def _configured_replay():
+    """Build the packaged replay runtime only when the server pins one."""
+    if not settings.replay_database_url or not settings.replay_package_id:
+        return None
+    from app.replay.runtime import ReplayRuntime
+    from app.replay.source import ReplaySource
+    from app.replay.streaming import StreamLimiter
+
+    return ReplayRuntime(
+        ReplaySource(),
+        package_id=settings.replay_package_id,
+        version=settings.replay_package_version or None,
+        content_sha256=settings.replay_package_sha256 or None,
+        limiter=StreamLimiter(
+            max_global=settings.replay_stream_max_global,
+            max_per_client=settings.replay_stream_max_per_client,
+        ),
+        max_stream_bytes=settings.replay_stream_max_bytes,
+        max_stream_seconds=settings.replay_stream_max_seconds,
+    )
+
+
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     """Recover from interrupted work, then serve.
@@ -256,7 +278,7 @@ def create_app(
     )
 
     app.state.container = active
-    app.state.replay = replay
+    app.state.replay = replay if replay is not None else _configured_replay()
     register_error_handlers(app)
 
     if live_enabled:

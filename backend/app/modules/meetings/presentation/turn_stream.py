@@ -49,7 +49,9 @@ def operation_dto(row: dict) -> dict:
         "final_message_id": (
             str(row["final_message_id"]) if row.get("final_message_id") else None
         ),
-        "cancel_requested": bool(row.get("cancel_requested_at")),
+        "cancel_requested": bool(
+            row.get("cancel_requested_at") or row.get("cancel_requested")
+        ),
         "error": error,
         "effective_generation": row.get("effective_settings"),
     }
