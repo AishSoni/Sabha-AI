@@ -32,12 +32,17 @@ def turn_app(disposable_db, monkeypatch):
         meeting_manager_module, "get_supabase", lambda: stub_for(disposable_db)
     )
     provider = ScriptedProvider()
+    meeting_service = build_default_meeting_service()
     service = TurnQueueService(
-        build_default_meeting_service(),
+        meeting_service,
         provider_factory=lambda **kwargs: provider,
         max_queued=2,
     )
-    container = Container(prompt_catalog=object(), turn_queue=service)
+    container = Container(
+        prompt_catalog=object(),
+        meeting_service=meeting_service,
+        turn_queue=service,
+    )
     app = create_app(container)
     world = DurableQueueWorld(disposable_db)
     with TestClient(app) as client:

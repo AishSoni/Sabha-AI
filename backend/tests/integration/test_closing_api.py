@@ -67,14 +67,19 @@ def closing_app(disposable_db, monkeypatch):
     )
     world = ClosingWorld(disposable_db)
     invocations = _FakeInvocations()
+    meeting_service = build_default_meeting_service()
     service = ClosingService(
-        SupabaseClosingRepository(build_default_meeting_service()),
+        SupabaseClosingRepository(meeting_service),
         invocations,
         lease_seconds=30,
         drain_timeout_seconds=300,
         now=lambda: world.clock.now().replace(tzinfo=timezone.utc),
     )
-    container = Container(prompt_catalog=object(), closing=service)
+    container = Container(
+        prompt_catalog=object(),
+        meeting_service=meeting_service,
+        closing=service,
+    )
     app = create_app(container)
     with TestClient(app) as client:
         yield client, world, invocations, service

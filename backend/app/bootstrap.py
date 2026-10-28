@@ -13,13 +13,15 @@ thin entry points over this root; application layers never import it.
 
 from contextlib import asynccontextmanager
 from dataclasses import dataclass
-from typing import Optional
+from typing import Any, Callable, Optional
 
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
 from app.platform.config import settings
 from app.modules.meetings.application.closing import ClosingService
+from app.modules.meetings.application.meeting_service import MeetingService
+from app.modules.meetings.application.ports import MeetingReads, TurnObservation
 from app.modules.meetings.infrastructure.supabase_closing import (
     SupabaseClosingRepository,
     SupabaseInvocationFactory,
@@ -35,6 +37,20 @@ from app.modules.meetings.infrastructure.turns import TurnQueueService
 from app.capabilities.runtime.runner import TurnRunner
 
 
+def _system_ai_reader():
+    """Read shared System AI policy through the settings adapter."""
+    from app.modules.settings.infrastructure.system_ai import load_system_ai_config
+
+    return load_system_ai_config()
+
+
+async def _startup_reconciliation():
+    """Recover orphaned knowledge work through the live adapter."""
+    from app.modules.knowledge.public import reconcile_startup_state
+
+    return await reconcile_startup_state()
+
+
 @dataclass(frozen=True)
 class Container:
     """The single composition point: every adapter is constructed here.
@@ -45,25 +61,44 @@ class Container:
 
     prompt_catalog: PromptCatalogPort
     persona_catalog: PersonaCatalogPort | None = None
+    # Spec-14: the meeting service, closing service, and slow knowledge
+    # adapters are constructed once by the composition root. Presentation
+    # resolves them from here; no request handler builds a default.
+    meeting_service: MeetingService | None = None
+    # Read and observation ports may be the live services themselves or a
+    # recorded source; presentation depends only on these interfaces.
+    meeting_reads: MeetingReads | None = None
     # Spec-07: the queue service is always present in production so the HTTP
     # surface can submit/observe even when inference runs in a separate
     # process. The runner is optional so tests can disable background work.
     turn_queue: TurnQueueService | None = None
+    turn_observation: TurnObservation | None = None
     turn_runner: TurnRunner | None = None
     closing: ClosingService | None = None
+    # Knowledge adapters are lazy so importing the app never reaches Qdrant or
+    # embeddings, and a replay-only composition can leave them unset.
+    knowledge_lifecycle: Any | None = None
+    knowledge_lifecycle_factory: Callable[[], Any] | None = None
+    knowledge_db_factory: Callable[[], Any] | None = None
+    system_ai_reader: Callable[[], Any] | None = None
+    # Live-only startup hooks. A replay-only composition leaves them unset so
+    # serving recorded requests never reaches live storage or recovery work.
+    startup_reconciliation: Callable[[], Any] | None = None
 
     @classmethod
     def production(cls) -> "Container":
         """Real composition: one Supabase client, adapters built once."""
         from app.platform.database import get_supabase
+        from app.modules.knowledge.public import get_knowledge_lifecycle
         from app.modules.persona_catalog.infrastructure.supabase import (
             SupabasePersonaCatalog,
             SupabasePromptCatalog,
         )
 
-        turn_queue = TurnQueueService()
+        meeting_service = build_meeting_service(get_supabase())
+        turn_queue = TurnQueueService(meeting_service)
         closing = ClosingService(
-            SupabaseClosingRepository(build_meeting_service(get_supabase())),
+            SupabaseClosingRepository(meeting_service),
             SupabaseInvocationFactory(),
             lease_seconds=settings.closing_attempt_lease_seconds,
             drain_timeout_seconds=settings.closing_drain_timeout_seconds,
@@ -76,9 +111,16 @@ class Container:
         return cls(
             prompt_catalog=SupabasePromptCatalog(get_supabase),
             persona_catalog=SupabasePersonaCatalog(get_supabase),
+            meeting_service=meeting_service,
+            meeting_reads=meeting_service,
             turn_queue=turn_queue,
+            turn_observation=turn_queue,
             turn_runner=runner,
             closing=closing,
+            knowledge_lifecycle_factory=get_knowledge_lifecycle,
+            knowledge_db_factory=get_supabase,
+            system_ai_reader=_system_ai_reader,
+            startup_reconciliation=_startup_reconciliation,
         )
 
 
@@ -96,17 +138,18 @@ async def lifespan(app: FastAPI):
     placements safe.
     """
     import logging
-    from app.modules.knowledge.public import reconcile_startup_state
 
     logger = logging.getLogger("sabha.startup")
-    try:
-        summary = await reconcile_startup_state()
-        if summary.get("documents_failed") or summary.get("cleanups_attempted"):
-            logger.info("Startup reconciliation: %s", summary)
-    except Exception:
-        logger.warning("Startup reconciliation failed", exc_info=True)
-
     container: Container = app.state.container
+    reconciler = getattr(container, "startup_reconciliation", None)
+    if reconciler is not None:
+        try:
+            summary = await reconciler()
+            if summary.get("documents_failed") or summary.get("cleanups_attempted"):
+                logger.info("Startup reconciliation: %s", summary)
+        except Exception:
+            logger.warning("Startup reconciliation failed", exc_info=True)
+
     runner = container.turn_runner
     try:
         if runner is not None:
@@ -124,9 +167,10 @@ async def lifespan(app: FastAPI):
         logger.warning("Closing startup reconciliation failed", exc_info=True)
 
     try:
-        from app.modules.knowledge.public import get_knowledge_lifecycle
-
-        lifecycle = get_knowledge_lifecycle()
+        factory = getattr(container, "knowledge_lifecycle_factory", None)
+        if factory is None:
+            raise RuntimeError("Knowledge lifecycle is not configured")
+        lifecycle = factory()
         report = await lifecycle.run_cleanup()
         if report.attempted:
             logger.info("Knowledge cleanup reconciliation: %s", report)

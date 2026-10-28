@@ -5,15 +5,15 @@ the port with its use case per request. Building a client or a service
 inside a route/dependency is forbidden by spec-04.
 """
 
+from typing import Any, Callable
+
 from fastapi import HTTPException, Request
 
 from app.modules.meetings.application.meeting_service import MeetingService
-from app.modules.meetings.infrastructure.supabase_meetings import (
-    build_default_meeting_service,
-)
 from app.modules.meetings.infrastructure.turns import TurnQueueService
 
 from app.modules.meetings.application.closing import ClosingService
+from app.modules.meetings.application.ports import MeetingReads, TurnObservation
 from app.modules.persona_catalog.application.use_cases import (
     ActivatePromptVersion,
     CreatePromptVersion,
@@ -26,9 +26,70 @@ from app.modules.persona_catalog.application.use_cases import (
 )
 
 
-def get_meeting_manager() -> MeetingService:
-    """The meeting lifecycle service for the module-owned routes."""
-    return build_default_meeting_service()
+def _container(request: Request):
+    return request.app.state.container
+
+
+def get_meeting_manager(request: Request) -> MeetingService:
+    """The composition root's meeting lifecycle service."""
+    service = getattr(_container(request), "meeting_service", None)
+    if service is None:
+        raise HTTPException(status_code=503, detail="Meeting service is not configured")
+    return service
+
+
+def get_meeting_reads(request: Request) -> MeetingReads:
+    """The read-only meeting projection used by resource reads (spec-14)."""
+    container = _container(request)
+    reads = getattr(container, "meeting_reads", None)
+    if reads is None:
+        reads = getattr(container, "meeting_service", None)
+    if reads is None:
+        raise HTTPException(status_code=503, detail="Meeting reads are not configured")
+    return reads
+
+
+def get_turn_observation(request: Request) -> TurnObservation:
+    """The observation port used by turn status/list/event reads (spec-14)."""
+    container = _container(request)
+    observation = getattr(container, "turn_observation", None)
+    if observation is None:
+        observation = getattr(container, "turn_queue", None)
+    if observation is None:
+        raise HTTPException(
+            status_code=503, detail="Turn observation is not configured"
+        )
+    return observation
+
+
+def get_knowledge_lifecycle(request: Request):
+    """The composition root's knowledge lifecycle adapter (spec-14)."""
+    container = _container(request)
+    lifecycle = getattr(container, "knowledge_lifecycle", None)
+    if lifecycle is None:
+        factory = getattr(container, "knowledge_lifecycle_factory", None)
+        if factory is not None:
+            lifecycle = factory()
+    if lifecycle is None:
+        raise HTTPException(status_code=503, detail="Knowledge is not configured")
+    return lifecycle
+
+
+def get_knowledge_db(request: Request):
+    """The composition root's live knowledge persistence client."""
+    container = _container(request)
+    factory = getattr(container, "knowledge_db_factory", None)
+    if factory is None:
+        raise HTTPException(status_code=503, detail="Knowledge is not configured")
+    return factory()
+
+
+def get_system_ai_reader(request: Request):
+    """The composition root's System AI read port (spec-14)."""
+    reader = getattr(_container(request), "system_ai_reader", None)
+    if reader is None:
+        raise HTTPException(status_code=503, detail="Settings are not configured")
+    return reader
 
 
 def get_turn_queue(request: Request) -> TurnQueueService:

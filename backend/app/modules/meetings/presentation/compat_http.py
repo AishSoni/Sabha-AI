@@ -17,16 +17,13 @@ from app.modules.meetings.domain.models import (
 )
 from app.modules.meetings.presentation.schemas import SummaryRequest, TurnRequest
 from app.platform.config import settings
-from app.presentation.dependencies import get_turn_queue
+from app.presentation.dependencies import get_meeting_manager, get_turn_queue
 from app.capabilities.configuration.contracts import MissingProviderKeyError
 from app.modules.meetings.domain.errors import MeetingClosedError
 from app.modules.meetings.infrastructure.orchestrator import Orchestrator
 from app.modules.meetings.infrastructure.summary import (
     EmptyConversationError,
     generate_meeting_summary,
-)
-from app.modules.meetings.infrastructure.supabase_meetings import (
-    build_default_meeting_service,
 )
 from app.modules.meetings.infrastructure.turns import (
     QueueClosedError,
@@ -43,10 +40,6 @@ import logging
 logger = logging.getLogger(__name__)
 
 router = APIRouter()
-
-
-def get_meeting_manager():
-    return build_default_meeting_service()
 
 
 def _legacy_request_key() -> str:
@@ -177,14 +170,18 @@ def _legacy_stream_payload(row: dict) -> dict | None:
 
 
 @router.post("/{meeting_id}/summary", response_model=Message)
-async def generate_summary(meeting_id: str, data: SummaryRequest, request: Request):
+async def generate_summary(
+    meeting_id: str,
+    data: SummaryRequest,
+    request: Request,
+    manager=Depends(get_meeting_manager),
+):
     """Generate and persist a real interim meeting summary.
 
     Same generation-settings/BYOK contract as turns: request overrides compose
     over server defaults and the secret rides the X-Provider-Key header,
     never storage. The attempt is charged once in the inference ledger.
     """
-    manager = get_meeting_manager()
     try:
         message = await generate_meeting_summary(
             meeting_id,
@@ -214,6 +211,7 @@ async def execute_turn(
     data: TurnRequest,
     request: Request,
     service: TurnQueueService = Depends(get_turn_queue),
+    manager=Depends(get_meeting_manager),
 ):
     """Synchronous compatibility adapter over the durable turn workflow.
 
@@ -236,7 +234,6 @@ async def execute_turn(
         )
     _raise_for_legacy_terminal(status)
 
-    manager = get_meeting_manager()
     meeting = await manager.get_meeting(meeting_id)
     final_message_id = status.get("final_message_id")
     message = None

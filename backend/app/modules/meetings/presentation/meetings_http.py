@@ -7,7 +7,7 @@ adapters stay in their compatibility router until their own cutover slices.
 
 from __future__ import annotations
 
-from fastapi import APIRouter, HTTPException
+from fastapi import APIRouter, Depends, HTTPException
 
 from app.modules.knowledge.domain.errors import KnowledgeUnavailable
 from app.modules.meetings.domain.models import (
@@ -22,15 +22,21 @@ from app.modules.meetings.domain.models import (
     SenderType,
 )
 from app.modules.meetings.presentation.schemas import UserMessageRequest
-from app.presentation.dependencies import get_meeting_manager
+from app.presentation.dependencies import (
+    get_knowledge_lifecycle,
+    get_meeting_manager,
+    get_meeting_reads,
+)
 
 router = APIRouter(prefix="/meetings", tags=["meetings"])
 
 
 @router.post("", response_model=MeetingWithParticipants)
-async def create_meeting(data: MeetingCreate):
+async def create_meeting(
+    data: MeetingCreate,
+    manager=Depends(get_meeting_manager),
+):
     """Create a new meeting with default AI participants."""
-    manager = get_meeting_manager()
     try:
         meeting = await manager.create_meeting(data)
     except ValueError as exc:
@@ -40,18 +46,16 @@ async def create_meeting(data: MeetingCreate):
 
 
 @router.get("", response_model=list[Meeting])
-async def list_meetings():
+async def list_meetings(reads=Depends(get_meeting_reads)):
     """List all meetings."""
-    manager = get_meeting_manager()
-    meetings = await manager.list_meetings()
+    meetings = await reads.list_meetings()
     return meetings
 
 
 @router.get("/{meeting_id}", response_model=MeetingWithParticipants)
-async def get_meeting(meeting_id: str):
+async def get_meeting(meeting_id: str, reads=Depends(get_meeting_reads)):
     """Get a meeting with its participants and messages."""
-    manager = get_meeting_manager()
-    meeting = await manager.get_meeting(meeting_id)
+    meeting = await reads.get_meeting(meeting_id)
 
     if not meeting:
         raise HTTPException(status_code=404, detail="Meeting not found")
@@ -60,10 +64,12 @@ async def get_meeting(meeting_id: str):
 
 
 @router.post("/{meeting_id}/message", response_model=Message)
-async def add_user_message(meeting_id: str, data: UserMessageRequest):
+async def add_user_message(
+    meeting_id: str,
+    data: UserMessageRequest,
+    manager=Depends(get_meeting_manager),
+):
     """Add a user message to the meeting through the locked write guard."""
-    manager = get_meeting_manager()
-
     outcome, message = await manager.append_user_message(
         meeting_id,
         MessageCreate(
@@ -96,28 +102,25 @@ async def add_user_message(meeting_id: str, data: UserMessageRequest):
 
 
 @router.get("/{meeting_id}/disagreements", response_model=list[Disagreement])
-async def get_disagreements(meeting_id: str):
+async def get_disagreements(meeting_id: str, reads=Depends(get_meeting_reads)):
     """Get all disagreements for a meeting."""
-    manager = get_meeting_manager()
-    disagreements = await manager.get_disagreements(meeting_id)
+    disagreements = await reads.get_disagreements(meeting_id)
     return disagreements
 
 
 @router.get("/{meeting_id}/consensus", response_model=list[Consensus])
-async def get_consensus(meeting_id: str):
+async def get_consensus(meeting_id: str, reads=Depends(get_meeting_reads)):
     """Get all consensus entries for a meeting."""
-    manager = get_meeting_manager()
-    consensus = await manager.get_consensus_list(meeting_id)
+    consensus = await reads.get_consensus_list(meeting_id)
     return consensus
 
 
 @router.get("/{meeting_id}/context-stats")
-async def get_context_stats(meeting_id: str):
+async def get_context_stats(meeting_id: str, reads=Depends(get_meeting_reads)):
     """Get context/token usage statistics for a meeting."""
     import tiktoken
 
-    manager = get_meeting_manager()
-    meeting = await manager.get_meeting(meeting_id)
+    meeting = await reads.get_meeting(meeting_id)
 
     if not meeting:
         raise HTTPException(status_code=404, detail="Meeting not found")
@@ -177,10 +180,8 @@ async def get_context_stats(meeting_id: str):
 
 
 @router.post("/{meeting_id}/archive")
-async def archive_meeting(meeting_id: str):
+async def archive_meeting(meeting_id: str, manager=Depends(get_meeting_manager)):
     """Archive a meeting (move to archive folder)."""
-    manager = get_meeting_manager()
-
     meeting = await manager.get_meeting(meeting_id)
     if not meeting:
         raise HTTPException(status_code=404, detail="Meeting not found")
@@ -207,10 +208,8 @@ async def archive_meeting(meeting_id: str):
 
 
 @router.post("/{meeting_id}/unarchive")
-async def unarchive_meeting(meeting_id: str):
+async def unarchive_meeting(meeting_id: str, manager=Depends(get_meeting_manager)):
     """Unarchive a meeting (restore from archive)."""
-    manager = get_meeting_manager()
-
     meeting = await manager.get_meeting(meeting_id)
     if not meeting:
         raise HTTPException(status_code=404, detail="Meeting not found")
@@ -232,22 +231,22 @@ async def unarchive_meeting(meeting_id: str):
 
 
 @router.delete("/{meeting_id}")
-async def delete_meeting(meeting_id: str):
+async def delete_meeting(
+    meeting_id: str,
+    manager=Depends(get_meeting_manager),
+    lifecycle=Depends(get_knowledge_lifecycle),
+):
     """Permanently delete a meeting after Knowledge revokes its sources.
 
     Revocation and cleanup intents commit before the meeting row cascades, so
     an outage can defer physical cleanup but never resurrect eligibility.
     """
-    from app.modules.knowledge.public import get_knowledge_lifecycle
-
-    manager = get_meeting_manager()
-
     meeting = await manager.get_meeting(meeting_id)
     if not meeting:
         raise HTTPException(status_code=404, detail="Meeting not found")
 
     try:
-        await get_knowledge_lifecycle().delete_parent(
+        await lifecycle.delete_parent(
             "meeting", meeting_id, reason="meeting_deleted"
         )
     except KnowledgeUnavailable as exc:

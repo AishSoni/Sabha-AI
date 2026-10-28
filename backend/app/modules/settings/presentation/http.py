@@ -8,7 +8,7 @@ import ipaddress
 import socket
 from urllib.parse import urlsplit
 
-from fastapi import APIRouter, HTTPException
+from fastapi import APIRouter, Depends, HTTPException
 from pydantic import BaseModel
 import httpx
 
@@ -21,10 +21,8 @@ from .schemas import (
     DEFAULT_PROVIDERS,
 )
 from app.platform.config import settings
-from app.modules.settings.infrastructure.system_ai import (
-    load_system_ai_config,
-    save_system_ai_config,
-)
+from app.modules.settings.infrastructure.system_ai import save_system_ai_config
+from app.presentation.dependencies import get_system_ai_reader
 
 
 # --------------------------------------------------------------------------
@@ -144,7 +142,7 @@ def _get_default_models() -> dict:
 
 
 @router.get("/providers", response_model=ProvidersListResponse)
-async def list_providers():
+async def list_providers(system_ai_reader=Depends(get_system_ai_reader)):
     """
     List all available LLM providers with their supported models and environment info.
     """
@@ -157,7 +155,7 @@ async def list_providers():
     
     # System AI is shared server policy. A saved mutation wins; otherwise the
     # deployment environment remains the fallback.
-    system_ai = load_system_ai_config()
+    system_ai = system_ai_reader()
 
     return ProvidersListResponse(
         providers=DEFAULT_PROVIDERS,

@@ -21,7 +21,45 @@ from app.modules.meetings.application.contracts import (
     VoteAttempt,
     VoteResult,
 )
+from app.modules.meetings.domain.models import (
+    Consensus,
+    Disagreement,
+    Meeting,
+    MeetingWithParticipants,
+)
 from app.modules.meetings.domain.services import ClosingStage
+
+
+class MeetingReads(Protocol):
+    """Read-only meeting projections the HTTP surface can compose directly.
+
+    Live implements this with ``MeetingService``; replay implements it from a
+    recorded source. No method here may write, enqueue work, or call a provider.
+    """
+
+    async def get_meeting(self, meeting_id: str) -> MeetingWithParticipants | None: ...
+
+    async def list_meetings(self) -> list[Meeting]: ...
+
+    async def get_disagreements(self, meeting_id: str) -> list[Disagreement]: ...
+
+    async def get_consensus_list(self, meeting_id: str) -> list[Consensus]: ...
+
+
+class TurnObservation(Protocol):
+    """Anonymous turn observation: status, listing, and persisted events."""
+
+    async def status(self, meeting_id: str, operation_id: str) -> dict: ...
+
+    async def list_operations(self, meeting_id: str, limit: int = 100) -> list[dict]: ...
+
+    async def events(
+        self,
+        meeting_id: str,
+        operation_id: str,
+        after_sequence: int = 0,
+        limit: int = 500,
+    ) -> list[dict]: ...
 
 
 class ClosingRepository(Protocol):

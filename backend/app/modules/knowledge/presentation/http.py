@@ -9,6 +9,7 @@ from uuid import UUID
 from fastapi import (
     APIRouter,
     BackgroundTasks,
+    Depends,
     File,
     Form,
     HTTPException,
@@ -41,6 +42,7 @@ from app.modules.knowledge.domain.services import (
     ALLOWED_EXTENSIONS,
     MAX_SOURCE_BYTES,
 )
+from app.presentation.dependencies import get_knowledge_lifecycle
 from app.modules.knowledge.presentation.schemas import (
     DocumentResponse,
     DocumentSearchRequest,
@@ -170,14 +172,13 @@ async def upload_document(
     meeting_id: Optional[str] = Form(None),
     persona_id: Optional[str] = Form(None),
     stack_id: Optional[str] = Form(None),
+    lifecycle=Depends(get_knowledge_lifecycle),
 ):
     """Persist original bytes and admit a durable ingestion.
 
     A ``pending`` receipt means accepted, not ready. The caller observes
     ``operationId`` until the ingestion reports an authoritative ready state.
     """
-    from app.modules.knowledge.public import get_knowledge_lifecycle
-
     owner = _owner(meeting_id, persona_id, stack_id)
     file_name = file.filename or ""
     suffix = file_name.rsplit(".", 1)[-1].lower() if "." in file_name else ""
@@ -200,7 +201,6 @@ async def upload_document(
             detail=f"File too large. Maximum size is {MAX_FILE_SIZE // (1024 * 1024)} MB",
         )
 
-    lifecycle = get_knowledge_lifecycle()
     upload_request = UploadRequest(
         file_name=file_name,
         size_bytes=file.size if file.size is not None else MAX_FILE_SIZE,
@@ -259,12 +259,13 @@ async def upload_document(
 @router.get(
     "/operations/{operation_id}", response_model=IngestionStatusResponse
 )
-async def get_ingestion_status(operation_id: UUID):
+async def get_ingestion_status(
+    operation_id: UUID,
+    lifecycle=Depends(get_knowledge_lifecycle),
+):
     """Observe durable progress for an accepted upload."""
-    from app.modules.knowledge.public import get_knowledge_lifecycle
-
     try:
-        status = await get_knowledge_lifecycle().ingestion_status(operation_id)
+        status = await lifecycle.ingestion_status(operation_id)
     except KnowledgeUnavailable as exc:
         raise _unavailable(exc) from exc
     if status is None:
@@ -286,11 +287,12 @@ async def get_ingestion_status(operation_id: UUID):
 @router.post(
     "/operations/{operation_id}/retry", response_model=UploadReceiptResponse
 )
-async def retry_ingestion(operation_id: UUID, background_tasks: BackgroundTasks):
+async def retry_ingestion(
+    operation_id: UUID,
+    background_tasks: BackgroundTasks,
+    lifecycle=Depends(get_knowledge_lifecycle),
+):
     """Re-run a failed ingestion without changing its document/operation ids."""
-    from app.modules.knowledge.public import get_knowledge_lifecycle
-
-    lifecycle = get_knowledge_lifecycle()
     try:
         status = await lifecycle.ingestion_status(operation_id)
     except KnowledgeUnavailable as exc:
@@ -327,11 +329,9 @@ async def retry_ingestion(operation_id: UUID, background_tasks: BackgroundTasks)
     )
 
 
-async def _list(owner_kind: str, owner_id: UUID, **scope) -> list[dict]:
-    from app.modules.knowledge.public import get_knowledge_lifecycle
-
+async def _list(lifecycle, owner_kind: str, owner_id: UUID, **scope) -> list[dict]:
     try:
-        records = await get_knowledge_lifecycle().list_documents(
+        records = await lifecycle.list_documents(
             owner_kind=owner_kind, owner_id=owner_id
         )
     except KnowledgeUnavailable as exc:
@@ -340,26 +340,32 @@ async def _list(owner_kind: str, owner_id: UUID, **scope) -> list[dict]:
 
 
 @router.get("/meeting/{meeting_id}", response_model=list[DocumentResponse])
-async def list_meeting_documents(meeting_id: UUID):
-    return await _list("meeting", meeting_id, meeting_id=meeting_id)
+async def list_meeting_documents(
+    meeting_id: UUID, lifecycle=Depends(get_knowledge_lifecycle)
+):
+    return await _list(lifecycle, "meeting", meeting_id, meeting_id=meeting_id)
 
 
 @router.get("/persona/{persona_id}", response_model=list[DocumentResponse])
-async def list_persona_documents(persona_id: UUID):
-    return await _list("persona", persona_id, persona_id=persona_id)
+async def list_persona_documents(
+    persona_id: UUID, lifecycle=Depends(get_knowledge_lifecycle)
+):
+    return await _list(lifecycle, "persona", persona_id, persona_id=persona_id)
 
 
 @router.get("/stack/{stack_id}", response_model=list[DocumentResponse])
-async def list_stack_documents(stack_id: UUID):
-    return await _list("stack", stack_id, stack_id=stack_id)
+async def list_stack_documents(
+    stack_id: UUID, lifecycle=Depends(get_knowledge_lifecycle)
+):
+    return await _list(lifecycle, "stack", stack_id, stack_id=stack_id)
 
 
 @router.get("/{document_id}", response_model=DocumentResponse)
-async def get_document(document_id: UUID):
-    from app.modules.knowledge.public import get_knowledge_lifecycle
-
+async def get_document(
+    document_id: UUID, lifecycle=Depends(get_knowledge_lifecycle)
+):
     try:
-        record = await get_knowledge_lifecycle().get_document(document_id)
+        record = await lifecycle.get_document(document_id)
     except KnowledgeUnavailable as exc:
         raise _unavailable(exc) from exc
     if record is None:
@@ -368,11 +374,10 @@ async def get_document(document_id: UUID):
 
 
 @router.delete("/{document_id}")
-async def delete_document(document_id: UUID):
+async def delete_document(
+    document_id: UUID, lifecycle=Depends(get_knowledge_lifecycle)
+):
     """Revoke eligibility, then attempt source/vector/evidence cleanup."""
-    from app.modules.knowledge.public import get_knowledge_lifecycle
-
-    lifecycle = get_knowledge_lifecycle()
     try:
         await lifecycle.delete_document(document_id, reason="user_requested")
         await lifecycle.purge_document_row(document_id)
@@ -384,10 +389,11 @@ async def delete_document(document_id: UUID):
 
 
 @router.post("/search", response_model=DocumentSearchResponse)
-async def search_documents(request: DocumentSearchRequest):
+async def search_documents(
+    request: DocumentSearchRequest,
+    lifecycle=Depends(get_knowledge_lifecycle),
+):
     """Search only currently eligible revisions in the requested scope."""
-    from app.modules.knowledge.public import get_knowledge_lifecycle
-
     stack_ids = [
         _as_uuid(value, label="stack_id") for value in (request.stack_ids or [])
     ]
@@ -400,7 +406,7 @@ async def search_documents(request: DocumentSearchRequest):
         raise HTTPException(status_code=400, detail="A search scope is required")
 
     try:
-        passages = await get_knowledge_lifecycle().search(
+        passages = await lifecycle.search(
             RetrievalRequest(
                 query=request.query,
                 scope=KnowledgeScope(meeting_id=meeting_id, stack_ids=stack_ids),
