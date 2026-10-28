@@ -251,7 +251,8 @@ export function ClosingPanel({
         !ended &&
         (status === 'active' || status === 'voting') &&
         !isAdvancing(stage) &&
-        stage !== 'failed';
+        stage !== 'failed' &&
+        !(runtime.replay && !closing?.closing_id);
 
     const startClose = async (mode: ClosingMode) => {
         setConfirmMode(null);

@@ -188,6 +188,24 @@ def test_closing_text_must_match_the_snapshot(tmp_path: Path) -> None:
     assert "mismatched_terminal" in codes
 
 
+def test_closing_prose_cannot_appear_in_an_earlier_checkpoint(tmp_path: Path) -> None:
+    root = _copy(tmp_path)
+    _edit_json(
+        root,
+        "checkpoints/checkpoint-active.json",
+        lambda payload: payload["reads"]["closing"].update(
+            {
+                "summary": (
+                    "The board recorded the coverage and liquidity checks. "
+                    "This is placeholder content, not investment advice."
+                )
+            }
+        ),
+    )
+    _, codes = _load(root)
+    assert "premature_terminal" in codes
+
+
 def test_secret_fields_are_rejected(tmp_path: Path) -> None:
     root = _copy(tmp_path)
     _edit_json(

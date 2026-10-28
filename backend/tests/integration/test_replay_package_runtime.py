@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import json
+from pathlib import Path
 
 import pytest
 from fastapi.testclient import TestClient
@@ -15,8 +16,10 @@ from tests.support.replay import (
     READER_LOGIN,
     login_uri,
     provision_logins,
+    publish_dir,
     publish_placeholder,
 )
+from scripts.replay_package import activate_package
 
 MEETING_ID = "11111111-1111-4111-8111-111111111111"
 OPERATION_ID = "66666666-6666-4666-8666-666666666666"
@@ -245,3 +248,49 @@ def test_unavailable_package_never_falls_back_to_live(replay_db, monkeypatch) ->
         ).status_code == 403
     finally:
         client.close()
+
+
+def test_corrupt_checkpoint_is_unavailable(replay_db, monkeypatch) -> None:
+    with replay_db.connect() as admin:
+        admin.execute(
+            """
+            UPDATE replay.checkpoint
+            SET bundle = jsonb_set(bundle, '{reads,meeting,name}', '"tampered"')
+            WHERE checkpoint_id = 'checkpoint-initial'
+            """
+        )
+    runtime = _runtime(monkeypatch, replay_db)
+    with _client(runtime) as client:
+        response = client.get("/api/replay/session")
+        assert response.status_code == 503
+        assert response.json()["detail"] == "a checkpoint failed its hash check"
+
+
+def test_pinned_version_keeps_serving_after_the_registry_moves(
+    disposable_db, monkeypatch
+) -> None:
+    provision_logins(disposable_db)
+    fixtures = Path(__file__).resolve().parents[2] / "tests" / "fixtures" / "replay"
+    publish_dir(disposable_db, fixtures / "fixture-minimal")
+    publish_dir(disposable_db, fixtures / "fixture-minimal-v2")
+    import psycopg
+
+    with psycopg.connect(login_uri(disposable_db, "sabha_replay_test_publisher")) as conn:
+        activate_package(conn, "fixture-minimal", "2")
+
+    pinned = ReplayRuntime(
+        ReplaySource(),
+        package_id="fixture-minimal",
+        version="1",
+    )
+    monkeypatch.setattr(
+        settings,
+        "replay_database_url",
+        login_uri(disposable_db, READER_LOGIN),
+    )
+    with _client(pinned) as client:
+        assert client.get("/api/replay/session").json()["package_version"] == "1"
+
+    latest = ReplayRuntime(ReplaySource(), package_id="fixture-minimal")
+    with _client(latest) as client:
+        assert client.get("/api/replay/session").json()["package_version"] == "2"

@@ -386,6 +386,15 @@ def _validate_closing_view(
                 path,
                 "a completed closing must present ended/archived",
             )
+        if meeting is not None:
+            participant_ids = {str(item.id) for item in meeting.participants}
+            for index, vote in enumerate(closing.votes):
+                if vote.participant_id not in participant_ids:
+                    issues.add(
+                        "dangling_id",
+                        f"{path}#/votes[{index}]",
+                        "closing vote belongs to an unknown participant",
+                    )
         if closing.mode == ClosingMode.VOTE.value:
             tally = tally_votes([vote.vote for vote in closing.votes])
             if not has_strict_majority(tally.yes_count, tally.eligible_count):
@@ -623,6 +632,32 @@ def _validate_closing_tape(tape, package: LoadedPackage, issues: _Issues) -> Non
         issues.add("mismatched_terminal", path, "closing identity disagrees with checkpoint")
     if closing.stage != ClosingStage.COMPLETED.value:
         issues.add("invalid_closing", path, "recorded closing tape requires a completed closing")
+
+    # No earlier checkpoint may already expose the closing prose. The visible
+    # closing snapshot at a non-completed checkpoint must remain empty.
+    terminal_texts = [event.text for event in tape.events if event.terminal]
+    for checkpoint in package.checkpoints.values():
+        if checkpoint.checkpoint_id == tape.completed_checkpoint:
+            continue
+        earlier = checkpoint.reads.get("closing")
+        if not isinstance(earlier, dict):
+            continue
+        if earlier.get("summary") and any(
+            text in earlier["summary"] for text in terminal_texts
+        ):
+            issues.add(
+                "premature_terminal",
+                f"checkpoints/{checkpoint.checkpoint_id}.json#/closing",
+                "an earlier checkpoint exposes the closing summary",
+            )
+        for vote in earlier.get("votes") or []:
+            reason = vote.get("reason")
+            if reason and any(text in reason for text in terminal_texts):
+                issues.add(
+                    "premature_terminal",
+                    f"checkpoints/{checkpoint.checkpoint_id}.json#/closing",
+                    "an earlier checkpoint exposes a closing ballot reason",
+                )
 
     sequences = [event.sequence for event in tape.events]
     if sequences != sorted(sequences) or len(set(sequences)) != len(sequences):

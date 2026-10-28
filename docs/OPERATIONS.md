@@ -552,7 +552,7 @@ REPLAY_STREAM_MAX_SECONDS=120
 `python -m scripts.e2e_provision --serve` provisions a disposable local
 database, publishes the placeholder package, and serves the replay-only app for
 `npm run test:e2e`; it owns the embedded Postgres for the lifetime of the
-process.
+process. Install the browser once with `npx playwright install chromium`.
 
 On hosted Supabase, applying `032`, creating the bucket, publishing with the
 provisioner key, and confirming Storage/network policy remain operator steps.

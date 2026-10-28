@@ -61,3 +61,12 @@ def publish_placeholder(db, storage: FakeStorage | None = None) -> FakeStorage:
     with psycopg.connect(login_uri(db, PUBLISHER_LOGIN)) as conn:
         publish_package(conn, load_package(PLACEHOLDER), storage)
     return storage
+
+
+def publish_dir(db, root: Path, storage: FakeStorage | None = None) -> FakeStorage:
+    storage = storage or FakeStorage()
+    import psycopg
+
+    with psycopg.connect(login_uri(db, PUBLISHER_LOGIN)) as conn:
+        publish_package(conn, load_package(root), storage)
+    return storage
