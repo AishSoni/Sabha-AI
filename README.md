@@ -179,7 +179,7 @@ Sabha/
 │   ├── main.py                     # FastAPI entry point
 │   ├── worker.py                   # Optional dedicated turn worker
 │   ├── supabase_schema.sql         # Baseline migration (000_baseline)
-│   ├── migrations/                 # Ordered 002…029 SQL history
+│   ├── migrations/                 # Ordered 002…030 SQL history
 │   ├── scripts/
 │   │   ├── migrate.py              # Checksummed migration runner
 │   │   ├── backup.py               # SQL + bytes + deletion ledger
@@ -330,9 +330,10 @@ All backend variables live in `backend/.env` (see `.env.example`).
 | Variable | Default | Purpose |
 |---|---|---|
 | `SUPABASE_URL` | required | Supabase project URL |
-| `SUPABASE_KEY` | required | Anonymous key; used by the server only when `SUPABASE_SERVICE_KEY` is empty |
-| `SUPABASE_SERVICE_KEY` | empty | Server database client, byte access, backup and restore. Required on hosted Supabase: migrations after `003` revoke `anon`; never expose it to the browser |
+| `SUPABASE_KEY` | required | Project configuration only; the live server never uses it as a database credential |
+| `SUPABASE_SERVICE_KEY` | required | Server database client, byte access, backup and restore. Migration `030` removes live `anon` access, so the backend fails clearly without it; never expose it to the browser |
 | `DATABASE_URL` | scripts | Direct/session PostgreSQL URL for scripts and restore |
+| `REPLAY_DATABASE_URL` | replay only | Dedicated `sabha_replay_reader` login connection; server-only, never the live service credential |
 | `DEFAULT_LLM_PROVIDER` | `ollama` | `ollama`, `openrouter` or `gemini` |
 | `OLLAMA_BASE_URL` / `OLLAMA_DEFAULT_MODEL` | `http://localhost:11434` / `llama3.2` | Local inference |
 | `OLLAMA_ALLOWED_ORIGINS` | empty | SSRF allowlist for user-supplied Ollama origins |
@@ -383,7 +384,7 @@ access is server-side.
 
 - `backend/supabase_schema.sql` is recorded as `000_baseline`.
 - Numbered files in `backend/migrations/` follow in lexical order (through
-  `029_internal_table_rls`).
+  `030_database_read_isolation`).
 - `schema_migrations` stores version, checksum, applied time and duration.
 - Each migration and its tracking row commit in one transaction; a failure
   leaves no partial DDL and no tracking row.
@@ -396,11 +397,22 @@ access is server-side.
 ### Access model
 
 - Supabase Postgres is authoritative; Qdrant is a rebuildable projection.
-- `anon` and `authenticated` cannot write application tables directly. Writes
-  go through the backend with the service key and narrow RPCs.
-- RLS and grants are part of the migration history (`009_tighten_rls_to_backend_writes`,
-  `024_archive_turn_guards`), so an empty install and an upgraded install end in
-  the same permission state.
+- The browser never talks to Supabase. `anon` and `authenticated` cannot read
+  or write live application tables directly; the backend uses the service key
+  and narrow RPCs. `030_database_read_isolation` revokes the inherited `PUBLIC`
+  reads and drops the all-row policies, so RLS default-denies even if a table
+  grant is added later.
+- The live backend requires `SUPABASE_SERVICE_KEY` and refuses to fall back to
+  the anon key. Migration `030` also sets safe defaults for future tables,
+  sequences and functions created by the migration owner.
+- Strict replay uses a separate PostgreSQL login role in
+  `sabha_replay_reader`, provisioned by `python -m scripts.replay_roles`.
+  Replay code reads through `REPLAY_DATABASE_URL`; it never receives the live
+  service credential.
+- RLS and grants are part of the migration history, so an empty install and an
+  upgraded install end in the same permission state. See
+  [docs/DATABASE_PERMISSIONS.md](docs/DATABASE_PERMISSIONS.md) for the matrix,
+  provisioning, rotation and hosted checks.
 - There is no Auth bootstrap, no user token, and no per-user ownership filter.
 - Provider credentials entered by a browser are held in process memory only for
   the duration of an operation and never written to the database, logs, or

@@ -69,8 +69,8 @@ Create `backend/.env` (or export the variables) from `.env.example`:
 | Variable | Required | Notes |
 | --- | --- | --- |
 | `SUPABASE_URL` | yes | Project URL |
-| `SUPABASE_KEY` | yes | Anonymous key; the server uses it only when `SUPABASE_SERVICE_KEY` is empty |
-| `SUPABASE_SERVICE_KEY` | yes for hosted | Server database client, bytes, backup, restore. Migrations after `003` revoke `anon`, so the API returns `42501` without it. Server-only; never expose to the browser |
+| `SUPABASE_KEY` | yes | Kept for project configuration; the live server never uses it as a database credential |
+| `SUPABASE_SERVICE_KEY` | yes | Server database client, bytes, backup, restore. Migration `030` removes all live `PUBLIC`/`anon`/`authenticated` access, so the API fails clearly without it. Server-only; never expose to the browser |
 | `QDRANT_URL`, `QDRANT_API_KEY` | yes / cloud only | Vector projection |
 | `DEFAULT_LLM_PROVIDER` | yes | `ollama`, `openrouter` or `gemini` |
 | `EMBEDDING_PROVIDER`, `EMBEDDING_MODEL`, `EMBEDDING_DIMENSION` | yes | `gemini`, `openai`, `cohere` or `ollama` |
@@ -82,6 +82,7 @@ Create `backend/.env` (or export the variables) from `.env.example`:
 | `TURN_GLOBAL_CONCURRENCY` | no | Default 1 |
 | `TURN_MAX_QUEUED_PER_MEETING` | no | Default 10 |
 | `DATABASE_URL` | scripts | Direct/session-mode PostgreSQL URL, not the transaction pooler |
+| `REPLAY_DATABASE_URL` | replay only | Dedicated login role in `sabha_replay_reader`; server-only, never `DATABASE_URL` or the service key |
 
 Frontend (`frontend/.env.local`):
 
@@ -335,7 +336,55 @@ npm run build
 `node_modules`, `.next` and untracked files. It then installs, generates types,
 runs the backend/frontend suites, builds and starts both entry points.
 
-## 11. Unresolved limitations
+## 11. Database roles and replay reader
+
+Migration `030_database_read_isolation` runs in the normal ordered history. It
+removes live `USAGE`, table, sequence and function privileges from `PUBLIC`,
+`anon` and `authenticated`; drops the legacy all-row read policies; grants the
+live capability explicitly to `service_role`; and records safe default
+privileges for future objects created by the migration owner. The live backend
+therefore requires `SUPABASE_SERVICE_KEY` and never falls back to the anon key.
+The detailed matrix and evidence are in
+[DATABASE_PERMISSIONS.md](DATABASE_PERMISSIONS.md).
+
+Replay roles are cluster-level and provisioned separately with an administrator
+connection:
+
+```powershell
+cd backend
+python -m scripts.replay_roles --reader-login sabha_replay_login
+python -m scripts.replay_roles --reader-login sabha_replay_login --check
+```
+
+The script is idempotent, refuses privileged group membership, and leaves
+publication grants to Spec 17. The replay runtime uses a dedicated login role
+in `sabha_replay_reader`:
+
+```text
+REPLAY_DATABASE_URL=postgresql://sabha_replay_login:<password>@<host>:5432/postgres
+```
+
+Use a direct/session connection, not the transaction pooler. The URL is
+server-only and must never be `DATABASE_URL` or the service key.
+`app.platform.replay_database.connect_replay_reader()` rejects superuser,
+`BYPASSRLS`, `service_role` membership and live `public` access, then forces a
+read-only session. A missing URL or rejected identity fails clearly; there is no
+live fallback.
+
+Rotation: create a new login role, grant `sabha_replay_reader`, update the
+secret, restart the replay runtime, then drop the old login. Re-run `--check`
+and the inventory command.
+
+```powershell
+python -m scripts.inventory_permissions --format markdown
+```
+
+On hosted Supabase, applying `030`, creating roles/schemas and confirming
+default privileges are operator-authorized steps. Local evidence does not
+prove the hosted project's default ACLs, network path or Storage policy; those
+remain in the hosted checklist and Spec 17.
+
+## 12. Unresolved limitations
 
 - **Hosted source-store and vector verification is a manual gate.** The
   acceptance host has no Docker and no managed Supabase/Qdrant instance, so the
@@ -347,7 +396,8 @@ runs the backend/frontend suites, builds and starts both entry points.
 - **No down-migrations.** Recovery is forward, or a restore into a fresh
   database. Irreversible redaction is never undone.
 - **No accounts or tenancy.** The workspace is deliberately shared; `anon` and
-  `authenticated` cannot write tables directly.
+  `authenticated` cannot read or write live tables directly, and the replay
+  reader is limited to explicitly published replay objects.
 - **Guided replay is deferred.** `demo` implements the read-only guarantee and
   the write guard; it is not a scripted replay experience.
 - **`/health` is shallow.** It does not probe dependencies.
