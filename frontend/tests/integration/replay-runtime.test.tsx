@@ -189,6 +189,22 @@ describe('recorded replay runtime', () => {
         expect(calls.some((call) => call.url.includes('/api/meetings'))).toBe(false);
     });
 
+    it('does not expose or poll live closing in a recording', async () => {
+        const calls = installReplayRouter();
+        renderReplay();
+
+        await screen.findByText('Recorded product review');
+
+        expect(screen.queryByRole('tab', { name: /Close/ })).not.toBeInTheDocument();
+        expect(
+            screen.queryByRole('button', { name: /Close meeting/i })
+        ).not.toBeInTheDocument();
+        expect(
+            calls.filter((call) => call.url.includes('/closing'))
+        ).toHaveLength(0);
+        expect(calls.filter((call) => call.method !== 'GET')).toHaveLength(0);
+    });
+
     it('does not hydrate the live vault, settings, or provider cooldown', async () => {
         installReplayRouter();
         useRateLimitStore.getState().recordCall('ollama');
