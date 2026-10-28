@@ -57,6 +57,8 @@ import type {
     MeetingsRuntime,
     RecordedDocumentRecord,
     ReplayAsset,
+    ReplayBeat,
+    ReplayBeatStep,
     ReplayIntent,
     ReplayTape,
 } from "./contract";
@@ -69,6 +71,10 @@ interface ReplaySession {
     package_version: string;
     meeting_id: string;
     label: string;
+    title: string;
+    as_of: string;
+    disclosure: string;
+    stack_labels: Record<string, string>;
     provenance: Record<string, unknown>;
     capabilities: MeetingsCapabilities;
     package_id: string;
@@ -77,9 +83,110 @@ interface ReplaySession {
     initial_checkpoint: string;
     checkpoints: string[];
     intents: ReplayIntent[];
+    beats: ReplayBeat[];
     tapes: ReplayTape[];
     assets: ReplayAsset[];
     retired: boolean;
+}
+
+const BEAT_COMPLETIONS = [
+    "acknowledge",
+    "turn_terminal",
+    "closing_completed",
+    "checkpoint",
+] as const;
+
+const BEAT_ROUTES = ["board", "new", "meeting", "list"] as const;
+
+function requireChoice<T extends string>(
+    value: unknown,
+    path: string,
+    choices: readonly T[]
+): T {
+    const text = requireString(value, path);
+    if (!choices.includes(text as T)) {
+        throw new Error(`${path} is not a supported choice`);
+    }
+    return text as T;
+}
+
+function optionalChoice<T extends string>(
+    value: unknown,
+    path: string,
+    choices: readonly T[]
+): T | null {
+    if (value === null || value === undefined) return null;
+    return requireChoice(value, path, choices);
+}
+
+function decodeStringMap(value: unknown, path: string): Record<string, string> {
+    const record = decodeObject(value, path);
+    return Object.fromEntries(
+        Object.entries(record).map(([key, item]) => [
+            key,
+            requireString(item, `${path}.${key}`),
+        ])
+    );
+}
+
+function decodeBeatStep(value: unknown, path: string): ReplayBeatStep {
+    const record = decodeObject(value, path);
+    return {
+        step_id: requireString(record.step_id, `${path}.step_id`),
+        label: requireString(record.label, `${path}.label`),
+        intent_id: optionalString(record.intent_id, `${path}.intent_id`) ?? null,
+        completion: requireChoice(
+            record.completion,
+            `${path}.completion`,
+            BEAT_COMPLETIONS
+        ),
+        requires_tab:
+            optionalString(record.requires_tab, `${path}.requires_tab`) ?? null,
+    };
+}
+
+function decodeBeat(value: unknown, path: string): ReplayBeat {
+    const record = decodeObject(value, path);
+    return {
+        beat_id: requireString(record.beat_id, `${path}.beat_id`),
+        title: requireString(record.title, `${path}.title`),
+        anchor: requireString(record.anchor, `${path}.anchor`),
+        checkpoint: requireString(record.checkpoint, `${path}.checkpoint`),
+        intent_id: optionalString(record.intent_id, `${path}.intent_id`) ?? null,
+        ordinal:
+            record.ordinal === null || record.ordinal === undefined
+                ? null
+                : requireNumber(record.ordinal, `${path}.ordinal`),
+        objective:
+            optionalString(record.objective, `${path}.objective`) ?? null,
+        route: optionalChoice(record.route, `${path}.route`, BEAT_ROUTES),
+        tab: optionalString(record.tab, `${path}.tab`) ?? null,
+        start_checkpoint:
+            optionalString(record.start_checkpoint, `${path}.start_checkpoint`) ??
+            null,
+        completed_checkpoint:
+            optionalString(
+                record.completed_checkpoint,
+                `${path}.completed_checkpoint`
+            ) ?? null,
+        disclosure:
+            optionalString(record.disclosure, `${path}.disclosure`) ?? null,
+        steps: requireArray(
+            record.steps ?? [],
+            `${path}.steps`,
+            decodeBeatStep
+        ),
+        claim_ids: requireArray(
+            record.claim_ids ?? [],
+            `${path}.claim_ids`,
+            (item, itemPath) => requireString(item, itemPath)
+        ),
+        input_asset_ids: requireArray(
+            record.input_asset_ids ?? [],
+            `${path}.input_asset_ids`,
+            (item, itemPath) => requireString(item, itemPath)
+        ),
+    };
 }
 
 function decodeCapabilities(value: unknown, path: string): MeetingsCapabilities {
@@ -167,6 +274,14 @@ export function decodeReplaySession(value: unknown): ReplaySession {
             "GET /replay/session.meeting_id"
         ),
         label: optionalString(record.label, "GET /replay/session.label") ?? "Recorded session",
+        title: optionalString(record.title, "GET /replay/session.title") ?? "",
+        as_of: optionalString(record.as_of, "GET /replay/session.as_of") ?? "",
+        disclosure:
+            optionalString(record.disclosure, "GET /replay/session.disclosure") ?? "",
+        stack_labels: decodeStringMap(
+            record.stack_labels ?? {},
+            "GET /replay/session.stack_labels"
+        ),
         provenance: decodeObject(
             record.provenance ?? {},
             "GET /replay/session.provenance"
@@ -197,6 +312,11 @@ export function decodeReplaySession(value: unknown): ReplaySession {
             record.intents ?? [],
             "GET /replay/session.intents",
             decodeIntent
+        ),
+        beats: requireArray(
+            record.beats ?? [],
+            "GET /replay/session.beats",
+            decodeBeat
         ),
         tapes: requireArray(
             record.tapes ?? [],
@@ -553,6 +673,11 @@ function createReplayRuntime(
             initialCheckpoint: session.initial_checkpoint,
             checkpoint,
             checkpoints: session.checkpoints,
+            title: session.title,
+            asOf: session.as_of,
+            disclosure: session.disclosure,
+            stackLabels: session.stack_labels,
+            beats: session.beats,
             intents: session.intents,
             tapes: session.tapes,
             assets: session.assets,

@@ -1866,6 +1866,25 @@ export interface components {
             meeting_id: string;
             /** Label */
             label: string;
+            /**
+             * Title
+             * @default
+             */
+            title: string;
+            /**
+             * As Of
+             * @default
+             */
+            as_of: string;
+            /**
+             * Disclosure
+             * @default
+             */
+            disclosure: string;
+            /** Stack Labels */
+            stack_labels?: {
+                [key: string]: string;
+            };
             /** Provenance */
             provenance?: {
                 [key: string]: unknown;
@@ -1895,6 +1914,10 @@ export interface components {
             checkpoints?: string[];
             /** Intents */
             intents?: {
+                [key: string]: unknown;
+            }[];
+            /** Beats */
+            beats?: {
                 [key: string]: unknown;
             }[];
             /** Tapes */

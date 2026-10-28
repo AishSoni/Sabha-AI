@@ -42,7 +42,9 @@ def _capabilities(published: PublishedPackage) -> ReplayCapabilities:
         disagreements="disagreements" in keys,
         consensus="consensus" in keys,
         context_stats="context_stats" in keys,
-        create_meeting=False,
+        create_meeting=any(
+            intent.kind == "create_meeting" for intent in published.manifest.intents
+        ),
         send_message=False,
         submit_turn=False,
         cancel_turn=False,
@@ -107,6 +109,10 @@ class ReplayRuntime:
             package_version=published.version,
             meeting_id=published.meeting_id,
             label=published.label,
+            title=published.title,
+            as_of=published.as_of,
+            disclosure=published.manifest.disclosure,
+            stack_labels=dict(published.manifest.stack_labels),
             provenance={
                 **published.manifest.provenance,
                 "package_id": published.package_id,
@@ -126,6 +132,9 @@ class ReplayRuntime:
             intents=tuple(
                 intent.model_dump(mode="json")
                 for intent in published.manifest.intents
+            ),
+            beats=tuple(
+                beat.model_dump(mode="json") for beat in published.manifest.beats
             ),
             tapes=published.tapes,
             assets=published.assets,

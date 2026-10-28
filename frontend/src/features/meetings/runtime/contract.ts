@@ -79,12 +79,43 @@ export interface ReplayAsset {
     extraction: string | null;
 }
 
+export interface ReplayBeatStep {
+    step_id: string;
+    label: string;
+    intent_id: string | null;
+    completion: "acknowledge" | "turn_terminal" | "closing_completed" | "checkpoint";
+    requires_tab: string | null;
+}
+
+export interface ReplayBeat {
+    beat_id: string;
+    title: string;
+    anchor: string;
+    checkpoint: string;
+    intent_id: string | null;
+    ordinal: number | null;
+    objective: string | null;
+    route: "board" | "new" | "meeting" | "list" | null;
+    tab: string | null;
+    start_checkpoint: string | null;
+    completed_checkpoint: string | null;
+    disclosure: string | null;
+    steps: ReplayBeatStep[];
+    claim_ids: string[];
+    input_asset_ids: string[];
+}
+
 export interface ReplayRuntimeInfo {
     packageId: string;
     packageVersion: string;
     initialCheckpoint: string;
     checkpoint: string;
     checkpoints: string[];
+    title: string;
+    asOf: string;
+    disclosure: string;
+    stackLabels: Record<string, string>;
+    beats: ReplayBeat[];
     intents: ReplayIntent[];
     tapes: ReplayTape[];
     assets: ReplayAsset[];

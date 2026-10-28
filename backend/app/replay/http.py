@@ -59,6 +59,10 @@ class ReplaySessionView(BaseModel):
     package_version: str
     meeting_id: str
     label: str
+    title: str = ""
+    as_of: str = ""
+    disclosure: str = ""
+    stack_labels: dict[str, str] = Field(default_factory=dict)
     provenance: dict = Field(default_factory=dict)
     capabilities: ReplayCapabilitiesView
     package_id: str = ""
@@ -67,6 +71,7 @@ class ReplaySessionView(BaseModel):
     initial_checkpoint: str = ""
     checkpoints: list[str] = Field(default_factory=list)
     intents: list[dict] = Field(default_factory=list)
+    beats: list[dict] = Field(default_factory=list)
     tapes: list[dict] = Field(default_factory=list)
     assets: list[dict] = Field(default_factory=list)
     retired: bool = False
@@ -141,6 +146,10 @@ async def read_session(replay: ReplayContainer = Depends(get_replay)):
         package_version=session.package_version,
         meeting_id=session.meeting_id,
         label=session.label,
+        title=session.title,
+        as_of=session.as_of,
+        disclosure=session.disclosure,
+        stack_labels=session.stack_labels,
         provenance=session.provenance,
         capabilities=ReplayCapabilitiesView(**session.capabilities.as_dict()),
         package_id=session.package_id,
@@ -149,6 +158,7 @@ async def read_session(replay: ReplayContainer = Depends(get_replay)):
         initial_checkpoint=session.initial_checkpoint,
         checkpoints=list(session.checkpoints),
         intents=list(session.intents),
+        beats=list(session.beats),
         tapes=list(session.tapes),
         assets=list(session.assets),
         retired=session.retired,

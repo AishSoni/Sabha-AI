@@ -72,6 +72,11 @@ def test_session_exposes_the_pinned_package_and_selectors(
         session = client.get("/api/replay/session").json()
         assert session["package_id"] == "placeholder-analyst"
         assert session["package_version"] == "1"
+        assert session["title"] == "Recorded placeholder: synthetic credit review"
+        assert session["as_of"] == "2026-01-15"
+        assert session["disclosure"] == ""
+        assert session["stack_labels"] == {}
+        assert session["beats"][0]["beat_id"] == "meet-the-board"
         assert session["checkpoint_id"] == "checkpoint-initial"
         assert session["initial_checkpoint"] == "checkpoint-initial"
         assert session["checkpoints"] == [

@@ -57,6 +57,10 @@ class ReplaySession:
     package_version: str
     meeting_id: str
     label: str = "Recorded session"
+    title: str = ""
+    as_of: str = ""
+    disclosure: str = ""
+    stack_labels: dict[str, str] = field(default_factory=dict)
     provenance: dict[str, Any] = field(default_factory=dict)
     capabilities: ReplayCapabilities = field(default_factory=ReplayCapabilities)
     package_id: str = ""
@@ -65,6 +69,7 @@ class ReplaySession:
     initial_checkpoint: str = ""
     checkpoints: tuple[str, ...] = ()
     intents: tuple[dict[str, Any], ...] = ()
+    beats: tuple[dict[str, Any], ...] = ()
     tapes: tuple[dict[str, Any], ...] = ()
     assets: tuple[dict[str, Any], ...] = ()
     retired: bool = False

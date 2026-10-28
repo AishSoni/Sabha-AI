@@ -351,6 +351,8 @@ class Manifest(StrictModel):
     retrieval: list[str] = Field(default_factory=list)
     provenance: dict[str, Any] = Field(default_factory=dict)
     label: str = "Recorded session"
+    disclosure: str = ""
+    stack_labels: dict[str, str] = Field(default_factory=dict)
     intents: list[IntentRecord] = Field(default_factory=list)
     beats: list[BeatRecord] = Field(default_factory=list)
     claims: list[ClaimRecord] = Field(default_factory=list)
@@ -396,6 +398,16 @@ class Manifest(StrictModel):
         claim_ids = [claim.claim_id for claim in value]
         if len(set(claim_ids)) != len(claim_ids):
             raise ValueError("claim_ids must be unique")
+        return value
+
+    @field_validator("stack_labels")
+    @classmethod
+    def validate_stack_labels(cls, value: dict[str, str]) -> dict[str, str]:
+        for stack_id, label in value.items():
+            if not _is_safe_slug(stack_id):
+                raise ValueError(f"unsafe stack id: {stack_id!r}")
+            if not label.strip():
+                raise ValueError("stack labels must not be empty")
         return value
 
 

@@ -5469,6 +5469,28 @@
             "type": "string",
             "title": "Label"
           },
+          "title": {
+            "type": "string",
+            "title": "Title",
+            "default": ""
+          },
+          "as_of": {
+            "type": "string",
+            "title": "As Of",
+            "default": ""
+          },
+          "disclosure": {
+            "type": "string",
+            "title": "Disclosure",
+            "default": ""
+          },
+          "stack_labels": {
+            "additionalProperties": {
+              "type": "string"
+            },
+            "type": "object",
+            "title": "Stack Labels"
+          },
           "provenance": {
             "additionalProperties": true,
             "type": "object",
@@ -5511,6 +5533,14 @@
             },
             "type": "array",
             "title": "Intents"
+          },
+          "beats": {
+            "items": {
+              "additionalProperties": true,
+              "type": "object"
+            },
+            "type": "array",
+            "title": "Beats"
           },
           "tapes": {
             "items": {
