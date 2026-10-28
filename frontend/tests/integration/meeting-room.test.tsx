@@ -9,6 +9,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { fireEvent, render, screen } from '@testing-library/react';
 import { Providers, getQueryClient } from '@/app/providers';
 import { MeetingRoom } from '@/features/meetings';
+import { LiveMeetingsRuntimeProvider } from '@/features/meetings/runtime/live';
 
 const MEETING_ID = '11111111-1111-4111-8111-111111111111';
 const PARTICIPANT_ID = '22222222-2222-4222-8222-222222222222';
@@ -115,7 +116,9 @@ function json(status: number, body: unknown): Response {
 function renderRoom() {
     return render(
         <Providers>
-            <MeetingRoom meetingId={MEETING_ID} />
+            <LiveMeetingsRuntimeProvider>
+                <MeetingRoom meetingId={MEETING_ID} />
+            </LiveMeetingsRuntimeProvider>
         </Providers>
     );
 }

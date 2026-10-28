@@ -17,10 +17,13 @@ import type { TurnEvent } from '../api/turn-events';
 import { useCancelTurn, useSubmitTurn } from '../api/turn-mutations';
 import { useMeetingTurns } from '../api/turn-queries';
 import { useTurnObservation } from '../api/use-turn-observation';
+import type { MeetingsRuntime } from '../runtime/contract';
 import { isApiError } from '@/shared/api/errors';
 
 export interface MeetingTurnControllerOptions {
     meetingId: string;
+    /** Composed runtime graph; omit for the historical live HTTP defaults. */
+    runtime?: MeetingsRuntime;
     /** Test seam for deterministic request keys; production uses Web Crypto. */
     createRequestKey?: () => string;
     /** Called once per terminal transition, e.g. to refresh a legacy screen read. */
@@ -72,12 +75,17 @@ function errorMessage(error: unknown): string {
 
 export function useMeetingTurnController({
     meetingId,
+    runtime,
     createRequestKey = createTurnRequestKey,
     onTerminal,
 }: MeetingTurnControllerOptions): MeetingTurnController {
-    const turns = useMeetingTurns(meetingId, meetingId.length > 0);
-    const submitMutation = useSubmitTurn();
-    const cancelMutation = useCancelTurn();
+    const turns = useMeetingTurns(
+        meetingId,
+        meetingId.length > 0 && (runtime?.capabilities.turnObservation ?? true),
+        runtime
+    );
+    const submitMutation = useSubmitTurn(runtime);
+    const cancelMutation = useCancelTurn(runtime);
     const [actionError, setActionError] = useState<string | null>(null);
     const [cancelingOperationId, setCancelingOperationId] = useState<string | null>(null);
     const pendingKey = useRef<{ participantId: string; requestKey: string } | null>(null);
@@ -97,6 +105,7 @@ export function useMeetingTurnController({
     const observation = useTurnObservation({
         meetingId,
         operation: activeOperation,
+        runtime,
         onTerminal,
     });
 
@@ -105,6 +114,7 @@ export function useMeetingTurnController({
             participantId: string,
             settings?: TurnGenerationSettings
         ): Promise<TurnOperation | null> => {
+            if (runtime && !runtime.capabilities.submitTurn) return null;
             if (!meetingId || submitInFlight.current) return null;
             submitInFlight.current = true;
             setActionError(null);
@@ -140,11 +150,12 @@ export function useMeetingTurnController({
                 submitInFlight.current = false;
             }
         },
-        [createRequestKey, meetingId, submitMutation]
+        [createRequestKey, meetingId, runtime, submitMutation]
     );
 
     const cancel = useCallback(
         async (operationId: string): Promise<boolean> => {
+            if (runtime && !runtime.capabilities.cancelTurn) return false;
             if (!meetingId || !operationId) return false;
             setActionError(null);
             setCancelingOperationId(operationId);
@@ -158,7 +169,7 @@ export function useMeetingTurnController({
                 setCancelingOperationId(null);
             }
         },
-        [cancelMutation, meetingId]
+        [cancelMutation, meetingId, runtime]
     );
 
     const clearActionError = useCallback(() => setActionError(null), []);

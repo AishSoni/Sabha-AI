@@ -12,6 +12,7 @@ import { useEffect, useRef, useState } from 'react';
 import Link from 'next/link';
 import ReactMarkdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
+import { useMutation, useQueryClient } from '@tanstack/react-query';
 import {
     AlertTriangle,
     ArrowLeft,
@@ -42,26 +43,25 @@ import {
     CollapsibleContent,
     CollapsibleTrigger,
 } from '@/components/ui/collapsible';
-import { RateLimitedButton } from '@/components/ui/rate-limited-button';
 import { cn, formatCost, formatRelativeTime } from '@/lib/utils';
-import { DocumentPanel } from '@/features/knowledge';
-import { useProvidersEnvironment, useSettingsStore } from '@/features/settings';
+import type {
+    AIParticipant,
+    Consensus,
+    ContextStats,
+    Disagreement,
+    MeetingWithParticipants,
+    Message,
+} from '../api/decoders';
+import type { TurnOperation } from '../api/turn-decoders';
+import type { TurnProjection } from '../api/turn-projection';
+import { useMeetingTurnController } from '../hooks/use-meeting-turn-controller';
+import { useMeetingsRuntime } from '../runtime/context';
 import {
-    useGenerateSummary,
-    useMeeting,
-    useMeetingConsensus,
-    useMeetingContextStats,
-    useMeetingDisagreements,
-    useMeetingTurnController,
-    useSendMessage,
-    type AIParticipant,
-    type Consensus,
-    type Disagreement,
-    type MeetingWithParticipants,
-    type Message,
-    type TurnOperation,
-    type TurnProjection,
-} from '@/features/meetings';
+    useRuntimeConsensus,
+    useRuntimeContextStats,
+    useRuntimeDisagreements,
+    useRuntimeMeeting,
+} from '../runtime/hooks';
 import {
     captureSentDraft,
     editDraft,
@@ -86,10 +86,11 @@ function isTerminal(status: string): boolean {
 }
 
 export function MeetingRoom({ meetingId }: MeetingRoomProps) {
-    const meetingQuery = useMeeting(meetingId);
-    const disagreementsQuery = useMeetingDisagreements(meetingId);
-    const consensusQuery = useMeetingConsensus(meetingId);
-    const contextStatsQuery = useMeetingContextStats(meetingId);
+    const runtime = useMeetingsRuntime();
+    const meetingQuery = useRuntimeMeeting(meetingId);
+    const disagreementsQuery = useRuntimeDisagreements(meetingId);
+    const consensusQuery = useRuntimeConsensus(meetingId);
+    const contextStatsQuery = useRuntimeContextStats(meetingId);
 
     if (!meetingId) {
         return <RoomNotice text="No meeting selected." />;
@@ -118,7 +119,7 @@ export function MeetingRoom({ meetingId }: MeetingRoomProps) {
         <div className="h-screen bg-zinc-950 flex flex-col overflow-hidden">
             <header className="border-b border-zinc-800 px-4 py-3 flex items-center gap-4 shrink-0">
                 <Link
-                    href="/meetings"
+                    href={runtime.presentation.homeHref}
                     className="text-zinc-400 hover:text-white transition-colors p-1 rounded hover:bg-zinc-800"
                     aria-label="Back to meetings"
                 >
@@ -130,6 +131,26 @@ export function MeetingRoom({ meetingId }: MeetingRoomProps) {
                         <p className="text-xs text-zinc-500 truncate max-w-md">{meeting.agenda}</p>
                     )}
                 </div>
+                <Badge
+                    variant="secondary"
+                    className={cn(
+                        runtime.scope.identity.kind === 'replay'
+                            ? 'bg-indigo-900/40 text-indigo-300'
+                            : 'bg-zinc-800 text-zinc-400'
+                    )}
+                >
+                    {runtime.presentation.label}
+                </Badge>
+                {runtime.restart && (
+                    <Button
+                        variant="outline"
+                        size="sm"
+                        className="border-zinc-700 text-zinc-300"
+                        onClick={runtime.restart}
+                    >
+                        Restart
+                    </Button>
+                )}
                 <RoomStatus status={meeting.status} />
             </header>
 
@@ -181,8 +202,15 @@ interface ConversationProps {
 }
 
 function MeetingConversation({ meeting, disagreements, consensus }: ConversationProps) {
-    const turns = useMeetingTurnController({ meetingId: meeting.id });
+    const runtime = useMeetingsRuntime();
+    const { capabilities, slots } = runtime;
+    const turns = useMeetingTurnController({
+        meetingId: meeting.id,
+        runtime,
+    });
     const [tab, setTab] = useState('chat');
+    const DocumentsPanel = slots.documentPanel;
+    const SummaryPanel = slots.summaryPanel;
 
     return (
         <div className="flex-1 flex flex-col bg-zinc-950 min-h-0 overflow-hidden">
@@ -190,23 +218,39 @@ function MeetingConversation({ meeting, disagreements, consensus }: Conversation
                 <div className="border-b border-zinc-800 px-4 shrink-0 overflow-x-auto">
                     <TabsList className="bg-transparent h-12 gap-1">
                         <RoomTab value="chat" icon={<MessageSquare className="w-4 h-4" />} label="Chat" />
-                        <RoomTab
-                            value="disagreements"
-                            icon={<AlertTriangle className="w-4 h-4" />}
-                            label="Disagreements"
-                            count={disagreements.length}
-                            tone="red"
-                        />
-                        <RoomTab
-                            value="consensus"
-                            icon={<CheckCircle2 className="w-4 h-4" />}
-                            label="Consensus"
-                            count={consensus.length}
-                            tone="green"
-                        />
+                        {capabilities.disagreements && (
+                            <RoomTab
+                                value="disagreements"
+                                icon={<AlertTriangle className="w-4 h-4" />}
+                                label="Disagreements"
+                                count={disagreements.length}
+                                tone="red"
+                            />
+                        )}
+                        {capabilities.consensus && (
+                            <RoomTab
+                                value="consensus"
+                                icon={<CheckCircle2 className="w-4 h-4" />}
+                                label="Consensus"
+                                count={consensus.length}
+                                tone="green"
+                            />
+                        )}
                         <RoomTab value="roster" icon={<Users className="w-4 h-4" />} label="Roster" />
-                        <RoomTab value="documents" icon={<FileText className="w-4 h-4" />} label="Shared Docs" />
-                        <RoomTab value="summary" icon={<Scroll className="w-4 h-4" />} label="Summary" />
+                        {capabilities.documents && DocumentsPanel && (
+                            <RoomTab
+                                value="documents"
+                                icon={<FileText className="w-4 h-4" />}
+                                label="Shared Docs"
+                            />
+                        )}
+                        {capabilities.summary && SummaryPanel && (
+                            <RoomTab
+                                value="summary"
+                                icon={<Scroll className="w-4 h-4" />}
+                                label="Summary"
+                            />
+                        )}
                     </TabsList>
                 </div>
 
@@ -230,35 +274,41 @@ function MeetingConversation({ meeting, disagreements, consensus }: Conversation
                     />
                 </TabsContent>
 
-                <TabsContent value="disagreements" className="flex-1 m-0 min-h-0">
-                    <DisagreementsPanel disagreements={disagreements} />
-                </TabsContent>
+                {capabilities.disagreements && (
+                    <TabsContent value="disagreements" className="flex-1 m-0 min-h-0">
+                        <DisagreementsPanel disagreements={disagreements} />
+                    </TabsContent>
+                )}
 
-                <TabsContent value="consensus" className="flex-1 m-0 min-h-0">
-                    <ConsensusPanel consensus={consensus} />
-                </TabsContent>
+                {capabilities.consensus && (
+                    <TabsContent value="consensus" className="flex-1 m-0 min-h-0">
+                        <ConsensusPanel consensus={consensus} />
+                    </TabsContent>
+                )}
 
                 <TabsContent value="roster" className="flex-1 m-0 min-h-0">
                     <ParticipantRoster participants={meeting.participants ?? []} />
                 </TabsContent>
 
-                <TabsContent value="documents" className="flex-1 m-0 min-h-0">
-                    <ScrollArea className="h-full p-4">
-                        <div className="max-w-3xl mx-auto">
-                            <DocumentPanel scope={{ meetingId: meeting.id }} />
-                        </div>
-                    </ScrollArea>
-                </TabsContent>
+                {capabilities.documents && DocumentsPanel && (
+                    <TabsContent value="documents" className="flex-1 m-0 min-h-0">
+                        <DocumentsPanel meetingId={meeting.id} />
+                    </TabsContent>
+                )}
 
-                <TabsContent value="summary" className="flex-1 m-0 min-h-0">
-                    <SummaryPanel meeting={meeting} />
-                </TabsContent>
+                {capabilities.summary && SummaryPanel && (
+                    <TabsContent value="summary" className="flex-1 m-0 min-h-0">
+                        <SummaryPanel meeting={meeting} />
+                    </TabsContent>
+                )}
             </Tabs>
 
-            {meeting.status === 'ended' || meeting.status === 'archived' ? (
+            {meeting.status === 'ended' ||
+            meeting.status === 'archived' ||
+            !capabilities.submitTurn ? (
                 <div className="p-4 border-t border-zinc-800 shrink-0 bg-zinc-950">
                     <p className="text-center text-sm text-zinc-500">
-                        This meeting is read-only.
+                        {runtime.presentation.readOnlyNotice}
                     </p>
                 </div>
             ) : (
@@ -368,8 +418,13 @@ interface RoomControlsProps {
 }
 
 function RoomControls({ meeting, turns }: RoomControlsProps) {
-    const handleStartTurn = (participantId: string) => {
-        const settings = useSettingsStore.getState().composeGenerationSettings() ?? undefined;
+    const runtime = useMeetingsRuntime();
+    const ParticipantAction = runtime.slots.participantAction;
+
+    const handleStartTurn = (
+        participantId: string,
+        settings?: Parameters<typeof turns.submit>[1]
+    ) => {
         void turns.submit(participantId, settings);
     };
 
@@ -395,29 +450,18 @@ function RoomControls({ meeting, turns }: RoomControlsProps) {
                                 operation.participant_id === participant.id &&
                                 operation.status === 'queued'
                         );
+                        if (!ParticipantAction) return null;
                         return (
-                            <RateLimitedButton
+                            <ParticipantAction
                                 key={participant.id}
-                                provider={participant.provider_config?.provider || 'default'}
-                                variant="outline"
-                                size="sm"
+                                participant={participant}
+                                isActive={isActive}
+                                isQueued={isQueued}
                                 disabled={turns.isSubmitting}
-                                onRateLimitedClick={() => handleStartTurn(participant.id)}
-                                isLoading={isActive}
-                                className={cn(
-                                    'border-zinc-700 hover:bg-zinc-800',
-                                    isActive && 'animate-pulse',
-                                    isQueued && 'border-dashed'
-                                )}
-                                style={{
-                                    borderColor: participant.color + '80',
-                                    color: participant.color,
-                                }}
-                            >
-                                <Bot className="w-4 h-4 mr-1" />
-                                {participant.name.replace('The ', '')}
-                                {isQueued && <Clock className="w-3 h-3 ml-1 opacity-70" />}
-                            </RateLimitedButton>
+                                onStart={(settings) =>
+                                    handleStartTurn(participant.id, settings)
+                                }
+                            />
                         );
                     })}
                 </div>
@@ -435,7 +479,9 @@ function RoomControls({ meeting, turns }: RoomControlsProps) {
                     </div>
                 )}
 
-                <MessageComposer meetingId={meeting.id} />
+                {runtime.capabilities.sendMessage && (
+                    <MessageComposer meetingId={meeting.id} />
+                )}
             </div>
         </div>
     );
@@ -499,7 +545,31 @@ function QueueRow({
 }
 
 function MessageComposer({ meetingId }: { meetingId: string }) {
-    const sendMessage = useSendMessage();
+    const runtime = useMeetingsRuntime();
+    const queryClient = useQueryClient();
+    const sendMessage = useMutation({
+        mutationFn: (content: string) =>
+            runtime.commands.sendMessage(
+                meetingId,
+                content,
+                runtime.signal
+            ),
+        onSuccess: (message: Message) => {
+            queryClient.setQueryData<MeetingWithParticipants>(
+                runtime.keys.meetingDetail(meetingId),
+                (cached) =>
+                    cached
+                        ? {
+                              ...cached,
+                              messages: [...(cached.messages ?? []), message],
+                          }
+                        : cached
+            );
+            void queryClient.invalidateQueries({
+                queryKey: runtime.keys.contextStats(meetingId),
+            });
+        },
+    });
     const [inputValue, setInputValue] = useState('');
     const draftRef = useRef<Draft>(initialDraft());
     const sentRef = useRef<SentDraft | null>(null);
@@ -519,7 +589,7 @@ function MessageComposer({ meetingId }: { meetingId: string }) {
         sentRef.current = sent;
         let outcome: 'confirmed' | 'failed' = 'failed';
         try {
-            await sendMessage.mutateAsync({ meetingId, content });
+            await sendMessage.mutateAsync(content);
             outcome = 'confirmed';
         } catch {
             outcome = 'failed';
@@ -850,92 +920,7 @@ function ParticipantDetailCard({ participant }: { participant: AIParticipant }) 
     );
 }
 
-function SummaryPanel({ meeting }: { meeting: MeetingWithParticipants }) {
-    const providersQuery = useProvidersEnvironment();
-    const getProviderApiKey = useSettingsStore((state) => state.getProviderApiKey);
-    const generateSummary = useGenerateSummary();
-    const summaries = (meeting.messages ?? [])
-        .filter((message) => message.sender_type === 'system')
-        .slice()
-        .reverse();
 
-    const systemAiProvider =
-        providersQuery.data?.systemAI.provider ||
-        providersQuery.data?.environment.defaultProvider ||
-        '';
-    const providerKey = systemAiProvider ? getProviderApiKey(systemAiProvider) : undefined;
-
-    const generate = () => {
-        // Provider/model/temperature belong to server-owned System AI. The
-        // browser contributes only its transient BYOK key, when it has one.
-        void generateSummary.mutateAsync({
-            meetingId: meeting.id,
-            settings: providerKey ? { apiKey: providerKey } : undefined,
-        });
-    };
-
-    return (
-        <ScrollArea className="h-full p-4">
-            <div className="max-w-3xl mx-auto space-y-4">
-                <div className="flex items-start justify-between gap-4">
-                    <div>
-                        <h3 className="text-lg font-semibold text-white">Meeting Summary</h3>
-                        <p className="text-sm text-zinc-400">
-                            Summaries are generated on demand and saved to the transcript.
-                        </p>
-                    </div>
-                    <Button
-                        onClick={generate}
-                        disabled={
-                            generateSummary.isPending || (meeting.messages ?? []).length === 0
-                        }
-                        className="bg-indigo-600 hover:bg-indigo-700 shrink-0"
-                    >
-                        {generateSummary.isPending ? (
-                            <Loader2 className="w-4 h-4 mr-2 animate-spin" />
-                        ) : (
-                            <Scroll className="w-4 h-4 mr-2" />
-                        )}
-                        Generate summary
-                    </Button>
-                </div>
-
-                {generateSummary.isError && (
-                    <div className="rounded-lg border border-red-800 bg-red-950/30 p-3 text-sm text-red-300">
-                        {(generateSummary.error as Error).message}
-                    </div>
-                )}
-
-                {summaries.length === 0 ? (
-                    <p className="text-sm text-zinc-500">No summaries yet.</p>
-                ) : (
-                    summaries.map((summary) => (
-                        <Card key={summary.id} className="p-4 bg-zinc-900/50 border-zinc-800">
-                            <div className="flex items-center gap-2 mb-2">
-                                <Badge variant="secondary" className="bg-indigo-900/40 text-indigo-300">
-                                    System AI
-                                </Badge>
-                                <span className="text-xs text-zinc-500">
-                                    {formatRelativeTime(summary.created_at)}
-                                </span>
-                                {summary.estimated_cost > 0 && (
-                                    <span className="text-xs text-zinc-500">
-                                        {formatCost(summary.estimated_cost)}
-                                    </span>
-                                )}
-                            </div>
-                            <div className="prose prose-sm prose-invert max-w-none prose-p:my-1 prose-headings:my-2 prose-ul:my-1 prose-ol:my-1">
-                                <ReactMarkdown remarkPlugins={[remarkGfm]}>
-                                    {summary.content}
-                                </ReactMarkdown>
-                            </div>
-                        </Card>
-                    ))
-                )}
-            </div>
-        </ScrollArea>
-    );
-}
 
 function RoomDetailsPanel({
     meeting,
@@ -946,7 +931,7 @@ function RoomDetailsPanel({
     meeting: MeetingWithParticipants;
     disagreements: Disagreement[];
     consensus: Consensus[];
-    contextStats: ReturnType<typeof useMeetingContextStats>['data'];
+    contextStats: ContextStats | undefined;
 }) {
     return (
         <aside className="w-72 border-l border-zinc-800 bg-zinc-950 p-4 overflow-y-auto shrink-0 hidden lg:block">

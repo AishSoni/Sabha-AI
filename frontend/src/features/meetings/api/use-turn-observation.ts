@@ -28,11 +28,18 @@ import {
     type TurnProjection,
 } from './turn-projection';
 import { turnKeys } from './turn-keys';
+import type { MeetingsRuntime } from '../runtime/contract';
+import {
+    combineSignals,
+    projectionScopeId as runtimeProjectionScopeId,
+} from '@/shared/runtime/scope';
 
 export interface UseTurnObservationOptions {
     meetingId: string;
     operation: TurnOperation | null | undefined;
     enabled?: boolean;
+    /** Composed runtime graph; omit for the historical live HTTP defaults. */
+    runtime?: MeetingsRuntime;
     /** Called once per terminal transition, including a terminal status read. */
     onTerminal?: (event: TurnEvent | null, status: TurnStatus) => void;
 }
@@ -57,10 +64,16 @@ export function useTurnObservation({
     meetingId,
     operation,
     enabled = true,
+    runtime,
     onTerminal,
 }: UseTurnObservationOptions): UseTurnObservationResult {
     const queryClient = useQueryClient();
-    const projection = useTurnProjection(meetingId, operation?.operation_id ?? '');
+    const scopeId = runtime ? runtimeProjectionScopeId(runtime.scope) : 'live';
+    const projection = useTurnProjection(
+        meetingId,
+        operation?.operation_id ?? '',
+        scopeId
+    );
     const [epoch, setEpoch] = useState(0);
     const [isObserving, setIsObserving] = useState(false);
     const handledTerminal = useRef<string | null>(null);
@@ -70,7 +83,7 @@ export function useTurnObservation({
     const operationId = operation?.operation_id ?? '';
     const status = operation?.status;
     const scopeKey = operationId
-        ? turnProjectionKey({ meetingId, operationId })
+        ? turnProjectionKey({ scopeId, meetingId, operationId })
         : '';
 
     const settle = useCallback(
@@ -78,12 +91,20 @@ export function useTurnObservation({
             if (!operationId || handledTerminal.current === scopeKey) return;
             handledTerminal.current = scopeKey;
 
+            const detailKey =
+                runtime?.keys.turnDetail(meetingId, operationId) ??
+                turnKeys.detail(meetingId, operationId);
+            const listKey =
+                runtime?.keys.turnList(meetingId) ?? turnKeys.list(meetingId);
+            const meetingKey =
+                runtime?.keys.meetingDetail(meetingId) ??
+                meetingKeys.detail(meetingId);
             queryClient.setQueryData<TurnOperation>(
-                turnKeys.detail(meetingId, operationId),
+                detailKey,
                 (current) => (current ? { ...current, status: terminalStatus } : current)
             );
             queryClient.setQueryData<TurnOperation[]>(
-                turnKeys.list(meetingId),
+                listKey,
                 (current) =>
                     current?.map((item) =>
                         item.operation_id === operationId
@@ -93,11 +114,11 @@ export function useTurnObservation({
             );
             // Canonical messages, costs, and effects have committed by the
             // time a terminal event is published. Refresh the meeting read.
-            void queryClient.invalidateQueries({ queryKey: meetingKeys.detail(meetingId) });
-            void queryClient.invalidateQueries({ queryKey: turnKeys.list(meetingId) });
+            void queryClient.invalidateQueries({ queryKey: meetingKey });
+            void queryClient.invalidateQueries({ queryKey: listKey });
             terminalCallback.current?.(event, terminalStatus);
         },
-        [meetingId, operationId, queryClient, scopeKey]
+        [meetingId, operationId, queryClient, runtime, scopeKey]
     );
 
     // A terminal status read is enough to reconcile even if SSE never
@@ -113,7 +134,7 @@ export function useTurnObservation({
             return;
         }
 
-        const scope = { meetingId, operationId };
+        const scope = { scopeId, meetingId, operationId };
         const key = turnProjectionKey(scope);
         const store = useTurnProjectionStore.getState();
         store.ensure(scope, status);
@@ -127,9 +148,12 @@ export function useTurnObservation({
             controller = new AbortController();
             setIsObserving(true);
             try {
-                for await (const event of turnClient.observe(meetingId, operationId, {
+                const observe = runtime
+                    ? runtime.turns.observe
+                    : turnClient.observe.bind(turnClient);
+                for await (const event of observe(meetingId, operationId, {
                     after,
-                    signal: controller.signal,
+                    signal: combineSignals(runtime?.signal, controller.signal),
                 })) {
                     if (cancelled) return;
                     useTurnProjectionStore.getState().apply(scope, event);
@@ -170,7 +194,7 @@ export function useTurnObservation({
             cancelled = true;
             controller?.abort();
         };
-    }, [enabled, epoch, meetingId, operationId, settle, status]);
+    }, [enabled, epoch, meetingId, operationId, runtime, scopeId, settle, status]);
 
     const resume = useCallback(() => {
         if (!operationId) return;
