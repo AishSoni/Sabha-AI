@@ -790,6 +790,191 @@ def _validate_retrieval(record, package: LoadedPackage, issues: _Issues) -> None
             )
 
 
+def _validate_guided_intents(package: LoadedPackage, issues: _Issues) -> None:
+    manifest = package.manifest
+    for index, intent in enumerate(manifest.intents):
+        intent_path = f"manifest.json#/intents[{index}]"
+        checkpoint = package.checkpoints.get(intent.checkpoint)
+        if intent.kind in ("create_meeting", "archive_meeting"):
+            if intent.operation_id or intent.tape_id or intent.closing_tape_id:
+                issues.add(
+                    "invalid_intent",
+                    intent_path,
+                    "checkpoint intents cannot reference a tape or operation",
+                )
+            if checkpoint is not None:
+                if intent.kind == "create_meeting" and checkpoint.phase != "active":
+                    issues.add(
+                        "invalid_intent",
+                        intent_path,
+                        "create meeting intent must select an active checkpoint",
+                    )
+                if intent.kind == "create_meeting" and "meeting" not in checkpoint.reads:
+                    issues.add(
+                        "invalid_intent",
+                        intent_path,
+                        "create meeting intent must select a meeting checkpoint",
+                    )
+                if intent.kind == "archive_meeting" and checkpoint.phase != "archived":
+                    issues.add(
+                        "invalid_intent",
+                        intent_path,
+                        "archive intent must select an archived checkpoint",
+                    )
+        if intent.kind == "request_closing" and (intent.operation_id or intent.tape_id):
+            issues.add(
+                "invalid_intent",
+                intent_path,
+                "closing intents cannot reference a turn operation or tape",
+            )
+
+
+def _validate_guided_beats(package: LoadedPackage, issues: _Issues) -> None:
+    manifest = package.manifest
+    checkpoints = package.checkpoints
+    intents = {intent.intent_id: intent for intent in manifest.intents}
+    asset_ids = {asset.asset_id for asset in package.assets.assets}
+    previous_completed: str | None = None
+    seen_step_intents: set[str] = set()
+    completion_intents = {
+        "turn_terminal": {"start_participant", "director_follow_up"},
+        "closing_completed": {"request_closing"},
+        "checkpoint": {"create_meeting", "archive_meeting"},
+    }
+
+    for index, beat in enumerate(manifest.beats):
+        beat_path = f"manifest.json#/beats[{index}]"
+        rich = bool(beat.steps) or any(
+            value is not None
+            for value in (
+                beat.ordinal,
+                beat.objective,
+                beat.route,
+                beat.start_checkpoint,
+                beat.completed_checkpoint,
+                beat.disclosure,
+            )
+        )
+        if not rich:
+            continue
+
+        for field_name, value in (
+            ("ordinal", beat.ordinal),
+            ("objective", beat.objective),
+            ("route", beat.route),
+            ("start_checkpoint", beat.start_checkpoint),
+            ("completed_checkpoint", beat.completed_checkpoint),
+            ("disclosure", beat.disclosure),
+        ):
+            if value is None:
+                issues.add("invalid_beat", beat_path, f"guided beat needs {field_name}")
+        if not beat.steps:
+            issues.add("invalid_beat", beat_path, "guided beat needs ordered steps")
+        if beat.intent_id is not None:
+            issues.add("invalid_beat", beat_path, "guided beats use step intents")
+        if beat.ordinal is not None and beat.ordinal != index + 1:
+            issues.add("invalid_beat", beat_path, "beat ordinal must match journey order")
+        if beat.checkpoint != beat.start_checkpoint:
+            issues.add("invalid_beat", beat_path, "beat checkpoint must be its start checkpoint")
+
+        for field_name, value in (
+            ("start_checkpoint", beat.start_checkpoint),
+            ("completed_checkpoint", beat.completed_checkpoint),
+        ):
+            if value is not None and value not in checkpoints:
+                issues.add("dangling_id", beat_path, f"{field_name} is missing")
+
+        if beat.start_checkpoint is not None:
+            if previous_completed is None:
+                if beat.start_checkpoint != manifest.initial_checkpoint:
+                    issues.add(
+                        "invalid_beat",
+                        beat_path,
+                        "first guided beat must start at the initial checkpoint",
+                    )
+            elif beat.start_checkpoint != previous_completed:
+                issues.add(
+                    "invalid_beat",
+                    beat_path,
+                    "guided beats must form a linear checkpoint chain",
+                )
+
+        step_checkpoint = beat.start_checkpoint
+        seen_beat_intents: set[str] = set()
+        for step_index, step in enumerate(beat.steps):
+            step_path = f"{beat_path}/steps[{step_index}]"
+            if step.completion == "acknowledge":
+                if step.intent_id is not None:
+                    issues.add(
+                        "invalid_beat",
+                        step_path,
+                        "acknowledge steps cannot reference an intent",
+                    )
+                continue
+            if step.intent_id is None:
+                issues.add("invalid_beat", step_path, "completing steps need an intent")
+                continue
+            if step.intent_id in seen_beat_intents:
+                issues.add("duplicate_id", step_path, "step intent repeats")
+            if step.intent_id in seen_step_intents:
+                issues.add("duplicate_id", step_path, "intent is used by another beat")
+            seen_beat_intents.add(step.intent_id)
+            seen_step_intents.add(step.intent_id)
+            intent = intents.get(step.intent_id)
+            if intent is None:
+                issues.add("dangling_id", step_path, "step intent is missing")
+                continue
+            allowed = completion_intents.get(step.completion, set())
+            if intent.kind not in allowed:
+                issues.add(
+                    "invalid_beat",
+                    step_path,
+                    "step completion does not match intent kind",
+                )
+                continue
+            source: str | None = None
+            destination: str | None = None
+            if step.completion == "checkpoint":
+                source = step_checkpoint
+                destination = intent.checkpoint
+            elif step.completion == "turn_terminal":
+                tape = package.tapes.get(intent.tape_id or "")
+                source = intent.checkpoint
+                destination = tape.completed_checkpoint if tape is not None else None
+            elif step.completion == "closing_completed":
+                tape = package.closing_tapes.get(intent.closing_tape_id or "")
+                source = intent.checkpoint
+                destination = tape.completed_checkpoint if tape is not None else None
+            if (
+                source is not None
+                and step_checkpoint is not None
+                and source != step_checkpoint
+            ):
+                issues.add(
+                    "invalid_beat",
+                    step_path,
+                    "step does not start at the previous checkpoint",
+                )
+            if destination is not None:
+                step_checkpoint = destination
+
+        if (
+            step_checkpoint is not None
+            and beat.completed_checkpoint is not None
+            and step_checkpoint != beat.completed_checkpoint
+        ):
+            issues.add(
+                "mismatched_id",
+                beat_path,
+                "step sequence does not reach beat completion",
+            )
+
+        for asset_id in beat.input_asset_ids:
+            if asset_id not in asset_ids:
+                issues.add("dangling_id", beat_path, f"input asset {asset_id} is missing")
+        previous_completed = beat.completed_checkpoint
+
+
 def validate_package(package: LoadedPackage) -> list[PackageIssue]:
     issues = _Issues()
     manifest = package.manifest
@@ -927,6 +1112,9 @@ def validate_package(package: LoadedPackage) -> list[PackageIssue]:
             issues.add("dangling_id", beat_path, "beat checkpoint is missing")
         if beat.intent_id is not None and beat.intent_id not in intent_ids:
             issues.add("dangling_id", beat_path, "beat intent is missing")
+
+    _validate_guided_intents(package, issues)
+    _validate_guided_beats(package, issues)
 
     costs_recorded = manifest.provenance.get("costs") == "recorded"
     if not costs_recorded:

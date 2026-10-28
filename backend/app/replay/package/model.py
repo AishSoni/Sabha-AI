@@ -69,7 +69,32 @@ INTENT_KINDS = (
     "start_participant",
     "director_follow_up",
     "request_closing",
+    "create_meeting",
     "archive_meeting",
+)
+
+BEAT_COMPLETIONS = (
+    "acknowledge",
+    "turn_terminal",
+    "closing_completed",
+    "checkpoint",
+)
+
+BEAT_ROUTES = (
+    "board",
+    "new",
+    "meeting",
+    "list",
+)
+
+BEAT_TABS = (
+    "chat",
+    "disagreements",
+    "consensus",
+    "roster",
+    "documents",
+    "summary",
+    "closing",
 )
 
 CLOSING_EVENT_KINDS = ("ballot", "summary")
@@ -117,11 +142,47 @@ class IntentRecord(StrictModel):
         return value
 
 
+class BeatStep(StrictModel):
+    """One ordered action inside an approved guided beat.
+
+    The step names an intent (or an explicit acknowledgement) and the recorded
+    condition that completes it. It carries no executable transition.
+    """
+
+    step_id: str
+    label: str
+    intent_id: str | None = None
+    completion: Literal[BEAT_COMPLETIONS]
+    requires_tab: Literal[BEAT_TABS] | None = None
+
+    @field_validator("step_id")
+    @classmethod
+    def validate_step_id(cls, value: str) -> str:
+        if not _is_safe_slug(value):
+            raise ValueError("step_id must be a safe identifier")
+        return value
+
+    @field_validator("intent_id")
+    @classmethod
+    def validate_step_intent_id(cls, value: str | None) -> str | None:
+        if value is not None and not _is_safe_slug(value):
+            raise ValueError("intent_id must be a safe identifier")
+        return value
+
+    @field_validator("label")
+    @classmethod
+    def validate_label(cls, value: str) -> str:
+        if not value.strip():
+            raise ValueError("label must not be empty")
+        return value
+
+
 class BeatRecord(StrictModel):
     """Optional journey metadata; spec-18 owns the approved beats.
 
-    A beat may only point at an existing checkpoint/intent/anchor. It never
-    carries executable transitions.
+    A beat may only point at existing checkpoints/intents/assets. Legacy beats
+    with only ``checkpoint``/``intent_id`` remain valid; guided beats add the
+    ordered step metadata used by the replay guide.
     """
 
     beat_id: str
@@ -129,12 +190,54 @@ class BeatRecord(StrictModel):
     anchor: str
     checkpoint: str
     intent_id: str | None = None
+    ordinal: int | None = Field(default=None, ge=1)
+    objective: str | None = None
+    route: Literal[BEAT_ROUTES] | None = None
+    tab: Literal[BEAT_TABS] | None = None
+    start_checkpoint: str | None = None
+    completed_checkpoint: str | None = None
+    disclosure: str | None = None
+    steps: list[BeatStep] = Field(default_factory=list)
+    claim_ids: list[str] = Field(default_factory=list)
+    input_asset_ids: list[str] = Field(default_factory=list)
 
-    @field_validator("beat_id")
+    @field_validator("beat_id", "anchor")
     @classmethod
     def validate_beat_id(cls, value: str) -> str:
         if not _is_safe_slug(value):
-            raise ValueError("beat_id must be a safe identifier")
+            raise ValueError("beat identifiers must be safe")
+        return value
+
+    @field_validator("intent_id", "start_checkpoint", "completed_checkpoint")
+    @classmethod
+    def validate_optional_ref(cls, value: str | None) -> str | None:
+        if value is not None and not _is_safe_slug(value):
+            raise ValueError("reference must be a safe identifier")
+        return value
+
+    @field_validator("title", "objective", "disclosure")
+    @classmethod
+    def validate_optional_text(cls, value: str | None) -> str | None:
+        if value is not None and not value.strip():
+            raise ValueError("text fields must not be empty")
+        return value
+
+    @field_validator("steps")
+    @classmethod
+    def validate_steps(cls, value: list[BeatStep]) -> list[BeatStep]:
+        step_ids = [step.step_id for step in value]
+        if len(set(step_ids)) != len(step_ids):
+            raise ValueError("step_ids must be unique within a beat")
+        return value
+
+    @field_validator("claim_ids", "input_asset_ids")
+    @classmethod
+    def validate_unique_ids(cls, value: list[str]) -> list[str]:
+        if len(set(value)) != len(value):
+            raise ValueError("references must be unique")
+        for item in value:
+            if not _is_safe_slug(item):
+                raise ValueError(f"unsafe reference: {item!r}")
         return value
 
 
