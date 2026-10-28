@@ -10,17 +10,32 @@ and the gates that remain unproven, lives in
 
 | Piece | Entry point | Responsibility |
 | --- | --- | --- |
-| HTTP API | `backend/main.py` (`main:app`) | All `/api/*` routes, server-sent events, `/health` |
+| HTTP API | `backend/main.py` (`main:app`) | Live `/api/*` routes, server-sent events, `/health` |
+| Recorded replay API | `backend/main.py` (`/api/replay/*`) | Read-only recorded graph; independent of the live container |
 | Turn worker (optional) | `backend/worker.py` | Claims and executes queued turns; no HTTP |
 | Web client | `frontend/` (Next.js) | Meeting UI, uploads, operation observation |
 | Application store | Supabase Postgres | Authoritative records, queue, grants, RPCs |
 | Source store | Supabase Storage bucket (`KNOWLEDGE_BUCKET`, default `knowledge-sources`) | Original document bytes |
 | Vector projection | Qdrant (`QDRANT_URL`) | Retrieval index; never the source of truth |
 
-The API and the worker share one composition root (`app/bootstrap.py`). Running
-both is safe: admission, ordering, leases, fences and publication are enforced
-in Postgres, so two processes cannot execute the same turn. `TURN_RUNNER_ENABLED`
-selects whether the API also runs inference inline.
+The live API and the worker share one composition root (`app/bootstrap.py`).
+Running both is safe: admission, ordering, leases, fences and publication are
+enforced in Postgres, so two processes cannot execute the same turn.
+`TURN_RUNNER_ENABLED` selects whether the API also runs inference inline.
+
+Live and recorded replay are separate request graphs in the same process.
+`/api/*` resolves only the live container; `/api/replay/*` resolves only the
+replay container and rejects every non-GET request before an adapter runs. A
+request header, workspace id, route parameter or `RUNTIME_MODE` value cannot
+switch either graph to the other. Cohosted live startup recovery, providers and
+workers remain legitimate; dispatching a replay request neither starts nor
+invokes them.
+
+At this gate the replay graph accepts only an explicitly injected, validated
+recorded source. The production entry point composes no recorded source yet, so
+`/api/replay/*` answers `503 replay_not_configured` rather than falling back to
+live data. The packaged reader, checkpoint and paced streaming implementation
+belong to Spec 17.
 
 ## 2. Module owners
 
@@ -74,7 +89,8 @@ Create `backend/.env` (or export the variables) from `.env.example`:
 | `QDRANT_URL`, `QDRANT_API_KEY` | yes / cloud only | Vector projection |
 | `DEFAULT_LLM_PROVIDER` | yes | `ollama`, `openrouter` or `gemini` |
 | `EMBEDDING_PROVIDER`, `EMBEDDING_MODEL`, `EMBEDDING_DIMENSION` | yes | `gemini`, `openai`, `cohere` or `ollama` |
-| `RUNTIME_MODE` | yes | `local`, `hosted` or `demo` |
+| `RUNTIME_MODE` | yes | `local`, `hosted` or `demo`; live policy only, never a replay selector |
+| `REPLAY_ONLY` | no | `true` starts without the live composition; requires a composed recorded source, otherwise replay returns 503 |
 | `KNOWLEDGE_BUCKET` | yes | Must match the bucket that holds existing bytes |
 | `TURN_RUNNER_ENABLED` | no | `false` when inference runs only in `worker.py` |
 | `TURN_LEASE_SECONDS` | no | Default 60 |
@@ -98,10 +114,13 @@ NEXT_PUBLIC_RATE_LIMIT_DEFAULT=5
 
 `local` and `hosted` are both writable and account-free: two fresh visitors
 share one workspace with no sign-in, no user token, and no anonymous Auth
-bootstrap. `demo` is strictly read-only — every write route returns 403 and no
-credential prompt is issued. Invalid `RUNTIME_MODE`, provider or embedding
-values fail at process start with a validation error; the application never
-silently substitutes a provider.
+bootstrap. `demo` is strictly read-only — every live write route returns 403 and
+no credential prompt is issued. `demo` is a write guard on the live graph, not
+the recorded replay graph. The browser route `/demo/meetings/[id]` composes the
+recorded room against `/api/replay/*`; it does not change `RUNTIME_MODE` or
+grant replay behavior to live URLs. Invalid `RUNTIME_MODE`, provider or
+embedding values fail at process start with a validation error; the application
+never silently substitutes a provider.
 
 ## 5. Start and stop
 
@@ -123,6 +142,13 @@ npm start
 ```
 
 For development use `npm run dev` instead of `build`/`start`.
+
+To start a replay-only API process, set `REPLAY_ONLY=true` before starting the
+same entry point. It skips live route mounting, live provider/Qdrant/service-role
+construction and startup recovery. It is only useful with a composition that
+injects a recorded source; the current production entry point does not, so the
+replay surface answers 503. Never run `worker.py` in this mode: it exits with a
+refusal instead of claiming live turns.
 
 Health and readiness are different things: `/health` returns
 `{"status": "healthy"}` without touching Postgres, Qdrant or the bucket. A
@@ -398,8 +424,12 @@ remain in the hosted checklist and Spec 17.
 - **No accounts or tenancy.** The workspace is deliberately shared; `anon` and
   `authenticated` cannot read or write live tables directly, and the replay
   reader is limited to explicitly published replay objects.
-- **Guided replay is deferred.** `demo` implements the read-only guarantee and
-  the write guard; it is not a scripted replay experience.
+- **Packaged replay is deferred.** Spec 14 ships the isolated `/api/replay`
+  request graph, its rejecting command ports, and the browser runtime scope at
+  `/demo/meetings/[id]`. Production composes no recorded source yet, so replay
+  answers `503 replay_not_configured` and the route shows an honest unavailable
+  state. The packaged reader, checkpoint engine, paced streaming and full
+  guided journey belong to Specs 17 and 18.
 - **`/health` is shallow.** It does not probe dependencies.
 - **Restore markers do not gate traffic.** Closing retrieval is an operator
   step, not a platform-enforced state.
