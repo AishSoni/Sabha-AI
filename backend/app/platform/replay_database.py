@@ -93,7 +93,7 @@ def connect_replay_reader() -> psycopg.Connection:
     """Open and verify the dedicated read-only replay connection."""
     url = get_replay_database_url()
     try:
-        conn = psycopg.connect(url, autocommit=True)
+        conn = psycopg.connect(url, autocommit=True, connect_timeout=5)
     except psycopg.Error as exc:
         raise ReplayReaderConnectionError(
             "could not connect to the configured replay database"

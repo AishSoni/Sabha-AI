@@ -3,6 +3,8 @@
 from __future__ import annotations
 
 import json
+import shutil
+import subprocess
 from pathlib import Path
 from urllib.parse import urlsplit, urlunsplit
 
@@ -21,7 +23,6 @@ from scripts.replay_package import (
     retire_package,
 )
 from scripts.replay_roles import provision
-
 BACKEND = Path(__file__).resolve().parents[2]
 PACKAGE_ROOT = BACKEND / "replay_packages" / "placeholder-analyst"
 FIXTURE_V1 = BACKEND / "tests" / "fixtures" / "replay" / "fixture-minimal"
@@ -231,3 +232,70 @@ def test_publication_refuses_an_admin_identity(replay_db) -> None:
     with replay_db.connect() as admin:
         with pytest.raises(PublicationError):
             assert_provisioner_identity(admin)
+
+
+BASE_TABLES = (
+    "package",
+    "package_registry",
+    "checkpoint",
+    "turn_tape",
+    "turn_event",
+    "closing_tape",
+    "closing_event",
+    "retrieval_record",
+    "asset",
+)
+
+PUBLISHED_VIEWS = (
+    "v_published_package",
+    "v_published_checkpoint",
+    "v_published_turn_tape",
+    "v_published_turn_event",
+    "v_published_closing_tape",
+    "v_published_closing_event",
+    "v_published_retrieval",
+    "v_published_asset",
+    "v_package_registry",
+)
+
+
+def test_reader_matrix_covers_every_replay_object(replay_db) -> None:
+    with _publisher(replay_db) as conn:
+        publish_package(conn, load_package(PACKAGE_ROOT), FakeStorage())
+
+    with _reader(replay_db) as reader:
+        for table in BASE_TABLES:
+            assert reader.execute(
+                "SELECT has_table_privilege(current_user, %s, 'SELECT')",
+                (f"replay.{table}",),
+            ).fetchone() == (False,), table
+        for view in PUBLISHED_VIEWS:
+            assert reader.execute(
+                "SELECT has_table_privilege(current_user, %s, 'SELECT')",
+                (f"replay.{view}",),
+            ).fetchone() == (True,), view
+            assert reader.execute(
+                "SELECT has_table_privilege(current_user, %s, 'INSERT')",
+                (f"replay.{view}",),
+            ).fetchone() == (False,), view
+            reader.execute(f"SELECT * FROM replay.{view} LIMIT 0")
+
+
+def test_tracked_package_needs_no_ignored_inputs() -> None:
+    if shutil.which("git") is None:
+        pytest.skip("git is not available")
+    repo = BACKEND.parent
+    tracked = set(
+        subprocess.check_output(
+            ["git", "ls-files", "--", "backend/replay_packages"],
+            cwd=repo,
+            text=True,
+        ).splitlines()
+    )
+    files = {
+        path.relative_to(repo).as_posix()
+        for path in (repo / "backend" / "replay_packages").rglob("*")
+        if path.is_file()
+    }
+    assert files
+    assert files <= tracked, sorted(files - tracked)

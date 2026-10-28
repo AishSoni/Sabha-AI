@@ -73,13 +73,25 @@ falling back to the anon key.
 | Live table read/write | no / no | no / no | yes / yes | no / no |
 | Live RPC execute | no | no | yes (explicit list) | no |
 | `USAGE` on `replay` | no | yes | no (not needed) | yes |
-| Published replay table read | no | yes | no (not needed) | yes |
+| `SELECT` on `replay.v_published_*` | no | yes | no (not needed) | yes |
+| Base `replay.*` table read | no | **no** | no | yes |
 | Replay writes / DDL | no | no | no | yes |
 | Replay assets | no | published package only | no | stage/publish only |
 
-The actual replay schema and package tables arrive in Spec 17. Spec 12 proves
-the role and default-privilege contract with a disposable replay table; Spec 17
-re-runs the same matrix against the real objects.
+Migration `032_replay_package` creates the real package tables and the
+runtime views. Reader access is granted only on:
+
+`v_published_package`, `v_published_checkpoint`, `v_published_turn_tape`,
+`v_published_turn_event`, `v_published_closing_tape`,
+`v_published_closing_event`, `v_published_retrieval`, `v_published_asset`,
+`v_package_registry`.
+
+Views expose only rows with `published_at IS NOT NULL`; staged rows are
+invisible, and retired rows stay readable so pinned runs keep serving. The
+reader has no `SELECT` on any base `replay` table. Publication runs on the
+provisioner login in one transaction and flips `status='published'` last.
+`scripts/replay_roles` must run before `032`; the migration otherwise fails
+with an instruction instead of silently creating credentials.
 
 ## Provisioning the replay roles
 
@@ -165,8 +177,13 @@ role, or either replay role, while `service_role` keeps its live capability.
 - Role/schema creation on hosted Supabase requires operator authorization.
   Confirm the migration connection is allowed to create the reader schema, or
   run the provisioning script as the project owner and record the result.
-- Storage policies and replay asset access are provisioned and verified with
-  the real replay package in Spec 17.
+- Replay Storage is a public read-only bucket of demo-safe,
+  content-addressed objects; confirm bucket visibility and object URLs on the
+  hosted project and record the result. The runtime holds no Storage
+  credential.
 - The hosted connection topology for `REPLAY_DATABASE_URL` must be confirmed
   (direct/session connection, TLS, password rotation). Local tests prove the
   role contract, not hosted network policy.
+- Apply `032` only after `scripts.replay_roles` has run for that database, then
+  re-run the inventory and the effective-privilege checks against the
+  `v_published_*` views and the base tables.

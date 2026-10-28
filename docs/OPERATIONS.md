@@ -440,6 +440,7 @@ python -m scripts.rehearse_clean_checkout
 cd ..\frontend
 npm test
 npx tsc --noEmit
+npm run test:e2e
 npm run build
 ```
 
@@ -496,6 +497,68 @@ default privileges are operator-authorized steps. Local evidence does not
 prove the hosted project's default ACLs, network path or Storage policy; those
 remain in the hosted checklist and Spec 17.
 
+### Replay packages (spec 17)
+
+Migration `032_replay_package` creates the `replay` tables and the
+reader-facing `v_published_*` views. It fails with an actionable message unless
+`scripts.replay_roles` has already run for that database. The runtime reader
+gets `SELECT` on those views only; retired versions stay readable so pinned
+runs keep working, while staged rows are invisible.
+
+Assets live in a public read-only Supabase Storage bucket under immutable,
+content-addressed keys (`<package>/<version>/<sha256>.<ext>`). Every asset must
+be demo-safe; "private" in a package means "not shown to other participants",
+not confidential from the internet. The runtime never holds a Storage
+credential and renders only passive public URLs.
+
+Publish from a clean checkout with the offline provisioner credential:
+
+```powershell
+cd backend
+python -m scripts.replay_roles --reader-login sabha_replay_login `
+    --provisioner-login sabha_replay_publisher
+python -m scripts.replay_package validate replay_packages/placeholder-analyst
+python -m scripts.replay_package --database-url $env:REPLAY_PROVISIONER_DATABASE_URL `
+    publish replay_packages/placeholder-analyst
+python -m scripts.replay_package --database-url $env:REPLAY_PROVISIONER_DATABASE_URL `
+    activate placeholder-analyst 1
+python -m scripts.replay_package --database-url $env:REPLAY_PROVISIONER_DATABASE_URL `
+    retire placeholder-analyst 1
+python -m scripts.replay_package --database-url $env:REPLAY_PROVISIONER_DATABASE_URL list
+```
+
+`publish` validates the manifest, hashes, DTOs, identities, policies and
+assets; uploads and re-hashes assets; stages every row; and only then exposes
+the version in one transaction. Publishing the same version with different
+content is refused. `retire` refuses the active version; activate another
+published version first. A missing, corrupt, incompatible, or unregistered
+package answers `503 replay_package_unavailable` (retired active runs that are
+still pinned keep serving); there is no live fallback.
+
+Runtime configuration:
+
+```text
+REPLAY_DATABASE_URL=postgresql://sabha_replay_login:<password>@<host>:5432/postgres
+REPLAY_PACKAGE_ID=placeholder-analyst
+REPLAY_PACKAGE_VERSION=1              # optional; registry default otherwise
+REPLAY_PACKAGE_SHA256=<64 hex>        # optional content pin
+REPLAY_ONLY=true                      # serve no live graph
+REPLAY_STREAM_MAX_PER_CLIENT=2
+REPLAY_STREAM_MAX_GLOBAL=8
+REPLAY_STREAM_MAX_BYTES=262144
+REPLAY_STREAM_MAX_SECONDS=120
+```
+
+`python -m scripts.e2e_provision --serve` provisions a disposable local
+database, publishes the placeholder package, and serves the replay-only app for
+`npm run test:e2e`; it owns the embedded Postgres for the lifetime of the
+process.
+
+On hosted Supabase, applying `032`, creating the bucket, publishing with the
+provisioner key, and confirming Storage/network policy remain operator steps.
+Local evidence does not prove the hosted project's bucket visibility or reader
+credential separation; those remain in the hosted checklist and Spec 19.
+
 ## 13. Unresolved limitations
 
 - **Hosted source-store and vector verification is a manual gate.** The
@@ -510,12 +573,12 @@ remain in the hosted checklist and Spec 17.
 - **No accounts or tenancy.** The workspace is deliberately shared; `anon` and
   `authenticated` cannot read or write live tables directly, and the replay
   reader is limited to explicitly published replay objects.
-- **Packaged replay is deferred.** Spec 14 ships the isolated `/api/replay`
-  request graph, its rejecting command ports, and the browser runtime scope at
-  `/demo/meetings/[id]`. Production composes no recorded source yet, so replay
-  answers `503 replay_not_configured` and the route shows an honest unavailable
-  state. The packaged reader, checkpoint engine, paced streaming and full
-  guided journey belong to Specs 17 and 18.
+- **Packaged replay is local-first.** Spec 17 ships the package format, offline
+  publication, checkpoint reads, paced SSE, closing transport, and the
+  packaged analyst slice. The placeholder package is explicitly synthetic and
+  Spec 18 replaces its content with the approved journey. Hosted reader grants,
+  Storage bucket visibility, and a deployed proxy/pacing check remain operator
+  steps for Specs 18–19; local Postgres and a real local socket are proven.
 - **OCR deployment proof is host-specific.** The probe and benchmark run on
   the Windows acceptance host; a hosted worker must repeat both after installing
   the pinned wheels and record the result. Passing local tests does not prove

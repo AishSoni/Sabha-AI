@@ -73,11 +73,18 @@ def test_route_table_contains_the_pinned_public_paths():
         p for p in paths if p.startswith("/api/replay")
     } == {
         "/api/replay/session",
+        "/api/replay/meetings",
         "/api/replay/meetings/{meeting_id}",
         "/api/replay/meetings/{meeting_id}/disagreements",
         "/api/replay/meetings/{meeting_id}/consensus",
+        "/api/replay/meetings/{meeting_id}/context-stats",
+        "/api/replay/meetings/{meeting_id}/documents",
+        "/api/replay/meetings/{meeting_id}/closing",
+        "/api/replay/meetings/{meeting_id}/closing/events",
+        "/api/replay/meetings/{meeting_id}/turns",
         "/api/replay/meetings/{meeting_id}/turns/{operation_id}",
         "/api/replay/meetings/{meeting_id}/turns/{operation_id}/events",
+        "/api/replay/assets/{asset_id}",
         "/api/replay/{path:path}",
     }
 
