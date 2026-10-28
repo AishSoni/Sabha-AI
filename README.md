@@ -240,7 +240,9 @@ cp ../.env.example .env
 ```
 
 Fill in `SUPABASE_URL`, `SUPABASE_KEY`, `SUPABASE_SERVICE_KEY`, `DATABASE_URL`,
-`QDRANT_URL`, the provider settings and `RUNTIME_MODE`. See
+`QDRANT_URL`, the provider settings and `RUNTIME_MODE`. Set
+`REPLAY_DATABASE_URL` only when running strict replay; it is a separate
+server-only login, never the live credential. See
 [Configuration](#-configuration).
 
 ### 3. Apply the SQL history
