@@ -444,6 +444,7 @@ interface ReplayRuntimeOptions {
     startIntent: (intentId: string) => Promise<void>;
     onTurnSettled?: (intentId: string) => void;
     onClosingTerminal?: () => void;
+    isTurnVisible?: (operationId: string) => boolean;
 }
 
 export function createReplayRuntime(
@@ -563,10 +564,21 @@ export function createReplayRuntime(
                     ),
                     { signal: combineSignals(options.signal, callerSignal) }
                 );
-                return requireArray(
+                const operations = requireArray(
                     payload,
                     "GET /replay/.../turns",
                     decodeTurnOperation
+                );
+                const terminal = new Set([
+                    "completed",
+                    "failed",
+                    "interrupted",
+                    "cancelled",
+                ]);
+                return operations.filter(
+                    (operation) =>
+                        terminal.has(operation.status) ||
+                        options.isTurnVisible?.(operation.operation_id) !== false
                 );
             },
             get: async (meetingId, operationId, callerSignal) => {

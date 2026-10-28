@@ -40,14 +40,9 @@ test.describe("guided bond journey", () => {
         await page.getByRole("button", { name: "Continue" }).click();
         await expect(page).toHaveURL(/\/demo\/meetings\/[^/]+$/);
 
+        await page.getByRole("button", { name: "Ask the Credit Analyst" }).click();
         await expect(
             page.getByText(/CRISIL's annexure row for ISIN INE001A07RW5/).first()
-        ).toBeVisible({ timeout: 30_000 });
-        await expect(
-            page.getByText(/I disagree with treating AAA\/Stable as sufficient comfort/).first()
-        ).toBeVisible({ timeout: 30_000 });
-        await expect(
-            page.getByRole("tab", { name: /Disagreements 1/ })
         ).toBeVisible({ timeout: 30_000 });
         await page.getByRole("button", { name: /5 Sources/ }).first().click();
         await expect(
@@ -55,8 +50,12 @@ test.describe("guided bond journey", () => {
         ).toBeVisible();
         await page.getByRole("button", { name: "Continue" }).click();
 
+        await page.getByRole("button", { name: "Ask the Downside Reviewer" }).click();
         await expect(
             page.getByText(/I disagree with treating AAA\/Stable as sufficient comfort/).first()
+        ).toBeVisible({ timeout: 30_000 });
+        await expect(
+            page.getByRole("tab", { name: /Disagreements 1/ })
         ).toBeVisible({ timeout: 30_000 });
         await page.getByRole("tab", { name: "Shared Docs" }).click();
         await expect(
@@ -69,11 +68,13 @@ test.describe("guided bond journey", () => {
         await page.getByRole("button", { name: "Continue" }).click();
 
         await page.getByRole("button", { name: /Send prepared follow-up/ }).click();
+        await page.getByRole("button", { name: "Ask the Portfolio Analyst" }).click();
         await expect(
             page.getByText(/The mandate cannot be completed from this record/).first()
         ).toBeVisible({ timeout: 30_000 });
         await page.getByRole("button", { name: "Continue" }).click();
 
+        await page.getByRole("button", { name: "Ask the committee to align" }).click();
         await expect(
             page.getByText(/The committee can align on a bounded checklist/).first()
         ).toBeVisible({ timeout: 30_000 });

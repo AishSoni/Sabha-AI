@@ -77,6 +77,7 @@ export function ReplayRunProvider({ children }: { children: ReactNode }) {
     const [error, setError] = useState<Error | null>(null);
     const [loading, setLoading] = useState(true);
     const transitioning = useRef(false);
+    const startedIntentsRef = useRef<Set<string>>(new Set());
 
     const queryClient = useMemo(() => makeQueryClient(), [runKey]);
     const sessionController = useMemo(() => new AbortController(), [runKey]);
@@ -96,12 +97,23 @@ export function ReplayRunProvider({ children }: { children: ReactNode }) {
         setClosingSettled(false);
     }, []);
 
+    const isTurnVisible = useCallback((operationId: string) => {
+        const current = sessionRef.current;
+        if (!current) return true;
+        const intent = current.intents.find(
+            (item) => item.operation_id === operationId
+        );
+        if (!intent) return true;
+        return startedIntentsRef.current.has(intent.intent_id);
+    }, []);
+
     const restart = useCallback(() => {
         setSession(null);
         setCheckpoint(null);
         setSafeConfig(null);
         setError(null);
         setLoading(true);
+        startedIntentsRef.current = new Set();
         clearSettled();
         setEpoch((value) => value + 1);
         setRunKey((value) => value + 1);
@@ -217,9 +229,19 @@ export function ReplayRunProvider({ children }: { children: ReactNode }) {
                     [...prefix, "meetings", "detail", meetingId, "consensus"],
                     bundle.consensus
                 );
+                const terminal = new Set([
+                    "completed",
+                    "failed",
+                    "interrupted",
+                    "cancelled",
+                ]);
                 queryClient.setQueryData(
                     [...prefix, "turns", meetingId],
-                    bundle.turns
+                    bundle.turns.filter(
+                        (operation) =>
+                            terminal.has(operation.status) ||
+                            isTurnVisible(operation.operation_id)
+                    )
                 );
                 if (bundle.contextStats) {
                     queryClient.setQueryData(
@@ -241,7 +263,7 @@ export function ReplayRunProvider({ children }: { children: ReactNode }) {
                 transitioning.current = false;
             }
         },
-        [controller, queryClient]
+        [controller, queryClient, isTurnVisible]
     );
 
     const startIntent = useCallback(
@@ -252,6 +274,9 @@ export function ReplayRunProvider({ children }: { children: ReactNode }) {
                 (item) => item.intent_id === intentId
             );
             if (!intent) throw new Error("That recorded intent is not available.");
+            startedIntentsRef.current = new Set(startedIntentsRef.current).add(
+                intent.intent_id
+            );
             if (intent.kind === "request_closing") {
                 const closingBeat = current.beats.find((beat) =>
                     beat.steps.some((step) => step.intent_id === intent.intent_id)
@@ -271,6 +296,19 @@ export function ReplayRunProvider({ children }: { children: ReactNode }) {
                 return;
             }
             await switchCheckpoint(intent.checkpoint);
+            const visibleState = stateRef.current;
+            const scopeId = `${current.run_id}:${current.package_version}`;
+            void queryClient.invalidateQueries({
+                queryKey: [
+                    ...replayKeyPrefix(
+                        scopeId,
+                        visibleState.epoch,
+                        visibleState.checkpoint
+                    ),
+                    "turns",
+                    current.meeting_id,
+                ],
+            });
             if (
                 intent.kind === "create_meeting" ||
                 intent.kind === "archive_meeting" ||
@@ -283,7 +321,7 @@ export function ReplayRunProvider({ children }: { children: ReactNode }) {
                 });
             }
         },
-        [switchCheckpoint]
+        [switchCheckpoint, queryClient]
     );
 
     const onTurnSettled = useCallback((intentId: string) => {
@@ -321,6 +359,7 @@ export function ReplayRunProvider({ children }: { children: ReactNode }) {
             startIntent,
             onTurnSettled,
             onClosingTerminal,
+            isTurnVisible,
         });
     }, [
         session,
@@ -333,6 +372,7 @@ export function ReplayRunProvider({ children }: { children: ReactNode }) {
         startIntent,
         onTurnSettled,
         onClosingTerminal,
+        isTurnVisible,
     ]);
 
     if (loading) {
