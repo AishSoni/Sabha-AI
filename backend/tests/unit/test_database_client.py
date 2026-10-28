@@ -1,4 +1,4 @@
-"""The server client must connect with a role that owns post-003 write access."""
+"""The server client must use the service credential, never the anon key."""
 
 from __future__ import annotations
 
@@ -37,14 +37,15 @@ def test_server_client_prefers_the_service_key(monkeypatch: pytest.MonkeyPatch) 
     assert _Recorder.calls == [("http://127.0.0.1:54321", "service-key")]
 
 
-def test_server_client_falls_back_to_the_anon_key(
+def test_missing_service_key_fails_clearly_without_anon_fallback(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
     monkeypatch.setattr(database.settings, "supabase_service_key", "", raising=False)
 
-    database.get_supabase()
+    with pytest.raises(database.DatabaseConfigurationError, match="SUPABASE_SERVICE_KEY"):
+        database.get_supabase()
 
-    assert _Recorder.calls == [("http://127.0.0.1:54321", "anon-key")]
+    assert _Recorder.calls == []
 
 
 def test_server_client_is_created_once(monkeypatch: pytest.MonkeyPatch) -> None:

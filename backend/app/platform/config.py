@@ -17,6 +17,9 @@ class Settings(BaseSettings):
     supabase_service_key: str = ""
     # Direct/session PostgreSQL URL used by the operator scripts and restore.
     database_url: str = ""
+    # Server-only replay reader URL (dedicated LOGIN role, never the live
+    # service credential). Empty until a strict replay runtime is configured.
+    replay_database_url: str = ""
     
     # OpenRouter
     openrouter_api_key: str = ""

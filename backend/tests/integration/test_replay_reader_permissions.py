@@ -14,6 +14,7 @@ from urllib.parse import urlsplit, urlunsplit
 import psycopg
 import pytest
 
+import app.platform.replay_database as replay_database
 from scripts.replay_roles import (
     PROVISIONER_ROLE,
     READER_ROLE,
@@ -159,3 +160,80 @@ def test_provisioner_can_publish_but_not_read_live(replay_db):
             provisioner.execute("SELECT count(*) FROM public.meetings")
     finally:
         provisioner.close()
+
+
+def _publish_adapter_probe(db) -> None:
+    with db.connect() as conn:
+        conn.execute("SET ROLE sabha_replay_provisioner")
+        conn.execute(
+            "CREATE TABLE replay.adapter_probe "
+            "(id integer PRIMARY KEY, content text NOT NULL)"
+        )
+        conn.execute(
+            "INSERT INTO replay.adapter_probe (id, content) VALUES (1, 'adapter')"
+        )
+        conn.execute(
+            "GRANT SELECT ON replay.adapter_probe TO sabha_replay_reader"
+        )
+
+
+def test_adapter_opens_a_real_read_only_reader_identity(
+    replay_db, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    _publish_adapter_probe(replay_db)
+    monkeypatch.setattr(
+        replay_database.settings,
+        "replay_database_url",
+        _login_uri(replay_db, LOGIN_ROLE),
+        raising=False,
+    )
+
+    conn = replay_database.connect_replay_reader()
+    try:
+        assert conn.execute("SELECT current_user").fetchone()[0] == LOGIN_ROLE
+        assert conn.execute("SHOW transaction_read_only").fetchone()[0] == "on"
+        assert conn.execute(
+            "SELECT content FROM replay.adapter_probe"
+        ).fetchall() == [("adapter",)]
+        with pytest.raises(
+            (
+                psycopg.errors.ReadOnlySqlTransaction,
+                psycopg.errors.InsufficientPrivilege,
+            )
+        ):
+            conn.execute(
+                "INSERT INTO replay.adapter_probe (id, content) "
+                "VALUES (2, 'blocked')"
+            )
+    finally:
+        conn.close()
+
+
+def test_adapter_missing_reader_url_does_not_use_live_database(
+    replay_db, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    monkeypatch.setattr(
+        replay_database.settings, "replay_database_url", "", raising=False
+    )
+    monkeypatch.setattr(
+        replay_database.settings, "database_url", replay_db.uri, raising=False
+    )
+
+    with pytest.raises(
+        replay_database.ReplayReaderNotConfigured, match="REPLAY_DATABASE_URL"
+    ):
+        replay_database.connect_replay_reader()
+
+
+def test_adapter_rejects_a_superuser_reader_url(
+    replay_db, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    monkeypatch.setattr(
+        replay_database.settings,
+        "replay_database_url",
+        replay_db.uri,
+        raising=False,
+    )
+
+    with pytest.raises(replay_database.ReplayReaderPrivilegeError):
+        replay_database.connect_replay_reader()
