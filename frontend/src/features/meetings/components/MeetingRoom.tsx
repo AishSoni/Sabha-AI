@@ -58,6 +58,7 @@ import type { TurnProjection } from '../api/turn-projection';
 import type { ClosingStage } from '../api/closing-decoders';
 import { isPollingClosingStage } from '../api/closing-decoders';
 import { useClosingObservation } from '../api/use-closing-observation';
+import { useRecordedClosingText } from '../hooks/use-recorded-closing-text';
 import { isNearScrollBottom, scrollBehavior } from '../model/scroll';
 import { useMeetingTurnController } from '../hooks/use-meeting-turn-controller';
 import { useMeetingsRuntime } from '../runtime/context';
@@ -219,6 +220,12 @@ function MeetingConversation({ meeting, disagreements, consensus }: Conversation
         enabled: capabilities.closing,
         runtime,
     });
+    const recordedClosingText = useRecordedClosingText({
+        runtime,
+        meetingId: meeting.id,
+        closingId: closingObservation.closing?.closing_id ?? null,
+        enabled: capabilities.closing,
+    });
     const [tab, setTab] = useState('chat');
     const DocumentsPanel = slots.documentPanel;
     const SummaryPanel = slots.summaryPanel;
@@ -340,6 +347,11 @@ function MeetingConversation({ meeting, disagreements, consensus }: Conversation
                                 <ClosingPanel
                                     meetingId={meeting.id}
                                     meetingStatus={meeting.status}
+                                    textProjection={
+                                        runtime.closingStream
+                                            ? recordedClosingText
+                                            : undefined
+                                    }
                                 />
                             </div>
                         </div>

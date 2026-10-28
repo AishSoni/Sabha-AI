@@ -77,6 +77,7 @@ export function useTurnObservation({
     const [epoch, setEpoch] = useState(0);
     const [isObserving, setIsObserving] = useState(false);
     const handledTerminal = useRef<string | null>(null);
+    const settling = useRef(false);
     const terminalCallback = useRef(onTerminal);
     terminalCallback.current = onTerminal;
 
@@ -89,34 +90,65 @@ export function useTurnObservation({
     const settle = useCallback(
         (event: TurnEvent | null, terminalStatus: TurnStatus) => {
             if (!operationId || handledTerminal.current === scopeKey) return;
-            handledTerminal.current = scopeKey;
+            if (settling.current) return;
 
-            const detailKey =
-                runtime?.keys.turnDetail(meetingId, operationId) ??
-                turnKeys.detail(meetingId, operationId);
-            const listKey =
-                runtime?.keys.turnList(meetingId) ?? turnKeys.list(meetingId);
-            const meetingKey =
-                runtime?.keys.meetingDetail(meetingId) ??
-                meetingKeys.detail(meetingId);
-            queryClient.setQueryData<TurnOperation>(
-                detailKey,
-                (current) => (current ? { ...current, status: terminalStatus } : current)
-            );
-            queryClient.setQueryData<TurnOperation[]>(
-                listKey,
-                (current) =>
-                    current?.map((item) =>
-                        item.operation_id === operationId
-                            ? { ...item, status: terminalStatus }
-                            : item
-                    )
-            );
-            // Canonical messages, costs, and effects have committed by the
-            // time a terminal event is published. Refresh the meeting read.
-            void queryClient.invalidateQueries({ queryKey: meetingKey });
-            void queryClient.invalidateQueries({ queryKey: listKey });
-            terminalCallback.current?.(event, terminalStatus);
+            const finish = () => {
+                if (handledTerminal.current === scopeKey) return;
+                handledTerminal.current = scopeKey;
+
+                const detailKey =
+                    runtime?.keys.turnDetail(meetingId, operationId) ??
+                    turnKeys.detail(meetingId, operationId);
+                const listKey =
+                    runtime?.keys.turnList(meetingId) ?? turnKeys.list(meetingId);
+                const meetingKey =
+                    runtime?.keys.meetingDetail(meetingId) ??
+                    meetingKeys.detail(meetingId);
+                queryClient.setQueryData<TurnOperation>(
+                    detailKey,
+                    (current) =>
+                        current ? { ...current, status: terminalStatus } : current
+                );
+                queryClient.setQueryData<TurnOperation[]>(
+                    listKey,
+                    (current) =>
+                        current?.map((item) =>
+                            item.operation_id === operationId
+                                ? { ...item, status: terminalStatus }
+                                : item
+                        )
+                );
+                // Canonical messages, costs, and effects have committed by the
+                // time a terminal event is published. Refresh the meeting read.
+                void queryClient.invalidateQueries({ queryKey: meetingKey });
+                void queryClient.invalidateQueries({ queryKey: listKey });
+                terminalCallback.current?.(event, terminalStatus);
+            };
+
+            const hook = runtime?.settlement;
+            if (!hook) {
+                finish();
+                return;
+            }
+
+            settling.current = true;
+            void (async () => {
+                try {
+                    await hook.beforeTerminal({
+                        meetingId,
+                        operationId,
+                        event,
+                        status: terminalStatus,
+                    });
+                } catch {
+                    // Keep the provisional projection; a later settlement
+                    // attempt may still install the canonical checkpoint.
+                    settling.current = false;
+                    return;
+                }
+                settling.current = false;
+                finish();
+            })();
         },
         [meetingId, operationId, queryClient, runtime, scopeKey]
     );

@@ -25,6 +25,7 @@ const liveKeys = {
     consensus: (meetingId: string) => meetingKeys.consensus(meetingId),
     contextStats: (meetingId: string) => meetingKeys.contextStats(meetingId),
     closing: (meetingId: string) => closingKeys.detail(meetingId),
+    documents: (meetingId: string) => [...meetingKeys.detail(meetingId), 'documents'] as const,
     turnList: (meetingId: string) => turnKeys.list(meetingId),
     turnDetail: (meetingId: string, operationId: string) =>
         turnKeys.detail(meetingId, operationId),

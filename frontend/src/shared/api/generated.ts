@@ -811,6 +811,23 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/replay/meetings": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** List Meetings */
+        get: operations["list_meetings_api_replay_meetings_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/replay/meetings/{meeting_id}": {
         parameters: {
             query?: never;
@@ -862,6 +879,74 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/replay/meetings/{meeting_id}/context-stats": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Read Context Stats */
+        get: operations["read_context_stats_api_replay_meetings__meeting_id__context_stats_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/replay/meetings/{meeting_id}/documents": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Read Documents */
+        get: operations["read_documents_api_replay_meetings__meeting_id__documents_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/replay/meetings/{meeting_id}/closing": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Read Closing */
+        get: operations["read_closing_api_replay_meetings__meeting_id__closing_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/replay/meetings/{meeting_id}/turns": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** List Turns */
+        get: operations["list_turns_api_replay_meetings__meeting_id__turns_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/replay/meetings/{meeting_id}/turns/{operation_id}": {
         parameters: {
             query?: never;
@@ -888,6 +973,40 @@ export interface paths {
         };
         /** Observe Turn */
         get: operations["observe_turn_api_replay_meetings__meeting_id__turns__operation_id__events_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/replay/meetings/{meeting_id}/closing/events": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Observe Closing */
+        get: operations["observe_closing_api_replay_meetings__meeting_id__closing_events_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/replay/assets/{asset_id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Read Asset */
+        get: operations["read_asset_api_replay_assets__asset_id__get"];
         put?: never;
         post?: never;
         delete?: never;
@@ -1731,6 +1850,45 @@ export interface components {
                 [key: string]: unknown;
             };
             capabilities: components["schemas"]["ReplayCapabilitiesView"];
+            /**
+             * Package Id
+             * @default
+             */
+            package_id: string;
+            /**
+             * Content Sha256
+             * @default
+             */
+            content_sha256: string;
+            /**
+             * Checkpoint Id
+             * @default
+             */
+            checkpoint_id: string;
+            /**
+             * Initial Checkpoint
+             * @default
+             */
+            initial_checkpoint: string;
+            /** Checkpoints */
+            checkpoints?: string[];
+            /** Intents */
+            intents?: {
+                [key: string]: unknown;
+            }[];
+            /** Tapes */
+            tapes?: {
+                [key: string]: unknown;
+            }[];
+            /** Assets */
+            assets?: {
+                [key: string]: unknown;
+            }[];
+            /**
+             * Retired
+             * @default false
+             */
+            retired: boolean;
         };
         /**
          * RequestProviderSettings
@@ -3647,7 +3805,11 @@ export interface operations {
     };
     read_session_api_replay_session_get: {
         parameters: {
-            query?: never;
+            query?: {
+                checkpoint?: string | null;
+                package?: string | null;
+                version?: string | null;
+            };
             header?: never;
             path?: never;
             cookie?: never;
@@ -3663,11 +3825,57 @@ export interface operations {
                     "application/json": components["schemas"]["ReplaySessionView"];
                 };
             };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    list_meetings_api_replay_meetings_get: {
+        parameters: {
+            query?: {
+                checkpoint?: string | null;
+                package?: string | null;
+                version?: string | null;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Meeting"][];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
         };
     };
     read_meeting_api_replay_meetings__meeting_id__get: {
         parameters: {
-            query?: never;
+            query?: {
+                checkpoint?: string | null;
+                package?: string | null;
+                version?: string | null;
+            };
             header?: never;
             path: {
                 meeting_id: string;
@@ -3698,7 +3906,11 @@ export interface operations {
     };
     read_disagreements_api_replay_meetings__meeting_id__disagreements_get: {
         parameters: {
-            query?: never;
+            query?: {
+                checkpoint?: string | null;
+                package?: string | null;
+                version?: string | null;
+            };
             header?: never;
             path: {
                 meeting_id: string;
@@ -3729,7 +3941,11 @@ export interface operations {
     };
     read_consensus_api_replay_meetings__meeting_id__consensus_get: {
         parameters: {
-            query?: never;
+            query?: {
+                checkpoint?: string | null;
+                package?: string | null;
+                version?: string | null;
+            };
             header?: never;
             path: {
                 meeting_id: string;
@@ -3758,9 +3974,154 @@ export interface operations {
             };
         };
     };
+    read_context_stats_api_replay_meetings__meeting_id__context_stats_get: {
+        parameters: {
+            query?: {
+                checkpoint?: string | null;
+                package?: string | null;
+                version?: string | null;
+            };
+            header?: never;
+            path: {
+                meeting_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": unknown;
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    read_documents_api_replay_meetings__meeting_id__documents_get: {
+        parameters: {
+            query?: {
+                checkpoint?: string | null;
+                package?: string | null;
+                version?: string | null;
+            };
+            header?: never;
+            path: {
+                meeting_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["DocumentResponse"][];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    read_closing_api_replay_meetings__meeting_id__closing_get: {
+        parameters: {
+            query?: {
+                checkpoint?: string | null;
+                package?: string | null;
+                version?: string | null;
+            };
+            header?: never;
+            path: {
+                meeting_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ClosingView"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    list_turns_api_replay_meetings__meeting_id__turns_get: {
+        parameters: {
+            query?: {
+                limit?: number;
+                checkpoint?: string | null;
+                package?: string | null;
+                version?: string | null;
+            };
+            header?: never;
+            path: {
+                meeting_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": unknown;
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
     read_turn_api_replay_meetings__meeting_id__turns__operation_id__get: {
         parameters: {
-            query?: never;
+            query?: {
+                checkpoint?: string | null;
+                package?: string | null;
+                version?: string | null;
+            };
             header?: never;
             path: {
                 meeting_id: string;
@@ -3794,11 +4155,85 @@ export interface operations {
         parameters: {
             query?: {
                 after?: number;
+                checkpoint?: string | null;
+                package?: string | null;
+                version?: string | null;
             };
             header?: never;
             path: {
                 meeting_id: string;
                 operation_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": unknown;
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    observe_closing_api_replay_meetings__meeting_id__closing_events_get: {
+        parameters: {
+            query?: {
+                after?: number;
+                checkpoint?: string | null;
+                package?: string | null;
+                version?: string | null;
+            };
+            header?: never;
+            path: {
+                meeting_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": unknown;
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    read_asset_api_replay_assets__asset_id__get: {
+        parameters: {
+            query?: {
+                checkpoint?: string | null;
+                package?: string | null;
+                version?: string | null;
+            };
+            header?: never;
+            path: {
+                asset_id: string;
             };
             cookie?: never;
         };

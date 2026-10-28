@@ -1,27 +1,30 @@
 "use client";
 
 /**
- * Recorded replay runtime (spec-14).
+ * Recorded replay runtime (spec-14/17).
  *
- * Every read below targets the composed `/api/replay` graph. There is no live
- * fallback, no live settings import, and no credential handoff: unsupported
- * intents reject locally because the UI hides them and the server rejects them
- * before any adapter. A restart mints a fresh epoch, query client, abort
- * signal, and projection namespace without touching live state.
+ * Every read targets the composed `/api/replay` graph at one allowlisted
+ * checkpoint. There is no live fallback, no live settings import, and no
+ * credential handoff. The activity epoch changes on every checkpoint or
+ * restart; old JSON/SSE responses are discarded and their controllers aborted.
+ * A terminal settlement installs the canonical completed checkpoint before the
+ * shared invalidation runs.
  */
 import {
     useCallback,
     useEffect,
     useMemo,
+    useRef,
     useState,
     type ReactNode,
 } from "react";
-import { QueryClientProvider } from "@tanstack/react-query";
+import { QueryClientProvider, type QueryClient } from "@tanstack/react-query";
 import {
     decodeObject,
     optionalString,
     requireArray,
     requireBoolean,
+    requireNumber,
     requireString,
 } from "@/shared/api/decode";
 import { isApiError } from "@/shared/api/errors";
@@ -35,9 +38,14 @@ import {
 } from "@/shared/runtime/scope";
 import {
     decodeConsensus,
+    decodeContextStats,
     decodeDisagreement,
     decodeMeetingWithParticipants,
 } from "../api/decoders";
+import { decodeClosingView } from "../api/closing-decoders";
+import {
+    decodeClosingTextStream,
+} from "../api/closing-stream";
 import {
     decodeTurnOperation,
     type TurnOperation,
@@ -47,8 +55,14 @@ import { MeetingRoom } from "../components/MeetingRoom";
 import type {
     MeetingsCapabilities,
     MeetingsRuntime,
+    RecordedDocumentRecord,
+    ReplayAsset,
+    ReplayIntent,
+    ReplayTape,
 } from "./contract";
 import { MeetingsRuntimeProvider } from "./context";
+import { RecordedParticipantAction } from "./recorded-participant-action";
+import { RecordedDocumentsPanel } from "./recorded-documents-panel";
 
 interface ReplaySession {
     run_id: string;
@@ -57,6 +71,15 @@ interface ReplaySession {
     label: string;
     provenance: Record<string, unknown>;
     capabilities: MeetingsCapabilities;
+    package_id: string;
+    content_sha256: string;
+    checkpoint_id: string;
+    initial_checkpoint: string;
+    checkpoints: string[];
+    intents: ReplayIntent[];
+    tapes: ReplayTape[];
+    assets: ReplayAsset[];
+    retired: boolean;
 }
 
 function decodeCapabilities(value: unknown, path: string): MeetingsCapabilities {
@@ -77,6 +100,57 @@ function decodeCapabilities(value: unknown, path: string): MeetingsCapabilities 
         summary: requireBoolean(record.summary, `${path}.summary`),
         documents: requireBoolean(record.documents, `${path}.documents`),
         closing: requireBoolean(record.closing, `${path}.closing`),
+    };
+}
+
+function decodeIntent(value: unknown, path: string): ReplayIntent {
+    const record = decodeObject(value, path);
+    return {
+        intent_id: requireString(record.intent_id, `${path}.intent_id`),
+        kind: requireString(record.kind, `${path}.kind`),
+        checkpoint: requireString(record.checkpoint, `${path}.checkpoint`),
+        participant_id: optionalString(record.participant_id, `${path}.participant_id`) ?? null,
+        operation_id: optionalString(record.operation_id, `${path}.operation_id`) ?? null,
+        tape_id: optionalString(record.tape_id, `${path}.tape_id`) ?? null,
+        closing_tape_id:
+            optionalString(record.closing_tape_id, `${path}.closing_tape_id`) ?? null,
+        label: optionalString(record.label, `${path}.label`) ?? "",
+    };
+}
+
+function decodeTape(value: unknown, path: string): ReplayTape {
+    const record = decodeObject(value, path);
+    return {
+        tape_id: requireString(record.tape_id, `${path}.tape_id`),
+        operation_id: requireString(record.operation_id, `${path}.operation_id`),
+        participant_id: requireString(record.participant_id, `${path}.participant_id`),
+        initial_checkpoint: requireString(
+            record.initial_checkpoint,
+            `${path}.initial_checkpoint`
+        ),
+        completed_checkpoint: requireString(
+            record.completed_checkpoint,
+            `${path}.completed_checkpoint`
+        ),
+    };
+}
+
+function decodeAsset(value: unknown, path: string): ReplayAsset {
+    const record = decodeObject(value, path);
+    return {
+        asset_id: requireString(record.asset_id, `${path}.asset_id`),
+        storage_path: requireString(record.storage_path, `${path}.storage_path`),
+        media_type: requireString(record.media_type, `${path}.media_type`),
+        sha256: requireString(record.sha256, `${path}.sha256`),
+        size: requireNumber(record.size, `${path}.size`),
+        locator: requireString(record.locator, `${path}.locator`),
+        public_url: requireString(record.public_url, `${path}.public_url`),
+        source: requireString(record.source, `${path}.source`),
+        capture_date: optionalString(record.capture_date, `${path}.capture_date`) ?? null,
+        rights: requireString(record.rights, `${path}.rights`),
+        authored: requireBoolean(record.authored, `${path}.authored`),
+        public_demo: requireBoolean(record.public_demo, `${path}.public_demo`),
+        extraction: optionalString(record.extraction, `${path}.extraction`) ?? null,
     };
 }
 
@@ -101,18 +175,85 @@ export function decodeReplaySession(value: unknown): ReplaySession {
             record.capabilities,
             "GET /replay/session.capabilities"
         ),
+        package_id: requireString(record.package_id ?? "", "GET /replay/session.package_id"),
+        content_sha256: requireString(
+            record.content_sha256 ?? "",
+            "GET /replay/session.content_sha256"
+        ),
+        checkpoint_id: requireString(
+            record.checkpoint_id ?? "",
+            "GET /replay/session.checkpoint_id"
+        ),
+        initial_checkpoint: requireString(
+            record.initial_checkpoint ?? "",
+            "GET /replay/session.initial_checkpoint"
+        ),
+        checkpoints: requireArray(
+            record.checkpoints ?? [],
+            "GET /replay/session.checkpoints",
+            (item, path) => requireString(item, path)
+        ),
+        intents: requireArray(
+            record.intents ?? [],
+            "GET /replay/session.intents",
+            decodeIntent
+        ),
+        tapes: requireArray(
+            record.tapes ?? [],
+            "GET /replay/session.tapes",
+            decodeTape
+        ),
+        assets: requireArray(
+            record.assets ?? [],
+            "GET /replay/session.assets",
+            decodeAsset
+        ),
+        retired: requireBoolean(record.retired ?? false, "GET /replay/session.retired"),
     };
+}
+
+export function replayKeyPrefix(
+    scopeId: string,
+    epoch: number,
+    checkpoint: string
+): readonly unknown[] {
+    return ["replay", scopeId, epoch, checkpoint];
+}
+
+function checkpointQuery(path: string, checkpoint: string): string {
+    if (!checkpoint) return path;
+    const separator = path.includes("?") ? "&" : "?";
+    return `${path}${separator}checkpoint=${encodeURIComponent(checkpoint)}`;
 }
 
 function replayTurnEventsUrl(
     meetingId: string,
     operationId: string,
+    checkpoint: string,
     after = 0
 ): string {
     const base = resolveApiBaseUrl();
+    const query = checkpoint
+        ? `checkpoint=${encodeURIComponent(checkpoint)}&after=${after}`
+        : `after=${after}`;
     return (
         `${base}/replay/meetings/${encodeURIComponent(meetingId)}` +
-        `/turns/${encodeURIComponent(operationId)}/events?after=${after}`
+        `/turns/${encodeURIComponent(operationId)}/events?${query}`
+    );
+}
+
+function replayClosingEventsUrl(
+    meetingId: string,
+    checkpoint: string,
+    after = 0
+): string {
+    const base = resolveApiBaseUrl();
+    const query = checkpoint
+        ? `checkpoint=${encodeURIComponent(checkpoint)}&after=${after}`
+        : `after=${after}`;
+    return (
+        `${base}/replay/meetings/${encodeURIComponent(meetingId)}` +
+        `/closing/events?${query}`
     );
 }
 
@@ -122,88 +263,220 @@ function replayReadonly(command: string): Promise<never> {
     );
 }
 
+export interface ReplayBundle {
+    meeting: Awaited<ReturnType<typeof decodeMeetingWithParticipants>>;
+    disagreements: ReturnType<typeof decodeDisagreement>[];
+    consensus: ReturnType<typeof decodeConsensus>[];
+    contextStats: ReturnType<typeof decodeContextStats> | null;
+    closing: Awaited<ReturnType<typeof decodeClosingView>> | null;
+    turns: TurnOperation[];
+}
+
+async function fetchReplayBundle(
+    session: ReplaySession,
+    meetingId: string,
+    checkpoint: string,
+    signal: AbortSignal
+): Promise<ReplayBundle> {
+    const base = `/replay/meetings/${encodeURIComponent(meetingId)}`;
+    const read = (path: string) =>
+        requestJson<unknown>(checkpointQuery(path, checkpoint), { signal });
+
+    const [meeting, disagreements, consensus, contextStats, closing, turns] =
+        await Promise.all([
+            read(base).then((payload) =>
+                decodeMeetingWithParticipants(payload, "GET /replay/meetings/:id")
+            ),
+            read(`${base}/disagreements`).then((payload) =>
+                requireArray(payload, "GET /replay/.../disagreements", decodeDisagreement)
+            ),
+            read(`${base}/consensus`).then((payload) =>
+                requireArray(payload, "GET /replay/.../consensus", decodeConsensus)
+            ),
+            session.capabilities.contextStats
+                ? read(`${base}/context-stats`).then((payload) =>
+                      decodeContextStats(payload, "GET /replay/.../context-stats")
+                  )
+                : Promise.resolve(null),
+            session.capabilities.closing
+                ? read(`${base}/closing`).then((payload) =>
+                      decodeClosingView(payload, "GET /replay/.../closing")
+                  )
+                : Promise.resolve(null),
+            read(`${base}/turns`).then((payload) =>
+                requireArray(payload, "GET /replay/.../turns", decodeTurnOperation)
+            ),
+        ]);
+
+    return { meeting, disagreements, consensus, contextStats, closing, turns };
+}
+
+interface ReplayRuntimeOptions {
+    signal: AbortSignal;
+    restart: () => void;
+    checkpoint: string;
+    queryClient: QueryClient;
+    switchCheckpoint: (
+        checkpoint: string,
+        options?: { expectedMessageId?: string | null; expectedOperationId?: string | null }
+    ) => Promise<void>;
+    startIntent: (intentId: string) => Promise<void>;
+}
+
 function createReplayRuntime(
     session: ReplaySession,
     scope: RuntimeScope,
-    signal: AbortSignal,
-    restart: () => void
+    options: ReplayRuntimeOptions
 ): MeetingsRuntime {
-    const prefix = ["replay", scope.identity.id, scope.identity.epoch] as const;
-    const meetingPath = `/replay/meetings/${encodeURIComponent(session.meeting_id)}`;
+    const { checkpoint, queryClient } = options;
+    const prefix = replayKeyPrefix(scope.identity.id, scope.identity.epoch, checkpoint);
+    const meetingPath = checkpointQuery(
+        `/replay/meetings/${encodeURIComponent(session.meeting_id)}`,
+        checkpoint
+    );
 
     return {
         scope,
         capabilities: session.capabilities,
         reads: {
-            listMeetings: async () => [],
+            listMeetings: async (callerSignal) => {
+                const payload = await requestJson<unknown>(
+                    checkpointQuery("/replay/meetings", checkpoint),
+                    { signal: combineSignals(options.signal, callerSignal) }
+                );
+                return requireArray(payload, "GET /replay/meetings", (value, path) => {
+                    const record = decodeObject(value, path);
+                    return decodeMeetingWithParticipants(
+                        { ...record, participants: [], messages: [] },
+                        path
+                    );
+                });
+            },
             getMeeting: async (meetingId, callerSignal) => {
                 const payload = await requestJson<unknown>(
-                    `/replay/meetings/${encodeURIComponent(meetingId)}`,
-                    { signal: combineSignals(signal, callerSignal) }
+                    meetingId === session.meeting_id
+                        ? meetingPath
+                        : checkpointQuery(
+                              `/replay/meetings/${encodeURIComponent(meetingId)}`,
+                              checkpoint
+                          ),
+                    { signal: combineSignals(options.signal, callerSignal) }
                 );
-                return decodeMeetingWithParticipants(
-                    payload,
-                    "GET /replay/meetings/:id"
-                );
+                return decodeMeetingWithParticipants(payload, "GET /replay/meetings/:id");
             },
             disagreements: async (meetingId, callerSignal) => {
                 const payload = await requestJson<unknown>(
-                    `${meetingPath}/disagreements`,
-                    { signal: combineSignals(signal, callerSignal) }
+                    checkpointQuery(
+                        `/replay/meetings/${encodeURIComponent(meetingId)}/disagreements`,
+                        checkpoint
+                    ),
+                    { signal: combineSignals(options.signal, callerSignal) }
                 );
                 return requireArray(payload, "GET /replay/.../disagreements", decodeDisagreement);
             },
             consensus: async (meetingId, callerSignal) => {
                 const payload = await requestJson<unknown>(
-                    `${meetingPath}/consensus`,
-                    { signal: combineSignals(signal, callerSignal) }
+                    checkpointQuery(
+                        `/replay/meetings/${encodeURIComponent(meetingId)}/consensus`,
+                        checkpoint
+                    ),
+                    { signal: combineSignals(options.signal, callerSignal) }
                 );
                 return requireArray(payload, "GET /replay/.../consensus", decodeConsensus);
             },
-            contextStats: async () => {
-                throw new ApiError(
-                    "http",
-                    403,
-                    "Context statistics are not part of this recording."
+            contextStats: async (meetingId, callerSignal) => {
+                if (!session.capabilities.contextStats) {
+                    throw new ApiError(
+                        "http",
+                        404,
+                        "Context statistics are not part of this recording."
+                    );
+                }
+                const payload = await requestJson<unknown>(
+                    checkpointQuery(
+                        `/replay/meetings/${encodeURIComponent(meetingId)}/context-stats`,
+                        checkpoint
+                    ),
+                    { signal: combineSignals(options.signal, callerSignal) }
                 );
+                return decodeContextStats(payload, "GET /replay/.../context-stats");
             },
-            closing: async () => {
-                throw new ApiError(
-                    "http",
-                    403,
-                    "Closing is not part of this recording."
+            closing: async (meetingId, callerSignal) => {
+                if (!session.capabilities.closing) {
+                    throw new ApiError("http", 404, "Closing is not part of this recording.");
+                }
+                const payload = await requestJson<unknown>(
+                    checkpointQuery(
+                        `/replay/meetings/${encodeURIComponent(meetingId)}/closing`,
+                        checkpoint
+                    ),
+                    { signal: combineSignals(options.signal, callerSignal) }
+                );
+                return decodeClosingView(payload, "GET /replay/.../closing");
+            },
+            documents: async (meetingId, callerSignal) => {
+                if (!session.capabilities.documents) return [];
+                const payload = await requestJson<unknown>(
+                    checkpointQuery(
+                        `/replay/meetings/${encodeURIComponent(meetingId)}/documents`,
+                        checkpoint
+                    ),
+                    { signal: combineSignals(options.signal, callerSignal) }
+                );
+                return requireArray(
+                    payload,
+                    "GET /replay/.../documents",
+                    (value, path) =>
+                        decodeObject(value, path) as unknown as RecordedDocumentRecord
                 );
             },
         },
         turns: {
-            // Recorded operation selection is package metadata (Spec 17).
-            // This gate exposes observation by explicit operation id only.
-            list: async () => [],
+            list: async (meetingId, callerSignal) => {
+                const payload = await requestJson<unknown>(
+                    checkpointQuery(
+                        `/replay/meetings/${encodeURIComponent(meetingId)}/turns`,
+                        checkpoint
+                    ),
+                    { signal: combineSignals(options.signal, callerSignal) }
+                );
+                return requireArray(
+                    payload,
+                    "GET /replay/.../turns",
+                    decodeTurnOperation
+                );
+            },
             get: async (meetingId, operationId, callerSignal) => {
                 const payload = await requestJson<unknown>(
-                    `/replay/meetings/${encodeURIComponent(meetingId)}/turns/${encodeURIComponent(operationId)}`,
-                    { signal: combineSignals(signal, callerSignal) }
+                    checkpointQuery(
+                        `/replay/meetings/${encodeURIComponent(meetingId)}` +
+                            `/turns/${encodeURIComponent(operationId)}`,
+                        checkpoint
+                    ),
+                    { signal: combineSignals(options.signal, callerSignal) }
                 );
                 return decodeTurnOperation(payload, "GET /replay/.../turns/:id");
             },
             observe: async function* (
                 meetingId: string,
                 operationId: string,
-                options
+                observeOptions
             ): AsyncGenerator<TurnEvent, void, unknown> {
-                let response: Response;
-                try {
-                    response = await fetch(
-                        replayTurnEventsUrl(meetingId, operationId, options.after ?? 0),
-                        {
-                            headers: { Accept: "text/event-stream" },
-                            signal: combineSignals(signal, options.signal),
-                        }
-                    );
-                } catch (cause) {
-                    if (signal.aborted) throw cause;
-                    throw cause;
+                if (meetingId !== session.meeting_id) {
+                    throw new ApiError("http", 404, "Recorded meeting not found.");
                 }
+                const response = await fetch(
+                    replayTurnEventsUrl(
+                        meetingId,
+                        operationId,
+                        checkpoint,
+                        observeOptions.after ?? 0
+                    ),
+                    {
+                        headers: { Accept: "text/event-stream" },
+                        signal: combineSignals(options.signal, observeOptions.signal),
+                    }
+                );
                 yield* decodeTurnEventStream(response);
             },
             submit: async () => replayReadonly("submit turn"),
@@ -246,6 +519,13 @@ function createReplayRuntime(
                 meetingId,
                 "closing",
             ],
+            documents: (meetingId) => [
+                ...prefix,
+                "meetings",
+                "detail",
+                meetingId,
+                "documents",
+            ],
             turnList: (meetingId) => [...prefix, "turns", meetingId],
             turnDetail: (meetingId, operationId) => [
                 ...prefix,
@@ -258,34 +538,101 @@ function createReplayRuntime(
             label: session.label,
             homeHref: "/demo",
             readOnlyNotice:
-                "Recorded session. Observation is read-only; no live action is available.",
+                "Recorded session. Playback is read-only; no live action is available.",
             provenance: session.provenance,
         },
-        slots: {},
-        signal,
-        restart,
+        slots: {
+            participantAction: RecordedParticipantAction,
+            documentPanel: RecordedDocumentsPanel,
+        },
+        signal: options.signal,
+        restart: options.restart,
+        replay: {
+            packageId: session.package_id,
+            packageVersion: session.package_version,
+            initialCheckpoint: session.initial_checkpoint,
+            checkpoint,
+            checkpoints: session.checkpoints,
+            intents: session.intents,
+            tapes: session.tapes,
+            assets: session.assets,
+            retired: session.retired,
+            startIntent: options.startIntent,
+            switchCheckpoint: async (next) => {
+                await options.switchCheckpoint(next);
+            },
+        },
+        settlement: {
+            beforeTerminal: async ({ operationId, event }) => {
+                const tape = session.tapes.find(
+                    (item) => item.operation_id === operationId
+                );
+                if (!tape) return;
+                await options.switchCheckpoint(tape.completed_checkpoint, {
+                    expectedMessageId: event?.messageId ?? null,
+                    expectedOperationId: operationId,
+                });
+            },
+        },
+        closingStream: {
+            observe: async function* (
+                meetingId: string,
+                closingId: string,
+                observeOptions
+            ) {
+                const response = await fetch(
+                    replayClosingEventsUrl(
+                        meetingId,
+                        checkpoint,
+                        observeOptions.after ?? 0
+                    ),
+                    {
+                        headers: { Accept: "text/event-stream" },
+                        signal: combineSignals(options.signal, observeOptions.signal),
+                    }
+                );
+                yield* decodeClosingTextStream(response);
+            },
+        },
     };
 }
 
 export function ReplayMeetingRoom({ meetingId }: { meetingId: string }) {
     const [epoch, setEpoch] = useState(1);
+    const [runKey, setRunKey] = useState(1);
+    const [checkpoint, setCheckpoint] = useState<string | null>(null);
     const [session, setSession] = useState<ReplaySession | null>(null);
     const [error, setError] = useState<Error | null>(null);
     const [loading, setLoading] = useState(true);
+    const transitioning = useRef(false);
 
-    const queryClient = useMemo(() => makeQueryClient(), [epoch]);
-    const controller = useMemo(() => new AbortController(), [epoch]);
+    const queryClient = useMemo(() => makeQueryClient(), [runKey]);
+    const sessionController = useMemo(() => new AbortController(), [runKey]);
+    const controller = useMemo(
+        () => new AbortController(),
+        [epoch, runKey]
+    );
+    const effectiveCheckpoint =
+        checkpoint ?? session?.initial_checkpoint ?? "";
+    const sessionRef = useRef(session);
+    sessionRef.current = session;
+    const stateRef = useRef({ epoch, checkpoint: effectiveCheckpoint });
+    stateRef.current = { epoch, checkpoint: effectiveCheckpoint };
 
     const restart = useCallback(() => {
         setSession(null);
+        setCheckpoint(null);
         setError(null);
         setLoading(true);
         setEpoch((value) => value + 1);
+        setRunKey((value) => value + 1);
     }, []);
 
     useEffect(() => {
         let active = true;
-        requestJson<unknown>("/replay/session", { signal: controller.signal })
+        requestJson<unknown>("/replay/session", {
+            signal: sessionController.signal,
+        })
             .then((payload) => {
                 if (!active) return;
                 const decoded = decodeReplaySession(payload);
@@ -298,7 +645,7 @@ export function ReplayMeetingRoom({ meetingId }: { meetingId: string }) {
                 setLoading(false);
             })
             .catch((cause) => {
-                if (!active || controller.signal.aborted) return;
+                if (!active || sessionController.signal.aborted) return;
                 setError(
                     cause instanceof Error
                         ? cause
@@ -309,9 +656,113 @@ export function ReplayMeetingRoom({ meetingId }: { meetingId: string }) {
         return () => {
             active = false;
         };
-    }, [controller.signal, epoch, meetingId]);
+    }, [meetingId, runKey, sessionController.signal]);
 
     useEffect(() => () => controller.abort(), [controller]);
+
+    const switchCheckpoint = useCallback(
+        async (
+            next: string,
+            options?: {
+                expectedMessageId?: string | null;
+                expectedOperationId?: string | null;
+            }
+        ) => {
+            const current = sessionRef.current;
+            if (!current) throw new Error("Replay session is not loaded.");
+            if (next === stateRef.current.checkpoint) return;
+            if (!current.checkpoints.includes(next)) {
+                throw new Error("That checkpoint is not part of this recording.");
+            }
+            if (transitioning.current) {
+                throw new Error("A checkpoint transition is already in progress.");
+            }
+            transitioning.current = true;
+            const nextEpoch = stateRef.current.epoch + 1;
+            const scopeId = `${current.run_id}:${current.package_version}`;
+            const prefetch = new AbortController();
+            try {
+                const bundle = await fetchReplayBundle(
+                    current,
+                    meetingId,
+                    next,
+                    prefetch.signal
+                );
+                const operation = options?.expectedOperationId
+                    ? bundle.turns.find(
+                          (item) => item.operation_id === options.expectedOperationId
+                      )
+                    : null;
+                if (options?.expectedOperationId && !operation) {
+                    throw new Error(
+                        "The completed checkpoint does not expose the recorded turn."
+                    );
+                }
+                const expectedMessage =
+                    options?.expectedMessageId ?? operation?.final_message_id ?? null;
+                if (
+                    expectedMessage &&
+                    !(bundle.meeting.messages ?? []).some(
+                        (message) => message.id === expectedMessage
+                    )
+                ) {
+                    throw new Error(
+                        "The completed checkpoint does not contain the terminal message."
+                    );
+                }
+
+                const prefix = replayKeyPrefix(scopeId, nextEpoch, next);
+                queryClient.setQueryData(
+                    [...prefix, "meetings", "detail", meetingId],
+                    bundle.meeting
+                );
+                queryClient.setQueryData(
+                    [...prefix, "meetings", "detail", meetingId, "disagreements"],
+                    bundle.disagreements
+                );
+                queryClient.setQueryData(
+                    [...prefix, "meetings", "detail", meetingId, "consensus"],
+                    bundle.consensus
+                );
+                queryClient.setQueryData(
+                    [...prefix, "turns", meetingId],
+                    bundle.turns
+                );
+                if (bundle.contextStats) {
+                    queryClient.setQueryData(
+                        [...prefix, "meetings", "detail", meetingId, "context-stats"],
+                        bundle.contextStats
+                    );
+                }
+                if (bundle.closing) {
+                    queryClient.setQueryData(
+                        [...prefix, "meetings", "detail", meetingId, "closing"],
+                        bundle.closing
+                    );
+                }
+
+                controller.abort();
+                setCheckpoint(next);
+                setEpoch(nextEpoch);
+            } finally {
+                transitioning.current = false;
+            }
+        },
+        [controller, meetingId, queryClient]
+    );
+
+    const startIntent = useCallback(
+        async (intentId: string) => {
+            const current = sessionRef.current;
+            if (!current) throw new Error("Replay session is not loaded.");
+            const intent = current.intents.find(
+                (item) => item.intent_id === intentId
+            );
+            if (!intent) throw new Error("That recorded intent is not available.");
+            await switchCheckpoint(intent.checkpoint);
+        },
+        [switchCheckpoint]
+    );
 
     if (loading) {
         return (
@@ -353,7 +804,14 @@ export function ReplayMeetingRoom({ meetingId }: { meetingId: string }) {
         label: session.label,
         provenance: session.provenance,
     };
-    const runtime = createReplayRuntime(session, scope, controller.signal, restart);
+    const runtime = createReplayRuntime(session, scope, {
+        signal: controller.signal,
+        restart,
+        checkpoint: effectiveCheckpoint,
+        queryClient,
+        switchCheckpoint,
+        startIntent,
+    });
 
     return (
         <QueryClientProvider client={queryClient}>
