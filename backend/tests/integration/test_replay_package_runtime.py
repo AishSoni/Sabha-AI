@@ -126,6 +126,11 @@ def test_checkpoint_reads_are_coherent_and_never_early(replay_db, monkeypatch) -
             params={"checkpoint": "checkpoint-completed"},
         ).json()
         assert documents[0]["file_name"] == "synthetic-issuer-brief.md"
+        config = client.get(
+            f"/api/replay/meetings/{MEETING_ID}/safe-config"
+        ).json()
+        assert config["participants"][0]["provider"] == "recorded"
+        assert "api_key" not in config
 
         active_turn = client.get(
             f"/api/replay/meetings/{MEETING_ID}/turns/{OPERATION_ID}",

@@ -137,6 +137,12 @@ class ReplayReads:
             if isinstance(item, dict) and str(item.get("meeting_id")) == meeting_id
         ]
 
+    async def safe_config(self, meeting_id: str) -> dict[str, Any]:
+        value = await self._read("safe_config")
+        if not isinstance(value, dict):
+            raise ReplayPackageUnavailable("the recorded safe config is corrupt")
+        return value
+
 
 class ReplayObservation:
     def __init__(

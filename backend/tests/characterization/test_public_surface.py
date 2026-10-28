@@ -79,6 +79,7 @@ def test_route_table_contains_the_pinned_public_paths():
         "/api/replay/meetings/{meeting_id}/consensus",
         "/api/replay/meetings/{meeting_id}/context-stats",
         "/api/replay/meetings/{meeting_id}/documents",
+        "/api/replay/meetings/{meeting_id}/safe-config",
         "/api/replay/meetings/{meeting_id}/closing",
         "/api/replay/meetings/{meeting_id}/closing/events",
         "/api/replay/meetings/{meeting_id}/turns",

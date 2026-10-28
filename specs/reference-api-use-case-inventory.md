@@ -232,6 +232,7 @@ values return `400 replay_selector_invalid`. Every non-GET path returns
 | `GET /api/replay/meetings/{meeting_id}/consensus` | observation | `Consensus[]` | `checkpoint` | `404`; `503` | Recorded scoreboard |
 | `GET /api/replay/meetings/{meeting_id}/context-stats` | observation | context stats object | `checkpoint` | `404`; `503` | Recorded token statistics |
 | `GET /api/replay/meetings/{meeting_id}/documents` | observation | `DocumentResponse[]` | `checkpoint` | `404`; `503` | Recorded document status; assets are passive URLs |
+| `GET /api/replay/meetings/{meeting_id}/safe-config` | observation | safe config object | `checkpoint` | `404`; `503` | Recorded participant/stack/provider labels only; no secrets |
 | `GET /api/replay/meetings/{meeting_id}/closing` | observation | `ClosingView` | `checkpoint` | `404`; `503` | Recorded closing snapshot |
 | `GET /api/replay/meetings/{meeting_id}/closing/events` | observation | typed closing SSE | `checkpoint`, `after` cursor | `404` before stream; `503` | Ballot/summary text only; never a participant turn |
 | `GET /api/replay/meetings/{meeting_id}/turns` | observation | `TurnOperationResponse[]` | `checkpoint`, `limit` | `404`; `503` | Recorded operation list |

@@ -220,6 +220,15 @@ async def read_documents(
     return await _recorded_method(replay.reads, "documents")(meeting_id)
 
 
+@router.get("/meetings/{meeting_id}/safe-config")
+async def read_safe_config(
+    meeting_id: str,
+    replay: ReplayContainer = Depends(get_replay),
+):
+    _require_recorded_meeting(replay, meeting_id)
+    return await _recorded_method(replay.reads, "safe_config")(meeting_id)
+
+
 @router.get(
     "/meetings/{meeting_id}/closing",
     response_model=ClosingView,
