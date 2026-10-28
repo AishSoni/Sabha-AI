@@ -2,6 +2,18 @@ import { test, expect } from "@playwright/test";
 
 test.describe("guided bond journey", () => {
     test("walks the prepared HDFC replay through archive", async ({ page }) => {
+        const liveMutations: string[] = [];
+        page.on("request", (request) => {
+            const url = request.url();
+            if (
+                url.includes("/api/meetings") &&
+                !url.includes("/api/replay") &&
+                request.method() !== "GET"
+            ) {
+                liveMutations.push(`${request.method()} ${url}`);
+            }
+        });
+
         await page.goto("/");
         await page.evaluate(() => window.localStorage.clear());
         await page.goto("/demo");
@@ -30,6 +42,12 @@ test.describe("guided bond journey", () => {
 
         await expect(
             page.getByText(/CRISIL's annexure row for ISIN INE001A07RW5/).first()
+        ).toBeVisible({ timeout: 30_000 });
+        await expect(
+            page.getByText(/I disagree with treating AAA\/Stable as sufficient comfort/).first()
+        ).toBeVisible({ timeout: 30_000 });
+        await expect(
+            page.getByRole("tab", { name: /Disagreements 1/ })
         ).toBeVisible({ timeout: 30_000 });
         await page.getByRole("button", { name: /5 Sources/ }).first().click();
         await expect(
@@ -69,5 +87,38 @@ test.describe("guided bond journey", () => {
         await expect(page.getByText(/remains ended/).first()).toBeVisible();
         await page.getByRole("button", { name: "Finish" }).click();
         await expect(page.getByText("Journey complete")).toBeVisible();
+        expect(liveMutations).toEqual([]);
+    });
+
+    test("keeps the guide keyboard-accessible and resets on a deep link", async ({ page }) => {
+        await page.setViewportSize({ width: 390, height: 844 });
+        await page.emulateMedia({ reducedMotion: "reduce" });
+        await page.goto("/demo");
+
+        await expect(page.getByText(/Step 1 of 8/)).toBeVisible();
+        expect(
+            await page.evaluate(() =>
+                window.matchMedia("(prefers-reduced-motion: reduce)").matches
+            )
+        ).toBe(true);
+
+        const continueButton = page.getByRole("button", { name: "Continue" });
+        await continueButton.focus();
+        await page.keyboard.press("Enter");
+        await expect(page).toHaveURL(/\/demo\/new$/);
+        await expect(page.locator('input[type="file"]')).toHaveCount(0);
+
+        await page.getByRole("button", { name: "Back" }).click();
+        await expect(page).toHaveURL(/\/demo$/);
+        await expect(page.getByText(/Step 1 of 8/)).toBeVisible();
+
+        await page.getByRole("button", { name: "Restart" }).click();
+        await expect(page.getByText(/Step 1 of 8/)).toBeVisible();
+
+        await page.goto("/demo/meetings/a0000000-0000-4000-8000-000000000001");
+        await expect(page).toHaveURL(/\/demo$/);
+        await expect(
+            page.getByRole("heading", { name: /Prepared board/ })
+        ).toBeVisible();
     });
 });
