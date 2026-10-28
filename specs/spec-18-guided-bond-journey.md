@@ -69,11 +69,9 @@ Evidence run:
 
 The journey now has a route-level run provider, a client guide with eight recorded beats, real room/list/form surfaces, recorded intake, source locators, shared/private stack labels, replay closing, archive overlay, first-visit live/replay choice, and a browser acceptance slice covering source disclosure, private scope, keyboard use, reduced motion, a small viewport, back/restart, deep-link reset, and the absence of live meeting mutations.
 
-Known limitations at this gate:
+Known follow-up at this gate:
 
-- A nonterminal recorded turn is observed when its checkpoint becomes visible, so the Credit Analyst, Downside Reviewer, and consensus turns can begin without a separate participant-button click. The guide still gates progression on the recorded settlement; the participant buttons remain part of the real UI but are not required for those turns.
-- The replay closing action installs the canonical completed closing checkpoint so the recorded ballots and final brief are shown from the completed snapshot. It does not replay the Spec 17 closing tape's timed presentation in this journey; the transport itself remains covered by the Spec 17 tests.
-
-These limitations do not affect the live graph or the recorded data, but they are not a full claim of the streamed-closing/premise-click acceptance described above. They remain follow-up work before this gate can be called fully closed.
+- Spec 19 remains responsible for the deployed reader grants, Storage bucket visibility, proxy/SSE behavior, two-visitor isolation, and mixed live/replay state on the hosted environment. The local acceptance slice does not claim those checks.
+- The closing panel switches to the canonical completed closing checkpoint before the recorded closing tape plays; the guide waits for the tape's summary terminal before it enables Continue. This keeps the canonical votes visible while the recorded reasons and final brief stream, but the deployed proxy's pacing still needs Spec 19 verification.
 
 Next: [Replay release acceptance](spec-19-replay-release-acceptance.md).
