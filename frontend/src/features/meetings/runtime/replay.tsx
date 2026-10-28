@@ -682,7 +682,6 @@ export function createReplayRuntime(
             documentPanel: RecordedDocumentsPanel,
         },
         signal: options.signal,
-        restart: options.restart,
         replay: {
             packageId: session.package_id,
             packageVersion: session.package_version,
