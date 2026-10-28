@@ -292,7 +292,6 @@ export function ReplayRunProvider({ children }: { children: ReactNode }) {
                     next.add(intent.intent_id);
                     return next;
                 });
-                setClosingSettled(true);
                 return;
             }
             await switchCheckpoint(intent.checkpoint);
