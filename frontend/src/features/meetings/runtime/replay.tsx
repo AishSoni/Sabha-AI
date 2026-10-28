@@ -167,6 +167,13 @@ function createReplayRuntime(
                     "Context statistics are not part of this recording."
                 );
             },
+            closing: async () => {
+                throw new ApiError(
+                    "http",
+                    403,
+                    "Closing is not part of this recording."
+                );
+            },
         },
         turns: {
             // Recorded operation selection is package metadata (Spec 17).
@@ -204,6 +211,9 @@ function createReplayRuntime(
         },
         commands: {
             sendMessage: async () => replayReadonly("send message"),
+            requestClosing: async () => replayReadonly("request closing"),
+            retryClosing: async () => replayReadonly("retry closing"),
+            abortClosing: async () => replayReadonly("abort closing"),
         },
         keys: {
             meetingList: () => [...prefix, "meetings", "list"],
@@ -228,6 +238,13 @@ function createReplayRuntime(
                 "detail",
                 meetingId,
                 "context-stats",
+            ],
+            closing: (meetingId) => [
+                ...prefix,
+                "meetings",
+                "detail",
+                meetingId,
+                "closing",
             ],
             turnList: (meetingId) => [...prefix, "turns", meetingId],
             turnDetail: (meetingId, operationId) => [

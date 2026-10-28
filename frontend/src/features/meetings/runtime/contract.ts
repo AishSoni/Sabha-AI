@@ -19,6 +19,8 @@ import type {
     MeetingWithParticipants,
     Message,
 } from "../api/decoders";
+import type { RequestClosingInput } from "../api/closing-client";
+import type { ClosingReceipt, ClosingView } from "../api/closing-decoders";
 import type { TurnGenerationSettings } from "../api/turn-client";
 import type { TurnCancelResult, TurnOperation } from "../api/turn-decoders";
 import type { TurnEvent } from "../api/turn-events";
@@ -44,6 +46,7 @@ export interface MeetingsReadsApi {
     disagreements(meetingId: string, signal?: AbortSignal): Promise<Disagreement[]>;
     consensus(meetingId: string, signal?: AbortSignal): Promise<Consensus[]>;
     contextStats(meetingId: string, signal?: AbortSignal): Promise<ContextStats>;
+    closing(meetingId: string, signal?: AbortSignal): Promise<ClosingView>;
 }
 
 export interface MeetingsTurnsApi {
@@ -80,6 +83,12 @@ export interface MeetingsCommandsApi {
         content: string,
         signal?: AbortSignal
     ): Promise<Message>;
+    requestClosing(
+        meetingId: string,
+        input: RequestClosingInput
+    ): Promise<ClosingReceipt>;
+    retryClosing(meetingId: string, signal?: AbortSignal): Promise<ClosingView>;
+    abortClosing(meetingId: string, signal?: AbortSignal): Promise<ClosingView>;
 }
 
 export interface MeetingsRuntimeKeys {
@@ -88,6 +97,7 @@ export interface MeetingsRuntimeKeys {
     disagreements(meetingId: string): QueryKey;
     consensus(meetingId: string): QueryKey;
     contextStats(meetingId: string): QueryKey;
+    closing(meetingId: string): QueryKey;
     turnList(meetingId: string): QueryKey;
     turnDetail(meetingId: string, operationId: string): QueryKey;
 }

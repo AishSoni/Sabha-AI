@@ -2,6 +2,8 @@
 
 import type { ReactNode } from "react";
 import { meetingClient } from "../api/client";
+import { closingClient } from "../api/closing-client";
+import { closingKeys } from "../api/closing-keys";
 import { meetingKeys } from "../api/keys";
 import { turnClient } from "../api/turn-client";
 import { turnKeys } from "../api/turn-keys";
@@ -22,6 +24,7 @@ const liveKeys = {
     disagreements: (meetingId: string) => meetingKeys.disagreements(meetingId),
     consensus: (meetingId: string) => meetingKeys.consensus(meetingId),
     contextStats: (meetingId: string) => meetingKeys.contextStats(meetingId),
+    closing: (meetingId: string) => closingKeys.detail(meetingId),
     turnList: (meetingId: string) => turnKeys.list(meetingId),
     turnDetail: (meetingId: string, operationId: string) =>
         turnKeys.detail(meetingId, operationId),
@@ -40,6 +43,8 @@ export function createLiveMeetingsRuntime(): MeetingsRuntime {
                 meetingClient.consensus(meetingId, { signal }),
             contextStats: (meetingId, signal) =>
                 meetingClient.contextStats(meetingId, { signal }),
+            closing: (meetingId, signal) =>
+                closingClient.get(meetingId, { signal }),
         },
         turns: {
             list: (meetingId, signal) => turnClient.list(meetingId, 100, { signal }),
@@ -54,6 +59,12 @@ export function createLiveMeetingsRuntime(): MeetingsRuntime {
         commands: {
             sendMessage: (meetingId, content, signal) =>
                 meetingClient.sendMessage(meetingId, content, { signal }),
+            requestClosing: (meetingId, input) =>
+                closingClient.request(meetingId, input),
+            retryClosing: (meetingId, signal) =>
+                closingClient.retry(meetingId, { signal }),
+            abortClosing: (meetingId, signal) =>
+                closingClient.abort(meetingId, { signal }),
         },
         keys: liveKeys,
         presentation: {
