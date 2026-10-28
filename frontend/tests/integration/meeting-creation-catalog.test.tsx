@@ -11,7 +11,7 @@ import { useState, type ReactNode } from 'react';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { fireEvent, render, screen, waitFor } from '@testing-library/react';
-import { createScriptedFetch } from '../../../../tests/fixtures/transport';
+import { createScriptedFetch } from '../fixtures/transport';
 import { resolveApiBaseUrl } from '@/shared/api/transport';
 
 const push = vi.fn();
@@ -21,7 +21,7 @@ vi.mock('next/navigation', () => ({
     useRouter: () => ({ push, back }),
 }));
 
-import NewMeetingPage from './page';
+import NewMeetingPage from '@/app/meetings/new/page';
 
 interface PersonaFixture {
     id: string;
@@ -99,7 +99,7 @@ function refreshButton(): HTMLButtonElement {
 
 function createButton(): HTMLButtonElement {
     const buttons = screen.getAllByRole('button', { name: /create meeting room/i });
-    return buttons[buttons.length - 1]!;
+    return buttons[buttons.length - 1] as HTMLButtonElement;
 }
 
 function selectionSummary(): HTMLElement {
