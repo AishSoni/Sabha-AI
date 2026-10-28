@@ -58,6 +58,7 @@ import type { TurnProjection } from '../api/turn-projection';
 import type { ClosingStage } from '../api/closing-decoders';
 import { isPollingClosingStage } from '../api/closing-decoders';
 import { useClosingObservation } from '../api/use-closing-observation';
+import { isNearScrollBottom, scrollBehavior } from '../model/scroll';
 import { useMeetingTurnController } from '../hooks/use-meeting-turn-controller';
 import { useMeetingsRuntime } from '../runtime/context';
 import {
@@ -487,14 +488,37 @@ function MessageList({
     onResume,
 }: MessageListProps) {
     const scrollRef = useRef<HTMLDivElement>(null);
+    const contentRef = useRef<HTMLDivElement>(null);
+    const stickToBottomRef = useRef(true);
 
     useEffect(() => {
-        scrollRef.current?.scrollIntoView({ behavior: 'smooth' });
+        const viewport = contentRef.current?.closest<HTMLElement>(
+            '[data-slot="scroll-area-viewport"]'
+        );
+        if (!viewport) return;
+
+        const updateStickiness = () => {
+            stickToBottomRef.current = isNearScrollBottom(viewport);
+        };
+        updateStickiness();
+        viewport.addEventListener('scroll', updateStickiness, { passive: true });
+        return () => viewport.removeEventListener('scroll', updateStickiness);
+    }, []);
+
+    useEffect(() => {
+        if (!stickToBottomRef.current) return;
+        const reducedMotion =
+            typeof window.matchMedia === 'function' &&
+            window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+        scrollRef.current?.scrollIntoView({
+            behavior: scrollBehavior(reducedMotion),
+            block: 'end',
+        });
     }, [meeting.messages, projection?.text]);
 
     return (
         <ScrollArea className="flex-1 min-h-0 p-4">
-            <div className="space-y-4 max-w-3xl mx-auto">
+            <div ref={contentRef} className="space-y-4 max-w-3xl mx-auto">
                 {(meeting.messages ?? []).map((message) => (
                     <MessageBubble
                         key={message.id}

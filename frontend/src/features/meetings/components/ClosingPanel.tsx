@@ -175,11 +175,13 @@ function VoteRow({
 }
 
 function StatusCard({
+    id,
     tone,
     icon,
     title,
     children,
 }: {
+    id?: string;
     tone: 'active' | 'success' | 'warning' | 'error' | 'muted';
     icon: React.ReactNode;
     title: string;
@@ -193,7 +195,12 @@ function StatusCard({
         muted: 'border-zinc-800 bg-zinc-900/50',
     }[tone];
     return (
-        <Card className={`p-4 ${toneClasses}`} role="status" aria-live="polite">
+        <Card
+            id={id}
+            className={`p-4 ${toneClasses}`}
+            role="status"
+            aria-live="polite"
+        >
             <div className="flex items-start gap-3">
                 <span className="mt-0.5 shrink-0">{icon}</span>
                 <div className="min-w-0 flex-1">
@@ -302,6 +309,7 @@ export function ClosingPanel({
 
             {archived ? (
                 <StatusCard
+                    id="closing-status"
                     tone="muted"
                     icon={<Archive className="h-5 w-5 text-zinc-400" />}
                     title="Meeting archived"
@@ -315,6 +323,7 @@ export function ClosingPanel({
 
             {!archived && ended ? (
                 <StatusCard
+                    id="closing-status"
                     tone="success"
                     icon={<CheckCircle2 className="h-5 w-5 text-green-400" />}
                     title="Meeting ended"
@@ -328,6 +337,7 @@ export function ClosingPanel({
 
             {!archived && !ended && isAdvancing(stage) ? (
                 <StatusCard
+                    id="closing-status"
                     tone="active"
                     icon={<Loader2 className="h-5 w-5 animate-spin text-indigo-400" />}
                     title={
@@ -367,6 +377,7 @@ export function ClosingPanel({
 
             {!archived && !ended && stage === 'failed' ? (
                 <StatusCard
+                    id="closing-status"
                     tone="error"
                     icon={<AlertTriangle className="h-5 w-5 text-red-400" />}
                     title="Closing failed"
@@ -419,6 +430,7 @@ export function ClosingPanel({
 
             {!archived && !ended && stage === 'rejected' ? (
                 <StatusCard
+                    id="closing-status"
                     tone="warning"
                     icon={<XCircle className="h-5 w-5 text-amber-400" />}
                     title="Closing rejected"
@@ -434,6 +446,7 @@ export function ClosingPanel({
 
             {!archived && !ended && stage === 'aborted' ? (
                 <StatusCard
+                    id="closing-status"
                     tone="warning"
                     icon={<Ban className="h-5 w-5 text-amber-400" />}
                     title="Closing abandoned"

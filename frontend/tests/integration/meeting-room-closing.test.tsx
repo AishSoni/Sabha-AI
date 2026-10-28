@@ -259,6 +259,9 @@ describe('MeetingRoom closing workflow', () => {
         renderRoom();
 
         expect(await screen.findByText('Closing failed')).toBeInTheDocument();
+        const notice = document.getElementById('closing-room-status');
+        expect(notice).toHaveAttribute('role', 'status');
+        expect(notice).toHaveAttribute('aria-live', 'polite');
         expect(
             screen.getByText('Turn submission is paused until you retry or abort the close.')
         ).toBeInTheDocument();
@@ -334,6 +337,32 @@ describe('MeetingRoom closing workflow', () => {
             expect(posts).toHaveLength(1);
             expect(posts[0].body).toMatchObject({ mode: 'force' });
         });
+    }, 10_000);
+
+    it('keeps the close entry in the main tab bar with stable control anchors', async () => {
+        installClosingRouter();
+        renderRoom();
+
+        const tab = await screen.findByRole('tab', { name: /Close/ });
+        expect(tab).toHaveAttribute('id', 'closing-tab');
+        expect(tab.tagName).toBe('BUTTON');
+
+        fireEvent.mouseDown(tab);
+
+        await waitFor(() =>
+            expect(document.getElementById('closing-panel')).not.toBeNull()
+        );
+        const panel = document.getElementById('closing-panel') as HTMLElement;
+        expect(
+            within(panel).getByRole('heading', { name: 'Close Meeting' })
+        ).toBeInTheDocument();
+        expect(panel.closest('aside')).toBeNull();
+        expect(document.getElementById('closing-start-vote')).toBeInTheDocument();
+        expect(document.getElementById('closing-start-force')).toBeInTheDocument();
+        expect(screen.getByRole('button', { name: /Vote to End/ })).toHaveAttribute(
+            'id',
+            'closing-start-vote'
+        );
     }, 10_000);
 
     it('reattaches to an in-progress close on remount without replaying the command', async () => {

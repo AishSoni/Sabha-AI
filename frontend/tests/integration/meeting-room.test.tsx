@@ -6,9 +6,9 @@
  * own confirmed revision.
  */
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
-import { fireEvent, render, screen } from '@testing-library/react';
+import { fireEvent, render, screen, waitFor } from '@testing-library/react';
 import { Providers, getQueryClient } from '@/app/providers';
-import { MeetingRoom } from '@/features/meetings';
+import { MeetingRoom, meetingKeys } from '@/features/meetings';
 import { LiveMeetingsRuntimeProvider } from '@/features/meetings/runtime/live';
 
 const MEETING_ID = '11111111-1111-4111-8111-111111111111';
@@ -206,6 +206,86 @@ describe('MeetingRoom', () => {
 
         expect(await screen.findByText('This meeting is read-only.')).toBeInTheDocument();
         expect(screen.queryByPlaceholderText('Type your message...')).not.toBeInTheDocument();
+    });
+
+    it('does not steal scroll when the reader is away from the bottom', async () => {
+        installRouter();
+        const scrollIntoView = vi
+            .spyOn(HTMLElement.prototype, 'scrollIntoView')
+            .mockImplementation(() => {});
+        renderRoom();
+        await screen.findByText('Product review');
+
+        const viewport = document.querySelector(
+            '[data-slot="scroll-area-viewport"]'
+        ) as HTMLElement;
+        Object.defineProperty(viewport, 'scrollHeight', {
+            configurable: true,
+            value: 1000,
+        });
+        Object.defineProperty(viewport, 'clientHeight', {
+            configurable: true,
+            value: 300,
+        });
+        Object.defineProperty(viewport, 'scrollTop', {
+            configurable: true,
+            value: 0,
+            writable: true,
+        });
+        fireEvent.scroll(viewport);
+        scrollIntoView.mockClear();
+
+        getQueryClient().setQueryData(meetingKeys.detail(MEETING_ID), {
+            ...meetingWire(),
+            messages: [messageWire('Earlier message')],
+        });
+
+        expect(await screen.findByText('Earlier message')).toBeInTheDocument();
+        expect(scrollIntoView).not.toHaveBeenCalled();
+    });
+
+    it('scrolls without animation when reduced motion is requested', async () => {
+        installRouter();
+        const scrollIntoView = vi
+            .spyOn(HTMLElement.prototype, 'scrollIntoView')
+            .mockImplementation(() => {});
+        vi.stubGlobal(
+            'matchMedia',
+            vi.fn().mockReturnValue({ matches: true })
+        );
+        renderRoom();
+        await screen.findByText('Product review');
+
+        const viewport = document.querySelector(
+            '[data-slot="scroll-area-viewport"]'
+        ) as HTMLElement;
+        Object.defineProperty(viewport, 'scrollHeight', {
+            configurable: true,
+            value: 1000,
+        });
+        Object.defineProperty(viewport, 'clientHeight', {
+            configurable: true,
+            value: 300,
+        });
+        Object.defineProperty(viewport, 'scrollTop', {
+            configurable: true,
+            value: 700,
+            writable: true,
+        });
+        fireEvent.scroll(viewport);
+        scrollIntoView.mockClear();
+
+        getQueryClient().setQueryData(meetingKeys.detail(MEETING_ID), {
+            ...meetingWire(),
+            messages: [messageWire('Earlier message')],
+        });
+
+        await waitFor(() =>
+            expect(scrollIntoView).toHaveBeenCalledWith({
+                behavior: 'auto',
+                block: 'end',
+            })
+        );
     });
 
     it('does not render fabricated private knowledge files', async () => {
