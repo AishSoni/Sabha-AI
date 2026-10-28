@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import { ArrowLeft, Loader2, Upload, X, Bot, FileText, RefreshCw, Users } from 'lucide-react';
@@ -25,28 +25,38 @@ export default function NewMeetingPage() {
     const router = useRouter();
     const [agenda, setAgenda] = useState('');
     const [context, setContext] = useState('');
-    const [roster, setRoster] = useState<RosterItem[]>([]);
+    const [selectedIds, setSelectedIds] = useState<Set<string> | null>(null);
 
     const personaList = usePersonaList();
     const loadingRoster = personaList.isLoading;
 
-    // The catalog query is the canonical owner of the roster source data;
-    // this screen only tracks which rows the director selected.
+    // The catalog query is the canonical owner of persona metadata; this
+    // screen only records which identities the director selected. The first
+    // catalog hydration keeps the all-selected default; later revisions keep
+    // existing choices, drop identities that disappeared, and leave newly
+    // added identities unselected. Returning `prev` unchanged avoids render
+    // churn when a refresh only changes metadata.
     useEffect(() => {
         if (!personaList.data) return;
-        // The query owns the source data; this mirrors it into editable
-        // selection state once per fetched catalog revision.
+        const currentIds = new Set(personaList.data.personas.map(p => p.id));
         // eslint-disable-next-line react-hooks/set-state-in-effect
-        setRoster(
-            personaList.data.personas.map(p => ({
-                id: p.id,
-                name: p.name,
-                subtitle: p.subtitle ?? null,
-                color: p.color,
-                selected: true,
-            }))
-        );
+        setSelectedIds(prev => {
+            if (prev === null) return currentIds;
+            const retained = new Set([...prev].filter(id => currentIds.has(id)));
+            return retained.size === prev.size ? prev : retained;
+        });
     }, [personaList.data]);
+
+    const roster = useMemo<RosterItem[]>(() => {
+        const personas = personaList.data?.personas ?? [];
+        return personas.map(p => ({
+            id: p.id,
+            name: p.name,
+            subtitle: p.subtitle ?? null,
+            color: p.color,
+            selected: selectedIds === null ? true : selectedIds.has(p.id),
+        }));
+    }, [personaList.data, selectedIds]);
 
     /**
      * Document staging, meeting creation, upload retries, and one-shot
@@ -67,14 +77,17 @@ export default function NewMeetingPage() {
     } = useMeetingCreation();
 
     const handleRosterToggle = (id: string) => {
-        setRoster(roster.map(p =>
-            p.id === id ? { ...p, selected: !p.selected } : p
-        ));
+        setSelectedIds(prev => {
+            const next = new Set(prev ?? roster.map(p => p.id));
+            if (next.has(id)) next.delete(id);
+            else next.add(id);
+            return next;
+        });
     };
 
     const handleSelectAll = () => {
         const allSelected = roster.every(p => p.selected);
-        setRoster(roster.map(p => ({ ...p, selected: !allSelected })));
+        setSelectedIds(allSelected ? new Set() : new Set(roster.map(p => p.id)));
     };
 
     const handleFileSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -310,6 +323,7 @@ export default function NewMeetingPage() {
                                             >
                                                 <Checkbox
                                                     checked={persona.selected}
+                                                    onClick={(event) => event.stopPropagation()}
                                                     onCheckedChange={() => handleRosterToggle(persona.id)}
                                                     className="border-zinc-600"
                                                 />
