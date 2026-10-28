@@ -58,6 +58,14 @@ test.describe("guided bond journey", () => {
         await expect(
             page.getByText(/I disagree with treating AAA\/Stable as sufficient comfort/).first()
         ).toBeVisible({ timeout: 30_000 });
+        await page.getByRole("tab", { name: "Shared Docs" }).click();
+        await expect(
+            page.getByText("hdfc-v007-shared-fact-sheet.md")
+        ).toBeVisible();
+        await expect(
+            page.getByText(/credit-evidence|downside-worksheet|portfolio-mandate/)
+        ).toHaveCount(0);
+        await page.getByRole("tab", { name: "Chat" }).click();
         await page.getByRole("button", { name: "Continue" }).click();
 
         await page.getByRole("button", { name: /Send prepared follow-up/ }).click();
@@ -85,6 +93,9 @@ test.describe("guided bond journey", () => {
             page.getByText(/Archived overlay recorded/)
         ).toBeVisible({ timeout: 30_000 });
         await expect(page.getByText(/remains ended/).first()).toBeVisible();
+        await expect(
+            page.getByText(/Unarchive and delete are unavailable in guided replay/)
+        ).toBeVisible();
         await page.getByRole("button", { name: "Finish" }).click();
         await expect(page.getByText("Journey complete")).toBeVisible();
         expect(liveMutations).toEqual([]);
