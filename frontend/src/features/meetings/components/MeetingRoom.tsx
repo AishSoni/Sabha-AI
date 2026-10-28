@@ -1280,6 +1280,8 @@ function MessageBubble({
                             title: citation.title ?? undefined,
                             url: citation.url ?? undefined,
                             snippet: citation.snippet ?? undefined,
+                            claim_id: citation.claim_id ?? undefined,
+                            locator: citation.locator ?? undefined,
                         }))}
                     />
                 )}
@@ -1301,6 +1303,7 @@ function TurnProjectionBubble({
     isObserving: boolean;
     onResume: () => void;
 }) {
+    const runtime = useMeetingsRuntime();
     const name = participant?.name ?? 'Participant';
     const color = participant?.color ?? '#71717a';
     const isQueued = operation.status === 'queued';
