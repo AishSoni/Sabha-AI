@@ -22,23 +22,9 @@
  */
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { useState } from 'react';
+import { makeQueryClient } from '@/shared/query/client';
 
-const QUERY_STALE_TIME_MS = 30_000;
-
-export function makeQueryClient(): QueryClient {
-    return new QueryClient({
-        defaultOptions: {
-            queries: {
-                staleTime: QUERY_STALE_TIME_MS,
-            },
-            mutations: {
-                // Deliberate: failed mutations surface to the caller and are
-                // retried by user intent only — never replayed automatically.
-                retry: false,
-            },
-        },
-    });
-}
+export { makeQueryClient } from '@/shared/query/client';
 
 let browserQueryClient: QueryClient | undefined;
 

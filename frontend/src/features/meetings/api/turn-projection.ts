@@ -48,6 +48,11 @@ export interface TurnProjection {
 export type TurnProjectionScope = {
     meetingId: string;
     operationId: string;
+    /**
+     * Runtime epoch identity (spec-14). Live keeps the historical "live"
+     * namespace; replay epochs never merge with live or with one another.
+     */
+    scopeId?: string;
 };
 
 type ProjectionStore = {
@@ -59,7 +64,11 @@ type ProjectionStore = {
 };
 
 export function turnProjectionKey(scope: TurnProjectionScope): string {
-    return JSON.stringify([scope.meetingId, scope.operationId]);
+    return JSON.stringify([
+        scope.scopeId ?? "live",
+        scope.meetingId,
+        scope.operationId,
+    ]);
 }
 
 export function emptyTurnProjection(scope: TurnProjectionScope, status: TurnStatus): TurnProjection {
@@ -302,9 +311,13 @@ export const useTurnProjectionStore = create<ProjectionStore>((set) => ({
 
 export function useTurnProjection(
     meetingId: string,
-    operationId: string
+    operationId: string,
+    scopeId = "live"
 ): TurnProjection | undefined {
     return useTurnProjectionStore(
-        (state) => state.projections[turnProjectionKey({ meetingId, operationId })]
+        (state) =>
+            state.projections[
+                turnProjectionKey({ scopeId, meetingId, operationId })
+            ]
     );
 }
