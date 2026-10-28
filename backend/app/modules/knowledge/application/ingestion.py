@@ -10,7 +10,7 @@ from __future__ import annotations
 
 import asyncio
 import logging
-from dataclasses import dataclass
+from dataclasses import dataclass, replace
 from datetime import datetime, timezone
 from pathlib import PurePosixPath
 from typing import BinaryIO, Literal, Union
@@ -25,7 +25,7 @@ from app.modules.knowledge.application.ports import (
     SourceStoreError,
     VectorProjection,
 )
-from app.modules.knowledge.domain.errors import UploadRejected
+from app.modules.knowledge.domain.errors import EmptyExtraction, UploadRejected
 from app.modules.knowledge.domain.models import (
     IngestionState,
     KnowledgeOwner,
@@ -259,9 +259,17 @@ class IngestionWorker:
                     file_name=claim.file_name,
                     file_type=claim.file_type,
                 )
+            if not parsed.chunks:
+                raise EmptyExtraction(
+                    "extraction produced no readable text; the revision was not published"
+                )
             identities = chunk_identities(
-                claim.revision_id, [chunk.text for chunk in parsed]
+                claim.revision_id, [chunk.text for chunk in parsed.chunks]
             )
+            identities = [
+                replace(identity, page_number=chunk.page_number)
+                for identity, chunk in zip(identities, parsed.chunks)
+            ]
             started = await asyncio.to_thread(
                 self._persistence.start_indexing,
                 ingestion_id,
@@ -277,7 +285,7 @@ class IngestionWorker:
                 file_name=claim.file_name,
                 chunks=[
                     (identity, chunk.text)
-                    for identity, chunk in zip(identities, parsed)
+                    for identity, chunk in zip(identities, parsed.chunks)
                 ],
             )
             published = await asyncio.to_thread(
@@ -286,6 +294,10 @@ class IngestionWorker:
                 claim.revision_id,
                 chunk_count=len(identities),
                 chunks=identities,
+                extraction_method=parsed.extraction_method,
+                extraction_version=parsed.extraction_version,
+                page_count=parsed.page_count,
+                ocr_page_count=parsed.ocr_page_count,
             )
             if published.outcome != "ready":
                 await self._discard_vectors(

@@ -3494,6 +3494,17 @@
           "file_name": {
             "type": "string",
             "title": "File Name"
+          },
+          "page_number": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Page Number"
           }
         },
         "type": "object",

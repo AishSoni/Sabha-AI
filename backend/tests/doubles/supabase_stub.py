@@ -83,6 +83,10 @@ _RPC_SIGNATURES: dict[str, tuple[tuple[str, str], ...]] = {
         ("p_revision_id", "::uuid"),
         ("p_chunk_count", "::integer"),
         ("p_chunks", "::jsonb"),
+        ("p_extraction_method", "::text"),
+        ("p_extraction_version", "::text"),
+        ("p_page_count", "::integer"),
+        ("p_ocr_page_count", "::integer"),
     ),
     "knowledge_fail_ingestion": (
         ("p_ingestion_id", "::uuid"),

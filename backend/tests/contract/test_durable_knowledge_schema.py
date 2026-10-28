@@ -98,13 +98,24 @@ def _claim(db, ingestion_id: str, *, now: datetime | None = None, lease: int = 6
         ).fetchone()[0]
 
 
-def _publish(db, ingestion_id: str, revision_id: str, *, count: int = 1):
+def _publish(
+    db,
+    ingestion_id: str,
+    revision_id: str,
+    *,
+    count: int = 1,
+    extraction_method: str = "pypdf",
+    extraction_version: str = "1",
+    page_count: int = 1,
+    ocr_page_count: int = 0,
+):
     chunks = [
         {
             "id": str(uuid.uuid5(uuid.NAMESPACE_URL, f"{revision_id}:{index}")),
             "chunk_index": index,
             "content_sha256": SHA,
             "char_count": 12,
+            "page_number": index + 1,
         }
         for index in range(count)
     ]
@@ -112,8 +123,18 @@ def _publish(db, ingestion_id: str, revision_id: str, *, count: int = 1):
 
     with db.connect() as conn:
         return conn.execute(
-            "SELECT knowledge_publish_revision(%s, %s, %s, %s::jsonb)",
-            (ingestion_id, revision_id, count, json.dumps(chunks)),
+            "SELECT knowledge_publish_revision("
+            "%s, %s, %s, %s::jsonb, %s, %s, %s, %s)",
+            (
+                ingestion_id,
+                revision_id,
+                count,
+                json.dumps(chunks),
+                extraction_method,
+                extraction_version,
+                page_count,
+                ocr_page_count,
+            ),
         ).fetchone()[0]
 
 
@@ -230,12 +251,23 @@ def test_publish_is_conditional_and_commits_chunks_with_ready(disposable_db):
             (document_id,),
         )
 
-    result = _publish(db, ingestion_id, revision_id, count=2)
+    result = _publish(
+        db,
+        ingestion_id,
+        revision_id,
+        count=2,
+        extraction_method="pypdf+ocr",
+        extraction_version="1",
+        page_count=2,
+        ocr_page_count=1,
+    )
 
     assert result["outcome"] == "ready"
     with db.connect() as conn:
         revision = conn.execute(
-            "SELECT status, chunk_count FROM document_revisions WHERE id = %s",
+            "SELECT status, chunk_count, extraction_method, extraction_version, "
+            "page_count, ocr_page_count "
+            "FROM document_revisions WHERE id = %s",
             (revision_id,),
         ).fetchone()
         document = conn.execute(
@@ -246,13 +278,19 @@ def test_publish_is_conditional_and_commits_chunks_with_ready(disposable_db):
             "SELECT count(*) FROM document_chunks WHERE revision_id = %s",
             (revision_id,),
         ).fetchone()[0]
+        pages = conn.execute(
+            "SELECT page_number FROM document_chunks WHERE revision_id = %s "
+            "ORDER BY chunk_index",
+            (revision_id,),
+        ).fetchall()
         eligible = conn.execute(
             "SELECT document_id, revision_id FROM knowledge_eligible_revisions(%s, NULL)",
             (meeting_id,),
         ).fetchall()
-    assert revision == ("ready", 2)
+    assert revision == ("ready", 2, "pypdf+ocr", "1", 2, 1)
     assert document == ("ready", 2)
     assert chunks == 2
+    assert pages == [(1,), (2,)]
     assert eligible == [(uuid.UUID(document_id), uuid.UUID(revision_id))]
 
 

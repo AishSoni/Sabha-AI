@@ -15,6 +15,7 @@ from app.modules.knowledge.application.ingestion import (
 from app.modules.knowledge.application.ports import (
     IngestionClaim,
     ParsedChunk,
+    ParsedDocument,
     PublishResult,
     SourceNotFound,
 )
@@ -36,15 +37,34 @@ class FakeSourceStore:
 
 class FakeParser:
     def __init__(self, texts: list[str] | None = None) -> None:
-        self.texts = texts or ["alpha", "beta"]
+        self.texts = ["alpha", "beta"] if texts is None else texts
         self.calls = 0
 
     def parse(self, data: bytes, *, file_name: str, file_type: str):
         self.calls += 1
-        return [
-            ParsedChunk(text=text, chunk_index=index)
-            for index, text in enumerate(self.texts)
-        ]
+        return ParsedDocument(
+            chunks=[
+                ParsedChunk(text=text, chunk_index=index)
+                for index, text in enumerate(self.texts)
+            ],
+            extraction_method="builtin",
+            extraction_version="1",
+        )
+
+
+class PageAwareParser(FakeParser):
+    def parse(self, data: bytes, *, file_name: str, file_type: str):
+        self.calls += 1
+        return ParsedDocument(
+            chunks=[
+                ParsedChunk(text="page one", chunk_index=0, page_number=1),
+                ParsedChunk(text="page two", chunk_index=1, page_number=3),
+            ],
+            extraction_method="pypdf+ocr",
+            extraction_version="1",
+            page_count=3,
+            ocr_page_count=1,
+        )
 
 
 class FakeVectors:
@@ -95,9 +115,28 @@ class FakePersistence:
     def start_indexing(self, ingestion_id, revision_id):
         return self.started
 
-    def publish_revision(self, ingestion_id, revision_id, *, chunk_count, chunks):
+    def publish_revision(
+        self,
+        ingestion_id,
+        revision_id,
+        *,
+        chunk_count,
+        chunks,
+        extraction_method=None,
+        extraction_version=None,
+        page_count=None,
+        ocr_page_count=0,
+    ):
         self.published.append(
-            {"ingestion_id": ingestion_id, "count": chunk_count, "chunks": chunks}
+            {
+                "ingestion_id": ingestion_id,
+                "count": chunk_count,
+                "chunks": chunks,
+                "extraction_method": extraction_method,
+                "extraction_version": extraction_version,
+                "page_count": page_count,
+                "ocr_page_count": ocr_page_count,
+            }
         )
         return PublishResult(outcome=self.publish_outcome)
 
@@ -157,6 +196,8 @@ async def test_worker_indexes_and_publishes_ready():
         (expected[1], "beta"),
     ]
     assert persistence.published[0]["count"] == 2
+    assert persistence.published[0]["extraction_method"] == "builtin"
+    assert persistence.published[0]["extraction_version"] == "1"
     assert persistence.failures == []
     assert vectors.deletes == []
 
@@ -171,6 +212,38 @@ async def test_worker_records_honest_missing_source_failure():
     assert persistence.failures == [MISSING_SOURCE_MESSAGE]
     assert vectors.upserts == []
     assert persistence.published == []
+
+
+async def test_worker_never_publishes_an_empty_extraction_as_ready():
+    persistence = FakePersistence(_claim())
+    vectors = FakeVectors()
+    worker = _worker(FakeSourceStore(b"empty"), FakeParser(texts=[]), vectors, persistence)
+
+    await worker.process(uuid4())
+
+    assert persistence.failures == [
+        "extraction produced no readable text; the revision was not published"
+    ]
+    assert vectors.upserts == []
+    assert persistence.published == []
+
+
+async def test_worker_publishes_page_locators_and_extraction_provenance():
+    claim = _claim()
+    persistence = FakePersistence(claim)
+    vectors = FakeVectors()
+    worker = _worker(FakeSourceStore(b"pdf"), PageAwareParser(), vectors, persistence)
+
+    await worker.process(uuid4())
+
+    expected = chunk_identities(claim.revision_id, ["page one", "page two"])
+    assert vectors.upserts[0]["chunks"][0][0].page_number == 1
+    assert vectors.upserts[0]["chunks"][1][0].page_number == 3
+    assert vectors.upserts[0]["chunks"][0][0].id == expected[0].id
+    assert persistence.published[0]["count"] == 2
+    assert persistence.published[0]["extraction_method"] == "pypdf+ocr"
+    assert persistence.published[0]["page_count"] == 3
+    assert persistence.published[0]["ocr_page_count"] == 1
 
 
 async def test_worker_discards_vectors_when_publication_loses_to_revocation():

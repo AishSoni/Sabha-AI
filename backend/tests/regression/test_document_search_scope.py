@@ -6,11 +6,14 @@ Spec behavior:
 - with a scope -> the Knowledge lifecycle receives that scope unchanged
 """
 
+from uuid import UUID
+
 import pytest
 from fastapi.testclient import TestClient
 
 import main
 from app.bootstrap import Container
+from app.modules.knowledge.application.retrieval import RetrievedPassage
 
 MEETING_ID = "00000000-0000-4000-8000-000000000001"
 STACK_ID = "00000000-0000-4000-8000-000000000002"
@@ -80,3 +83,33 @@ def test_search_with_stack_scope_passes_each_stack(search_env):
     request = lifecycle.searches[0]
     assert request.scope.meeting_id is None
     assert [str(value) for value in request.scope.stack_ids] == [STACK_ID]
+
+
+def test_search_returns_the_extracted_page_locator(search_env):
+    client, lifecycle = search_env
+
+    async def search(request):
+        lifecycle.searches.append(request)
+        return [
+            RetrievedPassage(
+                text="Final maturity: 18 July 2022",
+                score=0.91,
+                document_id=UUID("00000000-0000-4000-8000-000000000010"),
+                revision_id=UUID("00000000-0000-4000-8000-000000000011"),
+                chunk_id=UUID("00000000-0000-4000-8000-000000000012"),
+                chunk_index=3,
+                content_sha256="a" * 64,
+                file_name="term-sheet.pdf",
+                page_number=2,
+            )
+        ]
+
+    lifecycle.search = search
+    response = client.post(
+        "/api/documents/search",
+        json={"query": "maturity", "meeting_id": MEETING_ID},
+    )
+
+    assert response.status_code == 200, response.text
+    assert response.json()["results"][0]["page_number"] == 2
+    assert response.json()["results"][0]["file_name"] == "term-sheet.pdf"

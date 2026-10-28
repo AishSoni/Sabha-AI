@@ -83,6 +83,7 @@ class ChunkIdentity:
     chunk_index: int
     content_sha256: str
     char_count: int
+    page_number: int | None = None
 
 
 @dataclass(frozen=True)

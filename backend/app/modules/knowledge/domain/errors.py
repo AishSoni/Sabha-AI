@@ -52,3 +52,9 @@ class ProjectionUnavailable(KnowledgeError):
     """The derived vector projection cannot be read or written."""
 
     code = "projection_unavailable"
+
+
+class EmptyExtraction(KnowledgeError):
+    """Extraction completed without any publishable text."""
+
+    code = "empty_extraction"

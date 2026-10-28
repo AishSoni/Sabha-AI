@@ -1286,6 +1286,8 @@ export interface components {
             chunk_index: number;
             /** File Name */
             file_name: string;
+            /** Page Number */
+            page_number?: number | null;
         };
         /**
          * EnvironmentInfo

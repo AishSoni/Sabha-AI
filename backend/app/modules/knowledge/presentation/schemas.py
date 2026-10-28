@@ -81,6 +81,7 @@ class DocumentSearchResult(BaseModel):
     chunk_id: str | None = None
     chunk_index: int
     file_name: str
+    page_number: int | None = None
 
 
 class DocumentSearchResponse(BaseModel):

@@ -51,6 +51,7 @@ class RetrievedPassage:
     chunk_index: int
     content_sha256: str
     file_name: str
+    page_number: int | None = None
 
 
 class SearchKnowledge:
@@ -138,6 +139,7 @@ class SearchKnowledge:
                 chunk_index=hit.chunk_index,
                 content_sha256=hit.content_sha256,
                 file_name=hit.file_name,
+                page_number=hit.page_number,
             )
             for hit in selected
         ]

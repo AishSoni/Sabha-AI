@@ -70,13 +70,14 @@ SCHEMA_FILES = [
     BACKEND_ROOT / "migrations" / "028_system_ai_settings.sql",
     BACKEND_ROOT / "migrations" / "029_internal_table_rls.sql",
     BACKEND_ROOT / "migrations" / "030_database_read_isolation.sql",
+    BACKEND_ROOT / "migrations" / "031_pdf_extraction_provenance.sql",
 ]
 
 # The chain immediately before Spec 12's isolation migration. Tests use this
 # to reproduce the inherited-PUBLIC leak that the forward migration closes,
 # independently of the current full history.
 PRE_ISOLATION_SCHEMA_FILES = [
-    path for path in SCHEMA_FILES if not path.name.startswith("030_")
+    path for path in SCHEMA_FILES if path.name < "030_"
 ]
 
 # Phase 1 shipped before migration tracking existed. The baseline plus

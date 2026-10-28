@@ -20,6 +20,7 @@ from app.modules.knowledge.application.ingestion import IngestionWorker
 from app.modules.knowledge.application.ports import (
     IngestionClaim,
     ParsedChunk,
+    ParsedDocument,
     PublishResult,
 )
 
@@ -44,7 +45,11 @@ class ParkedParser:
         if file_name == "parked.md":
             self.parked.set()
             self.release.wait(SELF_RELEASE_SECONDS)
-        return [ParsedChunk(text="chunk", chunk_index=0)]
+        return ParsedDocument(
+            chunks=[ParsedChunk(text="chunk", chunk_index=0)],
+            extraction_method="builtin",
+            extraction_version="1",
+        )
 
 
 class RecordingVectors:
@@ -96,7 +101,18 @@ class IdentityPersistence:
     def start_indexing(self, ingestion_id, revision_id):
         return True
 
-    def publish_revision(self, ingestion_id, revision_id, *, chunk_count, chunks):
+    def publish_revision(
+        self,
+        ingestion_id,
+        revision_id,
+        *,
+        chunk_count,
+        chunks,
+        extraction_method=None,
+        extraction_version=None,
+        page_count=None,
+        ocr_page_count=0,
+    ):
         self.published.append(self.identity[ingestion_id][0])
         return PublishResult(outcome="ready")
 

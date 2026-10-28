@@ -180,6 +180,10 @@ class KnowledgePersistence(Protocol):
         *,
         chunk_count: int,
         chunks: list[ChunkIdentity],
+        extraction_method: str | None = None,
+        extraction_version: str | None = None,
+        page_count: int | None = None,
+        ocr_page_count: int = 0,
     ) -> "PublishResult":
         """Commit chunk metadata and readiness in one conditional transaction."""
 
@@ -296,6 +300,18 @@ class ParsedChunk:
 
     text: str
     chunk_index: int
+    page_number: int | None = None
+
+
+@dataclass(frozen=True)
+class ParsedDocument:
+    """A successful extraction and the provenance needed to record it."""
+
+    chunks: list[ParsedChunk]
+    extraction_method: str | None = None
+    extraction_version: str | None = None
+    page_count: int | None = None
+    ocr_page_count: int = 0
 
 
 class DocumentParser(Protocol):
@@ -303,7 +319,7 @@ class DocumentParser(Protocol):
 
     def parse(
         self, data: bytes, *, file_name: str, file_type: str
-    ) -> list[ParsedChunk]:
+    ) -> ParsedDocument:
         """Parse supported formats or raise a typed knowledge error."""
 
 
@@ -348,3 +364,4 @@ class VectorHit:
     chunk_index: int
     content_sha256: str
     file_name: str
+    page_number: int | None = None

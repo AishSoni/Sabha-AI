@@ -47,12 +47,15 @@ class DeterministicEmbedding(EmbeddingProvider):
         return [0.0, 0.0, 1.0, 0.0]
 
 
-def _chunk(index: int, text: str) -> tuple[ChunkIdentity, str]:
+def _chunk(
+    index: int, text: str, *, page_number: int | None = None
+) -> tuple[ChunkIdentity, str]:
     identity = ChunkIdentity(
         id=uuid.uuid4(),
         chunk_index=index,
         content_sha256=f"{index:064d}",
         char_count=len(text),
+        page_number=page_number,
     )
     return identity, text
 
@@ -73,7 +76,7 @@ async def test_upsert_search_and_revision_filter():
     other_revision = uuid.uuid4()
     await projection.ensure_collection(collection)
 
-    alpha, alpha_text = _chunk(0, "alpha revenue")
+    alpha, alpha_text = _chunk(0, "alpha revenue", page_number=7)
     beta, beta_text = _chunk(1, "beta margin")
     await projection.upsert_revision(
         collection,
@@ -102,6 +105,7 @@ async def test_upsert_search_and_revision_filter():
     assert hits[0].revision_id == revision_id
     assert hits[0].chunk_id == alpha.id
     assert hits[0].content_sha256 == alpha.content_sha256
+    assert hits[0].page_number == 7
     assert embedding.query_calls == 1
     assert embedding.document_calls == 2
     await client.close()

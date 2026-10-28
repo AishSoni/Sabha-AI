@@ -273,6 +273,10 @@ class SupabaseKnowledgeRepository:
         *,
         chunk_count: int,
         chunks: list[ChunkIdentity],
+        extraction_method: str | None = None,
+        extraction_version: str | None = None,
+        page_count: int | None = None,
+        ocr_page_count: int = 0,
     ) -> PublishResult:
         row = self._rpc(
             "knowledge_publish_revision",
@@ -286,9 +290,14 @@ class SupabaseKnowledgeRepository:
                         "chunk_index": chunk.chunk_index,
                         "content_sha256": chunk.content_sha256,
                         "char_count": chunk.char_count,
+                        "page_number": chunk.page_number,
                     }
                     for chunk in chunks
                 ],
+                "p_extraction_method": extraction_method,
+                "p_extraction_version": extraction_version,
+                "p_page_count": page_count,
+                "p_ocr_page_count": ocr_page_count,
             },
         )
         outcome = row.get("outcome")

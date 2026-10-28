@@ -124,6 +124,7 @@ class QdrantKnowledgeProjection:
                         "chunk_index": identity.chunk_index,
                         "content_sha256": identity.content_sha256,
                         "file_name": file_name,
+                        "page_number": identity.page_number,
                         "text": text,
                     },
                 )
@@ -234,6 +235,11 @@ class QdrantKnowledgeProjection:
                         chunk_index=int(payload["chunk_index"]),
                         content_sha256=str(payload["content_sha256"]),
                         file_name=str(payload["file_name"]),
+                        page_number=(
+                            int(payload["page_number"])
+                            if payload.get("page_number") is not None
+                            else None
+                        ),
                     )
                 )
             except (KeyError, TypeError, ValueError) as exc:

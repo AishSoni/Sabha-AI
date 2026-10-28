@@ -426,6 +426,7 @@ async def search_documents(
             chunk_id=str(passage.chunk_id) if passage.chunk_id else None,
             chunk_index=passage.chunk_index,
             file_name=passage.file_name,
+            page_number=passage.page_number,
         )
         for passage in passages
     ]
