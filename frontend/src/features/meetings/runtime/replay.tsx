@@ -285,7 +285,6 @@ export function ReplayMeetingRoom({ meetingId }: { meetingId: string }) {
 
     useEffect(() => {
         let active = true;
-        setLoading(true);
         requestJson<unknown>("/replay/session", { signal: controller.signal })
             .then((payload) => {
                 if (!active) return;
