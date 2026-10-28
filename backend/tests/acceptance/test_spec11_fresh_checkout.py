@@ -14,6 +14,7 @@ import tempfile
 from pathlib import Path
 
 from scripts.rehearse_clean_checkout import (
+    REQUIRED_TRACKED_FILES,
     audit_checkout,
     backend_smoke,
     extract_checkout,
@@ -33,7 +34,7 @@ def test_clean_archive_has_only_tracked_runtime_files() -> None:
 
         report = audit_checkout(root)
 
-        assert report["required_files"] == 11
+        assert report["required_files"] == len(REQUIRED_TRACKED_FILES)
         assert report["forbidden_entries"] == 0
         assert not (root / "frontend" / "next-env.d.ts").exists()
         assert not (root / "frontend" / "node_modules").exists()
