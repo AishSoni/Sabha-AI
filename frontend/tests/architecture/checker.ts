@@ -130,6 +130,17 @@ export function resolveInternalSpec(projectRoot: string, importerAbs: string, sp
     if (fs.existsSync(`${candidate}.tsx`)) {
         return toPosix(`${candidate}.tsx`);
     }
+    if (
+        fs.existsSync(candidate) &&
+        fs.statSync(candidate).isDirectory()
+    ) {
+        if (fs.existsSync(path.join(candidate, "index.ts"))) {
+            return toPosix(path.join(candidate, "index.ts"));
+        }
+        if (fs.existsSync(path.join(candidate, "index.tsx"))) {
+            return toPosix(path.join(candidate, "index.tsx"));
+        }
+    }
     return toPosix(candidate);
 }
 
