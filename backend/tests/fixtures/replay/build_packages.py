@@ -194,7 +194,7 @@ def operation(status: str, *, final_message_id: str | None) -> dict:
         "participant_id": PARTICIPANT_ID,
         "request_key": "turn-credit-analyst-1",
         "status": status,
-        "admission": "unrestricted",
+        "admission": 1,
         "queue_position": 0 if status == "executing" else None,
         "created_at": T1,
         "started_at": T1 if status != "queued" else None,

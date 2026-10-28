@@ -238,7 +238,10 @@ function MeetingConversation({ meeting, disagreements, consensus }: Conversation
         meeting.status === 'ended' ||
         meeting.status === 'archived' ||
         closingCompleted;
-    const readOnly = ended || !capabilities.submitTurn;
+    const hasRecordedIntents = Boolean(
+        runtime.replay?.intents.some((intent) => intent.kind === 'start_participant')
+    );
+    const readOnly = ended || (!capabilities.submitTurn && !hasRecordedIntents);
 
     const openClosing = () => setTab('closing');
 

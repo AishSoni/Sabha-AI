@@ -15,6 +15,7 @@ import type { TurnOperation } from './turn-decoders';
 import type { TurnEvent } from './turn-events';
 import { useTurnProjectionStore } from './turn-projection';
 import { useTurnObservation } from './use-turn-observation';
+import type { MeetingsRuntime } from '../runtime/contract';
 
 const operation: TurnOperation = {
     operation_id: 'operation-1',
@@ -173,4 +174,185 @@ describe('useTurnObservation', () => {
         expect(scripted.calls[0]?.input).toContain('/events?after=0');
         expect(scripted.calls[0]?.init?.method).toBeUndefined();
     });
+
+    it('runs the pre-settlement checkpoint before shared invalidation', async () => {
+        const order: string[] = [];
+        const onTerminal = vi.fn();
+        const settlement: MeetingsRuntime['settlement'] = {
+            beforeTerminal: async () => {
+                order.push('checkpoint');
+            },
+        };
+        queryClient = makeQueryClient();
+        vi.spyOn(queryClient, 'invalidateQueries').mockImplementation(() => {
+            order.push('invalidate');
+            return Promise.resolve();
+        });
+        const runtime = replayRuntime(
+            [
+                event(1, { type: 'text', content: 'Partial' }),
+                event(2, { type: 'done', messageId: 'message-1' }),
+            ],
+            settlement
+        );
+        renderHook(
+            () =>
+                useTurnObservation({
+                    meetingId: 'meeting-1',
+                    operation,
+                    runtime,
+                    onTerminal,
+                }),
+            { wrapper }
+        );
+
+        await waitFor(() => expect(onTerminal).toHaveBeenCalledTimes(1));
+        expect(order[0]).toBe('checkpoint');
+        expect(order).toContain('invalidate');
+    });
+
+    it('retains provisional content when the canonical checkpoint is unavailable', async () => {
+        const onTerminal = vi.fn();
+        const settlement: MeetingsRuntime['settlement'] = {
+            beforeTerminal: async () => {
+                throw new Error('canonical checkpoint is unavailable');
+            },
+        };
+        const runtime = replayRuntime(
+            [
+                event(1, { type: 'text', content: 'Provisional answer' }),
+                event(2, { type: 'done', messageId: 'message-1' }),
+            ],
+            settlement
+        );
+        const { result } = renderHook(
+            () =>
+                useTurnObservation({
+                    meetingId: 'meeting-1',
+                    operation,
+                    runtime,
+                    onTerminal,
+                }),
+            { wrapper }
+        );
+
+        await waitFor(() =>
+            expect(result.current.projection?.text).toBe('Provisional answer')
+        );
+        await new Promise((resolve) => setTimeout(resolve, 20));
+        expect(onTerminal).not.toHaveBeenCalled();
+        expect(result.current.projection?.text).toBe('Provisional answer');
+    });
+
+    it('settles a terminal status read through the same pre-settlement hook', async () => {
+        const order: string[] = [];
+        const onTerminal = vi.fn();
+        const runtime = replayRuntime([], {
+            beforeTerminal: async () => {
+                order.push('checkpoint');
+            },
+        });
+        queryClient = makeQueryClient();
+        vi.spyOn(queryClient, 'invalidateQueries').mockImplementation(() => {
+            order.push('invalidate');
+            return Promise.resolve();
+        });
+        renderHook(
+            () =>
+                useTurnObservation({
+                    meetingId: 'meeting-1',
+                    operation: { ...operation, status: 'completed' },
+                    runtime,
+                    onTerminal,
+                }),
+            { wrapper }
+        );
+
+        await waitFor(() => expect(onTerminal).toHaveBeenCalledTimes(1));
+        expect(order[0]).toBe('checkpoint');
+    });
 });
+
+function event(sequence: number, overrides: Partial<TurnEvent>): TurnEvent {
+    return {
+        type: 'text',
+        meetingId: 'meeting-1',
+        operationId: 'operation-1',
+        eventId: `event-${sequence}`,
+        sequence,
+        ...overrides,
+    } as TurnEvent;
+}
+
+let runCounter = 0;
+
+function nextRunId(): number {
+    runCounter += 1;
+    return runCounter;
+}
+
+function replayRuntime(
+    events: TurnEvent[],
+    settlement: MeetingsRuntime['settlement']
+): MeetingsRuntime {
+    return {
+        scope: {
+            identity: { kind: 'replay', id: `run-${nextRunId()}:package-1`, epoch: 1 },
+            label: 'Recorded session',
+            provenance: {},
+        },
+        capabilities: {
+            meetingRead: true,
+            turnObservation: true,
+            disagreements: true,
+            consensus: true,
+            contextStats: false,
+            createMeeting: false,
+            sendMessage: false,
+            submitTurn: false,
+            cancelTurn: false,
+            summary: false,
+            documents: false,
+            closing: false,
+        },
+        reads: {} as MeetingsRuntime['reads'],
+        turns: {
+            list: async () => [],
+            get: async () => operation,
+            observe: async function* () {
+                for (const item of events) yield item;
+            },
+            submit: async () => operation,
+            cancel: async () => ({
+                outcome: 'cancelled',
+                status: 'cancelled',
+            }),
+        } as unknown as MeetingsRuntime['turns'],
+        commands: {} as MeetingsRuntime['commands'],
+        keys: {
+            meetingList: () => ['replay', 'meetings', 'list'],
+            meetingDetail: (meetingId) => ['replay', 'meetings', 'detail', meetingId],
+            disagreements: (meetingId) => ['replay', 'disagreements', meetingId],
+            consensus: (meetingId) => ['replay', 'consensus', meetingId],
+            contextStats: (meetingId) => ['replay', 'context', meetingId],
+            closing: (meetingId) => ['replay', 'closing', meetingId],
+            documents: (meetingId) => ['replay', 'documents', meetingId],
+            turnList: (meetingId) => ['replay', 'turns', meetingId],
+            turnDetail: (meetingId, operationId) => [
+                'replay',
+                'turns',
+                meetingId,
+                operationId,
+            ],
+        },
+        presentation: {
+            label: 'Recorded session',
+            homeHref: '/demo',
+            readOnlyNotice: 'Recorded.',
+            provenance: {},
+        },
+        slots: {},
+        signal: new AbortController().signal,
+        settlement,
+    };
+}
