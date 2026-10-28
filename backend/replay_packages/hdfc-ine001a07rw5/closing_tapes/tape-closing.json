@@ -1,0 +1,105 @@
+{
+  "tape_id": "tape-closing",
+  "meeting_id": "a0000000-0000-4000-8000-000000000001",
+  "closing_id": "a0000000-0000-4000-8000-000000000701",
+  "initial_checkpoint": "checkpoint-consensus",
+  "completed_checkpoint": "checkpoint-closed",
+  "events": [
+    {
+      "event_id": "closing-1",
+      "sequence": 1,
+      "item_id": "ballot:a0000000-0000-4000-8000-000000000101",
+      "kind": "ballot",
+      "text": "Yes - the facts and unknowns are re",
+      "provisional": true,
+      "terminal": false,
+      "result": null,
+      "subject_id": "a0000000-0000-4000-8000-000000000101",
+      "delay_ms": 80
+    },
+    {
+      "event_id": "closing-2",
+      "sequence": 2,
+      "item_id": "ballot:a0000000-0000-4000-8000-000000000101",
+      "kind": "ballot",
+      "text": "Yes - the facts and unknowns are recorded; the discussion is complete.",
+      "provisional": false,
+      "terminal": true,
+      "result": "yes",
+      "subject_id": "a0000000-0000-4000-8000-000000000101",
+      "delay_ms": 100
+    },
+    {
+      "event_id": "closing-3",
+      "sequence": 3,
+      "item_id": "ballot:a0000000-0000-4000-8000-000000000102",
+      "kind": "ballot",
+      "text": "Yes - the disagreement is logged; the chec",
+      "provisional": true,
+      "terminal": false,
+      "result": null,
+      "subject_id": "a0000000-0000-4000-8000-000000000102",
+      "delay_ms": 80
+    },
+    {
+      "event_id": "closing-4",
+      "sequence": 4,
+      "item_id": "ballot:a0000000-0000-4000-8000-000000000102",
+      "kind": "ballot",
+      "text": "Yes - the disagreement is logged; the checklist captures the missing market evidence.",
+      "provisional": false,
+      "terminal": true,
+      "result": "yes",
+      "subject_id": "a0000000-0000-4000-8000-000000000102",
+      "delay_ms": 100
+    },
+    {
+      "event_id": "closing-5",
+      "sequence": 5,
+      "item_id": "ballot:a0000000-0000-4000-8000-000000000103",
+      "kind": "ballot",
+      "text": "Yes - the mandate cannot be completed; clos",
+      "provisional": true,
+      "terminal": false,
+      "result": null,
+      "subject_id": "a0000000-0000-4000-8000-000000000103",
+      "delay_ms": 80
+    },
+    {
+      "event_id": "closing-6",
+      "sequence": 6,
+      "item_id": "ballot:a0000000-0000-4000-8000-000000000103",
+      "kind": "ballot",
+      "text": "Yes - the mandate cannot be completed; closing on a research checklist is appropriate.",
+      "provisional": false,
+      "terminal": true,
+      "result": "yes",
+      "subject_id": "a0000000-0000-4000-8000-000000000103",
+      "delay_ms": 100
+    },
+    {
+      "event_id": "closing-7",
+      "sequence": 7,
+      "item_id": "summary:final",
+      "kind": "summary",
+      "text": "The committee voted to conclude. Outcome: a research checklist, not a buy/sell recommendation or investment approval. Facts: the 2020 terms and CRISIL AAA/Stable rating. Judgments: the rating is an opinion; the downside scenarios are illustrative. Unknow",
+      "provisional": true,
+      "terminal": false,
+      "result": null,
+      "subject_id": null,
+      "delay_ms": 100
+    },
+    {
+      "event_id": "closing-8",
+      "sequence": 8,
+      "item_id": "summary:final",
+      "kind": "summary",
+      "text": "The committee voted to conclude. Outcome: a research checklist, not a buy/sell recommendation or investment approval. Facts: the 2020 terms and CRISIL AAA/Stable rating. Judgments: the rating is an opinion; the downside scenarios are illustrative. Unknowns: current price, executable yield, secondary liquidity, series-level security, and payment outcome. Next steps: verify the series terms and security; obtain current market evidence; monitor the scheduled 18 July 2022 maturity without asserting payment.",
+      "provisional": false,
+      "terminal": true,
+      "result": "completed",
+      "subject_id": null,
+      "delay_ms": 120
+    }
+  ]
+}

@@ -1,0 +1,222 @@
+{
+  "tape_id": "tape-consensus",
+  "meeting_id": "a0000000-0000-4000-8000-000000000001",
+  "operation_id": "a0000000-0000-4000-8000-000000000304",
+  "participant_id": "a0000000-0000-4000-8000-000000000101",
+  "request_key": "turn-consensus",
+  "initial_checkpoint": "checkpoint-portfolio",
+  "completed_checkpoint": "checkpoint-consensus",
+  "events": [
+    {
+      "event_id": "tape-consensus-1",
+      "sequence": 1,
+      "type": "tool_call",
+      "delay_ms": 100,
+      "payload": {
+        "invocation_id": "inv-consensus-1",
+        "call_id": "call-consensus-1",
+        "tool_name": "search_knowledge_base",
+        "arguments": {
+          "query": "HDFC 7.87% 2022 facts judgments unknowns checklist"
+        }
+      }
+    },
+    {
+      "event_id": "tape-consensus-2",
+      "sequence": 2,
+      "type": "tool_result",
+      "delay_ms": 120,
+      "payload": {
+        "invocation_id": "inv-consensus-1",
+        "call_id": "call-consensus-1",
+        "result": {
+          "retrieval_key": "retrieval-consensus",
+          "hits": 5
+        },
+        "is_error": false
+      }
+    },
+    {
+      "event_id": "tape-consensus-3",
+      "sequence": 3,
+      "type": "tool_call",
+      "delay_ms": 100,
+      "payload": {
+        "invocation_id": "inv-consensus-2",
+        "call_id": "call-consensus-2",
+        "tool_name": "log_consensus",
+        "arguments": {
+          "participants": [
+            "The Credit Analyst",
+            "The Downside Reviewer",
+            "The Portfolio Analyst"
+          ],
+          "topic": "Research checklist separates facts, judgments, and unknowns",
+          "strength": 4
+        }
+      }
+    },
+    {
+      "event_id": "tape-consensus-4",
+      "sequence": 4,
+      "type": "tool_result",
+      "delay_ms": 120,
+      "payload": {
+        "invocation_id": "inv-consensus-2",
+        "call_id": "call-consensus-2",
+        "result": {
+          "consensus_id": "a0000000-0000-4000-8000-000000000601"
+        },
+        "is_error": false
+      }
+    },
+    {
+      "event_id": "tape-consensus-5",
+      "sequence": 5,
+      "type": "citation",
+      "delay_ms": 60,
+      "payload": {
+        "source": "CRISIL rating rationale",
+        "title": "CRISIL Rating Rationale, 31 July 2020",
+        "url": "https://www.crisil.com/mnt/winshare/Ratings/RatingList/RatingDocs/Housing_Development_Finance_Corporation_Limited_July_31_2020_RR.html",
+        "snippet": "CRISIL's annexure row for ISIN INE001A07RW5 lists a 7.87% coupon, allotment on 18 July 2019, scheduled maturity on 18 July 2022, and an issue size of Rs 5,000 crore.",
+        "claim_id": "C1",
+        "locator": "S1 annexure row for ISIN INE001A07RW5"
+      }
+    },
+    {
+      "event_id": "tape-consensus-6",
+      "sequence": 6,
+      "type": "citation",
+      "delay_ms": 60,
+      "payload": {
+        "source": "CRISIL rating rationale",
+        "title": "CRISIL Rating Rationale, 31 July 2020",
+        "url": "https://www.crisil.com/mnt/winshare/Ratings/RatingList/RatingDocs/Housing_Development_Finance_Corporation_Limited_July_31_2020_RR.html",
+        "snippet": "CRISIL assigned AAA/Stable on 31 July 2020.",
+        "claim_id": "C2",
+        "locator": "S1 rating action"
+      }
+    },
+    {
+      "event_id": "tape-consensus-7",
+      "sequence": 7,
+      "type": "citation",
+      "delay_ms": 60,
+      "payload": {
+        "source": "HDFC Ltd FY20 MD&A",
+        "title": "HDFC Ltd Annual Report 2019-20, MD&A",
+        "url": "https://homeloans.hdfc.bank.in/digital-annual-report-2019-2020/mda",
+        "snippet": "The FY20 MD&A reports standalone total income of Rs 58,763 crore and profit after tax of Rs 17,770 crore, and Rs 46,437 crore of secured redeemable NCDs raised at issuer level.",
+        "claim_id": "C3",
+        "locator": "S4 MD&A, FY20 standalone performance and borrowings"
+      }
+    },
+    {
+      "event_id": "tape-consensus-8",
+      "sequence": 8,
+      "type": "citation",
+      "delay_ms": 60,
+      "payload": {
+        "source": "Committee judgment",
+        "title": "Downside worksheet, Rating test",
+        "url": null,
+        "snippet": "AAA/Stable is a rating opinion dated 31 July 2020, not a guarantee and not a current rating.",
+        "claim_id": "C8",
+        "locator": "Downside worksheet, Rating test"
+      }
+    },
+    {
+      "event_id": "tape-consensus-9",
+      "sequence": 9,
+      "type": "citation",
+      "delay_ms": 60,
+      "payload": {
+        "source": "Prepared for this replay",
+        "title": "Downside worksheet, Scenario",
+        "url": null,
+        "snippet": "The +200bp rate move and risk-off secondary-market scenario is demo-authored for this replay; it is not a forecast or issuer guidance.",
+        "claim_id": "C9",
+        "locator": "Downside worksheet, Scenario"
+      }
+    },
+    {
+      "event_id": "tape-consensus-10",
+      "sequence": 10,
+      "type": "citation",
+      "delay_ms": 60,
+      "payload": {
+        "source": "Record evidence",
+        "title": "Shared fact sheet, What is not established",
+        "url": null,
+        "snippet": "The meeting record contains no executable price, yield, or secondary-market liquidity data for the series.",
+        "claim_id": "C10",
+        "locator": "Shared fact sheet, What is not established"
+      }
+    },
+    {
+      "event_id": "tape-consensus-11",
+      "sequence": 11,
+      "type": "citation",
+      "delay_ms": 60,
+      "payload": {
+        "source": "CRISIL rating rationale",
+        "title": "S1 instrument column",
+        "url": null,
+        "snippet": "The rating annexure describes the instrument as a debenture; the retained excerpt does not establish series-level secured or unsecured status.",
+        "claim_id": "C12",
+        "locator": "S1 instrument column"
+      }
+    },
+    {
+      "event_id": "tape-consensus-12",
+      "sequence": 12,
+      "type": "citation",
+      "delay_ms": 60,
+      "payload": {
+        "source": "Committee judgment",
+        "title": "Shared fact sheet, Outcome and limitations",
+        "url": null,
+        "snippet": "The outcome is a research checklist, not a buy/sell recommendation or investment approval.",
+        "claim_id": "C13",
+        "locator": "Shared fact sheet, Outcome and limitations"
+      }
+    },
+    {
+      "event_id": "tape-consensus-13",
+      "sequence": 13,
+      "type": "text",
+      "delay_ms": 60,
+      "payload": {
+        "content": "The committee can align on a bounded checklist. Facts: the 2020 terms, rating, and issuer-level FY20 context. Judgments: the rating is an opinion; "
+      }
+    },
+    {
+      "event_id": "tape-consensus-14",
+      "sequence": 14,
+      "type": "text",
+      "delay_ms": 60,
+      "payload": {
+        "content": "the downside scenarios are illustrative. Unknowns: current price, executable yield, secondary liquidity, series-level security, and payment outcome. "
+      }
+    },
+    {
+      "event_id": "tape-consensus-15",
+      "sequence": 15,
+      "type": "text",
+      "delay_ms": 60,
+      "payload": {
+        "content": "The discussion can close on that basis; this is not an investment approval."
+      }
+    },
+    {
+      "event_id": "tape-consensus-16",
+      "sequence": 16,
+      "type": "done",
+      "delay_ms": 80,
+      "payload": {
+        "message_id": "a0000000-0000-4000-8000-000000000406"
+      }
+    }
+  ]
+}

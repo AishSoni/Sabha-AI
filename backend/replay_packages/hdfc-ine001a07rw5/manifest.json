@@ -1,0 +1,500 @@
+{
+  "package_id": "hdfc-ine001a07rw5",
+  "version": "1",
+  "schema_version": 1,
+  "read_version": 1,
+  "event_version": 1,
+  "title": "HDFC Ltd 7.87% 2022 debenture - guided replay",
+  "as_of": "2020-07-31",
+  "content_sha256": "ced67209984ff87088119f58f5b2bcc643fd9240623dfbe02e03ab761c1fb07f",
+  "meeting_id": "a0000000-0000-4000-8000-000000000001",
+  "initial_checkpoint": "checkpoint-initial",
+  "checkpoints": [
+    "checkpoint-initial",
+    "checkpoint-created",
+    "checkpoint-credit",
+    "checkpoint-downside",
+    "checkpoint-followup",
+    "checkpoint-portfolio",
+    "checkpoint-consensus",
+    "checkpoint-closed",
+    "checkpoint-archived"
+  ],
+  "tapes": [
+    "tape-credit",
+    "tape-downside",
+    "tape-portfolio",
+    "tape-consensus"
+  ],
+  "closing_tapes": [
+    "tape-closing"
+  ],
+  "retrieval": [
+    "retrieval-credit",
+    "retrieval-downside",
+    "retrieval-portfolio",
+    "retrieval-consensus"
+  ],
+  "provenance": {
+    "kind": "recorded",
+    "authored": true,
+    "synthetic": false,
+    "model_run": "none",
+    "source_capture_date": "2026-10-16",
+    "prepared_date": "2026-10-28",
+    "note": "Authored historical educational replay; no live model run or current-market lookup."
+  },
+  "label": "Guided replay",
+  "disclosure": "Prepared historical educational content. No live research, current pricing, or investment advice. No fresh model charge.",
+  "stack_labels": {
+    "shared-meeting-documents": "Meeting documents (shared)",
+    "credit-private": "Credit evidence (private to The Credit Analyst)",
+    "downside-private": "Downside worksheet (private to The Downside Reviewer)",
+    "portfolio-private": "Portfolio mandate (private to The Portfolio Analyst)"
+  },
+  "intents": [
+    {
+      "intent_id": "create-meeting",
+      "kind": "create_meeting",
+      "checkpoint": "checkpoint-created",
+      "label": "Start the meeting"
+    },
+    {
+      "intent_id": "credit-analyst",
+      "kind": "start_participant",
+      "checkpoint": "checkpoint-created",
+      "participant_id": "a0000000-0000-4000-8000-000000000101",
+      "operation_id": "a0000000-0000-4000-8000-000000000301",
+      "tape_id": "tape-credit",
+      "label": "Ask the Credit Analyst"
+    },
+    {
+      "intent_id": "downside-reviewer",
+      "kind": "start_participant",
+      "checkpoint": "checkpoint-credit",
+      "participant_id": "a0000000-0000-4000-8000-000000000102",
+      "operation_id": "a0000000-0000-4000-8000-000000000302",
+      "tape_id": "tape-downside",
+      "label": "Ask the Downside Reviewer"
+    },
+    {
+      "intent_id": "director-follow-up",
+      "kind": "director_follow_up",
+      "checkpoint": "checkpoint-followup",
+      "participant_id": "a0000000-0000-4000-8000-000000000103",
+      "label": "Send the supported follow-up"
+    },
+    {
+      "intent_id": "portfolio-analyst",
+      "kind": "start_participant",
+      "checkpoint": "checkpoint-followup",
+      "participant_id": "a0000000-0000-4000-8000-000000000103",
+      "operation_id": "a0000000-0000-4000-8000-000000000303",
+      "tape_id": "tape-portfolio",
+      "label": "Ask the Portfolio Analyst"
+    },
+    {
+      "intent_id": "concluding-discussion",
+      "kind": "start_participant",
+      "checkpoint": "checkpoint-portfolio",
+      "participant_id": "a0000000-0000-4000-8000-000000000101",
+      "operation_id": "a0000000-0000-4000-8000-000000000304",
+      "tape_id": "tape-consensus",
+      "label": "Ask the committee to align"
+    },
+    {
+      "intent_id": "close-meeting",
+      "kind": "request_closing",
+      "checkpoint": "checkpoint-consensus",
+      "closing_tape_id": "tape-closing",
+      "label": "Close meeting"
+    },
+    {
+      "intent_id": "archive-meeting",
+      "kind": "archive_meeting",
+      "checkpoint": "checkpoint-archived",
+      "label": "Archive meeting"
+    }
+  ],
+  "beats": [
+    {
+      "beat_id": "meet-the-board",
+      "ordinal": 1,
+      "title": "Meet the board",
+      "objective": "Inspect the three participants and their shared and private knowledge assignments.",
+      "anchor": "board-roster",
+      "route": "board",
+      "tab": "roster",
+      "checkpoint": "checkpoint-initial",
+      "start_checkpoint": "checkpoint-initial",
+      "completed_checkpoint": "checkpoint-initial",
+      "disclosure": "Prepared board for the recorded meeting.",
+      "steps": [
+        {
+          "step_id": "inspect-board",
+          "label": "Inspect the three participants and knowledge assignments",
+          "completion": "acknowledge",
+          "requires_tab": "roster"
+        }
+      ],
+      "claim_ids": [],
+      "input_asset_ids": [
+        "shared-fact-sheet",
+        "credit-evidence",
+        "downside-worksheet",
+        "portfolio-mandate"
+      ]
+    },
+    {
+      "beat_id": "start-the-meeting",
+      "ordinal": 2,
+      "title": "Start the meeting",
+      "objective": "Complete the prepared creation form and confirm the supplied historical document.",
+      "anchor": "creation-form",
+      "route": "new",
+      "checkpoint": "checkpoint-initial",
+      "start_checkpoint": "checkpoint-initial",
+      "completed_checkpoint": "checkpoint-created",
+      "disclosure": "No upload or write occurs; the intake receipt is recorded.",
+      "steps": [
+        {
+          "step_id": "create-meeting",
+          "label": "Confirm the prepared preset and supplied document",
+          "intent_id": "create-meeting",
+          "completion": "checkpoint"
+        }
+      ],
+      "claim_ids": [],
+      "input_asset_ids": [
+        "shared-fact-sheet"
+      ]
+    },
+    {
+      "beat_id": "establish-facts",
+      "ordinal": 3,
+      "title": "Establish the facts",
+      "objective": "Ask the Credit Analyst to separate supported facts from open items.",
+      "anchor": "credit-analyst-action",
+      "route": "meeting",
+      "tab": "chat",
+      "checkpoint": "checkpoint-created",
+      "start_checkpoint": "checkpoint-created",
+      "completed_checkpoint": "checkpoint-credit",
+      "disclosure": "Prepared retrieval; no live search or model call.",
+      "steps": [
+        {
+          "step_id": "ask-credit",
+          "label": "Ask the Credit Analyst",
+          "intent_id": "credit-analyst",
+          "completion": "turn_terminal",
+          "requires_tab": "chat"
+        }
+      ],
+      "claim_ids": [
+        "C1",
+        "C2",
+        "C3",
+        "C10",
+        "C12"
+      ],
+      "input_asset_ids": [
+        "shared-fact-sheet",
+        "credit-evidence"
+      ]
+    },
+    {
+      "beat_id": "challenge-the-case",
+      "ordinal": 4,
+      "title": "Challenge the case",
+      "objective": "Ask the Downside Reviewer to test the rating and liquidity assumptions.",
+      "anchor": "downside-reviewer-action",
+      "route": "meeting",
+      "tab": "chat",
+      "checkpoint": "checkpoint-credit",
+      "start_checkpoint": "checkpoint-credit",
+      "completed_checkpoint": "checkpoint-downside",
+      "disclosure": "The downside worksheet is demo-authored, not issuer research.",
+      "steps": [
+        {
+          "step_id": "ask-downside",
+          "label": "Ask the Downside Reviewer",
+          "intent_id": "downside-reviewer",
+          "completion": "turn_terminal",
+          "requires_tab": "chat"
+        },
+        {
+          "step_id": "review-disagreement",
+          "label": "Review the formal disagreement",
+          "completion": "acknowledge",
+          "requires_tab": "disagreements"
+        }
+      ],
+      "claim_ids": [
+        "C6",
+        "C7",
+        "C8",
+        "C9",
+        "C10"
+      ],
+      "input_asset_ids": [
+        "shared-fact-sheet",
+        "downside-worksheet"
+      ]
+    },
+    {
+      "beat_id": "address-uncertainty",
+      "ordinal": 5,
+      "title": "Address uncertainty",
+      "objective": "Send the supported follow-up and ask the Portfolio Analyst what the mandate can conclude.",
+      "anchor": "portfolio-analyst-action",
+      "route": "meeting",
+      "tab": "chat",
+      "checkpoint": "checkpoint-downside",
+      "start_checkpoint": "checkpoint-downside",
+      "completed_checkpoint": "checkpoint-portfolio",
+      "disclosure": "The mandate is fictional and demo-authored. No current price, yield, or liquidity is available.",
+      "steps": [
+        {
+          "step_id": "send-follow-up",
+          "label": "Send the supported Director follow-up",
+          "intent_id": "director-follow-up",
+          "completion": "checkpoint",
+          "requires_tab": "chat"
+        },
+        {
+          "step_id": "ask-portfolio",
+          "label": "Ask the Portfolio Analyst",
+          "intent_id": "portfolio-analyst",
+          "completion": "turn_terminal",
+          "requires_tab": "chat"
+        }
+      ],
+      "claim_ids": [
+        "C10",
+        "C11",
+        "C13"
+      ],
+      "input_asset_ids": [
+        "shared-fact-sheet",
+        "portfolio-mandate"
+      ]
+    },
+    {
+      "beat_id": "align",
+      "ordinal": 6,
+      "title": "Align on the checklist",
+      "objective": "Ask for the concluding discussion and review the formal consensus.",
+      "anchor": "consensus-action",
+      "route": "meeting",
+      "tab": "chat",
+      "checkpoint": "checkpoint-portfolio",
+      "start_checkpoint": "checkpoint-portfolio",
+      "completed_checkpoint": "checkpoint-consensus",
+      "disclosure": "The checklist is bounded by the evidence; it is not an investment approval.",
+      "steps": [
+        {
+          "step_id": "ask-consensus",
+          "label": "Ask the committee to align",
+          "intent_id": "concluding-discussion",
+          "completion": "turn_terminal",
+          "requires_tab": "chat"
+        },
+        {
+          "step_id": "review-consensus",
+          "label": "Review the formal consensus",
+          "completion": "acknowledge",
+          "requires_tab": "consensus"
+        }
+      ],
+      "claim_ids": [
+        "C1",
+        "C2",
+        "C3",
+        "C8",
+        "C9",
+        "C10",
+        "C12",
+        "C13"
+      ],
+      "input_asset_ids": [
+        "shared-fact-sheet"
+      ]
+    },
+    {
+      "beat_id": "close-the-meeting",
+      "ordinal": 7,
+      "title": "Close the meeting",
+      "objective": "Use the real close entry and review the recorded ballots and final brief.",
+      "anchor": "closing-entry",
+      "route": "meeting",
+      "tab": "closing",
+      "checkpoint": "checkpoint-consensus",
+      "start_checkpoint": "checkpoint-consensus",
+      "completed_checkpoint": "checkpoint-closed",
+      "disclosure": "Recorded closing. No live vote or model call occurs.",
+      "steps": [
+        {
+          "step_id": "close-meeting",
+          "label": "Close the meeting",
+          "intent_id": "close-meeting",
+          "completion": "closing_completed",
+          "requires_tab": "closing"
+        }
+      ],
+      "claim_ids": [
+        "C1",
+        "C2",
+        "C10",
+        "C11",
+        "C13"
+      ],
+      "input_asset_ids": [
+        "shared-fact-sheet"
+      ]
+    },
+    {
+      "beat_id": "archive-the-meeting",
+      "ordinal": 8,
+      "title": "Archive the meeting",
+      "objective": "Archive the ended meeting from the real list and confirm the archived overlay.",
+      "anchor": "meeting-list",
+      "route": "list",
+      "checkpoint": "checkpoint-closed",
+      "start_checkpoint": "checkpoint-closed",
+      "completed_checkpoint": "checkpoint-archived",
+      "disclosure": "Archiving is an overlay. The meeting remains ended and cannot be reopened in this replay.",
+      "steps": [
+        {
+          "step_id": "archive-meeting",
+          "label": "Archive the ended meeting",
+          "intent_id": "archive-meeting",
+          "completion": "checkpoint"
+        }
+      ],
+      "claim_ids": [
+        "C13"
+      ],
+      "input_asset_ids": [
+        "shared-fact-sheet"
+      ]
+    }
+  ],
+  "claims": [
+    {
+      "claim_id": "C1",
+      "kind": "fact",
+      "text": "CRISIL's annexure row for ISIN INE001A07RW5 lists a 7.87% coupon, allotment on 18 July 2019, scheduled maturity on 18 July 2022, and an issue size of Rs 5,000 crore.",
+      "evidence_asset_id": "crisil-annexure",
+      "locator": "S1 annexure row for ISIN INE001A07RW5",
+      "excerpt": "INE001A07RW5 | 7.87% | 18 July 2019 | 18 July 2022 | Rs 5,000 crore",
+      "source_url": "https://www.crisil.com/mnt/winshare/Ratings/RatingList/RatingDocs/Housing_Development_Finance_Corporation_Limited_July_31_2020_RR.html",
+      "source_title": "CRISIL Rating Rationale, 31 July 2020",
+      "capture_date": "2026-10-16"
+    },
+    {
+      "claim_id": "C2",
+      "kind": "fact",
+      "text": "CRISIL assigned AAA/Stable on 31 July 2020.",
+      "evidence_asset_id": "crisil-annexure",
+      "locator": "S1 rating action",
+      "excerpt": "CRISIL AAA/Stable | 31 July 2020",
+      "source_url": "https://www.crisil.com/mnt/winshare/Ratings/RatingList/RatingDocs/Housing_Development_Finance_Corporation_Limited_July_31_2020_RR.html",
+      "source_title": "CRISIL Rating Rationale, 31 July 2020",
+      "capture_date": "2026-10-16"
+    },
+    {
+      "claim_id": "C3",
+      "kind": "fact",
+      "text": "The FY20 MD&A reports standalone total income of Rs 58,763 crore and profit after tax of Rs 17,770 crore, and Rs 46,437 crore of secured redeemable NCDs raised at issuer level.",
+      "evidence_asset_id": "hdfc-fy20-mda",
+      "locator": "S4 MD&A, FY20 standalone performance and borrowings",
+      "excerpt": "standalone total income of Rs 58,763 crore",
+      "source_url": "https://homeloans.hdfc.bank.in/digital-annual-report-2019-2020/mda",
+      "source_title": "HDFC Ltd Annual Report 2019-20, MD&A",
+      "capture_date": "2026-10-16"
+    },
+    {
+      "claim_id": "C4",
+      "kind": "derived",
+      "text": "The stated tenor is 1,096 days, approximately three calendar years, derived from the 18 July 2019 allotment and 18 July 2022 scheduled maturity.",
+      "evidence_asset_id": "shared-fact-sheet",
+      "locator": "Shared fact sheet, Terms",
+      "excerpt": "1,096 days"
+    },
+    {
+      "claim_id": "C5",
+      "kind": "derived",
+      "text": "Three scheduled annual coupons at 7.87% would sum to 23.61% of principal over the stated tenor; this is not a yield and assumes scheduled payments.",
+      "evidence_asset_id": "shared-fact-sheet",
+      "locator": "Shared fact sheet, Terms",
+      "excerpt": "23.61%"
+    },
+    {
+      "claim_id": "C6",
+      "kind": "fact",
+      "text": "The FY20 MD&A states the NCDs are listed on the NSE/BSE wholesale debt market.",
+      "evidence_asset_id": "hdfc-fy20-mda",
+      "locator": "S4 MD&A, borrowings",
+      "excerpt": "listed on the NSE/BSE",
+      "source_url": "https://homeloans.hdfc.bank.in/digital-annual-report-2019-2020/mda",
+      "source_title": "HDFC Ltd Annual Report 2019-20, MD&A",
+      "capture_date": "2026-10-16"
+    },
+    {
+      "claim_id": "C7",
+      "kind": "judgment",
+      "text": "Listing is not the same as executable secondary liquidity; the record contains no price, yield, or liquidity data.",
+      "evidence_asset_id": "downside-worksheet",
+      "locator": "Downside worksheet, Liquidity test",
+      "excerpt": "Listing is not executable liquidity"
+    },
+    {
+      "claim_id": "C8",
+      "kind": "judgment",
+      "text": "AAA/Stable is a rating opinion dated 31 July 2020, not a guarantee and not a current rating.",
+      "evidence_asset_id": "downside-worksheet",
+      "locator": "Downside worksheet, Rating test",
+      "excerpt": "dated opinion, not a guarantee"
+    },
+    {
+      "claim_id": "C9",
+      "kind": "demo_authored",
+      "text": "The +200bp rate move and risk-off secondary-market scenario is demo-authored for this replay; it is not a forecast or issuer guidance.",
+      "evidence_asset_id": "downside-worksheet",
+      "locator": "Downside worksheet, Scenario",
+      "excerpt": "+200bp rate move and risk-off secondary market"
+    },
+    {
+      "claim_id": "C10",
+      "kind": "unknown",
+      "text": "The meeting record contains no executable price, yield, or secondary-market liquidity data for the series.",
+      "evidence_asset_id": "shared-fact-sheet",
+      "locator": "Shared fact sheet, What is not established",
+      "excerpt": "No executable price, yield, or secondary-market liquidity"
+    },
+    {
+      "claim_id": "C11",
+      "kind": "unknown",
+      "text": "Scheduled maturity is 18 July 2022; the meeting does not assert that payment occurred.",
+      "evidence_asset_id": "shared-fact-sheet",
+      "locator": "Shared fact sheet, What is not established",
+      "excerpt": "Scheduled maturity is 18 July 2022"
+    },
+    {
+      "claim_id": "C12",
+      "kind": "unknown",
+      "text": "The rating annexure describes the instrument as a debenture; the retained excerpt does not establish series-level secured or unsecured status.",
+      "evidence_asset_id": "crisil-annexure",
+      "locator": "S1 instrument column",
+      "excerpt": "Instrument: Debenture"
+    },
+    {
+      "claim_id": "C13",
+      "kind": "judgment",
+      "text": "The outcome is a research checklist, not a buy/sell recommendation or investment approval.",
+      "evidence_asset_id": "shared-fact-sheet",
+      "locator": "Shared fact sheet, Outcome and limitations",
+      "excerpt": "research checklist, not a buy/sell recommendation"
+    }
+  ]
+}

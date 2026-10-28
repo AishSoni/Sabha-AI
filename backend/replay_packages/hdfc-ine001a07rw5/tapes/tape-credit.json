@@ -1,0 +1,182 @@
+{
+  "tape_id": "tape-credit",
+  "meeting_id": "a0000000-0000-4000-8000-000000000001",
+  "operation_id": "a0000000-0000-4000-8000-000000000301",
+  "participant_id": "a0000000-0000-4000-8000-000000000101",
+  "request_key": "turn-credit",
+  "initial_checkpoint": "checkpoint-created",
+  "completed_checkpoint": "checkpoint-credit",
+  "events": [
+    {
+      "event_id": "tape-credit-1",
+      "sequence": 1,
+      "type": "tool_call",
+      "delay_ms": 100,
+      "payload": {
+        "invocation_id": "inv-credit-1",
+        "call_id": "call-credit-1",
+        "tool_name": "search_knowledge_base",
+        "arguments": {
+          "query": "HDFC 7.87% 2022 terms rating issuer context"
+        }
+      }
+    },
+    {
+      "event_id": "tape-credit-2",
+      "sequence": 2,
+      "type": "tool_result",
+      "delay_ms": 120,
+      "payload": {
+        "invocation_id": "inv-credit-1",
+        "call_id": "call-credit-1",
+        "result": {
+          "retrieval_key": "retrieval-credit",
+          "hits": 4
+        },
+        "is_error": false
+      }
+    },
+    {
+      "event_id": "tape-credit-3",
+      "sequence": 3,
+      "type": "citation",
+      "delay_ms": 60,
+      "payload": {
+        "source": "CRISIL rating rationale",
+        "title": "CRISIL Rating Rationale, 31 July 2020",
+        "url": "https://www.crisil.com/mnt/winshare/Ratings/RatingList/RatingDocs/Housing_Development_Finance_Corporation_Limited_July_31_2020_RR.html",
+        "snippet": "CRISIL's annexure row for ISIN INE001A07RW5 lists a 7.87% coupon, allotment on 18 July 2019, scheduled maturity on 18 July 2022, and an issue size of Rs 5,000 crore.",
+        "claim_id": "C1",
+        "locator": "S1 annexure row for ISIN INE001A07RW5"
+      }
+    },
+    {
+      "event_id": "tape-credit-4",
+      "sequence": 4,
+      "type": "citation",
+      "delay_ms": 60,
+      "payload": {
+        "source": "CRISIL rating rationale",
+        "title": "CRISIL Rating Rationale, 31 July 2020",
+        "url": "https://www.crisil.com/mnt/winshare/Ratings/RatingList/RatingDocs/Housing_Development_Finance_Corporation_Limited_July_31_2020_RR.html",
+        "snippet": "CRISIL assigned AAA/Stable on 31 July 2020.",
+        "claim_id": "C2",
+        "locator": "S1 rating action"
+      }
+    },
+    {
+      "event_id": "tape-credit-5",
+      "sequence": 5,
+      "type": "citation",
+      "delay_ms": 60,
+      "payload": {
+        "source": "HDFC Ltd FY20 MD&A",
+        "title": "HDFC Ltd Annual Report 2019-20, MD&A",
+        "url": "https://homeloans.hdfc.bank.in/digital-annual-report-2019-2020/mda",
+        "snippet": "The FY20 MD&A reports standalone total income of Rs 58,763 crore and profit after tax of Rs 17,770 crore, and Rs 46,437 crore of secured redeemable NCDs raised at issuer level.",
+        "claim_id": "C3",
+        "locator": "S4 MD&A, FY20 standalone performance and borrowings"
+      }
+    },
+    {
+      "event_id": "tape-credit-6",
+      "sequence": 6,
+      "type": "citation",
+      "delay_ms": 60,
+      "payload": {
+        "source": "Record evidence",
+        "title": "Shared fact sheet, What is not established",
+        "url": null,
+        "snippet": "The meeting record contains no executable price, yield, or secondary-market liquidity data for the series.",
+        "claim_id": "C10",
+        "locator": "Shared fact sheet, What is not established"
+      }
+    },
+    {
+      "event_id": "tape-credit-7",
+      "sequence": 7,
+      "type": "citation",
+      "delay_ms": 60,
+      "payload": {
+        "source": "CRISIL rating rationale",
+        "title": "S1 instrument column",
+        "url": null,
+        "snippet": "The rating annexure describes the instrument as a debenture; the retained excerpt does not establish series-level secured or unsecured status.",
+        "claim_id": "C12",
+        "locator": "S1 instrument column"
+      }
+    },
+    {
+      "event_id": "tape-credit-8",
+      "sequence": 8,
+      "type": "text",
+      "delay_ms": 60,
+      "payload": {
+        "content": "CRISIL's annexure row for ISIN INE001A07RW5 lists a 7.87% coupon, allotment on 18 July 2019, scheduled maturity on 18 July 2022, and an issue size of "
+      }
+    },
+    {
+      "event_id": "tape-credit-9",
+      "sequence": 9,
+      "type": "text",
+      "delay_ms": 60,
+      "payload": {
+        "content": "Rs 5,000 crore. CRISIL assigned AAA/Stable on 31 July 2020; that is the strongest credit evidence in the record, but it is an opinion, not a "
+      }
+    },
+    {
+      "event_id": "tape-credit-10",
+      "sequence": 10,
+      "type": "text",
+      "delay_ms": 60,
+      "payload": {
+        "content": "guarantee or a current rating. The FY20 MD&A reports standalone total income of Rs 58,763 crore, profit after tax of Rs 17,770 crore, and Rs 46,437 "
+      }
+    },
+    {
+      "event_id": "tape-credit-11",
+      "sequence": 11,
+      "type": "text",
+      "delay_ms": 60,
+      "payload": {
+        "content": "crore of secured redeemable NCDs raised at issuer level. The stated tenor is 1,096 days, about three years. Three scheduled annual coupons at 7.87% "
+      }
+    },
+    {
+      "event_id": "tape-credit-12",
+      "sequence": 12,
+      "type": "text",
+      "delay_ms": 60,
+      "payload": {
+        "content": "would sum to 23.61% of principal; that is not a yield. The annexure calls the instrument a debenture, but the retained excerpt does not establish "
+      }
+    },
+    {
+      "event_id": "tape-credit-13",
+      "sequence": 13,
+      "type": "text",
+      "delay_ms": 60,
+      "payload": {
+        "content": "series-level security. The record has no executable price, yield, or secondary-market liquidity, and it does not assert payment. This is a 31 July "
+      }
+    },
+    {
+      "event_id": "tape-credit-14",
+      "sequence": 14,
+      "type": "text",
+      "delay_ms": 60,
+      "payload": {
+        "content": "2020 information set, not a current rating."
+      }
+    },
+    {
+      "event_id": "tape-credit-15",
+      "sequence": 15,
+      "type": "done",
+      "delay_ms": 80,
+      "payload": {
+        "message_id": "a0000000-0000-4000-8000-000000000402"
+      }
+    }
+  ]
+}

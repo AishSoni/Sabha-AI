@@ -18,6 +18,7 @@ from app.replay.package.loader import compute_content_sha256
 
 BACKEND = Path(__file__).resolve().parents[2]
 PACKAGE_ROOT = BACKEND / "replay_packages" / "placeholder-analyst"
+GUIDED_ROOT = BACKEND / "replay_packages" / "hdfc-ine001a07rw5"
 FIXTURES = BACKEND / "tests" / "fixtures" / "replay"
 
 
@@ -212,6 +213,7 @@ def _install_guided_manifest(root: Path, extra=None) -> None:
 def test_checked_in_packages_are_valid() -> None:
     for root in (
         PACKAGE_ROOT,
+        GUIDED_ROOT,
         FIXTURES / "fixture-minimal",
         FIXTURES / "fixture-minimal-v2",
     ):

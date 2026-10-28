@@ -1,0 +1,127 @@
+{
+  "tape_id": "tape-portfolio",
+  "meeting_id": "a0000000-0000-4000-8000-000000000001",
+  "operation_id": "a0000000-0000-4000-8000-000000000303",
+  "participant_id": "a0000000-0000-4000-8000-000000000103",
+  "request_key": "turn-portfolio",
+  "initial_checkpoint": "checkpoint-followup",
+  "completed_checkpoint": "checkpoint-portfolio",
+  "events": [
+    {
+      "event_id": "tape-portfolio-1",
+      "sequence": 1,
+      "type": "tool_call",
+      "delay_ms": 100,
+      "payload": {
+        "invocation_id": "inv-portfolio-1",
+        "call_id": "call-portfolio-1",
+        "tool_name": "search_knowledge_base",
+        "arguments": {
+          "query": "HDFC 7.87% 2022 mandate price yield liquidity"
+        }
+      }
+    },
+    {
+      "event_id": "tape-portfolio-2",
+      "sequence": 2,
+      "type": "tool_result",
+      "delay_ms": 120,
+      "payload": {
+        "invocation_id": "inv-portfolio-1",
+        "call_id": "call-portfolio-1",
+        "result": {
+          "retrieval_key": "retrieval-portfolio",
+          "hits": 3
+        },
+        "is_error": false
+      }
+    },
+    {
+      "event_id": "tape-portfolio-3",
+      "sequence": 3,
+      "type": "citation",
+      "delay_ms": 60,
+      "payload": {
+        "source": "Record evidence",
+        "title": "Shared fact sheet, What is not established",
+        "url": null,
+        "snippet": "The meeting record contains no executable price, yield, or secondary-market liquidity data for the series.",
+        "claim_id": "C10",
+        "locator": "Shared fact sheet, What is not established"
+      }
+    },
+    {
+      "event_id": "tape-portfolio-4",
+      "sequence": 4,
+      "type": "citation",
+      "delay_ms": 60,
+      "payload": {
+        "source": "Record evidence",
+        "title": "Shared fact sheet, What is not established",
+        "url": null,
+        "snippet": "Scheduled maturity is 18 July 2022; the meeting does not assert that payment occurred.",
+        "claim_id": "C11",
+        "locator": "Shared fact sheet, What is not established"
+      }
+    },
+    {
+      "event_id": "tape-portfolio-5",
+      "sequence": 5,
+      "type": "citation",
+      "delay_ms": 60,
+      "payload": {
+        "source": "Committee judgment",
+        "title": "Shared fact sheet, Outcome and limitations",
+        "url": null,
+        "snippet": "The outcome is a research checklist, not a buy/sell recommendation or investment approval.",
+        "claim_id": "C13",
+        "locator": "Shared fact sheet, Outcome and limitations"
+      }
+    },
+    {
+      "event_id": "tape-portfolio-6",
+      "sequence": 6,
+      "type": "text",
+      "delay_ms": 60,
+      "payload": {
+        "content": "The mandate cannot be completed from this record. I have a fictional three-year horizon, but no executable price, yield, secondary-market liquidity, "
+      }
+    },
+    {
+      "event_id": "tape-portfolio-7",
+      "sequence": 7,
+      "type": "text",
+      "delay_ms": 60,
+      "payload": {
+        "content": "or series-level payment evidence. The coupon is not a yield. The scheduled maturity is not proof of payment. I can only recommend a research "
+      }
+    },
+    {
+      "event_id": "tape-portfolio-8",
+      "sequence": 8,
+      "type": "text",
+      "delay_ms": 60,
+      "payload": {
+        "content": "checklist: confirm the series terms and security, obtain a current price/yield and liquidity assessment, and verify the payment outcome when it "
+      }
+    },
+    {
+      "event_id": "tape-portfolio-9",
+      "sequence": 9,
+      "type": "text",
+      "delay_ms": 60,
+      "payload": {
+        "content": "occurs. I cannot size a position or recommend a purchase."
+      }
+    },
+    {
+      "event_id": "tape-portfolio-10",
+      "sequence": 10,
+      "type": "done",
+      "delay_ms": 80,
+      "payload": {
+        "message_id": "a0000000-0000-4000-8000-000000000405"
+      }
+    }
+  ]
+}

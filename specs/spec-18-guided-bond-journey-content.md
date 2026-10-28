@@ -1,6 +1,6 @@
 # Spec 18 Content Ledger — HDFC Ltd 7.87% 2022 Debenture
 
-Status: **candidate for exact-copy and source-rights approval**. This ledger is the review artifact required by Spec 18. The production package must not be committed until the approval checklist at the end is signed off.
+Status: **approved for production package `hdfc-ine001a07rw5` version 1** on 28 October 2026. The exact dialogue, claims, citations, short source excerpts, and package publication were approved. Package content hash: `ced67209984ff87088119f58f5b2bcc643fd9240623dfbe02e03ab761c1fb07f`.
 
 ## 1. Provenance and scope
 
@@ -313,10 +313,12 @@ Do not display “live”, “committed”, “saved on demand”, or “continu
 
 ## 10. Approval checklist
 
-- [ ] Exact dialogue and UI copy approved.
-- [ ] Citation statements, locators, and source capture dates approved.
-- [ ] Short excerpt retention/redistribution approved for S1 and S4.
-- [ ] No future hindsight or investment recommendation.
-- [ ] Package publication as `hdfc-ine001a07rw5` version `1` approved.
+- [x] Exact dialogue and UI copy approved.
+- [x] Citation statements, locators, and source capture dates approved.
+- [x] Short excerpt retention/redistribution approved for S1 and S4.
+- [x] No future hindsight or investment recommendation.
+- [x] Package publication as `hdfc-ine001a07rw5` version `1` approved.
+
+Approved on 28 October 2026. The production package is committed with the hash above; later edits require a new version and a new approval.
 
 Until all five boxes are checked, this file is a candidate and the production package must not be published.

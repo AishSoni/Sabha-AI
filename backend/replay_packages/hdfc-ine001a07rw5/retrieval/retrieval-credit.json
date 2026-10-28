@@ -1,0 +1,98 @@
+{
+  "retrieval_key": "retrieval-credit",
+  "meeting_id": "a0000000-0000-4000-8000-000000000001",
+  "participant_id": "a0000000-0000-4000-8000-000000000101",
+  "scope": "private",
+  "stack_id": "credit-private",
+  "query": "HDFC 7.87% 2022 terms rating issuer context",
+  "hits": [
+    {
+      "rank": 1,
+      "document_id": "a0000000-0000-4000-8000-000000000201",
+      "revision_id": "a0000000-0000-4000-8000-000000000202",
+      "chunk_id": "terms",
+      "content_sha256": "e9152159719221ffdb0ba2b90e0044bd39eea44f72b22b1ea65fbfcc56701bcd",
+      "passage": "ISIN INE001A07RW5; 7.87% coupon; 18 July 2019; 18 July 2022; Rs 5,000 crore.",
+      "score": 0.96,
+      "file_name": "hdfc-v007-shared-fact-sheet.md",
+      "page_number": 1,
+      "locator": {
+        "section": "terms"
+      },
+      "citation": {
+        "source": "CRISIL rating rationale",
+        "title": "CRISIL Rating Rationale, 31 July 2020",
+        "url": "https://www.crisil.com/mnt/winshare/Ratings/RatingList/RatingDocs/Housing_Development_Finance_Corporation_Limited_July_31_2020_RR.html",
+        "snippet": "CRISIL's annexure row for ISIN INE001A07RW5 lists a 7.87% coupon, allotment on 18 July 2019, scheduled maturity on 18 July 2022, and an issue size of Rs 5,000 crore.",
+        "claim_id": "C1",
+        "locator": "S1 annexure row for ISIN INE001A07RW5"
+      }
+    },
+    {
+      "rank": 2,
+      "document_id": "a0000000-0000-4000-8000-000000000201",
+      "revision_id": "a0000000-0000-4000-8000-000000000202",
+      "chunk_id": "rating",
+      "content_sha256": "e9152159719221ffdb0ba2b90e0044bd39eea44f72b22b1ea65fbfcc56701bcd",
+      "passage": "CRISIL AAA/Stable, 31 July 2020.",
+      "score": 0.94,
+      "file_name": "hdfc-v007-shared-fact-sheet.md",
+      "page_number": 1,
+      "locator": {
+        "section": "rating"
+      },
+      "citation": {
+        "source": "CRISIL rating rationale",
+        "title": "CRISIL Rating Rationale, 31 July 2020",
+        "url": "https://www.crisil.com/mnt/winshare/Ratings/RatingList/RatingDocs/Housing_Development_Finance_Corporation_Limited_July_31_2020_RR.html",
+        "snippet": "CRISIL assigned AAA/Stable on 31 July 2020.",
+        "claim_id": "C2",
+        "locator": "S1 rating action"
+      }
+    },
+    {
+      "rank": 3,
+      "document_id": "a0000000-0000-4000-8000-000000000201",
+      "revision_id": "a0000000-0000-4000-8000-000000000202",
+      "chunk_id": "issuer",
+      "content_sha256": "e9152159719221ffdb0ba2b90e0044bd39eea44f72b22b1ea65fbfcc56701bcd",
+      "passage": "FY20 standalone total income and profit after tax.",
+      "score": 0.88,
+      "file_name": "hdfc-v007-shared-fact-sheet.md",
+      "page_number": 1,
+      "locator": {
+        "section": "issuer"
+      },
+      "citation": {
+        "source": "HDFC Ltd FY20 MD&A",
+        "title": "HDFC Ltd Annual Report 2019-20, MD&A",
+        "url": "https://homeloans.hdfc.bank.in/digital-annual-report-2019-2020/mda",
+        "snippet": "The FY20 MD&A reports standalone total income of Rs 58,763 crore and profit after tax of Rs 17,770 crore, and Rs 46,437 crore of secured redeemable NCDs raised at issuer level.",
+        "claim_id": "C3",
+        "locator": "S4 MD&A, FY20 standalone performance and borrowings"
+      }
+    },
+    {
+      "rank": 4,
+      "document_id": "a0000000-0000-4000-8000-000000000201",
+      "revision_id": "a0000000-0000-4000-8000-000000000202",
+      "chunk_id": "open-items",
+      "content_sha256": "e9152159719221ffdb0ba2b90e0044bd39eea44f72b22b1ea65fbfcc56701bcd",
+      "passage": "No executable price, yield, or secondary-market liquidity.",
+      "score": 0.82,
+      "file_name": "hdfc-v007-shared-fact-sheet.md",
+      "page_number": 1,
+      "locator": {
+        "section": "open-items"
+      },
+      "citation": {
+        "source": "Record evidence",
+        "title": "Shared fact sheet, What is not established",
+        "url": null,
+        "snippet": "The meeting record contains no executable price, yield, or secondary-market liquidity data for the series.",
+        "claim_id": "C10",
+        "locator": "Shared fact sheet, What is not established"
+      }
+    }
+  ]
+}

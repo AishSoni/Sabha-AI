@@ -1,0 +1,638 @@
+{
+  "checkpoint_id": "checkpoint-portfolio",
+  "ordinal": 5,
+  "phase": "active",
+  "meeting_id": "a0000000-0000-4000-8000-000000000001",
+  "reads": {
+    "safe_config": {
+      "board": {
+        "title": "Prepared board for the recorded meeting",
+        "participants": [
+          {
+            "participant_id": "a0000000-0000-4000-8000-000000000101",
+            "name": "The Credit Analyst",
+            "role": "Credit Analyst",
+            "persona_summary": "You are The Credit Analyst. Test the record: terms, rating, issuer context, and what is missing.",
+            "stack_ids": [
+              "shared-meeting-documents",
+              "credit-private"
+            ],
+            "color": "#6366f1"
+          },
+          {
+            "participant_id": "a0000000-0000-4000-8000-000000000102",
+            "name": "The Downside Reviewer",
+            "role": "Downside Reviewer",
+            "persona_summary": "You are The Downside Reviewer. Stress-test the case: ratings are opinions; rates and liquidity can change.",
+            "stack_ids": [
+              "shared-meeting-documents",
+              "downside-private"
+            ],
+            "color": "#f59e0b"
+          },
+          {
+            "participant_id": "a0000000-0000-4000-8000-000000000103",
+            "name": "The Portfolio Analyst",
+            "role": "Portfolio Analyst",
+            "persona_summary": "You are The Portfolio Analyst. Apply a fictional mandate and distinguish what can be concluded from what cannot.",
+            "stack_ids": [
+              "shared-meeting-documents",
+              "portfolio-private"
+            ],
+            "color": "#10b981"
+          }
+        ],
+        "stacks": {
+          "shared-meeting-documents": {
+            "label": "Meeting documents (shared)",
+            "scope": "shared"
+          },
+          "credit-private": {
+            "label": "Credit evidence (private to The Credit Analyst)",
+            "scope": "private"
+          },
+          "downside-private": {
+            "label": "Downside worksheet (private to The Downside Reviewer)",
+            "scope": "private"
+          },
+          "portfolio-private": {
+            "label": "Portfolio mandate (private to The Portfolio Analyst)",
+            "scope": "private"
+          }
+        },
+        "preset": {
+          "agenda": "Review HDFC Ltd's 7.87% 2022 debenture (ISIN INE001A07RW5) as of 31 July 2020",
+          "context": "Prepared historical committee review. Establish the terms and rating, test the downside, apply a fictional mandate, and close with a research checklist. Not investment advice.",
+          "participant_ids": [
+            "a0000000-0000-4000-8000-000000000101",
+            "a0000000-0000-4000-8000-000000000102",
+            "a0000000-0000-4000-8000-000000000103"
+          ],
+          "document_id": "a0000000-0000-4000-8000-000000000201",
+          "document_label": "HDFC Ltd 7.87% 2022 Debenture - Shared Fact Sheet (as of 31 July 2020)"
+        }
+      },
+      "intake": {
+        "document_id": "a0000000-0000-4000-8000-000000000201",
+        "stages": [
+          {
+            "key": "received",
+            "label": "Received",
+            "at": "2020-07-31T09:00:00Z"
+          },
+          {
+            "key": "validated",
+            "label": "Validated",
+            "at": "2020-07-31T09:00:05Z"
+          },
+          {
+            "key": "parsed",
+            "label": "Parsed",
+            "at": "2020-07-31T09:00:12Z"
+          },
+          {
+            "key": "indexed",
+            "label": "Indexed",
+            "at": "2020-07-31T09:00:20Z"
+          },
+          {
+            "key": "ready",
+            "label": "Ready",
+            "at": "2020-07-31T09:00:24Z"
+          }
+        ],
+        "note": "Recorded intake. No filesystem write or live parser ran during playback."
+      },
+      "disclosure": "Prepared historical educational content. No live research, current pricing, or investment advice. No fresh model charge.",
+      "as_of": "Information as of 31 July 2020 - sources captured 16 October 2026.",
+      "settings": {
+        "runtime": "recorded",
+        "notice": "Guided replay; not live research."
+      }
+    },
+    "meeting": {
+      "id": "a0000000-0000-4000-8000-000000000001",
+      "name": "Review HDFC Ltd's 7.87% 2022 debenture (ISIN INE001A07RW5) as of 31 July 2020",
+      "agenda": "Prepared historical committee review. Establish the terms and rating, test the downside, apply a fictional mandate, and close with a research checklist. Not investment advice.",
+      "user_id": null,
+      "status": "active",
+      "total_cost": 0.0,
+      "created_at": "2020-07-31T09:00:00Z",
+      "participants": [
+        {
+          "id": "a0000000-0000-4000-8000-000000000101",
+          "meeting_id": "a0000000-0000-4000-8000-000000000001",
+          "name": "The Credit Analyst",
+          "role": "Credit Analyst",
+          "system_prompt": "You are The Credit Analyst. Test the record: terms, rating, issuer context, and what is missing.",
+          "provider_config": {
+            "provider": "recorded",
+            "model": "recorded"
+          },
+          "color": "#6366f1",
+          "persona_id": null,
+          "stack_ids": [
+            "shared-meeting-documents",
+            "credit-private"
+          ],
+          "created_at": "2020-07-31T09:00:24Z",
+          "generation_policy": {}
+        },
+        {
+          "id": "a0000000-0000-4000-8000-000000000102",
+          "meeting_id": "a0000000-0000-4000-8000-000000000001",
+          "name": "The Downside Reviewer",
+          "role": "Downside Reviewer",
+          "system_prompt": "You are The Downside Reviewer. Stress-test the case: ratings are opinions; rates and liquidity can change.",
+          "provider_config": {
+            "provider": "recorded",
+            "model": "recorded"
+          },
+          "color": "#f59e0b",
+          "persona_id": null,
+          "stack_ids": [
+            "shared-meeting-documents",
+            "downside-private"
+          ],
+          "created_at": "2020-07-31T09:00:24Z",
+          "generation_policy": {}
+        },
+        {
+          "id": "a0000000-0000-4000-8000-000000000103",
+          "meeting_id": "a0000000-0000-4000-8000-000000000001",
+          "name": "The Portfolio Analyst",
+          "role": "Portfolio Analyst",
+          "system_prompt": "You are The Portfolio Analyst. Apply a fictional mandate and distinguish what can be concluded from what cannot.",
+          "provider_config": {
+            "provider": "recorded",
+            "model": "recorded"
+          },
+          "color": "#10b981",
+          "persona_id": null,
+          "stack_ids": [
+            "shared-meeting-documents",
+            "portfolio-private"
+          ],
+          "created_at": "2020-07-31T09:00:24Z",
+          "generation_policy": {}
+        }
+      ],
+      "messages": [
+        {
+          "id": "a0000000-0000-4000-8000-000000000401",
+          "meeting_id": "a0000000-0000-4000-8000-000000000001",
+          "content": "We are reviewing HDFC Ltd's 7.87% 2022 debenture (ISIN INE001A07RW5) as of 31 July 2020. Credit Analyst, establish the terms and rating, and separate what the record supports from what it does not.",
+          "sender_type": "user",
+          "sender_id": null,
+          "sender_name": "Director",
+          "citations": [],
+          "tool_artifacts": null,
+          "thinking_content": null,
+          "estimated_cost": 0.0,
+          "effective_generation": null,
+          "sequence": 0,
+          "request_key": "director-opening",
+          "operation_id": null,
+          "created_at": "2020-07-31T09:00:30Z"
+        },
+        {
+          "id": "a0000000-0000-4000-8000-000000000402",
+          "meeting_id": "a0000000-0000-4000-8000-000000000001",
+          "content": "CRISIL's annexure row for ISIN INE001A07RW5 lists a 7.87% coupon, allotment on 18 July 2019, scheduled maturity on 18 July 2022, and an issue size of Rs 5,000 crore. CRISIL assigned AAA/Stable on 31 July 2020; that is the strongest credit evidence in the record, but it is an opinion, not a guarantee or a current rating. The FY20 MD&A reports standalone total income of Rs 58,763 crore, profit after tax of Rs 17,770 crore, and Rs 46,437 crore of secured redeemable NCDs raised at issuer level. The stated tenor is 1,096 days, about three years. Three scheduled annual coupons at 7.87% would sum to 23.61% of principal; that is not a yield. The annexure calls the instrument a debenture, but the retained excerpt does not establish series-level security. The record has no executable price, yield, or secondary-market liquidity, and it does not assert payment. This is a 31 July 2020 information set, not a current rating.",
+          "sender_type": "ai",
+          "sender_id": "a0000000-0000-4000-8000-000000000101",
+          "sender_name": "The Credit Analyst",
+          "citations": [
+            {
+              "source": "CRISIL rating rationale",
+              "title": "CRISIL Rating Rationale, 31 July 2020",
+              "url": "https://www.crisil.com/mnt/winshare/Ratings/RatingList/RatingDocs/Housing_Development_Finance_Corporation_Limited_July_31_2020_RR.html",
+              "snippet": "CRISIL's annexure row for ISIN INE001A07RW5 lists a 7.87% coupon, allotment on 18 July 2019, scheduled maturity on 18 July 2022, and an issue size of Rs 5,000 crore.",
+              "claim_id": "C1",
+              "locator": "S1 annexure row for ISIN INE001A07RW5"
+            },
+            {
+              "source": "CRISIL rating rationale",
+              "title": "CRISIL Rating Rationale, 31 July 2020",
+              "url": "https://www.crisil.com/mnt/winshare/Ratings/RatingList/RatingDocs/Housing_Development_Finance_Corporation_Limited_July_31_2020_RR.html",
+              "snippet": "CRISIL assigned AAA/Stable on 31 July 2020.",
+              "claim_id": "C2",
+              "locator": "S1 rating action"
+            },
+            {
+              "source": "HDFC Ltd FY20 MD&A",
+              "title": "HDFC Ltd Annual Report 2019-20, MD&A",
+              "url": "https://homeloans.hdfc.bank.in/digital-annual-report-2019-2020/mda",
+              "snippet": "The FY20 MD&A reports standalone total income of Rs 58,763 crore and profit after tax of Rs 17,770 crore, and Rs 46,437 crore of secured redeemable NCDs raised at issuer level.",
+              "claim_id": "C3",
+              "locator": "S4 MD&A, FY20 standalone performance and borrowings"
+            },
+            {
+              "source": "Record evidence",
+              "title": "Shared fact sheet, What is not established",
+              "url": null,
+              "snippet": "The meeting record contains no executable price, yield, or secondary-market liquidity data for the series.",
+              "claim_id": "C10",
+              "locator": "Shared fact sheet, What is not established"
+            },
+            {
+              "source": "CRISIL rating rationale",
+              "title": "S1 instrument column",
+              "url": null,
+              "snippet": "The rating annexure describes the instrument as a debenture; the retained excerpt does not establish series-level secured or unsecured status.",
+              "claim_id": "C12",
+              "locator": "S1 instrument column"
+            }
+          ],
+          "tool_artifacts": {
+            "calls": [
+              {
+                "invocation_id": "inv-credit-1",
+                "call_id": "call-credit-1",
+                "tool_name": "search_knowledge_base",
+                "arguments": {
+                  "query": "HDFC 7.87% 2022 terms rating issuer context"
+                },
+                "result": {
+                  "retrieval_key": "retrieval-credit",
+                  "hits": 4
+                },
+                "is_error": false
+              }
+            ]
+          },
+          "thinking_content": null,
+          "estimated_cost": 0.0,
+          "effective_generation": null,
+          "sequence": 1,
+          "request_key": "turn-credit",
+          "operation_id": "a0000000-0000-4000-8000-000000000301",
+          "created_at": "2020-07-31T09:01:00Z"
+        },
+        {
+          "id": "a0000000-0000-4000-8000-000000000403",
+          "meeting_id": "a0000000-0000-4000-8000-000000000001",
+          "content": "I accept the terms. I disagree with treating AAA/Stable as sufficient comfort. The rating is a dated opinion, not a guarantee and not a current rating. My worksheet models a +200bp rate move and a risk-off secondary market; that is a scenario, not a forecast. The FY20 MD&A says the NCDs are listed on the NSE/BSE wholesale debt market, but listing is not executable liquidity. The record has no price, yield, or liquidity data, so I cannot infer a mark-to-market value or a successful refinancing. I am logging a formal disagreement on whether the rating alone supports a conclusion.",
+          "sender_type": "ai",
+          "sender_id": "a0000000-0000-4000-8000-000000000102",
+          "sender_name": "The Downside Reviewer",
+          "citations": [
+            {
+              "source": "HDFC Ltd FY20 MD&A",
+              "title": "HDFC Ltd Annual Report 2019-20, MD&A",
+              "url": "https://homeloans.hdfc.bank.in/digital-annual-report-2019-2020/mda",
+              "snippet": "The FY20 MD&A states the NCDs are listed on the NSE/BSE wholesale debt market.",
+              "claim_id": "C6",
+              "locator": "S4 MD&A, borrowings"
+            },
+            {
+              "source": "Committee judgment",
+              "title": "Downside worksheet, Liquidity test",
+              "url": null,
+              "snippet": "Listing is not the same as executable secondary liquidity; the record contains no price, yield, or liquidity data.",
+              "claim_id": "C7",
+              "locator": "Downside worksheet, Liquidity test"
+            },
+            {
+              "source": "Committee judgment",
+              "title": "Downside worksheet, Rating test",
+              "url": null,
+              "snippet": "AAA/Stable is a rating opinion dated 31 July 2020, not a guarantee and not a current rating.",
+              "claim_id": "C8",
+              "locator": "Downside worksheet, Rating test"
+            },
+            {
+              "source": "Prepared for this replay",
+              "title": "Downside worksheet, Scenario",
+              "url": null,
+              "snippet": "The +200bp rate move and risk-off secondary-market scenario is demo-authored for this replay; it is not a forecast or issuer guidance.",
+              "claim_id": "C9",
+              "locator": "Downside worksheet, Scenario"
+            },
+            {
+              "source": "Record evidence",
+              "title": "Shared fact sheet, What is not established",
+              "url": null,
+              "snippet": "The meeting record contains no executable price, yield, or secondary-market liquidity data for the series.",
+              "claim_id": "C10",
+              "locator": "Shared fact sheet, What is not established"
+            }
+          ],
+          "tool_artifacts": {
+            "calls": [
+              {
+                "invocation_id": "inv-downside-1",
+                "call_id": "call-downside-1",
+                "tool_name": "search_knowledge_base",
+                "arguments": {
+                  "query": "HDFC 7.87% 2022 rating liquidity downside"
+                },
+                "result": {
+                  "retrieval_key": "retrieval-downside",
+                  "hits": 4
+                },
+                "is_error": false
+              },
+              {
+                "invocation_id": "inv-downside-2",
+                "call_id": "call-downside-2",
+                "tool_name": "log_disagreement",
+                "arguments": {
+                  "target_participant_name": "The Credit Analyst",
+                  "topic": "Rating alone is insufficient",
+                  "reasoning": "AAA/Stable is a dated opinion, not a guarantee or current market evidence; the record has no executable price, yield, or liquidity data.",
+                  "severity": 3
+                },
+                "result": {
+                  "disagreement_id": "a0000000-0000-4000-8000-000000000501"
+                },
+                "is_error": false
+              }
+            ]
+          },
+          "thinking_content": null,
+          "estimated_cost": 0.0,
+          "effective_generation": null,
+          "sequence": 2,
+          "request_key": "turn-downside",
+          "operation_id": "a0000000-0000-4000-8000-000000000302",
+          "created_at": "2020-07-31T09:02:00Z"
+        },
+        {
+          "id": "a0000000-0000-4000-8000-000000000404",
+          "meeting_id": "a0000000-0000-4000-8000-000000000001",
+          "content": "Portfolio Analyst, assume a fictional three-year mandate that requires an executable price, yield, and liquidity assessment. What can you conclude from this record?",
+          "sender_type": "user",
+          "sender_id": null,
+          "sender_name": "Director",
+          "citations": [],
+          "tool_artifacts": null,
+          "thinking_content": null,
+          "estimated_cost": 0.0,
+          "effective_generation": null,
+          "sequence": 3,
+          "request_key": "director-followup",
+          "operation_id": null,
+          "created_at": "2020-07-31T09:03:00Z"
+        },
+        {
+          "id": "a0000000-0000-4000-8000-000000000405",
+          "meeting_id": "a0000000-0000-4000-8000-000000000001",
+          "content": "The mandate cannot be completed from this record. I have a fictional three-year horizon, but no executable price, yield, secondary-market liquidity, or series-level payment evidence. The coupon is not a yield. The scheduled maturity is not proof of payment. I can only recommend a research checklist: confirm the series terms and security, obtain a current price/yield and liquidity assessment, and verify the payment outcome when it occurs. I cannot size a position or recommend a purchase.",
+          "sender_type": "ai",
+          "sender_id": "a0000000-0000-4000-8000-000000000103",
+          "sender_name": "The Portfolio Analyst",
+          "citations": [
+            {
+              "source": "Record evidence",
+              "title": "Shared fact sheet, What is not established",
+              "url": null,
+              "snippet": "The meeting record contains no executable price, yield, or secondary-market liquidity data for the series.",
+              "claim_id": "C10",
+              "locator": "Shared fact sheet, What is not established"
+            },
+            {
+              "source": "Record evidence",
+              "title": "Shared fact sheet, What is not established",
+              "url": null,
+              "snippet": "Scheduled maturity is 18 July 2022; the meeting does not assert that payment occurred.",
+              "claim_id": "C11",
+              "locator": "Shared fact sheet, What is not established"
+            },
+            {
+              "source": "Committee judgment",
+              "title": "Shared fact sheet, Outcome and limitations",
+              "url": null,
+              "snippet": "The outcome is a research checklist, not a buy/sell recommendation or investment approval.",
+              "claim_id": "C13",
+              "locator": "Shared fact sheet, Outcome and limitations"
+            }
+          ],
+          "tool_artifacts": {
+            "calls": [
+              {
+                "invocation_id": "inv-portfolio-1",
+                "call_id": "call-portfolio-1",
+                "tool_name": "search_knowledge_base",
+                "arguments": {
+                  "query": "HDFC 7.87% 2022 mandate price yield liquidity"
+                },
+                "result": {
+                  "retrieval_key": "retrieval-portfolio",
+                  "hits": 3
+                },
+                "is_error": false
+              }
+            ]
+          },
+          "thinking_content": null,
+          "estimated_cost": 0.0,
+          "effective_generation": null,
+          "sequence": 4,
+          "request_key": "turn-portfolio",
+          "operation_id": "a0000000-0000-4000-8000-000000000303",
+          "created_at": "2020-07-31T09:04:00Z"
+        }
+      ]
+    },
+    "meetings": [
+      {
+        "id": "a0000000-0000-4000-8000-000000000001",
+        "name": "Review HDFC Ltd's 7.87% 2022 debenture (ISIN INE001A07RW5) as of 31 July 2020",
+        "agenda": "Prepared historical committee review. Establish the terms and rating, test the downside, apply a fictional mandate, and close with a research checklist. Not investment advice.",
+        "user_id": null,
+        "status": "active",
+        "total_cost": 0.0,
+        "created_at": "2020-07-31T09:00:00Z",
+        "participants": [
+          {
+            "id": "a0000000-0000-4000-8000-000000000101",
+            "meeting_id": "a0000000-0000-4000-8000-000000000001",
+            "name": "The Credit Analyst",
+            "role": "Credit Analyst",
+            "system_prompt": "You are The Credit Analyst. Test the record: terms, rating, issuer context, and what is missing.",
+            "provider_config": {
+              "provider": "recorded",
+              "model": "recorded"
+            },
+            "color": "#6366f1",
+            "persona_id": null,
+            "stack_ids": [
+              "shared-meeting-documents",
+              "credit-private"
+            ],
+            "created_at": "2020-07-31T09:00:24Z",
+            "generation_policy": {}
+          },
+          {
+            "id": "a0000000-0000-4000-8000-000000000102",
+            "meeting_id": "a0000000-0000-4000-8000-000000000001",
+            "name": "The Downside Reviewer",
+            "role": "Downside Reviewer",
+            "system_prompt": "You are The Downside Reviewer. Stress-test the case: ratings are opinions; rates and liquidity can change.",
+            "provider_config": {
+              "provider": "recorded",
+              "model": "recorded"
+            },
+            "color": "#f59e0b",
+            "persona_id": null,
+            "stack_ids": [
+              "shared-meeting-documents",
+              "downside-private"
+            ],
+            "created_at": "2020-07-31T09:00:24Z",
+            "generation_policy": {}
+          },
+          {
+            "id": "a0000000-0000-4000-8000-000000000103",
+            "meeting_id": "a0000000-0000-4000-8000-000000000001",
+            "name": "The Portfolio Analyst",
+            "role": "Portfolio Analyst",
+            "system_prompt": "You are The Portfolio Analyst. Apply a fictional mandate and distinguish what can be concluded from what cannot.",
+            "provider_config": {
+              "provider": "recorded",
+              "model": "recorded"
+            },
+            "color": "#10b981",
+            "persona_id": null,
+            "stack_ids": [
+              "shared-meeting-documents",
+              "portfolio-private"
+            ],
+            "created_at": "2020-07-31T09:00:24Z",
+            "generation_policy": {}
+          }
+        ],
+        "messages": []
+      }
+    ],
+    "disagreements": [
+      {
+        "id": "a0000000-0000-4000-8000-000000000501",
+        "meeting_id": "a0000000-0000-4000-8000-000000000001",
+        "source_ai_id": "a0000000-0000-4000-8000-000000000102",
+        "target_name": "The Credit Analyst",
+        "topic": "Rating alone is insufficient",
+        "reasoning": "AAA/Stable is a dated opinion, not a guarantee or current market evidence; the record has no executable price, yield, or liquidity data.",
+        "severity": 3,
+        "status": "open",
+        "created_at": "2020-07-31T09:02:00Z"
+      }
+    ],
+    "consensus": [],
+    "context_stats": {
+      "current_tokens": 2400,
+      "max_tokens": 128000,
+      "usage_percent": 1.1,
+      "message_tokens": 1200,
+      "system_tokens": 900,
+      "agenda_tokens": 120,
+      "message_count": 5,
+      "participant_count": 3
+    },
+    "documents": [
+      {
+        "id": "a0000000-0000-4000-8000-000000000201",
+        "file_name": "hdfc-v007-shared-fact-sheet.md",
+        "file_type": "markdown",
+        "file_size_bytes": 1350,
+        "chunk_count": 1,
+        "qdrant_collection": null,
+        "status": "ready",
+        "error_message": null,
+        "created_at": "2020-07-31T09:00:24Z",
+        "meeting_id": "a0000000-0000-4000-8000-000000000001",
+        "persona_id": null,
+        "stack_id": null,
+        "revision_id": "a0000000-0000-4000-8000-000000000202",
+        "revision_state": "ready",
+        "operation_id": "a0000000-0000-4000-8000-000000000203"
+      }
+    ],
+    "closing": {
+      "meeting_id": "a0000000-0000-4000-8000-000000000001",
+      "meeting_status": "active",
+      "archived": false,
+      "closing_id": null,
+      "request_key": null,
+      "mode": null,
+      "stage": null,
+      "failed_from_stage": null,
+      "votes": [],
+      "summary": null,
+      "summary_message_id": null,
+      "error": null,
+      "retryable": false,
+      "abortable": false,
+      "created_at": null,
+      "updated_at": null,
+      "completed_at": null
+    },
+    "operations": [
+      {
+        "operation_id": "a0000000-0000-4000-8000-000000000301",
+        "meeting_id": "a0000000-0000-4000-8000-000000000001",
+        "participant_id": "a0000000-0000-4000-8000-000000000101",
+        "request_key": "turn-credit",
+        "status": "completed",
+        "admission": 1,
+        "queue_position": null,
+        "created_at": "2020-07-31T09:00:30Z",
+        "started_at": "2020-07-31T09:00:30Z",
+        "completed_at": "2020-07-31T09:05:00Z",
+        "final_message_id": "a0000000-0000-4000-8000-000000000402",
+        "cancel_requested": false,
+        "error": null,
+        "effective_generation": null
+      },
+      {
+        "operation_id": "a0000000-0000-4000-8000-000000000302",
+        "meeting_id": "a0000000-0000-4000-8000-000000000001",
+        "participant_id": "a0000000-0000-4000-8000-000000000102",
+        "request_key": "turn-downside",
+        "status": "completed",
+        "admission": 2,
+        "queue_position": null,
+        "created_at": "2020-07-31T09:00:30Z",
+        "started_at": "2020-07-31T09:00:30Z",
+        "completed_at": "2020-07-31T09:05:00Z",
+        "final_message_id": "a0000000-0000-4000-8000-000000000403",
+        "cancel_requested": false,
+        "error": null,
+        "effective_generation": null
+      },
+      {
+        "operation_id": "a0000000-0000-4000-8000-000000000303",
+        "meeting_id": "a0000000-0000-4000-8000-000000000001",
+        "participant_id": "a0000000-0000-4000-8000-000000000103",
+        "request_key": "turn-portfolio",
+        "status": "completed",
+        "admission": 3,
+        "queue_position": null,
+        "created_at": "2020-07-31T09:00:30Z",
+        "started_at": "2020-07-31T09:00:30Z",
+        "completed_at": "2020-07-31T09:05:00Z",
+        "final_message_id": "a0000000-0000-4000-8000-000000000405",
+        "cancel_requested": false,
+        "error": null,
+        "effective_generation": null
+      },
+      {
+        "operation_id": "a0000000-0000-4000-8000-000000000304",
+        "meeting_id": "a0000000-0000-4000-8000-000000000001",
+        "participant_id": "a0000000-0000-4000-8000-000000000101",
+        "request_key": "turn-consensus",
+        "status": "queued",
+        "admission": 4,
+        "queue_position": 1,
+        "created_at": "2020-07-31T09:00:30Z",
+        "started_at": null,
+        "completed_at": null,
+        "final_message_id": null,
+        "cancel_requested": false,
+        "error": null,
+        "effective_generation": null
+      }
+    ]
+  }
+}

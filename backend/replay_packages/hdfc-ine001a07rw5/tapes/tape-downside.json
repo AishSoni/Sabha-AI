@@ -1,0 +1,186 @@
+{
+  "tape_id": "tape-downside",
+  "meeting_id": "a0000000-0000-4000-8000-000000000001",
+  "operation_id": "a0000000-0000-4000-8000-000000000302",
+  "participant_id": "a0000000-0000-4000-8000-000000000102",
+  "request_key": "turn-downside",
+  "initial_checkpoint": "checkpoint-credit",
+  "completed_checkpoint": "checkpoint-downside",
+  "events": [
+    {
+      "event_id": "tape-downside-1",
+      "sequence": 1,
+      "type": "tool_call",
+      "delay_ms": 100,
+      "payload": {
+        "invocation_id": "inv-downside-1",
+        "call_id": "call-downside-1",
+        "tool_name": "search_knowledge_base",
+        "arguments": {
+          "query": "HDFC 7.87% 2022 rating liquidity downside"
+        }
+      }
+    },
+    {
+      "event_id": "tape-downside-2",
+      "sequence": 2,
+      "type": "tool_result",
+      "delay_ms": 120,
+      "payload": {
+        "invocation_id": "inv-downside-1",
+        "call_id": "call-downside-1",
+        "result": {
+          "retrieval_key": "retrieval-downside",
+          "hits": 4
+        },
+        "is_error": false
+      }
+    },
+    {
+      "event_id": "tape-downside-3",
+      "sequence": 3,
+      "type": "tool_call",
+      "delay_ms": 100,
+      "payload": {
+        "invocation_id": "inv-downside-2",
+        "call_id": "call-downside-2",
+        "tool_name": "log_disagreement",
+        "arguments": {
+          "target_participant_name": "The Credit Analyst",
+          "topic": "Rating alone is insufficient",
+          "reasoning": "AAA/Stable is a dated opinion, not a guarantee or current market evidence; the record has no executable price, yield, or liquidity data.",
+          "severity": 3
+        }
+      }
+    },
+    {
+      "event_id": "tape-downside-4",
+      "sequence": 4,
+      "type": "tool_result",
+      "delay_ms": 120,
+      "payload": {
+        "invocation_id": "inv-downside-2",
+        "call_id": "call-downside-2",
+        "result": {
+          "disagreement_id": "a0000000-0000-4000-8000-000000000501"
+        },
+        "is_error": false
+      }
+    },
+    {
+      "event_id": "tape-downside-5",
+      "sequence": 5,
+      "type": "citation",
+      "delay_ms": 60,
+      "payload": {
+        "source": "HDFC Ltd FY20 MD&A",
+        "title": "HDFC Ltd Annual Report 2019-20, MD&A",
+        "url": "https://homeloans.hdfc.bank.in/digital-annual-report-2019-2020/mda",
+        "snippet": "The FY20 MD&A states the NCDs are listed on the NSE/BSE wholesale debt market.",
+        "claim_id": "C6",
+        "locator": "S4 MD&A, borrowings"
+      }
+    },
+    {
+      "event_id": "tape-downside-6",
+      "sequence": 6,
+      "type": "citation",
+      "delay_ms": 60,
+      "payload": {
+        "source": "Committee judgment",
+        "title": "Downside worksheet, Liquidity test",
+        "url": null,
+        "snippet": "Listing is not the same as executable secondary liquidity; the record contains no price, yield, or liquidity data.",
+        "claim_id": "C7",
+        "locator": "Downside worksheet, Liquidity test"
+      }
+    },
+    {
+      "event_id": "tape-downside-7",
+      "sequence": 7,
+      "type": "citation",
+      "delay_ms": 60,
+      "payload": {
+        "source": "Committee judgment",
+        "title": "Downside worksheet, Rating test",
+        "url": null,
+        "snippet": "AAA/Stable is a rating opinion dated 31 July 2020, not a guarantee and not a current rating.",
+        "claim_id": "C8",
+        "locator": "Downside worksheet, Rating test"
+      }
+    },
+    {
+      "event_id": "tape-downside-8",
+      "sequence": 8,
+      "type": "citation",
+      "delay_ms": 60,
+      "payload": {
+        "source": "Prepared for this replay",
+        "title": "Downside worksheet, Scenario",
+        "url": null,
+        "snippet": "The +200bp rate move and risk-off secondary-market scenario is demo-authored for this replay; it is not a forecast or issuer guidance.",
+        "claim_id": "C9",
+        "locator": "Downside worksheet, Scenario"
+      }
+    },
+    {
+      "event_id": "tape-downside-9",
+      "sequence": 9,
+      "type": "citation",
+      "delay_ms": 60,
+      "payload": {
+        "source": "Record evidence",
+        "title": "Shared fact sheet, What is not established",
+        "url": null,
+        "snippet": "The meeting record contains no executable price, yield, or secondary-market liquidity data for the series.",
+        "claim_id": "C10",
+        "locator": "Shared fact sheet, What is not established"
+      }
+    },
+    {
+      "event_id": "tape-downside-10",
+      "sequence": 10,
+      "type": "text",
+      "delay_ms": 60,
+      "payload": {
+        "content": "I accept the terms. I disagree with treating AAA/Stable as sufficient comfort. The rating is a dated opinion, not a guarantee and not a current "
+      }
+    },
+    {
+      "event_id": "tape-downside-11",
+      "sequence": 11,
+      "type": "text",
+      "delay_ms": 60,
+      "payload": {
+        "content": "rating. My worksheet models a +200bp rate move and a risk-off secondary market; that is a scenario, not a forecast. The FY20 MD&A says the NCDs are "
+      }
+    },
+    {
+      "event_id": "tape-downside-12",
+      "sequence": 12,
+      "type": "text",
+      "delay_ms": 60,
+      "payload": {
+        "content": "listed on the NSE/BSE wholesale debt market, but listing is not executable liquidity. The record has no price, yield, or liquidity data, so I cannot "
+      }
+    },
+    {
+      "event_id": "tape-downside-13",
+      "sequence": 13,
+      "type": "text",
+      "delay_ms": 60,
+      "payload": {
+        "content": "infer a mark-to-market value or a successful refinancing. I am logging a formal disagreement on whether the rating alone supports a conclusion."
+      }
+    },
+    {
+      "event_id": "tape-downside-14",
+      "sequence": 14,
+      "type": "done",
+      "delay_ms": 80,
+      "payload": {
+        "message_id": "a0000000-0000-4000-8000-000000000403"
+      }
+    }
+  ]
+}

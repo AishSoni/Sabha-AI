@@ -1,0 +1,98 @@
+{
+  "retrieval_key": "retrieval-downside",
+  "meeting_id": "a0000000-0000-4000-8000-000000000001",
+  "participant_id": "a0000000-0000-4000-8000-000000000102",
+  "scope": "private",
+  "stack_id": "downside-private",
+  "query": "HDFC 7.87% 2022 rating liquidity downside",
+  "hits": [
+    {
+      "rank": 1,
+      "document_id": "a0000000-0000-4000-8000-000000000201",
+      "revision_id": "a0000000-0000-4000-8000-000000000202",
+      "chunk_id": "listing",
+      "content_sha256": "e9152159719221ffdb0ba2b90e0044bd39eea44f72b22b1ea65fbfcc56701bcd",
+      "passage": "NCDs listed on the NSE/BSE wholesale debt market.",
+      "score": 0.9,
+      "file_name": "hdfc-v007-shared-fact-sheet.md",
+      "page_number": 1,
+      "locator": {
+        "section": "listing"
+      },
+      "citation": {
+        "source": "HDFC Ltd FY20 MD&A",
+        "title": "HDFC Ltd Annual Report 2019-20, MD&A",
+        "url": "https://homeloans.hdfc.bank.in/digital-annual-report-2019-2020/mda",
+        "snippet": "The FY20 MD&A states the NCDs are listed on the NSE/BSE wholesale debt market.",
+        "claim_id": "C6",
+        "locator": "S4 MD&A, borrowings"
+      }
+    },
+    {
+      "rank": 2,
+      "document_id": "a0000000-0000-4000-8000-000000000201",
+      "revision_id": "a0000000-0000-4000-8000-000000000202",
+      "chunk_id": "liquidity",
+      "content_sha256": "e9152159719221ffdb0ba2b90e0044bd39eea44f72b22b1ea65fbfcc56701bcd",
+      "passage": "Listing is not executable liquidity.",
+      "score": 0.89,
+      "file_name": "hdfc-v007-shared-fact-sheet.md",
+      "page_number": 1,
+      "locator": {
+        "section": "liquidity"
+      },
+      "citation": {
+        "source": "Committee judgment",
+        "title": "Downside worksheet, Liquidity test",
+        "url": null,
+        "snippet": "Listing is not the same as executable secondary liquidity; the record contains no price, yield, or liquidity data.",
+        "claim_id": "C7",
+        "locator": "Downside worksheet, Liquidity test"
+      }
+    },
+    {
+      "rank": 3,
+      "document_id": "a0000000-0000-4000-8000-000000000201",
+      "revision_id": "a0000000-0000-4000-8000-000000000202",
+      "chunk_id": "rating",
+      "content_sha256": "e9152159719221ffdb0ba2b90e0044bd39eea44f72b22b1ea65fbfcc56701bcd",
+      "passage": "AAA/Stable is a dated opinion, not a guarantee.",
+      "score": 0.87,
+      "file_name": "hdfc-v007-shared-fact-sheet.md",
+      "page_number": 1,
+      "locator": {
+        "section": "rating"
+      },
+      "citation": {
+        "source": "Committee judgment",
+        "title": "Downside worksheet, Rating test",
+        "url": null,
+        "snippet": "AAA/Stable is a rating opinion dated 31 July 2020, not a guarantee and not a current rating.",
+        "claim_id": "C8",
+        "locator": "Downside worksheet, Rating test"
+      }
+    },
+    {
+      "rank": 4,
+      "document_id": "a0000000-0000-4000-8000-000000000201",
+      "revision_id": "a0000000-0000-4000-8000-000000000202",
+      "chunk_id": "scenario",
+      "content_sha256": "e9152159719221ffdb0ba2b90e0044bd39eea44f72b22b1ea65fbfcc56701bcd",
+      "passage": "+200bp rate move and risk-off secondary market scenario.",
+      "score": 0.8,
+      "file_name": "hdfc-v007-shared-fact-sheet.md",
+      "page_number": 1,
+      "locator": {
+        "section": "scenario"
+      },
+      "citation": {
+        "source": "Prepared for this replay",
+        "title": "Downside worksheet, Scenario",
+        "url": null,
+        "snippet": "The +200bp rate move and risk-off secondary-market scenario is demo-authored for this replay; it is not a forecast or issuer guidance.",
+        "claim_id": "C9",
+        "locator": "Downside worksheet, Scenario"
+      }
+    }
+  ]
+}

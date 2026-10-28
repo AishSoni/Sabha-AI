@@ -649,6 +649,8 @@ def _validate_closing_tape(tape, package: LoadedPackage, issues: _Issues) -> Non
     for checkpoint in package.checkpoints.values():
         if checkpoint.checkpoint_id == tape.completed_checkpoint:
             continue
+        if checkpoint.ordinal >= completed.ordinal:
+            continue
         earlier = checkpoint.reads.get("closing")
         if not isinstance(earlier, dict):
             continue

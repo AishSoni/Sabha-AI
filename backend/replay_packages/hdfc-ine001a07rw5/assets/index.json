@@ -1,0 +1,102 @@
+{
+  "assets": [
+    {
+      "asset_id": "shared-fact-sheet",
+      "path": "shared/hdfc-v007-shared-fact-sheet.md",
+      "media_type": "text/markdown",
+      "sha256": "e9152159719221ffdb0ba2b90e0044bd39eea44f72b22b1ea65fbfcc56701bcd",
+      "size": 1350,
+      "locator": "package:shared/hdfc-v007-shared-fact-sheet.md",
+      "source": "Prepared for this replay",
+      "capture_date": "2020-07-31",
+      "rights": "Authored historical fact sheet for this replay",
+      "authored": true,
+      "public_demo": true,
+      "extraction": "offline markdown"
+    },
+    {
+      "asset_id": "crisil-annexure",
+      "path": "evidence/crisil-annexure.md",
+      "media_type": "text/markdown",
+      "sha256": "557b10da58457e14dafe23b136159107ac00b3330033c50b9af0bbe87848c334",
+      "size": 932,
+      "locator": "https://www.crisil.com/mnt/winshare/Ratings/RatingList/RatingDocs/Housing_Development_Finance_Corporation_Limited_July_31_2020_RR.html",
+      "source": "CRISIL Rating Rationale, 31 July 2020",
+      "capture_date": "2026-10-16",
+      "rights": "Short attributed transcription; source retention and redistribution approval required",
+      "authored": false,
+      "public_demo": true,
+      "extraction": "offline transcription"
+    },
+    {
+      "asset_id": "hdfc-fy20-mda",
+      "path": "evidence/hdfc-fy20-mda.md",
+      "media_type": "text/markdown",
+      "sha256": "fd70349552e5b03c967c22914b1cc6360739f01f9700c9a4f5bf4645ebfa8fe3",
+      "size": 548,
+      "locator": "https://homeloans.hdfc.bank.in/digital-annual-report-2019-2020/mda",
+      "source": "HDFC Ltd Annual Report 2019-20, MD&A",
+      "capture_date": "2026-10-16",
+      "rights": "Short attributed transcription; source retention and redistribution approval required",
+      "authored": false,
+      "public_demo": true,
+      "extraction": "offline transcription"
+    },
+    {
+      "asset_id": "source-register",
+      "path": "evidence/source-register.md",
+      "media_type": "text/markdown",
+      "sha256": "315cc7163b5cfcbdc0c44845a7a45417f0babe96716e5c5f5b8bafc7dead2afa",
+      "size": 780,
+      "locator": "package:evidence/source-register.md",
+      "source": "Prepared for this replay",
+      "capture_date": "2026-10-16",
+      "rights": "Authored provenance record for this replay",
+      "authored": true,
+      "public_demo": true,
+      "extraction": "offline markdown"
+    },
+    {
+      "asset_id": "credit-evidence",
+      "path": "private/credit-evidence.md",
+      "media_type": "text/markdown",
+      "sha256": "5156f07d4453da0341e37f9048ef98c1d353a29ad51f90e12918f4f0020dfe0b",
+      "size": 534,
+      "locator": "package:private/credit-evidence.md",
+      "source": "Prepared for this replay",
+      "capture_date": "2020-07-31",
+      "rights": "Demo-authored private input",
+      "authored": true,
+      "public_demo": true,
+      "extraction": "offline markdown"
+    },
+    {
+      "asset_id": "downside-worksheet",
+      "path": "private/downside-worksheet.md",
+      "media_type": "text/markdown",
+      "sha256": "a25229f3a8e84324aba91dc938970e379b979e3ff87baf6c9e37b994e1698325",
+      "size": 603,
+      "locator": "package:private/downside-worksheet.md",
+      "source": "Demo-authored for this replay",
+      "capture_date": "2020-07-31",
+      "rights": "Demo-authored private input",
+      "authored": true,
+      "public_demo": true,
+      "extraction": "offline markdown"
+    },
+    {
+      "asset_id": "portfolio-mandate",
+      "path": "private/portfolio-mandate.md",
+      "media_type": "text/markdown",
+      "sha256": "cd3c817143923ac13723958c05d8461094d534da98707f0d23ea8e716e17f27c",
+      "size": 669,
+      "locator": "package:private/portfolio-mandate.md",
+      "source": "Demo-authored for this replay",
+      "capture_date": "2020-07-31",
+      "rights": "Demo-authored private input",
+      "authored": true,
+      "public_demo": true,
+      "extraction": "offline markdown"
+    }
+  ]
+}
