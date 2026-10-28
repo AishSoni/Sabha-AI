@@ -142,6 +142,23 @@ describe('useMeetingCreation resume semantics', () => {
         expect(scripted.calls.filter((call) => call.input === `${resolveApiBaseUrl()}/meetings`)).toHaveLength(1);
     });
 
+    it('navigates once to the retained meeting when no files were staged', async () => {
+        scripted.enqueueJson(201, MEETING);
+        const { result } = renderHook(() => useMeetingCreation(), { wrapper: Wrapper });
+
+        await act(async () => {
+            await result.current.createMeeting(CREATE_INPUT);
+        });
+
+        expect(result.current.createdMeetingId).toBe('meeting-new-1');
+        expect(result.current.creationError).toBeNull();
+        expect(result.current.uploadError).toBeNull();
+        await waitFor(() => expect(push).toHaveBeenCalledTimes(1));
+        expect(push).toHaveBeenCalledWith('/meetings/meeting-new-1');
+        // No file work exists, so no upload request may stand in for success.
+        expect(scripted.calls.filter((call) => call.input.endsWith('/documents/upload'))).toHaveLength(0);
+    });
+
     it('an all-success run navigates once after every file reached the server', async () => {
         scripted.enqueueJson(201, MEETING);
         scripted.enqueueJson(202, UPLOAD_OK);
