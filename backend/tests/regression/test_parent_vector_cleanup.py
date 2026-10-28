@@ -25,6 +25,7 @@ from types import SimpleNamespace
 
 import pytest
 from fastapi import HTTPException
+from app.modules.meetings.infrastructure.supabase_meetings import build_meeting_service
 from app.modules.knowledge.presentation import stacks_http as stacks_module
 from app.modules.meetings.presentation import meetings_http as meetings_module
 from app.modules.knowledge.domain.errors import KnowledgeUnavailable
@@ -138,14 +139,14 @@ def cleanup_env(disposable_db, monkeypatch):
     stub = stub_for(disposable_db)
     store = FailureScriptedVectorStore()
     knowledge = FakeKnowledgeLifecycle()
-    monkeypatch.setattr(
-        "app.modules.knowledge.public.get_knowledge_lifecycle", lambda: knowledge
-    )
+    manager = build_meeting_service(stub)
     monkeypatch.setattr(vector_cleanup_module, "get_supabase", lambda: stub)
-    monkeypatch.setattr("app.modules.meetings.infrastructure.supabase_meetings.get_supabase", lambda: stub)
-    monkeypatch.setattr(stacks_module, "get_supabase", lambda: stub)
     return SimpleNamespace(
-        db=disposable_db, store=store, stub=stub, knowledge=knowledge
+        db=disposable_db,
+        store=store,
+        stub=stub,
+        knowledge=knowledge,
+        manager=manager,
     )
 
 
@@ -175,7 +176,9 @@ async def test_meeting_delete_removes_collection_and_resolves_pending(cleanup_en
     env = cleanup_env
     seed_meeting_and_doc(env.db)
 
-    await meetings_module.delete_meeting(MEETING_ID)
+    await meetings_module.delete_meeting(
+        MEETING_ID, manager=env.manager, lifecycle=env.knowledge
+    )
 
     assert env.knowledge.deleted == [("meeting", MEETING_ID)]
     assert meeting_rows(env.db) == []
@@ -187,7 +190,9 @@ async def test_stack_delete_removes_collection_and_resolves_pending(cleanup_env)
     env = cleanup_env
     seed_stack(env.db)
 
-    await stacks_module.delete_knowledge_stack(STACK_ID)
+    await stacks_module.delete_knowledge_stack(
+        STACK_ID, db=env.stub, lifecycle=env.knowledge
+    )
 
     assert env.knowledge.deleted == [("stack", STACK_ID)]
     assert env.db.query("SELECT id FROM knowledge_stacks WHERE id = %s", (STACK_ID,)) == []
@@ -200,7 +205,9 @@ async def test_knowledge_outage_fails_closed_before_the_parent_delete(cleanup_en
     env.knowledge.error = KnowledgeUnavailable("knowledge database down")
 
     with pytest.raises(HTTPException) as error:
-        await meetings_module.delete_meeting(MEETING_ID)
+        await meetings_module.delete_meeting(
+            MEETING_ID, manager=env.manager, lifecycle=env.knowledge
+        )
 
     assert error.value.status_code == 503
     assert meeting_rows(env.db), "the meeting must survive an unavailable revocation"

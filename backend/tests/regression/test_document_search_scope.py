@@ -10,6 +10,7 @@ import pytest
 from fastapi.testclient import TestClient
 
 import main
+from app.bootstrap import Container
 
 MEETING_ID = "00000000-0000-4000-8000-000000000001"
 STACK_ID = "00000000-0000-4000-8000-000000000002"
@@ -28,9 +29,9 @@ class FakeLifecycle:
 def search_env(monkeypatch):
     lifecycle = FakeLifecycle()
     monkeypatch.setattr(
-        "app.modules.knowledge.public.get_knowledge_lifecycle",
-        lambda: lifecycle,
-        raising=True,
+        main.app.state,
+        "container",
+        Container(prompt_catalog=object(), knowledge_lifecycle=lifecycle),
     )
     return TestClient(main.app), lifecycle
 

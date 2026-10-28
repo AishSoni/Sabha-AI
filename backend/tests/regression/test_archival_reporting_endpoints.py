@@ -20,10 +20,13 @@ a status overwrite. This suite records the accepted behavior:
 """
 
 import json
+from dataclasses import replace
 
 import pytest
 from fastapi.testclient import TestClient
 
+from app.bootstrap import Container
+from app.modules.meetings.infrastructure.supabase_meetings import build_meeting_service
 from main import app
 from tests.doubles.supabase_stub import stub_for
 
@@ -85,6 +88,16 @@ def archive_env(disposable_db, monkeypatch):
     def _stub():
         return stub_for(disposable_db)
 
+    service = build_meeting_service(_stub())
+    monkeypatch.setattr(
+        app.state,
+        "container",
+        Container(
+            prompt_catalog=object(),
+            meeting_service=service,
+            meeting_reads=service,
+        ),
+    )
     monkeypatch.setattr("app.modules.meetings.infrastructure.supabase_meetings.get_supabase", _stub)
     monkeypatch.setattr(
         "app.modules.knowledge.infrastructure.reconciliation.get_supabase", _stub
@@ -257,10 +270,12 @@ class FakeKnowledgeLifecycle:
 
 
 def install_delete_fake(monkeypatch, lifecycle):
+    container = app.state.container
+    assert container is not None
     monkeypatch.setattr(
-        "app.modules.knowledge.public.get_knowledge_lifecycle",
-        lambda: lifecycle,
-        raising=True,
+        app.state,
+        "container",
+        replace(container, knowledge_lifecycle=lifecycle),
     )
 
 

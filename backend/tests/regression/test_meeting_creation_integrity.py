@@ -18,9 +18,10 @@ import pytest
 import psycopg
 from fastapi.testclient import TestClient
 
+from app.bootstrap import Container
 from app.modules.meetings.domain.models import MeetingCreate
 from app.modules.meetings.application.meeting_service import MeetingService
-from app.modules.meetings.infrastructure.supabase_meetings import build_default_meeting_service
+from app.modules.meetings.infrastructure.supabase_meetings import build_meeting_service
 from main import app
 from tests.doubles.supabase_stub import stub_for
 
@@ -46,9 +47,18 @@ def seed_persona(db, *, persona_id: str = PERSONA_ID, subtitle: str = LONG_SUBTI
         )
 
 
-def patch_manager(monkeypatch, db) -> None:
-    stub = stub_for(db)
-    monkeypatch.setattr("app.modules.meetings.infrastructure.supabase_meetings.get_supabase", lambda: stub)
+def patch_manager(monkeypatch, db):
+    service = build_meeting_service(stub_for(db))
+    monkeypatch.setattr(
+        app.state,
+        "container",
+        Container(
+            prompt_catalog=object(),
+            meeting_service=service,
+            meeting_reads=service,
+        ),
+    )
+    return service
 
 
 def table_count(db, table: str) -> int:
@@ -57,9 +67,9 @@ def table_count(db, table: str) -> int:
 
 async def test_long_subtitle_becomes_participant_role_on_fresh_schema(disposable_db, monkeypatch):
     seed_persona(disposable_db)
-    patch_manager(monkeypatch, disposable_db)
+    service = patch_manager(monkeypatch, disposable_db)
 
-    meeting = await build_default_meeting_service().create_meeting(
+    meeting = await service.create_meeting(
         MeetingCreate(name="Capacity probe", persona_ids=[PERSONA_ID])
     )
 
@@ -77,12 +87,11 @@ async def test_upgraded_role_column_accepts_full_subtitles(legacy_db, monkeypatc
     # Pre-existing persona on the legacy schema (role VARCHAR(50)).
     seed_persona(legacy_db)
     legacy_stub = stub_for(legacy_db)
-    monkeypatch.setattr("app.modules.meetings.infrastructure.supabase_meetings.get_supabase", lambda: legacy_stub)
     with legacy_db.connect() as conn:
         for migration_name in UPGRADE_MIGRATIONS:
             conn.execute((MIGRATION_DIR / migration_name).read_text(encoding="utf-8"))
 
-    meeting = await build_default_meeting_service().create_meeting(
+    meeting = await build_meeting_service(legacy_stub).create_meeting(
         MeetingCreate(name="Upgrade probe", persona_ids=[PERSONA_ID])
     )
     assert meeting.participants[0].role == LONG_SUBTITLE
@@ -94,10 +103,10 @@ async def test_upgraded_role_column_accepts_full_subtitles(legacy_db, monkeypatc
 
 async def test_unknown_persona_ids_fail_before_anything_is_persisted(disposable_db, monkeypatch):
     seed_persona(disposable_db, subtitle="Short subtitle")
-    patch_manager(monkeypatch, disposable_db)
+    service = patch_manager(monkeypatch, disposable_db)
 
     with pytest.raises(ValueError) as error:
-        await build_default_meeting_service().create_meeting(
+        await service.create_meeting(
             MeetingCreate(name="Validation probe", persona_ids=[PERSONA_ID, UNKNOWN_ID])
         )
     assert "Unknown personas" in str(error.value)

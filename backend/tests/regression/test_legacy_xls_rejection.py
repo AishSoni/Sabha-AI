@@ -10,9 +10,11 @@ from uuid import UUID
 import pytest
 from fastapi.testclient import TestClient
 
+from app.bootstrap import Container
 from app.modules.knowledge.application.ingestion import PendingReceipt
 from app.modules.knowledge.infrastructure.parsers import DocumentProcessor
 from main import app
+import main
 
 MEETING_ID = "aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa"
 DOCUMENT_ID = UUID("00000000-0000-4000-8000-000000000020")
@@ -41,9 +43,9 @@ class FakeLifecycle:
 def upload_env(monkeypatch):
     lifecycle = FakeLifecycle()
     monkeypatch.setattr(
-        "app.modules.knowledge.public.get_knowledge_lifecycle",
-        lambda: lifecycle,
-        raising=True,
+        main.app.state,
+        "container",
+        Container(prompt_catalog=object(), knowledge_lifecycle=lifecycle),
     )
     return TestClient(app), lifecycle
 

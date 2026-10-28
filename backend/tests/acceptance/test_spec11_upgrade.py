@@ -201,4 +201,4 @@ def test_direct_roles_cannot_write_and_service_role_keeps_guarded_rpc(
 def test_upgraded_database_serves_the_final_api_surface() -> None:
     from main import app
 
-    assert len(app.openapi()["paths"]) == 40
+    assert len(app.openapi()["paths"]) == 46

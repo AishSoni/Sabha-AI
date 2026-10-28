@@ -22,8 +22,9 @@ import pytest
 from fastapi.testclient import TestClient
 
 from app.capabilities.inference.contracts import LLMResponse
+from app.bootstrap import Container
 from app.modules.meetings.application.meeting_service import MeetingService
-from app.modules.meetings.infrastructure.supabase_meetings import build_default_meeting_service
+from app.modules.meetings.infrastructure.supabase_meetings import build_meeting_service
 from app.modules.meetings.infrastructure.orchestrator import Orchestrator
 from main import app
 from tests.doubles.providers import ScriptedProvider
@@ -54,9 +55,17 @@ def message_count(disposable_db, meeting_id) -> int:
 
 
 def patch_manager(monkeypatch, disposable_db) -> MeetingService:
-    stub = stub_for(disposable_db)
-    monkeypatch.setattr("app.modules.meetings.infrastructure.supabase_meetings.get_supabase", lambda: stub)
-    return build_default_meeting_service()
+    service = build_meeting_service(stub_for(disposable_db))
+    monkeypatch.setattr(
+        app.state,
+        "container",
+        Container(
+            prompt_catalog=object(),
+            meeting_service=service,
+            meeting_reads=service,
+        ),
+    )
+    return service
 
 
 @pytest.mark.parametrize("status", ["voting", "ended", "archived"])

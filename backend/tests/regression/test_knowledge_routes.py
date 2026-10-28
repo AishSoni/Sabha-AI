@@ -8,6 +8,7 @@ import pytest
 from fastapi.testclient import TestClient
 
 import main
+from app.bootstrap import Container
 from app.modules.knowledge.application.ingestion import PendingReceipt, ReadyReceipt
 from app.modules.knowledge.application.ports import DocumentRecord
 from app.modules.knowledge.application.queries import IngestionStatusView
@@ -101,9 +102,9 @@ class FakeLifecycle:
 def route_env(monkeypatch):
     lifecycle = FakeLifecycle()
     monkeypatch.setattr(
-        "app.modules.knowledge.public.get_knowledge_lifecycle",
-        lambda: lifecycle,
-        raising=True,
+        main.app.state,
+        "container",
+        Container(prompt_catalog=object(), knowledge_lifecycle=lifecycle),
     )
     return TestClient(main.app), lifecycle
 

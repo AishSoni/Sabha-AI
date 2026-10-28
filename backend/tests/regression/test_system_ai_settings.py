@@ -11,6 +11,9 @@ import json
 import pytest
 from fastapi.testclient import TestClient
 
+from app.bootstrap import Container
+from app.modules.meetings.infrastructure.supabase_meetings import build_meeting_service
+from app.modules.settings.infrastructure.system_ai import load_system_ai_config
 from main import app
 from tests.doubles.providers import LLMResponse
 from tests.doubles.supabase_stub import stub_for
@@ -62,12 +65,16 @@ def settings_env(disposable_db, monkeypatch):
     monkeypatch.setattr(
         "app.modules.settings.infrastructure.system_ai.get_supabase_admin", lambda: stub
     )
-    monkeypatch.setattr("app.modules.meetings.infrastructure.supabase_meetings.get_supabase", lambda: stub)
+    service = build_meeting_service(stub)
     monkeypatch.setattr(
-        "app.modules.knowledge.infrastructure.reconciliation.get_supabase", lambda: stub
-    )
-    monkeypatch.setattr(
-        "app.modules.knowledge.infrastructure.vector_cleanup.get_supabase", lambda: stub
+        app.state,
+        "container",
+        Container(
+            prompt_catalog=object(),
+            meeting_service=service,
+            meeting_reads=service,
+            system_ai_reader=load_system_ai_config,
+        ),
     )
     return disposable_db
 

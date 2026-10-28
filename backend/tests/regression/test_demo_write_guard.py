@@ -38,16 +38,27 @@ def test_keeps_reads_and_health_open_in_demo_mode(monkeypatch):
     assert response.status_code == 200
 
 
+def _install_stub_container(monkeypatch, db):
+    from app.bootstrap import Container
+    from app.modules.meetings.infrastructure.supabase_meetings import build_meeting_service
+    from tests.doubles.supabase_stub import stub_for
+
+    service = build_meeting_service(stub_for(db))
+    monkeypatch.setattr(
+        app.state,
+        "container",
+        Container(
+            prompt_catalog=object(),
+            meeting_service=service,
+            meeting_reads=service,
+        ),
+    )
+
+
 def test_local_mode_keeps_writes_enabled(disposable_db, monkeypatch):
     # Characterization anchor: outside demo mode nothing changes. POSTs still
     # reach the route (stub-backed meeting creation succeeds).
-    from tests.doubles.supabase_stub import stub_for
-
-    import app.modules.meetings.infrastructure.supabase_meetings as meeting_manager_module
-
-    monkeypatch.setattr(
-        meeting_manager_module, "get_supabase", lambda: stub_for(disposable_db)
-    )
+    _install_stub_container(monkeypatch, disposable_db)
     client = TestClient(app)
     response = client.post("/api/meetings", json={"name": "Open Council", "persona_ids": []})
     assert response.status_code == 200, response.json()
@@ -56,14 +67,8 @@ def test_local_mode_keeps_writes_enabled(disposable_db, monkeypatch):
 def test_hosted_mode_is_also_a_write_enabled_runtime(disposable_db, monkeypatch):
     # Exit-gate evidence (runtime_modes): hosted BYOK operation uses the same
     # no-auth write API as local; only the demo workspace is read-only.
-    from tests.doubles.supabase_stub import stub_for
-
-    import app.modules.meetings.infrastructure.supabase_meetings as meeting_manager_module
-
     monkeypatch.setattr(config_module.settings, "runtime_mode", "hosted")
-    monkeypatch.setattr(
-        meeting_manager_module, "get_supabase", lambda: stub_for(disposable_db)
-    )
+    _install_stub_container(monkeypatch, disposable_db)
     client = TestClient(app)
     response = client.post("/api/meetings", json={"name": "Hosted Council", "persona_ids": []})
     assert response.status_code == 200, response.json()

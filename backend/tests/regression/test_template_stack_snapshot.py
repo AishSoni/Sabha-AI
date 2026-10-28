@@ -18,7 +18,7 @@ import pytest
 from fastapi.testclient import TestClient
 
 import app.modules.meetings.infrastructure.orchestrator as orchestrator_module
-import app.modules.meetings.infrastructure.supabase_meetings as meeting_manager_module
+from app.bootstrap import Container
 from main import app
 from app.modules.meetings.domain.models import AIParticipant, AIParticipantCreate, MeetingCreate
 from app.modules.meetings.infrastructure.orchestrator import (
@@ -27,7 +27,7 @@ from app.modules.meetings.infrastructure.orchestrator import (
     Orchestrator,
 )
 from app.modules.meetings.application.meeting_service import MeetingService
-from app.modules.meetings.infrastructure.supabase_meetings import build_default_meeting_service
+from app.modules.meetings.infrastructure.supabase_meetings import build_meeting_service
 from tests.doubles.supabase_stub import stub_for
 from app.modules.knowledge.infrastructure.legacy_vector_store import SearchResult
 
@@ -97,12 +97,19 @@ def template_env(disposable_db, monkeypatch):
             (PERSONA_ID, TEMPLATE_STACK_A),
         )
     meeting_stub = stub_for(disposable_db)
-    monkeypatch.setattr(
-        meeting_manager_module, "get_supabase", lambda: meeting_stub, raising=True
-    )
     # Spec 06: the orchestrator no longer reaches the database directly —
     # the legacy template join moved behind MeetingManager (assembly-time).
-    return {"db": disposable_db, "manager": build_default_meeting_service()}
+    manager = build_meeting_service(meeting_stub)
+    monkeypatch.setattr(
+        app.state,
+        "container",
+        Container(
+            prompt_catalog=object(),
+            meeting_service=manager,
+            meeting_reads=manager,
+        ),
+    )
+    return {"db": disposable_db, "manager": manager}
 
 
 def _search_knowledge_base_recorded(monkeypatch, template_env, meeting_id, participant):

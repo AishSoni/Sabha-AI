@@ -40,11 +40,9 @@ def workspace(disposable_db, monkeypatch, runtime_mode):
         return stub
 
     for target in (
-        "app.modules.meetings.infrastructure.supabase_meetings.get_supabase",
         "app.modules.knowledge.infrastructure.reconciliation.get_supabase",
         "app.modules.knowledge.infrastructure.vector_cleanup.get_supabase",
-        "app.modules.knowledge.presentation.stacks_http.get_supabase",
-        "app.modules.knowledge.public.get_supabase",
+        "app.modules.settings.infrastructure.system_ai.get_supabase_admin",
     ):
         monkeypatch.setattr(target, _stub)
 
@@ -59,18 +57,24 @@ def workspace(disposable_db, monkeypatch, runtime_mode):
     # same disposable database so both visitors observe one shared queue.
     from app.bootstrap import Container
     from app.modules.meetings.infrastructure.supabase_meetings import (
-        build_default_meeting_service,
+        build_meeting_service,
     )
     from app.modules.meetings.infrastructure.turns import TurnQueueService
+    from app.modules.settings.infrastructure.system_ai import load_system_ai_config
 
-    queue = TurnQueueService(build_default_meeting_service())
+    service = build_meeting_service(stub)
+    queue = TurnQueueService(service)
     previous_container = app.state.container
     app.state.container = Container(
         prompt_catalog=previous_container.prompt_catalog,
         persona_catalog=previous_container.persona_catalog,
+        meeting_service=service,
+        meeting_reads=service,
         turn_queue=queue,
+        turn_observation=queue,
         turn_runner=None,
-        closing=previous_container.closing,
+        knowledge_lifecycle=lifecycle,
+        system_ai_reader=load_system_ai_config,
     )
 
     try:

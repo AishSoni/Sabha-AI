@@ -141,27 +141,43 @@ def sweep_env(disposable_db, monkeypatch):
     def _stub():
         return stub_for(disposable_db)
 
-    monkeypatch.setattr("app.modules.meetings.infrastructure.supabase_meetings.get_supabase", _stub)
     monkeypatch.setattr(
         "app.modules.knowledge.infrastructure.reconciliation.get_supabase", _stub
     )
     monkeypatch.setattr(
         "app.modules.knowledge.infrastructure.vector_cleanup.get_supabase", _stub
     )
-    # Persona/knowledge/document API surfaces own their own database
-    # construction sites (read remaining patch usage during cutover).
     monkeypatch.setattr(
-        "app.modules.knowledge.presentation.stacks_http.get_supabase", _stub
+        "app.modules.settings.infrastructure.system_ai.get_supabase_admin", _stub
     )
-    monkeypatch.setattr("app.modules.knowledge.public.get_supabase", _stub)
 
-    from app.modules.knowledge.public import set_knowledge_lifecycle
+    from app.bootstrap import Container
+    from app.modules.meetings.infrastructure.supabase_meetings import (
+        build_meeting_service,
+    )
+    from app.modules.persona_catalog.infrastructure.supabase import (
+        SupabasePersonaCatalog,
+        SupabasePromptCatalog,
+    )
+    from app.modules.settings.infrastructure.system_ai import load_system_ai_config
+    from tests.regression.test_knowledge_routes import FakeLifecycle
 
-    set_knowledge_lifecycle(None)
-    try:
-        yield disposable_db
-    finally:
-        set_knowledge_lifecycle(None)
+    service = build_meeting_service(_stub())
+    lifecycle = FakeLifecycle()
+    lifecycle.records = []
+    monkeypatch.setattr(
+        app.state,
+        "container",
+        Container(
+            prompt_catalog=SupabasePromptCatalog(_stub),
+            persona_catalog=SupabasePersonaCatalog(_stub),
+            meeting_service=service,
+            meeting_reads=service,
+            knowledge_lifecycle=lifecycle,
+            system_ai_reader=load_system_ai_config,
+        ),
+    )
+    yield disposable_db
 
 
 def assert_no_auth_challenge(response) -> None:
