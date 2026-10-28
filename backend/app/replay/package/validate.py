@@ -49,6 +49,8 @@ OPERATION_STATUSES = {
     "interrupted",
     "cancelled",
 }
+MAX_TAPE_EVENTS = 400
+MAX_TAPE_BYTES = 200_000
 NON_TERMINAL_STATUSES = {"queued", "executing"}
 OPERATION_REQUIRED_KEYS = {
     "operation_id",
@@ -426,6 +428,10 @@ def _validate_closing_view(
 
 def _validate_turn_tape(tape, package: LoadedPackage, issues: _Issues) -> None:
     path = f"tapes/{tape.tape_id}.json"
+    if len(tape.events) > MAX_TAPE_EVENTS:
+        issues.add("tape_too_large", path, "turn tape exceeds the event cap")
+    if len(json.dumps(tape.model_dump(mode="json"))) > MAX_TAPE_BYTES:
+        issues.add("tape_too_large", path, "turn tape exceeds the byte cap")
     initial = package.checkpoints.get(tape.initial_checkpoint)
     completed = package.checkpoints.get(tape.completed_checkpoint)
     if initial is None:
@@ -613,6 +619,10 @@ def _validate_turn_tape(tape, package: LoadedPackage, issues: _Issues) -> None:
 
 def _validate_closing_tape(tape, package: LoadedPackage, issues: _Issues) -> None:
     path = f"closing_tapes/{tape.tape_id}.json"
+    if len(tape.events) > MAX_TAPE_EVENTS:
+        issues.add("tape_too_large", path, "closing tape exceeds the event cap")
+    if len(json.dumps(tape.model_dump(mode="json"))) > MAX_TAPE_BYTES:
+        issues.add("tape_too_large", path, "closing tape exceeds the byte cap")
     completed = package.checkpoints.get(tape.completed_checkpoint)
     if completed is None:
         issues.add("dangling_id", path, "completed checkpoint is missing")
