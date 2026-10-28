@@ -288,6 +288,72 @@ describe('MeetingRoom', () => {
         );
     });
 
+    it('renders a read-only notice for archived meetings', async () => {
+        installRouter({
+            [`/meetings/${MEETING_ID}`]: () => {
+                const meeting = meetingWire();
+                return json(200, { ...meeting, status: 'archived' });
+            },
+        });
+        renderRoom();
+
+        expect(await screen.findByText('This meeting is read-only.')).toBeInTheDocument();
+        expect(screen.queryByPlaceholderText('Type your message...')).not.toBeInTheDocument();
+        expect(screen.queryByRole('button', { name: /Close meeting/i })).not.toBeInTheDocument();
+    });
+
+    it('keeps an interim summary separate from closing the meeting', async () => {
+        let summarized = false;
+        const transcript = messageWire('Opening remarks');
+        const summary = {
+            ...messageWire('Interim summary'),
+            id: '44444444-4444-4444-8444-444444444444',
+            sender_type: 'system',
+            sender_name: 'System AI',
+            content: 'Interim summary',
+        };
+        const calls = installRouter({
+            '/settings/providers': () =>
+                json(200, {
+                    providers: [],
+                    environment: {
+                        is_production: false,
+                        configured_providers: [],
+                        default_provider: '',
+                        default_models: {},
+                    },
+                    system_ai: {
+                        provider: 'ollama',
+                        model: 'llama3.2',
+                        temperature: 0.5,
+                        max_tokens: 2048,
+                    },
+                }),
+            '/summary': () => {
+                summarized = true;
+                return json(200, summary);
+            },
+            [`/meetings/${MEETING_ID}`]: () =>
+                json(200, {
+                    ...meetingWire(),
+                    messages: summarized ? [transcript, summary] : [transcript],
+                }),
+        });
+        renderRoom();
+        await screen.findByText('Product review');
+
+        fireEvent.mouseDown(screen.getByRole('tab', { name: /Summary/ }));
+        fireEvent.click(await screen.findByRole('button', { name: /Generate summary/ }));
+
+        expect(await screen.findByText('Interim summary')).toBeInTheDocument();
+        expect(screen.getByPlaceholderText('Type your message...')).toBeInTheDocument();
+        expect(
+            calls.filter(
+                (call) => call.method === 'POST' && call.url.includes('/closing')
+            )
+        ).toHaveLength(0);
+    });
+
     it('does not render fabricated private knowledge files', async () => {
         installRouter();
         renderRoom();
