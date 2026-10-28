@@ -37,6 +37,18 @@ def _login_uri(db, role: str) -> str:
 def replay_db(disposable_db):
     with disposable_db.connect() as conn:
         provision(conn, reader_login=LOGIN_ROLE)
+        # A live view and a Storage-shaped table are not app migration objects;
+        # they stand in for the paths the reader must not reach. Hosted Storage
+        # policy remains a Spec 17 verification item.
+        conn.execute(
+            "CREATE VIEW public.live_meeting_view AS "
+            "SELECT id, name FROM public.meetings"
+        )
+        conn.execute("CREATE SCHEMA storage")
+        conn.execute(
+            "CREATE TABLE storage.objects "
+            "(id serial PRIMARY KEY, bucket_id text NOT NULL, name text NOT NULL)"
+        )
     return disposable_db
 
 
@@ -140,6 +152,21 @@ def test_reader_cannot_reach_live_tables_views_or_rpcs(replay_db):
             reader.execute(
                 "INSERT INTO public.meetings (name) VALUES ('reader write')"
             )
+    finally:
+        reader.close()
+
+
+def test_reader_cannot_read_live_view_or_storage_objects(replay_db):
+    reader = psycopg.connect(_login_uri(replay_db, LOGIN_ROLE), autocommit=True)
+    try:
+        assert reader.execute(
+            "SELECT has_schema_privilege('storage', 'USAGE')"
+        ).fetchone()[0] is False
+        for relation in ("public.live_meeting_view", "storage.objects"):
+            with pytest.raises(
+                (psycopg.errors.InsufficientPrivilege, psycopg.errors.UndefinedTable)
+            ):
+                reader.execute(f"SELECT count(*) FROM {relation}")
     finally:
         reader.close()
 
