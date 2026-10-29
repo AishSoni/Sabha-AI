@@ -26,6 +26,7 @@ import type { TurnCancelResult, TurnOperation } from "../api/turn-decoders";
 import type { TurnEvent } from "../api/turn-events";
 import type { TurnStatus } from "../api/turn-decoders";
 import type { ClosingTextEvent } from "../api/closing-stream";
+import type { MeetingsEvidenceApi } from "../evidence/contract";
 
 /**
  * Wire shape of a recorded document read. The knowledge feature owns the live
@@ -253,6 +254,8 @@ export interface MeetingsRuntime {
     keys: MeetingsRuntimeKeys;
     presentation: MeetingsPresentation;
     slots: MeetingsRuntimeSlots;
+    /** One shared evidence-preview system; both live and replay provide it. */
+    evidence?: MeetingsEvidenceApi;
     /** Scoped abort; replay restarts abort every request from the old epoch. */
     signal?: AbortSignal;
     /** Present only for a replay epoch that can be restarted in place. */
