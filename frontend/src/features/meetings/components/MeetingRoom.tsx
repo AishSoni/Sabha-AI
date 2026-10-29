@@ -79,8 +79,9 @@ import {
 } from '../model/draft';
 import { ThinkingBlock } from './ThinkingBlock';
 import { ToolUseBlock } from './ToolUseBlock';
-import { CitationsBlock } from './CitationsBlock';
+import { CitationsBlock, type CitationView } from './CitationsBlock';
 import { ClosingPanel } from './ClosingPanel';
+import { EvidenceCitationTrigger } from '../evidence/trigger';
 import { EvidencePreviewHost } from '../evidence/host';
 import { EvidencePreviewProvider } from '../evidence/provider';
 
@@ -1210,6 +1211,10 @@ function RoomDetailsPanel({
     );
 }
 
+function renderCitationPreview(citation: CitationView) {
+    return <EvidenceCitationTrigger citation={citation} />;
+}
+
 function MessageBubble({
     message,
     participant,
@@ -1310,7 +1315,13 @@ function MessageBubble({
                             snippet: citation.snippet ?? undefined,
                             claim_id: citation.claim_id ?? undefined,
                             locator: citation.locator ?? undefined,
+                            document_id: citation.document_id ?? undefined,
+                            revision_id: citation.revision_id ?? undefined,
+                            chunk_id: citation.chunk_id ?? undefined,
+                            chunk_index: citation.chunk_index ?? undefined,
+                            page_number: citation.page_number ?? undefined,
                         }))}
+                        renderPreviewAction={runtime.evidence ? renderCitationPreview : undefined}
                     />
                 )}
             </div>
@@ -1411,7 +1422,15 @@ function TurnProjectionBubble({
                             title: citation.title ?? undefined,
                             url: citation.url ?? undefined,
                             snippet: citation.snippet ?? undefined,
+                            claim_id: citation.claimId ?? undefined,
+                            locator: citation.locator ?? undefined,
+                            document_id: citation.documentId ?? undefined,
+                            revision_id: citation.revisionId ?? undefined,
+                            chunk_id: citation.chunkId ?? undefined,
+                            chunk_index: citation.chunkIndex ?? undefined,
+                            page_number: citation.pageNumber ?? undefined,
                         }))}
+                        renderPreviewAction={runtime.evidence ? renderCitationPreview : undefined}
                     />
                 )}
 

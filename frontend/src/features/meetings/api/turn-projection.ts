@@ -26,6 +26,13 @@ export interface TurnCitationProjection {
     title: string;
     url: string;
     snippet: string | null;
+    claimId: string | null;
+    locator: string | null;
+    documentId: string | null;
+    revisionId: string | null;
+    chunkId: string | null;
+    chunkIndex: number | null;
+    pageNumber: number | null;
 }
 
 export interface TurnProjection {
@@ -214,6 +221,13 @@ export function applyTurnEvent(
                     title: event.title ?? '',
                     url: event.url ?? '',
                     snippet: event.snippet ?? null,
+                    claimId: event.claimId ?? null,
+                    locator: event.locator ?? null,
+                    documentId: event.documentId ?? null,
+                    revisionId: event.revisionId ?? null,
+                    chunkId: event.chunkId ?? null,
+                    chunkIndex: event.chunkIndex ?? null,
+                    pageNumber: event.pageNumber ?? null,
                 },
             ];
             break;

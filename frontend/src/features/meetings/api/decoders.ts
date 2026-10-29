@@ -77,6 +77,11 @@ export function decodeCitation(
         snippet: optionalString(record.snippet, `${path}.snippet`),
         claim_id: optionalString(record.claim_id, `${path}.claim_id`),
         locator: optionalString(record.locator, `${path}.locator`),
+        document_id: optionalString(record.document_id, `${path}.document_id`),
+        revision_id: optionalString(record.revision_id, `${path}.revision_id`),
+        chunk_id: optionalString(record.chunk_id, `${path}.chunk_id`),
+        chunk_index: optionalNumber(record.chunk_index, `${path}.chunk_index`),
+        page_number: optionalNumber(record.page_number, `${path}.page_number`),
     };
 }
 

@@ -111,6 +111,47 @@ describe('turn projection', () => {
         });
     });
 
+    it('carries citation identity through the transient projection', () => {
+        const projection = project([
+            event(1, {
+                type: 'citation',
+                source: 'knowledge',
+                title: 'hdfc-fy20-mda.md',
+                snippet: 'Net interest margin improved.',
+                documentId: 'doc-1',
+                revisionId: 'rev-2',
+                chunkId: 'chunk-3',
+                chunkIndex: 3,
+                pageNumber: 7,
+            }),
+            event(2, {
+                type: 'citation',
+                source: 'CRISIL rating rationale',
+                title: 'CRISIL Rating Rationale, 31 July 2020',
+                claimId: 'C1',
+                locator: 'S1 annexure row for ISIN INE001A07RW5',
+            }),
+        ]);
+
+        expect(projection.citations).toEqual([
+            expect.objectContaining({
+                documentId: 'doc-1',
+                revisionId: 'rev-2',
+                chunkId: 'chunk-3',
+                chunkIndex: 3,
+                pageNumber: 7,
+                claimId: null,
+                locator: null,
+            }),
+            expect.objectContaining({
+                claimId: 'C1',
+                locator: 'S1 annexure row for ISIN INE001A07RW5',
+                documentId: null,
+                revisionId: null,
+            }),
+        ]);
+    });
+
     it('records local EOF without claiming the server operation ended', () => {
         const projection = project([
             event(1, { content: 'partial' }),

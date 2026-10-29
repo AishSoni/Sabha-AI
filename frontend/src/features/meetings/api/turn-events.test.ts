@@ -170,6 +170,49 @@ describe('decodeTurnEventStream', () => {
     });
 });
 
+describe('decodeTurnEvent citation identity', () => {
+    it('keeps validated live document revision and replay claim identity', () => {
+        const live = decodeTurnEvent(
+            wireEvent({
+                type: 'citation',
+                source: 'knowledge',
+                title: 'hdfc-fy20-mda.md',
+                snippet: 'Net interest margin improved.',
+                document_id: 'doc-1',
+                revision_id: 'rev-2',
+                chunk_id: 'chunk-3',
+                chunk_index: 3,
+                page_number: 7,
+            }),
+            'event'
+        );
+        expect(live).toMatchObject({
+            documentId: 'doc-1',
+            revisionId: 'rev-2',
+            chunkId: 'chunk-3',
+            chunkIndex: 3,
+            pageNumber: 7,
+        });
+
+        const replay = decodeTurnEvent(
+            wireEvent({
+                type: 'citation',
+                source: 'CRISIL rating rationale',
+                title: 'CRISIL Rating Rationale, 31 July 2020',
+                claim_id: 'C1',
+                locator: 'S1 annexure row for ISIN INE001A07RW5',
+            }),
+            'event'
+        );
+        expect(replay).toMatchObject({
+            claimId: 'C1',
+            locator: 'S1 annexure row for ISIN INE001A07RW5',
+        });
+        expect(replay.documentId).toBeUndefined();
+        expect(replay.revisionId).toBeUndefined();
+    });
+});
+
 describe('turnEventsUrl', () => {
     it('targets the durable observation route with the replay cursor encoded', () => {
         expect(turnEventsUrl('meeting 1', 'operation/2', 7)).toBe(

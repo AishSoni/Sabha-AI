@@ -1,22 +1,28 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, type ReactNode } from 'react';
 import { ChevronDown, ChevronRight, BookOpen, ExternalLink } from 'lucide-react';
 
-interface Citation {
+export interface CitationView {
     source: string;
     title?: string;
     url?: string;
     snippet?: string;
     claim_id?: string;
     locator?: string;
+    document_id?: string;
+    revision_id?: string;
+    chunk_id?: string;
+    chunk_index?: number;
+    page_number?: number;
 }
 
 interface CitationsBlockProps {
-    citations: Citation[];
+    citations: CitationView[];
+    renderPreviewAction?: (citation: CitationView) => ReactNode;
 }
 
-export function CitationsBlock({ citations }: CitationsBlockProps) {
+export function CitationsBlock({ citations, renderPreviewAction }: CitationsBlockProps) {
     const [isExpanded, setIsExpanded] = useState(false);
 
     if (!citations || citations.length === 0) return null;
@@ -60,6 +66,11 @@ export function CitationsBlock({ citations }: CitationsBlockProps) {
                                         {citation.title || citation.source}
                                     </span>
                                 )}
+                                {renderPreviewAction ? (
+                                    <div className="ml-auto">
+                                        {renderPreviewAction(citation)}
+                                    </div>
+                                ) : null}
                             </div>
                             <p className="mt-1 text-[11px] uppercase tracking-wide text-blue-500/80">
                                 {citation.source}
