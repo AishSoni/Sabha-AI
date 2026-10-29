@@ -33,18 +33,27 @@ project and remains unexecuted until an operator runs it.
 
 | Area | Local evidence today | Status | Closure |
 | --- | --- | --- | --- |
-| Database isolation | `tests/integration/test_replay_reader_permissions.py`, `test_replay_publication.py::test_reader_matrix_covers_every_replay_object`, `scripts/replay_roles.py check`, `scripts/inventory_permissions.py`; fresh and upgrade migrations in `tests/integration/test_migration_runner.py` / `test_database_permissions.py` | local | Run against fresh and upgraded disposable PostgreSQL; deployed effective-role audit remains **deployed** |
-| Actual API boundary | `tests/integration/test_replay_surface.py` (ASGI `TestClient`), `test_replay_sse_socket.py` (real socket, streams only) | gap | Full boundary over real HTTP, not `TestClient` |
-| Backend/frontend reuse | Backend import/architecture tests, `frontend/tests/architecture/*`, `npm run build` | gap | Production-mode browser journey; dev-server journey alone is insufficient |
-| No replay effects | `test_replay_surface.py` sentinel live graph, reader permission tests | gap | End-to-end request-scoped effect trace over a complete replay session |
-| Stream behavior | `test_replay_sse_socket.py` (incremental frames, resume, limits, Unicode), `test_replay_package_runtime.py` (pacing, closing envelope) | local | Deployed reverse-proxy/browser SSE remains **deployed** |
-| Read frontier | `test_replay_package_runtime.py::test_checkpoint_reads_are_coherent_and_never_early`, frontend observation/projection tests | local | Keep browser assertions in the journey |
-| Browser journey | `frontend/e2e/guided-journey.spec.ts` against `next dev` | gap | Run the journey against a production build |
-| Independent visitors | `test_replay_package_runtime.py::test_two_visitors_get_independent_ephemeral_runs` | gap | Two real browser contexts at different beats |
-| Mixed live/replay | none | gap | Live turn and replay stream/restart in one composition; browser-level if feasible |
-| Failures and races | Backend unavailable/corrupt package tests; deep-link reset in the journey | gap | Browser double actions, remount, refocus/poll, disconnect, stale SSE, refresh |
-| Package lifecycle | `test_replay_publication.py` (failed publish, pinning, retention, prune), `test_tracked_package_needs_no_ignored_inputs` | gap | Clean-checkout validation/provisioning and placeholder-package swap |
-| Live regressions | Spec 12–18 suites | local | Re-run in the full evidence pass |
+| Database isolation | `tests/integration/test_replay_reader_permissions.py`, `test_replay_publication.py::test_reader_matrix_covers_every_replay_object`, `test_migration_runner.py` (fresh, rerun, adoption, target), `scripts/replay_roles.py check`, `scripts/inventory_permissions.py` | local | Deployed effective-role audit remains **deployed** |
+| Actual API boundary | `tests/integration/test_replay_http_boundary.py` (real uvicorn socket, forged headers, methods, deep links, unconfigured 503) | local | Deployed proxy/API host remains **deployed** |
+| Backend/frontend reuse | Backend import/architecture tests, `frontend/tests/architecture/*`, production `next build` plus `frontend/e2e/guided-journey.spec.ts` under `next start` | local | — |
+| No replay effects | `tests/integration/test_replay_effects.py` (request-scoped SQL, storage, socket and provider trace over a complete session) | local | Deployed Storage/RPC/outbound observation remains **deployed** |
+| Stream behavior | `test_replay_sse_socket.py` (incremental frames, cache/buffering headers, resume, limits, disconnect, Unicode), `test_replay_package_runtime.py` (pacing, closing envelope), browser journey and resilience specs | local | Deployed reverse-proxy/browser SSE remains **deployed** |
+| Read frontier | `test_replay_package_runtime.py::test_checkpoint_reads_are_coherent_and_never_early`, frontend observation/projection tests, browser journey | local | — |
+| Browser journey | `frontend/e2e/guided-journey.spec.ts` under a production build (`npm run test:e2e:prod`), keyboard/mobile/reduced-motion/deep-link coverage | local | Hosted browser journey remains **deployed** |
+| Independent visitors | `frontend/e2e/replay-isolation.spec.ts` (two browser contexts at different beats); backend ephemeral-run test | local | — |
+| Mixed live/replay | `tests/integration/test_replay_mixed_mode.py` (live turn sentinel, replay reads/stream/closing/restart in one app) | local | Browser mixed-mode journey and hosted coexistence remain **deployed** |
+| Failures and races | `frontend/e2e/replay-resilience.spec.ts` (double actions, refocus/poll, stream abort/resume, restart, deep-link refresh); backend corrupt/unavailable tests | local | Deployed disconnect/restart behavior remains **deployed** |
+| Package lifecycle | `test_replay_publication.py` (failed publish, pinning, retention, prune), `test_replay_clean_checkout.py` (clone, validate, publish both packages) | local | Deployed bucket/publication lifecycle remains **deployed** |
+| Live regressions | Spec 12–18 suites in the full local evidence pass | local | Hosted live regression remains **deployed** |
+
+### Deployed evidence still unexecuted
+
+These rows require the real hosted project and are recorded as **unexecuted**,
+not passed: effective Supabase role/membership/RLS/view/RPC/default/Storage
+inspection; reverse-proxy SSE behavior; hosted browser journey and
+mixed-mode coexistence; deployed package publication, bucket visibility,
+retention and rollback. Local evidence does not substitute for them.
+
 
 ## Execution plan
 
@@ -63,3 +72,76 @@ Operational rollback disables replay entry/publication or repins an intact compa
 ## Exit gate
 
 All mandatory evidence above is executed and passing in its claimed environment. The one journey is honest, usable, replaceable by data, and isolated within the shared hosted product. If real hosted verification remains unexecuted, record a conditional local acceptance and keep public replay release blocked—do not present it as a complete hosted release.
+
+## Conditional local acceptance record (2026-10-29)
+
+**Environment.** Windows acceptance host; Python 3.12.10 (backend virtualenv),
+Node 26.8.2, npm 12.2.0, Next.js 16.1.4, disposable PostgreSQL provisioned per
+test. No Docker, managed Supabase, Qdrant or hosted proxy was available. No paid
+inference was used, and no hosted data was touched.
+
+**Package.** `hdfc-ine001a07rw5` version `1`, content hash
+`ced67209984ff87088119f58f5b2bcc643fd9240623dfbe02e03ab761c1fb07f`, approved
+through the [content ledger](spec-18-guided-bond-journey-content.md). The
+approved content and source register are unchanged. A clean clone validates
+both this package and the small placeholder package without ignored inputs.
+
+**Executed local evidence.**
+
+| Check | Command | Result |
+| --- | --- | --- |
+| Backend suites | `pytest -q` | **721 passed**, 0 failed, 0 skipped (25 warnings), 840.38 s |
+| Fresh/upgrade/adoption migrations | `tests/integration/test_migration_runner.py` | **16 passed** (fresh install, rerun, rollback, target, adoption, legacy adoption) |
+| Frontend unit | `npm run test:unit` | **213 passed** (37 files) |
+| Frontend architecture | `npm run test:architecture` | **15 passed** (2 files) |
+| OpenAPI inventory | `python -m scripts.export_openapi --check` | matches fixture, **54 paths** |
+| Production browser journey | `npm run test:e2e:prod -- guided-journey.spec.ts` | **2 passed** (19.1 s) against `next start` |
+| Full browser suite | `npm run test:e2e` | **8 passed** (38.4 s), dev server |
+| Visitor isolation | `e2e/replay-isolation.spec.ts` | **2 passed** in the full suite |
+| Races/disconnects | `e2e/replay-resilience.spec.ts` | **4 passed** in the full suite |
+| Clean checkout | `python -m scripts.rehearse_clean_checkout --skip-frontend` | 14 required files, 0 forbidden entries, 54 paths, worker imports |
+| Package validation | `python -m scripts.replay_package validate replay_packages/hdfc-ine001a07rw5` | `ok`, version `1`, approved hash |
+| Clean-clone package lifecycle | `test_replay_clean_checkout.py` | validate + publish both packages passed |
+| Real HTTP boundary | `test_replay_http_boundary.py` | 5 passed over a real socket |
+| Zero effects | `test_replay_effects.py` | passed; request-scoped SELECT-only trace |
+| Mixed composition | `test_replay_mixed_mode.py` | passed at API/port level |
+
+**Accepted locally.** Relational database isolation and reader/writer denial;
+real-HTTP replay boundary and forged-input rejection; production-build reuse and
+feature routes; replay-attributable SQL, socket, provider-key and storage-write
+absence against the disposable database and storage double; socket-level and
+browser stream behavior; read-frontier coherence; the production browser
+journey with keyboard, mobile, reduced motion and source disclosure; independent
+visitor contexts; API-level mixed live/replay composition; browser races,
+disconnects, restart and deep-link refresh; clean-checkout validation and
+publication; and the live regression suites in the full backend run.
+
+**Failed or skipped.** None in the local environment.
+
+**Unexecuted (deployed).** These remain unproven and are **not** accepted:
+
+| Deployed check | Status |
+| --- | --- |
+| Effective Supabase role, membership, RLS, view, RPC, default and Storage grants | unexecuted |
+| Real Storage bucket visibility, immutability and denied writes | unexecuted |
+| Reverse-proxy/browser SSE through the deployed proxy | unexecuted |
+| Hosted browser journey on the approved package | unexecuted |
+| Hosted two-visitor isolation and absence of backend run records | unexecuted |
+| Hosted mixed live/replay with the real vault and live turn | unexecuted |
+| Deployed package publication, retention and rollback | unexecuted |
+
+Browser-level mixed mode is also unexecuted: the local mixed-composition test
+uses recording ports at the API layer, not an active live turn and unlocked
+vault in a browser.
+
+**Decision.** **Conditional local acceptance. Public replay release remains
+blocked.** Local evidence is sufficient to continue internal use and review,
+but not to present the replay as a complete hosted release. Re-run the
+[hosted runbook](../docs/OPERATIONS.md#hosted-replay-acceptance-runbook-spec-19)
+on the real project, record every row as passed, and re-verify the reader
+credential after any grant change before changing this decision.
+
+**Rollback.** Disable the replay entry/route publication or repin an intact
+compatible package. Do not roll back live records or reopen ended meetings.
+Retain immutable old package versions for pinned active runs under the
+retirement policy.

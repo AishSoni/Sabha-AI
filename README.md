@@ -69,7 +69,7 @@ These are **first-class tracked objects**, not just text. When an agent calls `l
 - Disagreements carry a **severity** (1–5); consensus carries a **strength** (1–5)
 
 ### Account-Free Workspace
-There is **no sign-in**. `local` and `hosted` runtimes are writable and share one workspace: two fresh visitors see the same meetings, uploads, operation status, and streams. No user-auth tokens, accounts, or anonymous Auth bootstrap are involved. `demo` is a strict read-only runtime — every write route is denied — and the guided replay experience is still deferred. See [Configuration](#-configuration).
+There is **no sign-in**. `local` and `hosted` runtimes are writable and share one workspace: two fresh visitors see the same meetings, uploads, operation status, and streams. No user-auth tokens, accounts, or anonymous Auth bootstrap are involved. `demo` is a strict read-only runtime — every write route is denied — with one guided bond replay at `/demo`. Local acceptance is recorded in [Spec 19](specs/spec-19-replay-release-acceptance.md); public replay release remains blocked until the hosted gate is executed. See [Configuration](#-configuration).
 
 ---
 
@@ -364,7 +364,7 @@ Runtime modes:
 |---|---|---|---|
 | `local` | allowed | none | Default developer runtime |
 | `hosted` | allowed | none | Hosted deployment; identical account-free contract |
-| `demo` | denied (403) | none | Strict read-only; guided replay deferred |
+| `demo` | denied (403) | none | Strict read-only; guided replay at `/demo` (conditional local acceptance, hosted gate unexecuted) |
 
 Invalid runtime, provider or embedding values fail at process start. Sabha
 never silently switches a provider or truncates data to fit a configuration.
@@ -640,9 +640,9 @@ selection, per-agent model overrides, cost accounting.
 - [x] Byte-inclusive backup, ledger replay, fail-closed restore
 - [x] Migration history, empty-install and Phase 1 upgrade acceptance
 - [x] Account-free hosted/local shared workspace; read-only demo guard
+- [x] Guided replay for `demo` (conditional local acceptance; public release blocked pending the hosted gate)
 
 ### 🔄 Deferred
-- [ ] Guided replay for `demo` runtime (read-only guard is implemented)
 - [ ] Web search provider integration
 - [ ] Context compression for very long meetings
 - [ ] Fork/replay a meeting from an arbitrary point
