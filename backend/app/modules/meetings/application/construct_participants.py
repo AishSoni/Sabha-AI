@@ -90,10 +90,7 @@ class ConstructParticipants:
         ]
 
     async def _read_snapshots(self, persona_ids: list[str]) -> list:
-        snapshots = []
-        for persona_id in persona_ids:
-            snapshots.append(await self._get_snapshot.execute(persona_id))
-        return snapshots
+        return await self._get_snapshot.execute_many(persona_ids)
 
     def _participant_from_snapshot(
         self,

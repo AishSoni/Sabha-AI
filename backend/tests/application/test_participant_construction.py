@@ -187,6 +187,53 @@ async def test_an_overlong_role_still_fails_the_way_the_api_did():
         await _use_case(catalog).execute("meeting-1", [PERSONA_ID], "t")
 
 
+class BatchedFakeCatalog(FakeCatalog):
+    """Roster reader that answers the whole batch in one call (spec 20)."""
+
+    def __init__(self, rows) -> None:
+        self.rows = rows
+        self.reads: list[str] = []
+        self.batch_reads: list[list[str]] = []
+
+    async def read_creation_snapshots(self, persona_ids: list[str]):
+        self.batch_reads.append(list(persona_ids))
+        wanted = {str(persona_id) for persona_id in persona_ids}
+        return [row for row in self.rows if str(row["id"]) in wanted]
+
+
+SECOND_ID = "22222222-2222-4222-8222-222222222222"
+
+
+async def test_a_roster_is_read_in_one_batch():
+    catalog = BatchedFakeCatalog(
+        [
+            _snapshot_row(),
+            _snapshot_row(id=SECOND_ID, name="The CTO", subtitle="cto"),
+        ]
+    )
+
+    participants = await _use_case(catalog).execute(
+        "meeting-1", [PERSONA_ID, SECOND_ID], "t"
+    )
+
+    assert catalog.batch_reads == [[PERSONA_ID, SECOND_ID]]
+    assert catalog.reads == []
+    assert [participant.name for participant in participants] == [
+        "The Investor",
+        "The CTO",
+    ]
+
+
+async def test_a_batch_miss_keeps_the_roster_all_or_nothing():
+    catalog = BatchedFakeCatalog([_snapshot_row()])
+    use_case = _use_case(catalog)
+
+    with pytest.raises(ValueError, match=SECOND_ID):
+        await use_case.execute("meeting-1", [PERSONA_ID, SECOND_ID], "t")
+
+    assert catalog.batch_reads == [[PERSONA_ID, SECOND_ID]]
+
+
 def test_default_roster_participants_carry_no_template_state():
     roster = [
         {

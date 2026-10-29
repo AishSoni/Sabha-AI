@@ -32,3 +32,32 @@ class GetCreationSnapshot:
         if row is None:
             return None
         return CreationSnapshot.from_rpc_row(row)
+
+    async def execute_many(
+        self, persona_ids: list[str]
+    ) -> list[Optional[CreationSnapshot]]:
+        """Read a roster in one round trip when the adapter supports it.
+
+        Spec 20: meeting creation should not spend N WAN round trips on N
+        templates. Adapters that expose ``read_creation_snapshots`` answer
+        the whole roster at once; older doubles and adapters keep working
+        through the per-id fallback.
+        """
+        if not persona_ids:
+            return []
+        batch_reader = getattr(self._catalog, "read_creation_snapshots", None)
+        if batch_reader is None:
+            return [await self.execute(persona_id) for persona_id in persona_ids]
+        rows = await batch_reader(list(persona_ids))
+        by_id = {
+            str(row.get("id")): row
+            for row in rows or []
+            if isinstance(row, dict) and row.get("id") is not None
+        }
+        snapshots: list[Optional[CreationSnapshot]] = []
+        for persona_id in persona_ids:
+            row = by_id.get(str(persona_id))
+            snapshots.append(
+                CreationSnapshot.from_rpc_row(row) if row is not None else None
+            )
+        return snapshots
