@@ -40,6 +40,7 @@ from app.modules.meetings.application.contracts import (
     VoteResult,
 )
 from app.modules.meetings.domain.errors import MeetingNotFoundError
+from app.modules.meetings.domain.models import AIParticipant, Message
 from app.modules.meetings.domain.services import ClosingMode, ClosingStage
 
 logger = logging.getLogger(__name__)
@@ -184,43 +185,30 @@ class SupabaseClosingRepository:
         )
 
     async def read(self, meeting_id: str) -> ClosingSnapshot:
+        """Read the whole closing snapshot in one round trip.
+
+        Spec 20: `read_meeting_closing` now returns the meeting bundle
+        (meeting, participants, messages), the vote rows including attempt
+        metadata, and the active processing-turn start. The adapter no longer
+        re-reads the meeting or the closing_votes table.
+        """
         body = await self._rpc("read_meeting_closing", {"p_meeting_id": meeting_id})
         meeting_row = body.get("meeting")
         if not meeting_row:
-            raise MeetingNotFoundError("Meeting not found")
-        meeting = await self.manager.get_meeting(meeting_id)
-        if meeting is None:
             raise MeetingNotFoundError("Meeting not found")
 
         closing_row = body.get("closing")
         closing = _closing_from_row(closing_row) if closing_row else None
 
-        attempts = {}
-        if closing is not None:
-            result = await run_blocking(
-                lambda: self.db.table("closing_votes")
-                .select(
-                    "participant_id,attempt_id,attempt_number,attempt_lease_expires_at"
-                )
-                .eq("closing_id", closing.id)
-                .execute()
-            )
-            attempts = {
-                str(row["participant_id"]): row for row in (result.data or [])
-            }
+        votes = [_vote_from_row(row) for row in body.get("votes") or []]
 
-        votes = []
-        for row in body.get("votes") or []:
-            merged = dict(row)
-            extra = attempts.get(str(row.get("participant_id")), {})
-            merged["attempt_id"] = extra.get("attempt_id")
-            merged["attempt_number"] = extra.get("attempt_number")
-            merged["attempt_lease_expires_at"] = extra.get(
-                "attempt_lease_expires_at"
-            )
-            votes.append(_vote_from_row(merged))
+        started_at = _parse_datetime(body.get("processing_turn_started_at"))
 
-        started_at = await self._processing_turn_started_at(meeting_id)
+        participants = [
+            AIParticipant(**row) for row in (body.get("participants") or [])
+        ]
+        messages = [Message(**row) for row in (body.get("messages") or [])]
+
         context = MeetingContext(
             meeting_id=str(meeting_row["id"]),
             name=str(meeting_row.get("name") or ""),
@@ -235,14 +223,14 @@ class SupabaseClosingRepository:
                     provider_config=_provider_carrier(participant),
                     generation_policy=dict(participant.generation_policy or {}),
                 )
-                for participant in meeting.participants
+                for participant in participants
             ),
             messages=tuple(
                 MessageView(
                     sender_name=message.sender_name,
                     content=message.content,
                 )
-                for message in meeting.messages
+                for message in messages
             ),
         )
         return ClosingSnapshot(
@@ -250,23 +238,6 @@ class SupabaseClosingRepository:
             closing=closing,
             votes=tuple(votes),
             processing_turn_started_at=started_at,
-        )
-
-    async def _processing_turn_started_at(self, meeting_id: str) -> datetime | None:
-        result = await run_blocking(
-            lambda: self.db.table("operations")
-            .select("execution_started_at,updated_at")
-            .eq("meeting_id", meeting_id)
-            .eq("status", "processing")
-            .limit(1)
-            .execute()
-        )
-        rows = result.data or []
-        if not rows:
-            return None
-        row = rows[0]
-        return _parse_datetime(
-            row.get("execution_started_at") or row.get("updated_at")
         )
 
     async def list_open_meeting_ids(self) -> Sequence[str]:

@@ -143,46 +143,30 @@ class MeetingService:
         )
     
     async def get_meeting(self, meeting_id: str) -> Optional[MeetingWithParticipants]:
-        """Get a meeting with all its participants and messages."""
-        
-        # Fetch meeting
-        meeting_result = await self._run(
-            lambda: self.db.table("meetings")
-            .select("*")
-            .eq("id", meeting_id)
-            .execute()
+        """Read the meeting, participants and messages in one round trip.
+
+        Spec 20: the three sequential PostgREST reads were the largest
+        per-request cost on the meeting detail page. One backend-only RPC
+        returns the same rows with explicit columns and messages ordered by
+        the committed sequence.
+        """
+
+        result = await self._run(
+            lambda: self.db.rpc(
+                "read_meeting_bundle", {"p_meeting_id": meeting_id}
+            ).execute()
         )
-        
-        if not meeting_result.data:
+        body = result.data or {}
+        meeting_row = body.get("meeting")
+        if not meeting_row:
             return None
-        
-        meeting_data = _present_meeting_row(meeting_result.data[0])
-        
-        # Fetch participants
-        participants_result = await self._run(
-            lambda: self.db.table("ai_participants")
-            .select("*")
-            .eq("meeting_id", meeting_id)
-            .execute()
-        )
-        
-        participants = [AIParticipant(**p) for p in participants_result.data]
-        
-        # Fetch messages
-        messages_result = await self._run(
-            lambda: self.db.table("messages")
-            .select("*")
-            .eq("meeting_id", meeting_id)
-            .order("created_at")
-            .execute()
-        )
-        
-        messages = [Message(**m) for m in messages_result.data]
-        
+
         return MeetingWithParticipants(
-            **meeting_data,
-            participants=participants,
-            messages=messages
+            **_present_meeting_row(meeting_row),
+            participants=[
+                AIParticipant(**row) for row in (body.get("participants") or [])
+            ],
+            messages=[Message(**row) for row in (body.get("messages") or [])],
         )
     
     async def list_meetings(self, user_id: Optional[str] = None) -> List[Meeting]:
