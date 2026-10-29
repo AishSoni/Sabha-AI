@@ -155,7 +155,7 @@ async def list_providers(system_ai_reader=Depends(get_system_ai_reader)):
     
     # System AI is shared server policy. A saved mutation wins; otherwise the
     # deployment environment remains the fallback.
-    system_ai = system_ai_reader()
+    system_ai = await system_ai_reader()
 
     return ProvidersListResponse(
         providers=DEFAULT_PROVIDERS,
@@ -173,7 +173,7 @@ async def update_system_ai(config: SystemAIConfig):
     write. Credentials are not part of this contract.
     """
 
-    return save_system_ai_config(config)
+    return await save_system_ai_config(config)
 
 
 class FetchModelsRequest(BaseModel):

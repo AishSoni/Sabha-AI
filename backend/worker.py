@@ -26,6 +26,14 @@ async def _main() -> None:
     runner = container.turn_runner
     if runner is None:
         raise SystemExit("Turn runner is disabled (TURN_RUNNER_ENABLED=false)")
+    from app.modules.settings.infrastructure.system_ai import SYSTEM_AI_DEFAULTS
+
+    try:
+        await SYSTEM_AI_DEFAULTS.refresh()
+    except Exception:  # noqa: BLE001 - warm-up must not block worker startup
+        logging.getLogger("sabha.worker").warning(
+            "System AI settings warm-up failed", exc_info=True
+        )
     await runner.start()
     try:
         await asyncio.Event().wait()

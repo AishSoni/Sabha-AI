@@ -597,6 +597,7 @@ class SupabaseInvocationFactory:
         return SupabaseInvoker(effective)
 
     async def system(self, summary: SummarySettings | None) -> SupabaseInvoker:
+        await SYSTEM_AI_DEFAULTS.acurrent()
         overrides = RequestDefaults(
             provider=summary.provider if summary else None,
             model=summary.model if summary else None,

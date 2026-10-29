@@ -41,11 +41,11 @@ from app.modules.meetings.infrastructure.turns import TurnQueueService
 from app.capabilities.runtime.runner import TurnRunner
 
 
-def _system_ai_reader():
+async def _system_ai_reader():
     """Read shared System AI policy through the settings adapter."""
     from app.modules.settings.infrastructure.system_ai import load_system_ai_config
 
-    return load_system_ai_config()
+    return await load_system_ai_config()
 
 
 async def _startup_reconciliation():
@@ -172,6 +172,12 @@ async def lifespan(app: FastAPI):
     if container is None:
         yield
         return
+
+    # Spec 20: the defaults port is a process-local cache. Reset it per app
+    # start so an embedded database or a fresh deployment is observed.
+    from app.modules.settings.infrastructure.system_ai import SYSTEM_AI_DEFAULTS
+
+    SYSTEM_AI_DEFAULTS.invalidate()
 
     reconciler = getattr(container, "startup_reconciliation", None)
     if reconciler is not None:
