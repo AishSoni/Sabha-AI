@@ -347,3 +347,8 @@ class LocalDocumentParser:
             page_count=processed.page_count,
             ocr_page_count=processed.ocr_page_count,
         )
+
+    def extract_text(
+        self, data: bytes, *, file_name: str, file_type: str
+    ) -> str:
+        return self._processor.parse_file(data, file_name, file_type)

@@ -129,6 +129,21 @@ class DocumentRecord:
 
 
 @dataclass(frozen=True)
+class RevisionRecord:
+    """One retained revision addressed by both document and revision id."""
+
+    document_id: UUID
+    revision_id: UUID
+    state: RevisionState
+    file_type: str
+    file_name: str
+    source_key: str
+    source_sha256: str
+    source_size_bytes: int
+    revoked_at: datetime | None = None
+
+
+@dataclass(frozen=True)
 class IngestionRecord:
     """Read model for an upload receipt and its publication state."""
 
@@ -254,6 +269,11 @@ class KnowledgePersistence(Protocol):
     def get_document(self, document_id: UUID) -> DocumentRecord | None:
         """One document with its current revision and operation identity."""
 
+    def get_revision(
+        self, document_id: UUID, revision_id: UUID
+    ) -> RevisionRecord | None:
+        """The exact retained revision, or None when it is not part of the document."""
+
     def delete_document_row(self, document_id: UUID) -> bool:
         """Remove the document row after revocation; cleanup stays durable."""
 
@@ -321,6 +341,11 @@ class DocumentParser(Protocol):
         self, data: bytes, *, file_name: str, file_type: str
     ) -> ParsedDocument:
         """Parse supported formats or raise a typed knowledge error."""
+
+    def extract_text(
+        self, data: bytes, *, file_name: str, file_type: str
+    ) -> str:
+        """Extract bounded plain text without producing retrieval chunks."""
 
 
 class VectorProjection(Protocol):

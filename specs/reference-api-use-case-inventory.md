@@ -201,6 +201,7 @@ the same payload returns the original operation, while a different payload is
 | `GET /api/documents/persona/{persona_id}` | observation | `DocumentResponse[]` | — | `503` | Private persona knowledge |
 | `GET /api/documents/stack/{stack_id}` | observation | `DocumentResponse[]` | — | `503` | Stack-owned knowledge |
 | `GET /api/documents/{document_id}` | status | `DocumentResponse` | — | `404`; `503` | Includes revision and operation ids |
+| `GET /api/documents/{document_id}/revisions/{revision_id}/content` | observation | `bytes` with allowlisted media type | `representation=original\|text` | `404` unknown/mismatched revision; `410` revoked/unavailable; `422` unsupported representation; `503` storage unavailable | Exact retained revision only; verifies recorded size and SHA-256; `nosniff`, inline sanitized filename, `private, no-store`; DOCX/XLSX text is derived |
 | `DELETE /api/documents/{document_id}` | command | `{message,id}` | — | `404`; `503` | Deletes eligibility and records revocation before retrieval reopens |
 | `POST /api/documents/search` | observation (embedding side effect) | `DocumentSearchResponse {query,results,total_results}` | scope ids, query, limit | `400` missing scope; `422`; `503` | Results include text, score, document/revision/chunk ids, chunk index, file name |
 

@@ -3,7 +3,8 @@
 from __future__ import annotations
 
 import logging
-from typing import Optional
+from typing import Literal, Optional
+from urllib.parse import quote
 from uuid import UUID
 
 from fastapi import (
@@ -16,13 +17,14 @@ from fastapi import (
     Request,
     UploadFile,
 )
-from fastapi.responses import JSONResponse
+from fastapi.responses import JSONResponse, Response, Response
 
 from app.modules.knowledge.application.ingestion import (
     PendingReceipt,
     ReadyReceipt,
     UploadRequest,
 )
+from app.modules.knowledge.application.ports import SourceStoreUnavailable
 from app.modules.knowledge.application.retrieval import (
     KnowledgeScope,
     RetrievalIdentity,
@@ -33,14 +35,18 @@ from app.modules.knowledge.domain.errors import (
     KnowledgeError,
     KnowledgeUnavailable,
     ProjectionUnavailable,
+    RevisionNotFound,
+    RevisionUnavailable,
     SourceTooLarge,
     UnsupportedFileType,
+    UnsupportedRepresentation,
     UploadRejected,
 )
 from app.modules.knowledge.domain.models import KnowledgeOwner
 from app.modules.knowledge.domain.services import (
     ALLOWED_EXTENSIONS,
     MAX_SOURCE_BYTES,
+    sanitize_file_name,
 )
 from app.presentation.dependencies import get_knowledge_lifecycle
 from app.modules.knowledge.presentation.schemas import (
@@ -371,6 +377,53 @@ async def get_document(
     if record is None:
         raise HTTPException(status_code=404, detail="Document not found")
     return _document_payload(record)
+
+
+@router.get("/{document_id}/revisions/{revision_id}/content")
+async def get_revision_content(
+    document_id: UUID,
+    revision_id: UUID,
+    representation: Literal["original", "text"] = "original",
+    lifecycle=Depends(get_knowledge_lifecycle),
+):
+    """Serve the exact retained revision, never the latest or a caller key."""
+    try:
+        content = await lifecycle.read_revision_content(
+            document_id, revision_id, representation=representation
+        )
+    except RevisionNotFound as exc:
+        raise HTTPException(status_code=404, detail=str(exc)) from exc
+    except RevisionUnavailable as exc:
+        raise HTTPException(status_code=410, detail=str(exc)) from exc
+    except UnsupportedRepresentation as exc:
+        raise HTTPException(status_code=422, detail=str(exc)) from exc
+    except (KnowledgeUnavailable, SourceStoreUnavailable) as exc:
+        raise _unavailable(exc) from exc
+    except KnowledgeError as exc:
+        logger.warning("revision content failed: %s", exc)
+        raise HTTPException(
+            status_code=422, detail="This document cannot be previewed"
+        ) from exc
+
+    safe_name = sanitize_file_name(content.file_name)
+    ascii_name = (
+        safe_name.encode("ascii", "ignore").decode("ascii").strip()
+        or "document"
+    )
+    disposition = (
+        f'inline; filename="{ascii_name}"; '
+        f"filename*=UTF-8''{quote(safe_name, safe='')}"
+    )
+    return Response(
+        content=content.data,
+        media_type=content.media_type,
+        headers={
+            "Content-Disposition": disposition,
+            "Content-Length": str(len(content.data)),
+            "X-Content-Type-Options": "nosniff",
+            "Cache-Control": "private, no-store",
+        },
+    )
 
 
 @router.delete("/{document_id}")

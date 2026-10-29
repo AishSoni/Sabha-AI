@@ -22,6 +22,7 @@ from app.modules.knowledge.application.ports import (
     NewUpload,
     ParentRevocationResult,
     PublishResult,
+    RevisionRecord,
     RevocationResult,
 )
 from app.modules.knowledge.domain.errors import (
@@ -672,6 +673,67 @@ class SupabaseKnowledgeRepository:
         rows = [row for row in (getattr(result, "data", None) or []) if isinstance(row, dict)]
         records = self._document_records(rows)
         return records[0] if records else None
+
+    def get_revision(
+        self, document_id: UUID, revision_id: UUID
+    ) -> RevisionRecord | None:
+        try:
+            document_result = (
+                self._client()
+                .table("documents")
+                .select("id,file_name")
+                .eq("id", str(document_id))
+                .limit(1)
+                .execute()
+            )
+            document_rows = [
+                row
+                for row in (getattr(document_result, "data", None) or [])
+                if isinstance(row, dict)
+            ]
+            if not document_rows:
+                return None
+            revision_result = (
+                self._client()
+                .table("document_revisions")
+                .select(
+                    "id,document_id,status,file_type,source_key,"
+                    "source_sha256,source_size_bytes,revoked_at"
+                )
+                .eq("id", str(revision_id))
+                .eq("document_id", str(document_id))
+                .limit(1)
+                .execute()
+            )
+        except (APIError, httpx.HTTPError) as exc:
+            raise KnowledgeUnavailable(
+                "knowledge persistence failed while reading a revision"
+            ) from exc
+
+        revision_rows = [
+            row
+            for row in (getattr(revision_result, "data", None) or [])
+            if isinstance(row, dict)
+        ]
+        if not revision_rows:
+            return None
+        row = revision_rows[0]
+        try:
+            return RevisionRecord(
+                document_id=UUID(str(row["document_id"])),
+                revision_id=UUID(str(row["id"])),
+                state=RevisionState(str(row["status"])),
+                file_type=str(row["file_type"]),
+                file_name=str(document_rows[0]["file_name"]),
+                source_key=str(row["source_key"]),
+                source_sha256=str(row["source_sha256"]),
+                source_size_bytes=int(row["source_size_bytes"]),
+                revoked_at=_as_datetime(row.get("revoked_at")),
+            )
+        except (KeyError, TypeError, ValueError) as exc:
+            raise KnowledgeUnavailable(
+                "knowledge revisions returned an unexpected row shape"
+            ) from exc
 
     def _document_records(
         self, rows: list[dict[str, Any]]

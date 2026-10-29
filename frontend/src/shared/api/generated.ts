@@ -719,6 +719,26 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/documents/{document_id}/revisions/{revision_id}/content": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Get Revision Content
+         * @description Serve the exact retained revision, never the latest or a caller key.
+         */
+        get: operations["get_revision_content_api_documents__document_id__revisions__revision_id__content_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/documents/search": {
         parameters: {
             query?: never;
@@ -3630,6 +3650,40 @@ export interface operations {
             header?: never;
             path: {
                 document_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": unknown;
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    get_revision_content_api_documents__document_id__revisions__revision_id__content_get: {
+        parameters: {
+            query?: {
+                representation?: "original" | "text";
+            };
+            header?: never;
+            path: {
+                document_id: string;
+                revision_id: string;
             };
             cookie?: never;
         };

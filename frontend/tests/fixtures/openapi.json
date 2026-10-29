@@ -1931,6 +1931,72 @@
         }
       }
     },
+    "/api/documents/{document_id}/revisions/{revision_id}/content": {
+      "get": {
+        "tags": [
+          "documents"
+        ],
+        "summary": "Get Revision Content",
+        "description": "Serve the exact retained revision, never the latest or a caller key.",
+        "operationId": "get_revision_content_api_documents__document_id__revisions__revision_id__content_get",
+        "parameters": [
+          {
+            "name": "document_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid",
+              "title": "Document Id"
+            }
+          },
+          {
+            "name": "revision_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid",
+              "title": "Revision Id"
+            }
+          },
+          {
+            "name": "representation",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "enum": [
+                "original",
+                "text"
+              ],
+              "type": "string",
+              "default": "original",
+              "title": "Representation"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/api/documents/search": {
       "post": {
         "tags": [

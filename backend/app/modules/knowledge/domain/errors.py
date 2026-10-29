@@ -42,6 +42,20 @@ class DocumentNotFound(KnowledgeError):
     code = "document_not_found"
 
 
+class RevisionNotFound(KnowledgeError):
+    code = "revision_not_found"
+
+
+class RevisionUnavailable(KnowledgeError):
+    """The exact revision is not retained, ready, or byte-identical."""
+
+    code = "revision_unavailable"
+
+
+class UnsupportedRepresentation(KnowledgeError):
+    code = "unsupported_representation"
+
+
 class KnowledgeUnavailable(KnowledgeError):
     """The durable knowledge store cannot be reached or returned garbage."""
 

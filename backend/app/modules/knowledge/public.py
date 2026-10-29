@@ -13,6 +13,10 @@ from uuid import UUID
 
 from app.platform.config import settings
 from app.platform.database import get_supabase
+from app.modules.knowledge.application.content import (
+    ReadRevisionContent,
+    RevisionContent,
+)
 from app.modules.knowledge.application.deletion import (
     CleanupReport,
     CleanupWorker,
@@ -114,6 +118,11 @@ class KnowledgeLifecycle:
         self._status = GetIngestionStatus(self.persistence)
         self._list_documents = ListDocuments(self.persistence)
         self._get_document = GetDocument(self.persistence)
+        self._read_revision = ReadRevisionContent(
+            persistence=self.persistence,
+            source_store=self.source_store,
+            parser=self.parser,
+        )
         self._delete_document = DeleteDocument(
             persistence=self.persistence,
             cleanup=self._cleanup,
@@ -153,6 +162,18 @@ class KnowledgeLifecycle:
 
     async def get_document(self, document_id: UUID) -> DocumentRecord | None:
         return await self._get_document.execute(document_id)
+
+    async def read_revision_content(
+        self,
+        document_id: UUID,
+        revision_id: UUID,
+        *,
+        representation: str = "original",
+    ) -> RevisionContent:
+        """Return verified bytes for exactly one retained revision."""
+        return await self._read_revision.execute(
+            document_id, revision_id, representation=representation
+        )
 
     async def purge_document_row(self, document_id: UUID) -> bool:
         """Remove the revoked document row; cleanup intents stay durable."""
