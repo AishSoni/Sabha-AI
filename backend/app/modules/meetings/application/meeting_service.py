@@ -39,6 +39,21 @@ def _status_value(status: "MeetingStatus | str") -> str:
     return status.value if isinstance(status, MeetingStatus) else status
 
 
+_MEETING_COLUMNS = (
+    "id,user_id,name,agenda,status,total_cost,created_at,archived_at"
+)
+_MESSAGE_COLUMNS = (
+    "id,meeting_id,sender_type,sender_id,sender_name,content,citations,"
+    "tool_artifacts,thinking_content,estimated_cost,created_at,sequence,"
+    "operation_id,request_key,effective_generation"
+)
+_DISAGREEMENT_COLUMNS = (
+    "id,meeting_id,source_ai_id,target_name,topic,reasoning,severity,"
+    "status,created_at"
+)
+_CONSENSUS_COLUMNS = "id,meeting_id,participants,topic,strength,created_at"
+
+
 def _present_meeting_row(row: dict) -> dict:
     """Project archive state into the public lifecycle status (spec-08).
 
@@ -172,7 +187,7 @@ class MeetingService:
     async def list_meetings(self, user_id: Optional[str] = None) -> List[Meeting]:
         """List all meetings, optionally filtered by user."""
         
-        query = self.db.table("meetings").select("*")
+        query = self.db.table("meetings").select(_MEETING_COLUMNS)
         
         if user_id:
             query = query.eq("user_id", user_id)
@@ -363,7 +378,7 @@ class MeetingService:
         
         result = await self._run(
             lambda: self.db.table("disagreements")
-            .select("*")
+            .select(_DISAGREEMENT_COLUMNS)
             .eq("meeting_id", meeting_id)
             .order("created_at")
             .execute()
@@ -376,7 +391,7 @@ class MeetingService:
         
         result = await self._run(
             lambda: self.db.table("consensus")
-            .select("*")
+            .select(_CONSENSUS_COLUMNS)
             .eq("meeting_id", meeting_id)
             .order("created_at")
             .execute()
@@ -515,7 +530,7 @@ class MeetingService:
         """
         result = await self._run(
             lambda: self.db.table("messages")
-            .select("*")
+            .select(_MESSAGE_COLUMNS)
             .eq("meeting_id", meeting_id)
             .eq("sender_type", SenderType.SYSTEM.value)
             .like("content", f"{prefix}%")
