@@ -230,9 +230,13 @@ function MeetingConversation({ meeting, disagreements, consensus, initialTab }: 
         enabled: capabilities.closing,
     });
     const [tab, setTab] = useState(initialTab ?? 'chat');
-    useEffect(() => {
+    // Keep the active tab in sync with the requested tab (e.g. ?tab=closing)
+    // by adjusting state during render instead of in an effect.
+    const [appliedInitialTab, setAppliedInitialTab] = useState(initialTab);
+    if (initialTab !== appliedInitialTab) {
+        setAppliedInitialTab(initialTab);
         if (initialTab) setTab(initialTab);
-    }, [initialTab]);
+    }
     const DocumentsPanel = slots.documentPanel;
     const SummaryPanel = slots.summaryPanel;
 

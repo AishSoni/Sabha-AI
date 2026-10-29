@@ -1,27 +1,54 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useState, useSyncExternalStore } from 'react';
 import Link from 'next/link';
 import { Users, MessageSquare, Settings, ArrowRight, Sparkles, BookOpen } from 'lucide-react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 
-export default function HomePage() {
-  const [experience, setExperience] = useState<string | null>(null);
-  const [ready, setReady] = useState(false);
+const EXPERIENCE_KEY = 'sabha:experience';
 
-  useEffect(() => {
-    try {
-      setExperience(window.localStorage.getItem('sabha:experience'));
-    } catch {
-      setExperience(null);
-    }
-    setReady(true);
-  }, []);
+function subscribeToExperience(onStoreChange: () => void) {
+  window.addEventListener('storage', onStoreChange);
+  return () => window.removeEventListener('storage', onStoreChange);
+}
+
+function readExperience(): string | null {
+  try {
+    return window.localStorage.getItem(EXPERIENCE_KEY);
+  } catch {
+    return null;
+  }
+}
+
+function readServerExperience(): string | null {
+  // Preferences live in localStorage, which does not exist during SSR.
+  return null;
+}
+
+const subscribeToHydration = () => () => {};
+const readHydrated = () => true;
+const readServerHydrated = () => false;
+
+export default function HomePage() {
+  // The stored preference is an external system, so it is read through
+  // useSyncExternalStore instead of being copied into state from an effect.
+  const storedExperience = useSyncExternalStore(
+    subscribeToExperience,
+    readExperience,
+    readServerExperience,
+  );
+  const ready = useSyncExternalStore(
+    subscribeToHydration,
+    readHydrated,
+    readServerHydrated,
+  );
+  const [chosenExperience, setChosenExperience] = useState<string | null>(null);
+  const experience = chosenExperience ?? storedExperience;
 
   const choose = (value: 'live' | 'guided') => {
-    setExperience(value);
+    setChosenExperience(value);
     try {
-      window.localStorage.setItem('sabha:experience', value);
+      window.localStorage.setItem(EXPERIENCE_KEY, value);
     } catch {
       // A preference is optional; the live app remains usable without storage.
     }
