@@ -138,41 +138,18 @@ class SupabaseKnowledgeRepository:
             ) from exc
 
     def get_ingestion(self, ingestion_id: UUID) -> IngestionRecord | None:
-        try:
-            ingestion = _row(
-                self._client()
-                .table("document_ingestions")
-                .select(
-                    "id,document_id,revision_id,state,last_error"
-                )
-                .eq("id", str(ingestion_id))
-                .limit(1)
-                .execute()
-            )
-            if ingestion is None:
-                return None
-            revision = _row(
-                self._client()
-                .table("document_revisions")
-                .select(
-                    "status,chunk_count,error_message,file_type,qdrant_collection"
-                )
-                .eq("id", str(ingestion["revision_id"]))
-                .limit(1)
-                .execute()
-            )
-            document = _row(
-                self._client()
-                .table("documents")
-                .select("file_name,status,chunk_count,error_message")
-                .eq("id", str(ingestion["document_id"]))
-                .limit(1)
-                .execute()
-            )
-        except (APIError, httpx.HTTPError) as exc:
-            raise KnowledgeUnavailable(
-                "knowledge persistence failed while reading an ingestion"
-            ) from exc
+        """Read the durable ingestion receipt in one round trip (spec 20)."""
+        body = self._rpc_value(
+            "knowledge_read_ingestion", {"p_ingestion_id": str(ingestion_id)}
+        )
+        if not body:
+            return None
+
+        ingestion = body.get("ingestion")
+        if ingestion is None:
+            return None
+        revision = body.get("revision")
+        document = body.get("document")
 
         if revision is None or document is None:
             raise KnowledgeUnavailable(
