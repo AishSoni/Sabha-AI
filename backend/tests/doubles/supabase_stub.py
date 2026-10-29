@@ -266,6 +266,7 @@ _RPC_SIGNATURES: dict[str, tuple[tuple[str, str], ...]] = {
         ("p_summary_settings", "::jsonb"),
         ("p_now", "::timestamptz"),
     ),
+    "read_meeting_bundle": (("p_meeting_id", "::uuid"),),
     "read_meeting_closing": (("p_meeting_id", "::uuid"),),
     "mark_closing_stage": (
         ("p_closing_id", "::uuid"),
