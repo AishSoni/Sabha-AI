@@ -434,7 +434,12 @@ export async function fetchReplayBundle(
 
 interface ReplayRuntimeOptions {
     signal: AbortSignal;
-    restart: () => void;
+    /**
+     * Only set when the room itself owns restart (the standalone replay room).
+     * The guided composition keeps restart in its controller so the room header
+     * does not offer a second, divergent restart path.
+     */
+    restart?: () => void;
     checkpoint: string;
     queryClient: QueryClient;
     switchCheckpoint: (
@@ -682,6 +687,7 @@ export function createReplayRuntime(
             documentPanel: RecordedDocumentsPanel,
         },
         signal: options.signal,
+        ...(options.restart ? { restart: options.restart } : {}),
         replay: {
             packageId: session.package_id,
             packageVersion: session.package_version,

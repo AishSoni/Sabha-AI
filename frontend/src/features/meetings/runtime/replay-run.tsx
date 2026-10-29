@@ -351,7 +351,6 @@ export function ReplayRunProvider({ children }: { children: ReactNode }) {
         if (!session || !scope) return null;
         return createReplayRuntime(session, scope, {
             signal: controller.signal,
-            restart,
             checkpoint: effectiveCheckpoint,
             queryClient,
             switchCheckpoint,
@@ -364,7 +363,6 @@ export function ReplayRunProvider({ children }: { children: ReactNode }) {
         session,
         scope,
         controller.signal,
-        restart,
         effectiveCheckpoint,
         queryClient,
         switchCheckpoint,
