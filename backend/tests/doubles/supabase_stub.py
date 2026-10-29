@@ -698,3 +698,62 @@ class SupabaseStub:
 def stub_for(disposable_db) -> SupabaseStub:
     """Build a SupabaseStub bound to the given disposable database."""
     return SupabaseStub(disposable_db.uri)
+
+
+class _CountingQuery:
+    """Transparent builder proxy that records each terminal call."""
+
+    def __init__(self, owner, kind: str, name: str, inner) -> None:
+        self._owner = owner
+        self._kind = kind
+        self._name = name
+        self._inner = inner
+
+    def execute(self):
+        self._owner.calls.append((self._kind, self._name))
+        return self._inner.execute()
+
+    def __getattr__(self, attribute: str):
+        value = getattr(self._inner, attribute)
+        if not callable(value):
+            return value
+
+        def call(*args, **kwargs):
+            result = value(*args, **kwargs)
+            return self if result is self._inner else result
+
+        return call
+
+
+class CountingSupabaseStub:
+    """Spec-20 round-trip counter over the real SupabaseStub.
+
+    Only terminal ``execute()`` calls count: fluent builder steps cost no
+    network time, so a test asserting a budget is asserting round trips.
+    """
+
+    def __init__(self, inner: SupabaseStub) -> None:
+        self.inner = inner
+        self.calls: list[tuple[str, str]] = []
+
+    def table(self, name: str) -> _CountingQuery:
+        return _CountingQuery(self, "table", name, self.inner.table(name))
+
+    def rpc(self, name: str, params: dict | None = None) -> _CountingQuery:
+        return _CountingQuery(self, "rpc", name, self.inner.rpc(name, params))
+
+    def reset(self) -> None:
+        self.calls.clear()
+
+    @property
+    def round_trips(self) -> int:
+        return len(self.calls)
+
+    def count(self, kind: str, name: str) -> int:
+        return self.calls.count((kind, name))
+
+
+def counting_stub_for(disposable_db) -> CountingSupabaseStub:
+    """Build a counting stub bound to the given disposable database."""
+    return CountingSupabaseStub(stub_for(disposable_db))
+
