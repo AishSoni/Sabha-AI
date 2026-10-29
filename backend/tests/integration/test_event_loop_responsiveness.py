@@ -76,6 +76,9 @@ class _SlowDb:
     def table(self, name: str) -> _SlowQuery:
         return _SlowQuery(self, name)
 
+    def rpc(self, name: str, params: dict) -> _SlowQuery:
+        return _SlowQuery(self, f"rpc:{name}")
+
 
 def _app(db: _SlowDb):
     service = MeetingService(
