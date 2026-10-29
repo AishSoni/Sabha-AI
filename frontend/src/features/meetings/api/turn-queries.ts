@@ -14,7 +14,7 @@ import { turnKeys } from './turn-keys';
 import type { MeetingsRuntime } from '../runtime/contract';
 import { combineSignals } from '@/shared/runtime/scope';
 
-const ACTIVE_QUEUE_POLL_MS = 2_000;
+const ACTIVE_QUEUE_POLL_MS = 4_000;
 
 export function hasActiveTurns(operations: TurnOperation[] | undefined): boolean {
     return Boolean(operations?.some((operation) => !isTerminalTurnStatus(operation.status)));
