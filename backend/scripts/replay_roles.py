@@ -102,18 +102,18 @@ def _harden_role(
 def _ensure_can_alter_defaults(conn: psycopg.Connection, role: str) -> None:
     """Make ``role``'s default privileges editable from this session.
 
-    ``ALTER DEFAULT PRIVILEGES FOR ROLE x`` requires membership in ``x``, and
-    a ``CREATEROLE`` administrator is not automatically a member of the roles
-    it creates. Hosted provisioning would then be refused while closing the
-    provisioner's future objects. Membership is granted once to the
-    administrator identity that already owns the role; it changes nothing
-    about what the replay roles themselves may do.
+    ``ALTER DEFAULT PRIVILEGES FOR ROLE x`` is gated by ``has_privs_of_role``,
+    which since PostgreSQL 16 means membership in ``x`` *with the SET option*.
+    Creating a role is not enough: ``CREATE ROLE`` records only an ADMIN option
+    for the creator, so ``pg_has_role(..., 'MEMBER')`` is already true while
+    ``pg_has_role(..., 'USAGE')`` is false and the ALTER is refused. Testing
+    USAGE (not MEMBER) is what makes the self-grant below actually run.
     """
     current_user = conn.execute("SELECT current_user").fetchone()[0]
     if current_user == role:
         return
     if conn.execute(
-        "SELECT pg_has_role(%s, %s, 'MEMBER')", (current_user, role)
+        "SELECT pg_has_role(%s, %s, 'USAGE')", (current_user, role)
     ).fetchone()[0]:
         return
     try:
@@ -343,7 +343,14 @@ def provision(
     owner = conn.execute("SELECT current_user").fetchone()[0]
     for grantor in dict.fromkeys((owner, PROVISIONER_ROLE)):
         _ensure_can_alter_defaults(conn, grantor)
-        _close_default_privileges(conn, grantor, replay_schema)
+        try:
+            _close_default_privileges(conn, grantor, replay_schema)
+        except psycopg.errors.InsufficientPrivilege as exc:
+            raise ReplayRoleError(
+                f"{owner} cannot change the default privileges of {grantor} "
+                f"({exc}). Membership with SET is required; as a superuser run: "
+                f"GRANT {grantor} TO {owner}"
+            ) from exc
 
     for role in (READER_ROLE, PROVISIONER_ROLE):
         _deny_live_access(conn, role)

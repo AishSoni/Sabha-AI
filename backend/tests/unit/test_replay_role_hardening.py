@@ -41,6 +41,7 @@ class _FakeConn:
         inherit: bool = True,
         current_user: str = "postgres",
         member: bool = False,
+        usage: bool | None = None,
     ) -> None:
         self._exists = exists
         self._attributes = (
@@ -53,6 +54,8 @@ class _FakeConn:
         )
         self._current_user = current_user
         self._member = member
+        self._usage = member if usage is None else usage
+        self.probes: list[str] = []
         self.statements: list[str] = []
 
     def execute(self, statement, params=()):
@@ -64,7 +67,12 @@ class _FakeConn:
         if "SELECT current_user" in text:
             return _Cursor((self._current_user,))
         if "SELECT pg_has_role" in text:
-            return _Cursor((self._member,))
+            # PostgreSQL answers per privilege; MEMBER is true for the ADMIN-only
+            # membership CREATE ROLE leaves behind, USAGE (SET/INHERIT) is not.
+            privilege = "USAGE" if "'USAGE'" in text else "MEMBER"
+            self.probes.append(privilege)
+            row = self._usage if privilege == "USAGE" else self._member
+            return _Cursor((row,))
         self.statements.append(text)
         return _Cursor(None)
 
@@ -118,7 +126,23 @@ def test_privileged_role_is_refused_before_any_alter() -> None:
 
 def test_default_privileges_grant_membership_first() -> None:
     """ALTER DEFAULT PRIVILEGES FOR ROLE needs membership, not just CREATEROLE."""
-    conn = _FakeConn(current_user="postgres", member=False)
+    conn = _FakeConn(current_user="postgres", member=False, usage=False)
+
+    replay_roles._ensure_can_alter_defaults(conn, PROVISIONER_ROLE)
+
+    assert conn.probes == ["USAGE"]
+    assert conn.statements == [
+        f'GRANT "{PROVISIONER_ROLE}" TO "postgres"',
+    ]
+
+
+def test_admin_only_creator_membership_is_upgraded() -> None:
+    """The exact hosted failure: CREATE ROLE grants ADMIN without SET.
+
+    ``pg_has_role(..., 'MEMBER')`` is true for that automatic membership, so a
+    MEMBER-based guard skipped the self-grant and the ALTER was still denied.
+    """
+    conn = _FakeConn(current_user="postgres", member=True, usage=False)
 
     replay_roles._ensure_can_alter_defaults(conn, PROVISIONER_ROLE)
 
@@ -127,19 +151,21 @@ def test_default_privileges_grant_membership_first() -> None:
     ]
 
 
-def test_membership_already_present_is_not_granted_again() -> None:
-    """A superuser or group admin already satisfies the requirement."""
-    conn = _FakeConn(current_user="postgres", member=True)
+def test_membership_with_set_is_not_granted_again() -> None:
+    """A role whose membership already confers SET needs no statement."""
+    conn = _FakeConn(current_user="postgres", member=True, usage=True)
 
     replay_roles._ensure_can_alter_defaults(conn, PROVISIONER_ROLE)
 
+    assert conn.probes == ["USAGE"]
     assert conn.statements == []
 
 
 def test_owning_role_needs_no_membership() -> None:
     """Altering a role's own defaults is always allowed."""
-    conn = _FakeConn(current_user="postgres", member=False)
+    conn = _FakeConn(current_user="postgres", member=False, usage=False)
 
     replay_roles._ensure_can_alter_defaults(conn, "postgres")
 
+    assert conn.probes == []
     assert conn.statements == []
