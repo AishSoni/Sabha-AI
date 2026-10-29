@@ -4,7 +4,13 @@
 
 Deliver one polished, approximately five-minute historical corporate-bond walkthrough in the **same hosted application** as live setup and use. Visitors choose their path at entry. Replay reuses real feature screens, domain policies, read DTOs, event contracts, and pure projections; it does not execute live durable workflows against pretend persistence.
 
-This phase is planned, not implemented by these documents. Specs 01–11 and their completion records remain historical evidence. Spec 10 explicitly deferred guided replay; Spec 11's hosted infrastructure checks remain conditional. Neither record is proof of this phase's acceptance.
+This phase is implemented locally through Spec 19, which records **conditional
+local acceptance** and keeps public replay release **blocked** until the hosted
+checks are executed. Specs 01–11 and their completion records remain historical
+evidence. Spec 10 explicitly deferred guided replay; Spec 11's hosted
+infrastructure checks remain conditional. Neither record is proof of this
+phase's acceptance, and local evidence does not substitute for the deployed
+rows in Spec 19.
 
 Read the [runtime contract](reference-runtime-modes-and-credentials.md) and [package/playback contract](reference-replay-package-and-playback.md) before implementing. Follow the [global order](README.md); supporting documents are not extra implementation steps.
 
