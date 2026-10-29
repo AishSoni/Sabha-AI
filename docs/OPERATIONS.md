@@ -591,13 +591,99 @@ npm run test:e2e -- e2e/guided-journey.spec.ts
 
 It covers the full eight-beat journey, source disclosure, private-scope
 separation, small screens, reduced motion, keyboard operation, back/restart,
-deep-link reset, and the absence of live meeting mutations. The placeholder
-package remains a backend fixture; it is not the demo default.
+deep-link reset, and the absence of live meeting mutations. `replay-isolation`
+adds two browser contexts at different beats, and `replay-resilience` adds
+double actions, refocus/poll, stream abort and resume, mid-stream restart and
+deep-link refresh. Run the journey against the production build separately:
+
+```powershell
+cd frontend
+npm run test:e2e:prod -- e2e/guided-journey.spec.ts
+```
+
+The placeholder package remains a backend fixture; it is not the demo default.
 
 On hosted Supabase, applying `032`, creating the bucket, publishing with the
 provisioner key, and confirming Storage/network policy remain operator steps.
 Local evidence does not prove the hosted project's bucket visibility or reader
 credential separation; those remain in the hosted checklist and Spec 19.
+
+### Hosted replay acceptance runbook (spec 19)
+
+The local release decision is recorded in
+[the Spec 19 completion record](../specs/spec-19-replay-release-acceptance.md).
+Public replay release stays blocked until an operator runs every step below
+against the real hosted project, records the results in that same record, and
+re-checks the reader credential after any grant change. Use an approved
+non-destructive environment; these checks are read-only unless a step says
+otherwise. Never paste keys or private payloads into the record.
+
+1. **Effective identity and grants.** Run the read-only inventory with an
+   operator connection, not the replay reader:
+
+   ```powershell
+   cd backend
+   python -m scripts.inventory_permissions `
+       --database-url $env:HOSTED_DATABASE_URL `
+       --role anon --role authenticated `
+       --role sabha_replay_login --role sabha_live_login `
+       --format markdown --output ..\reports\hosted-permissions.md
+   python -m scripts.replay_roles --database-url $env:HOSTED_DATABASE_URL --check
+   ```
+
+   Confirm the reader is a member of `sabha_replay_reader` only, has no
+   `SUPERUSER`/`BYPASSRLS`, cannot `SELECT` live tables or `storage.objects`,
+   cannot write anything, and reads only published, version-pinned replay
+   objects. Confirm every replay table has RLS enabled and forced, views do not
+   run as their owner with live access, and security-definer functions pin a
+   safe `search_path`. Confirm `PUBLIC` and browser roles hold no historical
+   grants. There is no service-role fallback: the replay runtime credential is
+   `REPLAY_DATABASE_URL`, never `SUPABASE_KEY`.
+
+2. **Storage visibility.** In the hosted project confirm the `replay-assets`
+   bucket exists, is public-read, and has immutable object paths. Upload,
+   overwrite and delete must be denied to the reader and to browser roles.
+   Fetch an approved asset through the CDN (`200`, expected bytes) and a
+   missing/retired asset (`404`). Confirm a publication that fails asset
+   verification stages no rows and exposes no version.
+
+3. **Reverse-proxy SSE.** With the deployed replay URL and package, request
+   `GET /api/replay/meetings/<meeting>/turns/<operation>/events` through the
+   proxy and record: `content-type: text/event-stream`, `cache-control:
+   no-cache`, `x-accel-buffering: no`, incremental frame arrival, Unicode
+   payloads, ordering, resume with `after`, bounded concurrency (`429`), and
+   disconnect cleanup. Repeat for `closing/events` and confirm the closing
+   reason and final brief arrive as terminal events. A local socket run is not
+   a substitute.
+
+4. **Browser journey.** Run the eight-beat journey against the deployed
+   production build, not `next dev`: source disclosure, private-scope
+   separation, keyboard-only completion, a 390 px viewport, reduced motion,
+   back/restart and deep-link reset. Confirm there is no next-step timer,
+   credential prompt, live meeting mutation, or console error.
+
+5. **Independent visitors.** Open two fresh browser contexts at different
+   beats. Confirm distinct ephemeral run IDs, that back/restart/refetch in A
+   cannot move or overwrite B, and that no backend run/session rows are
+   created. Package/version/run scope must prevent cache collisions.
+
+6. **Mixed live and replay.** With an active live turn and an unlocked
+   synthetic vault, open replay in another context. Switching detaches replay
+   observation only; the live turn keeps executing, its cache/cooldown
+   survives a replay restart, and replay never reads the vault, leaks a key,
+   or cancels the live job. If the hosted app cannot host both graphs, record
+   the row as unexecuted rather than inferring it from local tests.
+
+7. **Publication and rollback.** Publish a second small package, pin an active
+   run, retire the old version, and confirm the active run is unaffected and a
+   failed publication is never selected. Rehearse rollback by disabling the
+   replay entry/publication or repinning an intact package; never roll back
+   live records or reopen an ended meeting. Retain old immutable versions
+   under the documented retirement window.
+
+Record each step as passed, failed or unexecuted with the date, environment,
+package identity/hash, command, and sanitized result. Only then replace the
+conditional local decision.
 
 ## 13. Unresolved limitations
 
@@ -613,12 +699,15 @@ credential separation; those remain in the hosted checklist and Spec 19.
 - **No accounts or tenancy.** The workspace is deliberately shared; `anon` and
   `authenticated` cannot read or write live tables directly, and the replay
   reader is limited to explicitly published replay objects.
-- **Packaged replay is local-first.** Spec 17 ships the package format, offline
-  publication, checkpoint reads, paced SSE, closing transport, and the
-  packaged analyst slice. Spec 18 adds the approved `hdfc-ine001a07rw5`
-  journey and its browser acceptance slice. Hosted reader grants,
-  Storage bucket visibility, and a deployed proxy/pacing check remain operator
-  steps for Spec 19; local Postgres and a real local socket are proven.
+- **Packaged replay is local-first and publicly blocked.** Spec 17 ships the
+  package format, offline publication, checkpoint reads, paced SSE, closing
+  transport, and the packaged analyst slice. Spec 18 adds the approved
+  `hdfc-ine001a07rw5` journey and its browser acceptance slice. Spec 19 records
+  conditional local acceptance only: hosted reader grants, Storage bucket
+  visibility, reverse-proxy SSE, hosted browser/mixed-mode journeys, and
+  deployed publication/rollback remain unexecuted operator steps in the
+  [hosted runbook](#hosted-replay-acceptance-runbook-spec-19). Public replay
+  release stays blocked until those steps pass.
 - **OCR deployment proof is host-specific.** The probe and benchmark run on
   the Windows acceptance host; a hosted worker must repeat both after installing
   the pinned wheels and record the result. Passing local tests does not prove
