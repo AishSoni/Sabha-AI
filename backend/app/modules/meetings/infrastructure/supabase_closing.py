@@ -19,6 +19,7 @@ from app.capabilities.configuration.service import (
     resolve_effective_settings,
 )
 from app.modules.settings.infrastructure.system_ai import SYSTEM_AI_DEFAULTS
+from app.platform.blocking import run_blocking
 from app.platform.config import settings
 from app.capabilities.inference.contracts import LLMMessage
 from app.platform.providers import get_provider
@@ -166,7 +167,7 @@ class SupabaseClosingRepository:
         mode: str,
         summary_settings: Mapping[str, Any],
     ) -> RequestOutcome:
-        body = self._rpc(
+        body = await self._rpc(
             "request_meeting_closing",
             {
                 "p_meeting_id": meeting_id,
@@ -183,7 +184,7 @@ class SupabaseClosingRepository:
         )
 
     async def read(self, meeting_id: str) -> ClosingSnapshot:
-        body = self._rpc("read_meeting_closing", {"p_meeting_id": meeting_id})
+        body = await self._rpc("read_meeting_closing", {"p_meeting_id": meeting_id})
         meeting_row = body.get("meeting")
         if not meeting_row:
             raise MeetingNotFoundError("Meeting not found")
@@ -196,9 +197,11 @@ class SupabaseClosingRepository:
 
         attempts = {}
         if closing is not None:
-            result = (
-                self.db.table("closing_votes")
-                .select("participant_id,attempt_id,attempt_number,attempt_lease_expires_at")
+            result = await run_blocking(
+                lambda: self.db.table("closing_votes")
+                .select(
+                    "participant_id,attempt_id,attempt_number,attempt_lease_expires_at"
+                )
                 .eq("closing_id", closing.id)
                 .execute()
             )
@@ -217,7 +220,7 @@ class SupabaseClosingRepository:
             )
             votes.append(_vote_from_row(merged))
 
-        started_at = self._processing_turn_started_at(meeting_id)
+        started_at = await self._processing_turn_started_at(meeting_id)
         context = MeetingContext(
             meeting_id=str(meeting_row["id"]),
             name=str(meeting_row.get("name") or ""),
@@ -249,9 +252,9 @@ class SupabaseClosingRepository:
             processing_turn_started_at=started_at,
         )
 
-    def _processing_turn_started_at(self, meeting_id: str) -> datetime | None:
-        result = (
-            self.db.table("operations")
+    async def _processing_turn_started_at(self, meeting_id: str) -> datetime | None:
+        result = await run_blocking(
+            lambda: self.db.table("operations")
             .select("execution_started_at,updated_at")
             .eq("meeting_id", meeting_id)
             .eq("status", "processing")
@@ -267,8 +270,8 @@ class SupabaseClosingRepository:
         )
 
     async def list_open_meeting_ids(self) -> Sequence[str]:
-        result = (
-            self.db.table("meeting_closings")
+        result = await run_blocking(
+            lambda: self.db.table("meeting_closings")
             .select("meeting_id")
             .in_("stage", list(_OPEN_STAGES))
             .execute()
@@ -288,7 +291,7 @@ class SupabaseClosingRepository:
         self, closing_id: str, expected: ClosingStage, next_stage: ClosingStage
     ) -> bool:
         return bool(
-            self._rpc(
+            await self._rpc(
                 "mark_closing_stage",
                 {
                     "p_closing_id": closing_id,
@@ -307,7 +310,7 @@ class SupabaseClosingRepository:
         message: str,
     ) -> bool:
         return bool(
-            self._rpc(
+            await self._rpc(
                 "fail_meeting_closing",
                 {
                     "p_closing_id": closing_id,
@@ -321,7 +324,7 @@ class SupabaseClosingRepository:
 
     async def retry(self, closing_id: str) -> bool:
         return bool(
-            self._rpc(
+            await self._rpc(
                 "retry_meeting_closing",
                 {"p_closing_id": closing_id, "p_now": self._now()},
             )
@@ -329,7 +332,7 @@ class SupabaseClosingRepository:
 
     async def abort(self, closing_id: str) -> bool:
         return bool(
-            self._rpc(
+            await self._rpc(
                 "abort_meeting_closing",
                 {"p_closing_id": closing_id, "p_now": self._now()},
             )
@@ -337,14 +340,14 @@ class SupabaseClosingRepository:
 
     async def reject(self, closing_id: str) -> bool:
         return bool(
-            self._rpc(
+            await self._rpc(
                 "reject_meeting_closing",
                 {"p_closing_id": closing_id, "p_now": self._now()},
             )
         )
 
     async def complete(self, closing_id: str) -> Completion:
-        body = self._rpc(
+        body = await self._rpc(
             "complete_meeting_closing",
             {"p_closing_id": closing_id, "p_now": self._now()},
         )
@@ -360,7 +363,7 @@ class SupabaseClosingRepository:
     # ------------------------------------------------------------------
 
     async def start_voting(self, closing_id: str) -> str:
-        body = self._rpc(
+        body = await self._rpc(
             "start_closing_voting",
             {"p_closing_id": closing_id, "p_now": self._now()},
         )
@@ -376,7 +379,7 @@ class SupabaseClosingRepository:
         model: str,
         settings: Mapping[str, Any],
     ) -> VoteAttempt:
-        body = self._rpc(
+        body = await self._rpc(
             "begin_closing_vote_attempt",
             {
                 "p_closing_id": closing_id,
@@ -415,7 +418,7 @@ class SupabaseClosingRepository:
         error_code: str | None,
         error_message: str | None,
     ) -> VoteResult:
-        body = self._rpc(
+        body = await self._rpc(
             "finish_closing_vote_attempt",
             {
                 "p_closing_id": closing_id,
@@ -449,7 +452,7 @@ class SupabaseClosingRepository:
     async def reserve_summary(
         self, closing_id: str, attempt_id: str, lease_seconds: int
     ) -> SummaryAttempt:
-        body = self._rpc(
+        body = await self._rpc(
             "reserve_closing_summary_attempt",
             {
                 "p_closing_id": closing_id,
@@ -479,7 +482,7 @@ class SupabaseClosingRepository:
         estimated_cost: float,
         reported_cost: float | None,
     ) -> SummarySaveResult:
-        body = self._rpc(
+        body = await self._rpc(
             "save_closing_summary_checkpoint",
             {
                 "p_closing_id": closing_id,
@@ -505,8 +508,9 @@ class SupabaseClosingRepository:
     # Helpers
     # ------------------------------------------------------------------
 
-    def _rpc(self, name: str, params: Mapping[str, Any]):
-        result = self.db.rpc(name, dict(params)).execute()
+    async def _rpc(self, name: str, params: Mapping[str, Any]):
+        """Run one blocking lifecycle round trip off the event loop."""
+        result = await run_blocking(lambda: self.db.rpc(name, dict(params)).execute())
         return result.data
 
 
