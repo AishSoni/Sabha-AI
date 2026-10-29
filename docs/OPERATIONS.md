@@ -470,8 +470,12 @@ python -m scripts.replay_roles --reader-login sabha_replay_login --check
 ```
 
 The script is idempotent, refuses privileged group membership, and leaves
-publication grants to Spec 17. The replay runtime uses a dedicated login role
-in `sabha_replay_reader`:
+publication grants to Spec 17. Hosted Postgres grants `CREATEROLE` without
+`SUPERUSER` (Supabase's `postgres` role included), and only a superuser may
+change `SUPERUSER` or `BYPASSRLS` -- even to remove them. The script therefore
+re-asserts only the attributes the connecting role is allowed to change, and
+fails loudly if a role still carries either privileged attribute. The replay
+runtime uses a dedicated login role in `sabha_replay_reader`:
 
 ```text
 REPLAY_DATABASE_URL=postgresql://sabha_replay_login:<password>@<host>:5432/postgres

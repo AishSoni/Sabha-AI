@@ -59,19 +59,54 @@ def _role_exists(conn: psycopg.Connection, role: str) -> bool:
     ).fetchone() is not None
 
 
+def _harden_role(
+    conn: psycopg.Connection, role: str, *, login: bool, inherit: bool
+) -> None:
+    """Apply only the attribute changes this role still needs.
+
+    PostgreSQL lets only a superuser touch ``SUPERUSER`` or ``BYPASSRLS`` --
+    even to remove them -- and hosted Postgres (Supabase) grants ``CREATEROLE``
+    without ``SUPERUSER``. Emitting those clauses unconditionally therefore
+    fails there while demoting an ordinary role. Naming an attribute only when
+    it is still set keeps provisioning working there, and turns a genuinely
+    privileged role into an explicit error instead of a permission failure.
+    """
+    row = conn.execute(
+        "SELECT rolsuper, rolbypassrls, rolcreatedb, rolcreaterole, "
+        "rolcanlogin, rolinherit FROM pg_roles WHERE rolname = %s",
+        (role,),
+    ).fetchone()
+    superuser, bypass_rls, createdb, createrole, can_login, has_inherit = row
+    if superuser or bypass_rls:
+        raise ReplayRoleError(
+            f"{role} still has SUPERUSER or BYPASSRLS; only a superuser can "
+            "revoke those attributes, so repair the role before provisioning"
+        )
+    clauses: list[str] = []
+    if bool(can_login) != login:
+        clauses.append("LOGIN" if login else "NOLOGIN")
+    if bool(has_inherit) != inherit:
+        clauses.append("INHERIT" if inherit else "NOINHERIT")
+    if createdb:
+        clauses.append("NOCREATEDB")
+    if createrole:
+        clauses.append("NOCREATEROLE")
+    if clauses:
+        conn.execute(
+            sql.SQL("ALTER ROLE {} " + " ".join(clauses)).format(
+                sql.Identifier(role)
+            )
+        )
+
+
 def _ensure_group_role(conn: psycopg.Connection, role: str) -> None:
     if not _role_exists(conn, role):
         conn.execute(
             sql.SQL("CREATE ROLE {} NOLOGIN").format(sql.Identifier(role))
         )
     # Re-assert the attributes on every run. A role that was edited by hand
-    # must not keep superuser, BYPASSRLS, LOGIN or inherited group privileges.
-    conn.execute(
-        sql.SQL(
-            "ALTER ROLE {} NOLOGIN NOSUPERUSER NOBYPASSRLS "
-            "NOCREATEDB NOCREATEROLE NOINHERIT"
-        ).format(sql.Identifier(role))
-    )
+    # must not keep LOGIN or inherited group privileges.
+    _harden_role(conn, role, login=False, inherit=False)
 
 
 def _ensure_login_role(conn: psycopg.Connection, role: str, group: str = READER_ROLE) -> None:
@@ -81,12 +116,7 @@ def _ensure_login_role(conn: psycopg.Connection, role: str, group: str = READER_
         conn.execute(
             sql.SQL("CREATE ROLE {} LOGIN").format(sql.Identifier(role))
         )
-    conn.execute(
-        sql.SQL(
-            "ALTER ROLE {} LOGIN NOSUPERUSER NOBYPASSRLS "
-            "NOCREATEDB NOCREATEROLE INHERIT"
-        ).format(sql.Identifier(role))
-    )
+    _harden_role(conn, role, login=True, inherit=True)
     conn.execute(
         sql.SQL("GRANT {} TO {}").format(
             sql.Identifier(group), sql.Identifier(role)
