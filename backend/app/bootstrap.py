@@ -19,7 +19,7 @@ from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
 from app.platform.config import settings
-from app.platform.blocking import shutdown_blocking
+from app.platform.blocking import run_blocking, shutdown_blocking
 from app.platform.database import close_supabase
 from app.modules.meetings.application.closing import ClosingService
 from app.modules.meetings.application.meeting_service import MeetingService
@@ -99,7 +99,9 @@ class Container:
             SupabasePromptCatalog,
         )
 
-        meeting_service = build_meeting_service(get_supabase())
+        meeting_service = build_meeting_service(
+            get_supabase(), run_blocking=run_blocking
+        )
         turn_queue = TurnQueueService(meeting_service)
         closing = ClosingService(
             SupabaseClosingRepository(meeting_service),

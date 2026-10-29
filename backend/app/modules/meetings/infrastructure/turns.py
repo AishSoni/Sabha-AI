@@ -32,6 +32,7 @@ from app.capabilities.configuration.contracts import (
     MissingProviderKeyError,
 )
 from app.capabilities.configuration.service import resolve_effective_settings
+from app.platform.blocking import run_blocking
 from app.platform.config import settings
 from app.capabilities.inference.contracts import LLMMessage, StreamEventType, ToolCall
 from app.platform.providers import get_provider
@@ -184,7 +185,7 @@ class TurnQueueService:
         max_queued: int | None = None,
     ) -> None:
         self.meeting_manager = meeting_manager or build_meeting_service(
-            get_supabase()
+            get_supabase(), run_blocking=run_blocking
         )
         self.provider_factory = provider_factory
         self.vector_store_factory = vector_store_factory
