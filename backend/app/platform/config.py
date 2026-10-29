@@ -42,6 +42,12 @@ class Settings(BaseSettings):
     replay_stream_max_seconds: float = 120.0
     replay_stream_max_global: int = 8
     replay_stream_max_per_client: int = 2
+    # Spec-20: one process-wide pool behind the dedicated replay reader. The
+    # pool is deliberately small; replay reads are short and sequential.
+    replay_pool_min_size: int = 2
+    replay_pool_max_size: int = 8
+    replay_pool_timeout_seconds: float = 5.0
+    replay_pool_reconnect_seconds: float = 5.0
     
     # OpenRouter
     openrouter_api_key: str = ""

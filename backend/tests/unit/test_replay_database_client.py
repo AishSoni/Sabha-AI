@@ -45,13 +45,22 @@ def test_connection_failure_is_wrapped_without_leaking_the_url(
 ) -> None:
     url = "postgresql://reader:secret@example.test/replay"
     monkeypatch.setattr(replay.settings, "replay_database_url", url, raising=False)
+    monkeypatch.setattr(
+        replay.settings, "replay_pool_timeout_seconds", 0.2, raising=False
+    )
+    monkeypatch.setattr(
+        replay.settings, "replay_pool_reconnect_seconds", 0.2, raising=False
+    )
 
     def fail(*_args, **_kwargs):
         raise psycopg.OperationalError("connection refused")
 
-    monkeypatch.setattr(replay.psycopg, "connect", fail)
+    monkeypatch.setattr(replay.psycopg.Connection, "connect", fail)
 
-    with pytest.raises(replay.ReplayReaderConnectionError) as raised:
-        replay.connect_replay_reader()
+    try:
+        with pytest.raises(replay.ReplayReaderConnectionError) as raised:
+            replay.connect_replay_reader()
+    finally:
+        replay.close_replay_pool()
 
     assert "secret" not in str(raised.value)
