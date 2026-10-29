@@ -236,11 +236,13 @@ class SupabasePersonaCatalog:
     async def list_templates(
         self, user_id: str | None = None, include_defaults: bool = True
     ) -> list[dict]:
-        """Legacy list fanout: rows, then per-row prompt + assignments.
+        """List personas with three fixed round trips (spec 20).
 
-        The fanout is a read view (not used by participant construction),
-        so it does not need the persona lock: list rows may reflect
-        concurrent edits mid-flight, exactly like the legacy list.
+        The list is a read view (not used by participant construction), so it
+        does not need the persona lock: rows may reflect concurrent edits
+        mid-flight, exactly like the legacy fanout. Prompts and stack
+        assignments are fetched for every listed persona in one query each,
+        so adding rows never adds round trips.
         """
         try:
             query = self._client().table("personas").select("*")
@@ -253,32 +255,46 @@ class SupabasePersonaCatalog:
                 lambda: query.order("created_at", desc=True).execute()
             )
 
+            personas = list(result.data or [])
+            if not personas:
+                return []
+            persona_ids = [persona["id"] for persona in personas]
+
+            prompt_result = await run_blocking(
+                lambda: self._client()
+                .table("prompt_versions")
+                .select("persona_id, content, version")
+                .in_("persona_id", persona_ids)
+                .eq("is_active", True)
+                .execute()
+            )
+            stack_result = await run_blocking(
+                lambda: self._client()
+                .table("persona_knowledge_stacks")
+                .select("persona_id, stack_id")
+                .in_("persona_id", persona_ids)
+                .execute()
+            )
+
+            prompts: dict[str, dict] = {}
+            for prompt in prompt_result.data or []:
+                prompts.setdefault(str(prompt["persona_id"]), prompt)
+            stacks: dict[str, list[str]] = {}
+            for assignment in stack_result.data or []:
+                stacks.setdefault(str(assignment["persona_id"]), []).append(
+                    assignment["stack_id"]
+                )
+
             rows: list[dict] = []
-            for persona in result.data or []:
-                prompt_result = await run_blocking(
-                    lambda persona_id=persona["id"]: self._client()
-                    .table("prompt_versions")
-                    .select("content, version")
-                    .eq("persona_id", persona_id)
-                    .eq("is_active", True)
-                    .execute()
-                )
-                stack_result = await run_blocking(
-                    lambda persona_id=persona["id"]: self._client()
-                    .table("persona_knowledge_stacks")
-                    .select("stack_id")
-                    .eq("persona_id", persona_id)
-                    .execute()
-                )
-                prompt = (prompt_result.data or [{}])[0]
+            for persona in personas:
+                persona_id = str(persona["id"])
+                prompt = prompts.get(persona_id, {})
                 rows.append(
                     {
                         **persona,
                         "active_prompt": prompt.get("content"),
                         "active_prompt_version": prompt.get("version"),
-                        "stack_ids": [
-                            s["stack_id"] for s in (stack_result.data or [])
-                        ],
+                        "stack_ids": stacks.get(persona_id, []),
                     }
                 )
             return rows

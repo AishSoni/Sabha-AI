@@ -71,8 +71,12 @@ async def test_list_templates_runs_every_execute_off_the_loop():
     client = _Client(
         {
             "personas": [{"id": "p1", "name": "One"}, {"id": "p2", "name": "Two"}],
-            "prompt_versions": [{"content": "prompt", "version": 1}],
-            "persona_knowledge_stacks": [{"stack_id": "stack-1"}],
+            "prompt_versions": [
+                {"persona_id": "p1", "content": "prompt", "version": 1}
+            ],
+            "persona_knowledge_stacks": [
+                {"persona_id": "p1", "stack_id": "stack-1"}
+            ],
         }
     )
     catalog = SupabasePersonaCatalog(lambda: client)
@@ -88,10 +92,10 @@ async def test_list_templates_runs_every_execute_off_the_loop():
     assert len(rows) == 2
     assert rows[0]["active_prompt"] == "prompt"
     assert rows[0]["stack_ids"] == ["stack-1"]
-    # 1 row query + 2 per persona (prompt, stacks).
-    assert len(client.threads) == 5
+    # Three batched queries: personas, active prompts, stack assignments.
+    assert len(client.threads) == 3
     assert all(thread != loop_thread for thread in client.threads)
-    # A blocking loop would starve the ticker during the 50 ms of fake work.
+    # A blocking loop would starve the ticker during the fake work.
     assert ticks >= 3
 
 
