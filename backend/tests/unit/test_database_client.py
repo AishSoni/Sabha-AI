@@ -65,17 +65,20 @@ def test_server_client_is_created_once(monkeypatch: pytest.MonkeyPatch) -> None:
     assert len(_Recorder.calls) == 1
 
 
-def test_server_client_shares_one_retrying_pool(monkeypatch: pytest.MonkeyPatch) -> None:
-    """Every sub-client reuses the pool, so a stale connection is retried once."""
+def test_admin_accessor_reuses_the_service_client(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """Admin access is the same service-role client, not a new one per call."""
     monkeypatch.setattr(
         database.settings, "supabase_service_key", "service-key", raising=False
     )
 
-    database.get_supabase()
-    database.get_supabase_admin()
+    service = database.get_supabase()
+    admin = database.get_supabase_admin()
 
+    assert admin is service
+    assert len(_Recorder.calls) == 1
     pools = [options.httpx_client for _, _, options in _Recorder.calls]
-    assert pools[0] is pools[1]
     assert isinstance(pools[0], RetryingClient)
 
 
