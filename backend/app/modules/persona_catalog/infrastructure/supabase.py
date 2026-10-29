@@ -9,9 +9,9 @@ here leaks SQL or provider details upward.
 The client resolves through an injected provider callable (the
 ``app.platform.database.get_supabase`` singleton accessor, normally built
 once at composition). Regressions patch that accessor per request; the
-adapter itself is constructed once in the composition root. The sync
-``execute()`` call keeps the PostgREST-compatible access pattern
-(compatibility over purity for this slice).
+adapter itself is constructed once in the composition root. Every blocking
+``execute()`` goes through the shared data-access pool (spec 20), so a slow
+round trip never stalls the event loop.
 """
 
 from typing import Any, Callable
@@ -25,6 +25,7 @@ from app.modules.persona_catalog.application.contracts import (
     TemplateNotFound,
     UnknownStacks,
 )
+from app.platform.blocking import run_blocking
 
 
 class SupabasePromptCatalog:
@@ -38,10 +39,14 @@ class SupabasePromptCatalog:
 
     async def activate_prompt_version(self, persona_id: str, version: int) -> bool:
         try:
-            result = self._client().rpc(
-                "activate_prompt_version",
-                {"p_persona_id": persona_id, "p_version": version},
-            ).execute()
+            result = await run_blocking(
+                lambda: self._client()
+                .rpc(
+                    "activate_prompt_version",
+                    {"p_persona_id": persona_id, "p_version": version},
+                )
+                .execute()
+            )
         except (APIError, httpx.HTTPError) as exc:
             raise PromptCatalogUnavailable(
                 "prompt catalog persistence failed"
@@ -57,15 +62,19 @@ class SupabasePromptCatalog:
         created_at: str,
     ) -> dict:
         try:
-            result = self._client().rpc(
-                "create_prompt_version",
-                {
-                    "p_persona_id": persona_id,
-                    "p_content": content,
-                    "p_version_id": version_id,
-                    "p_created_at": created_at,
-                },
-            ).execute()
+            result = await run_blocking(
+                lambda: self._client()
+                .rpc(
+                    "create_prompt_version",
+                    {
+                        "p_persona_id": persona_id,
+                        "p_content": content,
+                        "p_version_id": version_id,
+                        "p_created_at": created_at,
+                    },
+                )
+                .execute()
+            )
         except (APIError, httpx.HTTPError) as exc:
             raise PromptCatalogUnavailable(
                 "prompt catalog persistence failed"
@@ -95,7 +104,7 @@ class SupabasePersonaCatalog:
     def _client(self) -> Any:
         return self._client_provider()
 
-    def _reject_unknown_stacks(self, stack_ids: list[str]) -> None:
+    async def _reject_unknown_stacks(self, stack_ids: list[str]) -> None:
         """Legacy parity: unknown stack ids fail with the ids named.
 
         Validation reads before the transaction runs, so the typed
@@ -104,8 +113,8 @@ class SupabasePersonaCatalog:
         if not stack_ids:
             return
         try:
-            result = (
-                self._client()
+            result = await run_blocking(
+                lambda: self._client()
                 .table("knowledge_stacks")
                 .select("id")
                 .in_("id", stack_ids)
@@ -120,10 +129,14 @@ class SupabasePersonaCatalog:
 
     async def read_creation_snapshot(self, persona_id: str) -> dict | None:
         try:
-            result = self._client().rpc(
-                "read_persona_creation_snapshot",
-                {"p_persona_id": persona_id},
-            ).execute()
+            result = await run_blocking(
+                lambda: self._client()
+                .rpc(
+                    "read_persona_creation_snapshot",
+                    {"p_persona_id": persona_id},
+                )
+                .execute()
+            )
         except (APIError, httpx.HTTPError) as exc:
             raise PromptCatalogUnavailable("the persona catalog failed to persist; retry later") from exc
         data = result.data
@@ -151,25 +164,29 @@ class SupabasePersonaCatalog:
         created_at: str,
         stack_ids: list[str],
     ) -> dict:
-        self._reject_unknown_stacks(stack_ids)
+        await self._reject_unknown_stacks(stack_ids)
         try:
-            result = self._client().rpc(
-                "create_persona_transaction",
-                {
-                    "p_persona_id": persona_id,
-                    "p_name": name,
-                    "p_subtitle": subtitle,
-                    "p_color": color,
-                    "p_avatar_url": avatar_url,
-                    "p_provider_config": provider_config,
-                    "p_is_default": is_default,
-                    "p_user_id": user_id,
-                    "p_prompt_id": prompt_id,
-                    "p_system_prompt": system_prompt,
-                    "p_created_at": created_at,
-                    "p_stack_ids": stack_ids,
-                },
-            ).execute()
+            result = await run_blocking(
+                lambda: self._client()
+                .rpc(
+                    "create_persona_transaction",
+                    {
+                        "p_persona_id": persona_id,
+                        "p_name": name,
+                        "p_subtitle": subtitle,
+                        "p_color": color,
+                        "p_avatar_url": avatar_url,
+                        "p_provider_config": provider_config,
+                        "p_is_default": is_default,
+                        "p_user_id": user_id,
+                        "p_prompt_id": prompt_id,
+                        "p_system_prompt": system_prompt,
+                        "p_created_at": created_at,
+                        "p_stack_ids": stack_ids,
+                    },
+                )
+                .execute()
+            )
         except (APIError, httpx.HTTPError) as exc:
             raise self._translate(exc) from exc
         row = result.data
@@ -187,22 +204,26 @@ class SupabasePersonaCatalog:
         updated_at: str,
     ) -> dict:
         if fields.get("stack_ids") is not None:
-            self._reject_unknown_stacks(fields["stack_ids"])
+            await self._reject_unknown_stacks(fields["stack_ids"])
         try:
-            result = self._client().rpc(
-                "update_persona_transaction",
-                {
-                    "p_persona_id": persona_id,
-                    "p_name": fields.get("name"),
-                    "p_subtitle": fields.get("subtitle"),
-                    "p_color": fields.get("color"),
-                    "p_avatar_url": fields.get("avatar_url"),
-                    "p_provider_config": fields.get("provider_config"),
-                    "p_stack_ids": fields.get("stack_ids"),
-                    "p_expected_updated_at": expected_updated_at,
-                    "p_updated_at": updated_at,
-                },
-            ).execute()
+            result = await run_blocking(
+                lambda: self._client()
+                .rpc(
+                    "update_persona_transaction",
+                    {
+                        "p_persona_id": persona_id,
+                        "p_name": fields.get("name"),
+                        "p_subtitle": fields.get("subtitle"),
+                        "p_color": fields.get("color"),
+                        "p_avatar_url": fields.get("avatar_url"),
+                        "p_provider_config": fields.get("provider_config"),
+                        "p_stack_ids": fields.get("stack_ids"),
+                        "p_expected_updated_at": expected_updated_at,
+                        "p_updated_at": updated_at,
+                    },
+                )
+                .execute()
+            )
         except (APIError, httpx.HTTPError) as exc:
             raise self._translate(exc) from exc
         row = result.data
@@ -228,23 +249,25 @@ class SupabasePersonaCatalog:
                     query = query.or_(f"user_id.eq.{user_id},is_default.eq.true")
                 else:
                     query = query.eq("user_id", user_id)
-            result = query.order("created_at", desc=True).execute()
+            result = await run_blocking(
+                lambda: query.order("created_at", desc=True).execute()
+            )
 
             rows: list[dict] = []
             for persona in result.data or []:
-                prompt_result = (
-                    self._client()
+                prompt_result = await run_blocking(
+                    lambda persona_id=persona["id"]: self._client()
                     .table("prompt_versions")
                     .select("content, version")
-                    .eq("persona_id", persona["id"])
+                    .eq("persona_id", persona_id)
                     .eq("is_active", True)
                     .execute()
                 )
-                stack_result = (
-                    self._client()
+                stack_result = await run_blocking(
+                    lambda persona_id=persona["id"]: self._client()
                     .table("persona_knowledge_stacks")
                     .select("stack_id")
-                    .eq("persona_id", persona["id"])
+                    .eq("persona_id", persona_id)
                     .execute()
                 )
                 prompt = (prompt_result.data or [{}])[0]
@@ -264,8 +287,8 @@ class SupabasePersonaCatalog:
 
     async def list_prompt_versions(self, persona_id: str) -> list[dict]:
         try:
-            result = (
-                self._client()
+            result = await run_blocking(
+                lambda: self._client()
                 .table("prompt_versions")
                 .select("*")
                 .eq("persona_id", persona_id)
@@ -279,10 +302,14 @@ class SupabasePersonaCatalog:
     async def activate_prompt_version(self, persona_id: str, version: int) -> bool:
         """Activate a revision (same transport as the prompt catalog)."""
         try:
-            result = self._client().rpc(
-                "activate_prompt_version",
-                {"p_persona_id": persona_id, "p_version": version},
-            ).execute()
+            result = await run_blocking(
+                lambda: self._client()
+                .rpc(
+                    "activate_prompt_version",
+                    {"p_persona_id": persona_id, "p_version": version},
+                )
+                .execute()
+            )
         except (APIError, httpx.HTTPError) as exc:
             raise self._translate(exc) from exc
         return bool(result.data)
@@ -296,15 +323,19 @@ class SupabasePersonaCatalog:
         created_at: str,
     ) -> dict:
         try:
-            result = self._client().rpc(
-                "create_prompt_version",
-                {
-                    "p_persona_id": persona_id,
-                    "p_content": content,
-                    "p_version_id": version_id,
-                    "p_created_at": created_at,
-                },
-            ).execute()
+            result = await run_blocking(
+                lambda: self._client()
+                .rpc(
+                    "create_prompt_version",
+                    {
+                        "p_persona_id": persona_id,
+                        "p_content": content,
+                        "p_version_id": version_id,
+                        "p_created_at": created_at,
+                    },
+                )
+                .execute()
+            )
         except (APIError, httpx.HTTPError) as exc:
             raise self._translate(exc) from exc
         row = result.data
@@ -316,11 +347,15 @@ class SupabasePersonaCatalog:
 
     async def delete_persona(self, persona_id: str) -> bool:
         try:
-            self._client().table("prompt_versions").delete().eq(
-                "persona_id", persona_id
-            ).execute()
-            result = (
-                self._client()
+            await run_blocking(
+                lambda: self._client()
+                .table("prompt_versions")
+                .delete()
+                .eq("persona_id", persona_id)
+                .execute()
+            )
+            result = await run_blocking(
+                lambda: self._client()
                 .table("personas")
                 .delete()
                 .eq("id", persona_id)
