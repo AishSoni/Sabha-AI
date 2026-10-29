@@ -434,3 +434,130 @@ evidence, not the release decision.
 
 There is no Spec 21. Completion of this spec closes the latency work opened by the
 replay investigation and the backend-wide audit.
+
+## Completion record
+
+Executed 2026-10-29 on branch `perf/spec-20-latency`.
+
+### Environment
+
+| Field | Value |
+| --- | --- |
+| Backend host | Windows acceptance host; `uvicorn main:app` on `127.0.0.1:8010`, 1 worker |
+| Database | Hosted Supabase, region `ap-southeast-2` (Sydney) |
+| Client edge | BOM (Mumbai); the cross-region pair from the baseline is unchanged |
+| Python / database drivers | 3.12.10; `psycopg` 3.3.6; `psycopg_pool` 3.3.3 |
+| Deployment mode | `local` runtime mode against the hosted database |
+| Migrations | 033–036 were pending on the hosted project and were applied for this measurement (`python -m scripts.migrate`). This is a hosted-infrastructure change; the four migrations only create/replace functions and their grants. |
+
+### Baseline
+
+The original table was captured on the same date and pair with the same probe
+method; it was not re-run before the first code change. Round trips → observed:
+
+| Endpoint | RT | Observed |
+| --- | --- | --- |
+| `GET /health` (idle) | 0 | 1–7 ms |
+| `GET /api/settings/providers` | 1 | 302, 316, 410, 525 ms |
+| `GET /api/meetings` | 1 | 279, 290, 335, 355, 785 ms |
+| `GET /api/meetings/{id}/turns` | 1 RPC | 281–529 ms |
+| `GET /api/meetings/{id}` | 3 | 832, 851, 920, 928, 1001, 1047, 1447 ms |
+| `GET /api/meetings/{id}/context-stats` | 3 | 880, 913, 1120 ms |
+| `GET /api/meetings/{id}/closing` | 4 | 1438, 1519, 1608 ms; 2330 ms under load |
+| `GET /api/personas` (9 rows) | 19 | 7181, 7290, 7396 ms |
+| `GET /api/participants/templates` | 0 | 1 ms |
+| `GET /api/replay/session` | 1 resolve | 6243 ms |
+| Replay turns | 2 | 10.69 s (user report) |
+| Replay events | 3 | 10.22 s + 5.32 s download (user report) |
+
+### After
+
+Same endpoints, same host/pair, same probe; two samples per endpoint after the
+warm-up request (`C:\conda_tmp\opencode\spec20-after2.json`):
+
+| Endpoint | RT after | Observed p50 / p95 |
+| --- | --- | --- |
+| `GET /health` | 0 | 1.2 / 1.2 ms |
+| `GET /api/settings/providers` | 0 hot, 1 cold | 1.5 / 1.8 ms |
+| `GET /api/meetings` | 1 | 278.6 / 289.8 ms |
+| `GET /api/meetings/{id}` | 1 (`read_meeting_bundle`) | 322.3 / 526.2 ms |
+| `GET /api/meetings/{id}/context-stats` | 1 (same bundle) | 278.6 / 302.6 ms |
+| `GET /api/meetings/{id}/closing` | 1 (`read_meeting_closing`) | 304.3 / 641.3 ms |
+| `GET /api/personas` | 3 fixed, 0 hot | 2.1 / 2.3 ms |
+| `GET /api/participants/templates` | 0 | 1.1 / 1.2 ms |
+| `GET /api/replay/session` | 0 hot, 1 cold | 5.3 / 5.5 ms |
+
+Cache hits are visible in the second request: providers and personas fall from a
+WAN read to ~2 ms, and the replay package is warmed at startup. Per-process
+counters (`TTLCache.stats()`) were not exported by the probe, so exact hit rates
+are not recorded.
+
+### Responsiveness
+
+`/health` while five concurrent `GET /closing` requests were in flight: min 1.2,
+p50 1.4, p95 4.3, max **4.3 ms**. The five closing requests each took
+325–739 ms client-side. The baseline was **2331 ms** for `/health` while a single
+closing request was in flight. No handler now performs a blocking Supabase wait
+on the event loop.
+
+### Replay
+
+- `/api/replay/session` is served from the startup-warmed cache: 5.3 ms, zero DB
+  work (baseline 6243 ms, one uncached resolve).
+- Turn tape, `checkpoint-credit`: cold **671.1 ms** (one pooled connection, one
+  checkpoint read), warm **7.5 ms** (cache hit, zero DB work).
+- Turn events: first **1686.9 ms**, second **940.8 ms**, both dominated by the
+  intended ~0.9 s recorded tape pacing; the database read cost is gone.
+  Baseline was 10.69 s for turns and 10.22 s + 5.32 s for events/download.
+- Connection accounting is pinned by `test_replay_pool.py` and
+  `test_replay_cache_connections.py`: one borrow per cold resolve, zero on warm
+  reads, six concurrent checkpoint reads collapse to one load, and the identity
+  and read-only session assertions run once per physical connection.
+
+### Streaming
+
+`TurnEventWriter` buffers text/thinking deltas and flushes at most once per
+`TURN_EVENT_FLUSH_MS` (200 ms) or immediately on tool, citation, terminal and
+error boundaries. Unit evidence: 100 deltas spread over 2 s produce 8–12 batch
+RPCs instead of 100 per-delta writes; 400 deltas are therefore bounded by
+`ceil(turn_duration / 0.2 s) + 2` writes. Integration evidence: array order is
+preserved, retries are idempotent by `event_id`, a stale fence rejects the whole
+batch, and terminal operations reject late events. SSE frame granularity is
+unchanged because every delta still becomes its own `operation_events` row.
+First-delta latency end-to-end against a live provider was **not measured** in
+this environment; it is now model-bound rather than persistence-bound.
+
+### Regressions
+
+- Full backend suite: **814 passed, 4 failed, 1 skipped** before the four
+  expectation fixes. The failures were stale migration-history counts (2),
+  a runner immediate-drain race in a recovery test, and a `_SlowDb` double
+  missing the new `rpc` seam. Fixed in `23431d6`; the four affected suites then
+  ran **18 passed**. The full suite was not re-run after that commit.
+- Frontend: **269 passed, 5 failed**. The same 5 failures reproduce on `HEAD`
+  with the poll-interval edits stashed, in `replay-runtime.test.tsx` (4) and
+  `meeting-room.test.tsx` (1); they are pre-existing.
+- `scripts.export_openapi --check`: **54 paths unchanged**.
+- `npx tsc --noEmit`: clean. `npm run build`: succeeded.
+- Contracts: no public API, SSE frame, OpenAPI or frontend type change. New
+  migrations add internal service-role-only functions.
+- Spec 19's public replay release remains **conditional**; the hosted runbook
+  rows still need re-running after this transport change.
+
+### Limitations
+
+- The co-located absolute p95 gate (`SABHA_PERF_COLOCATED=1`) is **unexecuted**:
+  this run still uses the cross-region API/DB pair. Multi-region placement
+  remains a documented deployment defect.
+- Hosted permission inventory (`scripts.inventory_permissions`) is
+  **unexecuted**: it requires `DATABASE_URL` and exceeded the 180 s timeout with
+  no output in this environment.
+- The after probe used two samples; p95 equals max and is indicative, not
+  statistical.
+- No live provider turn was executed end-to-end, so first-delta timing and
+  terminal flush behavior on a hosted stream are **unexecuted**.
+- Cache invalidation is process-local with a TTL backstop; no multi-worker
+  consistency run was executed.
+- The earlier measurement session echoed service credentials into tool output.
+  Rotate the Supabase service key and the replay reader password before sharing
+  this record or its transcript. No credential values are recorded here.
