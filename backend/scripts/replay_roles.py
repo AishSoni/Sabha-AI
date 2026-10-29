@@ -99,6 +99,37 @@ def _harden_role(
         )
 
 
+def _ensure_can_alter_defaults(conn: psycopg.Connection, role: str) -> None:
+    """Make ``role``'s default privileges editable from this session.
+
+    ``ALTER DEFAULT PRIVILEGES FOR ROLE x`` requires membership in ``x``, and
+    a ``CREATEROLE`` administrator is not automatically a member of the roles
+    it creates. Hosted provisioning would then be refused while closing the
+    provisioner's future objects. Membership is granted once to the
+    administrator identity that already owns the role; it changes nothing
+    about what the replay roles themselves may do.
+    """
+    current_user = conn.execute("SELECT current_user").fetchone()[0]
+    if current_user == role:
+        return
+    if conn.execute(
+        "SELECT pg_has_role(%s, %s, 'MEMBER')", (current_user, role)
+    ).fetchone()[0]:
+        return
+    try:
+        conn.execute(
+            sql.SQL("GRANT {} TO {}").format(
+                sql.Identifier(role), sql.Identifier(current_user)
+            )
+        )
+    except psycopg.errors.InsufficientPrivilege as exc:
+        raise ReplayRoleError(
+            f"{current_user} cannot administer {role} default privileges "
+            f"({exc}). Grant membership as a superuser, then re-run: "
+            f"GRANT {role} TO {current_user}"
+        ) from exc
+
+
 def _ensure_group_role(conn: psycopg.Connection, role: str) -> None:
     if not _role_exists(conn, role):
         conn.execute(
@@ -310,8 +341,9 @@ def provision(
     )
 
     owner = conn.execute("SELECT current_user").fetchone()[0]
-    _close_default_privileges(conn, owner, replay_schema)
-    _close_default_privileges(conn, PROVISIONER_ROLE, replay_schema)
+    for grantor in dict.fromkeys((owner, PROVISIONER_ROLE)):
+        _ensure_can_alter_defaults(conn, grantor)
+        _close_default_privileges(conn, grantor, replay_schema)
 
     for role in (READER_ROLE, PROVISIONER_ROLE):
         _deny_live_access(conn, role)

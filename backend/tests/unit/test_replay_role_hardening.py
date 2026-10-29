@@ -13,7 +13,7 @@ from __future__ import annotations
 import pytest
 
 from scripts import replay_roles
-from scripts.replay_roles import READER_ROLE, ReplayRoleError
+from scripts.replay_roles import PROVISIONER_ROLE, READER_ROLE, ReplayRoleError
 
 GROUP = READER_ROLE
 
@@ -39,6 +39,8 @@ class _FakeConn:
         createrole: bool = False,
         can_login: bool = False,
         inherit: bool = True,
+        current_user: str = "postgres",
+        member: bool = False,
     ) -> None:
         self._exists = exists
         self._attributes = (
@@ -49,6 +51,8 @@ class _FakeConn:
             can_login,
             inherit,
         )
+        self._current_user = current_user
+        self._member = member
         self.statements: list[str] = []
 
     def execute(self, statement, params=()):
@@ -57,6 +61,10 @@ class _FakeConn:
             return _Cursor((1,) if self._exists else None)
         if "SELECT rolsuper" in text:
             return _Cursor(self._attributes)
+        if "SELECT current_user" in text:
+            return _Cursor((self._current_user,))
+        if "SELECT pg_has_role" in text:
+            return _Cursor((self._member,))
         self.statements.append(text)
         return _Cursor(None)
 
@@ -106,3 +114,32 @@ def test_privileged_role_is_refused_before_any_alter() -> None:
         replay_roles._ensure_group_role(conn, GROUP)
 
     assert conn.alters() == []
+
+
+def test_default_privileges_grant_membership_first() -> None:
+    """ALTER DEFAULT PRIVILEGES FOR ROLE needs membership, not just CREATEROLE."""
+    conn = _FakeConn(current_user="postgres", member=False)
+
+    replay_roles._ensure_can_alter_defaults(conn, PROVISIONER_ROLE)
+
+    assert conn.statements == [
+        f'GRANT "{PROVISIONER_ROLE}" TO "postgres"',
+    ]
+
+
+def test_membership_already_present_is_not_granted_again() -> None:
+    """A superuser or group admin already satisfies the requirement."""
+    conn = _FakeConn(current_user="postgres", member=True)
+
+    replay_roles._ensure_can_alter_defaults(conn, PROVISIONER_ROLE)
+
+    assert conn.statements == []
+
+
+def test_owning_role_needs_no_membership() -> None:
+    """Altering a role's own defaults is always allowed."""
+    conn = _FakeConn(current_user="postgres", member=False)
+
+    replay_roles._ensure_can_alter_defaults(conn, "postgres")
+
+    assert conn.statements == []

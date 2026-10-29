@@ -474,7 +474,10 @@ publication grants to Spec 17. Hosted Postgres grants `CREATEROLE` without
 `SUPERUSER` (Supabase's `postgres` role included), and only a superuser may
 change `SUPERUSER` or `BYPASSRLS` -- even to remove them. The script therefore
 re-asserts only the attributes the connecting role is allowed to change, and
-fails loudly if a role still carries either privileged attribute. The replay
+fails loudly if a role still carries either privileged attribute. Closing the
+provisioner's future objects also needs membership in that role, which
+`CREATEROLE` alone does not confer, so the script grants the administrator
+membership before adjusting default privileges. The replay
 runtime uses a dedicated login role in `sabha_replay_reader`:
 
 ```text
