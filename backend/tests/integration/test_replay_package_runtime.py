@@ -23,6 +23,11 @@ from scripts.replay_package import activate_package
 
 MEETING_ID = "11111111-1111-4111-8111-111111111111"
 OPERATION_ID = "66666666-6666-4666-8666-666666666666"
+APPROVED_ID = "hdfc-ine001a07rw5"
+APPROVED_SHA256 = "5fb2a800c907f4de3be69c4b4b1262e32b1570b0abe03f8819ed783baac9bc82"
+GUIDED_ROOT = (
+    Path(__file__).resolve().parents[2] / "replay_packages" / APPROVED_ID
+)
 FINAL_TEXT = (
     "Placeholder recording. The synthetic brief shows coverage of 1.8x and a "
     "12% liquidity buffer. I would verify the underlying cash flow before "
@@ -91,6 +96,8 @@ def test_session_exposes_the_pinned_package_and_selectors(
         assert session["tapes"][0]["completed_checkpoint"] == "checkpoint-completed"
         assert session["intents"][0]["kind"] == "start_participant"
         assert session["assets"][0]["public_url"].startswith("https://storage.test/")
+        assert session["claims"] == []
+        assert session["preview"] == {"available": True, "asset_ids": ["brief"]}
         assert session["retired"] is False
 
         selected = client.get(
@@ -108,6 +115,36 @@ def test_session_exposes_the_pinned_package_and_selectors(
             ).status_code
             == 400
         )
+
+
+def test_approved_session_exposes_claims_and_preview_assets(
+    replay_db, monkeypatch
+) -> None:
+    publish_dir(replay_db, GUIDED_ROOT)
+    monkeypatch.setattr(
+        settings, "replay_database_url", login_uri(replay_db, READER_LOGIN)
+    )
+    runtime = ReplayRuntime(ReplaySource(), package_id=APPROVED_ID)
+    with _client(runtime) as client:
+        session = client.get("/api/replay/session").json()
+
+    assert session["package_id"] == APPROVED_ID
+    assert session["content_sha256"] == APPROVED_SHA256
+    assert session["checkpoint_id"] == "checkpoint-initial"
+    assert len(session["claims"]) == 13
+    assert {claim["claim_id"] for claim in session["claims"]} == {
+        f"C{index}" for index in range(1, 14)
+    }
+    assert all(
+        claim["evidence_asset_id"] in session["preview"]["asset_ids"]
+        for claim in session["claims"]
+    )
+    assert session["preview"]["available"] is True
+    assert len(session["preview"]["asset_ids"]) == 7
+    assert {asset["asset_id"] for asset in session["assets"]} == set(
+        session["preview"]["asset_ids"]
+    )
+    assert all(asset["media_type"] == "text/markdown" for asset in session["assets"])
 
 
 def test_checkpoint_reads_are_coherent_and_never_early(replay_db, monkeypatch) -> None:

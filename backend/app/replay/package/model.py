@@ -107,6 +107,18 @@ CLAIM_KINDS = (
     "demo_authored",
 )
 
+# The shared in-app evidence viewer owns renderers for exactly these media
+# types. Publication rejects an asset no renderer can display.
+PREVIEWABLE_MEDIA_TYPES = frozenset(
+    {
+        "text/markdown",
+        "text/plain",
+        "text/csv",
+        "application/json",
+        "application/pdf",
+    }
+)
+
 CLOSING_EVENT_KINDS = ("ballot", "summary")
 CLOSING_RESULTS = ("yes", "no", "no-vote", "completed")
 

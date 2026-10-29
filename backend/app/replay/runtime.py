@@ -16,8 +16,10 @@ from app.replay.constants import STREAM_MAX_BYTES, STREAM_MAX_SECONDS
 from app.replay.contracts import (
     ReplayCapabilities,
     ReplayContainer,
+    ReplayPreview,
     ReplaySession,
 )
+from app.replay.package.model import PREVIEWABLE_MEDIA_TYPES
 from app.replay.reads import ReplayObservation, ReplayReads
 from app.replay.source import (
     PublishedPackage,
@@ -115,6 +117,11 @@ class ReplayRuntime:
             raise ReplaySelectorInvalid("the requested checkpoint is not published")
 
         capabilities = _capabilities(published)
+        preview_asset_ids = tuple(
+            str(asset["asset_id"])
+            for asset in published.assets
+            if asset.get("media_type") in PREVIEWABLE_MEDIA_TYPES
+        )
         session = ReplaySession(
             run_id=uuid.uuid4().hex,
             package_version=published.version,
@@ -149,6 +156,13 @@ class ReplayRuntime:
             ),
             tapes=published.tapes,
             assets=published.assets,
+            claims=tuple(
+                claim.model_dump(mode="json") for claim in published.manifest.claims
+            ),
+            preview=ReplayPreview(
+                available=bool(preview_asset_ids),
+                asset_ids=preview_asset_ids,
+            ),
             retired=published.status == "retired",
         )
         return ReplayContainer(

@@ -36,6 +36,7 @@ from app.replay.constants import MAX_TAPE_BYTES, MAX_TAPE_EVENTS
 from .issues import PackageIssue
 from .loader import LoadedPackage
 from .model import (
+    PREVIEWABLE_MEDIA_TYPES,
     SUPPORTED_EVENT_VERSIONS,
     SUPPORTED_READ_VERSIONS,
     SUPPORTED_SCHEMA_VERSIONS,
@@ -498,7 +499,23 @@ def _validate_turn_tape(tape, package: LoadedPackage, issues: _Issues) -> None:
                 tool_records.append({**tool_calls[identity], "result": payload.get("result"), "is_error": bool(payload.get("is_error"))})
                 del tool_calls[identity]
         elif event.type == "citation":
-            citation = {key: payload.get(key) for key in ("source", "title", "url", "snippet")}
+            citation = {
+                key: payload.get(key)
+                for key in (
+                    "source",
+                    "title",
+                    "url",
+                    "snippet",
+                    "claim_id",
+                    "locator",
+                    "document_id",
+                    "revision_id",
+                    "chunk_id",
+                    "chunk_index",
+                    "page_number",
+                )
+                if payload.get(key) is not None
+            }
             if not citation.get("source"):
                 issues.add("invalid_event", event_path, "citation source is required")
             if citation.get("url") and resolve_passive_url(citation["url"]) is None:
@@ -577,12 +594,37 @@ def _validate_turn_tape(tape, package: LoadedPackage, issues: _Issues) -> None:
                 path,
                 "streamed thinking disagrees with the final message",
             )
+        citation_keys = (
+            "source",
+            "title",
+            "url",
+            "snippet",
+            "claim_id",
+            "locator",
+            "document_id",
+            "revision_id",
+            "chunk_id",
+            "chunk_index",
+            "page_number",
+        )
         recorded_citations = [
-            {key: getattr(citation, key) for key in ("source", "title", "url", "snippet")}
+            {
+                key: value
+                for key in citation_keys
+                if (value := getattr(citation, key, None)) is not None
+            }
             for citation in final_message.citations
         ]
-        if Counter(json.dumps(item) for item in citation_events) != Counter(
-            json.dumps(item) for item in recorded_citations
+        streamed_citations = [
+            {
+                key: value
+                for key in citation_keys
+                if (value := item.get(key)) is not None
+            }
+            for item in citation_events
+        ]
+        if Counter(json.dumps(item, sort_keys=True) for item in streamed_citations) != Counter(
+            json.dumps(item, sort_keys=True) for item in recorded_citations
         ):
             issues.add("mismatched_terminal", path, "citation events disagree with the final message")
         if tool_records:
@@ -1207,6 +1249,12 @@ def validate_package(package: LoadedPackage) -> list[PackageIssue]:
             issues.add("forbidden_asset", asset_path, "public demo packages require demo-safe assets")
         if resolve_passive_url(record.locator) is None and not record.locator.startswith("package:"):
             issues.add("unsafe_url", asset_path, "asset locator must be passive")
+        if record.media_type not in PREVIEWABLE_MEDIA_TYPES:
+            issues.add(
+                "unsupported_asset",
+                asset_path,
+                f"no in-app renderer exists for media type {record.media_type}",
+            )
 
     checkpoint_ids = set(checkpoints)
     tape_ids = set(package.tapes)

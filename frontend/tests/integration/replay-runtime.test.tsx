@@ -102,6 +102,8 @@ function sessionWire(index = 1) {
             documents: false,
             closing: false,
         },
+        claims: [],
+        preview: { available: false, asset_ids: [] },
     };
 }
 

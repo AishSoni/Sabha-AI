@@ -1891,6 +1891,16 @@ export interface components {
             /** Closing */
             closing: boolean;
         };
+        /** ReplayPreviewView */
+        ReplayPreviewView: {
+            /**
+             * Available
+             * @default false
+             */
+            available: boolean;
+            /** Asset Ids */
+            asset_ids?: string[];
+        };
         /** ReplaySessionView */
         ReplaySessionView: {
             /** Run Id */
@@ -1963,6 +1973,11 @@ export interface components {
             assets?: {
                 [key: string]: unknown;
             }[];
+            /** Claims */
+            claims?: {
+                [key: string]: unknown;
+            }[];
+            preview?: components["schemas"]["ReplayPreviewView"];
             /**
              * Retired
              * @default false

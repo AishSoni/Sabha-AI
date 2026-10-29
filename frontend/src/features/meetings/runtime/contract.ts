@@ -106,6 +106,23 @@ export interface ReplayBeat {
     input_asset_ids: string[];
 }
 
+export interface ReplayClaim {
+    claim_id: string;
+    kind: string;
+    text: string;
+    evidence_asset_id: string | null;
+    locator: string | null;
+    excerpt: string | null;
+    source_url: string | null;
+    source_title: string | null;
+    capture_date: string | null;
+}
+
+export interface ReplayPreview {
+    available: boolean;
+    asset_ids: string[];
+}
+
 export interface ReplayRuntimeInfo {
     packageId: string;
     packageVersion: string;
@@ -120,6 +137,8 @@ export interface ReplayRuntimeInfo {
     intents: ReplayIntent[];
     tapes: ReplayTape[];
     assets: ReplayAsset[];
+    claims: ReplayClaim[];
+    preview: ReplayPreview;
     retired: boolean;
     startIntent(intentId: string): Promise<void>;
     switchCheckpoint(checkpointId: string): Promise<void>;

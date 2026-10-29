@@ -142,6 +142,8 @@ function session() {
             },
         ],
         assets: [],
+        claims: [],
+        preview: { available: false, asset_ids: [] },
         retired: false,
     };
 }

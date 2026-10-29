@@ -68,18 +68,36 @@ def _guided_claims() -> list[dict]:
     ]
 
 
+def _claim_citation(claim_id: str) -> dict:
+    return {
+        "source": "Synthetic issuer brief",
+        "title": "Synthetic issuer brief",
+        "url": "https://example.com/synthetic-brief",
+        "snippet": "Illustrative coverage ratio: 1.8x",
+        "claim_id": claim_id,
+        "locator": "Synthetic issuer brief, coverage ratio",
+    }
+
+
 def _add_claim_citation(claim_id: str):
     def mutate(payload):
-        payload["reads"]["meeting"]["messages"][0]["citations"] = [
-            {
-                "source": "Synthetic issuer brief",
-                "title": "Synthetic issuer brief",
-                "url": "https://example.com/synthetic-brief",
-                "snippet": "Illustrative coverage ratio: 1.8x",
-                "claim_id": claim_id,
-                "locator": "Synthetic issuer brief, coverage ratio",
-            }
-        ]
+        final_id = next(
+            operation["final_message_id"]
+            for operation in payload["reads"]["operations"]
+            if operation["final_message_id"]
+        )
+        for message in payload["reads"]["meeting"]["messages"]:
+            if message["id"] == final_id:
+                message["citations"] = [_claim_citation(claim_id)]
+
+    return mutate
+
+
+def _add_streamed_claim_citation(claim_id: str):
+    def mutate(payload):
+        for event in payload["events"]:
+            if event["type"] == "citation":
+                event["payload"].update(_claim_citation(claim_id))
 
     return mutate
 
@@ -278,6 +296,18 @@ def test_asset_hash_and_size_must_match(tmp_path: Path) -> None:
         handle.write(b"tampered")
     _, codes = _load(root)
     assert {"hash_mismatch", "size_mismatch"} <= codes
+
+
+def test_asset_media_type_needs_an_in_app_renderer(tmp_path: Path) -> None:
+    root = _copy(tmp_path)
+    _edit_json(
+        root,
+        "assets/index.json",
+        lambda payload: payload["assets"][0].update({"media_type": "text/html"}),
+    )
+    _finalize(root)
+    _, codes = _load(root)
+    assert "unsupported_asset" in codes
 
 
 def test_dangling_final_message_is_rejected(tmp_path: Path) -> None:
@@ -537,10 +567,30 @@ def test_guided_multi_step_beat_rejects_wrong_start(tmp_path: Path) -> None:
 def test_guided_claim_citation_resolves_to_retained_evidence(tmp_path: Path) -> None:
     root = _copy(tmp_path)
     _install_guided_manifest(root)
-    _edit_json(root, "checkpoints/checkpoint-active.json", _add_claim_citation("c1-coverage"))
+    _edit_json(root, "checkpoints/checkpoint-completed.json", _add_claim_citation("c1-coverage"))
+    _edit_json(root, "tapes/tape-credit-analyst.json", _add_streamed_claim_citation("c1-coverage"))
     _finalize(root)
     _, codes = _load(root)
     assert codes == set()
+
+
+def test_guided_streamed_claim_identity_must_match_final_message(tmp_path: Path) -> None:
+    root = _copy(tmp_path)
+    _install_guided_manifest(root)
+    _edit_json(root, "checkpoints/checkpoint-completed.json", _add_claim_citation("c1-coverage"))
+    _edit_json(root, "tapes/tape-credit-analyst.json", _add_streamed_claim_citation("c1-coverage"))
+    _edit_json(
+        root,
+        "tapes/tape-credit-analyst.json",
+        lambda payload: [
+            event["payload"].update({"locator": "A different retained locator"})
+            for event in payload["events"]
+            if event["type"] == "citation"
+        ],
+    )
+    _finalize(root)
+    _, codes = _load(root)
+    assert "mismatched_terminal" in codes
 
 
 def test_guided_claim_citation_must_reference_a_known_claim(tmp_path: Path) -> None:
@@ -548,8 +598,13 @@ def test_guided_claim_citation_must_reference_a_known_claim(tmp_path: Path) -> N
     _install_guided_manifest(root)
     _edit_json(
         root,
-        "checkpoints/checkpoint-active.json",
+        "checkpoints/checkpoint-completed.json",
         _add_claim_citation("missing-claim"),
+    )
+    _edit_json(
+        root,
+        "tapes/tape-credit-analyst.json",
+        _add_streamed_claim_citation("missing-claim"),
     )
     _finalize(root)
     _, codes = _load(root)
@@ -582,19 +637,26 @@ def test_guided_claim_reference_needs_readable_snippet_and_locator(tmp_path: Pat
     root = _copy(tmp_path)
 
     def strip_citation(payload):
-        payload["reads"]["meeting"]["messages"][0]["citations"] = [
-            {
-                "source": "Synthetic issuer brief",
-                "title": "Synthetic issuer brief",
-                "url": "https://example.com/synthetic-brief",
-                "snippet": "",
-                "claim_id": "c1-coverage",
-                "locator": "",
-            }
-        ]
+        final_id = next(
+            operation["final_message_id"]
+            for operation in payload["reads"]["operations"]
+            if operation["final_message_id"]
+        )
+        for message in payload["reads"]["meeting"]["messages"]:
+            if message["id"] == final_id:
+                message["citations"] = [
+                    {
+                        "source": "Synthetic issuer brief",
+                        "title": "Synthetic issuer brief",
+                        "url": "https://example.com/synthetic-brief",
+                        "snippet": "",
+                        "claim_id": "c1-coverage",
+                        "locator": "",
+                    }
+                ]
 
     _install_guided_manifest(root)
-    _edit_json(root, "checkpoints/checkpoint-active.json", strip_citation)
+    _edit_json(root, "checkpoints/checkpoint-completed.json", strip_citation)
     _finalize(root)
     _, codes = _load(root)
     assert "invalid_claim" in codes

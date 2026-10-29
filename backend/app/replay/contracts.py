@@ -52,6 +52,14 @@ class ReplayCapabilities:
 
 
 @dataclass(frozen=True)
+class ReplayPreview:
+    """Which package assets the shared evidence viewer can render."""
+
+    available: bool = False
+    asset_ids: tuple[str, ...] = ()
+
+
+@dataclass(frozen=True)
 class ReplaySession:
     run_id: str
     package_version: str
@@ -72,6 +80,8 @@ class ReplaySession:
     beats: tuple[dict[str, Any], ...] = ()
     tapes: tuple[dict[str, Any], ...] = ()
     assets: tuple[dict[str, Any], ...] = ()
+    claims: tuple[dict[str, Any], ...] = ()
+    preview: ReplayPreview = field(default_factory=ReplayPreview)
     retired: bool = False
 
 

@@ -5572,6 +5572,24 @@
         ],
         "title": "ReplayCapabilitiesView"
       },
+      "ReplayPreviewView": {
+        "properties": {
+          "available": {
+            "type": "boolean",
+            "title": "Available",
+            "default": false
+          },
+          "asset_ids": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array",
+            "title": "Asset Ids"
+          }
+        },
+        "type": "object",
+        "title": "ReplayPreviewView"
+      },
       "ReplaySessionView": {
         "properties": {
           "run_id": {
@@ -5678,6 +5696,17 @@
             },
             "type": "array",
             "title": "Assets"
+          },
+          "claims": {
+            "items": {
+              "additionalProperties": true,
+              "type": "object"
+            },
+            "type": "array",
+            "title": "Claims"
+          },
+          "preview": {
+            "$ref": "#/components/schemas/ReplayPreviewView"
           },
           "retired": {
             "type": "boolean",

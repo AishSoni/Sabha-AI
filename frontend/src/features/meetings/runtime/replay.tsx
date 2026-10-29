@@ -59,7 +59,9 @@ import type {
     ReplayAsset,
     ReplayBeat,
     ReplayBeatStep,
+    ReplayClaim,
     ReplayIntent,
+    ReplayPreview,
     ReplayTape,
 } from "./contract";
 import { MeetingsRuntimeProvider } from "./context";
@@ -87,6 +89,8 @@ export interface ReplaySession {
     beats: ReplayBeat[];
     tapes: ReplayTape[];
     assets: ReplayAsset[];
+    claims: ReplayClaim[];
+    preview: ReplayPreview;
     retired: boolean;
 }
 
@@ -243,6 +247,32 @@ function decodeTape(value: unknown, path: string): ReplayTape {
     };
 }
 
+function decodeClaim(value: unknown, path: string): ReplayClaim {
+    const record = decodeObject(value, path);
+    return {
+        claim_id: requireString(record.claim_id, `${path}.claim_id`),
+        kind: requireString(record.kind, `${path}.kind`),
+        text: requireString(record.text, `${path}.text`),
+        evidence_asset_id:
+            optionalString(record.evidence_asset_id, `${path}.evidence_asset_id`) ?? null,
+        locator: optionalString(record.locator, `${path}.locator`) ?? null,
+        excerpt: optionalString(record.excerpt, `${path}.excerpt`) ?? null,
+        source_url: optionalString(record.source_url, `${path}.source_url`) ?? null,
+        source_title: optionalString(record.source_title, `${path}.source_title`) ?? null,
+        capture_date: optionalString(record.capture_date, `${path}.capture_date`) ?? null,
+    };
+}
+
+function decodePreview(value: unknown, path: string): ReplayPreview {
+    const record = decodeObject(value, path);
+    return {
+        available: requireBoolean(record.available, `${path}.available`),
+        asset_ids: requireArray(record.asset_ids ?? [], `${path}.asset_ids`, (item, itemPath) =>
+            requireString(item, itemPath)
+        ),
+    };
+}
+
 function decodeAsset(value: unknown, path: string): ReplayAsset {
     const record = decodeObject(value, path);
     return {
@@ -329,6 +359,12 @@ export function decodeReplaySession(value: unknown): ReplaySession {
             "GET /replay/session.assets",
             decodeAsset
         ),
+        claims: requireArray(
+            record.claims ?? [],
+            "GET /replay/session.claims",
+            decodeClaim
+        ),
+        preview: decodePreview(record.preview, "GET /replay/session.preview"),
         retired: requireBoolean(record.retired ?? false, "GET /replay/session.retired"),
     };
 }
@@ -702,6 +738,8 @@ export function createReplayRuntime(
             intents: session.intents,
             tapes: session.tapes,
             assets: session.assets,
+            claims: session.claims,
+            preview: session.preview,
             retired: session.retired,
             startIntent: options.startIntent,
             switchCheckpoint: async (next) => {
