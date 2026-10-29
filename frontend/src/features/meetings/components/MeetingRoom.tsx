@@ -254,7 +254,7 @@ function MeetingConversation({ meeting, disagreements, consensus, initialTab }: 
     return (
         <div className="flex-1 flex flex-col bg-zinc-950 min-h-0 overflow-hidden">
             <Tabs value={tab} onValueChange={setTab} className="flex-1 flex flex-col min-h-0">
-                <div className="border-b border-zinc-800 px-4 shrink-0 overflow-x-auto">
+                <div className="border-b border-zinc-800 px-4 shrink-0 overflow-x-auto overflow-y-hidden">
                     <TabsList className="bg-transparent h-12 gap-1">
                         <RoomTab value="chat" icon={<MessageSquare className="w-4 h-4" />} label="Chat" />
                         {capabilities.disagreements && (
