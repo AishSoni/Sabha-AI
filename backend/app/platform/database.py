@@ -66,8 +66,13 @@ def get_supabase() -> Client:
 
 
 def get_supabase_admin() -> Client:
-    """Get a Supabase client with the service role key for admin operations."""
-    return create_client(settings.supabase_url, _service_key(), _client_options())
+    """Return the process-wide service-role client.
+
+    Both accessors use the server-only credential, so constructing a second
+    client per call only re-created wrappers around the same shared HTTP pool.
+    Spec 20 collapses them onto one singleton.
+    """
+    return get_supabase()
 
 
 def close_supabase() -> None:
