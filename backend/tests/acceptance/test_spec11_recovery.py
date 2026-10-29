@@ -223,10 +223,17 @@ async def test_runner_startup_recovers_a_stale_claim_before_work(
     )
     await runner.start()
     try:
-        for _ in range(5):
-            started = await runner.run_once()
+        # The runner drains immediately after a claim (spec 20), so its own loop
+        # may pick up the second operation while this loop is waiting. Drive it
+        # until both durable operations are terminal rather than assuming each
+        # iteration starts a claim.
+        for _ in range(10):
+            await runner.run_once()
             await runner.wait_idle()
-            if not started:
+            if (
+                world.status(stale["id"]) == "completed"
+                and world.status(queued["id"]) == "completed"
+            ):
                 break
     finally:
         await runner.stop(grace_seconds=1.0)
