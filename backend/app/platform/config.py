@@ -2,6 +2,20 @@ from pydantic import field_validator, model_validator
 from pydantic_settings import BaseSettings
 from typing import List
 
+from app.replay.constants import (
+    CACHE_MAX_ENTRIES,
+    POOL_MAX_SIZE,
+    POOL_MIN_SIZE,
+    POOL_RECONNECT_SECONDS,
+    POOL_TIMEOUT_SECONDS,
+    REGISTRY_TTL_SECONDS,
+    STATUS_TTL_SECONDS,
+    STREAM_MAX_BYTES,
+    STREAM_MAX_GLOBAL,
+    STREAM_MAX_PER_CLIENT,
+    STREAM_MAX_SECONDS,
+)
+
 
 RUNTIME_MODES = ("local", "hosted", "demo")
 SUPPORTED_LLM_PROVIDERS = ("ollama", "openrouter", "gemini")
@@ -43,21 +57,21 @@ class Settings(BaseSettings):
     replay_package_id: str = ""
     replay_package_version: str = ""
     replay_package_sha256: str = ""
-    replay_stream_max_bytes: int = 262144
-    replay_stream_max_seconds: float = 120.0
-    replay_stream_max_global: int = 8
-    replay_stream_max_per_client: int = 2
+    replay_stream_max_bytes: int = STREAM_MAX_BYTES
+    replay_stream_max_seconds: float = STREAM_MAX_SECONDS
+    replay_stream_max_global: int = STREAM_MAX_GLOBAL
+    replay_stream_max_per_client: int = STREAM_MAX_PER_CLIENT
     # Spec-20: one process-wide pool behind the dedicated replay reader. The
     # pool is deliberately small; replay reads are short and sequential.
-    replay_pool_min_size: int = 2
-    replay_pool_max_size: int = 8
-    replay_pool_timeout_seconds: float = 5.0
-    replay_pool_reconnect_seconds: float = 5.0
+    replay_pool_min_size: int = POOL_MIN_SIZE
+    replay_pool_max_size: int = POOL_MAX_SIZE
+    replay_pool_timeout_seconds: float = POOL_TIMEOUT_SECONDS
+    replay_pool_reconnect_seconds: float = POOL_RECONNECT_SECONDS
     # Spec-20: immutable package content is cached for the life of the pinned
     # version. Registry/retirement state is deployment state and stays short.
-    replay_cache_max_entries: int = 256
-    replay_registry_ttl_seconds: float = 30.0
-    replay_status_ttl_seconds: float = 30.0
+    replay_cache_max_entries: int = CACHE_MAX_ENTRIES
+    replay_registry_ttl_seconds: float = REGISTRY_TTL_SECONDS
+    replay_status_ttl_seconds: float = STATUS_TTL_SECONDS
     replay_cache_warm_enabled: bool = True
     
     # OpenRouter

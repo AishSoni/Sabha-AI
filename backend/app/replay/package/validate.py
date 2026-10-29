@@ -31,6 +31,8 @@ from app.modules.meetings.domain.services import (
 )
 from app.modules.meetings.presentation.schemas import ClosingView
 
+from app.replay.constants import MAX_TAPE_BYTES, MAX_TAPE_EVENTS
+
 from .issues import PackageIssue
 from .loader import LoadedPackage
 from .model import (
@@ -49,8 +51,6 @@ OPERATION_STATUSES = {
     "interrupted",
     "cancelled",
 }
-MAX_TAPE_EVENTS = 400
-MAX_TAPE_BYTES = 200_000
 NON_TERMINAL_STATUSES = {"queued", "executing"}
 OPERATION_REQUIRED_KEYS = {
     "operation_id",

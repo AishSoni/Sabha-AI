@@ -13,6 +13,8 @@ from typing import Any, Literal
 
 from pydantic import BaseModel, ConfigDict, Field, field_validator, model_validator
 
+from app.replay.constants import TAPE_DELAY_CEILING_MS
+
 SCHEMA_VERSION = 1
 READ_VERSION = 1
 EVENT_VERSION = 1
@@ -441,7 +443,7 @@ class TurnTapeEvent(StrictModel):
     event_id: str
     sequence: int = Field(ge=1)
     type: Literal[TURN_EVENT_TYPES]
-    delay_ms: int = Field(default=0, ge=0, le=10_000)
+    delay_ms: int = Field(default=0, ge=0, le=TAPE_DELAY_CEILING_MS)
     payload: dict[str, Any] = Field(default_factory=dict)
 
     @field_validator("event_id")
@@ -480,7 +482,7 @@ class ClosingTapeEvent(StrictModel):
     terminal: bool
     result: Literal[CLOSING_RESULTS] | None = None
     subject_id: str | None = None
-    delay_ms: int = Field(default=0, ge=0, le=10_000)
+    delay_ms: int = Field(default=0, ge=0, le=TAPE_DELAY_CEILING_MS)
 
     @field_validator("event_id")
     @classmethod

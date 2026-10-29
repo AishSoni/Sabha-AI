@@ -14,6 +14,13 @@ import time
 from typing import Any, AsyncGenerator, Callable
 
 from app.modules.meetings.presentation.turn_stream import event_dto
+from app.replay.constants import (
+    STREAM_MAX_BYTES,
+    STREAM_MAX_DELAY_MS,
+    STREAM_MAX_GLOBAL,
+    STREAM_MAX_PER_CLIENT,
+    STREAM_MAX_SECONDS,
+)
 from app.replay.package.model import TERMINAL_EVENT_TYPES
 from app.replay.source import PublishedPackage, ReplaySource
 
@@ -23,7 +30,12 @@ class ReplayStreamLimit(RuntimeError):
 
 
 class StreamLimiter:
-    def __init__(self, *, max_global: int = 8, max_per_client: int = 2) -> None:
+    def __init__(
+        self,
+        *,
+        max_global: int = STREAM_MAX_GLOBAL,
+        max_per_client: int = STREAM_MAX_PER_CLIENT,
+    ) -> None:
         self._max_global = max_global
         self._max_per_client = max_per_client
         self._global = asyncio.Semaphore(max_global)
@@ -59,9 +71,9 @@ class ReplayTurnStream:
         published: PublishedPackage,
         *,
         clock: Callable[[float], Any] = asyncio.sleep,
-        max_delay_ms: int = 2000,
-        max_bytes: int = 256 * 1024,
-        max_seconds: float = 120.0,
+        max_delay_ms: int = STREAM_MAX_DELAY_MS,
+        max_bytes: int = STREAM_MAX_BYTES,
+        max_seconds: float = STREAM_MAX_SECONDS,
     ) -> None:
         self._source = source
         self._published = published
@@ -111,9 +123,9 @@ class ReplayClosingStream:
         published: PublishedPackage,
         *,
         clock: Callable[[float], Any] = asyncio.sleep,
-        max_delay_ms: int = 2000,
-        max_bytes: int = 256 * 1024,
-        max_seconds: float = 120.0,
+        max_delay_ms: int = STREAM_MAX_DELAY_MS,
+        max_bytes: int = STREAM_MAX_BYTES,
+        max_seconds: float = STREAM_MAX_SECONDS,
     ) -> None:
         self._source = source
         self._published = published

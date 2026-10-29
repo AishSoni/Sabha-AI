@@ -12,6 +12,7 @@ import asyncio
 import uuid
 from typing import Any, Callable
 
+from app.replay.constants import STREAM_MAX_BYTES, STREAM_MAX_SECONDS
 from app.replay.contracts import (
     ReplayCapabilities,
     ReplayContainer,
@@ -64,8 +65,8 @@ class ReplayRuntime:
         content_sha256: str | None = None,
         clock: Callable[[float], Any] | None = None,
         limiter: StreamLimiter | None = None,
-        max_stream_bytes: int = 256 * 1024,
-        max_stream_seconds: float = 120.0,
+        max_stream_bytes: int = STREAM_MAX_BYTES,
+        max_stream_seconds: float = STREAM_MAX_SECONDS,
     ) -> None:
         self.source = source
         self.package_id = package_id

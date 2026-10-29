@@ -26,6 +26,7 @@ from app.modules.meetings.presentation.turn_stream import (
     operation_dto,
     turn_event_stream,
 )
+from app.replay.constants import REPLAY_FOLLOWER_POLL_SECONDS, TURN_LIST_LIMIT
 from app.replay.contracts import ReplayContainer, ReplayNotFound
 from app.replay.source import (
     ReplayNotConfigured,
@@ -254,7 +255,7 @@ async def read_closing(
 @router.get("/meetings/{meeting_id}/turns")
 async def list_turns(
     meeting_id: str,
-    limit: int = 100,
+    limit: int = TURN_LIST_LIMIT,
     replay: ReplayContainer = Depends(get_replay),
 ):
     _require_recorded_meeting(replay, meeting_id)
@@ -298,7 +299,7 @@ async def observe_turn(
                 meeting_id,
                 operation_id,
                 after=after,
-                poll_seconds=0.01,
+                poll_seconds=REPLAY_FOLLOWER_POLL_SECONDS,
             ),
             headers=SSE_HEADERS,
         )

@@ -30,6 +30,7 @@ from app.platform.replay_database import (
     connect_replay_reader,
 )
 from app.replay.cache import ReplayCache
+from app.replay.constants import SOURCE_LOAD_CONCURRENCY, TAPE_READ_LIMIT
 from app.replay.package.model import (
     SUPPORTED_EVENT_VERSIONS,
     SUPPORTED_READ_VERSIONS,
@@ -228,8 +229,8 @@ class ReplaySource:
         self,
         connect: Callable[[], psycopg.Connection] = connect_replay_reader,
         *,
-        max_concurrency: int = 8,
-        max_tape_events: int = 500,
+        max_concurrency: int = SOURCE_LOAD_CONCURRENCY,
+        max_tape_events: int = TAPE_READ_LIMIT,
         cache: ReplayCache | None = None,
     ) -> None:
         self._connect = connect

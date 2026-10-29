@@ -21,6 +21,12 @@ import time
 from collections import OrderedDict
 from typing import Any, Awaitable, Callable, Hashable
 
+from app.replay.constants import (
+    CACHE_MAX_ENTRIES,
+    REGISTRY_TTL_SECONDS,
+    STATUS_TTL_SECONDS,
+)
+
 Key = tuple[str, Hashable]
 
 # A miss sentinel distinct from a cached ``None`` (an absent package row).
@@ -33,9 +39,9 @@ class ReplayCache:
     def __init__(
         self,
         *,
-        max_entries: int = 256,
-        registry_ttl_seconds: float = 30.0,
-        status_ttl_seconds: float = 30.0,
+        max_entries: int = CACHE_MAX_ENTRIES,
+        registry_ttl_seconds: float = REGISTRY_TTL_SECONDS,
+        status_ttl_seconds: float = STATUS_TTL_SECONDS,
         clock: Callable[[], float] = time.monotonic,
     ) -> None:
         self._max_entries = max(0, int(max_entries))

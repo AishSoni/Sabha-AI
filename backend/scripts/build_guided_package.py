@@ -11,6 +11,18 @@ import json
 from pathlib import Path
 from typing import Any
 
+from app.replay.constants import (
+    DELAY_BALLOT_PROVISIONAL_MS,
+    DELAY_BALLOT_TERMINAL_MS,
+    DELAY_CITATION_MS,
+    DELAY_DONE_MS,
+    DELAY_SUMMARY_PROVISIONAL_MS,
+    DELAY_SUMMARY_TERMINAL_MS,
+    DELAY_TEXT_MS,
+    DELAY_TOOL_CALL_MS,
+    DELAY_TOOL_RESULT_MS,
+    TEXT_CHUNK_CHARS,
+)
 from app.replay.package.loader import compute_content_sha256
 
 BACKEND = Path(__file__).resolve().parents[1]
@@ -975,7 +987,7 @@ def checkpoint(checkpoint_id: str, ordinal: int, phase: str, reads: dict[str, An
     }
 
 
-def text_chunks(text: str, size: int = 150) -> list[str]:
+def text_chunks(text: str, size: int = TEXT_CHUNK_CHARS) -> list[str]:
     chunks: list[str] = []
     start = 0
     while start < len(text):
@@ -1006,7 +1018,7 @@ def turn_tape(
                 "event_id": f"{tape_id}-{sequence}",
                 "sequence": sequence,
                 "type": "tool_call",
-                "delay_ms": 100,
+                "delay_ms": DELAY_TOOL_CALL_MS,
                 "payload": {
                     "invocation_id": call["invocation_id"],
                     "call_id": call["call_id"],
@@ -1021,7 +1033,7 @@ def turn_tape(
                 "event_id": f"{tape_id}-{sequence}",
                 "sequence": sequence,
                 "type": "tool_result",
-                "delay_ms": 120,
+                "delay_ms": DELAY_TOOL_RESULT_MS,
                 "payload": {
                     "invocation_id": call["invocation_id"],
                     "call_id": call["call_id"],
@@ -1037,7 +1049,7 @@ def turn_tape(
                 "event_id": f"{tape_id}-{sequence}",
                 "sequence": sequence,
                 "type": "citation",
-                "delay_ms": 60,
+                "delay_ms": DELAY_CITATION_MS,
                 "payload": {
                     "source": item["source"],
                     "title": item["title"],
@@ -1055,7 +1067,7 @@ def turn_tape(
                 "event_id": f"{tape_id}-{sequence}",
                 "sequence": sequence,
                 "type": "text",
-                "delay_ms": 60,
+                "delay_ms": DELAY_TEXT_MS,
                 "payload": {"content": chunk},
             }
         )
@@ -1065,7 +1077,7 @@ def turn_tape(
             "event_id": f"{tape_id}-{sequence}",
             "sequence": sequence,
             "type": "done",
-            "delay_ms": 80,
+            "delay_ms": DELAY_DONE_MS,
             "payload": {"message_id": final_message["id"]},
         }
     )
@@ -1097,7 +1109,7 @@ def closing_tape() -> dict[str, Any]:
                 "terminal": False,
                 "result": None,
                 "subject_id": participant_id,
-                "delay_ms": 80,
+                "delay_ms": DELAY_BALLOT_PROVISIONAL_MS,
             }
         )
         sequence += 1
@@ -1112,7 +1124,7 @@ def closing_tape() -> dict[str, Any]:
                 "terminal": True,
                 "result": "yes",
                 "subject_id": participant_id,
-                "delay_ms": 100,
+                "delay_ms": DELAY_BALLOT_TERMINAL_MS,
             }
         )
         sequence += 1
@@ -1128,7 +1140,7 @@ def closing_tape() -> dict[str, Any]:
             "terminal": False,
             "result": None,
             "subject_id": None,
-            "delay_ms": 100,
+            "delay_ms": DELAY_SUMMARY_PROVISIONAL_MS,
         }
     )
     sequence += 1
@@ -1143,7 +1155,7 @@ def closing_tape() -> dict[str, Any]:
             "terminal": True,
             "result": "completed",
             "subject_id": None,
-            "delay_ms": 120,
+            "delay_ms": DELAY_SUMMARY_TERMINAL_MS,
         }
     )
     return {

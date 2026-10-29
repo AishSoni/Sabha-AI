@@ -15,6 +15,8 @@ from urllib.parse import quote
 
 import httpx
 
+from app.replay.constants import STORAGE_TIMEOUT_SECONDS
+
 
 class StorageError(RuntimeError):
     """The offline storage publisher could not complete a safe operation."""
@@ -42,7 +44,7 @@ class SupabaseStoragePublisher:
         bucket: str,
         *,
         transport: httpx.BaseTransport | None = None,
-        timeout: float = 30.0,
+        timeout: float = STORAGE_TIMEOUT_SECONDS,
     ) -> None:
         if not url or not service_key:
             raise StorageError(

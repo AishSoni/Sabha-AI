@@ -17,6 +17,8 @@ from typing import Any, Mapping
 
 from pydantic import ValidationError
 
+from app.replay.constants import MAX_FILE_BYTES, MAX_FILES, MAX_PACKAGE_BYTES
+
 from .issues import PackageIssue, PackageLoadError
 from .model import (
     AssetIndex,
@@ -26,10 +28,6 @@ from .model import (
     RetrievalRecord,
     TurnTape,
 )
-
-MAX_PACKAGE_BYTES = 25 * 1024 * 1024
-MAX_FILE_BYTES = 10 * 1024 * 1024
-MAX_FILES = 500
 
 
 @dataclass(frozen=True)

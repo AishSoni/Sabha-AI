@@ -15,6 +15,12 @@ from typing import AsyncGenerator
 from app.modules.meetings.application.ports import TurnObservation
 
 TERMINAL_STATUSES = {"completed", "failed", "interrupted", "cancelled"}
+
+# Live followers poll at half a second and read one page of events per pass.
+# Replay overrides the poll interval with its own fixed-cadence fallback.
+EVENT_PAGE_SIZE = 500
+TURN_FOLLOW_POLL_SECONDS = 0.5
+
 _STATUS_MAP = {
     "pending": "queued",
     "processing": "executing",
@@ -75,12 +81,14 @@ async def turn_event_stream(
     operation_id: str,
     *,
     after: int = 0,
-    poll_seconds: float = 0.5,
+    poll_seconds: float = TURN_FOLLOW_POLL_SECONDS,
 ) -> AsyncGenerator[dict, None]:
     """Replay persisted events from ``after``, then follow until terminal."""
     cursor = after
     while True:
-        rows = await observation.events(meeting_id, operation_id, cursor, 500)
+        rows = await observation.events(
+            meeting_id, operation_id, cursor, EVENT_PAGE_SIZE
+        )
         for row in rows:
             cursor = max(cursor, int(row["sequence"]))
             yield {"data": json.dumps(event_dto(row))}

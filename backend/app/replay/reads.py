@@ -14,6 +14,8 @@ from app.modules.meetings.domain.models import (
     MeetingWithParticipants,
 )
 from app.modules.meetings.presentation.schemas import ClosingView
+from app.modules.meetings.presentation.turn_stream import EVENT_PAGE_SIZE
+from app.replay.constants import TURN_LIST_LIMIT
 from app.replay.contracts import ReplayNotFound
 from app.replay.package.model import Checkpoint
 from app.replay.source import PublishedPackage, ReplayPackageUnavailable, ReplaySource
@@ -168,7 +170,9 @@ class ReplayObservation:
                 return row
         raise ReplayNotFound("Recorded turn not found")
 
-    async def list_operations(self, meeting_id: str, limit: int = 100) -> list[dict]:
+    async def list_operations(
+        self, meeting_id: str, limit: int = TURN_LIST_LIMIT
+    ) -> list[dict]:
         operations = await self._reads.operations(meeting_id)
         return operations[: max(0, limit)]
 
@@ -177,7 +181,7 @@ class ReplayObservation:
         meeting_id: str,
         operation_id: str,
         after_sequence: int = 0,
-        limit: int = 500,
+        limit: int = EVENT_PAGE_SIZE,
     ) -> list[dict]:
         try:
             tape = await self._source.read_tape(
