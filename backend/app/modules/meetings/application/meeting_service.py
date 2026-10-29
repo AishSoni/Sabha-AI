@@ -4,6 +4,7 @@ Meeting manager service - handles meeting lifecycle and persistence.
 
 from typing import Optional, List
 from datetime import datetime, timezone
+import asyncio
 import uuid
 
 from app.modules.meetings.domain.models import (
@@ -55,11 +56,27 @@ def _present_meeting_row(row: dict) -> dict:
 class MeetingService:
     """Manages meeting lifecycle and database operations."""
 
-    def __init__(self, db, snapshot_template, construct_participants):
+    def __init__(
+        self,
+        db,
+        snapshot_template,
+        construct_participants,
+        *,
+        run_blocking=None,
+    ):
         self.db = db
         self._snapshot_template = snapshot_template
         self._construct_participants = construct_participants
-    
+        # Spec 20: the Supabase client is synchronous. Every round trip goes
+        # through one injected runner so it cannot stall the event loop; the
+        # composition root supplies the process-wide bounded executor and
+        # direct-construction tests keep the stdlib default.
+        self._run_blocking = run_blocking or asyncio.to_thread
+
+    async def _run(self, operation):
+        """Await one blocking database operation off the event loop."""
+        return await self._run_blocking(operation)
+
     async def create_meeting(
         self,
         data: MeetingCreate,
@@ -110,10 +127,12 @@ class MeetingService:
 
         # One transaction persists meeting + participants; any failure inside
         # the write rolls everything back.
-        result = self.db.rpc(
-            "create_meeting_transaction",
-            {"p_meeting": meeting_data, "p_participants": participants_payload},
-        ).execute()
+        result = await self._run(
+            lambda: self.db.rpc(
+                "create_meeting_transaction",
+                {"p_meeting": meeting_data, "p_participants": participants_payload},
+            ).execute()
+        )
         payload = result.data
 
         participants = [AIParticipant(**row) for row in payload["participants"]]
@@ -127,10 +146,12 @@ class MeetingService:
         """Get a meeting with all its participants and messages."""
         
         # Fetch meeting
-        meeting_result = self.db.table("meetings") \
-            .select("*") \
-            .eq("id", meeting_id) \
+        meeting_result = await self._run(
+            lambda: self.db.table("meetings")
+            .select("*")
+            .eq("id", meeting_id)
             .execute()
+        )
         
         if not meeting_result.data:
             return None
@@ -138,19 +159,23 @@ class MeetingService:
         meeting_data = _present_meeting_row(meeting_result.data[0])
         
         # Fetch participants
-        participants_result = self.db.table("ai_participants") \
-            .select("*") \
-            .eq("meeting_id", meeting_id) \
+        participants_result = await self._run(
+            lambda: self.db.table("ai_participants")
+            .select("*")
+            .eq("meeting_id", meeting_id)
             .execute()
+        )
         
         participants = [AIParticipant(**p) for p in participants_result.data]
         
         # Fetch messages
-        messages_result = self.db.table("messages") \
-            .select("*") \
-            .eq("meeting_id", meeting_id) \
-            .order("created_at") \
+        messages_result = await self._run(
+            lambda: self.db.table("messages")
+            .select("*")
+            .eq("meeting_id", meeting_id)
+            .order("created_at")
             .execute()
+        )
         
         messages = [Message(**m) for m in messages_result.data]
         
@@ -168,7 +193,7 @@ class MeetingService:
         if user_id:
             query = query.eq("user_id", user_id)
         
-        result = query.order("created_at", desc=True).execute()
+        result = await self._run(query.order("created_at", desc=True).execute)
         
         return [Meeting(**_present_meeting_row(m)) for m in result.data]
     
@@ -211,7 +236,9 @@ class MeetingService:
             ),
         }
         
-        result = self.db.table("ai_participants").insert(participant_data).execute()
+        result = await self._run(
+            lambda: self.db.table("ai_participants").insert(participant_data).execute()
+        )
         
         return AIParticipant(**result.data[0])
 
@@ -231,10 +258,12 @@ class MeetingService:
         if not persona_id:
             participant.stack_ids = []
             return
-        result = self.db.table("persona_knowledge_stacks") \
-            .select("stack_id") \
-            .eq("persona_id", persona_id) \
+        result = await self._run(
+            lambda: self.db.table("persona_knowledge_stacks")
+            .select("stack_id")
+            .eq("persona_id", persona_id)
             .execute()
+        )
         participant.stack_ids = [row["stack_id"] for row in (result.data or [])]
     
     async def save_message(self, data: MessageCreate) -> Message:
@@ -260,7 +289,9 @@ class MeetingService:
             "created_at": now,
         }
         
-        result = self.db.table("messages").insert(message_data).execute()
+        result = await self._run(
+            lambda: self.db.table("messages").insert(message_data).execute()
+        )
 
         # Spec-02: saving a message is accounting-NEUTRAL. estimated_cost on
         # the message is display data only; the universal inference ledger
@@ -283,17 +314,19 @@ class MeetingService:
         Returns True the first time this inference id is seen (the meeting
         total was updated), False when the id was already recorded
         (idempotent replay — never double counted)."""
-        result = self.db.rpc(
-            "record_inference_cost",
-            {
-                "p_inference_id": str(inference_id),
-                "p_meeting_id": str(meeting_id),
-                "p_purpose": purpose,
-                "p_provider": provider,
-                "p_model": model,
-                "p_cost": cost,
-            },
-        ).execute()
+        result = await self._run(
+            lambda: self.db.rpc(
+                "record_inference_cost",
+                {
+                    "p_inference_id": str(inference_id),
+                    "p_meeting_id": str(meeting_id),
+                    "p_purpose": purpose,
+                    "p_provider": provider,
+                    "p_model": model,
+                    "p_cost": cost,
+                },
+            ).execute()
+        )
         return bool(result.data)
     
     async def save_disagreement(self, data: DisagreementCreate) -> Disagreement:
@@ -314,7 +347,9 @@ class MeetingService:
             "created_at": now,
         }
         
-        result = self.db.table("disagreements").insert(disagreement_data).execute()
+        result = await self._run(
+            lambda: self.db.table("disagreements").insert(disagreement_data).execute()
+        )
         
         return Disagreement(**result.data[0])
     
@@ -333,39 +368,47 @@ class MeetingService:
             "created_at": now,
         }
         
-        result = self.db.table("consensus").insert(consensus_data).execute()
+        result = await self._run(
+            lambda: self.db.table("consensus").insert(consensus_data).execute()
+        )
         
         return Consensus(**result.data[0])
     
     async def get_disagreements(self, meeting_id: str) -> List[Disagreement]:
         """Get all disagreements for a meeting."""
         
-        result = self.db.table("disagreements") \
-            .select("*") \
-            .eq("meeting_id", meeting_id) \
-            .order("created_at") \
+        result = await self._run(
+            lambda: self.db.table("disagreements")
+            .select("*")
+            .eq("meeting_id", meeting_id)
+            .order("created_at")
             .execute()
+        )
         
         return [Disagreement(**d) for d in result.data]
     
     async def get_consensus_list(self, meeting_id: str) -> List[Consensus]:
         """Get all consensus entries for a meeting."""
         
-        result = self.db.table("consensus") \
-            .select("*") \
-            .eq("meeting_id", meeting_id) \
-            .order("created_at") \
+        result = await self._run(
+            lambda: self.db.table("consensus")
+            .select("*")
+            .eq("meeting_id", meeting_id)
+            .order("created_at")
             .execute()
+        )
         
         return [Consensus(**c) for c in result.data]
 
     async def update_meeting_status(self, meeting_id: str, status: str) -> bool:
         """Update a meeting's status."""
         
-        result = self.db.table("meetings") \
-            .update({"status": status}) \
-            .eq("id", meeting_id) \
+        result = await self._run(
+            lambda: self.db.table("meetings")
+            .update({"status": status})
+            .eq("id", meeting_id)
             .execute()
+        )
         
         return len(result.data) > 0
 
@@ -383,11 +426,13 @@ class MeetingService:
         False instead of clobbering another writer's state — no
         last-writer-wins overwrite.
         """
-        result = self.db.table("meetings") \
-            .update({"status": _status_value(next_status)}) \
-            .eq("id", meeting_id) \
-            .eq("status", _status_value(expected_from)) \
+        result = await self._run(
+            lambda: self.db.table("meetings")
+            .update({"status": _status_value(next_status)})
+            .eq("id", meeting_id)
+            .eq("status", _status_value(expected_from))
             .execute()
+        )
 
         return len(result.data) > 0
 
@@ -414,14 +459,16 @@ class MeetingService:
             "request_key": data.request_key,
             "created_at": _now_iso(),
         }
-        result = self.db.rpc(
-            "append_user_message",
-            {
-                "p_meeting_id": meeting_id,
-                "p_message": payload,
-                "p_now": _now_iso(),
-            },
-        ).execute()
+        result = await self._run(
+            lambda: self.db.rpc(
+                "append_user_message",
+                {
+                    "p_meeting_id": meeting_id,
+                    "p_message": payload,
+                    "p_now": _now_iso(),
+                },
+            ).execute()
+        )
         body = result.data or {}
         outcome = str(body.get("outcome") or "invalid")
         row = body.get("message")
@@ -429,18 +476,22 @@ class MeetingService:
 
     async def archive_meeting(self, meeting_id: str) -> dict:
         """Set the archive overlay without changing the lifecycle status."""
-        result = self.db.rpc(
-            "archive_meeting_guarded",
-            {"p_meeting_id": meeting_id, "p_now": _now_iso()},
-        ).execute()
+        result = await self._run(
+            lambda: self.db.rpc(
+                "archive_meeting_guarded",
+                {"p_meeting_id": meeting_id, "p_now": _now_iso()},
+            ).execute()
+        )
         return dict(result.data or {})
 
     async def unarchive_meeting(self, meeting_id: str) -> dict:
         """Clear the archive overlay; never reopens an ended meeting."""
-        result = self.db.rpc(
-            "unarchive_meeting_guarded",
-            {"p_meeting_id": meeting_id, "p_now": _now_iso()},
-        ).execute()
+        result = await self._run(
+            lambda: self.db.rpc(
+                "unarchive_meeting_guarded",
+                {"p_meeting_id": meeting_id, "p_now": _now_iso()},
+            ).execute()
+        )
         return dict(result.data or {})
 
     async def commit_meeting_ending(
@@ -457,14 +508,16 @@ class MeetingService:
         cannot exist without its summary message. Partial commitment is
         impossible because both writes share one transaction.
         """
-        result = self.db.rpc(
-            "commit_meeting_ending",
-            {
-                "p_meeting_id": meeting_id,
-                "p_from_status": _status_value(from_status),
-                "p_content": content,
-            },
-        ).execute()
+        result = await self._run(
+            lambda: self.db.rpc(
+                "commit_meeting_ending",
+                {
+                    "p_meeting_id": meeting_id,
+                    "p_from_status": _status_value(from_status),
+                    "p_content": content,
+                },
+            ).execute()
+        )
         return bool(result.data)
 
     async def get_latest_message_with_prefix(
@@ -476,14 +529,16 @@ class MeetingService:
         ending or summary already persisted) without loading the whole
         conversation.
         """
-        result = self.db.table("messages") \
-            .select("*") \
-            .eq("meeting_id", meeting_id) \
-            .eq("sender_type", SenderType.SYSTEM.value) \
-            .like("content", f"{prefix}%") \
-            .order("created_at", desc=True) \
-            .limit(1) \
+        result = await self._run(
+            lambda: self.db.table("messages")
+            .select("*")
+            .eq("meeting_id", meeting_id)
+            .eq("sender_type", SenderType.SYSTEM.value)
+            .like("content", f"{prefix}%")
+            .order("created_at", desc=True)
+            .limit(1)
             .execute()
+        )
 
         data = result.data or []
         return Message(**data[0]) if data else None
@@ -492,33 +547,43 @@ class MeetingService:
         """Delete a meeting and all its related data."""
         
         # Delete messages first (foreign key constraint)
-        self.db.table("messages") \
-            .delete() \
-            .eq("meeting_id", meeting_id) \
+        await self._run(
+            lambda: self.db.table("messages")
+            .delete()
+            .eq("meeting_id", meeting_id)
             .execute()
+        )
         
         # Delete disagreements
-        self.db.table("disagreements") \
-            .delete() \
-            .eq("meeting_id", meeting_id) \
+        await self._run(
+            lambda: self.db.table("disagreements")
+            .delete()
+            .eq("meeting_id", meeting_id)
             .execute()
+        )
         
         # Delete consensus
-        self.db.table("consensus") \
-            .delete() \
-            .eq("meeting_id", meeting_id) \
+        await self._run(
+            lambda: self.db.table("consensus")
+            .delete()
+            .eq("meeting_id", meeting_id)
             .execute()
+        )
         
         # Delete participants
-        self.db.table("ai_participants") \
-            .delete() \
-            .eq("meeting_id", meeting_id) \
+        await self._run(
+            lambda: self.db.table("ai_participants")
+            .delete()
+            .eq("meeting_id", meeting_id)
             .execute()
+        )
         
         # Finally delete the meeting
-        result = self.db.table("meetings") \
-            .delete() \
-            .eq("id", meeting_id) \
+        result = await self._run(
+            lambda: self.db.table("meetings")
+            .delete()
+            .eq("id", meeting_id)
             .execute()
+        )
         
         return len(result.data) > 0

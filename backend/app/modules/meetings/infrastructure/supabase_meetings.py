@@ -20,11 +20,13 @@ from app.modules.persona_catalog.public import GetCreationSnapshot
 from app.platform.database import get_supabase
 
 
-def build_meeting_service(db, *, service_factory=MeetingService) -> MeetingService:
+def build_meeting_service(
+    db, *, service_factory=MeetingService, run_blocking=None
+) -> MeetingService:
     """Build a ``MeetingService`` over one database client."""
     snapshots = GetCreationSnapshot(SupabasePersonaCatalog(lambda: db))
     construct = ConstructParticipants(snapshots, prompt_composer=get_full_prompt)
-    return service_factory(db, snapshots, construct)
+    return service_factory(db, snapshots, construct, run_blocking=run_blocking)
 
 
 def build_default_meeting_service() -> MeetingService:
