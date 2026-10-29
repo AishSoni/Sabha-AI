@@ -29,7 +29,11 @@ export default function DemoMeetingListPage() {
     const list = meetings.data ?? [];
     const active = list.filter((meeting) => meeting.status !== "archived");
     const archived = list.filter((meeting) => meeting.status === "archived");
-    const shown = tab === "active" ? active : archived;
+    // The guide can restore the pre-archive checkpoint without remounting this
+    // page. While archive is the active intent, the ended meeting must be
+    // visible so the step can be retried.
+    const shownTab: ListTab = canArchive ? "active" : tab;
+    const shown = shownTab === "active" ? active : archived;
 
     const archive = async (meetingId: string) => {
         if (!archiveIntent) return;
@@ -80,7 +84,7 @@ export default function DemoMeetingListPage() {
                     type="button"
                     onClick={() => setTab("active")}
                     className={`rounded-md px-4 py-2 text-sm ${
-                        tab === "active"
+                        shownTab === "active"
                             ? "bg-zinc-800 text-white"
                             : "text-zinc-400 hover:text-white"
                     }`}
@@ -92,7 +96,7 @@ export default function DemoMeetingListPage() {
                     type="button"
                     onClick={() => setTab("archived")}
                     className={`rounded-md px-4 py-2 text-sm ${
-                        tab === "archived"
+                        shownTab === "archived"
                             ? "bg-zinc-800 text-white"
                             : "text-zinc-400 hover:text-white"
                     }`}
@@ -118,7 +122,7 @@ export default function DemoMeetingListPage() {
                 <Card className="border-zinc-800 bg-zinc-900/40 p-10 text-center">
                     <Users className="mx-auto mb-3 h-8 w-8 text-zinc-600" />
                     <p className="text-sm text-zinc-400">
-                        {tab === "active"
+                        {shownTab === "active"
                             ? "No active or ended recorded meeting yet."
                             : "No archived recorded meeting yet."}
                     </p>

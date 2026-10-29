@@ -9,7 +9,7 @@
  */
 import { useMemo, useState, type ReactNode } from "react";
 import Link from "next/link";
-import { usePathname, useRouter } from "next/navigation";
+import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import { ArrowLeft, ArrowRight, RotateCcw, Sparkles } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -23,6 +23,16 @@ function beatHref(beat: ReplayBeat, meetingId: string): string {
     if (beat.route === "list") return "/demo/meetings";
     const tab = beat.tab ? `?tab=${encodeURIComponent(beat.tab)}` : "";
     return `/demo/meetings/${encodeURIComponent(meetingId)}${tab}`;
+}
+
+function beatMatchesLocation(
+    beat: ReplayBeat,
+    meetingId: string,
+    pathname: string,
+    tab: string | null
+): boolean {
+    const target = new URL(beatHref(beat, meetingId), "http://sabha.local");
+    return pathname === target.pathname && tab === target.searchParams.get("tab");
 }
 
 function stepSatisfied(
@@ -65,8 +75,10 @@ export function GuidedReplay({ children }: { children: ReactNode }) {
     const run = useReplayRun();
     const router = useRouter();
     const pathname = usePathname();
-    const [index, setIndex] = useState(0);
-    const [finished, setFinished] = useState(false);
+    const searchParams = useSearchParams();
+    const tab = searchParams.get("tab");
+    const [navigating, setNavigating] = useState(false);
+    const [error, setError] = useState<string | null>(null);
 
     const beats = useMemo(() => {
         return [...run.session.beats].sort((left, right) => {
@@ -76,57 +88,159 @@ export function GuidedReplay({ children }: { children: ReactNode }) {
         });
     }, [run.session.beats]);
 
+    const beatSatisfied = (beat: ReplayBeat) =>
+        beat.steps.every((step) => stepSatisfied(step, beat, run));
+
+    /**
+     * The checkpoint is the single source of truth for progress. Derive the
+     * current beat from it instead of keeping a second, independently mutable
+     * step counter. When a recorded action settles, the checkpoint moves and
+     * the guide advances in the same render.
+     */
+    const index = (() => {
+        if (beats.length === 0) return 0;
+
+        let candidate = 0;
+        if (run.checkpoint === run.session.initial_checkpoint) {
+            // The board and the intake form share the initial checkpoint.
+            // Their route disambiguates which beat is current.
+            const routeIndex = beats.findIndex(
+                (beat) =>
+                    beat.checkpoint === run.checkpoint &&
+                    beatMatchesLocation(
+                        beat,
+                        run.session.meeting_id,
+                        pathname,
+                        tab
+                    )
+            );
+            candidate = routeIndex >= 0 ? routeIndex : 0;
+        } else {
+            const position = run.session.checkpoints.indexOf(run.checkpoint);
+            for (let i = 0; i < beats.length; i += 1) {
+                const beat = beats[i];
+                const start = run.session.checkpoints.indexOf(
+                    beat.start_checkpoint ?? beat.checkpoint
+                );
+                const end = run.session.checkpoints.indexOf(
+                    beat.completed_checkpoint ?? beat.checkpoint
+                );
+                if (start >= 0 && end >= 0 && position >= start && position < end) {
+                    candidate = i;
+                    break;
+                }
+            }
+            if (
+                beats[beats.length - 1]?.completed_checkpoint === run.checkpoint
+            ) {
+                candidate = beats.length;
+            } else if (candidate === 0) {
+                // A checkpoint can be the start of a beat without being inside
+                // the previous beat's half-open interval (notably the last
+                // beat's start checkpoint, which has no following beat).
+                const startIndex = beats.findIndex(
+                    (beat) =>
+                        (beat.start_checkpoint ?? beat.checkpoint) ===
+                        run.checkpoint
+                );
+                if (startIndex >= 0) candidate = startIndex;
+            }
+        }
+
+        // Never move into a beat whose recorded result has not happened yet.
+        // This keeps the closing beat visible until its terminal settles even
+        // though requesting the closing switches the checkpoint early.
+        while (candidate > 0) {
+            const previous = beats[Math.min(candidate, beats.length) - 1];
+            if (beatSatisfied(previous)) break;
+            candidate = Math.min(candidate, beats.length) - 1;
+        }
+
+        return candidate;
+    })();
+
+    const finished = index >= beats.length;
     const current = beats[index] ?? null;
-    const activeStep = current
-        ? current.steps.find(
-              (step) => step.intent_id && !stepSatisfied(step, current, run)
-          )
-        : undefined;
+    const activeStep = current?.steps.find(
+        (step) => step.intent_id && !stepSatisfied(step, current, run)
+    );
     const activeIntentId = current
         ? (activeStep?.intent_id ?? "__guided-none__")
-        : null;
-    const satisfied = current
-        ? current.steps.every((step) => stepSatisfied(step, current, run))
-        : false;
+        : "__guided-none__";
+    const satisfied = current ? beatSatisfied(current) : false;
     const targetHref = current
         ? beatHref(current, run.session.meeting_id)
         : "/demo";
-    const onTarget = pathname === targetHref.split("?")[0];
-    const isLast = index >= beats.length - 1;
+    const onTarget = current
+        ? beatMatchesLocation(
+              current,
+              run.session.meeting_id,
+              pathname,
+              tab
+          )
+        : false;
+    const nextHref =
+        current && index < beats.length - 1
+            ? beatHref(beats[index + 1], run.session.meeting_id)
+            : null;
+    const canContinue =
+        !finished &&
+        current !== null &&
+        (!onTarget ||
+            (satisfied &&
+                index < beats.length - 1 &&
+                nextHref !== targetHref));
+    const canGoBack = !navigating && (index > 0 || finished);
 
     const restart = () => {
         run.restart();
-        setIndex(0);
-        setFinished(false);
         router.push("/demo");
     };
 
     const back = async () => {
-        if (index === 0) return;
-        const previous = beats[index - 1];
-        const nextIndex = index - 1;
-        setIndex(nextIndex);
-        setFinished(false);
-        if (previous.completed_checkpoint) {
-            try {
-                await run.switchCheckpoint(previous.completed_checkpoint);
-            } catch {
-                // The guide stays on the previous step; the checkpoint error is
-                // surfaced by the room/read layer, not hidden.
+        if (!canGoBack) return;
+        const targetIndex = finished ? beats.length - 1 : index - 1;
+        const target = beats[targetIndex];
+        if (!target) return;
+
+        setNavigating(true);
+        setError(null);
+        try {
+            // Restore the state before the target beat ran. Using the target
+            // beat's start checkpoint (rather than the previous completed
+            // checkpoint) is what makes the derived index move backwards.
+            const checkpoint = target.start_checkpoint ?? target.checkpoint;
+            if (checkpoint && checkpoint !== run.checkpoint) {
+                await run.switchCheckpoint(checkpoint);
             }
+            router.push(beatHref(target, run.session.meeting_id));
+        } catch (cause) {
+            setError(
+                cause instanceof Error
+                    ? cause.message
+                    : "The previous recorded step could not be restored."
+            );
+        } finally {
+            setNavigating(false);
         }
-        router.push(beatHref(previous, run.session.meeting_id));
     };
 
     const advance = () => {
-        if (!current || !satisfied) return;
-        if (isLast) {
-            setFinished(true);
+        if (!canContinue || !current) return;
+
+        // Progress has already moved the counter when an action settles. The
+        // button's job is to bring the UI to the current beat's screen.
+        if (!onTarget) {
+            router.push(targetHref);
             return;
         }
-        const next = beats[index + 1];
-        setIndex(index + 1);
-        router.push(beatHref(next, run.session.meeting_id));
+
+        // Acknowledge-only beats do not change the checkpoint, so Continue is
+        // the action that moves to the next screen.
+        if (satisfied && index < beats.length - 1) {
+            const next = beats[index + 1];
+            router.push(beatHref(next, run.session.meeting_id));
+        }
     };
 
     return (
@@ -150,7 +264,7 @@ export function GuidedReplay({ children }: { children: ReactNode }) {
                                 size="sm"
                                 variant="outline"
                                 className="border-indigo-800 text-indigo-200 hover:bg-indigo-900/40"
-                                disabled={index === 0}
+                                disabled={!canGoBack}
                                 onClick={() => void back()}
                             >
                                 <ArrowLeft className="mr-1 h-4 w-4" />
@@ -160,10 +274,10 @@ export function GuidedReplay({ children }: { children: ReactNode }) {
                                 type="button"
                                 size="sm"
                                 className="bg-indigo-600 hover:bg-indigo-700"
-                                disabled={!satisfied || finished}
+                                disabled={!canContinue || navigating}
                                 onClick={advance}
                             >
-                                {isLast ? "Finish" : "Continue"}
+                                Continue
                                 <ArrowRight className="ml-1 h-4 w-4" />
                             </Button>
                             <Button
@@ -210,6 +324,14 @@ export function GuidedReplay({ children }: { children: ReactNode }) {
                         </>
                     ) : null}
 
+                    {error ? (
+                        <p
+                            className="mt-2 rounded-md border border-red-800 bg-red-950/40 px-2 py-1 text-xs text-red-200"
+                            role="alert"
+                        >
+                            {error}
+                        </p>
+                    ) : null}
                     <p className="mt-2 text-[11px] leading-relaxed text-indigo-200/60">
                         {run.session.disclosure}
                     </p>

@@ -113,7 +113,10 @@ test.describe("guided replay resilience", () => {
         await expect(
             page.getByText(/CRISIL's annexure row for ISIN INE001A07RW5/).first()
         ).toBeVisible({ timeout: 30_000 });
-        await expect(page.getByRole("button", { name: "Continue" })).toBeEnabled();
+        // Finishing the resumed turn advances the guide to the next beat on the
+        // same screen, so Continue correctly waits for the next room action.
+        await expect(page.getByText(/Step 4 of 8/)).toBeVisible({ timeout: 30_000 });
+        await expect(page.getByRole("button", { name: "Continue" })).toBeDisabled();
 
         expect(liveRequests).toEqual([]);
     });
