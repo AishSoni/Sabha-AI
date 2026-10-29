@@ -81,6 +81,8 @@ import { ThinkingBlock } from './ThinkingBlock';
 import { ToolUseBlock } from './ToolUseBlock';
 import { CitationsBlock } from './CitationsBlock';
 import { ClosingPanel } from './ClosingPanel';
+import { EvidencePreviewHost } from '../evidence/host';
+import { EvidencePreviewProvider } from '../evidence/provider';
 
 export interface MeetingRoomProps {
     meetingId: string;
@@ -123,7 +125,15 @@ export function MeetingRoom({ meetingId, initialTab }: MeetingRoomProps) {
     }
 
     const meeting = meetingQuery.data;
-    return (
+    const evidence = runtime.evidence;
+    const evidenceEpoch = [
+        runtime.scope.identity.kind,
+        runtime.scope.identity.id,
+        runtime.scope.identity.epoch,
+        meeting.id,
+        runtime.replay?.checkpoint ?? 'live',
+    ].join(':');
+    const room = (
         <div className="h-screen bg-zinc-950 flex flex-col overflow-hidden">
             <header className="border-b border-zinc-800 px-4 py-3 flex items-center gap-4 shrink-0">
                 <Link
@@ -177,6 +187,15 @@ export function MeetingRoom({ meetingId, initialTab }: MeetingRoomProps) {
                 />
             </div>
         </div>
+    );
+    if (!evidence) {
+        return room;
+    }
+    return (
+        <EvidencePreviewProvider adapter={evidence} epoch={evidenceEpoch}>
+            {room}
+            <EvidencePreviewHost />
+        </EvidencePreviewProvider>
     );
 }
 

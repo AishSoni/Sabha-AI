@@ -8,7 +8,7 @@
  * bytes. Deleting a document revokes eligibility and redacts retained
  * evidence on the backend before the row is removed from this list.
  */
-import { useMemo, useRef, useState } from 'react';
+import { useMemo, useRef, useState, type ReactNode } from 'react';
 import {
     AlertTriangle,
     CheckCircle2,
@@ -36,6 +36,12 @@ export interface DocumentPanelProps {
     scope: DocumentScope;
     title?: string;
     description?: string;
+    /**
+     * Optional preview action for a row. The composing runtime decides which
+     * states are previewable so the knowledge feature never imports evidence
+     * UI or a meetings runtime.
+     */
+    renderPreviewAction?: (document: Document) => ReactNode;
 }
 
 function statusBadge(document: Document) {
@@ -71,7 +77,12 @@ function statusBadge(document: Document) {
     );
 }
 
-export function DocumentPanel({ scope, title, description }: DocumentPanelProps) {
+export function DocumentPanel({
+    scope,
+    title,
+    description,
+    renderPreviewAction,
+}: DocumentPanelProps) {
     const documents = useDocuments(scope);
     const upload = useDocumentUpload(scope);
     const retry = useRetryIngestion(scope);
@@ -216,6 +227,7 @@ export function DocumentPanel({ scope, title, description }: DocumentPanelProps)
                             </p>
                         </div>
                         {statusBadge(document)}
+                        {renderPreviewAction?.(document)}
                         {document.operation_id &&
                             (document.status === 'failed' || document.status === 'pending') && (
                                 <Button

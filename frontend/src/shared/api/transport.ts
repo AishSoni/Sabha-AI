@@ -75,6 +75,82 @@ async function decodeSuccessPayload<T>(response: Response, path: string): Promis
     }
 }
 
+export interface BytesRequestInit {
+    method?: RequestMethod;
+    /** Extra request headers (for example an evidence Accept type). */
+    headers?: Record<string, string>;
+    /** Propagated to fetch; aborting surfaces as ApiError kind "aborted". */
+    signal?: AbortSignal;
+    /** Query parameters; undefined entries are skipped. */
+    query?: JsonRequestInit["query"];
+}
+
+export interface ByteResponse {
+    bytes: Uint8Array;
+    contentType: string | null;
+    contentLength: number | null;
+    fileName: string | null;
+}
+
+function fileNameFromDisposition(value: string | null): string | null {
+    if (!value) {
+        return null;
+    }
+    const encoded = /filename\*=UTF-8''([^;]+)/i.exec(value);
+    if (encoded?.[1]) {
+        const candidate = encoded[1].trim().replace(/^"|"$/g, "");
+        try {
+            return decodeURIComponent(candidate);
+        } catch {
+            return candidate;
+        }
+    }
+    const plain = /filename="?([^";]+)"?/i.exec(value);
+    return plain?.[1]?.trim() ?? null;
+}
+
+/**
+ * Performs a binary/text request and returns the raw bytes plus response
+ * metadata. Used by the evidence viewer so private revision bytes never pass
+ * through a JSON encoder or a signed/public URL.
+ */
+export async function requestBytes(
+    path: string,
+    init: BytesRequestInit = {}
+): Promise<ByteResponse> {
+    let response: Response;
+    try {
+        response = await fetch(apiUrl(path, init.query), {
+            method: init.method ?? "GET",
+            headers: init.headers,
+            signal: init.signal,
+        });
+    } catch (cause) {
+        throw transportApiError(cause);
+    }
+
+    if (!response.ok) {
+        throw httpApiError(response.status, await readFailureDetail(response));
+    }
+
+    let buffer: ArrayBuffer;
+    try {
+        buffer = await response.arrayBuffer();
+    } catch (cause) {
+        throw transportApiError(cause);
+    }
+
+    const rawLength = response.headers?.get("content-length") ?? null;
+    const parsedLength = rawLength === null ? null : Number.parseInt(rawLength, 10);
+    return {
+        bytes: new Uint8Array(buffer),
+        contentType: response.headers?.get("content-type") ?? null,
+        contentLength:
+            parsedLength !== null && Number.isFinite(parsedLength) ? parsedLength : null,
+        fileName: fileNameFromDisposition(response.headers?.get("content-disposition") ?? null),
+    };
+}
+
 /** Performs a JSON request and decodes the successful payload. */
 export async function requestJson<T>(path: string, init: JsonRequestInit = {}): Promise<T> {
     const headers: Record<string, string> = { ...(init.headers ?? {}) };

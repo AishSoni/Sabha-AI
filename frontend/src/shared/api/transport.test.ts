@@ -12,6 +12,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import {
     ApiError,
     isApiError,
+    requestBytes,
     requestForm,
     requestJson,
     resolveApiBaseUrl,
@@ -99,6 +100,65 @@ describe("requestJson", () => {
             "X-Provider-Key": "sk-live-secret",
             "Content-Type": "application/json",
         });
+    });
+});
+
+describe("requestBytes", () => {
+    it("returns raw bytes plus response metadata and passes the signal through", async () => {
+        const body = new Uint8Array([37, 80, 68, 70, 45]);
+        fetcher.enqueueResponse(
+            new Response(body, {
+                status: 200,
+                headers: {
+                    "content-type": "application/pdf",
+                    "content-length": "5",
+                    "content-disposition": "inline; filename*=UTF-8''revision%20one.pdf",
+                },
+            })
+        );
+        const controller = new AbortController();
+
+        const response = await requestBytes("/documents/d1/revisions/r1/content", {
+            query: { representation: "original" },
+            headers: { Accept: "application/pdf" },
+            signal: controller.signal,
+        });
+
+        expect(Array.from(response.bytes)).toEqual([37, 80, 68, 70, 45]);
+        expect(response.contentType).toBe("application/pdf");
+        expect(response.contentLength).toBe(5);
+        expect(response.fileName).toBe("revision one.pdf");
+        expect(fetcher.calls[0]?.input).toBe(
+            "http://localhost:8000/api/documents/d1/revisions/r1/content?representation=original"
+        );
+        expect(fetcher.calls[0]?.init?.signal).toBe(controller.signal);
+        expect(fetcher.calls[0]?.init?.headers).toEqual({ Accept: "application/pdf" });
+    });
+
+    it("keeps HTTP failures structured and never leaks a fallback URL", async () => {
+        fetcher.enqueueJson(410, { detail: "This revision is no longer available" });
+
+        const failure = await requestBytes("/documents/d1/revisions/r1/content").catch(
+            (error: unknown) => error
+        );
+
+        const apiError = failure as ApiError;
+        expect(isApiError(apiError)).toBe(true);
+        expect(apiError.kind).toBe("http");
+        expect(apiError.status).toBe(410);
+        expect(apiError.detail).toBe("This revision is no longer available");
+    });
+
+    it("maps connection failures to the network kind", async () => {
+        fetcher.enqueueFailure(new Error("ECONNREFUSED"));
+
+        const failure = await requestBytes("/documents/d1/revisions/r1/content").catch(
+            (error: unknown) => error
+        );
+
+        const apiError = failure as ApiError;
+        expect(apiError.kind).toBe("network");
+        expect(apiError.status).toBeNull();
     });
 });
 

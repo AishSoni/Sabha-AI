@@ -89,4 +89,13 @@ describe('shared evidence preview boundary', () => {
         expect(contract).toContain('../evidence/contract');
         expect(contract).toContain('evidence?: MeetingsEvidenceApi');
     });
+
+    it('wires the live composition to the shared evidence adapter', () => {
+        const live = fs.readFileSync(
+            path.join(SRC, 'features/meetings/runtime/live.tsx'),
+            'utf8'
+        );
+        expect(live).toContain('createLiveEvidence');
+        expect(live).toContain('evidence: createLiveEvidence()');
+    });
 });

@@ -111,8 +111,11 @@ export type EvidenceViewState =
     | { status: "error"; error: EvidenceLoadError };
 
 export interface MeetingsEvidenceApi {
-    /** Every previewable item for the current scope/run. */
-    list(): Promise<EvidenceDescriptor[]>;
+    /**
+     * Every previewable item for the current scope/run. Live passes the
+     * meeting id; replay ignores it because the pinned session defines scope.
+     */
+    list(scope_id?: string): Promise<EvidenceDescriptor[]>;
     /** Resolve a citation to its exact retained revision or package asset. */
     resolveCitation(
         citation: EvidenceCitationRef

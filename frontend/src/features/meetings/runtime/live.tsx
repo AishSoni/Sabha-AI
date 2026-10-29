@@ -11,6 +11,7 @@ import type { MeetingsRuntime } from "./contract";
 import { ALL_MEETING_CAPABILITIES } from "./contract";
 import { MeetingsRuntimeProvider } from "./context";
 import { LiveDocumentsPanel } from "./live-documents-panel";
+import { createLiveEvidence } from "./live-evidence";
 import { LiveParticipantAction } from "./live-participant-action";
 import { LiveSummaryPanel } from "./live-summary-panel";
 import {
@@ -79,6 +80,7 @@ export function createLiveMeetingsRuntime(): MeetingsRuntime {
             summaryPanel: LiveSummaryPanel,
             participantAction: LiveParticipantAction,
         },
+        evidence: createLiveEvidence(),
     };
 }
 
