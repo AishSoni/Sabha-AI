@@ -109,6 +109,10 @@ class Settings(BaseSettings):
     turn_poll_seconds: float = 0.5
     turn_runner_enabled: bool = True
     turn_execution_timeout_seconds: int = 300
+    # Spec-20: streamed deltas are persisted in ordered batches, flushed on
+    # this interval or immediately for non-delta/terminal events.
+    turn_event_flush_ms: int = 200
+    turn_event_max_buffered: int = 200
 
     # Coordinated closing (spec 08)
     closing_attempt_lease_seconds: int = 120
