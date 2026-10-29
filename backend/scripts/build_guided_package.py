@@ -19,6 +19,7 @@ from app.replay.constants import (
     DELAY_SUMMARY_PROVISIONAL_MS,
     DELAY_SUMMARY_TERMINAL_MS,
     DELAY_TEXT_MS,
+    DELAY_THINKING_MS,
     DELAY_TOOL_CALL_MS,
     DELAY_TOOL_RESULT_MS,
     TEXT_CHUNK_CHARS,
@@ -400,6 +401,45 @@ CONSENSUS_TEXT = (
     "on that basis; this is not an investment approval."
 )
 
+CREDIT_THINKING = (
+    "Start with the instrument record: coupon, allotment, maturity, and issue size. "
+    "The CRISIL annexure is the strongest credit evidence, but it is a dated opinion, "
+    "so I must not present it as a current rating. Pull the FY20 issuer figures for "
+    "scale, keeping them separate from series-level terms. Check the coupon arithmetic "
+    "and label the result correctly: not a yield. Test whether the retained excerpt "
+    "establishes security or payment; it does not. Finish by separating what the "
+    "record proves from the missing price, yield, and liquidity evidence."
+)
+
+DOWNSIDE_THINKING = (
+    "Accept the recorded terms, but challenge the comfort being drawn from AAA/Stable. "
+    "A rating is a point-in-time opinion, not a guarantee or current market evidence. "
+    "The record shows listing, not executable liquidity. Frame a +200bp and risk-off "
+    "scenario as an illustration, not a forecast. Because price, yield, and liquidity "
+    "data are absent, I cannot infer a mark-to-market value or a refinancing outcome. "
+    "Log the disagreement so the scoreboard captures the gap between rating comfort "
+    "and market evidence."
+)
+
+PORTFOLIO_THINKING = (
+    "Apply the fictional three-year mandate literally: it requires an executable "
+    "price, yield, and liquidity assessment. The record supplies terms and a scheduled "
+    "maturity, but none of the market inputs the mandate needs. The coupon is not a "
+    "yield, and scheduled maturity is not proof of payment. Do not size a position or "
+    "infer a mark. The only defensible output is a research checklist: confirm the "
+    "series terms and security, obtain current market evidence, and verify payment "
+    "when it occurs."
+)
+
+CONSENSUS_THINKING = (
+    "Reconcile the three positions. The Credit Analyst established the terms and "
+    "rating; the Downside Reviewer separated a dated opinion from market evidence; the "
+    "Portfolio Analyst showed the mandate cannot be completed. The shared ground is a "
+    "bounded checklist of facts, judgments, and unknowns. Confirm the facts and "
+    "unknowns match the record, keep the downside scenarios labeled illustrative, and "
+    "avoid turning alignment into an investment approval. Log consensus at strength 4."
+)
+
 SUMMARY_TEXT = (
     "The committee voted to conclude. Outcome: a research checklist, not a buy/sell "
     "recommendation or investment approval. Facts: the 2020 terms and CRISIL "
@@ -524,6 +564,7 @@ def message(
     request_key: str,
     operation_id: str | None,
     created_at: str,
+    thinking_content: str | None = None,
 ) -> dict[str, Any]:
     return {
         "id": message_id,
@@ -534,7 +575,7 @@ def message(
         "sender_name": sender_name,
         "citations": message_citations,
         "tool_artifacts": tool_artifacts,
-        "thinking_content": None,
+        "thinking_content": thinking_content,
         "estimated_cost": 0.0,
         "effective_generation": None,
         "sequence": sequence,
@@ -650,6 +691,7 @@ CREDIT_MESSAGE = message(
     "turn-credit",
     CREDIT_OP,
     "2020-07-31T09:01:00Z",
+    thinking_content=CREDIT_THINKING,
 )
 DOWNSIDE_MESSAGE = message(
     DOWNSIDE_MSG,
@@ -663,6 +705,7 @@ DOWNSIDE_MESSAGE = message(
     "turn-downside",
     DOWNSIDE_OP,
     "2020-07-31T09:02:00Z",
+    thinking_content=DOWNSIDE_THINKING,
 )
 FOLLOWUP = message(
     FOLLOWUP_MSG,
@@ -689,6 +732,7 @@ PORTFOLIO_MESSAGE = message(
     "turn-portfolio",
     PORTFOLIO_OP,
     "2020-07-31T09:04:00Z",
+    thinking_content=PORTFOLIO_THINKING,
 )
 CONSENSUS_MESSAGE = message(
     CONSENSUS_MSG,
@@ -702,6 +746,7 @@ CONSENSUS_MESSAGE = message(
     "turn-consensus",
     CONSENSUS_OP,
     "2020-07-31T09:05:00Z",
+    thinking_content=CONSENSUS_THINKING,
 )
 SUMMARY_MESSAGE = message(
     SUMMARY_MSG,
@@ -1012,6 +1057,17 @@ def turn_tape(
 ) -> dict[str, Any]:
     events: list[dict[str, Any]] = []
     sequence = 1
+    for chunk in text_chunks(final_message.get("thinking_content") or ""):
+        events.append(
+            {
+                "event_id": f"{tape_id}-{sequence}",
+                "sequence": sequence,
+                "type": "thinking",
+                "delay_ms": DELAY_THINKING_MS,
+                "payload": {"content": chunk},
+            }
+        )
+        sequence += 1
     for call in final_message["tool_artifacts"]["calls"]:
         events.append(
             {
@@ -1900,7 +1956,7 @@ def build() -> None:
 
     manifest = {
         "package_id": "hdfc-ine001a07rw5",
-        "version": "1",
+        "version": "2",
         "schema_version": 1,
         "read_version": 1,
         "event_version": 1,
@@ -1919,7 +1975,7 @@ def build() -> None:
             "synthetic": False,
             "model_run": "none",
             "source_capture_date": SOURCE_DATE,
-            "prepared_date": "2026-10-28",
+            "prepared_date": "2026-10-30",
             "note": "Authored historical educational replay; no live model run or current-market lookup.",
         },
         "label": "Guided replay",

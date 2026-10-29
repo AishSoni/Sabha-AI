@@ -1,6 +1,6 @@
 # Spec 18 Content Ledger — HDFC Ltd 7.87% 2022 Debenture
 
-Status: **approved for production package `hdfc-ine001a07rw5` version 1** on 28 October 2026. The exact dialogue, claims, citations, short source excerpts, and package publication were approved. Package content hash: `ced67209984ff87088119f58f5b2bcc643fd9240623dfbe02e03ab761c1fb07f`.
+Status: **approved for production package `hdfc-ine001a07rw5` version 1** on 28 October 2026. The exact dialogue, claims, citations, short source excerpts, and package publication were approved. Package content hash: `ced67209984ff87088119f58f5b2bcc643fd9240623dfbe02e03ab761c1fb07f`. Version 2 adds prepared reasoning to each persona turn; see section 11.
 
 ## 1. Provenance and scope
 
@@ -290,7 +290,7 @@ Citations: C1, C2, C10, C11, C13.
   - Demo-authored: **Prepared for this replay**.
   - Unknown: **Not established in the record**.
 
-Do not display “live”, “committed”, “saved on demand”, or “continues on server” as descriptions of replay behavior. Do not fabricate thinking traces, token usage, cost, or savings. If usage is mentioned at all, use **not measured in replay**.
+Do not display “live”, “committed”, “saved on demand”, or “continues on server” as descriptions of replay behavior. Do not fabricate live model thinking, token usage, cost, or savings. Prepared reasoning for persona turns must be labeled **Prepared reasoning** in replay (version 2; see section 11). If usage is mentioned at all, use **not measured in replay**.
 
 ## 9. Package shape and verification
 
@@ -322,3 +322,27 @@ Do not display “live”, “committed”, “saved on demand”, or “continu
 Approved on 28 October 2026. The production package is committed with the hash above; later edits require a new version and a new approval.
 
 Until all five boxes are checked, this file is a candidate and the production package must not be published.
+
+## 11. Version 2 — prepared reasoning
+
+Prepared on 30 October 2026. Version 2 adds a prepared reasoning block to each persona turn: the Credit Analyst, the Downside Reviewer, the Portfolio Analyst, and the concluding Credit Analyst turn. The replay UI labels these blocks **Prepared reasoning** so they are not mistaken for captured live model thoughts. No dialogue, claims, citations, assets, checkpoints, or tool artifacts changed.
+
+Package content hash: `5fb2a800c907f4de3be69c4b4b1262e32b1570b0abe03f8819ed783baac9bc82`.
+
+### Credit Analyst prepared reasoning
+
+> Start with the instrument record: coupon, allotment, maturity, and issue size. The CRISIL annexure is the strongest credit evidence, but it is a dated opinion, so I must not present it as a current rating. Pull the FY20 issuer figures for scale, keeping them separate from series-level terms. Check the coupon arithmetic and label the result correctly: not a yield. Test whether the retained excerpt establishes security or payment; it does not. Finish by separating what the record proves from the missing price, yield, and liquidity evidence.
+
+### Downside Reviewer prepared reasoning
+
+> Accept the recorded terms, but challenge the comfort being drawn from AAA/Stable. A rating is a point-in-time opinion, not a guarantee or current market evidence. The record shows listing, not executable liquidity. Frame a +200bp and risk-off scenario as an illustration, not a forecast. Because price, yield, and liquidity data are absent, I cannot infer a mark-to-market value or a refinancing outcome. Log the disagreement so the scoreboard captures the gap between rating comfort and market evidence.
+
+### Portfolio Analyst prepared reasoning
+
+> Apply the fictional three-year mandate literally: it requires an executable price, yield, and liquidity assessment. The record supplies terms and a scheduled maturity, but none of the market inputs the mandate needs. The coupon is not a yield, and scheduled maturity is not proof of payment. Do not size a position or infer a mark. The only defensible output is a research checklist: confirm the series terms and security, obtain current market evidence, and verify payment when it occurs.
+
+### Concluding discussion prepared reasoning
+
+> Reconcile the three positions. The Credit Analyst established the terms and rating; the Downside Reviewer separated a dated opinion from market evidence; the Portfolio Analyst showed the mandate cannot be completed. The shared ground is a bounded checklist of facts, judgments, and unknowns. Confirm the facts and unknowns match the record, keep the downside scenarios labeled illustrative, and avoid turning alignment into an investment approval. Log consensus at strength 4.
+
+Version 2 is approved for the guided demo on 30 October 2026. A production publication still requires the usual package validation and activation.

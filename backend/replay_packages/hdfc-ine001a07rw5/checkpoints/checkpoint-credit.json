@@ -261,7 +261,7 @@
               }
             ]
           },
-          "thinking_content": null,
+          "thinking_content": "Start with the instrument record: coupon, allotment, maturity, and issue size. The CRISIL annexure is the strongest credit evidence, but it is a dated opinion, so I must not present it as a current rating. Pull the FY20 issuer figures for scale, keeping them separate from series-level terms. Check the coupon arithmetic and label the result correctly: not a yield. Test whether the retained excerpt establishes security or payment; it does not. Finish by separating what the record proves from the missing price, yield, and liquidity evidence.",
           "estimated_cost": 0.0,
           "effective_generation": null,
           "sequence": 1,

@@ -10,6 +10,42 @@
     {
       "event_id": "tape-consensus-1",
       "sequence": 1,
+      "type": "thinking",
+      "delay_ms": 60,
+      "payload": {
+        "content": "Reconcile the three positions. The Credit Analyst established the terms and rating; the Downside Reviewer separated a dated opinion from market "
+      }
+    },
+    {
+      "event_id": "tape-consensus-2",
+      "sequence": 2,
+      "type": "thinking",
+      "delay_ms": 60,
+      "payload": {
+        "content": "evidence; the Portfolio Analyst showed the mandate cannot be completed. The shared ground is a bounded checklist of facts, judgments, and unknowns. "
+      }
+    },
+    {
+      "event_id": "tape-consensus-3",
+      "sequence": 3,
+      "type": "thinking",
+      "delay_ms": 60,
+      "payload": {
+        "content": "Confirm the facts and unknowns match the record, keep the downside scenarios labeled illustrative, and avoid turning alignment into an investment "
+      }
+    },
+    {
+      "event_id": "tape-consensus-4",
+      "sequence": 4,
+      "type": "thinking",
+      "delay_ms": 60,
+      "payload": {
+        "content": "approval. Log consensus at strength 4."
+      }
+    },
+    {
+      "event_id": "tape-consensus-5",
+      "sequence": 5,
       "type": "tool_call",
       "delay_ms": 100,
       "payload": {
@@ -22,8 +58,8 @@
       }
     },
     {
-      "event_id": "tape-consensus-2",
-      "sequence": 2,
+      "event_id": "tape-consensus-6",
+      "sequence": 6,
       "type": "tool_result",
       "delay_ms": 120,
       "payload": {
@@ -37,8 +73,8 @@
       }
     },
     {
-      "event_id": "tape-consensus-3",
-      "sequence": 3,
+      "event_id": "tape-consensus-7",
+      "sequence": 7,
       "type": "tool_call",
       "delay_ms": 100,
       "payload": {
@@ -57,8 +93,8 @@
       }
     },
     {
-      "event_id": "tape-consensus-4",
-      "sequence": 4,
+      "event_id": "tape-consensus-8",
+      "sequence": 8,
       "type": "tool_result",
       "delay_ms": 120,
       "payload": {
@@ -71,8 +107,8 @@
       }
     },
     {
-      "event_id": "tape-consensus-5",
-      "sequence": 5,
+      "event_id": "tape-consensus-9",
+      "sequence": 9,
       "type": "citation",
       "delay_ms": 60,
       "payload": {
@@ -85,8 +121,8 @@
       }
     },
     {
-      "event_id": "tape-consensus-6",
-      "sequence": 6,
+      "event_id": "tape-consensus-10",
+      "sequence": 10,
       "type": "citation",
       "delay_ms": 60,
       "payload": {
@@ -99,8 +135,8 @@
       }
     },
     {
-      "event_id": "tape-consensus-7",
-      "sequence": 7,
+      "event_id": "tape-consensus-11",
+      "sequence": 11,
       "type": "citation",
       "delay_ms": 60,
       "payload": {
@@ -113,8 +149,8 @@
       }
     },
     {
-      "event_id": "tape-consensus-8",
-      "sequence": 8,
+      "event_id": "tape-consensus-12",
+      "sequence": 12,
       "type": "citation",
       "delay_ms": 60,
       "payload": {
@@ -127,8 +163,8 @@
       }
     },
     {
-      "event_id": "tape-consensus-9",
-      "sequence": 9,
+      "event_id": "tape-consensus-13",
+      "sequence": 13,
       "type": "citation",
       "delay_ms": 60,
       "payload": {
@@ -141,8 +177,8 @@
       }
     },
     {
-      "event_id": "tape-consensus-10",
-      "sequence": 10,
+      "event_id": "tape-consensus-14",
+      "sequence": 14,
       "type": "citation",
       "delay_ms": 60,
       "payload": {
@@ -155,8 +191,8 @@
       }
     },
     {
-      "event_id": "tape-consensus-11",
-      "sequence": 11,
+      "event_id": "tape-consensus-15",
+      "sequence": 15,
       "type": "citation",
       "delay_ms": 60,
       "payload": {
@@ -169,8 +205,8 @@
       }
     },
     {
-      "event_id": "tape-consensus-12",
-      "sequence": 12,
+      "event_id": "tape-consensus-16",
+      "sequence": 16,
       "type": "citation",
       "delay_ms": 60,
       "payload": {
@@ -183,8 +219,8 @@
       }
     },
     {
-      "event_id": "tape-consensus-13",
-      "sequence": 13,
+      "event_id": "tape-consensus-17",
+      "sequence": 17,
       "type": "text",
       "delay_ms": 60,
       "payload": {
@@ -192,8 +228,8 @@
       }
     },
     {
-      "event_id": "tape-consensus-14",
-      "sequence": 14,
+      "event_id": "tape-consensus-18",
+      "sequence": 18,
       "type": "text",
       "delay_ms": 60,
       "payload": {
@@ -201,8 +237,8 @@
       }
     },
     {
-      "event_id": "tape-consensus-15",
-      "sequence": 15,
+      "event_id": "tape-consensus-19",
+      "sequence": 19,
       "type": "text",
       "delay_ms": 60,
       "payload": {
@@ -210,8 +246,8 @@
       }
     },
     {
-      "event_id": "tape-consensus-16",
-      "sequence": 16,
+      "event_id": "tape-consensus-20",
+      "sequence": 20,
       "type": "done",
       "delay_ms": 80,
       "payload": {

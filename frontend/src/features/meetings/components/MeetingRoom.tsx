@@ -1198,6 +1198,7 @@ function MessageBubble({
     message: Message;
     participant?: AIParticipant;
 }) {
+    const runtime = useMeetingsRuntime();
     const isUser = message.sender_type === 'user';
     const isSystem = message.sender_type === 'system';
     const toolCalls =
@@ -1245,7 +1246,11 @@ function MessageBubble({
                     )}
                 </div>
                 {message.thinking_content && (
-                    <ThinkingBlock content={message.thinking_content} isStreaming={false} />
+                    <ThinkingBlock
+                        content={message.thinking_content}
+                        isStreaming={false}
+                        provenance={runtime.replay ? 'Prepared reasoning' : undefined}
+                    />
                 )}
                 {toolCalls.length > 0 && (
                     <div className="mb-2">
@@ -1349,6 +1354,7 @@ function TurnProjectionBubble({
                     <ThinkingBlock
                         content={projection.thinking}
                         isStreaming={!projection.terminal && !projection.observationInterrupted}
+                        provenance={runtime.replay ? 'Prepared reasoning' : undefined}
                     />
                 )}
 

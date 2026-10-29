@@ -10,6 +10,42 @@
     {
       "event_id": "tape-credit-1",
       "sequence": 1,
+      "type": "thinking",
+      "delay_ms": 60,
+      "payload": {
+        "content": "Start with the instrument record: coupon, allotment, maturity, and issue size. The CRISIL annexure is the strongest credit evidence, but it is a "
+      }
+    },
+    {
+      "event_id": "tape-credit-2",
+      "sequence": 2,
+      "type": "thinking",
+      "delay_ms": 60,
+      "payload": {
+        "content": "dated opinion, so I must not present it as a current rating. Pull the FY20 issuer figures for scale, keeping them separate from series-level terms. "
+      }
+    },
+    {
+      "event_id": "tape-credit-3",
+      "sequence": 3,
+      "type": "thinking",
+      "delay_ms": 60,
+      "payload": {
+        "content": "Check the coupon arithmetic and label the result correctly: not a yield. Test whether the retained excerpt establishes security or payment; it does "
+      }
+    },
+    {
+      "event_id": "tape-credit-4",
+      "sequence": 4,
+      "type": "thinking",
+      "delay_ms": 60,
+      "payload": {
+        "content": "not. Finish by separating what the record proves from the missing price, yield, and liquidity evidence."
+      }
+    },
+    {
+      "event_id": "tape-credit-5",
+      "sequence": 5,
       "type": "tool_call",
       "delay_ms": 100,
       "payload": {
@@ -22,8 +58,8 @@
       }
     },
     {
-      "event_id": "tape-credit-2",
-      "sequence": 2,
+      "event_id": "tape-credit-6",
+      "sequence": 6,
       "type": "tool_result",
       "delay_ms": 120,
       "payload": {
@@ -37,8 +73,8 @@
       }
     },
     {
-      "event_id": "tape-credit-3",
-      "sequence": 3,
+      "event_id": "tape-credit-7",
+      "sequence": 7,
       "type": "citation",
       "delay_ms": 60,
       "payload": {
@@ -51,8 +87,8 @@
       }
     },
     {
-      "event_id": "tape-credit-4",
-      "sequence": 4,
+      "event_id": "tape-credit-8",
+      "sequence": 8,
       "type": "citation",
       "delay_ms": 60,
       "payload": {
@@ -65,8 +101,8 @@
       }
     },
     {
-      "event_id": "tape-credit-5",
-      "sequence": 5,
+      "event_id": "tape-credit-9",
+      "sequence": 9,
       "type": "citation",
       "delay_ms": 60,
       "payload": {
@@ -79,8 +115,8 @@
       }
     },
     {
-      "event_id": "tape-credit-6",
-      "sequence": 6,
+      "event_id": "tape-credit-10",
+      "sequence": 10,
       "type": "citation",
       "delay_ms": 60,
       "payload": {
@@ -93,8 +129,8 @@
       }
     },
     {
-      "event_id": "tape-credit-7",
-      "sequence": 7,
+      "event_id": "tape-credit-11",
+      "sequence": 11,
       "type": "citation",
       "delay_ms": 60,
       "payload": {
@@ -107,48 +143,12 @@
       }
     },
     {
-      "event_id": "tape-credit-8",
-      "sequence": 8,
-      "type": "text",
-      "delay_ms": 60,
-      "payload": {
-        "content": "CRISIL's annexure row for ISIN INE001A07RW5 lists a 7.87% coupon, allotment on 18 July 2019, scheduled maturity on 18 July 2022, and an issue size of "
-      }
-    },
-    {
-      "event_id": "tape-credit-9",
-      "sequence": 9,
-      "type": "text",
-      "delay_ms": 60,
-      "payload": {
-        "content": "Rs 5,000 crore. CRISIL assigned AAA/Stable on 31 July 2020; that is the strongest credit evidence in the record, but it is an opinion, not a "
-      }
-    },
-    {
-      "event_id": "tape-credit-10",
-      "sequence": 10,
-      "type": "text",
-      "delay_ms": 60,
-      "payload": {
-        "content": "guarantee or a current rating. The FY20 MD&A reports standalone total income of Rs 58,763 crore, profit after tax of Rs 17,770 crore, and Rs 46,437 "
-      }
-    },
-    {
-      "event_id": "tape-credit-11",
-      "sequence": 11,
-      "type": "text",
-      "delay_ms": 60,
-      "payload": {
-        "content": "crore of secured redeemable NCDs raised at issuer level. The stated tenor is 1,096 days, about three years. Three scheduled annual coupons at 7.87% "
-      }
-    },
-    {
       "event_id": "tape-credit-12",
       "sequence": 12,
       "type": "text",
       "delay_ms": 60,
       "payload": {
-        "content": "would sum to 23.61% of principal; that is not a yield. The annexure calls the instrument a debenture, but the retained excerpt does not establish "
+        "content": "CRISIL's annexure row for ISIN INE001A07RW5 lists a 7.87% coupon, allotment on 18 July 2019, scheduled maturity on 18 July 2022, and an issue size of "
       }
     },
     {
@@ -157,7 +157,7 @@
       "type": "text",
       "delay_ms": 60,
       "payload": {
-        "content": "series-level security. The record has no executable price, yield, or secondary-market liquidity, and it does not assert payment. This is a 31 July "
+        "content": "Rs 5,000 crore. CRISIL assigned AAA/Stable on 31 July 2020; that is the strongest credit evidence in the record, but it is an opinion, not a "
       }
     },
     {
@@ -166,12 +166,48 @@
       "type": "text",
       "delay_ms": 60,
       "payload": {
-        "content": "2020 information set, not a current rating."
+        "content": "guarantee or a current rating. The FY20 MD&A reports standalone total income of Rs 58,763 crore, profit after tax of Rs 17,770 crore, and Rs 46,437 "
       }
     },
     {
       "event_id": "tape-credit-15",
       "sequence": 15,
+      "type": "text",
+      "delay_ms": 60,
+      "payload": {
+        "content": "crore of secured redeemable NCDs raised at issuer level. The stated tenor is 1,096 days, about three years. Three scheduled annual coupons at 7.87% "
+      }
+    },
+    {
+      "event_id": "tape-credit-16",
+      "sequence": 16,
+      "type": "text",
+      "delay_ms": 60,
+      "payload": {
+        "content": "would sum to 23.61% of principal; that is not a yield. The annexure calls the instrument a debenture, but the retained excerpt does not establish "
+      }
+    },
+    {
+      "event_id": "tape-credit-17",
+      "sequence": 17,
+      "type": "text",
+      "delay_ms": 60,
+      "payload": {
+        "content": "series-level security. The record has no executable price, yield, or secondary-market liquidity, and it does not assert payment. This is a 31 July "
+      }
+    },
+    {
+      "event_id": "tape-credit-18",
+      "sequence": 18,
+      "type": "text",
+      "delay_ms": 60,
+      "payload": {
+        "content": "2020 information set, not a current rating."
+      }
+    },
+    {
+      "event_id": "tape-credit-19",
+      "sequence": 19,
       "type": "done",
       "delay_ms": 80,
       "payload": {

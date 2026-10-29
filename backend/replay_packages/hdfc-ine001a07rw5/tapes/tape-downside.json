@@ -10,6 +10,42 @@
     {
       "event_id": "tape-downside-1",
       "sequence": 1,
+      "type": "thinking",
+      "delay_ms": 60,
+      "payload": {
+        "content": "Accept the recorded terms, but challenge the comfort being drawn from AAA/Stable. A rating is a point-in-time opinion, not a guarantee or current "
+      }
+    },
+    {
+      "event_id": "tape-downside-2",
+      "sequence": 2,
+      "type": "thinking",
+      "delay_ms": 60,
+      "payload": {
+        "content": "market evidence. The record shows listing, not executable liquidity. Frame a +200bp and risk-off scenario as an illustration, not a forecast. Because "
+      }
+    },
+    {
+      "event_id": "tape-downside-3",
+      "sequence": 3,
+      "type": "thinking",
+      "delay_ms": 60,
+      "payload": {
+        "content": "price, yield, and liquidity data are absent, I cannot infer a mark-to-market value or a refinancing outcome. Log the disagreement so the scoreboard "
+      }
+    },
+    {
+      "event_id": "tape-downside-4",
+      "sequence": 4,
+      "type": "thinking",
+      "delay_ms": 60,
+      "payload": {
+        "content": "captures the gap between rating comfort and market evidence."
+      }
+    },
+    {
+      "event_id": "tape-downside-5",
+      "sequence": 5,
       "type": "tool_call",
       "delay_ms": 100,
       "payload": {
@@ -22,8 +58,8 @@
       }
     },
     {
-      "event_id": "tape-downside-2",
-      "sequence": 2,
+      "event_id": "tape-downside-6",
+      "sequence": 6,
       "type": "tool_result",
       "delay_ms": 120,
       "payload": {
@@ -37,8 +73,8 @@
       }
     },
     {
-      "event_id": "tape-downside-3",
-      "sequence": 3,
+      "event_id": "tape-downside-7",
+      "sequence": 7,
       "type": "tool_call",
       "delay_ms": 100,
       "payload": {
@@ -54,8 +90,8 @@
       }
     },
     {
-      "event_id": "tape-downside-4",
-      "sequence": 4,
+      "event_id": "tape-downside-8",
+      "sequence": 8,
       "type": "tool_result",
       "delay_ms": 120,
       "payload": {
@@ -68,8 +104,8 @@
       }
     },
     {
-      "event_id": "tape-downside-5",
-      "sequence": 5,
+      "event_id": "tape-downside-9",
+      "sequence": 9,
       "type": "citation",
       "delay_ms": 60,
       "payload": {
@@ -82,8 +118,8 @@
       }
     },
     {
-      "event_id": "tape-downside-6",
-      "sequence": 6,
+      "event_id": "tape-downside-10",
+      "sequence": 10,
       "type": "citation",
       "delay_ms": 60,
       "payload": {
@@ -96,8 +132,8 @@
       }
     },
     {
-      "event_id": "tape-downside-7",
-      "sequence": 7,
+      "event_id": "tape-downside-11",
+      "sequence": 11,
       "type": "citation",
       "delay_ms": 60,
       "payload": {
@@ -110,8 +146,8 @@
       }
     },
     {
-      "event_id": "tape-downside-8",
-      "sequence": 8,
+      "event_id": "tape-downside-12",
+      "sequence": 12,
       "type": "citation",
       "delay_ms": 60,
       "payload": {
@@ -124,8 +160,8 @@
       }
     },
     {
-      "event_id": "tape-downside-9",
-      "sequence": 9,
+      "event_id": "tape-downside-13",
+      "sequence": 13,
       "type": "citation",
       "delay_ms": 60,
       "payload": {
@@ -138,8 +174,8 @@
       }
     },
     {
-      "event_id": "tape-downside-10",
-      "sequence": 10,
+      "event_id": "tape-downside-14",
+      "sequence": 14,
       "type": "text",
       "delay_ms": 60,
       "payload": {
@@ -147,8 +183,8 @@
       }
     },
     {
-      "event_id": "tape-downside-11",
-      "sequence": 11,
+      "event_id": "tape-downside-15",
+      "sequence": 15,
       "type": "text",
       "delay_ms": 60,
       "payload": {
@@ -156,8 +192,8 @@
       }
     },
     {
-      "event_id": "tape-downside-12",
-      "sequence": 12,
+      "event_id": "tape-downside-16",
+      "sequence": 16,
       "type": "text",
       "delay_ms": 60,
       "payload": {
@@ -165,8 +201,8 @@
       }
     },
     {
-      "event_id": "tape-downside-13",
-      "sequence": 13,
+      "event_id": "tape-downside-17",
+      "sequence": 17,
       "type": "text",
       "delay_ms": 60,
       "payload": {
@@ -174,8 +210,8 @@
       }
     },
     {
-      "event_id": "tape-downside-14",
-      "sequence": 14,
+      "event_id": "tape-downside-18",
+      "sequence": 18,
       "type": "done",
       "delay_ms": 80,
       "payload": {

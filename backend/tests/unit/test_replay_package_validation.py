@@ -221,6 +221,29 @@ def test_checked_in_packages_are_valid() -> None:
         assert codes == set(), root
 
 
+def test_guided_persona_tapes_stream_prepared_reasoning() -> None:
+    package = load_package(GUIDED_ROOT)
+    for tape_id in ("tape-credit", "tape-downside", "tape-portfolio", "tape-consensus"):
+        tape = package.tapes[tape_id]
+        thinking_events = [event for event in tape.events if event.type == "thinking"]
+        assert thinking_events, tape_id
+        assert tape.events[0].type == "thinking"
+        thinking = "".join(event.payload["content"] for event in thinking_events)
+
+        checkpoint = package.checkpoints[tape.completed_checkpoint]
+        operation = next(
+            item
+            for item in checkpoint.reads["operations"]
+            if item["operation_id"] == tape.operation_id
+        )
+        final_message = next(
+            item
+            for item in checkpoint.reads["meeting"]["messages"]
+            if item["id"] == operation["final_message_id"]
+        )
+        assert final_message["thinking_content"] == thinking
+
+
 def test_content_hash_mismatch_is_rejected(tmp_path: Path) -> None:
     root = _copy(tmp_path)
     _edit_json(

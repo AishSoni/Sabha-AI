@@ -56,7 +56,7 @@ Exit when one polished linear journey works with the production package, copy an
 
 ## Implementation evidence (29 October 2026)
 
-The approved package is `backend/replay_packages/hdfc-ine001a07rw5` version `1`, content hash `ced67209984ff87088119f58f5b2bcc643fd9240623dfbe02e03ab761c1fb07f`. It is generated only by `backend/scripts/build_guided_package.py` and is recorded in [the content ledger](spec-18-guided-bond-journey-content.md).
+The approved package is `backend/replay_packages/hdfc-ine001a07rw5` version `2`, content hash `5fb2a800c907f4de3be69c4b4b1262e32b1570b0abe03f8819ed783baac9bc82`. Version 2 adds a prepared reasoning block to each persona turn; version 1 remains the prior approved release. It is generated only by `backend/scripts/build_guided_package.py` and is recorded in [the content ledger](spec-18-guided-bond-journey-content.md).
 
 Evidence run:
 

@@ -537,7 +537,7 @@ python -m scripts.replay_package validate replay_packages/hdfc-ine001a07rw5
 python -m scripts.replay_package --database-url $env:REPLAY_PROVISIONER_DATABASE_URL `
     publish replay_packages/hdfc-ine001a07rw5
 python -m scripts.replay_package --database-url $env:REPLAY_PROVISIONER_DATABASE_URL `
-    activate hdfc-ine001a07rw5 1
+    activate hdfc-ine001a07rw5 2
 python -m scripts.replay_package --database-url $env:REPLAY_PROVISIONER_DATABASE_URL `
     prune --older-than-days 30
 python -m scripts.replay_package --database-url $env:REPLAY_PROVISIONER_DATABASE_URL list
@@ -576,8 +576,8 @@ Runtime configuration:
 ```text
 REPLAY_DATABASE_URL=postgresql://sabha_replay_login:<password>@<host>:5432/postgres
 REPLAY_PACKAGE_ID=hdfc-ine001a07rw5
-REPLAY_PACKAGE_VERSION=1              # optional; registry default otherwise
-REPLAY_PACKAGE_SHA256=ced67209984ff87088119f58f5b2bcc643fd9240623dfbe02e03ab761c1fb07f
+REPLAY_PACKAGE_VERSION=2              # optional; registry default otherwise
+REPLAY_PACKAGE_SHA256=5fb2a800c907f4de3be69c4b4b1262e32b1570b0abe03f8819ed783baac9bc82
 REPLAY_ONLY=true                      # serve no live graph
 REPLAY_STREAM_MAX_PER_CLIENT=2
 REPLAY_STREAM_MAX_GLOBAL=8
@@ -594,8 +594,8 @@ synthetic backend fixture instead. Install the browser once with
 
 ### Guided bond journey (spec 18)
 
-The guided package is `backend/replay_packages/hdfc-ine001a07rw5` version `1`
-with content hash `ced67209984ff87088119f58f5b2bcc643fd9240623dfbe02e03ab761c1fb07f`.
+The guided package is `backend/replay_packages/hdfc-ine001a07rw5` version `2`
+with content hash `5fb2a800c907f4de3be69c4b4b1262e32b1570b0abe03f8819ed783baac9bc82`.
 It was approved through
 [the content ledger](../specs/spec-18-guided-bond-journey-content.md): short
 attributed source excerpts, exact locators, a source register, and no untracked

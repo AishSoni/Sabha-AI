@@ -7,9 +7,10 @@ import { cn } from '@/lib/utils';
 interface ThinkingBlockProps {
     content: string;
     isStreaming?: boolean;
+    provenance?: string;
 }
 
-export function ThinkingBlock({ content, isStreaming }: ThinkingBlockProps) {
+export function ThinkingBlock({ content, isStreaming, provenance }: ThinkingBlockProps) {
     // Streaming starts expanded so live thinking is visible immediately.
     const [isExpanded, setIsExpanded] = useState(Boolean(isStreaming));
     return (
@@ -20,6 +21,9 @@ export function ThinkingBlock({ content, isStreaming }: ThinkingBlockProps) {
             >
                 <Brain className={cn("w-4 h-4", isStreaming && "animate-pulse")} />
                 <span className="text-sm font-medium">Thinking</span>
+                {provenance && (
+                    <span className="text-[11px] text-violet-500/80">{provenance}</span>
+                )}
                 {isStreaming && (
                     <span className="text-xs text-violet-500 animate-pulse">...</span>
                 )}
