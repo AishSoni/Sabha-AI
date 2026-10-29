@@ -1,6 +1,6 @@
 # Specification Implementation Order
 
-Start with **Spec 01**, then implement each spec in ascending order through **Spec 19**. The number is the global implementation order, not a finding identifier or commit prefix. Complete the current spec's prerequisites and test-backed exit gate before advancing; use small red-green-refactor changes within each spec. Earlier completion records remain historical; Phase 3 is a new planned sequence, not already implemented replay.
+Start with **Spec 01**, then implement each spec in ascending order through **Spec 20**. The number is the global implementation order, not a finding identifier or commit prefix. Complete the current spec's prerequisites and test-backed exit gate before advancing; use small red-green-refactor changes within each spec. Earlier completion records remain historical; Phase 3 is a new planned sequence, not already implemented replay. Spec 20 opens Phase 4 and is a cross-cutting repair of the live and replay data-access paths, not another replay feature.
 
 All documents live directly in this folder. Files starting with `spec-` are implementation assignments. Files starting with `roadmap-` or `reference-` are supporting documents, not additional implementation steps.
 
@@ -29,6 +29,10 @@ All documents live directly in this folder. Files starting with `spec-` are impl
 | 17 | [Replay package and streaming](spec-17-replay-package-and-streaming.md) | Hosted guided replay |
 | 18 | [One guided bond journey](spec-18-guided-bond-journey.md) | Hosted guided replay |
 | 19 | [Replay release acceptance](spec-19-replay-release-acceptance.md) | Hosted guided replay |
+| 20 | [Backend data-access latency and event-loop responsiveness](spec-20-backend-data-access-latency.md) | Production latency |
+
+Phase 4 currently contains only Spec 20. Its measurement method, baseline and
+budgets live in the spec itself, so no separate roadmap document is introduced.
 
 ## Supporting documents
 
