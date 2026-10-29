@@ -1,0 +1,5 @@
+# Replay package content is byte-pinned: asset sizes and hashes are recorded
+# in the package index, and the approved package hash covers every file.
+# Store and check out these files verbatim (JSON currently uses CRLF, assets
+# use LF) so a clean checkout on any platform reproduces the approved bytes.
+backend/replay_packages/** -text
