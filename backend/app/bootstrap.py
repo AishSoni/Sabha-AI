@@ -21,6 +21,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from app.platform.config import settings
 from app.platform.blocking import run_blocking, shutdown_blocking
 from app.platform.database import close_supabase
+from app.platform.replay_database import close_replay_pool
 from app.modules.meetings.application.closing import ClosingService
 from app.modules.meetings.application.meeting_service import MeetingService
 from app.modules.meetings.application.ports import MeetingReads, TurnObservation
@@ -229,6 +230,7 @@ async def lifespan(app: FastAPI):
             except Exception:
                 logger.warning("Turn runner shutdown failed", exc_info=True)
 
+        close_replay_pool()
         close_supabase()
         shutdown_blocking()
 

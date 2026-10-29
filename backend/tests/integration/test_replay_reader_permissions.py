@@ -234,6 +234,7 @@ def test_adapter_opens_a_real_read_only_reader_identity(
             )
     finally:
         conn.close()
+        replay_database.close_replay_pool()
 
 
 def test_adapter_missing_reader_url_does_not_use_live_database(
@@ -261,6 +262,15 @@ def test_adapter_rejects_a_superuser_reader_url(
         replay_db.uri,
         raising=False,
     )
+    monkeypatch.setattr(
+        replay_database.settings, "replay_pool_timeout_seconds", 0.5, raising=False
+    )
+    monkeypatch.setattr(
+        replay_database.settings, "replay_pool_reconnect_seconds", 0.5, raising=False
+    )
 
-    with pytest.raises(replay_database.ReplayReaderPrivilegeError):
-        replay_database.connect_replay_reader()
+    try:
+        with pytest.raises(replay_database.ReplayReaderPrivilegeError):
+            replay_database.connect_replay_reader()
+    finally:
+        replay_database.close_replay_pool()

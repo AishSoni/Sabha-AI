@@ -119,7 +119,21 @@ def _replay(reads=None, observation=None) -> ReplayContainer:
     )
 
 
-def test_unconfigured_replay_is_honest_and_never_falls_back_live():
+def test_unconfigured_replay_is_honest_and_never_falls_back_live(
+    monkeypatch: pytest.MonkeyPatch,
+):
+    # The developer's .env may configure a replay package; this test proves the
+    # unconfigured composition, so clear the pin explicitly.
+    from app.platform.config import settings
+
+    for name in (
+        "replay_database_url",
+        "replay_package_id",
+        "replay_package_version",
+        "replay_package_sha256",
+    ):
+        monkeypatch.setattr(settings, name, "", raising=False)
+
     live_reads = _LiveReads()
     app = create_app(Container(prompt_catalog=object(), meeting_reads=live_reads))
 
