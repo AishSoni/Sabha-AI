@@ -248,7 +248,7 @@ async def execute_turn(
             detail="The turn completed but its final message could not be read",
         )
 
-    disagreement_rows, consensus_rows = service.operation_effects(operation_id)
+    disagreement_rows, consensus_rows = await service.operation_effects(operation_id)
     return TurnResponse(
         message=message,
         disagreements=[Disagreement.model_validate(row) for row in disagreement_rows],

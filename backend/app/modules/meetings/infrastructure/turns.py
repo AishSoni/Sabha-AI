@@ -18,6 +18,7 @@ worker can never publish a final message for a newer fence.
 
 from __future__ import annotations
 
+import asyncio
 import hashlib
 import json
 import logging
@@ -191,6 +192,16 @@ class TurnQueueService:
         self.max_queued = max_queued or settings.turn_max_queued_per_meeting
         self.db = self.meeting_manager.db
 
+    async def _rpc(self, name: str, params: dict):
+        """Run one blocking PostgREST round trip off the event loop.
+
+        The Supabase client is synchronous, and one round trip to the edge
+        costs hundreds of milliseconds. Calling it from a coroutine would stall
+        every other request — including the runner's own poll loop — for that
+        long, so the durable queue never issues one inline.
+        """
+        return await asyncio.to_thread(self.db.rpc(name, params).execute)
+
     # ------------------------------------------------------------------
     # Admission / reads
     # ------------------------------------------------------------------
@@ -211,7 +222,7 @@ class TurnQueueService:
                 else {}
             ),
         }
-        result = self.db.rpc(
+        result = await self._rpc(
             "admit_turn_operation",
             {
                 "p_meeting_id": str(meeting_id),
@@ -222,7 +233,7 @@ class TurnQueueService:
                 "p_max_queued": self.max_queued,
                 "p_now": _now(),
             },
-        ).execute()
+        )
         body = result.data or {}
         outcome = body.get("outcome")
         if outcome == "not_found":
@@ -255,28 +266,28 @@ class TurnQueueService:
         return TurnSubmission(operation=operation, created=outcome == "created")
 
     async def status(self, meeting_id: str, operation_id: str) -> dict:
-        result = self.db.rpc(
+        result = await self._rpc(
             "get_turn_operation_status",
             {
                 "p_operation_id": str(operation_id),
                 "p_meeting_id": str(meeting_id),
             },
-        ).execute()
+        )
         if not result.data:
             raise TurnNotFoundError("Turn operation not found")
         return result.data
 
     async def list_operations(self, meeting_id: str, limit: int = 100) -> list[dict]:
-        result = self.db.rpc(
+        result = await self._rpc(
             "list_turn_operations",
             {"p_meeting_id": str(meeting_id), "p_limit": limit},
-        ).execute()
+        )
         return result.data or []
 
     async def events(
         self, meeting_id: str, operation_id: str, after_sequence: int = 0, limit: int = 500
     ) -> list[dict]:
-        result = self.db.rpc(
+        result = await self._rpc(
             "read_turn_events",
             {
                 "p_operation_id": str(operation_id),
@@ -284,42 +295,46 @@ class TurnQueueService:
                 "p_after_sequence": after_sequence,
                 "p_limit": limit,
             },
-        ).execute()
+        )
         return result.data or []
 
-    def operation_effects(self, operation_id: str) -> tuple[list[dict], list[dict]]:
+    async def operation_effects(self, operation_id: str) -> tuple[list[dict], list[dict]]:
         """Effects committed by one turn, for the legacy synchronous response.
 
         New callers read the meeting's effect collections. This narrow lookup
         exists only while the legacy /turn adapter is still accepted.
         """
-        disagreements = (
-            self.db.table("disagreements")
-            .select("*")
-            .eq("operation_id", str(operation_id))
-            .execute()
-            .data
-            or []
-        )
-        consensus = (
-            self.db.table("consensus")
-            .select("*")
-            .eq("operation_id", str(operation_id))
-            .execute()
-            .data
-            or []
-        )
-        return disagreements, consensus
+
+        def read() -> tuple[list[dict], list[dict]]:
+            disagreements = (
+                self.db.table("disagreements")
+                .select("*")
+                .eq("operation_id", str(operation_id))
+                .execute()
+                .data
+                or []
+            )
+            consensus = (
+                self.db.table("consensus")
+                .select("*")
+                .eq("operation_id", str(operation_id))
+                .execute()
+                .data
+                or []
+            )
+            return disagreements, consensus
+
+        return await asyncio.to_thread(read)
 
     async def cancel(self, meeting_id: str, operation_id: str) -> dict:
-        result = self.db.rpc(
+        result = await self._rpc(
             "cancel_turn_operation",
             {
                 "p_operation_id": str(operation_id),
                 "p_meeting_id": str(meeting_id),
                 "p_now": _now(),
             },
-        ).execute()
+        )
         body = result.data or {}
         outcome = body.get("outcome")
         if outcome == "not_found":
@@ -329,14 +344,14 @@ class TurnQueueService:
         return body
 
     async def cancel_for_meeting(self, meeting_id: str, reason: str = "meeting_closed") -> int:
-        result = self.db.rpc(
+        result = await self._rpc(
             "cancel_turn_operations_for_meeting",
             {
                 "p_meeting_id": str(meeting_id),
                 "p_reason": reason,
                 "p_now": _now(),
             },
-        ).execute()
+        )
         return int(result.data or 0)
 
     # ------------------------------------------------------------------
@@ -345,7 +360,7 @@ class TurnQueueService:
     async def claim(
         self, claimant: str, *, meeting_id: str | None = None, global_limit: int | None = None
     ) -> TurnClaim | None:
-        result = self.db.rpc(
+        result = await self._rpc(
             "claim_next_turn_operation",
             {
                 "p_claimant": claimant,
@@ -354,17 +369,17 @@ class TurnQueueService:
                 "p_now": _now(),
                 "p_meeting_id": str(meeting_id) if meeting_id else None,
             },
-        ).execute()
+        )
         if not result.data:
             return None
         return TurnClaim.from_row(result.data)
 
     async def recover(self) -> dict:
-        result = self.db.rpc("recover_turn_operations", {"p_now": _now()}).execute()
+        result = await self._rpc("recover_turn_operations", {"p_now": _now()})
         return result.data or {}
 
-    def _renew(self, claim: TurnClaim) -> bool:
-        result = self.db.rpc(
+    async def _renew(self, claim: TurnClaim) -> bool:
+        result = await self._rpc(
             "renew_turn_operation_lease",
             {
                 "p_operation_id": claim.operation_id,
@@ -372,11 +387,11 @@ class TurnQueueService:
                 "p_lease_seconds": settings.turn_lease_seconds,
                 "p_now": _now(),
             },
-        ).execute()
+        )
         return bool(result.data)
 
-    def _start(self, claim: TurnClaim, effective_record: dict) -> bool:
-        result = self.db.rpc(
+    async def _start(self, claim: TurnClaim, effective_record: dict) -> bool:
+        result = await self._rpc(
             "start_turn_operation",
             {
                 "p_operation_id": claim.operation_id,
@@ -384,12 +399,14 @@ class TurnQueueService:
                 "p_effective_settings": effective_record,
                 "p_now": _now(),
             },
-        ).execute()
+        )
         return bool(result.data)
 
-    def _begin_attempt(self, claim: TurnClaim, provider: str, model: str) -> tuple[str, int] | None:
+    async def _begin_attempt(
+        self, claim: TurnClaim, provider: str, model: str
+    ) -> tuple[str, int] | None:
         attempt_id = str(uuid.uuid4())
-        result = self.db.rpc(
+        result = await self._rpc(
             "begin_turn_attempt",
             {
                 "p_operation_id": claim.operation_id,
@@ -399,19 +416,19 @@ class TurnQueueService:
                 "p_model": model,
                 "p_now": _now(),
             },
-        ).execute()
+        )
         if result.data is None:
             return None
         return attempt_id, int(result.data)
 
-    def _complete_attempt(
+    async def _complete_attempt(
         self,
         attempt_id: str,
         usage: dict | None,
         cost: float,
         provider_request_id: str | None = None,
     ) -> bool:
-        result = self.db.rpc(
+        result = await self._rpc(
             "complete_turn_attempt",
             {
                 "p_attempt_id": attempt_id,
@@ -420,11 +437,11 @@ class TurnQueueService:
                 "p_provider_request_id": provider_request_id,
                 "p_now": _now(),
             },
-        ).execute()
+        )
         return bool(result.data)
 
-    def _fail_attempt(self, attempt_id: str, status: str, code: str) -> bool:
-        result = self.db.rpc(
+    async def _fail_attempt(self, attempt_id: str, status: str, code: str) -> bool:
+        result = await self._rpc(
             "fail_turn_attempt",
             {
                 "p_attempt_id": attempt_id,
@@ -432,13 +449,13 @@ class TurnQueueService:
                 "p_error_code": code,
                 "p_now": _now(),
             },
-        ).execute()
+        )
         return bool(result.data)
 
-    def _append_event(
+    async def _append_event(
         self, claim: TurnClaim, event_type: str, payload: dict, event_id: str | None = None
     ) -> dict | None:
-        result = self.db.rpc(
+        result = await self._rpc(
             "append_turn_event",
             {
                 "p_operation_id": claim.operation_id,
@@ -448,17 +465,17 @@ class TurnQueueService:
                 "p_payload": payload,
                 "p_now": _now(),
             },
-        ).execute()
+        )
         return result.data
 
-    def _publish(
+    async def _publish(
         self,
         claim: TurnClaim,
         message: dict,
         usage: dict,
         cost: float,
     ) -> dict:
-        result = self.db.rpc(
+        result = await self._rpc(
             "publish_turn_operation",
             {
                 "p_operation_id": claim.operation_id,
@@ -468,13 +485,13 @@ class TurnQueueService:
                 "p_cost": cost,
                 "p_now": _now(),
             },
-        ).execute()
+        )
         return result.data or {}
 
-    def _fail_operation(
+    async def _fail_operation(
         self, claim: TurnClaim, status: str, code: str, message: str
     ) -> bool:
-        result = self.db.rpc(
+        result = await self._rpc(
             "fail_turn_operation",
             {
                 "p_operation_id": claim.operation_id,
@@ -484,27 +501,27 @@ class TurnQueueService:
                 "p_error_message": message,
                 "p_now": _now(),
             },
-        ).execute()
+        )
         return bool(result.data)
 
-    def _current_operation(self, claim: TurnClaim) -> dict | None:
-        result = self.db.rpc(
+    async def _current_operation(self, claim: TurnClaim) -> dict | None:
+        result = await self._rpc(
             "get_turn_operation_status",
             {
                 "p_operation_id": claim.operation_id,
                 "p_meeting_id": claim.meeting_id,
             },
-        ).execute()
+        )
         return result.data
 
-    def _interrupt(
+    async def _interrupt(
         self, claim: TurnClaim, code: str, message: str, *, cancelled: bool = False
     ) -> TurnExecutionResult:
         status = "cancelled" if cancelled else "interrupted"
-        self._fail_operation(claim, status, code, message)
+        await self._fail_operation(claim, status, code, message)
         return TurnExecutionResult(claim.operation_id, status, error_code=code)
 
-    def interrupt_claim(
+    async def interrupt_claim(
         self, claim: TurnClaim, code: str, message: str
     ) -> TurnExecutionResult:
         """Explicit terminal failure for a claim owned by this worker.
@@ -512,7 +529,7 @@ class TurnQueueService:
         Used by the runtime when the execution deadline expires; a stale
         fence makes the write a no-op, which is the desired outcome.
         """
-        self._interrupt(claim, code, message)
+        await self._interrupt(claim, code, message)
         return TurnExecutionResult(claim.operation_id, "interrupted", error_code=code)
 
     async def execute_claim(self, claim: TurnClaim) -> TurnExecutionResult:
@@ -521,11 +538,11 @@ class TurnQueueService:
         payload = operation.get("payload") or {}
         provider_payload = payload.get("provider") or {}
 
-        current = self._current_operation(claim)
+        current = await self._current_operation(claim)
         if not current or current.get("status") != "processing":
             return TurnExecutionResult(claim.operation_id, "stale", error_code="stale_claim")
         if current.get("cancel_requested_at"):
-            return self._interrupt(
+            return await self._interrupt(
                 claim,
                 "cancelled_by_user",
                 "Cancelled before execution.",
@@ -534,12 +551,12 @@ class TurnQueueService:
 
         meeting = await self.meeting_manager.get_meeting(claim.meeting_id)
         if not meeting:
-            self._interrupt(claim, "meeting_not_found", "Meeting no longer exists.")
+            await self._interrupt(claim, "meeting_not_found", "Meeting no longer exists.")
             return TurnExecutionResult(
                 claim.operation_id, "failed", error_code="meeting_not_found"
             )
         if meeting.status != MeetingStatus.ACTIVE:
-            self._interrupt(claim, "meeting_closed", "Meeting is no longer active.")
+            await self._interrupt(claim, "meeting_closed", "Meeting is no longer active.")
             return TurnExecutionResult(
                 claim.operation_id, "cancelled", error_code="meeting_closed"
             )
@@ -547,7 +564,7 @@ class TurnQueueService:
             (p for p in meeting.participants if p.id == claim.participant_id), None
         )
         if participant is None:
-            self._fail_operation(
+            await self._fail_operation(
                 claim,
                 "cancelled",
                 "participant_removed",
@@ -570,14 +587,14 @@ class TurnQueueService:
         except MissingProviderKeyError as exc:
             # No paid call happened. This is safe to classify as interrupted:
             # explicit resubmission with a fresh key is required.
-            return self._interrupt(claim, "credential_unavailable", str(exc))
+            return await self._interrupt(claim, "credential_unavailable", str(exc))
         except IncompatibleGenerationPlan as exc:
-            return self._interrupt(claim, "incompatible_generation", str(exc))
+            return await self._interrupt(claim, "incompatible_generation", str(exc))
         except Exception as exc:  # noqa: BLE001 - configuration failure is terminal
             logger.warning("Turn configuration failed for %s", claim.operation_id, exc_info=True)
-            return self._interrupt(claim, "configuration_error", str(exc))
+            return await self._interrupt(claim, "configuration_error", str(exc))
 
-        if not self._start(claim, effective.as_record()):
+        if not await self._start(claim, effective.as_record()):
             return TurnExecutionResult(claim.operation_id, "stale", error_code="stale_claim")
 
         gen = effective.as_gen_dict()
@@ -589,7 +606,7 @@ class TurnQueueService:
                 base_url=gen["base_url"],
             )
         except Exception as exc:  # noqa: BLE001 - no provider call happened
-            return self._interrupt(claim, "provider_unavailable", str(exc))
+            return await self._interrupt(claim, "provider_unavailable", str(exc))
 
         messages = self._build_bounded_context(
             participant, meeting.messages, meeting.agenda, claim.context_boundary
@@ -709,29 +726,31 @@ class TurnQueueService:
         cost_total = 0.0
 
         for round_number in range(MAX_TOOL_ROUNDS):
-            current = self._current_operation(claim)
+            current = await self._current_operation(claim)
             if not current or current.get("status") != "processing":
                 return TurnExecutionResult(claim.operation_id, "stale", error_code="stale_claim")
             if current.get("cancel_requested_at"):
-                return self._interrupt(
+                return await self._interrupt(
                     claim,
                     "cancelled_by_user",
                     "Cancelled by the user.",
                     cancelled=True,
                 )
-            if not self._renew(claim):
+            if not await self._renew(claim):
                 return TurnExecutionResult(claim.operation_id, "stale", error_code="lease_lost")
 
             if knowledge_revisions and not await self._knowledge_still_eligible(
                 claim, participant, knowledge_revisions
             ):
-                return self._interrupt(
+                return await self._interrupt(
                     claim,
                     "knowledge_revoked",
                     "A knowledge source used in this turn was deleted; retry the turn.",
                 )
 
-            attempt = self._begin_attempt(claim, gen["provider"], gen["model"] or "")
+            attempt = await self._begin_attempt(
+                claim, gen["provider"], gen["model"] or ""
+            )
             if attempt is None:
                 return TurnExecutionResult(claim.operation_id, "stale", error_code="stale_claim")
             attempt_id, _attempt_number = attempt
@@ -754,12 +773,12 @@ class TurnQueueService:
                         content = event.content or ""
                         if content:
                             round_text += content
-                            self._append_event(claim, "text", {"content": content})
+                            await self._append_event(claim, "text", {"content": content})
                     elif event.type == StreamEventType.THINKING:
                         content = event.content or ""
                         if content:
                             round_thinking += content
-                            self._append_event(claim, "thinking", {"content": content})
+                            await self._append_event(claim, "thinking", {"content": content})
                     elif event.type == StreamEventType.TOOL_CALL and event.tool_name:
                         call_id = event.tool_call_id or str(uuid.uuid4())
                         tool_call = ToolCall(
@@ -768,7 +787,7 @@ class TurnQueueService:
                             arguments=event.tool_arguments or {},
                         )
                         tool_calls.append(tool_call)
-                        self._append_event(
+                        await self._append_event(
                             claim,
                             "tool_call",
                             {
@@ -779,7 +798,7 @@ class TurnQueueService:
                             },
                         )
                     elif event.type == StreamEventType.CITATION:
-                        self._append_event(
+                        await self._append_event(
                             claim,
                             "citation",
                             {
@@ -797,19 +816,19 @@ class TurnQueueService:
                         break
             except Exception as exc:  # noqa: BLE001 - provider boundary
                 logger.warning("Provider failed for %s", claim.operation_id, exc_info=True)
-                self._fail_attempt(attempt_id, "unknown", "provider_error")
-                return self._interrupt(claim, "provider_error", str(exc))
+                await self._fail_attempt(attempt_id, "unknown", "provider_error")
+                return await self._interrupt(claim, "provider_error", str(exc))
 
             if provider_error:
-                self._fail_attempt(attempt_id, "failed", "provider_error")
-                return self._interrupt(claim, "provider_error", provider_error)
+                await self._fail_attempt(attempt_id, "failed", "provider_error")
+                return await self._interrupt(claim, "provider_error", provider_error)
 
             cost = 0.0
             try:
                 cost = float(provider.estimate_cost(round_usage) or 0.0)
             except Exception:  # noqa: BLE001 - cost estimation is best effort
                 logger.warning("Cost estimation failed for %s", claim.operation_id, exc_info=True)
-            self._complete_attempt(attempt_id, round_usage, cost)
+            await self._complete_attempt(attempt_id, round_usage, cost)
             cost_total += cost
 
             accumulated_content += round_text
@@ -821,9 +840,9 @@ class TurnQueueService:
                 break
 
             for tool_call in tool_calls:
-                current = self._current_operation(claim)
+                current = await self._current_operation(claim)
                 if current and current.get("cancel_requested_at"):
-                    return self._interrupt(
+                    return await self._interrupt(
                         claim,
                         "cancelled_by_user",
                         "Cancelled by the user.",
@@ -855,7 +874,7 @@ class TurnQueueService:
                 tool_calls_made.append(
                     {"tool": tool_call.name, "call_id": tool_call.id, "result": result}
                 )
-                self._append_event(
+                await self._append_event(
                     claim,
                     "tool_result",
                     {
@@ -876,7 +895,7 @@ class TurnQueueService:
             )
 
         message_id = str(uuid.uuid4())
-        publication = self._publish(
+        publication = await self._publish(
             claim,
             {
                 "id": message_id,
@@ -907,7 +926,7 @@ class TurnQueueService:
                 message_id=final_message_id,
             )
         if outcome == "cancel_requested":
-            return self._interrupt(
+            return await self._interrupt(
                 claim,
                 "cancelled_by_user",
                 "Cancelled before the final message was published.",
@@ -917,7 +936,7 @@ class TurnQueueService:
             return TurnExecutionResult(claim.operation_id, "stale", error_code="stale_fence")
         # A message conflict or missing operation is not recoverable by this
         # worker; leave an explicit terminal state for reconciliation.
-        self._fail_operation(
+        await self._fail_operation(
             claim,
             "interrupted",
             "publication_failed",
@@ -939,7 +958,7 @@ class TurnQueueService:
         args = tool_call.arguments or {}
 
         if name == "log_disagreement":
-            result = self.db.rpc(
+            result = await self._rpc(
                 "record_turn_disagreement",
                 {
                     "p_operation_id": claim.operation_id,
@@ -953,7 +972,7 @@ class TurnQueueService:
                     "p_severity": int(args.get("severity", 3)),
                     "p_now": _now(),
                 },
-            ).execute()
+            )
             if not result.data:
                 return "Disagreement could not be recorded for this turn.", True
             return (
@@ -963,7 +982,7 @@ class TurnQueueService:
             )
 
         if name == "log_consensus":
-            result = self.db.rpc(
+            result = await self._rpc(
                 "record_turn_consensus",
                 {
                     "p_operation_id": claim.operation_id,
@@ -975,7 +994,7 @@ class TurnQueueService:
                     "p_strength": int(args.get("strength", 3)),
                     "p_now": _now(),
                 },
-            ).execute()
+            )
             if not result.data:
                 return "Consensus could not be recorded for this turn.", True
             return f"Consensus logged: {args.get('topic', '')}", False

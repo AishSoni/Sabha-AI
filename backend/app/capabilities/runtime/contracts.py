@@ -33,7 +33,7 @@ class TurnExecutor(Protocol):
     ) -> TurnClaim | None:
         ...
 
-    def interrupt_claim(
+    async def interrupt_claim(
         self, claim: TurnClaim, code: str, message: str
     ) -> object:
         ...

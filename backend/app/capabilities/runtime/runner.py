@@ -146,7 +146,7 @@ class TurnRunner:
                 )
             except asyncio.TimeoutError:
                 logger.warning("Turn %s exceeded its execution deadline", claim.operation_id)
-                self.service.interrupt_claim(
+                await self.service.interrupt_claim(
                     claim,
                     "execution_timeout",
                     "The turn exceeded its execution deadline; its outcome is unknown.",
@@ -158,7 +158,7 @@ class TurnRunner:
                 raise
             except Exception:
                 logger.warning("Turn %s failed unexpectedly", claim.operation_id, exc_info=True)
-                self.service.interrupt_claim(
+                await self.service.interrupt_claim(
                     claim,
                     "runner_error",
                     "The turn failed unexpectedly; its outcome is unknown.",
