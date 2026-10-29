@@ -102,6 +102,12 @@ Create `backend/.env` (or export the variables) from `.env.example`:
 | `TURN_EXECUTION_TIMEOUT_SECONDS` | no | Default 300 |
 | `TURN_GLOBAL_CONCURRENCY` | no | Default 1 |
 | `TURN_MAX_QUEUED_PER_MEETING` | no | Default 10 |
+| `TURN_POLL_SECONDS` | no | Idle claim interval, default 2; a successful claim drains immediately and errors back off |
+| `TURN_EVENT_FLUSH_MS` | no | Streamed-delta batch interval, default 200 |
+| `DB_THREAD_POOL_SIZE` | no | Bounded worker pool for blocking Supabase calls, default 8 |
+| `PERSONA_CACHE_TTL_SECONDS` | no | Persona-list cache TTL, default 45; invalidated on every catalog write |
+| `REPLAY_POOL_MIN_SIZE`, `REPLAY_POOL_MAX_SIZE` | no | Replay reader pool, defaults 2 and 8; direct/session mode only |
+| `REQUEST_TIMING_ENABLED` | no | Per-request `duration_ms`/`db_ops` log line, default true |
 | `DATABASE_URL` | scripts | Direct/session-mode PostgreSQL URL, not the transaction pooler |
 | `REPLAY_DATABASE_URL` | replay only | Dedicated login role in `sabha_replay_reader`; server-only, never `DATABASE_URL` or the service key |
 
@@ -745,3 +751,56 @@ conditional local decision.
 - **Single-region assumption.** Queue leases and cleanup rely on database and
   storage clock/consistency; multi-region active-active deployment is out of
   scope.
+- **Cross-region API/database placement is a documented latency defect.** The
+  Spec-20 baseline was measured with the API client edge in Mumbai and the
+  database in `ap-southeast-2` (Sydney): ~290 ms per authenticated round trip.
+  Co-locate the API with the database; the round-trip budgets below assume it.
+
+## 14. Data-access latency (spec 20)
+
+### Region placement
+
+The API process and the database must run in the same region. A cross-region
+deployment multiplies every round-trip budget below by the WAN cost; it is a
+deployment defect, not a tuning problem. The server-side budget is single-digit
+milliseconds per round trip.
+
+### Round-trip budgets
+
+| Endpoint | Database round trips | Notes |
+| --- | --- | --- |
+| `/health` | 0 | shallow; no dependency probe |
+| `/api/settings/providers` | 0 hot, 1 cold | System AI policy TTL cache |
+| `/api/meetings` | 1 | explicit columns only |
+| `/api/meetings/{id}` | 1 | `read_meeting_bundle` |
+| `/api/meetings/{id}/context-stats` | 1 | reuses the meeting bundle |
+| `/api/meetings/{id}/closing` | 1 | `read_meeting_closing` |
+| `/api/personas` | 3 fixed, 0 hot | independent of row count; TTL cache |
+| `/api/participants/templates` | 0 | static |
+| `/api/replay/session` | 0 hot, 1 cold | immutable package cache |
+| replay turns/events | 0 hot | checkpoint and tape cache |
+
+The regression gate is `backend/tests/integration/test_round_trip_budgets.py`
+plus the unit budget suites. Adding a fixture row must not add a call.
+
+### Idle polling
+
+| Path | Interval |
+| --- | --- |
+| Turn runner | 2 s ± 20 %, immediate drain after a claim, exponential backoff on errors |
+| Turn event stream | 0.5 s while the stream is open |
+| Closing view (frontend) | 3 s while a stage is advancing |
+| Turn list/detail (frontend) | 4 s while an operation is active |
+
+### Measuring
+
+`python -m scripts.latency_probe --base-url http://127.0.0.1:8000 --samples 5`
+prints p50/p95 per endpoint. `--mode responsiveness --load-path
+/api/meetings/{id}/closing --load 5` measures `/health` while load is in
+flight. The request timing middleware logs one line per request with
+`duration_ms`, `db_ops`, `db_ms` and `db_max_ms`; a request whose `db_ops`
+exceeds its budget is a regression even when it feels fast locally.
+
+Hosted re-measurement needs a co-located deployment and operator credentials.
+Record the environment, region pair, date and round-trip counts with the
+result; any unexecuted check stays marked unexecuted.
