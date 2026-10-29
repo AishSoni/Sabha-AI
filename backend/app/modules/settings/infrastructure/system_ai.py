@@ -158,6 +158,15 @@ class SystemAIDefaultsSource:
                 await self.refresh()
             return _generation_defaults(self._cached)
 
+    async def acurrent_config(self) -> SystemAIConfig:
+        """Return the full policy, refreshing off the loop when stale."""
+        if self._fresh():
+            return self._cached
+        async with self._refresh_lock():
+            if not self._fresh():
+                await self.refresh()
+            return self._cached
+
     async def refresh(self) -> SystemAIConfig:
         """Reload the persisted policy and publish it to the cache."""
         config = await load_system_ai_config()

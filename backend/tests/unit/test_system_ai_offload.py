@@ -157,6 +157,29 @@ async def test_current_serves_from_memory_and_refreshes_once(monkeypatch):
 
 
 @pytest.mark.asyncio
+async def test_acurrent_config_shares_the_same_single_flight(monkeypatch):
+    calls = 0
+
+    async def fake_load():
+        nonlocal calls
+        calls += 1
+        await asyncio.sleep(0.05)
+        return SystemAIConfig(
+            provider="openrouter", model="cached", temperature=0.2, max_tokens=512
+        )
+
+    monkeypatch.setattr(system_ai, "load_system_ai_config", fake_load)
+    source = SystemAIDefaultsSource(ttl_seconds=60.0)
+
+    results = await asyncio.gather(*(source.acurrent_config() for _ in range(5)))
+
+    assert calls == 1
+    assert {result.model for result in results} == {"cached"}
+    assert (await source.acurrent_config()).model == "cached"
+    assert calls == 1
+
+
+@pytest.mark.asyncio
 async def test_update_pins_the_value_without_a_read(monkeypatch):
     async def fail_load():
         raise AssertionError("updated cache must not reload")
