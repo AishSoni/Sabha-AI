@@ -1169,6 +1169,11 @@ export interface components {
         /**
          * Citation
          * @description A citation reference in a message.
+         *
+         *     ``claim_id``/``locator`` identify replay evidence. Live knowledge
+         *     citations carry the exact retained document revision plus the chunk and
+         *     page that produced the passage so the client can preview that revision
+         *     without guessing from a file name or falling back to the latest one.
          */
         Citation: {
             /** Source */
@@ -1183,6 +1188,16 @@ export interface components {
             claim_id?: string | null;
             /** Locator */
             locator?: string | null;
+            /** Document Id */
+            document_id?: string | null;
+            /** Revision Id */
+            revision_id?: string | null;
+            /** Chunk Id */
+            chunk_id?: string | null;
+            /** Chunk Index */
+            chunk_index?: number | null;
+            /** Page Number */
+            page_number?: number | null;
         };
         /** ClosingErrorView */
         ClosingErrorView: {

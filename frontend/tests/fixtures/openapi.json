@@ -3824,6 +3824,61 @@
               }
             ],
             "title": "Locator"
+          },
+          "document_id": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Document Id"
+          },
+          "revision_id": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Revision Id"
+          },
+          "chunk_id": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Chunk Id"
+          },
+          "chunk_index": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Chunk Index"
+          },
+          "page_number": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Page Number"
           }
         },
         "type": "object",
@@ -3831,7 +3886,7 @@
           "source"
         ],
         "title": "Citation",
-        "description": "A citation reference in a message."
+        "description": "A citation reference in a message.\n\n``claim_id``/``locator`` identify replay evidence. Live knowledge\ncitations carry the exact retained document revision plus the chunk and\npage that produced the passage so the client can preview that revision\nwithout guessing from a file name or falling back to the latest one."
       },
       "ClosingErrorView": {
         "properties": {

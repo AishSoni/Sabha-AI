@@ -60,6 +60,11 @@ class StreamEvent(BaseModel):
     title: Optional[str] = None
     url: Optional[str] = None
     snippet: Optional[str] = None
+    document_id: Optional[str] = None
+    revision_id: Optional[str] = None
+    chunk_id: Optional[str] = None
+    chunk_index: Optional[int] = None
+    page_number: Optional[int] = None
     # For done event
     message_id: Optional[str] = None
     usage: Optional[dict] = None

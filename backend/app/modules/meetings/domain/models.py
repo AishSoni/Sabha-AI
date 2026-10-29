@@ -170,13 +170,25 @@ class AIParticipant(AIParticipantBase):
 
 
 class Citation(BaseModel):
-    """A citation reference in a message."""
+    """A citation reference in a message.
+
+    ``claim_id``/``locator`` identify replay evidence. Live knowledge
+    citations carry the exact retained document revision plus the chunk and
+    page that produced the passage so the client can preview that revision
+    without guessing from a file name or falling back to the latest one.
+    """
+
     source: str
     title: Optional[str] = None
     url: Optional[str] = None
     snippet: Optional[str] = None
     claim_id: Optional[str] = None
     locator: Optional[str] = None
+    document_id: Optional[str] = None
+    revision_id: Optional[str] = None
+    chunk_id: Optional[str] = None
+    chunk_index: Optional[int] = None
+    page_number: Optional[int] = None
 
 
 class MessageBase(BaseModel):

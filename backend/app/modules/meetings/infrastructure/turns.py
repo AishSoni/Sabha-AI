@@ -37,6 +37,7 @@ from app.capabilities.inference.contracts import LLMMessage, StreamEventType, To
 from app.platform.providers import get_provider
 from app.modules.meetings.domain.models import (
     AIParticipant,
+    Citation,
     MeetingStatus,
     Message,
     RequestProviderSettings,
@@ -739,6 +740,7 @@ class TurnQueueService:
         accumulated_thinking = ""
         tool_calls_made: list[dict] = []
         knowledge_revisions: set = set()
+        citations: list[Citation] = []
         usage_total: dict = {}
         cost_total = 0.0
         events = TurnEventWriter(
@@ -820,6 +822,10 @@ class TurnQueueService:
                             },
                         )
                     elif event.type == StreamEventType.CITATION:
+                        # Provider-supplied citations are external references.
+                        # They never carry a document/revision identity: only
+                        # server-validated retrieval passages may open retained
+                        # knowledge bytes.
                         await events.emit(
                             "citation",
                             {
@@ -886,8 +892,14 @@ class TurnQueueService:
                         tool_calls=[tool_call],
                     )
                 )
+                citation_start = len(citations)
                 result, is_error = await self._execute_tool(
-                    claim, participant, tool_call, invocation_id, knowledge_revisions
+                    claim,
+                    participant,
+                    tool_call,
+                    invocation_id,
+                    knowledge_revisions,
+                    citations,
                 )
                 result = _truncate(result)
                 messages.append(
@@ -910,6 +922,8 @@ class TurnQueueService:
                         "is_error": is_error,
                     },
                 )
+                for citation in citations[citation_start:]:
+                    await events.emit("citation", citation.model_dump())
 
         await events.flush()
 
@@ -929,7 +943,7 @@ class TurnQueueService:
                 "sender_id": participant.id,
                 "sender_name": participant.name,
                 "content": content,
-                "citations": [],
+                "citations": [citation.model_dump() for citation in citations],
                 "tool_artifacts": (
                     {"tool_calls": tool_calls_made} if tool_calls_made else None
                 ),
@@ -980,6 +994,7 @@ class TurnQueueService:
         tool_call: ToolCall,
         invocation_id: str,
         knowledge_revisions: set | None = None,
+        citations: list[Citation] | None = None,
     ) -> tuple[str, bool]:
         name = tool_call.name
         args = tool_call.arguments or {}
@@ -1039,7 +1054,12 @@ class TurnQueueService:
                         participant, query, claim
                     )
                 return await self._durable_knowledge_search(
-                    participant, query, claim, tool_call, knowledge_revisions
+                    participant,
+                    query,
+                    claim,
+                    tool_call,
+                    knowledge_revisions,
+                    citations,
                 )
             except Exception as exc:  # noqa: BLE001 - tool boundary
                 return f"Error searching knowledge base: {exc}", True
@@ -1091,6 +1111,7 @@ class TurnQueueService:
         claim: TurnClaim,
         tool_call: ToolCall,
         knowledge_revisions: set | None = None,
+        citations: list[Citation] | None = None,
     ) -> tuple[str, bool]:
         """Search only eligible revisions in the meeting + saved stack scope."""
         from app.modules.knowledge.application.retrieval import (
@@ -1125,6 +1146,27 @@ class TurnQueueService:
             knowledge_revisions.update(
                 passage.revision_id for passage in passages
             )
+        if citations is not None:
+            seen_chunks = {
+                citation.chunk_id for citation in citations if citation.chunk_id
+            }
+            for passage in passages:
+                chunk_id = str(passage.chunk_id)
+                if chunk_id in seen_chunks:
+                    continue
+                seen_chunks.add(chunk_id)
+                citations.append(
+                    Citation(
+                        source="knowledge",
+                        title=passage.file_name,
+                        snippet=passage.text[:400],
+                        document_id=str(passage.document_id),
+                        revision_id=str(passage.revision_id),
+                        chunk_id=chunk_id,
+                        chunk_index=passage.chunk_index,
+                        page_number=passage.page_number,
+                    )
+                )
         formatted = [
             f"[{index}] (Score: {item.score:.2f}, Source: {item.file_name})\n{item.text}"
             for index, item in enumerate(passages, 1)
