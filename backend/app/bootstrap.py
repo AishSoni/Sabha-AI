@@ -19,6 +19,7 @@ from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
 from app.platform.config import settings
+from app.platform.blocking import shutdown_blocking
 from app.platform.database import close_supabase
 from app.modules.meetings.application.closing import ClosingService
 from app.modules.meetings.application.meeting_service import MeetingService
@@ -221,6 +222,16 @@ async def lifespan(app: FastAPI):
                 logger.warning("Turn runner shutdown failed", exc_info=True)
 
         close_supabase()
+        shutdown_blocking()
+
+
+def _ensure_request_timing(app: FastAPI) -> None:
+    """Record one structured timing line per request (spec-20)."""
+    if not settings.request_timing_enabled:
+        return
+    from app.presentation.timing import RequestTimingMiddleware
+
+    app.add_middleware(RequestTimingMiddleware)
 
 
 def _ensure_demo_guard(app: FastAPI) -> None:
@@ -292,6 +303,7 @@ def create_app(
     # The replay namespace is present in every composition. Without a
     # configured source it answers 503; it never falls back to live data.
     app.include_router(replay_router)
+    _ensure_request_timing(app)
 
     @app.get("/")
     async def root():
