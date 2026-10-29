@@ -360,7 +360,7 @@ describe('MeetingRoom', () => {
         await screen.findByText('Product review');
         fireEvent.mouseDown(screen.getByRole('tab', { name: /Roster/ }));
 
-        expect(await screen.findByText('Private Knowledge Stack')).toBeInTheDocument();
+        expect(await screen.findByText('Knowledge assignments')).toBeInTheDocument();
         expect(screen.queryByText(/Q4_2025_Financial_Report/)).not.toBeInTheDocument();
         expect(screen.queryByText(/Market_Analysis_2026/)).not.toBeInTheDocument();
         expect(screen.getByText('0 stacks')).toBeInTheDocument();
