@@ -23,6 +23,11 @@ class Settings(BaseSettings):
     supabase_http_max_connections: int = 20
     supabase_http_keepalive_seconds: float = 30.0
     supabase_http_retries: int = 2
+    # Spec-20: one bounded thread pool owns every blocking Supabase call.
+    # Keep it below the shared HTTP pool's connection limit so a burst queues
+    # on the executor rather than on sockets, and never grows per request.
+    db_thread_pool_size: int = 8
+    request_timing_enabled: bool = True
     # Direct/session PostgreSQL URL used by the operator scripts and restore.
     database_url: str = ""
     # Server-only replay reader URL (dedicated LOGIN role, never the live
