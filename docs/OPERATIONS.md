@@ -537,6 +537,23 @@ python -m scripts.replay_package --database-url $env:REPLAY_PROVISIONER_DATABASE
 python -m scripts.replay_package --database-url $env:REPLAY_PROVISIONER_DATABASE_URL list
 ```
 
+Two credentials are operator-only and must stay out of `backend/.env`, which
+`Settings` parses with `extra="forbid"` (an unknown key aborts startup) and
+which the runtime reads at boot:
+
+- `REPLAY_PROVISIONER_DATABASE_URL` -- the publisher login, used only by the
+  commands above. Keep it in the shell or in `backend/.env.provisioner` (matched
+  by the same `.env*` ignore rule, never loaded by the app).
+- `REPLAY_STORAGE_URL` and `REPLAY_STORAGE_SERVICE_KEY` -- the offline Storage
+  credential `publish` uses to upload and re-hash assets. The URL falls back to
+  `SUPABASE_URL`; the key has no fallback on purpose, so publication never
+  inherits the live backend credential silently.
+
+Both logins connect through the shared pooler as `[ROLE].[PROJECT-REF]` (for
+example `sabha_replay_login.dlqmevmnckdhphyzykob`), session mode on port 5432.
+Set their passwords once with `ALTER ROLE <role> PASSWORD '<secret>'` from an
+administrator connection.
+
 `publish` validates the manifest, hashes, DTOs, identities, policies and
 assets; uploads and re-hashes assets; stages every row; and only then exposes
 the version in one transaction. Publishing the same version with different
