@@ -48,6 +48,12 @@ class Settings(BaseSettings):
     replay_pool_max_size: int = 8
     replay_pool_timeout_seconds: float = 5.0
     replay_pool_reconnect_seconds: float = 5.0
+    # Spec-20: immutable package content is cached for the life of the pinned
+    # version. Registry/retirement state is deployment state and stays short.
+    replay_cache_max_entries: int = 256
+    replay_registry_ttl_seconds: float = 30.0
+    replay_status_ttl_seconds: float = 30.0
+    replay_cache_warm_enabled: bool = True
     
     # OpenRouter
     openrouter_api_key: str = ""

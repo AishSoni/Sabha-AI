@@ -32,6 +32,9 @@ _SYNTHETIC_ENV = {
     # Background turn claims are opt-in in tests; route/runner tests start a
     # runner explicitly so claim/observation assertions stay deterministic.
     "TURN_RUNNER_ENABLED": "false",
+    # Spec-20 warm-up would otherwise reach the replay database configured in
+    # a developer's `.env` during every embedded-app test.
+    "REPLAY_CACHE_WARM_ENABLED": "false",
 }
 for _key, _value in _SYNTHETIC_ENV.items():
     os.environ.setdefault(_key, _value)

@@ -15,6 +15,7 @@ from app.modules.meetings.domain.models import (
 )
 from app.modules.meetings.presentation.schemas import ClosingView
 from app.replay.contracts import ReplayNotFound
+from app.replay.package.model import Checkpoint
 from app.replay.source import PublishedPackage, ReplayPackageUnavailable, ReplaySource
 
 
@@ -49,14 +50,18 @@ class ReplayReads:
         self._source = source
         self._published = published
         self._checkpoint_id = checkpoint_id
+        self._checkpoint: Checkpoint | None = None
 
     async def _reads(self) -> dict[str, Any]:
-        checkpoint = await self._source.read_checkpoint(
-            self._published.package_id,
-            self._published.version,
-            self._checkpoint_id,
-        )
-        return checkpoint.reads
+        # One replay request may read several feature slices from the same
+        # checkpoint. Load it once per container instead of once per slice.
+        if self._checkpoint is None:
+            self._checkpoint = await self._source.read_checkpoint(
+                self._published.package_id,
+                self._published.version,
+                self._checkpoint_id,
+            )
+        return self._checkpoint.reads
 
     async def _read(self, key: str) -> Any:
         reads = await self._reads()

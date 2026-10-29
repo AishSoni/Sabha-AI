@@ -135,12 +135,19 @@ def _configured_replay():
     """Build the packaged replay runtime only when the server pins one."""
     if not settings.replay_database_url or not settings.replay_package_id:
         return None
+    from app.replay.cache import ReplayCache
     from app.replay.runtime import ReplayRuntime
     from app.replay.source import ReplaySource
     from app.replay.streaming import StreamLimiter
 
     return ReplayRuntime(
-        ReplaySource(),
+        ReplaySource(
+            cache=ReplayCache(
+                max_entries=settings.replay_cache_max_entries,
+                registry_ttl_seconds=settings.replay_registry_ttl_seconds,
+                status_ttl_seconds=settings.replay_status_ttl_seconds,
+            )
+        ),
         package_id=settings.replay_package_id,
         version=settings.replay_package_version or None,
         content_sha256=settings.replay_package_sha256 or None,
@@ -179,6 +186,18 @@ async def lifespan(app: FastAPI):
     from app.modules.settings.infrastructure.system_ai import SYSTEM_AI_DEFAULTS
 
     SYSTEM_AI_DEFAULTS.invalidate()
+
+    # Spec 20: load the pinned replay package once, on one pooled connection.
+    # A failed warm-up is a warning; the first request retries.
+    replay = getattr(app.state, "replay", None)
+    if replay is not None and settings.replay_cache_warm_enabled:
+        try:
+            await replay.warm()
+        except Exception:  # noqa: BLE001 - warm-up must never block startup
+            logger.warning(
+                "Replay package warm-up failed; the first request will retry",
+                exc_info=True,
+            )
 
     reconciler = getattr(container, "startup_reconciliation", None)
     if reconciler is not None:

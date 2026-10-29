@@ -76,6 +76,16 @@ class ReplayRuntime:
         self._max_stream_bytes = max_stream_bytes
         self._max_stream_seconds = max_stream_seconds
 
+    async def warm(self) -> None:
+        """Load the pinned package once so the first visitor starts warm.
+
+        Warm-up is best-effort: the lifespan logs and continues on failure and
+        the first real request retries through the same source.
+        """
+        if not self.package_id:
+            raise ReplayNotConfigured("replay package is not configured")
+        await self.source.resolve_package(self.package_id, self.version)
+
     async def for_request(
         self,
         package_id: str | None = None,
