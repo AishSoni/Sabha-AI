@@ -25,6 +25,27 @@ Read the [roadmap](roadmap-phase-3-hosted-guided-replay.md), [runtime contract](
 
 Do not call a generator-iterator test a deployed stream test, a mocked panel a reachable closing flow, or a successful schema grant script an effective-role audit. Operational tests must be separately authorized for the actual environment and must not touch user data destructively.
 
+## Working evidence map
+
+Status legend: **local** = executable local evidence exists; **gap** = no adequate
+evidence yet, closure named below; **deployed** = requires the real hosted
+project and remains unexecuted until an operator runs it.
+
+| Area | Local evidence today | Status | Closure |
+| --- | --- | --- | --- |
+| Database isolation | `tests/integration/test_replay_reader_permissions.py`, `test_replay_publication.py::test_reader_matrix_covers_every_replay_object`, `scripts/replay_roles.py check`, `scripts/inventory_permissions.py`; fresh and upgrade migrations in `tests/integration/test_migration_runner.py` / `test_database_permissions.py` | local | Run against fresh and upgraded disposable PostgreSQL; deployed effective-role audit remains **deployed** |
+| Actual API boundary | `tests/integration/test_replay_surface.py` (ASGI `TestClient`), `test_replay_sse_socket.py` (real socket, streams only) | gap | Full boundary over real HTTP, not `TestClient` |
+| Backend/frontend reuse | Backend import/architecture tests, `frontend/tests/architecture/*`, `npm run build` | gap | Production-mode browser journey; dev-server journey alone is insufficient |
+| No replay effects | `test_replay_surface.py` sentinel live graph, reader permission tests | gap | End-to-end request-scoped effect trace over a complete replay session |
+| Stream behavior | `test_replay_sse_socket.py` (incremental frames, resume, limits, Unicode), `test_replay_package_runtime.py` (pacing, closing envelope) | local | Deployed reverse-proxy/browser SSE remains **deployed** |
+| Read frontier | `test_replay_package_runtime.py::test_checkpoint_reads_are_coherent_and_never_early`, frontend observation/projection tests | local | Keep browser assertions in the journey |
+| Browser journey | `frontend/e2e/guided-journey.spec.ts` against `next dev` | gap | Run the journey against a production build |
+| Independent visitors | `test_replay_package_runtime.py::test_two_visitors_get_independent_ephemeral_runs` | gap | Two real browser contexts at different beats |
+| Mixed live/replay | none | gap | Live turn and replay stream/restart in one composition; browser-level if feasible |
+| Failures and races | Backend unavailable/corrupt package tests; deep-link reset in the journey | gap | Browser double actions, remount, refocus/poll, disconnect, stale SSE, refresh |
+| Package lifecycle | `test_replay_publication.py` (failed publish, pinning, retention, prune), `test_tracked_package_needs_no_ignored_inputs` | gap | Clean-checkout validation/provisioning and placeholder-package swap |
+| Live regressions | Spec 12–18 suites | local | Re-run in the full evidence pass |
+
 ## Execution plan
 
 1. Start from a clean checkout and disposable dependencies. Run migrations/upgrade, package validation/provisioning and the role matrix. Record versions, commands and exact package hash.
