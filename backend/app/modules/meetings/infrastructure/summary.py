@@ -110,6 +110,7 @@ async def generate_meeting_summary(
 
     # No participant here: the browser's composed settings (or server defaults)
     # decide who generates. BYOK key rides the header, never storage.
+    await SYSTEM_AI_DEFAULTS.acurrent()
     resolved = resolve_effective_settings(
         None,
         provider_settings,
