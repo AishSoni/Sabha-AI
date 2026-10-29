@@ -68,6 +68,7 @@ _RPC_SIGNATURES: dict[str, tuple[tuple[str, str], ...]] = {
         ("p_embedding_model", ""),
         ("p_embedding_dimension", "::integer"),
     ),
+    "knowledge_read_ingestion": (("p_ingestion_id", "::uuid"),),
     "knowledge_claim_ingestion": (
         ("p_ingestion_id", "::uuid"),
         ("p_lease_owner", ""),
