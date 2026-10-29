@@ -12,6 +12,7 @@ from __future__ import annotations
 import asyncio
 import logging
 import os
+import random
 import socket
 import uuid
 from typing import Awaitable, Callable, Optional
@@ -43,6 +44,8 @@ class TurnRunner:
         execution_timeout_seconds: Optional[int] = None,
         worker_id: Optional[str] = None,
         on_turn_terminal: Optional[Callable[[str], Awaitable[None]]] = None,
+        jitter_ratio: float = 0.2,
+        max_backoff_seconds: float = 30.0,
     ) -> None:
         self.service = service
         self.concurrency = concurrency or settings.turn_global_concurrency
@@ -52,6 +55,9 @@ class TurnRunner:
         )
         self.worker_id = worker_id or default_worker_id()
         self.on_turn_terminal = on_turn_terminal
+        self.jitter_ratio = max(0.0, min(float(jitter_ratio), 1.0))
+        self.max_backoff_seconds = max(float(max_backoff_seconds), self.poll_seconds)
+        self._failures = 0
         self._stop = asyncio.Event()
         self._task: Optional[asyncio.Task] = None
         self._running: set[asyncio.Task] = set()
@@ -96,18 +102,34 @@ class TurnRunner:
 
     async def _loop(self) -> None:
         while not self._stop.is_set():
+            started = 0
             try:
-                await self.run_once()
+                started = await self.run_once()
+                self._failures = 0
             except asyncio.CancelledError:
                 raise
             except Exception:
+                self._failures += 1
                 logger.warning("Turn runner iteration failed", exc_info=True)
+            if self._stop.is_set():
+                break
+            # Idle polls back off; a claim drains immediately so a burst of
+            # queued turns is not delayed by the idle interval.
+            delay = 0.0 if started else self._next_delay()
             try:
-                await asyncio.wait_for(
-                    self._stop.wait(), timeout=self.poll_seconds
-                )
+                await asyncio.wait_for(self._stop.wait(), timeout=delay)
             except asyncio.TimeoutError:
                 pass
+
+    def _next_delay(self) -> float:
+        base = float(self.poll_seconds)
+        if self._failures:
+            base = min(
+                base * (2 ** min(self._failures, 6)),
+                self.max_backoff_seconds,
+            )
+        spread = base * self.jitter_ratio
+        return base - spread + (2 * spread * random.random())
 
     async def run_once(self) -> int:
         """Claim and execute available work up to local capacity.

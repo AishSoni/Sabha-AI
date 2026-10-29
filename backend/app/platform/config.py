@@ -28,6 +28,11 @@ class Settings(BaseSettings):
     # on the executor rather than on sockets, and never grows per request.
     db_thread_pool_size: int = 8
     request_timing_enabled: bool = True
+    # Spec-20: the persona list is slow-moving config. Process-local entries
+    # expire on their own so multi-worker deployments converge within the TTL;
+    # every catalog write invalidates the local cache immediately.
+    persona_cache_ttl_seconds: float = 45.0
+    persona_cache_max_entries: int = 64
     # Direct/session PostgreSQL URL used by the operator scripts and restore.
     database_url: str = ""
     # Server-only replay reader URL (dedicated LOGIN role, never the live
@@ -106,7 +111,7 @@ class Settings(BaseSettings):
     turn_max_queued_per_meeting: int = 10
     turn_global_concurrency: int = 1
     turn_lease_seconds: int = 60
-    turn_poll_seconds: float = 0.5
+    turn_poll_seconds: float = 2.0
     turn_runner_enabled: bool = True
     turn_execution_timeout_seconds: int = 300
     # Spec-20: streamed deltas are persisted in ordered batches, flushed on

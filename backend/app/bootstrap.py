@@ -43,10 +43,10 @@ from app.capabilities.runtime.runner import TurnRunner
 
 
 async def _system_ai_reader():
-    """Read shared System AI policy through the settings adapter."""
-    from app.modules.settings.infrastructure.system_ai import load_system_ai_config
+    """Read shared System AI policy through the cached settings source."""
+    from app.modules.settings.infrastructure.system_ai import SYSTEM_AI_DEFAULTS
 
-    return await load_system_ai_config()
+    return await SYSTEM_AI_DEFAULTS.acurrent_config()
 
 
 async def _startup_reconciliation():
@@ -93,11 +93,17 @@ class Container:
     @classmethod
     def production(cls) -> "Container":
         """Real composition: one Supabase client, adapters built once."""
+        from app.platform.cache import TTLCache
         from app.platform.database import get_supabase
         from app.modules.knowledge.public import get_knowledge_lifecycle
         from app.modules.persona_catalog.infrastructure.supabase import (
             SupabasePersonaCatalog,
             SupabasePromptCatalog,
+        )
+
+        persona_list_cache = TTLCache(
+            max_entries=settings.persona_cache_max_entries,
+            ttl_seconds=settings.persona_cache_ttl_seconds,
         )
 
         meeting_service = build_meeting_service(
@@ -116,8 +122,12 @@ class Container:
             else None
         )
         return cls(
-            prompt_catalog=SupabasePromptCatalog(get_supabase),
-            persona_catalog=SupabasePersonaCatalog(get_supabase),
+            prompt_catalog=SupabasePromptCatalog(
+                get_supabase, list_cache=persona_list_cache
+            ),
+            persona_catalog=SupabasePersonaCatalog(
+                get_supabase, list_cache=persona_list_cache
+            ),
             meeting_service=meeting_service,
             meeting_reads=meeting_service,
             turn_queue=turn_queue,

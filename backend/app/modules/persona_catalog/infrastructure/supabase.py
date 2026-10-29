@@ -14,6 +14,9 @@ adapter itself is constructed once in the composition root. Every blocking
 round trip never stalls the event loop.
 """
 
+from __future__ import annotations
+
+import copy
 from typing import Any, Callable
 
 import httpx
@@ -26,13 +29,24 @@ from app.modules.persona_catalog.application.contracts import (
     UnknownStacks,
 )
 from app.platform.blocking import run_blocking
+from app.platform.cache import TTLCache
 
 
 class SupabasePromptCatalog:
     """``PromptCatalogPort`` over the narrow Supabase RPC functions."""
 
-    def __init__(self, client_provider: Callable[[], Any]) -> None:
+    def __init__(
+        self,
+        client_provider: Callable[[], Any],
+        *,
+        list_cache: "TTLCache | None" = None,
+    ) -> None:
         self._client_provider = client_provider
+        self._list_cache = list_cache
+
+    def _invalidate_list(self) -> None:
+        if self._list_cache is not None:
+            self._list_cache.invalidate()
 
     def _client(self) -> Any:
         return self._client_provider()
@@ -51,6 +65,7 @@ class SupabasePromptCatalog:
             raise PromptCatalogUnavailable(
                 "prompt catalog persistence failed"
             ) from exc
+        self._invalidate_list()
         return bool(result.data)
 
     async def create_prompt_version(
@@ -84,6 +99,7 @@ class SupabasePromptCatalog:
             raise PromptCatalogUnavailable(
                 "prompt catalog returned an unexpected result shape"
             )
+        self._invalidate_list()
         return row
 
 
@@ -98,8 +114,18 @@ class SupabasePersonaCatalog:
     module's unavailability exception so no SQL detail escapes.
     """
 
-    def __init__(self, client_provider: Callable[[], Any]) -> None:
+    def __init__(
+        self,
+        client_provider: Callable[[], Any],
+        *,
+        list_cache: "TTLCache | None" = None,
+    ) -> None:
         self._client_provider = client_provider
+        self._list_cache = list_cache
+
+    def _invalidate_list(self) -> None:
+        if self._list_cache is not None:
+            self._list_cache.invalidate()
 
     def _client(self) -> Any:
         return self._client_provider()
@@ -224,6 +250,7 @@ class SupabasePersonaCatalog:
             raise PromptCatalogUnavailable(
                 "the persona catalog returned an unexpected result shape"
             )
+        self._invalidate_list()
         return row
 
     async def update_persona(
@@ -261,6 +288,7 @@ class SupabasePersonaCatalog:
             raise PromptCatalogUnavailable(
                 "the persona catalog returned an unexpected result shape"
             )
+        self._invalidate_list()
         return row
 
     async def list_templates(
@@ -273,7 +301,21 @@ class SupabasePersonaCatalog:
         mid-flight, exactly like the legacy fanout. Prompts and stack
         assignments are fetched for every listed persona in one query each,
         so adding rows never adds round trips.
+
+        The assembled view is cached for a short TTL and invalidated by every
+        catalog write; concurrent misses share one load.
         """
+        if self._list_cache is None:
+            return await self._load_templates(user_id, include_defaults)
+        key = ("persona-list", str(user_id or ""), bool(include_defaults))
+        rows = await self._list_cache.get_or_load(
+            key, lambda: self._load_templates(user_id, include_defaults)
+        )
+        return copy.deepcopy(rows)
+
+    async def _load_templates(
+        self, user_id: str | None, include_defaults: bool
+    ) -> list[dict]:
         try:
             query = self._client().table("personas").select("*")
             if user_id:
@@ -358,6 +400,7 @@ class SupabasePersonaCatalog:
             )
         except (APIError, httpx.HTTPError) as exc:
             raise self._translate(exc) from exc
+        self._invalidate_list()
         return bool(result.data)
 
     async def create_prompt_version(
@@ -389,6 +432,7 @@ class SupabasePersonaCatalog:
             raise PromptCatalogUnavailable(
                 "the persona catalog returned an unexpected result shape"
             )
+        self._invalidate_list()
         return row
 
     async def delete_persona(self, persona_id: str) -> bool:
@@ -409,6 +453,7 @@ class SupabasePersonaCatalog:
             )
         except (APIError, httpx.HTTPError) as exc:
             raise PromptCatalogUnavailable("the persona catalog failed to persist; retry later") from exc
+        self._invalidate_list()
         return len(result.data or []) > 0
 
     @staticmethod
