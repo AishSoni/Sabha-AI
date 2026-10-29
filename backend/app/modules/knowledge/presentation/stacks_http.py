@@ -4,6 +4,7 @@ from datetime import datetime, timezone
 import uuid
 
 from app.presentation.dependencies import get_knowledge_db, get_knowledge_lifecycle
+from app.platform.blocking import run_blocking
 from app.modules.knowledge.presentation.stacks_schemas import (
     KnowledgeStack,
     KnowledgeStackCreate,
@@ -24,7 +25,7 @@ async def list_knowledge_stacks(
         # Get user's stacks
         query = query.eq("user_id", user_id)
         
-    result = query.order("created_at", desc=True).execute()
+    result = await run_blocking(lambda: query.order("created_at", desc=True).execute())
     stacks = [KnowledgeStack(**s) for s in result.data]
     
     return KnowledgeStackListResponse(stacks=stacks, total=len(stacks))
@@ -47,7 +48,9 @@ async def create_knowledge_stack(
         "updated_at": now,
     }
     
-    result = db.table("knowledge_stacks").insert(stack_data).execute()
+    result = await run_blocking(
+        lambda: db.table("knowledge_stacks").insert(stack_data).execute()
+    )
     return KnowledgeStack(**result.data[0])
 
 
@@ -56,7 +59,9 @@ async def get_knowledge_stack(
     stack_id: str, db=Depends(get_knowledge_db)
 ):
     """Get a specific knowledge stack."""
-    result = db.table("knowledge_stacks").select("*").eq("id", stack_id).execute()
+    result = await run_blocking(
+        lambda: db.table("knowledge_stacks").select("*").eq("id", stack_id).execute()
+    )
     
     if not result.data:
         raise HTTPException(status_code=404, detail="Knowledge stack not found")
@@ -80,7 +85,12 @@ async def update_knowledge_stack(
         
     update_data["updated_at"] = datetime.now(timezone.utc).isoformat()
     
-    result = db.table("knowledge_stacks").update(update_data).eq("id", stack_id).execute()
+    result = await run_blocking(
+        lambda: db.table("knowledge_stacks")
+        .update(update_data)
+        .eq("id", stack_id)
+        .execute()
+    )
     
     if not result.data:
         raise HTTPException(status_code=404, detail="Knowledge stack not found")
@@ -101,8 +111,8 @@ async def delete_knowledge_stack(
     """
     from app.modules.knowledge.domain.errors import KnowledgeUnavailable
 
-    existing = (
-        db.table("knowledge_stacks").select("id").eq("id", stack_id).execute()
+    existing = await run_blocking(
+        lambda: db.table("knowledge_stacks").select("id").eq("id", stack_id).execute()
     )
     if not existing.data:
         raise HTTPException(status_code=404, detail="Knowledge stack not found")
@@ -115,6 +125,8 @@ async def delete_knowledge_stack(
             detail="Knowledge cleanup is temporarily unavailable; try again",
         ) from exc
 
-    result = db.table("knowledge_stacks").delete().eq("id", stack_id).execute()
+    result = await run_blocking(
+        lambda: db.table("knowledge_stacks").delete().eq("id", stack_id).execute()
+    )
     if not result.data:
         raise HTTPException(status_code=404, detail="Knowledge stack not found")
