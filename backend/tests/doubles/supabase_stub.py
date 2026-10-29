@@ -224,6 +224,12 @@ _RPC_SIGNATURES: dict[str, tuple[tuple[str, str], ...]] = {
         ("p_payload", "::jsonb"),
         ("p_now", "::timestamptz"),
     ),
+    "append_turn_events": (
+        ("p_operation_id", "::uuid"),
+        ("p_expected_fence", ""),
+        ("p_events", "::jsonb"),
+        ("p_now", "::timestamptz"),
+    ),
     "read_turn_events": (
         ("p_operation_id", "::uuid"),
         ("p_meeting_id", "::uuid"),

@@ -18,7 +18,6 @@ worker can never publish a final message for a newer fence.
 
 from __future__ import annotations
 
-import asyncio
 import hashlib
 import json
 import logging
@@ -48,6 +47,7 @@ from app.modules.meetings.application.context import build_context
 from app.modules.meetings.application.meeting_service import MeetingService
 from app.modules.meetings.application.tools import get_default_tools
 from app.modules.meetings.infrastructure.supabase_meetings import build_meeting_service
+from app.modules.meetings.infrastructure.turn_events import TurnEventWriter
 
 logger = logging.getLogger(__name__)
 
@@ -201,7 +201,7 @@ class TurnQueueService:
         every other request — including the runner's own poll loop — for that
         long, so the durable queue never issues one inline.
         """
-        return await asyncio.to_thread(self.db.rpc(name, params).execute)
+        return await run_blocking(lambda: self.db.rpc(name, params).execute())
 
     # ------------------------------------------------------------------
     # Admission / reads
@@ -325,7 +325,7 @@ class TurnQueueService:
             )
             return disagreements, consensus
 
-        return await asyncio.to_thread(read)
+        return await run_blocking(read)
 
     async def cancel(self, meeting_id: str, operation_id: str) -> dict:
         result = await self._rpc(
@@ -453,21 +453,37 @@ class TurnQueueService:
         )
         return bool(result.data)
 
-    async def _append_event(
-        self, claim: TurnClaim, event_type: str, payload: dict, event_id: str | None = None
-    ) -> dict | None:
+    async def _append_events(
+        self, claim: TurnClaim, events: list[dict]
+    ) -> list[dict]:
+        """Persist one ordered batch of streamed events (spec 20)."""
+        if not events:
+            return []
         result = await self._rpc(
-            "append_turn_event",
+            "append_turn_events",
             {
                 "p_operation_id": claim.operation_id,
                 "p_expected_fence": claim.fence,
-                "p_event_id": event_id or str(uuid.uuid4()),
-                "p_type": event_type,
-                "p_payload": payload,
+                "p_events": events,
                 "p_now": _now(),
             },
         )
-        return result.data
+        return result.data or []
+
+    async def _append_event(
+        self, claim: TurnClaim, event_type: str, payload: dict, event_id: str | None = None
+    ) -> dict | None:
+        rows = await self._append_events(
+            claim,
+            [
+                {
+                    "id": event_id or str(uuid.uuid4()),
+                    "type": event_type,
+                    "payload": payload,
+                }
+            ],
+        )
+        return rows[0] if rows else None
 
     async def _publish(
         self,
@@ -725,6 +741,12 @@ class TurnQueueService:
         knowledge_revisions: set = set()
         usage_total: dict = {}
         cost_total = 0.0
+        events = TurnEventWriter(
+            self._append_events,
+            claim,
+            flush_interval_seconds=settings.turn_event_flush_ms / 1000.0,
+            max_buffered=settings.turn_event_max_buffered,
+        )
 
         for round_number in range(MAX_TOOL_ROUNDS):
             current = await self._current_operation(claim)
@@ -774,12 +796,12 @@ class TurnQueueService:
                         content = event.content or ""
                         if content:
                             round_text += content
-                            await self._append_event(claim, "text", {"content": content})
+                            await events.emit("text", {"content": content})
                     elif event.type == StreamEventType.THINKING:
                         content = event.content or ""
                         if content:
                             round_thinking += content
-                            await self._append_event(claim, "thinking", {"content": content})
+                            await events.emit("thinking", {"content": content})
                     elif event.type == StreamEventType.TOOL_CALL and event.tool_name:
                         call_id = event.tool_call_id or str(uuid.uuid4())
                         tool_call = ToolCall(
@@ -788,8 +810,7 @@ class TurnQueueService:
                             arguments=event.tool_arguments or {},
                         )
                         tool_calls.append(tool_call)
-                        await self._append_event(
-                            claim,
+                        await events.emit(
                             "tool_call",
                             {
                                 "invocation_id": invocation_id,
@@ -799,8 +820,7 @@ class TurnQueueService:
                             },
                         )
                     elif event.type == StreamEventType.CITATION:
-                        await self._append_event(
-                            claim,
+                        await events.emit(
                             "citation",
                             {
                                 "source": event.source,
@@ -816,9 +836,14 @@ class TurnQueueService:
                         provider_error = event.content or "Provider returned an error"
                         break
             except Exception as exc:  # noqa: BLE001 - provider boundary
+                await events.flush()
                 logger.warning("Provider failed for %s", claim.operation_id, exc_info=True)
                 await self._fail_attempt(attempt_id, "unknown", "provider_error")
                 return await self._interrupt(claim, "provider_error", str(exc))
+
+            # Every delta this round is durable before the attempt settles or
+            # the operation can move to a terminal state.
+            await events.flush()
 
             if provider_error:
                 await self._fail_attempt(attempt_id, "failed", "provider_error")
@@ -875,8 +900,7 @@ class TurnQueueService:
                 tool_calls_made.append(
                     {"tool": tool_call.name, "call_id": tool_call.id, "result": result}
                 )
-                await self._append_event(
-                    claim,
+                await events.emit(
                     "tool_result",
                     {
                         "invocation_id": invocation_id,
@@ -886,6 +910,8 @@ class TurnQueueService:
                         "is_error": is_error,
                     },
                 )
+
+        await events.flush()
 
         content = accumulated_content
         if not content and tool_calls_made:
