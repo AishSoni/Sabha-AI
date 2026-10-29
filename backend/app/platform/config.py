@@ -16,6 +16,13 @@ class Settings(BaseSettings):
     supabase_url: str = ""
     supabase_key: str = ""
     supabase_service_key: str = ""
+    # Outbound HTTP policy for the server-side Supabase client. The pool is
+    # long-lived, so a stale keep-alive connection must be retried rather than
+    # surfaced as a failed request (see app/platform/http_client.py).
+    supabase_http_timeout_seconds: float = 30.0
+    supabase_http_max_connections: int = 20
+    supabase_http_keepalive_seconds: float = 30.0
+    supabase_http_retries: int = 2
     # Direct/session PostgreSQL URL used by the operator scripts and restore.
     database_url: str = ""
     # Server-only replay reader URL (dedicated LOGIN role, never the live

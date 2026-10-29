@@ -105,7 +105,7 @@ class SupabaseSourceStore:
             "Authorization": f"Bearer {self._service_key}",
         }
         return SyncStorageClient(
-            url=f"{self._url}/storage/v1",
+            url=f"{self._url}/storage/v1/",
             headers=headers,
         )
 
