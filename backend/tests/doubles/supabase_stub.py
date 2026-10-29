@@ -363,6 +363,7 @@ _RPC_SIGNATURES: dict[str, tuple[tuple[str, str], ...]] = {
         ("p_now", "::timestamptz"),
     ),
     "read_persona_creation_snapshot": (("p_persona_id", ""),),
+    "read_persona_creation_snapshots": (("p_persona_ids", "::uuid[]"),),
     "create_persona_transaction": (
         ("p_persona_id", ""),
         ("p_name", ""),

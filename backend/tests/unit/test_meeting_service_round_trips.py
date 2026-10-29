@@ -8,10 +8,15 @@ rows can never add round trips.
 
 from __future__ import annotations
 
+from app.modules.meetings.application.construct_participants import (
+    ConstructParticipants,
+)
 from app.modules.meetings.application.meeting_service import MeetingService
+from app.modules.meetings.domain.models import MeetingCreate
 from app.modules.meetings.infrastructure.supabase_closing import (
     SupabaseClosingRepository,
 )
+from app.modules.persona_catalog.application.queries import GetCreationSnapshot
 
 NOW = "2026-10-29T09:00:00+00:00"
 
@@ -122,6 +127,91 @@ async def test_get_meeting_returns_none_without_a_second_read():
 
     assert await _service(client).get_meeting("missing") is None
     assert client.calls == ["rpc:read_meeting_bundle"]
+
+
+class _BatchCatalog:
+    """Answers a whole roster in one call and rejects per-persona reads."""
+
+    def __init__(self, rows) -> None:
+        self.rows = rows
+        self.calls: list[list[str]] = []
+
+    async def read_creation_snapshot(self, persona_id: str):
+        raise AssertionError("meeting creation must batch its snapshots")
+
+    async def read_creation_snapshots(self, persona_ids: list[str]):
+        self.calls.append(list(persona_ids))
+        return self.rows
+
+
+PERSONA_ID = "11111111-1111-4111-8111-111111111111"
+
+
+def _snapshot_row() -> dict:
+    return {
+        "id": PERSONA_ID,
+        "name": "The Investor",
+        "subtitle": "investor",
+        "color": "#22c55e",
+        "avatar_url": None,
+        "provider_config": {"provider": "openrouter", "model": "m"},
+        "is_default": True,
+        "user_id": None,
+        "created_at": NOW,
+        "updated_at": NOW,
+        "active_prompt": "poke holes",
+        "active_prompt_version": 2,
+        "stack_ids": [],
+    }
+
+
+async def test_meeting_creation_is_one_snapshot_batch_plus_one_write():
+    catalog = _BatchCatalog([_snapshot_row()])
+    created = {
+        "meeting": {
+            "id": "meeting-1",
+            "user_id": "user-1",
+            "name": "Board review",
+            "agenda": "Decide",
+            "status": "active",
+            "total_cost": 0.0,
+            "created_at": NOW,
+        },
+        "participants": [
+            {
+                "id": "participant-1",
+                "meeting_id": "meeting-1",
+                "name": "The Investor",
+                "role": "investor",
+                "system_prompt": "You are The Investor.",
+                "provider_config": {"provider": "openrouter", "model": "m"},
+                "color": "#22c55e",
+                "persona_id": PERSONA_ID,
+                "stack_ids": [],
+                "created_at": NOW,
+                "generation_policy": None,
+            }
+        ],
+    }
+    client = _CountingClient(created)
+    service = MeetingService(
+        client,
+        snapshot_template=GetCreationSnapshot(catalog),
+        construct_participants=ConstructParticipants(
+            GetCreationSnapshot(catalog),
+            prompt_composer=lambda base: base,
+            id_factory=lambda: "participant-1",
+        ),
+        run_blocking=None,
+    )
+
+    meeting = await service.create_meeting(
+        MeetingCreate(name="Board review", agenda="Decide", persona_ids=[PERSONA_ID])
+    )
+
+    assert catalog.calls == [[PERSONA_ID]]
+    assert client.calls == ["rpc:create_meeting_transaction"]
+    assert meeting.participants[0].name == "The Investor"
 
 
 class _Manager:

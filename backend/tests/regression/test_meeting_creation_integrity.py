@@ -32,6 +32,7 @@ MIGRATION_DIR = Path(__file__).resolve().parents[2] / "migrations"
 UPGRADE_MIGRATIONS = [
     "006_participant_role_capacity.sql",
     "015_persona_catalog_transactions.sql",
+    "034_persona_snapshot_batch.sql",
 ]
 
 LONG_SUBTITLE = "D" + ("x" * 179)  # 180 chars — fits personas.subtitle, overflows role VARCHAR(50)

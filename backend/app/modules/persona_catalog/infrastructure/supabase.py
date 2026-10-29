@@ -148,6 +148,36 @@ class SupabasePersonaCatalog:
             )
         return data
 
+    async def read_creation_snapshots(self, persona_ids: list[str]) -> list[dict]:
+        """Read a whole roster's creation snapshots in one round trip.
+
+        Spec 20: meeting creation used to await one RPC per persona. The
+        single-template function stays for contracts and older callers;
+        this batch sibling returns the same row shape and the same
+        all-or-nothing semantics (unknown ids are simply absent).
+        """
+        if not persona_ids:
+            return []
+        try:
+            result = await run_blocking(
+                lambda: self._client()
+                .rpc(
+                    "read_persona_creation_snapshots",
+                    {"p_persona_ids": [str(persona_id) for persona_id in persona_ids]},
+                )
+                .execute()
+            )
+        except (APIError, httpx.HTTPError) as exc:
+            raise PromptCatalogUnavailable("the persona catalog failed to persist; retry later") from exc
+        data = result.data
+        if data is None:
+            return []
+        if not isinstance(data, list):
+            raise PromptCatalogUnavailable(
+                "the persona catalog returned an unexpected result shape"
+            )
+        return [row for row in data if isinstance(row, dict)]
+
     async def create_persona(
         self,
         persona_id: str,

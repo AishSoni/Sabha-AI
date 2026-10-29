@@ -76,6 +76,7 @@ SCHEMA_FILES = [
     BACKEND_ROOT / "migrations" / "031_pdf_extraction_provenance.sql",
     BACKEND_ROOT / "migrations" / "032_replay_package.sql",
     BACKEND_ROOT / "migrations" / "033_meeting_read_bundle.sql",
+    BACKEND_ROOT / "migrations" / "034_persona_snapshot_batch.sql",
 ]
 
 # The chain immediately before Spec 12's isolation migration. Tests use this
