@@ -11,6 +11,7 @@
     "test:unit": "vitest run src",
     "test:architecture": "vitest run tests/architecture",
     "test:e2e": "playwright test",
+    "test:e2e:prod": "node e2e/run-production.mjs",
     "sync:openapi": "openapi-typescript tests/fixtures/openapi.json -o src/shared/api/generated.ts"
   },
   "dependencies": {

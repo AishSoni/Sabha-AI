@@ -9,6 +9,9 @@ import { defineConfig, devices } from '@playwright/test';
  */
 const BACKEND_PORT = 8123;
 const FRONTEND_PORT = 3100;
+// `npm run test:e2e:prod` builds first, then sets E2E_PRODUCTION so the same
+// journeys run against `next start` rather than the dev server.
+const PRODUCTION = process.env.E2E_PRODUCTION === "1";
 
 export default defineConfig({
     testDir: './e2e',
@@ -30,10 +33,12 @@ export default defineConfig({
             timeout: 180_000,
         },
         {
-            command: `npm run dev -- -p ${FRONTEND_PORT}`,
+            command: PRODUCTION
+                ? `npm run start -- -p ${FRONTEND_PORT}`
+                : `npm run dev -- -p ${FRONTEND_PORT}`,
             url: `http://127.0.0.1:${FRONTEND_PORT}`,
             reuseExistingServer: false,
-            timeout: 180_000,
+            timeout: PRODUCTION ? 240_000 : 180_000,
             env: {
                 NEXT_PUBLIC_API_URL: `http://127.0.0.1:${BACKEND_PORT}/api`,
             },
