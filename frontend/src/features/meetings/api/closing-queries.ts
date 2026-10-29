@@ -15,7 +15,7 @@ import { closingClient } from './closing-client';
 import { isPollingClosingStage, type ClosingView } from './closing-decoders';
 import { closingKeys } from './closing-keys';
 
-const CLOSING_POLL_MS = 1_500;
+const CLOSING_POLL_MS = 3_000;
 
 export function useClosing(
     meetingId: string,

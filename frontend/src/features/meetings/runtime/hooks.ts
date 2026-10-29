@@ -121,7 +121,7 @@ export function useRuntimeMeetingTurns(
                         operation.status
                     )
             )
-                ? 2_000
+                ? 4_000
                 : false,
     });
 }
