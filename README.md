@@ -19,7 +19,9 @@ Sabha is an open-source, multi-agent collaborative workspace where you host **st
 | Durability | A dropped connection loses the answer | Accepted turns survive disconnects and worker restarts |
 
 ---
+ 
 
+ 
 ## 🗺️ Table of Contents
 
 1. [Core Concepts](#-core-concepts)
