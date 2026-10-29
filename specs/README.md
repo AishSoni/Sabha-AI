@@ -1,6 +1,6 @@
 # Specification Implementation Order
 
-Start with **Spec 01**, then implement each spec in ascending order through **Spec 20**. The number is the global implementation order, not a finding identifier or commit prefix. Complete the current spec's prerequisites and test-backed exit gate before advancing; use small red-green-refactor changes within each spec. Earlier completion records remain historical; Phase 3 is a new planned sequence, not already implemented replay. Spec 20 opens Phase 4 and is a cross-cutting repair of the live and replay data-access paths, not another replay feature.
+Start with **Spec 01**, then implement each spec in ascending order through **Spec 21**. The number is the global implementation order, not a finding identifier or commit prefix. Complete the current spec's prerequisites and test-backed exit gate before advancing; use small red-green-refactor changes within each spec. Earlier completion records remain historical; Phase 3 is a new planned sequence, not already implemented replay. Spec 20 opens Phase 4 and is a cross-cutting repair of the live and replay data-access paths, not another replay feature. Spec 21 opens Phase 5 and adds one shared in-app evidence-preview system for live meetings and the guided demo.
 
 All documents live directly in this folder. Files starting with `spec-` are implementation assignments. Files starting with `roadmap-` or `reference-` are supporting documents, not additional implementation steps.
 
@@ -30,9 +30,13 @@ All documents live directly in this folder. Files starting with `spec-` are impl
 | 18 | [One guided bond journey](spec-18-guided-bond-journey.md) | Hosted guided replay |
 | 19 | [Replay release acceptance](spec-19-replay-release-acceptance.md) | Hosted guided replay |
 | 20 | [Backend data-access latency and event-loop responsiveness](spec-20-backend-data-access-latency.md) | Production latency |
+| 21 | [In-app evidence previews](spec-21-in-app-evidence-previews.md) | Evidence previews |
 
 Phase 4 currently contains only Spec 20. Its measurement method, baseline and
 budgets live in the spec itself, so no separate roadmap document is introduced.
+
+Phase 5 currently contains only Spec 21. Its preview architecture, safety
+constraints, acceptance tests, and rollout slices live in the spec itself.
 
 ## Supporting documents
 
