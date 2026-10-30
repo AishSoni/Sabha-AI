@@ -30,6 +30,13 @@ class Settings(BaseSettings):
     supabase_url: str = ""
     supabase_key: str = ""
     supabase_service_key: str = ""
+    # Spec 22: the one identity allowed into the live workspace. These are
+    # validated by the access module only when live HTTP is mounted, so a
+    # replay-only process and the turn worker never require them.
+    operator_user_id: str = ""
+    supabase_auth_publishable_key: str = ""
+    access_verification_timeout_seconds: float = 5.0
+    access_verification_max_connections: int = 10
     # Outbound HTTP policy for the server-side Supabase client. The pool is
     # long-lived, so a stale keep-alive connection must be retried rather than
     # surfaced as a failed request (see app/platform/http_client.py).
