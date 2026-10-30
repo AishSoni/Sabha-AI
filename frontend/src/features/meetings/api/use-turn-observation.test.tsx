@@ -97,7 +97,7 @@ describe('useTurnObservation', () => {
         expect(scripted.calls[0]?.input).toContain(
             '/meetings/meeting-1/turns/operation-1/events?after=0'
         );
-        expect(scripted.calls[0]?.init?.method).toBeUndefined();
+        expect(scripted.calls[0]?.init?.method).toBe('GET');
     });
 
     it('pauses on EOF and resumes from the last persisted sequence', async () => {
@@ -131,7 +131,7 @@ describe('useTurnObservation', () => {
         expect(result.current.projection?.text).toBe('partial done');
         expect(scripted.calls).toHaveLength(2);
         expect(scripted.calls[1]?.input).toContain('events?after=1');
-        expect(scripted.calls[1]?.init?.method).toBeUndefined();
+        expect(scripted.calls[1]?.init?.method).toBe('GET');
     });
 
     it('reconciles a terminal status even when no stream ever connected', async () => {
@@ -172,7 +172,7 @@ describe('useTurnObservation', () => {
         expect(scripted.calls).toHaveLength(1);
         // Observation is a GET; no cancel/submit command is issued on detach.
         expect(scripted.calls[0]?.input).toContain('/events?after=0');
-        expect(scripted.calls[0]?.init?.method).toBeUndefined();
+        expect(scripted.calls[0]?.init?.method).toBe('GET');
     });
 
     it('runs the pre-settlement checkpoint before shared invalidation', async () => {

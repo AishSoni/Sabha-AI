@@ -4,6 +4,25 @@
 //
 // Registers Testing Library's Vitest matchers (Testing Library + vitest globals).
 import "@testing-library/jest-dom/vitest";
+import { afterEach, beforeEach } from "vitest";
+
+import {
+    beginAccess,
+    endAccess,
+    setLiveAccessTokenSource,
+} from "@/shared/access";
+
+// Every frontend test starts in an admitted operator epoch with a synthetic
+// token source. Tests that exercise sign-out/session loss end it explicitly.
+beforeEach(() => {
+    setLiveAccessTokenSource(async () => "test-operator-token");
+    beginAccess();
+});
+
+afterEach(() => {
+    endAccess("signed_out");
+    setLiveAccessTokenSource(null);
+});
 
 // happy-dom does not ship a working Storage in this environment; zustand's
 // persist middleware and vault tests need one. Minimal spec-shaped shim.

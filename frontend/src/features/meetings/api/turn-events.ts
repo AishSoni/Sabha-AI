@@ -7,7 +7,6 @@
  * never submit or retry inference.
  */
 import { ApiError, httpApiError, readFailureDetail } from '@/shared/api/errors';
-import { resolveApiBaseUrl } from '@/shared/api/transport';
 import { DecodeError, decodeObject, requireNumber, requireString } from '@/shared/api/decode';
 
 export type TurnEventType =
@@ -255,10 +254,9 @@ export function localObservationInterruption(sequence = 0): TurnEvent {
     };
 }
 
-export function turnEventsUrl(meetingId: string, operationId: string, after = 0): string {
-    const base = resolveApiBaseUrl();
-    const path =
+export function turnEventsPath(meetingId: string, operationId: string, after = 0): string {
+    return (
         `/meetings/${encodeURIComponent(meetingId)}/turns/${encodeURIComponent(operationId)}/events` +
-        `?after=${after}`;
-    return `${base}${path}`;
+        `?after=${after}`
+    );
 }

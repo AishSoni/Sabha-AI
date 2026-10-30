@@ -64,10 +64,10 @@ describe('turnClient commands', () => {
         expect(fetcher.calls).toHaveLength(1);
         expect(fetcher.calls[0]?.input).toBe('http://localhost:8000/api/meetings/meeting-1/turns');
         expect(fetcher.calls[0]?.init?.method).toBe('POST');
-        expect(fetcher.calls[0]?.init?.headers).toEqual({
-            'X-Provider-Key': 'sk-secret',
-            'Content-Type': 'application/json',
-        });
+        const headers = fetcher.calls[0]?.init?.headers as Headers;
+        expect(headers.get('x-provider-key')).toBe('sk-secret');
+        expect(headers.get('content-type')).toBe('application/json');
+        expect(headers.get('authorization')).toBe('Bearer test-operator-token');
         const body = JSON.parse(String(fetcher.calls[0]?.init?.body));
         expect(body).toEqual({
             participant_id: 'participant-1',
@@ -150,9 +150,15 @@ describe('turnClient.observe', () => {
         expect(fetch).toHaveBeenCalledWith(
             'http://localhost:8000/api/meetings/meeting-1/turns/operation-1/events?after=4',
             expect.objectContaining({
-                headers: { Accept: 'text/event-stream' },
+                redirect: 'error',
+                credentials: 'omit',
             })
         );
+        const init = (fetch as unknown as { mock: { calls: [string, RequestInit][] } })
+            .mock.calls[0]![1];
+        const headers = init.headers as Headers;
+        expect(headers.get('accept')).toBe('text/event-stream');
+        expect(headers.get('authorization')).toBe('Bearer test-operator-token');
     });
 
     it('maps a failed observation dial to a structured network error', async () => {

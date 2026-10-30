@@ -5,7 +5,7 @@
  * stages scope fields, calls the module-owned routes, and validates every
  * decoded record before it can enter a query cache.
  */
-import { requestForm, requestJson } from '@/shared/api/transport';
+import { requestLiveForm, requestLiveJson } from '@/shared/access';
 import {
     decodeDocument,
     decodeDocumentList,
@@ -46,19 +46,19 @@ export const documentClient = {
         if (input.meetingId) form.append('meeting_id', input.meetingId);
         if (input.personaId) form.append('persona_id', input.personaId);
         if (input.stackId) form.append('stack_id', input.stackId);
-        return requestForm('/documents/upload', form, init).then((body) =>
+        return requestLiveForm('/documents/upload', form, init).then((body) =>
             decodeUploadReceipt(body, '/documents/upload')
         );
     },
 
     getOperation(operationId: string, init?: { signal?: AbortSignal }): Promise<IngestionProgress> {
-        return requestJson(`/documents/operations/${operationId}`, init).then((body) =>
+        return requestLiveJson(`/documents/operations/${operationId}`, init).then((body) =>
             decodeIngestionProgress(body, `/documents/operations/${operationId}`)
         );
     },
 
     retryOperation(operationId: string, init?: { signal?: AbortSignal }): Promise<UploadReceipt> {
-        return requestJson(`/documents/operations/${operationId}/retry`, {
+        return requestLiveJson(`/documents/operations/${operationId}/retry`, {
             method: 'POST',
             ...init,
         }).then((body) =>
@@ -69,15 +69,15 @@ export const documentClient = {
     list(scope: DocumentScope, init?: { signal?: AbortSignal }): Promise<Document[]> {
         const { key, id } = scopeQuery(scope);
         const path = `/documents/${key}/${id}`;
-        return requestJson(path, init).then((body) => decodeDocumentList(body, path));
+        return requestLiveJson(path, init).then((body) => decodeDocumentList(body, path));
     },
 
     get(documentId: string, init?: { signal?: AbortSignal }): Promise<Document> {
         const path = `/documents/${documentId}`;
-        return requestJson(path, init).then((body) => decodeDocument(body, path));
+        return requestLiveJson(path, init).then((body) => decodeDocument(body, path));
     },
 
     delete(documentId: string, init?: { signal?: AbortSignal }): Promise<{ message: string; id: string }> {
-        return requestJson(`/documents/${documentId}`, { method: 'DELETE', ...init });
+        return requestLiveJson(`/documents/${documentId}`, { method: 'DELETE', ...init });
     },
 };

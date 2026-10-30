@@ -4,7 +4,7 @@
  * This is a pure server-metadata read: no credential headers are ever
  * attached, and failures surface as plain {@link ApiError}s.
  */
-import { requestJson } from '@/shared/api/transport';
+import { requestLiveJson } from '@/shared/access';
 import {
     decodeFetchModelsResult,
     decodeProvidersEnvironment,
@@ -43,7 +43,7 @@ export interface UpdateSystemAIInput {
 
 export const settingsClient = {
     getProviders(init: RequestInitOptional = {}): Promise<ProvidersEnvironment> {
-        return requestJson<unknown>('/settings/providers', { signal: init.signal }).then((payload) =>
+        return requestLiveJson<unknown>('/settings/providers', { signal: init.signal }).then((payload) =>
             decodeProvidersEnvironment(payload, 'providers'),
         );
     },
@@ -57,7 +57,7 @@ export const settingsClient = {
         input: FetchProviderModelsInput,
         init: RequestInitOptional = {},
     ): Promise<FetchModelsResultView> {
-        return requestJson<unknown>('/settings/models', {
+        return requestLiveJson<unknown>('/settings/models', {
             method: 'POST',
             signal: init.signal,
             body: {
@@ -73,7 +73,7 @@ export const settingsClient = {
         input: TestProviderKeyInput,
         init: RequestInitOptional = {},
     ): Promise<TestProviderKeyResultView> {
-        return requestJson<unknown>('/settings/test-key', {
+        return requestLiveJson<unknown>('/settings/test-key', {
             method: 'POST',
             signal: init.signal,
             body: {
@@ -89,7 +89,7 @@ export const settingsClient = {
         input: UpdateSystemAIInput,
         init: RequestInitOptional = {},
     ): Promise<SystemAIConfigView> {
-        return requestJson<unknown>('/settings/system-ai', {
+        return requestLiveJson<unknown>('/settings/system-ai', {
             method: 'PUT',
             signal: init.signal,
             body: {

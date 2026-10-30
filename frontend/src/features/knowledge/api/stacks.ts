@@ -5,7 +5,7 @@
  * the knowledge feature so persona-catalog consumes it through the feature
  * root barrel, never through the legacy facade.
  */
-import { requestJson } from '@/shared/api/transport';
+import { requestLiveJson } from '@/shared/access';
 import { decodeObject, optionalString, requireArray, requireNumber, requireString } from '@/shared/api/decode';
 
 export interface KnowledgeStack {
@@ -58,19 +58,19 @@ function decodeStackListResponse(value: unknown, path: string): KnowledgeStackLi
 export const stackClient = {
     list(init?: { signal?: AbortSignal; userId?: string }): Promise<KnowledgeStackListResponse> {
         const query = init?.userId ? { user_id: init.userId } : undefined;
-        return requestJson('/knowledge_stacks', { query, ...init }).then((body) =>
+        return requestLiveJson('/knowledge_stacks', { query, ...init }).then((body) =>
             decodeStackListResponse(body, '/knowledge_stacks')
         );
     },
 
     get(stackId: string, init?: { signal?: AbortSignal }): Promise<KnowledgeStack> {
-        return requestJson(`/knowledge_stacks/${stackId}`, init).then((body) =>
+        return requestLiveJson(`/knowledge_stacks/${stackId}`, init).then((body) =>
             decodeStack(body, `/knowledge_stacks/${stackId}`)
         );
     },
 
     create(input: KnowledgeStackInput, init?: { signal?: AbortSignal }): Promise<KnowledgeStack> {
-        return requestJson('/knowledge_stacks', { method: 'POST', body: input, ...init }).then((body) =>
+        return requestLiveJson('/knowledge_stacks', { method: 'POST', body: input, ...init }).then((body) =>
             decodeStack(body, '/knowledge_stacks')
         );
     },
@@ -80,7 +80,7 @@ export const stackClient = {
         input: KnowledgeStackUpdate,
         init?: { signal?: AbortSignal }
     ): Promise<KnowledgeStack> {
-        return requestJson(`/knowledge_stacks/${stackId}`, {
+        return requestLiveJson(`/knowledge_stacks/${stackId}`, {
             method: 'PUT',
             body: input,
             ...init,
@@ -88,7 +88,7 @@ export const stackClient = {
     },
 
     delete(stackId: string, init?: { signal?: AbortSignal }): Promise<void> {
-        return requestJson(`/knowledge_stacks/${stackId}`, { method: 'DELETE', ...init }).then(
+        return requestLiveJson(`/knowledge_stacks/${stackId}`, { method: 'DELETE', ...init }).then(
             () => undefined
         );
     },

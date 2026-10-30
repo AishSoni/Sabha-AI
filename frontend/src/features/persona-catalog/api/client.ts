@@ -5,7 +5,7 @@
  * routes; bodies mirror the frozen contract snapshot and responses are
  * decoded before they reach the screens.
  */
-import { requestJson } from '@/shared/api/transport';
+import { requestLiveJson } from '@/shared/access';
 import {
     decodePersona,
     decodePromptRevision,
@@ -52,35 +52,35 @@ export const personaClient = {
             include_defaults: init?.includeDefaults ?? true,
         };
         if (init?.userId) query.user_id = init.userId;
-        return requestJson('/personas', { query, ...init }).then((body) =>
+        return requestLiveJson('/personas', { query, ...init }).then((body) =>
             requirePersonaListResponse(body, '/personas')
         );
     },
 
     get(personaId: string, init?: { signal?: AbortSignal }): Promise<Persona> {
-        return requestJson(`/personas/${personaId}`, { ...init }).then((body) =>
+        return requestLiveJson(`/personas/${personaId}`, { ...init }).then((body) =>
             decodePersona(body, `/personas/${personaId}`)
         );
     },
 
     create(data: PersonaCreateInput, init?: { signal?: AbortSignal }): Promise<Persona> {
-        return requestJson('/personas', { method: 'POST', body: data, ...init }).then((body) =>
+        return requestLiveJson('/personas', { method: 'POST', body: data, ...init }).then((body) =>
             decodePersona(body, '/personas')
         );
     },
 
     update(personaId: string, data: PersonaUpdateInput, init?: { signal?: AbortSignal }): Promise<Persona> {
-        return requestJson(`/personas/${personaId}`, { method: 'PUT', body: data, ...init }).then((body) =>
+        return requestLiveJson(`/personas/${personaId}`, { method: 'PUT', body: data, ...init }).then((body) =>
             decodePersona(body, `/personas/${personaId}`)
         );
     },
 
     async delete(personaId: string, init?: { signal?: AbortSignal }): Promise<void> {
-        await requestJson(`/personas/${personaId}`, { method: 'DELETE', ...init });
+        await requestLiveJson(`/personas/${personaId}`, { method: 'DELETE', ...init });
     },
 
     listPromptVersions(personaId: string, init?: { signal?: AbortSignal }): Promise<PromptRevision[]> {
-        return requestJson(`/personas/${personaId}/prompts`, { ...init }).then((body) =>
+        return requestLiveJson(`/personas/${personaId}/prompts`, { ...init }).then((body) =>
             requireArray(body, `/personas/${personaId}/prompts`, (item, childPath) =>
                 decodePromptRevision(item, childPath)
             )
@@ -88,7 +88,7 @@ export const personaClient = {
     },
 
     createPromptVersion(personaId: string, content: string, init?: { signal?: AbortSignal }): Promise<PromptRevision> {
-        return requestJson(`/personas/${personaId}/prompts`, {
+        return requestLiveJson(`/personas/${personaId}/prompts`, {
             method: 'POST',
             body: { content },
             ...init,
@@ -96,7 +96,7 @@ export const personaClient = {
     },
 
     async activatePromptVersion(personaId: string, version: number, init?: { signal?: AbortSignal }): Promise<void> {
-        await requestJson(`/personas/${personaId}/prompts/${version}/activate`, {
+        await requestLiveJson(`/personas/${personaId}/prompts/${version}/activate`, {
             method: 'POST',
             ...init,
         });

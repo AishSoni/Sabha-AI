@@ -6,7 +6,7 @@
  * decoding. The client knows nothing about query keys or feature stores.
  */
 import { requireArray } from '@/shared/api/decode';
-import { requestJson } from '@/shared/api/transport';
+import { requestLiveJson } from '@/shared/access';
 import {
     decodeConsensus,
     decodeContextStats,
@@ -36,13 +36,13 @@ export interface RequestInitOptional {
 export const meetingClient = {
     /** Canonical list of meetings (GET /api/meetings). */
     async list(): Promise<Meeting[]> {
-        const payload = await requestJson<unknown>('/meetings');
+        const payload = await requestLiveJson<unknown>('/meetings');
         return requireArray(payload, 'GET /meetings', (item, childPath) => decodeMeeting(item, childPath));
     },
 
     /** Canonical detail of one meeting (GET /api/meetings/:id). */
     async get(meetingId: string, init: RequestInitOptional = {}): Promise<MeetingWithParticipants> {
-        const payload = await requestJson<unknown>(`/meetings/${encodeURIComponent(meetingId)}`, {
+        const payload = await requestLiveJson<unknown>(`/meetings/${encodeURIComponent(meetingId)}`, {
             signal: init.signal,
         });
         return decodeMeetingWithParticipants(payload, 'GET /meetings/:id');
@@ -50,7 +50,7 @@ export const meetingClient = {
 
     /** Create a meeting command (POST /api/meetings), decoded detail back. */
     async create(input: MeetingCreateInput, init: RequestInitOptional = {}): Promise<MeetingWithParticipants> {
-        const payload = await requestJson<unknown>('/meetings', {
+        const payload = await requestLiveJson<unknown>('/meetings', {
             method: 'POST',
             body: {
                 name: input.name,
@@ -64,7 +64,7 @@ export const meetingClient = {
 
     /** Archive command (POST /api/meetings/:id/archive). */
     async archive(meetingId: string, init: RequestInitOptional = {}): Promise<void> {
-        await requestJson<unknown>(`/meetings/${encodeURIComponent(meetingId)}/archive`, {
+        await requestLiveJson<unknown>(`/meetings/${encodeURIComponent(meetingId)}/archive`, {
             method: 'POST',
             signal: init.signal,
         });
@@ -72,7 +72,7 @@ export const meetingClient = {
 
     /** Unarchive command (POST /api/meetings/:id/unarchive). */
     async unarchive(meetingId: string, init: RequestInitOptional = {}): Promise<void> {
-        await requestJson<unknown>(`/meetings/${encodeURIComponent(meetingId)}/unarchive`, {
+        await requestLiveJson<unknown>(`/meetings/${encodeURIComponent(meetingId)}/unarchive`, {
             method: 'POST',
             signal: init.signal,
         });
@@ -80,7 +80,7 @@ export const meetingClient = {
 
     /** Permanent delete command (DELETE /api/meetings/:id). */
     async remove(meetingId: string, init: RequestInitOptional = {}): Promise<void> {
-        await requestJson<unknown>(`/meetings/${encodeURIComponent(meetingId)}`, {
+        await requestLiveJson<unknown>(`/meetings/${encodeURIComponent(meetingId)}`, {
             method: 'DELETE',
             signal: init.signal,
         });
@@ -92,7 +92,7 @@ export const meetingClient = {
         content: string,
         init: RequestInitOptional = {}
     ): Promise<Message> {
-        const payload = await requestJson<unknown>(
+        const payload = await requestLiveJson<unknown>(
             `/meetings/${encodeURIComponent(meetingId)}/message`,
             { method: 'POST', body: { content }, signal: init.signal }
         );
@@ -104,7 +104,7 @@ export const meetingClient = {
         meetingId: string,
         init: RequestInitOptional = {}
     ): Promise<Disagreement[]> {
-        const payload = await requestJson<unknown>(
+        const payload = await requestLiveJson<unknown>(
             `/meetings/${encodeURIComponent(meetingId)}/disagreements`,
             { signal: init.signal }
         );
@@ -115,7 +115,7 @@ export const meetingClient = {
 
     /** Read the persisted consensus ledger (GET /api/meetings/:id/consensus). */
     async consensus(meetingId: string, init: RequestInitOptional = {}): Promise<Consensus[]> {
-        const payload = await requestJson<unknown>(
+        const payload = await requestLiveJson<unknown>(
             `/meetings/${encodeURIComponent(meetingId)}/consensus`,
             { signal: init.signal }
         );
@@ -129,7 +129,7 @@ export const meetingClient = {
         meetingId: string,
         init: RequestInitOptional = {}
     ): Promise<ContextStats> {
-        const payload = await requestJson<unknown>(
+        const payload = await requestLiveJson<unknown>(
             `/meetings/${encodeURIComponent(meetingId)}/context-stats`,
             { signal: init.signal }
         );
@@ -164,7 +164,7 @@ export const meetingClient = {
                       : {}),
               }
             : {};
-        const payload = await requestJson<unknown>(
+        const payload = await requestLiveJson<unknown>(
             `/meetings/${encodeURIComponent(meetingId)}/summary`,
             {
                 method: 'POST',

@@ -6,7 +6,7 @@
  * execution path. The BYOK key rides `X-Provider-Key` only and never enters
  * the request body or any persisted payload.
  */
-import { requestJson } from '@/shared/api/transport';
+import { fetchLiveStream, requestLiveJson } from '@/shared/access';
 import { transportApiError } from '@/shared/api/errors';
 import {
     decodeTurnCancelResult,
@@ -15,7 +15,7 @@ import {
     type TurnCancelResult,
     type TurnOperation,
 } from './turn-decoders';
-import { decodeTurnEventStream, turnEventsUrl, type TurnEvent } from './turn-events';
+import { decodeTurnEventStream, turnEventsPath, type TurnEvent } from './turn-events';
 
 /**
  * Browser-composed generation settings. Mirrors the settings vault shape
@@ -63,7 +63,7 @@ function turnHeaders(settings?: TurnGenerationSettings): Record<string, string> 
 export const turnClient = {
     /** Admit one logical turn (POST /meetings/:id/turns). */
     async submit(meetingId: string, input: SubmitTurnInput): Promise<TurnOperation> {
-        const payload = await requestJson<unknown>(
+        const payload = await requestLiveJson<unknown>(
             `/meetings/${encodeURIComponent(meetingId)}/turns`,
             {
                 method: 'POST',
@@ -85,7 +85,7 @@ export const turnClient = {
         limit = 100,
         init: TurnReadOptions = {}
     ): Promise<TurnOperation[]> {
-        const payload = await requestJson<unknown>(
+        const payload = await requestLiveJson<unknown>(
             `/meetings/${encodeURIComponent(meetingId)}/turns`,
             { query: { limit }, signal: init.signal }
         );
@@ -98,7 +98,7 @@ export const turnClient = {
         operationId: string,
         init: TurnReadOptions = {}
     ): Promise<TurnOperation> {
-        const payload = await requestJson<unknown>(
+        const payload = await requestLiveJson<unknown>(
             `/meetings/${encodeURIComponent(meetingId)}/turns/${encodeURIComponent(operationId)}`,
             { signal: init.signal }
         );
@@ -111,7 +111,7 @@ export const turnClient = {
         operationId: string,
         init: TurnReadOptions = {}
     ): Promise<TurnCancelResult> {
-        const payload = await requestJson<unknown>(
+        const payload = await requestLiveJson<unknown>(
             `/meetings/${encodeURIComponent(meetingId)}/turns/${encodeURIComponent(operationId)}/cancel`,
             { method: 'POST', signal: init.signal }
         );
@@ -130,10 +130,10 @@ export const turnClient = {
     ): AsyncGenerator<TurnEvent, void, unknown> {
         let response: Response;
         try {
-            response = await fetch(turnEventsUrl(meetingId, operationId, options.after ?? 0), {
-                headers: { Accept: 'text/event-stream' },
-                signal: options.signal,
-            });
+            response = await fetchLiveStream(
+                turnEventsPath(meetingId, operationId, options.after ?? 0),
+                { signal: options.signal }
+            );
         } catch (cause) {
             throw transportApiError(cause);
         }

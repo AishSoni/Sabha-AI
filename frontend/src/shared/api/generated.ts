@@ -814,6 +814,26 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/access/session": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Access Session
+         * @description Authoritative admission probe; returns no workspace or provider data.
+         */
+        get: operations["access_session_api_access_session_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/replay/session": {
         parameters: {
             query?: never;
@@ -2343,6 +2363,34 @@ export interface operations {
                     "application/json": components["schemas"]["Message"];
                 };
             };
+            /** @description Missing, malformed, expired, tampered or wrong-project token */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    /**
+                     * @example {
+                     *       "detail": "Operator authentication required"
+                     *     }
+                     */
+                    "application/json": unknown;
+                };
+            };
+            /** @description A valid account that is not the configured operator */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    /**
+                     * @example {
+                     *       "detail": "Operator access denied"
+                     *     }
+                     */
+                    "application/json": unknown;
+                };
+            };
             /** @description Validation Error */
             422: {
                 headers: {
@@ -2350,6 +2398,20 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+            /** @description Auth verification could not be completed safely */
+            503: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    /**
+                     * @example {
+                     *       "detail": "Access verification unavailable"
+                     *     }
+                     */
+                    "application/json": unknown;
                 };
             };
         };
@@ -2378,6 +2440,34 @@ export interface operations {
                     "application/json": components["schemas"]["TurnResponse"];
                 };
             };
+            /** @description Missing, malformed, expired, tampered or wrong-project token */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    /**
+                     * @example {
+                     *       "detail": "Operator authentication required"
+                     *     }
+                     */
+                    "application/json": unknown;
+                };
+            };
+            /** @description A valid account that is not the configured operator */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    /**
+                     * @example {
+                     *       "detail": "Operator access denied"
+                     *     }
+                     */
+                    "application/json": unknown;
+                };
+            };
             /** @description Validation Error */
             422: {
                 headers: {
@@ -2385,6 +2475,20 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+            /** @description Auth verification could not be completed safely */
+            503: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    /**
+                     * @example {
+                     *       "detail": "Access verification unavailable"
+                     *     }
+                     */
+                    "application/json": unknown;
                 };
             };
         };
@@ -2413,6 +2517,34 @@ export interface operations {
                     "application/json": unknown;
                 };
             };
+            /** @description Missing, malformed, expired, tampered or wrong-project token */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    /**
+                     * @example {
+                     *       "detail": "Operator authentication required"
+                     *     }
+                     */
+                    "application/json": unknown;
+                };
+            };
+            /** @description A valid account that is not the configured operator */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    /**
+                     * @example {
+                     *       "detail": "Operator access denied"
+                     *     }
+                     */
+                    "application/json": unknown;
+                };
+            };
             /** @description Validation Error */
             422: {
                 headers: {
@@ -2420,6 +2552,20 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+            /** @description Auth verification could not be completed safely */
+            503: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    /**
+                     * @example {
+                     *       "detail": "Access verification unavailable"
+                     *     }
+                     */
+                    "application/json": unknown;
                 };
             };
         };
@@ -2446,6 +2592,34 @@ export interface operations {
                     "application/json": components["schemas"]["TurnOperationResponse"][];
                 };
             };
+            /** @description Missing, malformed, expired, tampered or wrong-project token */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    /**
+                     * @example {
+                     *       "detail": "Operator authentication required"
+                     *     }
+                     */
+                    "application/json": unknown;
+                };
+            };
+            /** @description A valid account that is not the configured operator */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    /**
+                     * @example {
+                     *       "detail": "Operator access denied"
+                     *     }
+                     */
+                    "application/json": unknown;
+                };
+            };
             /** @description Validation Error */
             422: {
                 headers: {
@@ -2453,6 +2627,20 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+            /** @description Auth verification could not be completed safely */
+            503: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    /**
+                     * @example {
+                     *       "detail": "Access verification unavailable"
+                     *     }
+                     */
+                    "application/json": unknown;
                 };
             };
         };
@@ -2481,6 +2669,34 @@ export interface operations {
                     "application/json": components["schemas"]["TurnOperationResponse"];
                 };
             };
+            /** @description Missing, malformed, expired, tampered or wrong-project token */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    /**
+                     * @example {
+                     *       "detail": "Operator authentication required"
+                     *     }
+                     */
+                    "application/json": unknown;
+                };
+            };
+            /** @description A valid account that is not the configured operator */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    /**
+                     * @example {
+                     *       "detail": "Operator access denied"
+                     *     }
+                     */
+                    "application/json": unknown;
+                };
+            };
             /** @description Validation Error */
             422: {
                 headers: {
@@ -2488,6 +2704,20 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+            /** @description Auth verification could not be completed safely */
+            503: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    /**
+                     * @example {
+                     *       "detail": "Access verification unavailable"
+                     *     }
+                     */
+                    "application/json": unknown;
                 };
             };
         };
@@ -2513,6 +2743,34 @@ export interface operations {
                     "application/json": components["schemas"]["TurnOperationResponse"];
                 };
             };
+            /** @description Missing, malformed, expired, tampered or wrong-project token */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    /**
+                     * @example {
+                     *       "detail": "Operator authentication required"
+                     *     }
+                     */
+                    "application/json": unknown;
+                };
+            };
+            /** @description A valid account that is not the configured operator */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    /**
+                     * @example {
+                     *       "detail": "Operator access denied"
+                     *     }
+                     */
+                    "application/json": unknown;
+                };
+            };
             /** @description Validation Error */
             422: {
                 headers: {
@@ -2520,6 +2778,20 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+            /** @description Auth verification could not be completed safely */
+            503: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    /**
+                     * @example {
+                     *       "detail": "Access verification unavailable"
+                     *     }
+                     */
+                    "application/json": unknown;
                 };
             };
         };
@@ -2545,6 +2817,34 @@ export interface operations {
                     "application/json": components["schemas"]["TurnCancelResponse"];
                 };
             };
+            /** @description Missing, malformed, expired, tampered or wrong-project token */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    /**
+                     * @example {
+                     *       "detail": "Operator authentication required"
+                     *     }
+                     */
+                    "application/json": unknown;
+                };
+            };
+            /** @description A valid account that is not the configured operator */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    /**
+                     * @example {
+                     *       "detail": "Operator access denied"
+                     *     }
+                     */
+                    "application/json": unknown;
+                };
+            };
             /** @description Validation Error */
             422: {
                 headers: {
@@ -2552,6 +2852,20 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+            /** @description Auth verification could not be completed safely */
+            503: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    /**
+                     * @example {
+                     *       "detail": "Access verification unavailable"
+                     *     }
+                     */
+                    "application/json": unknown;
                 };
             };
         };
@@ -2579,6 +2893,34 @@ export interface operations {
                     "application/json": unknown;
                 };
             };
+            /** @description Missing, malformed, expired, tampered or wrong-project token */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    /**
+                     * @example {
+                     *       "detail": "Operator authentication required"
+                     *     }
+                     */
+                    "application/json": unknown;
+                };
+            };
+            /** @description A valid account that is not the configured operator */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    /**
+                     * @example {
+                     *       "detail": "Operator access denied"
+                     *     }
+                     */
+                    "application/json": unknown;
+                };
+            };
             /** @description Validation Error */
             422: {
                 headers: {
@@ -2586,6 +2928,20 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+            /** @description Auth verification could not be completed safely */
+            503: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    /**
+                     * @example {
+                     *       "detail": "Access verification unavailable"
+                     *     }
+                     */
+                    "application/json": unknown;
                 };
             };
         };
@@ -2606,6 +2962,48 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["ProvidersListResponse"];
+                };
+            };
+            /** @description Missing, malformed, expired, tampered or wrong-project token */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    /**
+                     * @example {
+                     *       "detail": "Operator authentication required"
+                     *     }
+                     */
+                    "application/json": unknown;
+                };
+            };
+            /** @description A valid account that is not the configured operator */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    /**
+                     * @example {
+                     *       "detail": "Operator access denied"
+                     *     }
+                     */
+                    "application/json": unknown;
+                };
+            };
+            /** @description Auth verification could not be completed safely */
+            503: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    /**
+                     * @example {
+                     *       "detail": "Access verification unavailable"
+                     *     }
+                     */
+                    "application/json": unknown;
                 };
             };
         };
@@ -2632,6 +3030,34 @@ export interface operations {
                     "application/json": components["schemas"]["SystemAIConfig"];
                 };
             };
+            /** @description Missing, malformed, expired, tampered or wrong-project token */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    /**
+                     * @example {
+                     *       "detail": "Operator authentication required"
+                     *     }
+                     */
+                    "application/json": unknown;
+                };
+            };
+            /** @description A valid account that is not the configured operator */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    /**
+                     * @example {
+                     *       "detail": "Operator access denied"
+                     *     }
+                     */
+                    "application/json": unknown;
+                };
+            };
             /** @description Validation Error */
             422: {
                 headers: {
@@ -2639,6 +3065,20 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+            /** @description Auth verification could not be completed safely */
+            503: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    /**
+                     * @example {
+                     *       "detail": "Access verification unavailable"
+                     *     }
+                     */
+                    "application/json": unknown;
                 };
             };
         };
@@ -2665,6 +3105,34 @@ export interface operations {
                     "application/json": components["schemas"]["FetchModelsResponse"];
                 };
             };
+            /** @description Missing, malformed, expired, tampered or wrong-project token */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    /**
+                     * @example {
+                     *       "detail": "Operator authentication required"
+                     *     }
+                     */
+                    "application/json": unknown;
+                };
+            };
+            /** @description A valid account that is not the configured operator */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    /**
+                     * @example {
+                     *       "detail": "Operator access denied"
+                     *     }
+                     */
+                    "application/json": unknown;
+                };
+            };
             /** @description Validation Error */
             422: {
                 headers: {
@@ -2672,6 +3140,20 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+            /** @description Auth verification could not be completed safely */
+            503: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    /**
+                     * @example {
+                     *       "detail": "Access verification unavailable"
+                     *     }
+                     */
+                    "application/json": unknown;
                 };
             };
         };
@@ -2698,6 +3180,34 @@ export interface operations {
                     "application/json": components["schemas"]["TestKeyResponse"];
                 };
             };
+            /** @description Missing, malformed, expired, tampered or wrong-project token */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    /**
+                     * @example {
+                     *       "detail": "Operator authentication required"
+                     *     }
+                     */
+                    "application/json": unknown;
+                };
+            };
+            /** @description A valid account that is not the configured operator */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    /**
+                     * @example {
+                     *       "detail": "Operator access denied"
+                     *     }
+                     */
+                    "application/json": unknown;
+                };
+            };
             /** @description Validation Error */
             422: {
                 headers: {
@@ -2705,6 +3215,20 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+            /** @description Auth verification could not be completed safely */
+            503: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    /**
+                     * @example {
+                     *       "detail": "Access verification unavailable"
+                     *     }
+                     */
+                    "application/json": unknown;
                 };
             };
         };
@@ -2730,6 +3254,34 @@ export interface operations {
                     "application/json": unknown;
                 };
             };
+            /** @description Missing, malformed, expired, tampered or wrong-project token */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    /**
+                     * @example {
+                     *       "detail": "Operator authentication required"
+                     *     }
+                     */
+                    "application/json": unknown;
+                };
+            };
+            /** @description A valid account that is not the configured operator */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    /**
+                     * @example {
+                     *       "detail": "Operator access denied"
+                     *     }
+                     */
+                    "application/json": unknown;
+                };
+            };
             /** @description Validation Error */
             422: {
                 headers: {
@@ -2737,6 +3289,20 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+            /** @description Auth verification could not be completed safely */
+            503: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    /**
+                     * @example {
+                     *       "detail": "Access verification unavailable"
+                     *     }
+                     */
+                    "application/json": unknown;
                 };
             };
         };
@@ -2763,6 +3329,34 @@ export interface operations {
                     "application/json": unknown;
                 };
             };
+            /** @description Missing, malformed, expired, tampered or wrong-project token */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    /**
+                     * @example {
+                     *       "detail": "Operator authentication required"
+                     *     }
+                     */
+                    "application/json": unknown;
+                };
+            };
+            /** @description A valid account that is not the configured operator */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    /**
+                     * @example {
+                     *       "detail": "Operator access denied"
+                     *     }
+                     */
+                    "application/json": unknown;
+                };
+            };
             /** @description Validation Error */
             422: {
                 headers: {
@@ -2770,6 +3364,20 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+            /** @description Auth verification could not be completed safely */
+            503: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    /**
+                     * @example {
+                     *       "detail": "Access verification unavailable"
+                     *     }
+                     */
+                    "application/json": unknown;
                 };
             };
         };
@@ -2794,6 +3402,34 @@ export interface operations {
                     "application/json": unknown;
                 };
             };
+            /** @description Missing, malformed, expired, tampered or wrong-project token */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    /**
+                     * @example {
+                     *       "detail": "Operator authentication required"
+                     *     }
+                     */
+                    "application/json": unknown;
+                };
+            };
+            /** @description A valid account that is not the configured operator */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    /**
+                     * @example {
+                     *       "detail": "Operator access denied"
+                     *     }
+                     */
+                    "application/json": unknown;
+                };
+            };
             /** @description Validation Error */
             422: {
                 headers: {
@@ -2801,6 +3437,20 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+            /** @description Auth verification could not be completed safely */
+            503: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    /**
+                     * @example {
+                     *       "detail": "Access verification unavailable"
+                     *     }
+                     */
+                    "application/json": unknown;
                 };
             };
         };
@@ -2829,6 +3479,34 @@ export interface operations {
                     "application/json": unknown;
                 };
             };
+            /** @description Missing, malformed, expired, tampered or wrong-project token */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    /**
+                     * @example {
+                     *       "detail": "Operator authentication required"
+                     *     }
+                     */
+                    "application/json": unknown;
+                };
+            };
+            /** @description A valid account that is not the configured operator */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    /**
+                     * @example {
+                     *       "detail": "Operator access denied"
+                     *     }
+                     */
+                    "application/json": unknown;
+                };
+            };
             /** @description Validation Error */
             422: {
                 headers: {
@@ -2836,6 +3514,20 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+            /** @description Auth verification could not be completed safely */
+            503: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    /**
+                     * @example {
+                     *       "detail": "Access verification unavailable"
+                     *     }
+                     */
+                    "application/json": unknown;
                 };
             };
         };
@@ -2858,6 +3550,34 @@ export interface operations {
                 };
                 content?: never;
             };
+            /** @description Missing, malformed, expired, tampered or wrong-project token */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    /**
+                     * @example {
+                     *       "detail": "Operator authentication required"
+                     *     }
+                     */
+                    "application/json": unknown;
+                };
+            };
+            /** @description A valid account that is not the configured operator */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    /**
+                     * @example {
+                     *       "detail": "Operator access denied"
+                     *     }
+                     */
+                    "application/json": unknown;
+                };
+            };
             /** @description Validation Error */
             422: {
                 headers: {
@@ -2865,6 +3585,20 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+            /** @description Auth verification could not be completed safely */
+            503: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    /**
+                     * @example {
+                     *       "detail": "Access verification unavailable"
+                     *     }
+                     */
+                    "application/json": unknown;
                 };
             };
         };
@@ -2889,6 +3623,34 @@ export interface operations {
                     "application/json": unknown;
                 };
             };
+            /** @description Missing, malformed, expired, tampered or wrong-project token */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    /**
+                     * @example {
+                     *       "detail": "Operator authentication required"
+                     *     }
+                     */
+                    "application/json": unknown;
+                };
+            };
+            /** @description A valid account that is not the configured operator */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    /**
+                     * @example {
+                     *       "detail": "Operator access denied"
+                     *     }
+                     */
+                    "application/json": unknown;
+                };
+            };
             /** @description Validation Error */
             422: {
                 headers: {
@@ -2896,6 +3658,20 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+            /** @description Auth verification could not be completed safely */
+            503: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    /**
+                     * @example {
+                     *       "detail": "Access verification unavailable"
+                     *     }
+                     */
+                    "application/json": unknown;
                 };
             };
         };
@@ -2924,6 +3700,34 @@ export interface operations {
                     "application/json": unknown;
                 };
             };
+            /** @description Missing, malformed, expired, tampered or wrong-project token */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    /**
+                     * @example {
+                     *       "detail": "Operator authentication required"
+                     *     }
+                     */
+                    "application/json": unknown;
+                };
+            };
+            /** @description A valid account that is not the configured operator */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    /**
+                     * @example {
+                     *       "detail": "Operator access denied"
+                     *     }
+                     */
+                    "application/json": unknown;
+                };
+            };
             /** @description Validation Error */
             422: {
                 headers: {
@@ -2931,6 +3735,20 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+            /** @description Auth verification could not be completed safely */
+            503: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    /**
+                     * @example {
+                     *       "detail": "Access verification unavailable"
+                     *     }
+                     */
+                    "application/json": unknown;
                 };
             };
         };
@@ -2956,6 +3774,34 @@ export interface operations {
                     "application/json": unknown;
                 };
             };
+            /** @description Missing, malformed, expired, tampered or wrong-project token */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    /**
+                     * @example {
+                     *       "detail": "Operator authentication required"
+                     *     }
+                     */
+                    "application/json": unknown;
+                };
+            };
+            /** @description A valid account that is not the configured operator */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    /**
+                     * @example {
+                     *       "detail": "Operator access denied"
+                     *     }
+                     */
+                    "application/json": unknown;
+                };
+            };
             /** @description Validation Error */
             422: {
                 headers: {
@@ -2963,6 +3809,20 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+            /** @description Auth verification could not be completed safely */
+            503: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    /**
+                     * @example {
+                     *       "detail": "Access verification unavailable"
+                     *     }
+                     */
+                    "application/json": unknown;
                 };
             };
         };
@@ -2987,6 +3847,34 @@ export interface operations {
                     "application/json": components["schemas"]["ClosingView"];
                 };
             };
+            /** @description Missing, malformed, expired, tampered or wrong-project token */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    /**
+                     * @example {
+                     *       "detail": "Operator authentication required"
+                     *     }
+                     */
+                    "application/json": unknown;
+                };
+            };
+            /** @description A valid account that is not the configured operator */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    /**
+                     * @example {
+                     *       "detail": "Operator access denied"
+                     *     }
+                     */
+                    "application/json": unknown;
+                };
+            };
             /** @description Validation Error */
             422: {
                 headers: {
@@ -2994,6 +3882,20 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+            /** @description Auth verification could not be completed safely */
+            503: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    /**
+                     * @example {
+                     *       "detail": "Access verification unavailable"
+                     *     }
+                     */
+                    "application/json": unknown;
                 };
             };
         };
@@ -3022,6 +3924,34 @@ export interface operations {
                     "application/json": components["schemas"]["ClosingReceipt"];
                 };
             };
+            /** @description Missing, malformed, expired, tampered or wrong-project token */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    /**
+                     * @example {
+                     *       "detail": "Operator authentication required"
+                     *     }
+                     */
+                    "application/json": unknown;
+                };
+            };
+            /** @description A valid account that is not the configured operator */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    /**
+                     * @example {
+                     *       "detail": "Operator access denied"
+                     *     }
+                     */
+                    "application/json": unknown;
+                };
+            };
             /** @description Validation Error */
             422: {
                 headers: {
@@ -3029,6 +3959,20 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+            /** @description Auth verification could not be completed safely */
+            503: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    /**
+                     * @example {
+                     *       "detail": "Access verification unavailable"
+                     *     }
+                     */
+                    "application/json": unknown;
                 };
             };
         };
@@ -3053,6 +3997,34 @@ export interface operations {
                     "application/json": components["schemas"]["ClosingView"];
                 };
             };
+            /** @description Missing, malformed, expired, tampered or wrong-project token */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    /**
+                     * @example {
+                     *       "detail": "Operator authentication required"
+                     *     }
+                     */
+                    "application/json": unknown;
+                };
+            };
+            /** @description A valid account that is not the configured operator */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    /**
+                     * @example {
+                     *       "detail": "Operator access denied"
+                     *     }
+                     */
+                    "application/json": unknown;
+                };
+            };
             /** @description Validation Error */
             422: {
                 headers: {
@@ -3060,6 +4032,20 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+            /** @description Auth verification could not be completed safely */
+            503: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    /**
+                     * @example {
+                     *       "detail": "Access verification unavailable"
+                     *     }
+                     */
+                    "application/json": unknown;
                 };
             };
         };
@@ -3084,6 +4070,34 @@ export interface operations {
                     "application/json": components["schemas"]["ClosingView"];
                 };
             };
+            /** @description Missing, malformed, expired, tampered or wrong-project token */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    /**
+                     * @example {
+                     *       "detail": "Operator authentication required"
+                     *     }
+                     */
+                    "application/json": unknown;
+                };
+            };
+            /** @description A valid account that is not the configured operator */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    /**
+                     * @example {
+                     *       "detail": "Operator access denied"
+                     *     }
+                     */
+                    "application/json": unknown;
+                };
+            };
             /** @description Validation Error */
             422: {
                 headers: {
@@ -3091,6 +4105,20 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+            /** @description Auth verification could not be completed safely */
+            503: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    /**
+                     * @example {
+                     *       "detail": "Access verification unavailable"
+                     *     }
+                     */
+                    "application/json": unknown;
                 };
             };
         };
@@ -3111,6 +4139,48 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["Meeting"][];
+                };
+            };
+            /** @description Missing, malformed, expired, tampered or wrong-project token */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    /**
+                     * @example {
+                     *       "detail": "Operator authentication required"
+                     *     }
+                     */
+                    "application/json": unknown;
+                };
+            };
+            /** @description A valid account that is not the configured operator */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    /**
+                     * @example {
+                     *       "detail": "Operator access denied"
+                     *     }
+                     */
+                    "application/json": unknown;
+                };
+            };
+            /** @description Auth verification could not be completed safely */
+            503: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    /**
+                     * @example {
+                     *       "detail": "Access verification unavailable"
+                     *     }
+                     */
+                    "application/json": unknown;
                 };
             };
         };
@@ -3137,6 +4207,34 @@ export interface operations {
                     "application/json": components["schemas"]["MeetingWithParticipants"];
                 };
             };
+            /** @description Missing, malformed, expired, tampered or wrong-project token */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    /**
+                     * @example {
+                     *       "detail": "Operator authentication required"
+                     *     }
+                     */
+                    "application/json": unknown;
+                };
+            };
+            /** @description A valid account that is not the configured operator */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    /**
+                     * @example {
+                     *       "detail": "Operator access denied"
+                     *     }
+                     */
+                    "application/json": unknown;
+                };
+            };
             /** @description Validation Error */
             422: {
                 headers: {
@@ -3144,6 +4242,20 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+            /** @description Auth verification could not be completed safely */
+            503: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    /**
+                     * @example {
+                     *       "detail": "Access verification unavailable"
+                     *     }
+                     */
+                    "application/json": unknown;
                 };
             };
         };
@@ -3168,6 +4280,34 @@ export interface operations {
                     "application/json": components["schemas"]["MeetingWithParticipants"];
                 };
             };
+            /** @description Missing, malformed, expired, tampered or wrong-project token */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    /**
+                     * @example {
+                     *       "detail": "Operator authentication required"
+                     *     }
+                     */
+                    "application/json": unknown;
+                };
+            };
+            /** @description A valid account that is not the configured operator */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    /**
+                     * @example {
+                     *       "detail": "Operator access denied"
+                     *     }
+                     */
+                    "application/json": unknown;
+                };
+            };
             /** @description Validation Error */
             422: {
                 headers: {
@@ -3175,6 +4315,20 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+            /** @description Auth verification could not be completed safely */
+            503: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    /**
+                     * @example {
+                     *       "detail": "Access verification unavailable"
+                     *     }
+                     */
+                    "application/json": unknown;
                 };
             };
         };
@@ -3199,6 +4353,34 @@ export interface operations {
                     "application/json": unknown;
                 };
             };
+            /** @description Missing, malformed, expired, tampered or wrong-project token */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    /**
+                     * @example {
+                     *       "detail": "Operator authentication required"
+                     *     }
+                     */
+                    "application/json": unknown;
+                };
+            };
+            /** @description A valid account that is not the configured operator */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    /**
+                     * @example {
+                     *       "detail": "Operator access denied"
+                     *     }
+                     */
+                    "application/json": unknown;
+                };
+            };
             /** @description Validation Error */
             422: {
                 headers: {
@@ -3206,6 +4388,20 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+            /** @description Auth verification could not be completed safely */
+            503: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    /**
+                     * @example {
+                     *       "detail": "Access verification unavailable"
+                     *     }
+                     */
+                    "application/json": unknown;
                 };
             };
         };
@@ -3234,6 +4430,34 @@ export interface operations {
                     "application/json": components["schemas"]["Message"];
                 };
             };
+            /** @description Missing, malformed, expired, tampered or wrong-project token */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    /**
+                     * @example {
+                     *       "detail": "Operator authentication required"
+                     *     }
+                     */
+                    "application/json": unknown;
+                };
+            };
+            /** @description A valid account that is not the configured operator */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    /**
+                     * @example {
+                     *       "detail": "Operator access denied"
+                     *     }
+                     */
+                    "application/json": unknown;
+                };
+            };
             /** @description Validation Error */
             422: {
                 headers: {
@@ -3241,6 +4465,20 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+            /** @description Auth verification could not be completed safely */
+            503: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    /**
+                     * @example {
+                     *       "detail": "Access verification unavailable"
+                     *     }
+                     */
+                    "application/json": unknown;
                 };
             };
         };
@@ -3265,6 +4503,34 @@ export interface operations {
                     "application/json": components["schemas"]["Disagreement"][];
                 };
             };
+            /** @description Missing, malformed, expired, tampered or wrong-project token */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    /**
+                     * @example {
+                     *       "detail": "Operator authentication required"
+                     *     }
+                     */
+                    "application/json": unknown;
+                };
+            };
+            /** @description A valid account that is not the configured operator */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    /**
+                     * @example {
+                     *       "detail": "Operator access denied"
+                     *     }
+                     */
+                    "application/json": unknown;
+                };
+            };
             /** @description Validation Error */
             422: {
                 headers: {
@@ -3272,6 +4538,20 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+            /** @description Auth verification could not be completed safely */
+            503: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    /**
+                     * @example {
+                     *       "detail": "Access verification unavailable"
+                     *     }
+                     */
+                    "application/json": unknown;
                 };
             };
         };
@@ -3296,6 +4576,34 @@ export interface operations {
                     "application/json": components["schemas"]["Consensus"][];
                 };
             };
+            /** @description Missing, malformed, expired, tampered or wrong-project token */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    /**
+                     * @example {
+                     *       "detail": "Operator authentication required"
+                     *     }
+                     */
+                    "application/json": unknown;
+                };
+            };
+            /** @description A valid account that is not the configured operator */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    /**
+                     * @example {
+                     *       "detail": "Operator access denied"
+                     *     }
+                     */
+                    "application/json": unknown;
+                };
+            };
             /** @description Validation Error */
             422: {
                 headers: {
@@ -3303,6 +4611,20 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+            /** @description Auth verification could not be completed safely */
+            503: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    /**
+                     * @example {
+                     *       "detail": "Access verification unavailable"
+                     *     }
+                     */
+                    "application/json": unknown;
                 };
             };
         };
@@ -3327,6 +4649,34 @@ export interface operations {
                     "application/json": unknown;
                 };
             };
+            /** @description Missing, malformed, expired, tampered or wrong-project token */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    /**
+                     * @example {
+                     *       "detail": "Operator authentication required"
+                     *     }
+                     */
+                    "application/json": unknown;
+                };
+            };
+            /** @description A valid account that is not the configured operator */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    /**
+                     * @example {
+                     *       "detail": "Operator access denied"
+                     *     }
+                     */
+                    "application/json": unknown;
+                };
+            };
             /** @description Validation Error */
             422: {
                 headers: {
@@ -3334,6 +4684,20 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+            /** @description Auth verification could not be completed safely */
+            503: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    /**
+                     * @example {
+                     *       "detail": "Access verification unavailable"
+                     *     }
+                     */
+                    "application/json": unknown;
                 };
             };
         };
@@ -3358,6 +4722,34 @@ export interface operations {
                     "application/json": unknown;
                 };
             };
+            /** @description Missing, malformed, expired, tampered or wrong-project token */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    /**
+                     * @example {
+                     *       "detail": "Operator authentication required"
+                     *     }
+                     */
+                    "application/json": unknown;
+                };
+            };
+            /** @description A valid account that is not the configured operator */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    /**
+                     * @example {
+                     *       "detail": "Operator access denied"
+                     *     }
+                     */
+                    "application/json": unknown;
+                };
+            };
             /** @description Validation Error */
             422: {
                 headers: {
@@ -3365,6 +4757,20 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+            /** @description Auth verification could not be completed safely */
+            503: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    /**
+                     * @example {
+                     *       "detail": "Access verification unavailable"
+                     *     }
+                     */
+                    "application/json": unknown;
                 };
             };
         };
@@ -3389,6 +4795,34 @@ export interface operations {
                     "application/json": unknown;
                 };
             };
+            /** @description Missing, malformed, expired, tampered or wrong-project token */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    /**
+                     * @example {
+                     *       "detail": "Operator authentication required"
+                     *     }
+                     */
+                    "application/json": unknown;
+                };
+            };
+            /** @description A valid account that is not the configured operator */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    /**
+                     * @example {
+                     *       "detail": "Operator access denied"
+                     *     }
+                     */
+                    "application/json": unknown;
+                };
+            };
             /** @description Validation Error */
             422: {
                 headers: {
@@ -3396,6 +4830,20 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+            /** @description Auth verification could not be completed safely */
+            503: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    /**
+                     * @example {
+                     *       "detail": "Access verification unavailable"
+                     *     }
+                     */
+                    "application/json": unknown;
                 };
             };
         };
@@ -3418,6 +4866,48 @@ export interface operations {
                     "application/json": {
                         [key: string]: unknown;
                     }[];
+                };
+            };
+            /** @description Missing, malformed, expired, tampered or wrong-project token */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    /**
+                     * @example {
+                     *       "detail": "Operator authentication required"
+                     *     }
+                     */
+                    "application/json": unknown;
+                };
+            };
+            /** @description A valid account that is not the configured operator */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    /**
+                     * @example {
+                     *       "detail": "Operator access denied"
+                     *     }
+                     */
+                    "application/json": unknown;
+                };
+            };
+            /** @description Auth verification could not be completed safely */
+            503: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    /**
+                     * @example {
+                     *       "detail": "Access verification unavailable"
+                     *     }
+                     */
+                    "application/json": unknown;
                 };
             };
         };
@@ -3444,6 +4934,34 @@ export interface operations {
                     "application/json": components["schemas"]["AIParticipant"];
                 };
             };
+            /** @description Missing, malformed, expired, tampered or wrong-project token */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    /**
+                     * @example {
+                     *       "detail": "Operator authentication required"
+                     *     }
+                     */
+                    "application/json": unknown;
+                };
+            };
+            /** @description A valid account that is not the configured operator */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    /**
+                     * @example {
+                     *       "detail": "Operator access denied"
+                     *     }
+                     */
+                    "application/json": unknown;
+                };
+            };
             /** @description Validation Error */
             422: {
                 headers: {
@@ -3451,6 +4969,20 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+            /** @description Auth verification could not be completed safely */
+            503: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    /**
+                     * @example {
+                     *       "detail": "Access verification unavailable"
+                     *     }
+                     */
+                    "application/json": unknown;
                 };
             };
         };
@@ -3477,6 +5009,34 @@ export interface operations {
                     "application/json": components["schemas"]["UploadReceiptResponse"];
                 };
             };
+            /** @description Missing, malformed, expired, tampered or wrong-project token */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    /**
+                     * @example {
+                     *       "detail": "Operator authentication required"
+                     *     }
+                     */
+                    "application/json": unknown;
+                };
+            };
+            /** @description A valid account that is not the configured operator */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    /**
+                     * @example {
+                     *       "detail": "Operator access denied"
+                     *     }
+                     */
+                    "application/json": unknown;
+                };
+            };
             /** @description Validation Error */
             422: {
                 headers: {
@@ -3484,6 +5044,20 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+            /** @description Auth verification could not be completed safely */
+            503: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    /**
+                     * @example {
+                     *       "detail": "Access verification unavailable"
+                     *     }
+                     */
+                    "application/json": unknown;
                 };
             };
         };
@@ -3508,6 +5082,34 @@ export interface operations {
                     "application/json": components["schemas"]["IngestionStatusResponse"];
                 };
             };
+            /** @description Missing, malformed, expired, tampered or wrong-project token */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    /**
+                     * @example {
+                     *       "detail": "Operator authentication required"
+                     *     }
+                     */
+                    "application/json": unknown;
+                };
+            };
+            /** @description A valid account that is not the configured operator */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    /**
+                     * @example {
+                     *       "detail": "Operator access denied"
+                     *     }
+                     */
+                    "application/json": unknown;
+                };
+            };
             /** @description Validation Error */
             422: {
                 headers: {
@@ -3515,6 +5117,20 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+            /** @description Auth verification could not be completed safely */
+            503: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    /**
+                     * @example {
+                     *       "detail": "Access verification unavailable"
+                     *     }
+                     */
+                    "application/json": unknown;
                 };
             };
         };
@@ -3539,6 +5155,34 @@ export interface operations {
                     "application/json": components["schemas"]["UploadReceiptResponse"];
                 };
             };
+            /** @description Missing, malformed, expired, tampered or wrong-project token */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    /**
+                     * @example {
+                     *       "detail": "Operator authentication required"
+                     *     }
+                     */
+                    "application/json": unknown;
+                };
+            };
+            /** @description A valid account that is not the configured operator */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    /**
+                     * @example {
+                     *       "detail": "Operator access denied"
+                     *     }
+                     */
+                    "application/json": unknown;
+                };
+            };
             /** @description Validation Error */
             422: {
                 headers: {
@@ -3546,6 +5190,20 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+            /** @description Auth verification could not be completed safely */
+            503: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    /**
+                     * @example {
+                     *       "detail": "Access verification unavailable"
+                     *     }
+                     */
+                    "application/json": unknown;
                 };
             };
         };
@@ -3570,6 +5228,34 @@ export interface operations {
                     "application/json": components["schemas"]["DocumentResponse"][];
                 };
             };
+            /** @description Missing, malformed, expired, tampered or wrong-project token */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    /**
+                     * @example {
+                     *       "detail": "Operator authentication required"
+                     *     }
+                     */
+                    "application/json": unknown;
+                };
+            };
+            /** @description A valid account that is not the configured operator */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    /**
+                     * @example {
+                     *       "detail": "Operator access denied"
+                     *     }
+                     */
+                    "application/json": unknown;
+                };
+            };
             /** @description Validation Error */
             422: {
                 headers: {
@@ -3577,6 +5263,20 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+            /** @description Auth verification could not be completed safely */
+            503: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    /**
+                     * @example {
+                     *       "detail": "Access verification unavailable"
+                     *     }
+                     */
+                    "application/json": unknown;
                 };
             };
         };
@@ -3601,6 +5301,34 @@ export interface operations {
                     "application/json": components["schemas"]["DocumentResponse"][];
                 };
             };
+            /** @description Missing, malformed, expired, tampered or wrong-project token */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    /**
+                     * @example {
+                     *       "detail": "Operator authentication required"
+                     *     }
+                     */
+                    "application/json": unknown;
+                };
+            };
+            /** @description A valid account that is not the configured operator */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    /**
+                     * @example {
+                     *       "detail": "Operator access denied"
+                     *     }
+                     */
+                    "application/json": unknown;
+                };
+            };
             /** @description Validation Error */
             422: {
                 headers: {
@@ -3608,6 +5336,20 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+            /** @description Auth verification could not be completed safely */
+            503: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    /**
+                     * @example {
+                     *       "detail": "Access verification unavailable"
+                     *     }
+                     */
+                    "application/json": unknown;
                 };
             };
         };
@@ -3632,6 +5374,34 @@ export interface operations {
                     "application/json": components["schemas"]["DocumentResponse"][];
                 };
             };
+            /** @description Missing, malformed, expired, tampered or wrong-project token */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    /**
+                     * @example {
+                     *       "detail": "Operator authentication required"
+                     *     }
+                     */
+                    "application/json": unknown;
+                };
+            };
+            /** @description A valid account that is not the configured operator */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    /**
+                     * @example {
+                     *       "detail": "Operator access denied"
+                     *     }
+                     */
+                    "application/json": unknown;
+                };
+            };
             /** @description Validation Error */
             422: {
                 headers: {
@@ -3639,6 +5409,20 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+            /** @description Auth verification could not be completed safely */
+            503: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    /**
+                     * @example {
+                     *       "detail": "Access verification unavailable"
+                     *     }
+                     */
+                    "application/json": unknown;
                 };
             };
         };
@@ -3663,6 +5447,34 @@ export interface operations {
                     "application/json": components["schemas"]["DocumentResponse"];
                 };
             };
+            /** @description Missing, malformed, expired, tampered or wrong-project token */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    /**
+                     * @example {
+                     *       "detail": "Operator authentication required"
+                     *     }
+                     */
+                    "application/json": unknown;
+                };
+            };
+            /** @description A valid account that is not the configured operator */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    /**
+                     * @example {
+                     *       "detail": "Operator access denied"
+                     *     }
+                     */
+                    "application/json": unknown;
+                };
+            };
             /** @description Validation Error */
             422: {
                 headers: {
@@ -3670,6 +5482,20 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+            /** @description Auth verification could not be completed safely */
+            503: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    /**
+                     * @example {
+                     *       "detail": "Access verification unavailable"
+                     *     }
+                     */
+                    "application/json": unknown;
                 };
             };
         };
@@ -3694,6 +5520,34 @@ export interface operations {
                     "application/json": unknown;
                 };
             };
+            /** @description Missing, malformed, expired, tampered or wrong-project token */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    /**
+                     * @example {
+                     *       "detail": "Operator authentication required"
+                     *     }
+                     */
+                    "application/json": unknown;
+                };
+            };
+            /** @description A valid account that is not the configured operator */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    /**
+                     * @example {
+                     *       "detail": "Operator access denied"
+                     *     }
+                     */
+                    "application/json": unknown;
+                };
+            };
             /** @description Validation Error */
             422: {
                 headers: {
@@ -3701,6 +5555,20 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+            /** @description Auth verification could not be completed safely */
+            503: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    /**
+                     * @example {
+                     *       "detail": "Access verification unavailable"
+                     *     }
+                     */
+                    "application/json": unknown;
                 };
             };
         };
@@ -3728,6 +5596,34 @@ export interface operations {
                     "application/json": unknown;
                 };
             };
+            /** @description Missing, malformed, expired, tampered or wrong-project token */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    /**
+                     * @example {
+                     *       "detail": "Operator authentication required"
+                     *     }
+                     */
+                    "application/json": unknown;
+                };
+            };
+            /** @description A valid account that is not the configured operator */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    /**
+                     * @example {
+                     *       "detail": "Operator access denied"
+                     *     }
+                     */
+                    "application/json": unknown;
+                };
+            };
             /** @description Validation Error */
             422: {
                 headers: {
@@ -3735,6 +5631,20 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+            /** @description Auth verification could not be completed safely */
+            503: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    /**
+                     * @example {
+                     *       "detail": "Access verification unavailable"
+                     *     }
+                     */
+                    "application/json": unknown;
                 };
             };
         };
@@ -3761,6 +5671,34 @@ export interface operations {
                     "application/json": components["schemas"]["DocumentSearchResponse"];
                 };
             };
+            /** @description Missing, malformed, expired, tampered or wrong-project token */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    /**
+                     * @example {
+                     *       "detail": "Operator authentication required"
+                     *     }
+                     */
+                    "application/json": unknown;
+                };
+            };
+            /** @description A valid account that is not the configured operator */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    /**
+                     * @example {
+                     *       "detail": "Operator access denied"
+                     *     }
+                     */
+                    "application/json": unknown;
+                };
+            };
             /** @description Validation Error */
             422: {
                 headers: {
@@ -3768,6 +5706,20 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+            /** @description Auth verification could not be completed safely */
+            503: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    /**
+                     * @example {
+                     *       "detail": "Access verification unavailable"
+                     *     }
+                     */
+                    "application/json": unknown;
                 };
             };
         };
@@ -3792,6 +5744,34 @@ export interface operations {
                     "application/json": components["schemas"]["KnowledgeStackListResponse"];
                 };
             };
+            /** @description Missing, malformed, expired, tampered or wrong-project token */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    /**
+                     * @example {
+                     *       "detail": "Operator authentication required"
+                     *     }
+                     */
+                    "application/json": unknown;
+                };
+            };
+            /** @description A valid account that is not the configured operator */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    /**
+                     * @example {
+                     *       "detail": "Operator access denied"
+                     *     }
+                     */
+                    "application/json": unknown;
+                };
+            };
             /** @description Validation Error */
             422: {
                 headers: {
@@ -3799,6 +5779,20 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+            /** @description Auth verification could not be completed safely */
+            503: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    /**
+                     * @example {
+                     *       "detail": "Access verification unavailable"
+                     *     }
+                     */
+                    "application/json": unknown;
                 };
             };
         };
@@ -3825,6 +5819,34 @@ export interface operations {
                     "application/json": components["schemas"]["KnowledgeStack"];
                 };
             };
+            /** @description Missing, malformed, expired, tampered or wrong-project token */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    /**
+                     * @example {
+                     *       "detail": "Operator authentication required"
+                     *     }
+                     */
+                    "application/json": unknown;
+                };
+            };
+            /** @description A valid account that is not the configured operator */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    /**
+                     * @example {
+                     *       "detail": "Operator access denied"
+                     *     }
+                     */
+                    "application/json": unknown;
+                };
+            };
             /** @description Validation Error */
             422: {
                 headers: {
@@ -3832,6 +5854,20 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+            /** @description Auth verification could not be completed safely */
+            503: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    /**
+                     * @example {
+                     *       "detail": "Access verification unavailable"
+                     *     }
+                     */
+                    "application/json": unknown;
                 };
             };
         };
@@ -3856,6 +5892,34 @@ export interface operations {
                     "application/json": components["schemas"]["KnowledgeStack"];
                 };
             };
+            /** @description Missing, malformed, expired, tampered or wrong-project token */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    /**
+                     * @example {
+                     *       "detail": "Operator authentication required"
+                     *     }
+                     */
+                    "application/json": unknown;
+                };
+            };
+            /** @description A valid account that is not the configured operator */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    /**
+                     * @example {
+                     *       "detail": "Operator access denied"
+                     *     }
+                     */
+                    "application/json": unknown;
+                };
+            };
             /** @description Validation Error */
             422: {
                 headers: {
@@ -3863,6 +5927,20 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+            /** @description Auth verification could not be completed safely */
+            503: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    /**
+                     * @example {
+                     *       "detail": "Access verification unavailable"
+                     *     }
+                     */
+                    "application/json": unknown;
                 };
             };
         };
@@ -3891,6 +5969,34 @@ export interface operations {
                     "application/json": components["schemas"]["KnowledgeStack"];
                 };
             };
+            /** @description Missing, malformed, expired, tampered or wrong-project token */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    /**
+                     * @example {
+                     *       "detail": "Operator authentication required"
+                     *     }
+                     */
+                    "application/json": unknown;
+                };
+            };
+            /** @description A valid account that is not the configured operator */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    /**
+                     * @example {
+                     *       "detail": "Operator access denied"
+                     *     }
+                     */
+                    "application/json": unknown;
+                };
+            };
             /** @description Validation Error */
             422: {
                 headers: {
@@ -3898,6 +6004,20 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+            /** @description Auth verification could not be completed safely */
+            503: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    /**
+                     * @example {
+                     *       "detail": "Access verification unavailable"
+                     *     }
+                     */
+                    "application/json": unknown;
                 };
             };
         };
@@ -3920,6 +6040,34 @@ export interface operations {
                 };
                 content?: never;
             };
+            /** @description Missing, malformed, expired, tampered or wrong-project token */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    /**
+                     * @example {
+                     *       "detail": "Operator authentication required"
+                     *     }
+                     */
+                    "application/json": unknown;
+                };
+            };
+            /** @description A valid account that is not the configured operator */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    /**
+                     * @example {
+                     *       "detail": "Operator access denied"
+                     *     }
+                     */
+                    "application/json": unknown;
+                };
+            };
             /** @description Validation Error */
             422: {
                 headers: {
@@ -3927,6 +6075,82 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+            /** @description Auth verification could not be completed safely */
+            503: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    /**
+                     * @example {
+                     *       "detail": "Access verification unavailable"
+                     *     }
+                     */
+                    "application/json": unknown;
+                };
+            };
+        };
+    };
+    access_session_api_access_session_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": unknown;
+                };
+            };
+            /** @description Missing, malformed, expired, tampered or wrong-project token */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    /**
+                     * @example {
+                     *       "detail": "Operator authentication required"
+                     *     }
+                     */
+                    "application/json": unknown;
+                };
+            };
+            /** @description A valid account that is not the configured operator */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    /**
+                     * @example {
+                     *       "detail": "Operator access denied"
+                     *     }
+                     */
+                    "application/json": unknown;
+                };
+            };
+            /** @description Auth verification could not be completed safely */
+            503: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    /**
+                     * @example {
+                     *       "detail": "Access verification unavailable"
+                     *     }
+                     */
+                    "application/json": unknown;
                 };
             };
         };

@@ -8,7 +8,8 @@
  */
 import { documentClient, type Document } from '@/features/knowledge';
 import { isApiError } from '@/shared/api/errors';
-import { requestBytes, type ByteResponse } from '@/shared/api/transport';
+import { requestLiveBytes } from '@/shared/access';
+import type { ByteResponse } from '@/shared/api/transport';
 import {
     EVIDENCE_MAX_BYTES,
     EVIDENCE_MAX_TEXT_CHARACTERS,
@@ -207,14 +208,14 @@ function textContent(
 export interface LiveEvidenceDeps {
     getDocument?: (documentId: string) => Promise<Document>;
     listDocuments?: (meetingId: string) => Promise<Document[]>;
-    fetchBytes?: typeof requestBytes;
+    fetchBytes?: typeof requestLiveBytes;
 }
 
 export function createLiveEvidence(deps: LiveEvidenceDeps = {}): MeetingsEvidenceApi {
     const getDocument = deps.getDocument ?? ((id: string) => documentClient.get(id));
     const listDocuments =
         deps.listDocuments ?? ((meetingId: string) => documentClient.list({ meetingId }));
-    const fetchBytes = deps.fetchBytes ?? requestBytes;
+    const fetchBytes = deps.fetchBytes ?? requestLiveBytes;
 
     return {
         async list(scopeId?: string): Promise<EvidenceDescriptor[]> {

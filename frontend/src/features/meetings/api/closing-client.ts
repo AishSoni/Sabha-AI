@@ -6,7 +6,7 @@
  * read-only GET and never starts or resumes generation. Retry and abort are
  * separate explicit commands, so no GET can replay paid work.
  */
-import { requestJson } from '@/shared/api/transport';
+import { requestLiveJson } from '@/shared/access';
 import {
     decodeClosingReceipt,
     decodeClosingView,
@@ -52,7 +52,7 @@ export const closingClient = {
         meetingId: string,
         input: RequestClosingInput
     ): Promise<ClosingReceipt> {
-        const payload = await requestJson<unknown>(
+        const payload = await requestLiveJson<unknown>(
             `/meetings/${encodeURIComponent(meetingId)}/closing`,
             {
                 method: 'POST',
@@ -69,7 +69,7 @@ export const closingClient = {
 
     /** Canonical progress for one meeting; never starts work. */
     async get(meetingId: string, init: ClosingReadOptions = {}): Promise<ClosingView> {
-        const payload = await requestJson<unknown>(
+        const payload = await requestLiveJson<unknown>(
             `/meetings/${encodeURIComponent(meetingId)}/closing`,
             { signal: init.signal }
         );
@@ -78,7 +78,7 @@ export const closingClient = {
 
     /** Resume a recoverable failed close (POST /closing/retry). */
     async retry(meetingId: string, init: ClosingReadOptions = {}): Promise<ClosingView> {
-        const payload = await requestJson<unknown>(
+        const payload = await requestLiveJson<unknown>(
             `/meetings/${encodeURIComponent(meetingId)}/closing/retry`,
             { method: 'POST', signal: init.signal }
         );
@@ -87,7 +87,7 @@ export const closingClient = {
 
     /** Abandon an open close and restore active admission (POST /closing/abort). */
     async abort(meetingId: string, init: ClosingReadOptions = {}): Promise<ClosingView> {
-        const payload = await requestJson<unknown>(
+        const payload = await requestLiveJson<unknown>(
             `/meetings/${encodeURIComponent(meetingId)}/closing/abort`,
             { method: 'POST', signal: init.signal }
         );

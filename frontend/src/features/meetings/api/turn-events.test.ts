@@ -13,7 +13,7 @@ import {
     decodeTurnEventStream,
     isTerminalTurnEvent,
     toolIdentity,
-    turnEventsUrl,
+    turnEventsPath,
     type TurnEvent,
 } from './turn-events';
 
@@ -213,10 +213,10 @@ describe('decodeTurnEvent citation identity', () => {
     });
 });
 
-describe('turnEventsUrl', () => {
+describe('turnEventsPath', () => {
     it('targets the durable observation route with the replay cursor encoded', () => {
-        expect(turnEventsUrl('meeting 1', 'operation/2', 7)).toBe(
-            'http://localhost:8000/api/meetings/meeting%201/turns/operation%2F2/events?after=7'
+        expect(turnEventsPath('meeting 1', 'operation/2', 7)).toBe(
+            '/meetings/meeting%201/turns/operation%2F2/events?after=7'
         );
     });
 });

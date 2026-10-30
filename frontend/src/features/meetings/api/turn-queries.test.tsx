@@ -96,9 +96,9 @@ describe('turn commands', () => {
         });
 
         expect(scripted.calls).toHaveLength(1);
-        expect(scripted.calls[0]?.init?.headers).toMatchObject({
-            'X-Provider-Key': 'sk-secret',
-        });
+        const headers = scripted.calls[0]?.init?.headers as Headers;
+        expect(headers.get('x-provider-key')).toBe('sk-secret');
+        expect(headers.get('authorization')).toBe('Bearer test-operator-token');
         expect(
             queryClient.getQueryData(turnKeys.detail('meeting-1', 'operation-1'))
         ).toMatchObject({ status: 'queued' });
