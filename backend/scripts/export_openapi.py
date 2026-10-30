@@ -20,6 +20,14 @@ DEFAULT_FIXTURE = REPO_ROOT / "frontend" / "tests" / "fixtures" / "openapi.json"
 
 def build_document() -> dict:
     """Return the live application schema without importing FastAPI at module load."""
+    import os
+
+    # Schema generation never verifies a token; keep the contract command usable
+    # before an operator account is provisioned. Runtime startup still fails
+    # closed because only ``create_app`` reads the real environment.
+    os.environ.setdefault("OPERATOR_USER_ID", "00000000-0000-4000-8000-000000000000")
+    os.environ.setdefault("SUPABASE_AUTH_PUBLISHABLE_KEY", "fixture-publishable-key")
+
     from main import app
 
     return app.openapi()
