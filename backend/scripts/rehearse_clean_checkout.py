@@ -151,6 +151,8 @@ def _clean_env(root: Path, *, python_path: bool = True) -> dict[str, str]:
             "SUPABASE_URL",
             "SUPABASE_KEY",
             "SUPABASE_SERVICE_KEY",
+            "SUPABASE_AUTH_PUBLISHABLE_KEY",
+            "OPERATOR_USER_ID",
             "OPENROUTER_API_KEY",
             "GEMINI_API_KEY",
             "COHERE_API_KEY",
@@ -164,6 +166,8 @@ def _clean_env(root: Path, *, python_path: bool = True) -> dict[str, str]:
             "SUPABASE_URL": "http://127.0.0.1:54321",
             "SUPABASE_KEY": "clean-checkout-anon-key",
             "SUPABASE_SERVICE_KEY": "clean-checkout-service-key",
+            "SUPABASE_AUTH_PUBLISHABLE_KEY": "clean-checkout-publishable-key",
+            "OPERATOR_USER_ID": "11111111-1111-4111-8111-111111111111",
             "DEFAULT_LLM_PROVIDER": "ollama",
             "RUNTIME_MODE": "local",
             "TURN_RUNNER_ENABLED": "false",
@@ -189,7 +193,7 @@ def backend_smoke(root: Path, *, python: str) -> dict[str, object]:
         timeout=120,
     )
     result = json.loads(completed.stdout.strip())
-    if result.get("paths") != 55:
+    if result.get("paths") != 56:
         raise RehearsalError(f"unexpected OpenAPI path count: {result}")
     if not result.get("worker_main"):
         raise RehearsalError("worker._main is not callable")
