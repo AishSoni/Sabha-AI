@@ -98,4 +98,27 @@ describe('shared evidence preview boundary', () => {
         expect(live).toContain('createLiveEvidence');
         expect(live).toContain('evidence: createLiveEvidence()');
     });
+
+    it('wires the replay composition to the shared evidence adapter', () => {
+        const replay = fs.readFileSync(
+            path.join(SRC, 'features/meetings/runtime/replay.tsx'),
+            'utf8'
+        );
+        expect(replay).toContain('createReplayEvidence');
+        expect(replay).toContain('evidence: createReplayEvidence({');
+
+        const adapter = fs.readFileSync(
+            path.join(SRC, 'features/meetings/runtime/replay-evidence.ts'),
+            'utf8'
+        );
+        for (const forbidden of [
+            'runtime/live',
+            'features/settings',
+            '@/stores',
+            'shared/credentials',
+            'revealFromVault',
+        ]) {
+            expect(adapter).not.toContain(forbidden);
+        }
+    });
 });

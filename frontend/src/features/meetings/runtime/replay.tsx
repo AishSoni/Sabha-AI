@@ -68,6 +68,7 @@ import { MeetingsRuntimeProvider } from "./context";
 import { RecordedParticipantAction } from "./recorded-participant-action";
 import { RecordedDirectorAction } from "./recorded-director-action";
 import { RecordedDocumentsPanel } from "./recorded-documents-panel";
+import { createReplayEvidence } from "./replay-evidence";
 
 export interface ReplaySession {
     run_id: string;
@@ -502,6 +503,10 @@ export function createReplayRuntime(
 
     return {
         scope,
+        evidence: createReplayEvidence({
+            assets: session.assets,
+            claims: session.claims,
+        }),
         capabilities: session.capabilities,
         reads: {
             listMeetings: async (callerSignal) => {
