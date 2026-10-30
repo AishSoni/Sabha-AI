@@ -4,6 +4,14 @@ This is the shared design reference, **not a single implementation assignment**.
 
 For deferred replay, follow the [Phase 3 roadmap](roadmap-phase-3-hosted-guided-replay.md). The [runtime contract](reference-runtime-modes-and-credentials.md) supersedes historical writable-demo/server-only-provider-key language: live and strict read-only replay coexist in the same app, with distinct dependency graphs. Historical path maps and completion evidence below are not claims that replay is implemented.
 
+**Later access decision:** [Spec 22](spec-22-operator-only-live-access.md)
+supersedes this Phase 2 reference's no-sign-in-live and blanket no-Auth-SDK
+requirements. Its target is one authorized operator over the unchanged shared
+live workspace, with a narrow browser Auth adapter exception and an auth-free
+public replay graph. All other dependency, persistence, provider-vault and
+knowledge-scope rules remain. The historical layouts and acceptance requirements
+below do not authorize bypassing the Spec 22 gate or imply it is implemented.
+
 ## Purpose, prerequisite, and scope
 
 After [Phase 1: Fixing Existing Project Issues](roadmap-phase-1-existing-issues.md), reorganize Sabha around explicit domain ownership, application workflows, infrastructure boundaries, and resilient frontend state ownership. Implement incrementally, with executable contracts and test-driven development throughout; this is not a wholesale rewrite or a directory-renaming exercise.

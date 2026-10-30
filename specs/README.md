@@ -1,10 +1,10 @@
 # Specification Implementation Order
 
-Start with **Spec 01**, then implement each spec in ascending order through **Spec 21**. The number is the global implementation order, not a finding identifier or commit prefix. Complete the current spec's prerequisites and test-backed exit gate before advancing; use small red-green-refactor changes within each spec. Earlier completion records remain historical; Phase 3 is a new planned sequence, not already implemented replay. Spec 20 opens Phase 4 and is a cross-cutting repair of the live and replay data-access paths, not another replay feature. Spec 21 opens Phase 5 and adds one shared in-app evidence-preview system for live meetings and the guided demo.
+Start with **Spec 01**, then implement each spec in ascending order through **Spec 22**. The number is the global implementation order, not a finding identifier or commit prefix. Complete the current spec's prerequisites and test-backed exit gate before advancing; use small red-green-refactor changes within each spec. Earlier completion records remain historical; Phase 3 is a new planned sequence, not already implemented replay. Spec 20 opens Phase 4 and is a cross-cutting repair of the live and replay data-access paths, not another replay feature. Spec 21 opens Phase 5 and adds one shared in-app evidence-preview system for live meetings and the guided demo. Spec 22 opens Phase 6 and replaces public live access with a single-operator login while preserving public replay.
 
 All documents live directly in this folder. Files starting with `spec-` are implementation assignments. Files starting with `roadmap-` or `reference-` are supporting documents, not additional implementation steps.
 
-**Runtime decision for every spec:** Live setup/use and no-sign-in guided replay coexist in the same hosted app. Replay uses the real UI/core with an isolated server-bound read graph and preprovisioned no-write data. No live calls, credential prompts, vault access, or persistent demo effects. Hosted live use instead asks for required service credentials and stores them encrypted in browser `localStorage`; the unlock passphrase and derived key are never persisted. Keep infrastructure credentials server-only and preserve trusted local configuration. The entry choice is UX, not authorization over the shared live API. See the [runtime and credential contract](reference-runtime-modes-and-credentials.md), which supersedes earlier writable-demo and universally server-owned provider-key assumptions. Do not add accounts or an Auth bootstrap.
+**Current target runtime decision:** Operator-only live use and no-sign-in guided replay coexist in the same hosted app. Replay uses the real UI/core with an isolated server-bound read graph and preprovisioned no-write data. No live calls, Auth bootstrap, credential prompts, vault access, or persistent demo effects. [Spec 22](spec-22-operator-only-live-access.md) introduces one manually provisioned Supabase Auth identity and server-verified operator authorization over every live API, including reads, streams and private bytes; it does not add multi-user ownership. It supersedes earlier no-sign-in-live/no-Auth requirements, not their historical completion records. Hosted provider credentials still use the encrypted browser vault; its passphrase and derived key never persist, and login does not unlock it. Auth session storage is a separate, explicitly documented policy. Keep infrastructure credentials server-only and preserve trusted local provider configuration. See the [runtime and credential contract](reference-runtime-modes-and-credentials.md). This is the implementation target, not a claim that Spec 22 or hosted verification is complete.
 
 ## Ordered specs
 
@@ -31,12 +31,16 @@ All documents live directly in this folder. Files starting with `spec-` are impl
 | 19 | [Replay release acceptance](spec-19-replay-release-acceptance.md) | Hosted guided replay |
 | 20 | [Backend data-access latency and event-loop responsiveness](spec-20-backend-data-access-latency.md) | Production latency |
 | 21 | [In-app evidence previews](spec-21-in-app-evidence-previews.md) | Evidence previews |
+| 22 | [Operator-only live access](spec-22-operator-only-live-access.md) | Private operator access |
 
 Phase 4 currently contains only Spec 20. Its measurement method, baseline and
 budgets live in the spec itself, so no separate roadmap document is introduced.
 
 Phase 5 currently contains only Spec 21. Its preview architecture, safety
 constraints, acceptance tests, and rollout slices live in the spec itself.
+
+Phase 6 currently contains only Spec 22. Its operator authorization, public
+replay boundaries, session lifecycle and hosted acceptance live in the spec itself.
 
 ## Supporting documents
 

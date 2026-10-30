@@ -2,17 +2,35 @@
 
 This contract applies to every implementation spec. It supersedes earlier descriptions of a writable public demo and universally server-owned provider keys. Phase 3 clarifies that live and replay coexist in the same hosted app, not separate deployments. It is a reference, not another numbered implementation step. All examples are proposed contracts; their fixtures and adapters must be implemented and tested first.
 
+**Spec 22 decision update:** [Operator-only live access](spec-22-operator-only-live-access.md)
+supersedes earlier public/no-sign-in live requirements and blanket prohibitions
+on an Auth boundary. Public replay still requires no accounts or Auth bootstrap.
+This reference describes the updated target, not deployed implementation or
+acceptance evidence; earlier specs' completion records remain historical.
+
 ## Two distinct paths
 
 | Path | Required behavior |
 | --- | --- |
-| Hosted live application | Ask the visitor for credentials required by the selected live services. Persist those credentials only as encrypted browser `localStorage` data. A user-entered passphrase unlocks them; neither the passphrase nor a derived decryption key is persisted. Missing credentials must not silently use the operator's paid keys. |
+| Hosted live application | Admit only the manually provisioned operator through Supabase Auth and an exact server-configured user UUID. Protect all live HTTP reads, writes, probes, streams and private bytes. The operator supplies credentials required by selected live services through the existing encrypted browser vault; neither its passphrase nor derived key persists. Login does not unlock it or enable a new paid-key fallback. |
 | Demo, hosted or local | Completely no-sign-in, fixed beforehand, strict replay only. Every run is confined to a dedicated, isolated, no-write demo workspace. An on-screen, game-like guided tutorial uses the same application UI and core at the user's pace. It never requests credentials or makes live inference, web-search, embedding, or tool-effect calls. |
-| Trusted local live application | Preserve explicitly configured environment credentials and local Ollama. Local fallback is an explicit deployment policy, not a way for hosted requests or replay to use operator-funded credentials. |
+| Trusted local live application | Preserve explicitly configured environment credentials and local Ollama. Mounted live HTTP still requires operator authorization; a `local` runtime default is not an authentication bypass. Local credential fallback remains an explicit deployment policy, not a way for hosted requests or replay to use operator-funded credentials. |
 
-Keep Supabase/Postgres, Qdrant, and selected source-store infrastructure credentials server-only. They are not visitor BYOK fields. Do not add accounts, a login gate, or anonymous Auth bootstrap to implement replay or the browser vault. A local vault unlock prompt is not an application sign-in.
+Keep Supabase/Postgres, Qdrant, and selected source-store infrastructure credentials server-only. They are not browser BYOK fields. Only the Auth project URL and publishable/anon key belong in public Auth configuration; do not grant browser roles direct live database/Storage/RPC access. Do not add accounts, a login gate, or anonymous Auth bootstrap to implement replay or the browser vault. The live operator login is a separate access boundary; a local vault unlock prompt is not application sign-in.
 
-The same hosted app offers a first-visit live-setup versus guided-replay choice and later switching. Live remains a shared writable no-sign-in workspace, not private per-visitor data. Choosing demo is UX, not authorization: a visitor may intentionally call the public live API, but a replay request/adapter may never read live data or invoke it. Same-origin coexistence is not an XSS security boundary.
+The public primary entry is guided replay, with an operator-login entry for interview demonstrations, not self-service live setup. Live remains one shared writable workspace behind operator authorization, not private per-visitor data or a multi-user product. Choosing demo and hiding live links are UX, not security: the backend itself must deny unauthenticated/non-operator live calls at both proxy and direct origin. Replay requests/adapters must never read live data or invoke live effects, even in an authenticated browser. Same-origin coexistence is not an XSS security boundary.
+
+### Operator session versus provider vault
+
+Spec 22 permits the managed Auth access/refresh session to persist in its
+dedicated SDK browser storage namespace; it does not claim provider-vault
+encryption for that session. Never persist the login password or put Auth tokens
+in Query/Zustand persistence, URLs, logs or replay artifacts. A restored login
+leaves the provider vault locked. Logout/session loss aborts private requests,
+clears private caches/projections/drafts, revokes private preview blob URLs and
+locks the vault, without deleting encrypted provider envelopes or unrelated
+replay state. Merely entering/restarting replay is not logout. The public route
+and replay graph never initialize Auth to render or play recorded content.
 
 ## Dedicated no-write demo boundary
 
@@ -37,9 +55,9 @@ Use the [package and playback contract](reference-replay-package-and-playback.md
 
 ## Browser credential vault
 
-- Persist only a versioned authenticated-encryption envelope in `localStorage`. Encrypt the credential payload with Web Crypto AES-256-GCM using a password-derived, non-extractable key. Use PBKDF2 with SHA-256, a cryptographically random salt of at least 16 bytes, and a fresh unique 96-bit IV for every encryption under a key. Authenticate relevant envelope identity/version metadata and reject tampering.
+- For provider credentials, persist only a versioned authenticated-encryption envelope in `localStorage`; the separate managed Auth session policy above does not weaken this vault rule. Encrypt the credential payload with Web Crypto AES-256-GCM using a password-derived, non-extractable key. Use PBKDF2 with SHA-256, a cryptographically random salt of at least 16 bytes, and a fresh unique 96-bit IV for every encryption under a key. Authenticate relevant envelope identity/version metadata and reject tampering.
 - Record and validate algorithm/version, salt, IV, and KDF work factor as non-secret metadata. Before implementation, select, document, and benchmark the supported work factor against current security guidance; MDN example iteration counts are not a production policy. Bound parsed lengths/work factors before expensive work. Do not invent cryptography or use base64/obfuscation as encryption.
-- Never persist the passphrase, derived key, plaintext credentials, or an alternative browser-held secret that silently unlocks the ciphertext. This includes `sessionStorage`, IndexedDB, cookies, persisted Zustand/Query state, service-worker caches, logs, analytics, and server records. Never send the passphrase or derived key to the backend.
+- Never persist the passphrase, derived key, plaintext provider credentials, or an alternative browser-held secret that silently unlocks the ciphertext. This includes `sessionStorage`, IndexedDB, cookies, persisted Zustand/Query state, service-worker caches, logs, analytics, and server records. Never send the passphrase or derived key to the backend.
 - Keep unlocked credential/key material only in a deliberately non-persisted client capability, outside Query data/keys, component debug output, and general-purpose settings stores. Clear the passphrase field/reference after derivation; lock clears references to plaintext and keys. JavaScript garbage collection does not promise secure zeroization. Reload starts locked; provide explicit lock, forget, and passphrase-change flows. Password-manager storage is not an application persistence mechanism to add here.
 - Wrong passphrase, damaged ciphertext, unsupported envelope version, unavailable secure-context crypto, and blocked/quota-exceeded storage fail safely. Never overwrite a valid vault after failed unlock. Forgotten passphrases require re-entering credentials; do not add server-side passphrase recovery or a hidden unlock key.
 - Migrate old persisted settings deliberately: detect legacy plaintext key fields, offer re-entry or explicit encryption with a supplied passphrase, remove obsolete plaintext copies once replacement/forget succeeds, and never silently discard unrelated settings. A legacy persisted key must not become a plaintext fallback. Cross-tab updates/forget must not silently keep using stale credentials; define and test invalidation/locking.
@@ -58,9 +76,9 @@ export type CredentialEnvelope = {
 
 ## Live credential handoff and durable operations
 
-- Hosted key tests, discovery requiring credentials, inference/tool follow-ups, votes, summaries, web search, and embeddings use the visitor-supplied credential for that service. Preflight the required set and explain missing/locked/invalid credentials; do not charge or silently select an operator-funded alternative. Non-secret shared defaults and System AI policy stay distinct from private browser credentials.
+- Hosted key tests, discovery requiring credentials, inference/tool follow-ups, votes, summaries, web search, and embeddings use the operator-supplied browser credential for that service. Preflight the required set and explain missing/locked/invalid credentials; login does not enable a new server-funded alternative. Non-secret shared defaults and System AI policy stay distinct from private browser credentials.
 - The browser unlocks locally and supplies only the selected credential to a narrowly defined HTTPS request or transient handoff. Keep it out of URLs, query keys, public settings, responses, errors, logs/traces, request-body capture, durable queues, SQL, files, and replay artifacts. Backend adapters may use it transiently for the intended call; do not mutate a global provider client/default or share it with another visitor's operation.
-- Before queue implementation, choose and test a bounded transient handoff across the actual worker topology. Bind credential availability to the initiating operation/service and private handoff authority; knowing a public operation ID must not let another visitor spend its credentials. Any opaque handoff capability is private and non-persisted, not an account/login requirement or a listable settings field. Expire/release transient secrets; do not introduce server-side credential persistence to simplify recovery.
+- Before queue implementation, choose and test a bounded transient handoff across the actual worker topology. Bind credential availability to the initiating operation/service and private handoff authority; knowing an operation ID must not authorize spending its credentials. Any opaque handoff capability is private and non-persisted, distinct from the operator Auth session and not a listable settings field. Expire/release transient secrets; do not introduce server-side credential persistence to simplify recovery.
 - A durable operation survives loss of transient credentials, not the secret itself. Expose `awaiting_credentials` or an equivalent operation recovery stage when a pending turn, closing stage, or ingestion job cannot proceed. Re-unlock/re-provide for the same operation without a new command, duplicate upload, or repeated completed paid checkpoint. Do not hold a database lease/lock indefinitely while waiting; maintain FIFO/admission/closing semantics explicitly.
 - Navigation detaches observation; it is not cancellation or key persistence. Already-running work can finish only while its bounded handoff remains valid. Browser/worker restart, lock/forget, expiry, and passphrase change have documented revocation semantics. Credentials already dispatched cannot be recalled; prevent later calls after revocation is observed. Uncertain paid calls still require explicit reconciliation, never automatic replay.
 - Persist only non-secret effective settings, attempt identity, usage, and recovery status. Do not record a raw-key hash as a public fingerprint or an unlock surrogate. Server database/source/vector credentials remain infrastructure secrets even though live external-service credentials originate in the browser.
@@ -69,9 +87,9 @@ export type CredentialEnvelope = {
 
 | Contract | Required evidence |
 | --- | --- |
-| `runtime_modes` | Two fresh visitors replay the same dedicated package with no sign-in, credential prompt, or live workspace read. Direct mutation/deep-link attempts are rejected before writes/outbound effects. Separately test live BYOK and trusted local configuration; do not treat all APIs as writable demo APIs. |
+| `runtime_modes` | Two fresh visitors replay the same dedicated package with no sign-in, Auth bootstrap, credential prompt, or live workspace read. Direct mutation/deep-link attempts are rejected before writes/outbound effects. Separately test operator admission over every live route, live BYOK and trusted local provider configuration; do not treat all APIs as writable demo APIs. |
 | `browser_vault` | Actual browser crypto round-trip, locked reload, wrong passphrase, corruption, fresh IVs/salt, non-extractable key, lock/forget/change, cross-tab invalidation, legacy plaintext migration, and storage/crypto failures. Enumerate persisted browser stores and captured network/log payloads to prove forbidden material is absent; unit crypto mocks alone do not prove encryption. |
-| `credential_handoff` | Distinguishable synthetic keys from two visitors never cross operations. No owner-key fallback, global-client mutation, public handoff reuse, logging, or secret persistence. Expire/restart/re-provide during turn/tool/vote/summary/ingestion; completed paid steps are reused rather than repeated. |
+| `credential_handoff` | Distinguishable synthetic keys from two operator browser contexts never cross operations. No new server-key fallback, global-client mutation, unauthorized handoff reuse, logging, or secret persistence. Expire/restart/re-provide during turn/tool/vote/summary/ingestion; completed paid steps are reused rather than repeated. |
 | `strict_replay` | Actual application routes/components and shared core/read/event/reconciliation contracts, not a standalone imitation. Fixed step outcomes; explicit user pacing/back/restart; no live provider/search/embedding/tool calls and zero replay-attributable application writes to any workspace/store, including progress/usage/queue/evidence. Reject missing assets, forged mode/workspace IDs, off-script actions, and duplicate/late events. Prove coherent terminal reads, actual SSE and isolation from concurrent live work. |
 
 Proposed browser integration test; `replayJourney` must mount real feature routes/core with a valid package and rejecting write/outbound spies, not render a separate fake application:
@@ -100,5 +118,6 @@ Those step IDs are fixture values, not mandated scenario content. Add independen
 - **Spec 12–14:** harden effective database reads, fix vanilla creation regressions, and compose separate live/replay graphs and frontend runtime scopes in the same app.
 - **Spec 15–16:** integrate real closing UI/shared generated-text presentation and resolve bounded shared PDF extraction quality.
 - **Spec 17–19:** implement package/provisioning/prepared retrieval/paced streaming and one technical slice; deliver one approved guided bond journey; independently verify hosted replay and live-regression acceptance. See the [Phase 3 roadmap](roadmap-phase-3-hosted-guided-replay.md).
+- **Spec 22:** replace public live admission with exact-UUID operator authorization, private frontend composition and authenticated live transports; preserve public replay, existing provider-vault/worker behavior and database isolation. Old no-sign-in-live tests change deliberately; public no-Auth replay tests remain mandatory. No ownership migration or hosted acceptance is implied by this decision update.
 
 Documentation: [MDN key derivation](https://developer.mozilla.org/en-US/docs/Web/API/SubtleCrypto/deriveKey), [PBKDF2 parameters](https://developer.mozilla.org/en-US/docs/Web/API/Pbkdf2Params), [AES-GCM parameters](https://developer.mozilla.org/en-US/docs/Web/API/AesGcmParams), and [non-extractable keys](https://developer.mozilla.org/en-US/docs/Web/API/CryptoKey/extractable). API examples inform implementation, not production work-factor selection or a guarantee against XSS.
