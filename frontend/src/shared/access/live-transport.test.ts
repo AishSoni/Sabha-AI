@@ -3,6 +3,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { beginAccess, endAccess, getAccessSnapshot } from './lifecycle';
 import {
     assertLivePath,
+    fetchLiveStream,
     LiveTransportConfigurationError,
     requestLiveBytes,
     requestLiveForm,
@@ -130,6 +131,20 @@ describe('authenticated live requests', () => {
         );
         await expect(requestLiveJson('/meetings')).rejects.toMatchObject({ status: 403 });
         expect(getAccessSnapshot().active).toBe(true);
+    });
+
+    it('reauthenticates every SSE reconnect instead of reusing a ticket', async () => {
+        const tokenSource = vi.fn(async () => 'access-token');
+        setLiveAccessTokenSource(tokenSource);
+        fetchMock.mockResolvedValue(new Response('', { status: 200 }));
+
+        await fetchLiveStream('/meetings/meeting-1/turns/operation-1/events?after=0');
+        await fetchLiveStream('/meetings/meeting-1/turns/operation-1/events?after=1');
+
+        expect(tokenSource).toHaveBeenCalledTimes(2);
+        expect(fetchMock.mock.calls[1][1].headers.get('authorization')).toBe(
+            'Bearer access-token'
+        );
     });
 
     it('treats auth outage as retryable, not as sign-out', async () => {
