@@ -272,11 +272,14 @@ def test_replay_only_needs_no_operator_or_auth_config(monkeypatch):
     assert client.get("/api/meetings").status_code == 404
 
 
-async def test_access_verifier_does_not_import_the_service_role_client():
-    import app.modules.access.infrastructure.supabase_auth as adapter
+async def test_access_sources_never_touch_the_service_role_client():
+    import pathlib
 
-    source = __import__("pathlib").Path(adapter.__file__).read_text(encoding="utf-8")
-    assert "app.platform.database" not in source
-    assert "supabase" not in {
-        name for name in dir(adapter) if name in {"create_client", "get_supabase"}
-    }
+    root = pathlib.Path(__file__).resolve().parents[2] / "app" / "modules" / "access"
+    for path in root.rglob("*.py"):
+        source = path.read_text(encoding="utf-8")
+        assert "app.platform.database" not in source, path
+        assert "create_client(" not in source, path
+        assert "get_supabase(" not in source, path
+        assert "set_session" not in source, path
+        assert "sign_in_with_password" not in source, path

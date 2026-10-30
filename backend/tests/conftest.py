@@ -182,6 +182,11 @@ def synthetic_operator_access(request):
         yield
         return
 
+    node_path = str(getattr(request.node, "path", "")).replace("\\", "/")
+    if "/tests/access/" in node_path:
+        yield
+        return
+
     import sys
 
     main = sys.modules.get("main")
