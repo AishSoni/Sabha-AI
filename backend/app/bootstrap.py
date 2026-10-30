@@ -37,6 +37,7 @@ from app.modules.persona_catalog.application.contracts import (
 from app.presentation.errors import register_error_handlers
 from app.presentation.router import mount_routes
 from app.replay.contracts import ReplayContainer
+from app.replay.http import register_replay_error_handlers
 from app.replay.http import router as replay_router
 from app.modules.meetings.infrastructure.supabase_meetings import build_meeting_service
 from app.modules.meetings.infrastructure.turns import TurnQueueService
@@ -358,6 +359,7 @@ def create_app(
     # configured source it answers 503; it never falls back to live data.
     # It is deliberately mounted outside the protected live parent.
     app.include_router(replay_router)
+    register_replay_error_handlers(app)
     _ensure_request_timing(app)
     # Spec-22: live JSON, bytes and streams are never shared-cacheable.
     from app.presentation.cache import PrivateApiCacheMiddleware

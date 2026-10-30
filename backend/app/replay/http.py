@@ -10,7 +10,8 @@ from __future__ import annotations
 
 from typing import Any
 
-from fastapi import APIRouter, Depends, HTTPException, Query, Request
+from fastapi import APIRouter, Depends, FastAPI, HTTPException, Query, Request
+from fastapi.responses import JSONResponse
 from pydantic import BaseModel, Field
 from sse_starlette.sse import EventSourceResponse
 
@@ -87,6 +88,22 @@ class ReplaySessionView(BaseModel):
 
 def _unavailable(exc: Exception) -> HTTPException:
     return HTTPException(status_code=503, detail=str(exc) or "replay_package_unavailable")
+
+
+def register_replay_error_handlers(app: FastAPI) -> None:
+    """Keep an absent checkpoint read honest instead of a 500.
+
+    The initial checkpoint intentionally carries less than the later
+    checkpoints (only the safe creation config in the guided package). A read
+    that is not present is a normal replay outcome, not an internal failure.
+    """
+
+    @app.exception_handler(ReplayNotFound)
+    async def replay_not_found_handler(
+        request: Request, exc: ReplayNotFound
+    ) -> JSONResponse:
+        return JSONResponse(status_code=404, content={"detail": "replay_read_unavailable"})
+
 
 
 async def get_replay(

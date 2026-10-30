@@ -186,6 +186,26 @@ export function ReplayRunProvider({ children }: { children: ReactNode }) {
             const scopeId = `${current.run_id}:${current.package_version}`;
             const prefetch = new AbortController();
             try {
+                // The initial checkpoint is the pre-meeting snapshot: the
+                // guided package deliberately exposes only safe-config there.
+                // Nothing in the board or intake screens needs a meeting
+                // bundle, and requesting one would turn a normal rewind into
+                // a 404 (or, before the replay error handler, a 500).
+                if (next === current.initial_checkpoint) {
+                    if (
+                        options?.expectedOperationId ||
+                        options?.expectedMessageId
+                    ) {
+                        throw new Error(
+                            "The initial checkpoint has no recorded turn snapshot."
+                        );
+                    }
+                    controller.abort();
+                    setCheckpoint(next);
+                    setEpoch(nextEpoch);
+                    return;
+                }
+
                 const bundle = await fetchReplayBundle(
                     current,
                     current.meeting_id,

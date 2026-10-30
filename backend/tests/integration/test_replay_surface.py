@@ -60,6 +60,37 @@ class _LiveReads(_Reads):
     """Sentinel live graph; any replay call here is a leak."""
 
 
+class _MissingReads(_Reads):
+    """A checkpoint that deliberately carries only the safe creation config."""
+
+    def _missing(self):
+        raise ReplayNotFound("recorded read is not available here")
+
+    async def get_meeting(self, meeting_id):
+        self.calls.append(("get_meeting", meeting_id))
+        self._missing()
+
+    async def get_disagreements(self, meeting_id):
+        self.calls.append(("get_disagreements", meeting_id))
+        self._missing()
+
+    async def get_consensus_list(self, meeting_id):
+        self.calls.append(("get_consensus_list", meeting_id))
+        self._missing()
+
+    async def context_stats(self, meeting_id):
+        self.calls.append(("context_stats", meeting_id))
+        self._missing()
+
+    async def documents(self, meeting_id):
+        self.calls.append(("documents", meeting_id))
+        self._missing()
+
+    async def closing(self, meeting_id):
+        self.calls.append(("closing", meeting_id))
+        self._missing()
+
+
 class _Observation:
     def __init__(self):
         self.calls = []
@@ -187,6 +218,30 @@ def test_replay_reads_reach_only_the_replay_graph():
         ("get_disagreements", MEETING_ID),
         ("get_consensus_list", MEETING_ID),
     ]
+
+
+@pytest.mark.parametrize(
+    "path",
+    [
+        "",
+        "/disagreements",
+        "/consensus",
+        "/context-stats",
+        "/documents",
+        "/closing",
+    ],
+)
+def test_absent_checkpoint_reads_are_404_not_500(path):
+    app = create_app(
+        replay=_replay(_MissingReads()),
+        mount_live=False,
+    )
+
+    with TestClient(app) as client:
+        response = client.get(f"/api/replay/meetings/{MEETING_ID}{path}")
+
+    assert response.status_code == 404
+    assert response.json()["detail"] == "replay_read_unavailable"
 
 
 @pytest.mark.parametrize(
