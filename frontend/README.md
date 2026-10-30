@@ -11,19 +11,24 @@ npm run dev
 
 Open <http://localhost:3000>.
 
-Create `.env.local` only when the API is not on the default URL:
+Create `.env.local` when the API is not on the default URL or when operator
+sign-in is required:
 
 ```env
 NEXT_PUBLIC_API_URL=http://localhost:8000/api
+NEXT_PUBLIC_SUPABASE_URL=https://your-project.supabase.co
+NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY=your_publishable_or_anon_key
 ```
 
-There are no Supabase keys in the browser bundle: every database, storage and
-vector call is server-side. `NEXT_PUBLIC_API_URL` falls back to
-`http://localhost:8000/api` when unset.
+`NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY` is a public key and never the
+service-role/secret key. Database, storage and vector calls stay server-side.
+Public replay works without either Supabase variable; `/login` and the private
+route group show a safe configuration message when they are missing.
+`NEXT_PUBLIC_API_URL` falls back to `http://localhost:8000/api` when unset.
 
 ## Contract and generated types
 
-`tests/fixtures/openapi.json` is the frozen backend contract (40 paths). After a
+`tests/fixtures/openapi.json` is the frozen backend contract (56 paths). After a
 backend contract change:
 
 ```bash

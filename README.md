@@ -68,8 +68,12 @@ These are **first-class tracked objects**, not just text. When an agent calls `l
 - The scoreboard updates in real time
 - Disagreements carry a **severity** (1–5); consensus carries a **strength** (1–5)
 
-### Account-Free Workspace
-There is **no sign-in**. `local` and `hosted` runtimes are writable and share one workspace: two fresh visitors see the same meetings, uploads, operation status, and streams. No user-auth tokens, accounts, or anonymous Auth bootstrap are involved. `demo` is a strict read-only runtime — every write route is denied — with one guided bond replay at `/demo`. Local acceptance is recorded in [Spec 19](specs/spec-19-replay-release-acceptance.md); public replay release remains blocked until the hosted gate is executed. See [Configuration](#-configuration).
+### Public Replay, Private Live Workspace
+Guided replay is the public entry and needs **no account**. `/`, `/demo/**`, public replay assets and its read-only recorded graph remain account-free.
+
+The live workspace is private. Every `/api/*` route except `/api/replay/*` requires a Supabase Auth bearer token whose user id exactly matches the server's `OPERATOR_USER_ID`. A valid Supabase account alone is not enough: the backend verifies the token against the configured project's `/auth/v1/user` endpoint on every request and rejects non-operators with `403`. There is no shared live workspace and no unauthenticated live fallback.
+
+`demo` remains a strict read-only runtime for the live graph: admission runs first (`401` without a token), and an admitted operator still receives the existing read-only `403`. The browser never talks to the database directly; it uses the Supabase SDK only for Auth. See [Configuration](#-configuration) and the [operations runbook](docs/OPERATIONS.md).
 
 ---
 
@@ -335,6 +339,10 @@ All backend variables live in `backend/.env` (see `.env.example`).
 | `SUPABASE_URL` | required | Supabase project URL |
 | `SUPABASE_KEY` | required | Project configuration only; the live server never uses it as a database credential |
 | `SUPABASE_SERVICE_KEY` | required | Server database client, byte access, backup and restore. Migration `030` removes live `anon` access, so the backend fails clearly without it; never expose it to the browser |
+| `OPERATOR_USER_ID` | required for live | Exact Supabase Auth user UUID allowed into the live workspace. Live HTTP refuses to start without it |
+| `SUPABASE_AUTH_PUBLISHABLE_KEY` | required for live | Public Auth API key used to verify bearer tokens at `/auth/v1/user`; must not be the service/secret key |
+| `ACCESS_VERIFICATION_TIMEOUT_SECONDS` | 5 | Bounded Auth verification timeout |
+| `ACCESS_VERIFICATION_MAX_CONNECTIONS` | 10 | Bounded pooled Auth connections |
 | `DATABASE_URL` | scripts | Direct/session PostgreSQL URL for scripts and restore |
 | `REPLAY_DATABASE_URL` | replay only | Dedicated `sabha_replay_reader` login connection; server-only, never the live service credential |
 | `DEFAULT_LLM_PROVIDER` | `ollama` | `ollama`, `openrouter` or `gemini` |
@@ -362,9 +370,9 @@ Runtime modes:
 
 | Mode | Writes | Accounts | Notes |
 |---|---|---|---|
-| `local` | allowed | none | Default developer runtime |
-| `hosted` | allowed | none | Hosted deployment; identical account-free contract |
-| `demo` | denied (403) | none | Strict read-only; guided replay at `/demo` (conditional local acceptance, hosted gate unexecuted) |
+| `local` | allowed | operator only | Default developer runtime; operator login still required |
+| `hosted` | allowed | operator only | Hosted deployment; same operator gate |
+| `demo` | denied (403) | operator only | Admission first, then read-only; guided replay at `/demo` remains public |
 
 Invalid runtime, provider or embedding values fail at process start. Sabha
 never silently switches a provider or truncates data to fit a configuration.
@@ -373,11 +381,14 @@ Frontend variables:
 
 | Variable | Default | Purpose |
 |---|---|---|
-| `NEXT_PUBLIC_API_URL` | `http://localhost:8000/api` | Backend base URL |
-| `NEXT_PUBLIC_RATE_LIMIT_<PROVIDER>` | — | Client-side pacing hints (`GEMINI`, `OPENROUTER`, `OLLAMA`, `DEFAULT`) |
+| `NEXT_PUBLIC_API_URL` | `http://localhost:8000/api` | Backend base URL; use the deployed HTTPS origin in production |
+| `NEXT_PUBLIC_SUPABASE_URL` | - | Supabase project URL used only by the browser Auth adapter |
+| `NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY` | - | Public Auth API key (publishable or legacy anon); never the service/secret key |
+| `NEXT_PUBLIC_RATE_LIMIT_<PROVIDER>` | - | Client-side pacing hints (`GEMINI`, `OPENROUTER`, `OLLAMA`, `DEFAULT`) |
 
-Frontend configuration contains **no Supabase keys**. All database and storage
-access is server-side.
+Only the public Auth key is present in the browser bundle. Database, storage and
+vector access remains server-side. Public replay does not initialize Auth and
+works with neither Supabase variable set.
 
 ---
 
@@ -416,7 +427,7 @@ access is server-side.
   upgraded install end in the same permission state. See
   [docs/DATABASE_PERMISSIONS.md](docs/DATABASE_PERMISSIONS.md) for the matrix,
   provisioning, rotation and hosted checks.
-- There is no Auth bootstrap, no user token, and no per-user ownership filter.
+- There is no anonymous Auth bootstrap and no browser database credential. The only Auth surface is the dedicated browser adapter used for operator sign-in; every live request is verified server-side.
 - Provider credentials entered by a browser are held in process memory only for
   the duration of an operation and never written to the database, logs, or
   operation events.
@@ -567,8 +578,12 @@ acceptance:
    reports every version applied.
 3. Upload a real PDF to a meeting; confirm the operation reaches `ready`, the
    object exists under `sources/`, and retrieval returns its content.
-4. Open two independent browsers with no sign-in: create a meeting in one,
-   observe it in the other, upload in one, and watch status/SSE in the other.
+4. Open two independent browsers. One opens `/` and `/demo` without signing in
+   (replay works and never calls the live API); the other signs in as the
+   operator, creates a live meeting, uploads a document, and observes SSE.
+5. Confirm an unauthenticated direct request and a valid non-operator token are
+   denied at the backend origin, and that live responses carry
+   `Cache-Control: private, no-store`.
 5. Take a verified backup with the service key; confirm the manifest lists the
    uploaded object and its checksum.
 6. Revoke the document, export a fresh ledger, restore the backup into a fresh
@@ -639,7 +654,7 @@ selection, per-agent model overrides, cost accounting.
 - [x] Coordinated meeting closing and checkpointed summaries
 - [x] Byte-inclusive backup, ledger replay, fail-closed restore
 - [x] Migration history, empty-install and Phase 1 upgrade acceptance
-- [x] Account-free hosted/local shared workspace; read-only demo guard
+- [x] Public guided replay with an operator-only live workspace and exact-UUID backend gate
 - [x] Guided replay for `demo` (conditional local acceptance; public release blocked pending the hosted gate)
 
 ### 🔄 Deferred
@@ -648,8 +663,8 @@ selection, per-agent model overrides, cost accounting.
 - [ ] Fork/replay a meeting from an arbitrary point
 - [ ] Cost dashboard and billing overview
 - [ ] Auto-facilitate mode
-- [ ] Multi-user accounts and tenancy (deliberately out of scope; the workspace
-      is shared by design)
+- [ ] Multi-user accounts and tenancy (deliberately out of scope; the live workspace
+      has exactly one operator, while replay is public)
 
 ---
 

@@ -45,7 +45,7 @@ belong to Spec 17.
 | Persona catalog | `backend/app/modules/persona_catalog/` | Templates, prompt history/activation, template stack assignments |
 | Knowledge | `backend/app/modules/knowledge/` | Upload, ingestion, retrieval, publication, deletion and cleanup, source store and vector adapters |
 | Settings | `backend/app/modules/settings/` | System AI provider settings, credential non-disclosure |
-| Access | `backend/app/modules/access/` | Write guards (including the read-only demo mode) |
+| Access | `backend/app/modules/access/` | Operator admission policy, Supabase Auth verifier, session probe, demo write guard |
 | Capabilities | `backend/app/capabilities/` | Inference providers, runtime supervision, configuration resolution |
 | Platform | `backend/app/platform/` | Settings loading, Supabase client, process configuration |
 | HTTP composition | `backend/app/presentation/` | Router assembly, route dependencies |
@@ -91,6 +91,10 @@ Create `backend/.env` (or export the variables) from `.env.example`:
 | `SUPABASE_URL` | yes | Project URL |
 | `SUPABASE_KEY` | yes | Kept for project configuration; the live server never uses it as a database credential |
 | `SUPABASE_SERVICE_KEY` | yes | Server database client, bytes, backup, restore. Migration `030` removes all live `PUBLIC`/`anon`/`authenticated` access, so the API fails clearly without it. Server-only; never expose to the browser |
+| `OPERATOR_USER_ID` | live | Exact Supabase Auth user UUID allowed into the live workspace; live startup fails closed without it |
+| `SUPABASE_AUTH_PUBLISHABLE_KEY` | live | Public Auth key used only for `/auth/v1/user` verification; must not be the service/secret key |
+| `ACCESS_VERIFICATION_TIMEOUT_SECONDS` | no | Bounded Auth verification timeout, default 5 |
+| `ACCESS_VERIFICATION_MAX_CONNECTIONS` | no | Bounded pooled Auth connections, default 10 |
 | `QDRANT_URL`, `QDRANT_API_KEY` | yes / cloud only | Vector projection |
 | `DEFAULT_LLM_PROVIDER` | yes | `ollama`, `openrouter` or `gemini` |
 | `EMBEDDING_PROVIDER`, `EMBEDDING_MODEL`, `EMBEDDING_DIMENSION` | yes | `gemini`, `openai`, `cohere` or `ollama` |
@@ -111,26 +115,30 @@ Create `backend/.env` (or export the variables) from `.env.example`:
 | `DATABASE_URL` | scripts | Direct/session-mode PostgreSQL URL, not the transaction pooler |
 | `REPLAY_DATABASE_URL` | replay only | Dedicated login role in `sabha_replay_reader`; server-only, never `DATABASE_URL` or the service key |
 
-Frontend (`frontend/.env.local`):
+Frontend (`frontend/.env.local`, and Vercel project environment):
 
 ```text
 NEXT_PUBLIC_API_URL=http://localhost:8000/api
+NEXT_PUBLIC_SUPABASE_URL=https://your-project.supabase.co
+NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY=your_publishable_or_anon_key
 NEXT_PUBLIC_RATE_LIMIT_GEMINI=5
 NEXT_PUBLIC_RATE_LIMIT_OPENROUTER=5
 NEXT_PUBLIC_RATE_LIMIT_OLLAMA=2
 NEXT_PUBLIC_RATE_LIMIT_DEFAULT=5
 ```
 
-`NEXT_PUBLIC_API_URL` falls back to `http://localhost:8000/api` when unset.
+`NEXT_PUBLIC_API_URL` falls back to `http://localhost:8000/api` when unset. The
+Supabase variables are public; never put `SUPABASE_SERVICE_KEY` in a
+`NEXT_PUBLIC_*` variable. Public replay works without either Supabase variable.
 
-`local` and `hosted` are both writable and account-free: two fresh visitors
-share one workspace with no sign-in, no user token, and no anonymous Auth
-bootstrap. `demo` is strictly read-only — every live write route returns 403 and
-no credential prompt is issued. `demo` is a write guard on the live graph, not
-the recorded replay graph. The browser route `/demo/meetings/[id]` composes the
-recorded room against `/api/replay/*`; it does not change `RUNTIME_MODE` or
-grant replay behavior to live URLs. Invalid `RUNTIME_MODE`, provider or
-embedding values fail at process start with a validation error; the application
+`local` and `hosted` are both writable but private: every live request requires
+the configured operator's Supabase access token. A valid account that is not the
+operator gets `403`; missing/invalid tokens get `401`; Auth outages get `503`.
+`demo` keeps the same admission gate, then denies live writes with `403`. The
+browser route `/demo/meetings/[id]` composes the recorded room against
+`/api/replay/*`; it does not change `RUNTIME_MODE` or grant replay behavior to
+live URLs. Invalid `RUNTIME_MODE`, provider or embedding values fail at process
+start with a validation error; the application
 never silently substitutes a provider.
 
 ## 5. Start and stop
@@ -700,8 +708,8 @@ otherwise. Never paste keys or private payloads into the record.
    cannot move or overwrite B, and that no backend run/session rows are
    created. Package/version/run scope must prevent cache collisions.
 
-6. **Mixed live and replay.** With an active live turn and an unlocked
-   synthetic vault, open replay in another context. Switching detaches replay
+6. **Mixed live and replay.** Sign in as the operator, start a live turn,
+   then open replay in a separate public context. Switching detaches replay
    observation only; the live turn keeps executing, its cache/cooldown
    survives a replay restart, and replay never reads the vault, leaks a key,
    or cancels the live job. If the hosted app cannot host both graphs, record
@@ -729,9 +737,10 @@ conditional local decision.
   [the README](../README.md#-hosted-verification-manual-gate).
 - **No down-migrations.** Recovery is forward, or a restore into a fresh
   database. Irreversible redaction is never undone.
-- **No accounts or tenancy.** The workspace is deliberately shared; `anon` and
-  `authenticated` cannot read or write live tables directly, and the replay
-  reader is limited to explicitly published replay objects.
+- **One operator, no tenancy.** The live workspace is deliberately single-tenant:
+  exactly one Supabase Auth UUID may enter. `anon` and `authenticated` cannot
+  read or write live tables directly, and the replay reader is limited to
+  explicitly published replay objects. Public replay remains account-free.
 - **Packaged replay is local-first and publicly blocked.** Spec 17 ships the
   package format, offline publication, checkpoint reads, paced SSE, closing
   transport, and the packaged analyst slice. Spec 18 adds the approved
@@ -804,3 +813,93 @@ exceeds its budget is a regression even when it feels fast locally.
 Hosted re-measurement needs a co-located deployment and operator credentials.
 Record the environment, region pair, date and round-trip counts with the
 result; any unexecuted check stays marked unexecuted.
+
+## 15. Hosted operator access runbook (spec 22)
+
+This runbook is the deployed gate. It is **not executed** by the local unit
+suite; record each step and leave anything unrun marked **UNPROVEN**.
+
+### Supabase Auth
+
+1. In the hosted project create exactly one email/password user for the owner.
+   Copy its UUID from Authentication -> Users.
+2. Disable new-user signup, anonymous sign-ins, magic links, recovery links and
+   every unused provider. Sabha has no signup, invitation, recovery or password
+   proxy UI; the browser talks only to Supabase Auth.
+3. Use the project's publishable key (or legacy anon JWT) as
+   `SUPABASE_AUTH_PUBLISHABLE_KEY` / `NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY`.
+   Never use the service-role or `sb_secret_*` key in either variable.
+4. Confirm `anon` and `authenticated` still cannot read or write live tables,
+   Storage objects or RPCs directly. Auth is an identity check, not a database
+   grant.
+
+### Backend on Northflank
+
+Set:
+
+```text
+SUPABASE_URL, SUPABASE_KEY, SUPABASE_SERVICE_KEY
+SUPABASE_AUTH_PUBLISHABLE_KEY
+OPERATOR_USER_ID=<exact Auth user UUID>
+APP_ENV=production
+RUNTIME_MODE=hosted
+REPLAY_ONLY=false
+CORS_ORIGINS=["https://<vercel-production-domain>"]
+```
+
+- Deploy once without `OPERATOR_USER_ID` to verify startup fails closed; then
+  add the correct values and confirm `/health` returns 200.
+- Keep `/health`, `/`, docs and CORS preflight public.
+- Confirm Northflank does not buffer the SSE response and that reconnects reach
+  the authenticated turn events route.
+- If Northflank or its proxy caches responses, confirm live JSON, document bytes
+  and SSE carry `Cache-Control: private, no-store` while `/api/replay/*` keeps
+  its public package policy.
+
+### Frontend on Vercel
+
+Set these at **build** time, then deploy:
+
+```text
+NEXT_PUBLIC_API_URL=https://<northflank-api-host>/api
+NEXT_PUBLIC_SUPABASE_URL=https://<project>.supabase.co
+NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY=<publishable-or-anon-key>
+```
+
+`NEXT_PUBLIC_*` values are inlined by Next.js; changing them requires a new
+deployment. Public replay must build and load `/` and `/demo` with neither
+Supabase variable set. With the variables set, `/login` renders the form and the
+private route group probes `/api/access/session` before mounting children.
+
+### Deployed verification
+
+Run these against the deployed origin, not localhost:
+
+1. `GET /api/meetings` with no token -> `401` + `WWW-Authenticate: Bearer`.
+2. Garbage/expired/tampered token -> `401`.
+3. Valid token for a second, non-operator account -> `403`
+   `"Operator access denied"`, no workspace data.
+4. Operator token -> `200`; create/list a meeting, upload a document, observe a
+   turn stream, open a citation preview, run closing with controlled providers.
+5. `GET /api/replay/session` with no token -> public packaged replay response and
+   no Auth dependency.
+6. Preflight from the exact Vercel origin -> allowed; Authorization header
+   allowed; live responses are not shared-cacheable.
+7. Fresh browser, no Auth state: `/`, `/demo`, restart, evidence preview and a
+   deep replay link all work without sign-in and without a live API request.
+8. Operator browser: sign in, use the private screens, reload (vault starts
+   locked), sign out; open a second tab and confirm cross-tab sign-out clears
+   private screens while replay progress is untouched.
+9. Direct Supabase anon/authenticated DB, Storage and RPC probes remain denied.
+
+### Limits and rollback
+
+- Authorization is per request. Logout stops new admission and aborts client
+  observation, but it does not cancel an already-admitted durable turn, closing
+  or ingestion job and cannot retract bytes already delivered.
+- A reload always starts with the provider vault locked; logging in does not
+  unlock it.
+- Rollback: set `REPLAY_ONLY=true` (backend) or remove the live deployment while
+  keeping the public replay deployment. Never restore unauthenticated live API
+  access, relax database grants, delete records, or claim that stopping
+  observation cancels an admitted job.
