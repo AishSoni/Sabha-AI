@@ -459,7 +459,7 @@ npm run build
 
 - Backend: **924 passed, 1 skipped**.
 - OpenAPI fixture: **56 paths**, no drift.
-- Frontend: **67 files, 390 tests passed** (unit, integration and architecture).
+- Frontend: **68 files, 391 tests passed** (unit, integration and architecture).
 - Lint: **0 errors**, 29 pre-existing warnings.
 - Production build: passed, including `/`, `/demo`, `/login`, `/meetings`,
   `/roster`, `/knowledge-stacks` and `/settings`.
