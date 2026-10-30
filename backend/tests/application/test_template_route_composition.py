@@ -15,6 +15,7 @@ import pytest
 from fastapi.testclient import TestClient
 
 from app.bootstrap import Container, create_app
+from tests.support.access import authorise
 from app.modules.persona_catalog.application.contracts import (
     PersonaEditConflict,
     PromptCatalogUnavailable,
@@ -204,7 +205,7 @@ def _client(catalog: FakePersonaCatalog) -> TestClient:
     container = Container(
         prompt_catalog=_MinimalPromptCatalog(), persona_catalog=catalog
     )
-    return TestClient(create_app(container))
+    return TestClient(authorise(create_app(container)))
 
 
 def test_template_list_reaches_the_injected_port_and_maps_the_view():

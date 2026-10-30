@@ -68,7 +68,7 @@ def test_route_table_contains_the_pinned_public_paths():
     live_paths = {
         p for p in paths if p.startswith("/api/") and not p.startswith("/api/replay")
     }
-    assert len(live_paths) == 38
+    assert len(live_paths) == 40
     assert {
         p for p in paths if p.startswith("/api/replay")
     } == {

@@ -1,251 +1,113 @@
-"""Characterization of the no-sign-in access doctrine (spec-03 C1 gap).
+"""Access characterization for the operator-only live workspace (spec-22).
 
-The reference contracts require completely no-sign-in access: a fresh visitor
-needs neither accounts nor Auth bootstrap, hosted or local. The write side of
-the demo mode has its own guard (`tests/regression/test_demo_write_guard.py`;
-guard metadata carries guard_id=spec-03.no-sign-in/06). This suite records the
-ACCESS side of the same doctrine with two kinds of executable evidence:
+Replaces the historical "no sign-in anywhere" doctrine with the two-path
+contract:
 
-1. Source level: the backend never installs an authentication dependency —
-   no FastAPI security parameters, no token verification helpers, no Supabase
-   auth calls anywhere under app/ or main.py.
-2. Runtime level: with nothing configured, the live app serves reads and
-   accepts writes for a completely bare client (no Authorization header, no
-  cookies, no sign-up first): health, meeting list/detail, persona list,
-   knowledge stacks, provider settings, per-meeting document list, plus a
-   fresh meeting created end-to-end and a follow-up conversation message.
-
-Read-only doctrine note: seeded conversation messages are only ever written by
-the visitor-facing POST routes below — no seed helper bypasses the API here,
-so the sweep stays honest about what a fresh visitor can do.
+1. ``/api/replay/*`` stays account-free and mounted outside the live gate.
+2. Every other ``/api/*`` operation is protected by the single operator
+   bearer scheme, and Sabha exposes no login/token proxy of its own.
 """
 
-import re
+from __future__ import annotations
+
 from pathlib import Path
 
 import pytest
+from fastapi import FastAPI
 from fastapi.testclient import TestClient
-
-import psycopg
 from main import app
-from tests.doubles.supabase_stub import stub_for
+
+pytestmark = pytest.mark.real_access
 
 BACKEND_ROOT = Path(__file__).resolve().parents[2]
-
-PERSONA_ID = "33333333-3333-4333-8333-333333333333"
-
-FORBIDDEN_TOKENS = (
-    "Security(",
-    "APIRouter(dependencies",
-    "get_current_user",
-    "verify_token",
-    "verify_jwt",
-    "require_auth",
-    "supabase.auth",
-    ".auth.getUser",       # the JS shape is caught on the frontend side; here for symmetry
-)
-
-# Spec-04 composition retrieves injected use cases with plain FastAPI
-# dependencies, so a bare ``Depends(`` is no longer proof of an auth gate by
-# itself. A dependency is auth-shaped when its callable name carries any of
-# these fragments; ``Depends(build_use_case)`` and friends stay allowed.
-AUTH_SHAPED_DEPENDENCY = r"Depends\(\s*([A-Za-z_][A-Za-z0-9_.]*)"
-AUTH_DEPENDENCY_FRAGMENTS = (
-    "auth",
-    "credential",
-    "jwt",
-    "permission",
-    "session",
-    "security",
+REPLAY_PREFIX = "/api/replay"
+AUTH_PATH_FRAGMENTS = (
+    "login",
+    "signin",
+    "signup",
+    "register",
+    "logout",
+    "callback",
     "token",
-    "user",
-)
-
-AUTH_PATH_FRAGMENTS = ("login", "signin", "signup", "register", "logout", "callback", "token")
-
-READ_PATHS = (
-    "/health",
-    "/api/meetings",
-    "/api/personas",
-    "/api/knowledge_stacks",
-    "/api/settings/providers",
+    "password",
 )
 
 
-def code_lines(path: Path) -> list[str]:
-    lines = []
-    for line in path.read_text(encoding="utf-8").splitlines():
-        code = line.split("#", 1)[0]
-        if code.strip():
-            lines.append(code)
-    return lines
+def live_operations(document: dict):
+    for path, operations in document.get("paths", {}).items():
+        if not path.startswith("/api") or path.startswith(REPLAY_PREFIX):
+            continue
+        for method, operation in operations.items():
+            if isinstance(operation, dict) and "responses" in operation:
+                yield path, method, operation
 
 
-def forbidden_auth_usage(paths) -> list[str]:
-    """Reuse the same scan logic for app sources and for the sandbox probe."""
-    hits = []
-    auth_dependency = re.compile(AUTH_SHAPED_DEPENDENCY)
-    for path in paths:
-        for line in code_lines(path):
-            if any(token in line for token in FORBIDDEN_TOKENS):
-                hits.append(f"{path.name}: {line.strip()}")
-                continue
-            match = auth_dependency.search(line)
-            if match:
-                callable_name = match.group(1).split(".")[-1].lower()
-                if any(fragment in callable_name for fragment in AUTH_DEPENDENCY_FRAGMENTS):
-                    hits.append(f"{path.name}: {line.strip()}")
-    return hits
+def unprotected_live_operations(composed_app: FastAPI):
+    return [
+        (path, method)
+        for path, method, operation in live_operations(composed_app.openapi())
+        if operation.get("security") != [{"OperatorBearer": []}]
+    ]
 
 
-def test_sources_install_no_authentication_dependency():
-    app_sources = list((BACKEND_ROOT / "app").rglob("*.py"))
-    app_sources.append(BACKEND_ROOT / "main.py")
-
-    hits = forbidden_auth_usage(app_sources)
-    assert hits == [], f"auth dependency found: {hits}"
+def test_every_live_operation_requires_the_operator_scheme():
+    assert unprotected_live_operations(app) == []
 
 
-def test_route_table_has_no_login_or_token_surface():
+def test_the_scan_is_not_vacuous():
+    planted = FastAPI()
+
+    @planted.get("/api/planted")
+    def planted_route():
+        return {"leaked": True}
+
+    assert unprotected_live_operations(planted) == [("/api/planted", "get")]
+
+
+def test_replay_operations_are_public_by_contract():
+    document = app.openapi()
+    replay = 0
+    for path, operations in document["paths"].items():
+        if not path.startswith(REPLAY_PREFIX):
+            continue
+        for operation in operations.values():
+            if isinstance(operation, dict) and "responses" in operation:
+                assert "security" not in operation
+                replay += 1
+    assert replay > 5
+
+
+def test_bare_visitor_reaches_replay_without_a_challenge():
+    response = TestClient(app).get(f"{REPLAY_PREFIX}/session")
+    assert response.status_code in (200, 503)
+    assert "www-authenticate" not in {key.lower() for key in response.headers}
+
+
+def test_bare_visitor_cannot_read_live_data():
+    response = TestClient(app).get("/api/meetings")
+    assert response.status_code == 401
+    assert response.headers["www-authenticate"] == "Bearer"
+
+
+def test_route_table_has_no_sabha_login_or_token_proxy():
     paths = {getattr(route, "path", "") for route in app.routes}
-    paths.discard("")
-    offending = sorted(p for p in paths if any(frag in p.lower() for frag in AUTH_PATH_FRAGMENTS))
+    offending = sorted(
+        path
+        for path in paths
+        if any(fragment in path.lower() for fragment in AUTH_PATH_FRAGMENTS)
+    )
     assert offending == []
-    assert len(paths) > 10  # non-vacuous: the app really mounts an API surface
+    assert "/api/access/session" in paths
 
 
-def test_scanner_would_catch_an_auth_dependency():
-    """The source sweep is proven non-vacuous: the same probe flags a planted
-    auth dependency."""
-    sandbox = BACKEND_ROOT / ".sandbox_probe"
-    sandbox.mkdir(exist_ok=True)
-    (sandbox / "bad.py").write_text('def get_user():\n    return verify_token(request)  # planted\n', encoding="utf-8")
-    try:
-        hits = forbidden_auth_usage([sandbox / "bad.py"])
-    finally:
-        (sandbox / "bad.py").unlink()
-        sandbox.rmdir()
-    assert hits, "probe must reproduce the planted token"
-
-
-def seed_persona(db) -> None:
-    with db.connect() as conn:
-        conn.execute(
-            "INSERT INTO personas (id, name, subtitle, color) VALUES (%s, %s, %s, %s)",
-            (PERSONA_ID, "Open Questioner", "Fresh-visitor probe", "#22c55e"),
-        )
-
-
-@pytest.fixture()
-def sweep_env(disposable_db, monkeypatch):
-    def _stub():
-        return stub_for(disposable_db)
-
-    monkeypatch.setattr(
-        "app.modules.knowledge.infrastructure.reconciliation.get_supabase", _stub
+def test_live_routes_are_mounted_through_one_protected_parent():
+    source = (BACKEND_ROOT / "app" / "presentation" / "router.py").read_text(
+        encoding="utf-8"
     )
-    monkeypatch.setattr(
-        "app.modules.knowledge.infrastructure.vector_cleanup.get_supabase", _stub
-    )
-    monkeypatch.setattr(
-        "app.modules.settings.infrastructure.system_ai.get_supabase_admin", _stub
-    )
-
-    from app.bootstrap import Container
-    from app.modules.meetings.infrastructure.supabase_meetings import (
-        build_meeting_service,
-    )
-    from app.modules.persona_catalog.infrastructure.supabase import (
-        SupabasePersonaCatalog,
-        SupabasePromptCatalog,
-    )
-    from app.modules.settings.infrastructure.system_ai import load_system_ai_config
-    from tests.regression.test_knowledge_routes import FakeLifecycle
-
-    service = build_meeting_service(_stub())
-    lifecycle = FakeLifecycle()
-    lifecycle.records = []
-    monkeypatch.setattr(
-        app.state,
-        "container",
-        Container(
-            prompt_catalog=SupabasePromptCatalog(_stub),
-            persona_catalog=SupabasePersonaCatalog(_stub),
-            meeting_service=service,
-            meeting_reads=service,
-            knowledge_lifecycle=lifecycle,
-            system_ai_reader=load_system_ai_config,
-        ),
-    )
-    yield disposable_db
-
-
-def assert_no_auth_challenge(response) -> None:
-    """No request in the sweep may be turned away by a credential challenge."""
-    assert response.status_code not in (401, 403), f"auth challenge at {response.request.url}"
-    assert "www-authenticate" not in {k.lower() for k in response.headers}
-
-
-def test_bare_client_reads_every_public_surface(sweep_env):
-    seed_persona(sweep_env)
-
-    with TestClient(app) as client:
-        for path in READ_PATHS:
-            assert_no_auth_challenge(client.get(path))
-
-        meeting_id = ""
-        response = client.post(
-            "/api/meetings",
-            json={"name": "Visitor probe", "agenda": "Nothing to sign in for", "persona_ids": [PERSONA_ID]},
-        )
-        assert_no_auth_challenge(response)
-        meeting_id = response.json()["id"]
-
-        detail = client.get(f"/api/meetings/{meeting_id}")
-        assert_no_auth_challenge(detail)
-        assert detail.json()["participants"], "persona materialized as participant without any account"
-
-        documents = client.get(f"/api/documents/meeting/{meeting_id}")
-        assert_no_auth_challenge(documents)
-        assert documents.json() == []
-
-        disagreements = client.get(f"/api/meetings/{meeting_id}/disagreements")
-        assert_no_auth_challenge(disagreements)
-
-        consensus = client.get(f"/api/meetings/{meeting_id}/consensus")
-        assert_no_auth_challenge(consensus)
-
-    msgs = sweep_env.query(
-        "SELECT COUNT(*) FROM meetings WHERE id = %s", (meeting_id,)
-    )
-    assert msgs[0][0] == 1  # the visitor-created meeting is the only state touched
-
-
-def test_bare_client_writes_a_conversation_message_without_signing_in(sweep_env, monkeypatch):
-    seed_persona(sweep_env)
-
-    with TestClient(app) as client:
-        created = client.post(
-            "/api/meetings",
-            json={"name": "Message probe", "persona_ids": [PERSONA_ID]},
-        )
-        assert_no_auth_challenge(created)
-        meeting_id = created.json()["id"]
-
-        posted = client.post(
-            f"/api/meetings/{meeting_id}/message",
-            json={"content": "Is anything gated behind sign-in?"},
-        )
-        assert_no_auth_challenge(posted)
-        assert posted.json()["content"] == "Is anything gated behind sign-in?"
-
-        listed = client.get("/api/meetings")
-        assert_no_auth_challenge(listed)
-        assert meeting_id in [m["id"] for m in listed.json()]
-
-    rows = sweep_env.query(
-        "SELECT content, sender_type FROM messages WHERE meeting_id = %s ORDER BY created_at",
-        (meeting_id,),
-    )
-    assert [r[1] for r in rows][-1] == "user"
-    assert rows[-1][0] == "Is anything gated behind sign-in?"
+    assert "Depends(require_operator_access)" in source
+    assert source.count("app.include_router(protected)") == 1
+    # Child routers may only be attached to the protected parent, never
+    # directly to the application.
+    assert "app.include_router(meeting_compat_router" not in source
+    assert "app.include_router(knowledge_router" not in source
+    assert "app.include_router(persona_catalog_router" not in source

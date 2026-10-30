@@ -18,6 +18,7 @@ import pytest
 import uvicorn
 
 from app.bootstrap import Container, create_app
+from tests.support.access import authorise
 from app.platform.config import settings
 from app.replay.runtime import ReplayRuntime
 from app.replay.source import ReplaySource
@@ -94,10 +95,12 @@ def shared_server(disposable_db, monkeypatch):
         limiter=StreamLimiter(max_global=4, max_per_client=2),
     )
     live_reads = _LiveReads()
-    app = create_app(
-        Container(prompt_catalog=object(), meeting_reads=live_reads),
-        runtime,
-        mount_live=True,
+    app = authorise(
+        create_app(
+            Container(prompt_catalog=object(), meeting_reads=live_reads),
+            runtime,
+            mount_live=True,
+        )
     )
     base_url, server, thread = _serve(app)
     try:
@@ -190,10 +193,12 @@ def test_unconfigured_replay_answers_503_without_live_fallback(disposable_db, mo
     monkeypatch.setattr(settings, "replay_database_url", "")
     monkeypatch.setattr(settings, "replay_package_id", "")
     live_reads = _LiveReads()
-    app = create_app(
-        Container(prompt_catalog=object(), meeting_reads=live_reads),
-        None,
-        mount_live=True,
+    app = authorise(
+        create_app(
+            Container(prompt_catalog=object(), meeting_reads=live_reads),
+            None,
+            mount_live=True,
+        )
     )
     base_url, server, thread = _serve(app)
     try:

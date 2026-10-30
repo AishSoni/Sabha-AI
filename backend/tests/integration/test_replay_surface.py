@@ -14,6 +14,7 @@ import pytest
 from fastapi.testclient import TestClient
 
 from app.bootstrap import Container, create_app
+from tests.support.access import authorise
 from app.modules.meetings.domain.models import MeetingStatus, MeetingWithParticipants
 from app.replay.contracts import ReplayCapabilities, ReplayContainer, ReplayNotFound, ReplaySession
 
@@ -135,7 +136,9 @@ def test_unconfigured_replay_is_honest_and_never_falls_back_live(
         monkeypatch.setattr(settings, name, "", raising=False)
 
     live_reads = _LiveReads()
-    app = create_app(Container(prompt_catalog=object(), meeting_reads=live_reads))
+    app = authorise(
+        create_app(Container(prompt_catalog=object(), meeting_reads=live_reads))
+    )
 
     with TestClient(app) as client:
         session = client.get("/api/replay/session")
@@ -154,9 +157,11 @@ def test_replay_reads_reach_only_the_replay_graph():
     live_reads = _LiveReads()
     replay_reads = _Reads()
     observation = _Observation()
-    app = create_app(
-        Container(prompt_catalog=object(), meeting_reads=live_reads),
-        _replay(replay_reads, observation),
+    app = authorise(
+        create_app(
+            Container(prompt_catalog=object(), meeting_reads=live_reads),
+            _replay(replay_reads, observation),
+        )
     )
 
     with TestClient(app) as client:
@@ -196,9 +201,11 @@ def test_replay_reads_reach_only_the_replay_graph():
 def test_forged_selectors_cannot_leave_the_recorded_meeting(headers):
     reads = _Reads()
     observation = _Observation()
-    app = create_app(
-        Container(prompt_catalog=object(), meeting_reads=_LiveReads()),
-        _replay(reads, observation),
+    app = authorise(
+        create_app(
+            Container(prompt_catalog=object(), meeting_reads=_LiveReads()),
+            _replay(reads, observation),
+        )
     )
 
     with TestClient(app) as client:
@@ -215,9 +222,11 @@ def test_forged_selectors_cannot_leave_the_recorded_meeting(headers):
 def test_replay_commands_are_rejected_before_any_adapter():
     reads = _Reads()
     observation = _Observation()
-    app = create_app(
-        Container(prompt_catalog=object(), meeting_reads=_LiveReads()),
-        _replay(reads, observation),
+    app = authorise(
+        create_app(
+            Container(prompt_catalog=object(), meeting_reads=_LiveReads()),
+            _replay(reads, observation),
+        )
     )
 
     with TestClient(app) as client:
@@ -236,9 +245,11 @@ def test_replay_commands_are_rejected_before_any_adapter():
 
 def test_replay_turn_events_stream_from_the_recorded_observation():
     observation = _Observation()
-    app = create_app(
-        Container(prompt_catalog=object()),
-        _replay(observation=observation),
+    app = authorise(
+        create_app(
+            Container(prompt_catalog=object()),
+            _replay(observation=observation),
+        )
     )
 
     with TestClient(app) as client:

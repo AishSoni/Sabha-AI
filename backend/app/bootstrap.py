@@ -6,8 +6,9 @@ Defaults to the production container; tests inject their own
 ``Container`` with replacement adapters, which is what makes the use case
 provable end-to-end without SDK reach.
 
-Assembly owns the CORS policy, the demo write guard, the startup-recovery
-lifespan and the final module router set. ``main.py`` and ``worker.py`` are
+Assembly owns the CORS policy, the private-response cache policy, operator
+admission for the live graph, the startup-recovery lifespan and the final
+module router set. ``main.py`` and ``worker.py`` are
 thin entry points over this root; application layers never import it.
 """
 
@@ -260,6 +261,12 @@ async def lifespan(app: FastAPI):
                 logger.warning("Turn runner shutdown failed", exc_info=True)
 
         close_replay_pool()
+        access = getattr(app.state, "access", None)
+        if access is not None:
+            try:
+                await access.aclose()
+            except Exception:
+                logger.warning("Access verifier shutdown failed", exc_info=True)
         close_supabase()
         shutdown_blocking()
 
@@ -273,26 +280,29 @@ def _ensure_request_timing(app: FastAPI) -> None:
     app.add_middleware(RequestTimingMiddleware)
 
 
-def _ensure_demo_guard(app: FastAPI) -> None:
-    """Deny mutating API calls before dispatch when running in demo mode.
+def _build_operator_access(verifier=None):
+    """Validate operator config, then build the live admission guard.
 
-    Demo is a no-write replay workspace: reads stay open (no-auth API is kept),
-    but POST/PUT/PATCH/DELETE to any /api endpoint returns 403 before routing
-    so no route handler ever executes a write. Full local/hosted runtimes are
-    unaffected.
+    Runs before the live container so a missing/unsafe operator setting stops
+    startup without constructing Supabase, Qdrant, provider or recovery
+    adapters. Replay-only compositions never call this function.
     """
-    from fastapi import Request
-    from fastapi.responses import JSONResponse
+    from app.modules.access.application.guard import OperatorGuard
+    from app.modules.access.domain.policy import OperatorAccessConfig
+    from app.modules.access.infrastructure.supabase_auth import SupabaseAuthVerifier
 
-    @app.middleware("http")
-    async def demo_write_guard(request: Request, call_next):
-        if settings.runtime_mode == "demo":
-            if request.method not in ("GET", "HEAD", "OPTIONS") and request.url.path.startswith("/api"):
-                return JSONResponse(
-                    status_code=403,
-                    content={"detail": "Demo workspace is read-only — mutations are disabled"},
-                )
-        return await call_next(request)
+    config = OperatorAccessConfig.from_settings(settings)
+    if verifier is None:
+        verifier = SupabaseAuthVerifier(
+            supabase_url=config.supabase_url,
+            publishable_key=config.auth_publishable_key,
+            timeout_seconds=config.verification_timeout_seconds,
+            max_connections=config.verification_max_connections,
+        )
+    return OperatorGuard(
+        verifier=verifier,
+        operator_user_id=config.operator_user_id,
+    )
 
 
 def create_app(
@@ -300,6 +310,7 @@ def create_app(
     replay: Optional[ReplayContainer] = None,
     *,
     mount_live: bool | None = None,
+    access_verifier: Any | None = None,
 ) -> FastAPI:
     """Assemble the application.
 
@@ -308,8 +319,13 @@ def create_app(
     separate graph stored at ``app.state.replay``; it is never derived from the
     live container. ``mount_live=False`` (or ``REPLAY_ONLY=true``) produces a
     replay-only process that constructs no live adapters.
+
+    ``access_verifier`` is a test seam: configuration is still validated and
+    the HTTP dependency still runs, but token verification is replaced with a
+    controlled adapter. Production never sets it.
     """
     live_enabled = (not settings.replay_only) if mount_live is None else mount_live
+    access_guard = _build_operator_access(access_verifier) if live_enabled else None
     active = None
     if live_enabled:
         active = container if container is not None else Container.production()
@@ -332,17 +348,21 @@ def create_app(
 
     app.state.container = active
     app.state.replay = replay if replay is not None else _configured_replay()
+    app.state.access = access_guard
     register_error_handlers(app)
 
     if live_enabled:
-        # Include routers (unchanged order; cutover will remove migrated
-        # duplicates from the legacy routers)
+        # Include the whole live graph behind one admission dependency.
         mount_routes(app)
-        _ensure_demo_guard(app)
     # The replay namespace is present in every composition. Without a
     # configured source it answers 503; it never falls back to live data.
+    # It is deliberately mounted outside the protected live parent.
     app.include_router(replay_router)
     _ensure_request_timing(app)
+    # Spec-22: live JSON, bytes and streams are never shared-cacheable.
+    from app.presentation.cache import PrivateApiCacheMiddleware
+
+    app.add_middleware(PrivateApiCacheMiddleware)
 
     @app.get("/")
     async def root():

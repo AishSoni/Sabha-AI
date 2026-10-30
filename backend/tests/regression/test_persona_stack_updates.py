@@ -17,6 +17,7 @@ import pytest
 from fastapi.testclient import TestClient
 
 from app.bootstrap import Container, create_app
+from tests.support.access import authorise
 from app.modules.persona_catalog.infrastructure.supabase import (
     SupabasePersonaCatalog,
     SupabasePromptCatalog,
@@ -49,10 +50,12 @@ def persona_env(disposable_db):
             )
 
     stub = stub_for(disposable_db)
-    app = create_app(
-        Container(
-            persona_catalog=SupabasePersonaCatalog(lambda: stub),
-            prompt_catalog=SupabasePromptCatalog(lambda: stub),
+    app = authorise(
+        create_app(
+            Container(
+                persona_catalog=SupabasePersonaCatalog(lambda: stub),
+                prompt_catalog=SupabasePromptCatalog(lambda: stub),
+            )
         )
     )
     client = TestClient(app)

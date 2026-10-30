@@ -22,6 +22,7 @@ import pytest
 import uvicorn
 
 from app.bootstrap import Container, create_app
+from tests.support.access import authorise
 from app.platform.config import settings
 from app.replay.runtime import ReplayRuntime
 from app.replay.source import ReplaySource
@@ -114,15 +115,17 @@ def mixed_server(disposable_db, monkeypatch):
         package_id="placeholder-analyst",
         limiter=StreamLimiter(max_global=4, max_per_client=2),
     )
-    app = create_app(
-        Container(
-            prompt_catalog=object(),
-            meeting_reads=reads,
-            turn_observation=observation,
-            knowledge_lifecycle=vault,
-        ),
-        runtime,
-        mount_live=True,
+    app = authorise(
+        create_app(
+            Container(
+                prompt_catalog=object(),
+                meeting_reads=reads,
+                turn_observation=observation,
+                knowledge_lifecycle=vault,
+            ),
+            runtime,
+            mount_live=True,
+        )
     )
     port = _free_port()
     server = uvicorn.Server(

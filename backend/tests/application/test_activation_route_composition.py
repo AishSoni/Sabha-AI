@@ -13,6 +13,7 @@ import pytest
 from fastapi.testclient import TestClient
 
 from app.bootstrap import Container, create_app
+from tests.support.access import authorise
 from app.modules.persona_catalog.application.contracts import PromptCatalogUnavailable
 
 PERSONA_ID = "11111111-1111-4111-8111-111111111111"
@@ -37,7 +38,7 @@ class FakePromptCatalog:
 
 
 def _client(monkeypatch, catalog) -> TestClient:
-    return TestClient(create_app(Container(prompt_catalog=catalog)))
+    return TestClient(authorise(create_app(Container(prompt_catalog=catalog))))
 
 
 def test_activation_route_reaches_the_injected_use_case(monkeypatch):

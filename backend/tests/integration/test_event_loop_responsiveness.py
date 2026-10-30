@@ -16,6 +16,7 @@ import time
 import httpx
 
 from app.bootstrap import Container, create_app
+from tests.support.access import authorise
 from app.modules.meetings.application.meeting_service import MeetingService
 from app.platform.blocking import run_blocking
 
@@ -87,11 +88,13 @@ def _app(db: _SlowDb):
         construct_participants=None,
         run_blocking=run_blocking,
     )
-    return create_app(
-        Container(
-            prompt_catalog=object(),
-            meeting_service=service,
-            meeting_reads=service,
+    return authorise(
+        create_app(
+            Container(
+                prompt_catalog=object(),
+                meeting_service=service,
+                meeting_reads=service,
+            )
         )
     )
 

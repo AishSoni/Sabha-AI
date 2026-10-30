@@ -15,6 +15,7 @@ import pytest
 from fastapi.testclient import TestClient
 
 from app.bootstrap import Container, create_app
+from tests.support.access import authorise
 
 pytestmark = pytest.mark.architecture
 
@@ -109,11 +110,13 @@ class _Observation:
 def test_http_reads_resolve_the_container_ports_not_defaults():
     reads = _Reads()
     observation = _Observation()
-    app = create_app(
-        Container(
-            prompt_catalog=object(),
-            meeting_reads=reads,
-            turn_observation=observation,
+    app = authorise(
+        create_app(
+            Container(
+                prompt_catalog=object(),
+                meeting_reads=reads,
+                turn_observation=observation,
+            )
         )
     )
 

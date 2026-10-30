@@ -23,6 +23,10 @@ _SYNTHETIC_ENV = {
     "SUPABASE_URL": "http://127.0.0.1:54321",  # never contacted unless a test explicitly does
     "SUPABASE_KEY": "fixture-anon-key",
     "SUPABASE_SERVICE_KEY": "fixture-service-key",
+    # Spec-22 operator admission. Test suites run with the gate installed;
+    # denial suites opt out with ``pytest.mark.real_access``.
+    "OPERATOR_USER_ID": "11111111-1111-4111-8111-111111111111",
+    "SUPABASE_AUTH_PUBLISHABLE_KEY": "fixture-publishable-key",
     "OPENROUTER_API_KEY": "",
     "GEMINI_API_KEY": "",
     "OPENAI_API_KEY": "",
@@ -161,6 +165,40 @@ def _default_pg_dir() -> str:
 import psycopg  # noqa: E402  (safe here: import side-effect free)
 import pgserver  # noqa: E402
 import pytest  # noqa: E402
+
+SYNTHETIC_OPERATOR_ID = os.environ["OPERATOR_USER_ID"]
+
+
+@pytest.fixture(autouse=True)
+def synthetic_operator_access(request):
+    """Admit the synthetic operator for general regression suites.
+
+    Spec-22 denial/security suites must exercise the real dependency and
+    adapter protocol, so they opt out with ``@pytest.mark.real_access``. This
+    fixture never touches an app that a test has not already imported.
+    """
+
+    if request.node.get_closest_marker("real_access"):
+        yield
+        return
+
+    import sys
+
+    main = sys.modules.get("main")
+    if main is None:
+        yield
+        return
+
+    from app.modules.access.application.contracts import VerifiedIdentity
+    from app.modules.access.presentation.http import require_operator_access
+
+    main.app.dependency_overrides[require_operator_access] = lambda: VerifiedIdentity(
+        user_id=SYNTHETIC_OPERATOR_ID
+    )
+    try:
+        yield
+    finally:
+        main.app.dependency_overrides.pop(require_operator_access, None)
 
 
 class DisposableDb:

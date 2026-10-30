@@ -14,6 +14,7 @@ from fastapi.testclient import TestClient
 from datetime import timezone
 
 from app.bootstrap import Container, create_app
+from tests.support.access import authorise
 from app.modules.meetings.application.closing import ClosingService
 from app.modules.meetings.application.contracts import ProviderOutput
 from app.modules.meetings.infrastructure.supabase_closing import (
@@ -80,7 +81,7 @@ def closing_app(disposable_db, monkeypatch):
         meeting_service=meeting_service,
         closing=service,
     )
-    app = create_app(container)
+    app = authorise(create_app(container))
     with TestClient(app) as client:
         yield client, world, invocations, service
 

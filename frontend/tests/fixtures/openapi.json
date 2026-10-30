@@ -14,6 +14,11 @@
         "summary": "Generate Summary",
         "description": "Generate and persist a real interim meeting summary.\n\nSame generation-settings/BYOK contract as turns: request overrides compose\nover server defaults and the secret rides the X-Provider-Key header,\nnever storage. The attempt is charged once in the inference ledger.",
         "operationId": "generate_summary_api_meetings__meeting_id__summary_post",
+        "security": [
+          {
+            "OperatorBearer": []
+          }
+        ],
         "parameters": [
           {
             "name": "meeting_id",
@@ -46,6 +51,36 @@
               }
             }
           },
+          "401": {
+            "description": "Missing, malformed, expired, tampered or wrong-project token",
+            "content": {
+              "application/json": {
+                "example": {
+                  "detail": "Operator authentication required"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "A valid account that is not the configured operator",
+            "content": {
+              "application/json": {
+                "example": {
+                  "detail": "Operator access denied"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "Auth verification could not be completed safely",
+            "content": {
+              "application/json": {
+                "example": {
+                  "detail": "Access verification unavailable"
+                }
+              }
+            }
+          },
           "422": {
             "description": "Validation Error",
             "content": {
@@ -67,6 +102,11 @@
         "summary": "Execute Turn",
         "description": "Synchronous compatibility adapter over the durable turn workflow.\n\nNew callers submit through POST /meetings/{id}/turns and observe the\noperation separately. This adapter submits, waits for the same fenced\noperation, and shapes the old response.",
         "operationId": "execute_turn_api_meetings__meeting_id__turn_post",
+        "security": [
+          {
+            "OperatorBearer": []
+          }
+        ],
         "parameters": [
           {
             "name": "meeting_id",
@@ -99,6 +139,36 @@
               }
             }
           },
+          "401": {
+            "description": "Missing, malformed, expired, tampered or wrong-project token",
+            "content": {
+              "application/json": {
+                "example": {
+                  "detail": "Operator authentication required"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "A valid account that is not the configured operator",
+            "content": {
+              "application/json": {
+                "example": {
+                  "detail": "Operator access denied"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "Auth verification could not be completed safely",
+            "content": {
+              "application/json": {
+                "example": {
+                  "detail": "Access verification unavailable"
+                }
+              }
+            }
+          },
           "422": {
             "description": "Validation Error",
             "content": {
@@ -120,6 +190,11 @@
         "summary": "Execute Turn Stream",
         "description": "Streaming compatibility adapter over the durable turn workflow.\n\nIt submits exactly once and only observes persisted events. Disconnecting\nstops this observer; it does not cancel the accepted operation.",
         "operationId": "execute_turn_stream_api_meetings__meeting_id__turn_stream_post",
+        "security": [
+          {
+            "OperatorBearer": []
+          }
+        ],
         "parameters": [
           {
             "name": "meeting_id",
@@ -150,6 +225,36 @@
               }
             }
           },
+          "401": {
+            "description": "Missing, malformed, expired, tampered or wrong-project token",
+            "content": {
+              "application/json": {
+                "example": {
+                  "detail": "Operator authentication required"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "A valid account that is not the configured operator",
+            "content": {
+              "application/json": {
+                "example": {
+                  "detail": "Operator access denied"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "Auth verification could not be completed safely",
+            "content": {
+              "application/json": {
+                "example": {
+                  "detail": "Access verification unavailable"
+                }
+              }
+            }
+          },
           "422": {
             "description": "Validation Error",
             "content": {
@@ -171,6 +276,11 @@
         "summary": "Submit Turn",
         "description": "Admit a turn and return its durable operation identity.",
         "operationId": "submit_turn_api_meetings__meeting_id__turns_post",
+        "security": [
+          {
+            "OperatorBearer": []
+          }
+        ],
         "parameters": [
           {
             "name": "meeting_id",
@@ -203,6 +313,36 @@
               }
             }
           },
+          "401": {
+            "description": "Missing, malformed, expired, tampered or wrong-project token",
+            "content": {
+              "application/json": {
+                "example": {
+                  "detail": "Operator authentication required"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "A valid account that is not the configured operator",
+            "content": {
+              "application/json": {
+                "example": {
+                  "detail": "Operator access denied"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "Auth verification could not be completed safely",
+            "content": {
+              "application/json": {
+                "example": {
+                  "detail": "Access verification unavailable"
+                }
+              }
+            }
+          },
           "422": {
             "description": "Validation Error",
             "content": {
@@ -222,6 +362,11 @@
         "summary": "List Turns",
         "description": "Ordered queue and recent terminal operations for one meeting.",
         "operationId": "list_turns_api_meetings__meeting_id__turns_get",
+        "security": [
+          {
+            "OperatorBearer": []
+          }
+        ],
         "parameters": [
           {
             "name": "meeting_id",
@@ -260,6 +405,36 @@
               }
             }
           },
+          "401": {
+            "description": "Missing, malformed, expired, tampered or wrong-project token",
+            "content": {
+              "application/json": {
+                "example": {
+                  "detail": "Operator authentication required"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "A valid account that is not the configured operator",
+            "content": {
+              "application/json": {
+                "example": {
+                  "detail": "Operator access denied"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "Auth verification could not be completed safely",
+            "content": {
+              "application/json": {
+                "example": {
+                  "detail": "Access verification unavailable"
+                }
+              }
+            }
+          },
           "422": {
             "description": "Validation Error",
             "content": {
@@ -281,6 +456,11 @@
         "summary": "Get Turn",
         "description": "Read durable status without subscribing to or restarting work.",
         "operationId": "get_turn_api_meetings__meeting_id__turns__operation_id__get",
+        "security": [
+          {
+            "OperatorBearer": []
+          }
+        ],
         "parameters": [
           {
             "name": "meeting_id",
@@ -312,6 +492,36 @@
               }
             }
           },
+          "401": {
+            "description": "Missing, malformed, expired, tampered or wrong-project token",
+            "content": {
+              "application/json": {
+                "example": {
+                  "detail": "Operator authentication required"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "A valid account that is not the configured operator",
+            "content": {
+              "application/json": {
+                "example": {
+                  "detail": "Operator access denied"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "Auth verification could not be completed safely",
+            "content": {
+              "application/json": {
+                "example": {
+                  "detail": "Access verification unavailable"
+                }
+              }
+            }
+          },
           "422": {
             "description": "Validation Error",
             "content": {
@@ -333,6 +543,11 @@
         "summary": "Cancel Turn",
         "description": "Cancel a queued turn or request cooperative cancellation while executing.",
         "operationId": "cancel_turn_api_meetings__meeting_id__turns__operation_id__cancel_post",
+        "security": [
+          {
+            "OperatorBearer": []
+          }
+        ],
         "parameters": [
           {
             "name": "meeting_id",
@@ -364,6 +579,36 @@
               }
             }
           },
+          "401": {
+            "description": "Missing, malformed, expired, tampered or wrong-project token",
+            "content": {
+              "application/json": {
+                "example": {
+                  "detail": "Operator authentication required"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "A valid account that is not the configured operator",
+            "content": {
+              "application/json": {
+                "example": {
+                  "detail": "Operator access denied"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "Auth verification could not be completed safely",
+            "content": {
+              "application/json": {
+                "example": {
+                  "detail": "Access verification unavailable"
+                }
+              }
+            }
+          },
           "422": {
             "description": "Validation Error",
             "content": {
@@ -385,6 +630,11 @@
         "summary": "Observe Turn",
         "description": "Replay and follow persisted turn events.\n\nPolling the durable event log (rather than holding an in-process\npublisher) means observation survives worker/API process separation,\nreconnects, and zero subscribers.",
         "operationId": "observe_turn_api_meetings__meeting_id__turns__operation_id__events_get",
+        "security": [
+          {
+            "OperatorBearer": []
+          }
+        ],
         "parameters": [
           {
             "name": "meeting_id",
@@ -425,6 +675,36 @@
               }
             }
           },
+          "401": {
+            "description": "Missing, malformed, expired, tampered or wrong-project token",
+            "content": {
+              "application/json": {
+                "example": {
+                  "detail": "Operator authentication required"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "A valid account that is not the configured operator",
+            "content": {
+              "application/json": {
+                "example": {
+                  "detail": "Operator access denied"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "Auth verification could not be completed safely",
+            "content": {
+              "application/json": {
+                "example": {
+                  "detail": "Access verification unavailable"
+                }
+              }
+            }
+          },
           "422": {
             "description": "Validation Error",
             "content": {
@@ -456,8 +736,43 @@
                 }
               }
             }
+          },
+          "401": {
+            "description": "Missing, malformed, expired, tampered or wrong-project token",
+            "content": {
+              "application/json": {
+                "example": {
+                  "detail": "Operator authentication required"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "A valid account that is not the configured operator",
+            "content": {
+              "application/json": {
+                "example": {
+                  "detail": "Operator access denied"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "Auth verification could not be completed safely",
+            "content": {
+              "application/json": {
+                "example": {
+                  "detail": "Access verification unavailable"
+                }
+              }
+            }
           }
-        }
+        },
+        "security": [
+          {
+            "OperatorBearer": []
+          }
+        ]
       }
     },
     "/api/settings/system-ai": {
@@ -489,6 +804,36 @@
               }
             }
           },
+          "401": {
+            "description": "Missing, malformed, expired, tampered or wrong-project token",
+            "content": {
+              "application/json": {
+                "example": {
+                  "detail": "Operator authentication required"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "A valid account that is not the configured operator",
+            "content": {
+              "application/json": {
+                "example": {
+                  "detail": "Operator access denied"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "Auth verification could not be completed safely",
+            "content": {
+              "application/json": {
+                "example": {
+                  "detail": "Access verification unavailable"
+                }
+              }
+            }
+          },
           "422": {
             "description": "Validation Error",
             "content": {
@@ -499,7 +844,12 @@
               }
             }
           }
-        }
+        },
+        "security": [
+          {
+            "OperatorBearer": []
+          }
+        ]
       }
     },
     "/api/settings/models": {
@@ -531,6 +881,36 @@
               }
             }
           },
+          "401": {
+            "description": "Missing, malformed, expired, tampered or wrong-project token",
+            "content": {
+              "application/json": {
+                "example": {
+                  "detail": "Operator authentication required"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "A valid account that is not the configured operator",
+            "content": {
+              "application/json": {
+                "example": {
+                  "detail": "Operator access denied"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "Auth verification could not be completed safely",
+            "content": {
+              "application/json": {
+                "example": {
+                  "detail": "Access verification unavailable"
+                }
+              }
+            }
+          },
           "422": {
             "description": "Validation Error",
             "content": {
@@ -541,7 +921,12 @@
               }
             }
           }
-        }
+        },
+        "security": [
+          {
+            "OperatorBearer": []
+          }
+        ]
       }
     },
     "/api/settings/test-key": {
@@ -573,6 +958,36 @@
               }
             }
           },
+          "401": {
+            "description": "Missing, malformed, expired, tampered or wrong-project token",
+            "content": {
+              "application/json": {
+                "example": {
+                  "detail": "Operator authentication required"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "A valid account that is not the configured operator",
+            "content": {
+              "application/json": {
+                "example": {
+                  "detail": "Operator access denied"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "Auth verification could not be completed safely",
+            "content": {
+              "application/json": {
+                "example": {
+                  "detail": "Access verification unavailable"
+                }
+              }
+            }
+          },
           "422": {
             "description": "Validation Error",
             "content": {
@@ -583,13 +998,23 @@
               }
             }
           }
-        }
+        },
+        "security": [
+          {
+            "OperatorBearer": []
+          }
+        ]
       }
     },
     "/api/personas": {
       "get": {
         "summary": "List Personas",
         "operationId": "list_personas_api_personas_get",
+        "security": [
+          {
+            "OperatorBearer": []
+          }
+        ],
         "parameters": [
           {
             "name": "user_id",
@@ -627,6 +1052,36 @@
               }
             }
           },
+          "401": {
+            "description": "Missing, malformed, expired, tampered or wrong-project token",
+            "content": {
+              "application/json": {
+                "example": {
+                  "detail": "Operator authentication required"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "A valid account that is not the configured operator",
+            "content": {
+              "application/json": {
+                "example": {
+                  "detail": "Operator access denied"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "Auth verification could not be completed safely",
+            "content": {
+              "application/json": {
+                "example": {
+                  "detail": "Access verification unavailable"
+                }
+              }
+            }
+          },
           "422": {
             "description": "Validation Error",
             "content": {
@@ -642,6 +1097,11 @@
       "post": {
         "summary": "Create Persona",
         "operationId": "create_persona_api_personas_post",
+        "security": [
+          {
+            "OperatorBearer": []
+          }
+        ],
         "requestBody": {
           "required": true,
           "content": {
@@ -658,6 +1118,36 @@
             "content": {
               "application/json": {
                 "schema": {}
+              }
+            }
+          },
+          "401": {
+            "description": "Missing, malformed, expired, tampered or wrong-project token",
+            "content": {
+              "application/json": {
+                "example": {
+                  "detail": "Operator authentication required"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "A valid account that is not the configured operator",
+            "content": {
+              "application/json": {
+                "example": {
+                  "detail": "Operator access denied"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "Auth verification could not be completed safely",
+            "content": {
+              "application/json": {
+                "example": {
+                  "detail": "Access verification unavailable"
+                }
               }
             }
           },
@@ -678,6 +1168,11 @@
       "get": {
         "summary": "Get Persona",
         "operationId": "get_persona_api_personas__persona_id__get",
+        "security": [
+          {
+            "OperatorBearer": []
+          }
+        ],
         "parameters": [
           {
             "name": "persona_id",
@@ -698,6 +1193,36 @@
               }
             }
           },
+          "401": {
+            "description": "Missing, malformed, expired, tampered or wrong-project token",
+            "content": {
+              "application/json": {
+                "example": {
+                  "detail": "Operator authentication required"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "A valid account that is not the configured operator",
+            "content": {
+              "application/json": {
+                "example": {
+                  "detail": "Operator access denied"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "Auth verification could not be completed safely",
+            "content": {
+              "application/json": {
+                "example": {
+                  "detail": "Access verification unavailable"
+                }
+              }
+            }
+          },
           "422": {
             "description": "Validation Error",
             "content": {
@@ -713,6 +1238,11 @@
       "put": {
         "summary": "Update Persona",
         "operationId": "update_persona_api_personas__persona_id__put",
+        "security": [
+          {
+            "OperatorBearer": []
+          }
+        ],
         "parameters": [
           {
             "name": "persona_id",
@@ -743,6 +1273,36 @@
               }
             }
           },
+          "401": {
+            "description": "Missing, malformed, expired, tampered or wrong-project token",
+            "content": {
+              "application/json": {
+                "example": {
+                  "detail": "Operator authentication required"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "A valid account that is not the configured operator",
+            "content": {
+              "application/json": {
+                "example": {
+                  "detail": "Operator access denied"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "Auth verification could not be completed safely",
+            "content": {
+              "application/json": {
+                "example": {
+                  "detail": "Access verification unavailable"
+                }
+              }
+            }
+          },
           "422": {
             "description": "Validation Error",
             "content": {
@@ -758,6 +1318,11 @@
       "delete": {
         "summary": "Delete Persona",
         "operationId": "delete_persona_api_personas__persona_id__delete",
+        "security": [
+          {
+            "OperatorBearer": []
+          }
+        ],
         "parameters": [
           {
             "name": "persona_id",
@@ -772,6 +1337,36 @@
         "responses": {
           "204": {
             "description": "Successful Response"
+          },
+          "401": {
+            "description": "Missing, malformed, expired, tampered or wrong-project token",
+            "content": {
+              "application/json": {
+                "example": {
+                  "detail": "Operator authentication required"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "A valid account that is not the configured operator",
+            "content": {
+              "application/json": {
+                "example": {
+                  "detail": "Operator access denied"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "Auth verification could not be completed safely",
+            "content": {
+              "application/json": {
+                "example": {
+                  "detail": "Access verification unavailable"
+                }
+              }
+            }
           },
           "422": {
             "description": "Validation Error",
@@ -790,6 +1385,11 @@
       "get": {
         "summary": "List Prompt Version Rows",
         "operationId": "list_prompt_version_rows_api_personas__persona_id__prompts_get",
+        "security": [
+          {
+            "OperatorBearer": []
+          }
+        ],
         "parameters": [
           {
             "name": "persona_id",
@@ -810,6 +1410,36 @@
               }
             }
           },
+          "401": {
+            "description": "Missing, malformed, expired, tampered or wrong-project token",
+            "content": {
+              "application/json": {
+                "example": {
+                  "detail": "Operator authentication required"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "A valid account that is not the configured operator",
+            "content": {
+              "application/json": {
+                "example": {
+                  "detail": "Operator access denied"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "Auth verification could not be completed safely",
+            "content": {
+              "application/json": {
+                "example": {
+                  "detail": "Access verification unavailable"
+                }
+              }
+            }
+          },
           "422": {
             "description": "Validation Error",
             "content": {
@@ -825,6 +1455,11 @@
       "post": {
         "summary": "Post Prompt Revision",
         "operationId": "post_prompt_revision_api_personas__persona_id__prompts_post",
+        "security": [
+          {
+            "OperatorBearer": []
+          }
+        ],
         "parameters": [
           {
             "name": "persona_id",
@@ -855,6 +1490,36 @@
               }
             }
           },
+          "401": {
+            "description": "Missing, malformed, expired, tampered or wrong-project token",
+            "content": {
+              "application/json": {
+                "example": {
+                  "detail": "Operator authentication required"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "A valid account that is not the configured operator",
+            "content": {
+              "application/json": {
+                "example": {
+                  "detail": "Operator access denied"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "Auth verification could not be completed safely",
+            "content": {
+              "application/json": {
+                "example": {
+                  "detail": "Access verification unavailable"
+                }
+              }
+            }
+          },
           "422": {
             "description": "Validation Error",
             "content": {
@@ -872,6 +1537,11 @@
       "post": {
         "summary": "Activate Prompt Version Route",
         "operationId": "activate_prompt_version_route_api_personas__persona_id__prompts__version__activate_post",
+        "security": [
+          {
+            "OperatorBearer": []
+          }
+        ],
         "parameters": [
           {
             "name": "persona_id",
@@ -901,6 +1571,36 @@
               }
             }
           },
+          "401": {
+            "description": "Missing, malformed, expired, tampered or wrong-project token",
+            "content": {
+              "application/json": {
+                "example": {
+                  "detail": "Operator authentication required"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "A valid account that is not the configured operator",
+            "content": {
+              "application/json": {
+                "example": {
+                  "detail": "Operator access denied"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "Auth verification could not be completed safely",
+            "content": {
+              "application/json": {
+                "example": {
+                  "detail": "Access verification unavailable"
+                }
+              }
+            }
+          },
           "422": {
             "description": "Validation Error",
             "content": {
@@ -921,6 +1621,11 @@
         ],
         "summary": "Request Closing",
         "operationId": "request_closing_api_meetings__meeting_id__closing_post",
+        "security": [
+          {
+            "OperatorBearer": []
+          }
+        ],
         "parameters": [
           {
             "name": "meeting_id",
@@ -953,6 +1658,36 @@
               }
             }
           },
+          "401": {
+            "description": "Missing, malformed, expired, tampered or wrong-project token",
+            "content": {
+              "application/json": {
+                "example": {
+                  "detail": "Operator authentication required"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "A valid account that is not the configured operator",
+            "content": {
+              "application/json": {
+                "example": {
+                  "detail": "Operator access denied"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "Auth verification could not be completed safely",
+            "content": {
+              "application/json": {
+                "example": {
+                  "detail": "Access verification unavailable"
+                }
+              }
+            }
+          },
           "422": {
             "description": "Validation Error",
             "content": {
@@ -971,6 +1706,11 @@
         ],
         "summary": "Read Closing",
         "operationId": "read_closing_api_meetings__meeting_id__closing_get",
+        "security": [
+          {
+            "OperatorBearer": []
+          }
+        ],
         "parameters": [
           {
             "name": "meeting_id",
@@ -989,6 +1729,36 @@
               "application/json": {
                 "schema": {
                   "$ref": "#/components/schemas/ClosingView"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Missing, malformed, expired, tampered or wrong-project token",
+            "content": {
+              "application/json": {
+                "example": {
+                  "detail": "Operator authentication required"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "A valid account that is not the configured operator",
+            "content": {
+              "application/json": {
+                "example": {
+                  "detail": "Operator access denied"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "Auth verification could not be completed safely",
+            "content": {
+              "application/json": {
+                "example": {
+                  "detail": "Access verification unavailable"
                 }
               }
             }
@@ -1013,6 +1783,11 @@
         ],
         "summary": "Retry Closing",
         "operationId": "retry_closing_api_meetings__meeting_id__closing_retry_post",
+        "security": [
+          {
+            "OperatorBearer": []
+          }
+        ],
         "parameters": [
           {
             "name": "meeting_id",
@@ -1031,6 +1806,36 @@
               "application/json": {
                 "schema": {
                   "$ref": "#/components/schemas/ClosingView"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Missing, malformed, expired, tampered or wrong-project token",
+            "content": {
+              "application/json": {
+                "example": {
+                  "detail": "Operator authentication required"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "A valid account that is not the configured operator",
+            "content": {
+              "application/json": {
+                "example": {
+                  "detail": "Operator access denied"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "Auth verification could not be completed safely",
+            "content": {
+              "application/json": {
+                "example": {
+                  "detail": "Access verification unavailable"
                 }
               }
             }
@@ -1055,6 +1860,11 @@
         ],
         "summary": "Abort Closing",
         "operationId": "abort_closing_api_meetings__meeting_id__closing_abort_post",
+        "security": [
+          {
+            "OperatorBearer": []
+          }
+        ],
         "parameters": [
           {
             "name": "meeting_id",
@@ -1073,6 +1883,36 @@
               "application/json": {
                 "schema": {
                   "$ref": "#/components/schemas/ClosingView"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Missing, malformed, expired, tampered or wrong-project token",
+            "content": {
+              "application/json": {
+                "example": {
+                  "detail": "Operator authentication required"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "A valid account that is not the configured operator",
+            "content": {
+              "application/json": {
+                "example": {
+                  "detail": "Operator access denied"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "Auth verification could not be completed safely",
+            "content": {
+              "application/json": {
+                "example": {
+                  "detail": "Access verification unavailable"
                 }
               }
             }
@@ -1112,8 +1952,43 @@
                 }
               }
             }
+          },
+          "401": {
+            "description": "Missing, malformed, expired, tampered or wrong-project token",
+            "content": {
+              "application/json": {
+                "example": {
+                  "detail": "Operator authentication required"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "A valid account that is not the configured operator",
+            "content": {
+              "application/json": {
+                "example": {
+                  "detail": "Operator access denied"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "Auth verification could not be completed safely",
+            "content": {
+              "application/json": {
+                "example": {
+                  "detail": "Access verification unavailable"
+                }
+              }
+            }
           }
-        }
+        },
+        "security": [
+          {
+            "OperatorBearer": []
+          }
+        ]
       },
       "post": {
         "tags": [
@@ -1143,6 +2018,36 @@
               }
             }
           },
+          "401": {
+            "description": "Missing, malformed, expired, tampered or wrong-project token",
+            "content": {
+              "application/json": {
+                "example": {
+                  "detail": "Operator authentication required"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "A valid account that is not the configured operator",
+            "content": {
+              "application/json": {
+                "example": {
+                  "detail": "Operator access denied"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "Auth verification could not be completed safely",
+            "content": {
+              "application/json": {
+                "example": {
+                  "detail": "Access verification unavailable"
+                }
+              }
+            }
+          },
           "422": {
             "description": "Validation Error",
             "content": {
@@ -1153,7 +2058,12 @@
               }
             }
           }
-        }
+        },
+        "security": [
+          {
+            "OperatorBearer": []
+          }
+        ]
       }
     },
     "/api/meetings/{meeting_id}": {
@@ -1164,6 +2074,11 @@
         "summary": "Get Meeting",
         "description": "Get a meeting with its participants and messages.",
         "operationId": "get_meeting_api_meetings__meeting_id__get",
+        "security": [
+          {
+            "OperatorBearer": []
+          }
+        ],
         "parameters": [
           {
             "name": "meeting_id",
@@ -1182,6 +2097,36 @@
               "application/json": {
                 "schema": {
                   "$ref": "#/components/schemas/MeetingWithParticipants"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Missing, malformed, expired, tampered or wrong-project token",
+            "content": {
+              "application/json": {
+                "example": {
+                  "detail": "Operator authentication required"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "A valid account that is not the configured operator",
+            "content": {
+              "application/json": {
+                "example": {
+                  "detail": "Operator access denied"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "Auth verification could not be completed safely",
+            "content": {
+              "application/json": {
+                "example": {
+                  "detail": "Access verification unavailable"
                 }
               }
             }
@@ -1205,6 +2150,11 @@
         "summary": "Delete Meeting",
         "description": "Permanently delete a meeting after Knowledge revokes its sources.\n\nRevocation and cleanup intents commit before the meeting row cascades, so\nan outage can defer physical cleanup but never resurrect eligibility.",
         "operationId": "delete_meeting_api_meetings__meeting_id__delete",
+        "security": [
+          {
+            "OperatorBearer": []
+          }
+        ],
         "parameters": [
           {
             "name": "meeting_id",
@@ -1222,6 +2172,36 @@
             "content": {
               "application/json": {
                 "schema": {}
+              }
+            }
+          },
+          "401": {
+            "description": "Missing, malformed, expired, tampered or wrong-project token",
+            "content": {
+              "application/json": {
+                "example": {
+                  "detail": "Operator authentication required"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "A valid account that is not the configured operator",
+            "content": {
+              "application/json": {
+                "example": {
+                  "detail": "Operator access denied"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "Auth verification could not be completed safely",
+            "content": {
+              "application/json": {
+                "example": {
+                  "detail": "Access verification unavailable"
+                }
               }
             }
           },
@@ -1246,6 +2226,11 @@
         "summary": "Add User Message",
         "description": "Add a user message to the meeting through the locked write guard.",
         "operationId": "add_user_message_api_meetings__meeting_id__message_post",
+        "security": [
+          {
+            "OperatorBearer": []
+          }
+        ],
         "parameters": [
           {
             "name": "meeting_id",
@@ -1278,6 +2263,36 @@
               }
             }
           },
+          "401": {
+            "description": "Missing, malformed, expired, tampered or wrong-project token",
+            "content": {
+              "application/json": {
+                "example": {
+                  "detail": "Operator authentication required"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "A valid account that is not the configured operator",
+            "content": {
+              "application/json": {
+                "example": {
+                  "detail": "Operator access denied"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "Auth verification could not be completed safely",
+            "content": {
+              "application/json": {
+                "example": {
+                  "detail": "Access verification unavailable"
+                }
+              }
+            }
+          },
           "422": {
             "description": "Validation Error",
             "content": {
@@ -1299,6 +2314,11 @@
         "summary": "Get Disagreements",
         "description": "Get all disagreements for a meeting.",
         "operationId": "get_disagreements_api_meetings__meeting_id__disagreements_get",
+        "security": [
+          {
+            "OperatorBearer": []
+          }
+        ],
         "parameters": [
           {
             "name": "meeting_id",
@@ -1325,6 +2345,36 @@
               }
             }
           },
+          "401": {
+            "description": "Missing, malformed, expired, tampered or wrong-project token",
+            "content": {
+              "application/json": {
+                "example": {
+                  "detail": "Operator authentication required"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "A valid account that is not the configured operator",
+            "content": {
+              "application/json": {
+                "example": {
+                  "detail": "Operator access denied"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "Auth verification could not be completed safely",
+            "content": {
+              "application/json": {
+                "example": {
+                  "detail": "Access verification unavailable"
+                }
+              }
+            }
+          },
           "422": {
             "description": "Validation Error",
             "content": {
@@ -1346,6 +2396,11 @@
         "summary": "Get Consensus",
         "description": "Get all consensus entries for a meeting.",
         "operationId": "get_consensus_api_meetings__meeting_id__consensus_get",
+        "security": [
+          {
+            "OperatorBearer": []
+          }
+        ],
         "parameters": [
           {
             "name": "meeting_id",
@@ -1372,6 +2427,36 @@
               }
             }
           },
+          "401": {
+            "description": "Missing, malformed, expired, tampered or wrong-project token",
+            "content": {
+              "application/json": {
+                "example": {
+                  "detail": "Operator authentication required"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "A valid account that is not the configured operator",
+            "content": {
+              "application/json": {
+                "example": {
+                  "detail": "Operator access denied"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "Auth verification could not be completed safely",
+            "content": {
+              "application/json": {
+                "example": {
+                  "detail": "Access verification unavailable"
+                }
+              }
+            }
+          },
           "422": {
             "description": "Validation Error",
             "content": {
@@ -1393,6 +2478,11 @@
         "summary": "Get Context Stats",
         "description": "Get context/token usage statistics for a meeting.",
         "operationId": "get_context_stats_api_meetings__meeting_id__context_stats_get",
+        "security": [
+          {
+            "OperatorBearer": []
+          }
+        ],
         "parameters": [
           {
             "name": "meeting_id",
@@ -1410,6 +2500,36 @@
             "content": {
               "application/json": {
                 "schema": {}
+              }
+            }
+          },
+          "401": {
+            "description": "Missing, malformed, expired, tampered or wrong-project token",
+            "content": {
+              "application/json": {
+                "example": {
+                  "detail": "Operator authentication required"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "A valid account that is not the configured operator",
+            "content": {
+              "application/json": {
+                "example": {
+                  "detail": "Operator access denied"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "Auth verification could not be completed safely",
+            "content": {
+              "application/json": {
+                "example": {
+                  "detail": "Access verification unavailable"
+                }
               }
             }
           },
@@ -1434,6 +2554,11 @@
         "summary": "Archive Meeting",
         "description": "Archive a meeting (move to archive folder).",
         "operationId": "archive_meeting_api_meetings__meeting_id__archive_post",
+        "security": [
+          {
+            "OperatorBearer": []
+          }
+        ],
         "parameters": [
           {
             "name": "meeting_id",
@@ -1451,6 +2576,36 @@
             "content": {
               "application/json": {
                 "schema": {}
+              }
+            }
+          },
+          "401": {
+            "description": "Missing, malformed, expired, tampered or wrong-project token",
+            "content": {
+              "application/json": {
+                "example": {
+                  "detail": "Operator authentication required"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "A valid account that is not the configured operator",
+            "content": {
+              "application/json": {
+                "example": {
+                  "detail": "Operator access denied"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "Auth verification could not be completed safely",
+            "content": {
+              "application/json": {
+                "example": {
+                  "detail": "Access verification unavailable"
+                }
               }
             }
           },
@@ -1475,6 +2630,11 @@
         "summary": "Unarchive Meeting",
         "description": "Unarchive a meeting (restore from archive).",
         "operationId": "unarchive_meeting_api_meetings__meeting_id__unarchive_post",
+        "security": [
+          {
+            "OperatorBearer": []
+          }
+        ],
         "parameters": [
           {
             "name": "meeting_id",
@@ -1492,6 +2652,36 @@
             "content": {
               "application/json": {
                 "schema": {}
+              }
+            }
+          },
+          "401": {
+            "description": "Missing, malformed, expired, tampered or wrong-project token",
+            "content": {
+              "application/json": {
+                "example": {
+                  "detail": "Operator authentication required"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "A valid account that is not the configured operator",
+            "content": {
+              "application/json": {
+                "example": {
+                  "detail": "Operator access denied"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "Auth verification could not be completed safely",
+            "content": {
+              "application/json": {
+                "example": {
+                  "detail": "Access verification unavailable"
+                }
               }
             }
           },
@@ -1531,8 +2721,43 @@
                 }
               }
             }
+          },
+          "401": {
+            "description": "Missing, malformed, expired, tampered or wrong-project token",
+            "content": {
+              "application/json": {
+                "example": {
+                  "detail": "Operator authentication required"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "A valid account that is not the configured operator",
+            "content": {
+              "application/json": {
+                "example": {
+                  "detail": "Operator access denied"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "Auth verification could not be completed safely",
+            "content": {
+              "application/json": {
+                "example": {
+                  "detail": "Access verification unavailable"
+                }
+              }
+            }
           }
-        }
+        },
+        "security": [
+          {
+            "OperatorBearer": []
+          }
+        ]
       }
     },
     "/api/participants": {
@@ -1564,6 +2789,36 @@
               }
             }
           },
+          "401": {
+            "description": "Missing, malformed, expired, tampered or wrong-project token",
+            "content": {
+              "application/json": {
+                "example": {
+                  "detail": "Operator authentication required"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "A valid account that is not the configured operator",
+            "content": {
+              "application/json": {
+                "example": {
+                  "detail": "Operator access denied"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "Auth verification could not be completed safely",
+            "content": {
+              "application/json": {
+                "example": {
+                  "detail": "Access verification unavailable"
+                }
+              }
+            }
+          },
           "422": {
             "description": "Validation Error",
             "content": {
@@ -1574,7 +2829,12 @@
               }
             }
           }
-        }
+        },
+        "security": [
+          {
+            "OperatorBearer": []
+          }
+        ]
       }
     },
     "/api/documents/upload": {
@@ -1606,6 +2866,36 @@
               }
             }
           },
+          "401": {
+            "description": "Missing, malformed, expired, tampered or wrong-project token",
+            "content": {
+              "application/json": {
+                "example": {
+                  "detail": "Operator authentication required"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "A valid account that is not the configured operator",
+            "content": {
+              "application/json": {
+                "example": {
+                  "detail": "Operator access denied"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "Auth verification could not be completed safely",
+            "content": {
+              "application/json": {
+                "example": {
+                  "detail": "Access verification unavailable"
+                }
+              }
+            }
+          },
           "422": {
             "description": "Validation Error",
             "content": {
@@ -1616,7 +2906,12 @@
               }
             }
           }
-        }
+        },
+        "security": [
+          {
+            "OperatorBearer": []
+          }
+        ]
       }
     },
     "/api/documents/operations/{operation_id}": {
@@ -1627,6 +2922,11 @@
         "summary": "Get Ingestion Status",
         "description": "Observe durable progress for an accepted upload.",
         "operationId": "get_ingestion_status_api_documents_operations__operation_id__get",
+        "security": [
+          {
+            "OperatorBearer": []
+          }
+        ],
         "parameters": [
           {
             "name": "operation_id",
@@ -1646,6 +2946,36 @@
               "application/json": {
                 "schema": {
                   "$ref": "#/components/schemas/IngestionStatusResponse"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Missing, malformed, expired, tampered or wrong-project token",
+            "content": {
+              "application/json": {
+                "example": {
+                  "detail": "Operator authentication required"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "A valid account that is not the configured operator",
+            "content": {
+              "application/json": {
+                "example": {
+                  "detail": "Operator access denied"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "Auth verification could not be completed safely",
+            "content": {
+              "application/json": {
+                "example": {
+                  "detail": "Access verification unavailable"
                 }
               }
             }
@@ -1671,6 +3001,11 @@
         "summary": "Retry Ingestion",
         "description": "Re-run a failed ingestion without changing its document/operation ids.",
         "operationId": "retry_ingestion_api_documents_operations__operation_id__retry_post",
+        "security": [
+          {
+            "OperatorBearer": []
+          }
+        ],
         "parameters": [
           {
             "name": "operation_id",
@@ -1690,6 +3025,36 @@
               "application/json": {
                 "schema": {
                   "$ref": "#/components/schemas/UploadReceiptResponse"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Missing, malformed, expired, tampered or wrong-project token",
+            "content": {
+              "application/json": {
+                "example": {
+                  "detail": "Operator authentication required"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "A valid account that is not the configured operator",
+            "content": {
+              "application/json": {
+                "example": {
+                  "detail": "Operator access denied"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "Auth verification could not be completed safely",
+            "content": {
+              "application/json": {
+                "example": {
+                  "detail": "Access verification unavailable"
                 }
               }
             }
@@ -1714,6 +3079,11 @@
         ],
         "summary": "List Meeting Documents",
         "operationId": "list_meeting_documents_api_documents_meeting__meeting_id__get",
+        "security": [
+          {
+            "OperatorBearer": []
+          }
+        ],
         "parameters": [
           {
             "name": "meeting_id",
@@ -1741,6 +3111,36 @@
               }
             }
           },
+          "401": {
+            "description": "Missing, malformed, expired, tampered or wrong-project token",
+            "content": {
+              "application/json": {
+                "example": {
+                  "detail": "Operator authentication required"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "A valid account that is not the configured operator",
+            "content": {
+              "application/json": {
+                "example": {
+                  "detail": "Operator access denied"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "Auth verification could not be completed safely",
+            "content": {
+              "application/json": {
+                "example": {
+                  "detail": "Access verification unavailable"
+                }
+              }
+            }
+          },
           "422": {
             "description": "Validation Error",
             "content": {
@@ -1761,6 +3161,11 @@
         ],
         "summary": "List Persona Documents",
         "operationId": "list_persona_documents_api_documents_persona__persona_id__get",
+        "security": [
+          {
+            "OperatorBearer": []
+          }
+        ],
         "parameters": [
           {
             "name": "persona_id",
@@ -1788,6 +3193,36 @@
               }
             }
           },
+          "401": {
+            "description": "Missing, malformed, expired, tampered or wrong-project token",
+            "content": {
+              "application/json": {
+                "example": {
+                  "detail": "Operator authentication required"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "A valid account that is not the configured operator",
+            "content": {
+              "application/json": {
+                "example": {
+                  "detail": "Operator access denied"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "Auth verification could not be completed safely",
+            "content": {
+              "application/json": {
+                "example": {
+                  "detail": "Access verification unavailable"
+                }
+              }
+            }
+          },
           "422": {
             "description": "Validation Error",
             "content": {
@@ -1808,6 +3243,11 @@
         ],
         "summary": "List Stack Documents",
         "operationId": "list_stack_documents_api_documents_stack__stack_id__get",
+        "security": [
+          {
+            "OperatorBearer": []
+          }
+        ],
         "parameters": [
           {
             "name": "stack_id",
@@ -1835,6 +3275,36 @@
               }
             }
           },
+          "401": {
+            "description": "Missing, malformed, expired, tampered or wrong-project token",
+            "content": {
+              "application/json": {
+                "example": {
+                  "detail": "Operator authentication required"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "A valid account that is not the configured operator",
+            "content": {
+              "application/json": {
+                "example": {
+                  "detail": "Operator access denied"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "Auth verification could not be completed safely",
+            "content": {
+              "application/json": {
+                "example": {
+                  "detail": "Access verification unavailable"
+                }
+              }
+            }
+          },
           "422": {
             "description": "Validation Error",
             "content": {
@@ -1855,6 +3325,11 @@
         ],
         "summary": "Get Document",
         "operationId": "get_document_api_documents__document_id__get",
+        "security": [
+          {
+            "OperatorBearer": []
+          }
+        ],
         "parameters": [
           {
             "name": "document_id",
@@ -1878,6 +3353,36 @@
               }
             }
           },
+          "401": {
+            "description": "Missing, malformed, expired, tampered or wrong-project token",
+            "content": {
+              "application/json": {
+                "example": {
+                  "detail": "Operator authentication required"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "A valid account that is not the configured operator",
+            "content": {
+              "application/json": {
+                "example": {
+                  "detail": "Operator access denied"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "Auth verification could not be completed safely",
+            "content": {
+              "application/json": {
+                "example": {
+                  "detail": "Access verification unavailable"
+                }
+              }
+            }
+          },
           "422": {
             "description": "Validation Error",
             "content": {
@@ -1897,6 +3402,11 @@
         "summary": "Delete Document",
         "description": "Revoke eligibility, then attempt source/vector/evidence cleanup.",
         "operationId": "delete_document_api_documents__document_id__delete",
+        "security": [
+          {
+            "OperatorBearer": []
+          }
+        ],
         "parameters": [
           {
             "name": "document_id",
@@ -1915,6 +3425,36 @@
             "content": {
               "application/json": {
                 "schema": {}
+              }
+            }
+          },
+          "401": {
+            "description": "Missing, malformed, expired, tampered or wrong-project token",
+            "content": {
+              "application/json": {
+                "example": {
+                  "detail": "Operator authentication required"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "A valid account that is not the configured operator",
+            "content": {
+              "application/json": {
+                "example": {
+                  "detail": "Operator access denied"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "Auth verification could not be completed safely",
+            "content": {
+              "application/json": {
+                "example": {
+                  "detail": "Access verification unavailable"
+                }
               }
             }
           },
@@ -1939,6 +3479,11 @@
         "summary": "Get Revision Content",
         "description": "Serve the exact retained revision, never the latest or a caller key.",
         "operationId": "get_revision_content_api_documents__document_id__revisions__revision_id__content_get",
+        "security": [
+          {
+            "OperatorBearer": []
+          }
+        ],
         "parameters": [
           {
             "name": "document_id",
@@ -1984,6 +3529,36 @@
               }
             }
           },
+          "401": {
+            "description": "Missing, malformed, expired, tampered or wrong-project token",
+            "content": {
+              "application/json": {
+                "example": {
+                  "detail": "Operator authentication required"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "A valid account that is not the configured operator",
+            "content": {
+              "application/json": {
+                "example": {
+                  "detail": "Operator access denied"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "Auth verification could not be completed safely",
+            "content": {
+              "application/json": {
+                "example": {
+                  "detail": "Access verification unavailable"
+                }
+              }
+            }
+          },
           "422": {
             "description": "Validation Error",
             "content": {
@@ -2026,6 +3601,36 @@
               }
             }
           },
+          "401": {
+            "description": "Missing, malformed, expired, tampered or wrong-project token",
+            "content": {
+              "application/json": {
+                "example": {
+                  "detail": "Operator authentication required"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "A valid account that is not the configured operator",
+            "content": {
+              "application/json": {
+                "example": {
+                  "detail": "Operator access denied"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "Auth verification could not be completed safely",
+            "content": {
+              "application/json": {
+                "example": {
+                  "detail": "Access verification unavailable"
+                }
+              }
+            }
+          },
           "422": {
             "description": "Validation Error",
             "content": {
@@ -2036,7 +3641,12 @@
               }
             }
           }
-        }
+        },
+        "security": [
+          {
+            "OperatorBearer": []
+          }
+        ]
       }
     },
     "/api/knowledge_stacks": {
@@ -2047,6 +3657,11 @@
         "summary": "List Knowledge Stacks",
         "description": "List all knowledge stacks, optionally filtered by user.",
         "operationId": "list_knowledge_stacks_api_knowledge_stacks_get",
+        "security": [
+          {
+            "OperatorBearer": []
+          }
+        ],
         "parameters": [
           {
             "name": "user_id",
@@ -2076,6 +3691,36 @@
               }
             }
           },
+          "401": {
+            "description": "Missing, malformed, expired, tampered or wrong-project token",
+            "content": {
+              "application/json": {
+                "example": {
+                  "detail": "Operator authentication required"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "A valid account that is not the configured operator",
+            "content": {
+              "application/json": {
+                "example": {
+                  "detail": "Operator access denied"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "Auth verification could not be completed safely",
+            "content": {
+              "application/json": {
+                "example": {
+                  "detail": "Access verification unavailable"
+                }
+              }
+            }
+          },
           "422": {
             "description": "Validation Error",
             "content": {
@@ -2095,6 +3740,11 @@
         "summary": "Create Knowledge Stack",
         "description": "Create a new knowledge stack.",
         "operationId": "create_knowledge_stack_api_knowledge_stacks_post",
+        "security": [
+          {
+            "OperatorBearer": []
+          }
+        ],
         "requestBody": {
           "required": true,
           "content": {
@@ -2112,6 +3762,36 @@
               "application/json": {
                 "schema": {
                   "$ref": "#/components/schemas/KnowledgeStack"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Missing, malformed, expired, tampered or wrong-project token",
+            "content": {
+              "application/json": {
+                "example": {
+                  "detail": "Operator authentication required"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "A valid account that is not the configured operator",
+            "content": {
+              "application/json": {
+                "example": {
+                  "detail": "Operator access denied"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "Auth verification could not be completed safely",
+            "content": {
+              "application/json": {
+                "example": {
+                  "detail": "Access verification unavailable"
                 }
               }
             }
@@ -2137,6 +3817,11 @@
         "summary": "Get Knowledge Stack",
         "description": "Get a specific knowledge stack.",
         "operationId": "get_knowledge_stack_api_knowledge_stacks__stack_id__get",
+        "security": [
+          {
+            "OperatorBearer": []
+          }
+        ],
         "parameters": [
           {
             "name": "stack_id",
@@ -2155,6 +3840,36 @@
               "application/json": {
                 "schema": {
                   "$ref": "#/components/schemas/KnowledgeStack"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Missing, malformed, expired, tampered or wrong-project token",
+            "content": {
+              "application/json": {
+                "example": {
+                  "detail": "Operator authentication required"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "A valid account that is not the configured operator",
+            "content": {
+              "application/json": {
+                "example": {
+                  "detail": "Operator access denied"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "Auth verification could not be completed safely",
+            "content": {
+              "application/json": {
+                "example": {
+                  "detail": "Access verification unavailable"
                 }
               }
             }
@@ -2178,6 +3893,11 @@
         "summary": "Update Knowledge Stack",
         "description": "Update a knowledge stack.",
         "operationId": "update_knowledge_stack_api_knowledge_stacks__stack_id__put",
+        "security": [
+          {
+            "OperatorBearer": []
+          }
+        ],
         "parameters": [
           {
             "name": "stack_id",
@@ -2210,6 +3930,36 @@
               }
             }
           },
+          "401": {
+            "description": "Missing, malformed, expired, tampered or wrong-project token",
+            "content": {
+              "application/json": {
+                "example": {
+                  "detail": "Operator authentication required"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "A valid account that is not the configured operator",
+            "content": {
+              "application/json": {
+                "example": {
+                  "detail": "Operator access denied"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "Auth verification could not be completed safely",
+            "content": {
+              "application/json": {
+                "example": {
+                  "detail": "Access verification unavailable"
+                }
+              }
+            }
+          },
           "422": {
             "description": "Validation Error",
             "content": {
@@ -2229,6 +3979,11 @@
         "summary": "Delete Knowledge Stack",
         "description": "Delete a stack after Knowledge revokes its documents and collection.\n\nRevocation and cleanup intents commit before the stack row cascades; a\ntransient physical failure stays retryable but never restores access.",
         "operationId": "delete_knowledge_stack_api_knowledge_stacks__stack_id__delete",
+        "security": [
+          {
+            "OperatorBearer": []
+          }
+        ],
         "parameters": [
           {
             "name": "stack_id",
@@ -2244,6 +3999,36 @@
           "204": {
             "description": "Successful Response"
           },
+          "401": {
+            "description": "Missing, malformed, expired, tampered or wrong-project token",
+            "content": {
+              "application/json": {
+                "example": {
+                  "detail": "Operator authentication required"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "A valid account that is not the configured operator",
+            "content": {
+              "application/json": {
+                "example": {
+                  "detail": "Operator access denied"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "Auth verification could not be completed safely",
+            "content": {
+              "application/json": {
+                "example": {
+                  "detail": "Access verification unavailable"
+                }
+              }
+            }
+          },
           "422": {
             "description": "Validation Error",
             "content": {
@@ -2255,6 +4040,61 @@
             }
           }
         }
+      }
+    },
+    "/api/access/session": {
+      "get": {
+        "tags": [
+          "access"
+        ],
+        "summary": "Access Session",
+        "description": "Authoritative admission probe; returns no workspace or provider data.",
+        "operationId": "access_session_api_access_session_get",
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            }
+          },
+          "401": {
+            "description": "Missing, malformed, expired, tampered or wrong-project token",
+            "content": {
+              "application/json": {
+                "example": {
+                  "detail": "Operator authentication required"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "A valid account that is not the configured operator",
+            "content": {
+              "application/json": {
+                "example": {
+                  "detail": "Operator access denied"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "Auth verification could not be completed safely",
+            "content": {
+              "application/json": {
+                "example": {
+                  "detail": "Access verification unavailable"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "OperatorBearer": []
+          }
+        ]
       }
     },
     "/api/replay/session": {
@@ -6572,6 +8412,13 @@
           "type"
         ],
         "title": "ValidationError"
+      }
+    },
+    "securitySchemes": {
+      "OperatorBearer": {
+        "type": "http",
+        "description": "Supabase access token for the configured Sabha operator.",
+        "scheme": "bearer"
       }
     }
   }

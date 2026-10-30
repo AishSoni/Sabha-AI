@@ -15,6 +15,7 @@ import pytest
 from fastapi.testclient import TestClient
 
 from app.bootstrap import Container, create_app
+from tests.support.access import authorise
 from app.capabilities.inference.contracts import StreamEvent, StreamEventType
 import app.modules.meetings.infrastructure.supabase_meetings as meeting_manager_module
 from app.modules.meetings.application.meeting_service import MeetingService
@@ -43,7 +44,7 @@ def turn_app(disposable_db, monkeypatch):
         meeting_service=meeting_service,
         turn_queue=service,
     )
-    app = create_app(container)
+    app = authorise(create_app(container))
     world = DurableQueueWorld(disposable_db)
     with TestClient(app) as client:
         yield client, world, provider, service

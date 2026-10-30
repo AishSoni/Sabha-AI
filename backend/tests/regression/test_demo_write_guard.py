@@ -66,9 +66,33 @@ def test_local_mode_keeps_writes_enabled(disposable_db, monkeypatch):
 
 def test_hosted_mode_is_also_a_write_enabled_runtime(disposable_db, monkeypatch):
     # Exit-gate evidence (runtime_modes): hosted BYOK operation uses the same
-    # no-auth write API as local; only the demo workspace is read-only.
+    # write API as local; only the demo workspace is read-only.
     monkeypatch.setattr(config_module.settings, "runtime_mode", "hosted")
     _install_stub_container(monkeypatch, disposable_db)
     client = TestClient(app)
     response = client.post("/api/meetings", json={"name": "Hosted Council", "persona_ids": []})
     assert response.status_code == 200, response.json()
+
+
+@pytest.mark.real_access
+def test_demo_auth_denial_wins_over_read_only_denial(monkeypatch):
+    """Spec-22 ordering: admission is checked before the demo write guard."""
+
+    monkeypatch.setattr(config_module.settings, "runtime_mode", "demo")
+    response = TestClient(app).post("/api/meetings", json={})
+    assert response.status_code == 401
+    assert response.headers["www-authenticate"] == "Bearer"
+
+
+def test_demo_denial_still_applies_to_an_admitted_operator(monkeypatch):
+    from app.modules.access.presentation.http import require_operator_access
+    from tests.support.access import authorise
+
+    monkeypatch.setattr(config_module.settings, "runtime_mode", "demo")
+    authorise(app)
+    try:
+        response = TestClient(app).post("/api/meetings", json={})
+    finally:
+        app.dependency_overrides.pop(require_operator_access, None)
+    assert response.status_code == 403
+    assert "read-only" in response.json()["detail"].lower()

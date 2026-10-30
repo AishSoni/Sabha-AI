@@ -30,11 +30,29 @@ driver messages. No endpoint returns a provider response body verbatim.
 
 ### Access and runtime modes
 
-No endpoint declares an auth dependency. `local` and `hosted` runtimes are
-shared, writable, no-sign-in workspaces; every visitor sees the same records.
-`runtime_mode=demo` enables a read-only HTTP guard: middleware returns `403`
-for any non-GET/HEAD/OPTIONS request under `/api` with
-`"Demo workspace is read-only — mutations are disabled"`.
+Spec-22 replaces the earlier no-sign-in live doctrine. The live workspace has
+exactly one operator:
+
+- Every operation except `/api/replay/*`, `/`, `/health`, docs and CORS
+  preflight requires `Authorization: Bearer <supabase-access-token>`.
+- The backend verifies the token with the configured Supabase project's
+  `/auth/v1/user` endpoint on every request. Decoded claims, browser-supplied
+  user ids, proxy headers and `X-Provider-Key` never authorize.
+- Missing/malformed/expired/tampered/wrong-project token: `401` plus
+  `WWW-Authenticate: Bearer` and detail `Operator authentication required`.
+- A valid account that is not `OPERATOR_USER_ID`: `403` with detail
+  `Operator access denied`.
+- Auth timeout or unavailable verification: `503` with detail
+  `Access verification unavailable`. No business adapter runs.
+- Live responses carry `Cache-Control: private, no-store`. Replay keeps its
+  own public package policy.
+- `runtime_mode=demo` still denies live writes, but admission runs first:
+  unauthenticated writes are `401`; an admitted operator gets the existing
+  read-only `403`.
+
+Sabha exposes no login, signup, token, password or callback proxy. The browser
+talks to Supabase Auth directly; `/api/access/session` is only an admission
+probe.
 
 Phase 3 adds a separate replay request graph under `/api/replay`. It is not a
 mode switch for the live graph: replay requests read only a published package
@@ -43,8 +61,15 @@ replay request is rejected before an adapter. The server pins one package and
 version; a visitor may select an approved checkpoint, never a package outside
 the pin. When no replay package is configured, `/api/replay/*` returns
 `503 replay_not_configured`; a missing, retired, or corrupt package returns
-`503` and never falls back to live data. The entry choice remains UX, not
-authorization over the intentionally shared live API.
+`503` and never falls back to live data. Public replay remains account-free and
+is mounted outside the operator gate.
+
+### Access (`app/modules/access/presentation/http.py`, tag `access`)
+
+| Method & path | Class | Receipt / shape | Request keys | Safe errors | Notes |
+|---|---|---|---|---|---|
+| `GET /api/access/session` | probe | `{authorized: true}` | - | `401`; `403`; `503` | Authoritative admission probe; no workspace or provider data |
+
 
 ### BYOK generation contract
 

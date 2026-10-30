@@ -13,6 +13,7 @@ from fastapi.testclient import TestClient
 
 import app.modules.meetings.infrastructure.supabase_meetings as meeting_manager_module
 from app.bootstrap import Container, create_app
+from tests.support.access import authorise
 from app.modules.meetings.application.closing import ClosingService
 from app.modules.meetings.infrastructure.supabase_closing import (
     SupabaseClosingRepository,
@@ -49,7 +50,7 @@ def budget(disposable_db, monkeypatch):
     world.add_participant(meeting_id, "The Investor", role="investor")
     world.append_message(meeting_id, key="message-1")
 
-    app = create_app(container)
+    app = authorise(create_app(container))
     with TestClient(app) as client:
         counter.reset()
         yield client, counter, meeting_id
