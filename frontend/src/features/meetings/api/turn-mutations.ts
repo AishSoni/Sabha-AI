@@ -9,10 +9,14 @@
  * Recorded runtimes reject these intents before any request.
  */
 import { useMutation, useQueryClient } from '@tanstack/react-query';
-import { turnClient, type SubmitTurnInput } from './turn-client';
+import type { SubmitTurnInput } from './turn-inputs';
 import type { TurnCancelResult, TurnOperation } from './turn-decoders';
 import { turnKeys } from './turn-keys';
 import type { MeetingsRuntime } from '../runtime/contract';
+
+async function liveTurnClient() {
+    return (await import('./turn-client')).turnClient;
+}
 
 export interface SubmitTurnVariables extends SubmitTurnInput {
     meetingId: string;
@@ -26,10 +30,12 @@ export interface CancelTurnVariables {
 export function useSubmitTurn(runtime?: MeetingsRuntime) {
     const queryClient = useQueryClient();
     return useMutation({
-        mutationFn: (variables: SubmitTurnVariables) =>
-            runtime
-                ? runtime.turns.submit(variables.meetingId, variables)
-                : turnClient.submit(variables.meetingId, variables),
+        mutationFn: async (variables: SubmitTurnVariables) => {
+            if (runtime) {
+                return runtime.turns.submit(variables.meetingId, variables);
+            }
+            return (await liveTurnClient()).submit(variables.meetingId, variables);
+        },
         onSuccess: (operation: TurnOperation) => {
             const detailKey =
                 runtime?.keys.turnDetail(operation.meeting_id, operation.operation_id) ??
@@ -55,10 +61,12 @@ export function useSubmitTurn(runtime?: MeetingsRuntime) {
 export function useCancelTurn(runtime?: MeetingsRuntime) {
     const queryClient = useQueryClient();
     return useMutation({
-        mutationFn: ({ meetingId, operationId }: CancelTurnVariables) =>
-            runtime
-                ? runtime.turns.cancel(meetingId, operationId, runtime.signal)
-                : turnClient.cancel(meetingId, operationId),
+        mutationFn: async ({ meetingId, operationId }: CancelTurnVariables) => {
+            if (runtime) {
+                return runtime.turns.cancel(meetingId, operationId, runtime.signal);
+            }
+            return (await liveTurnClient()).cancel(meetingId, operationId);
+        },
         onSuccess: (_result: TurnCancelResult, variables: CancelTurnVariables) => {
             queryClient.invalidateQueries({
                 queryKey:

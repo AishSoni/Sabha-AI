@@ -16,7 +16,7 @@ import { useMutation, useQueryClient } from '@tanstack/react-query';
 import type { MeetingWithParticipants, Message } from './decoders';
 import { meetingClient, type MeetingCreateInput } from './client';
 import { meetingKeys } from './keys';
-import type { TurnGenerationSettings } from './turn-client';
+import type { TurnGenerationSettings } from './generation-settings';
 
 export function useCreateMeeting() {
     const queryClient = useQueryClient();

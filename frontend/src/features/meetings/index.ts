@@ -25,19 +25,17 @@ export {
     type SendMessageVariables,
 } from './api/mutations';
 export { closingKeys } from './api/closing-keys';
-export {
-    closingClient,
-    type ClosingSummarySettings,
-    type RequestClosingInput,
-} from './api/closing-client';
+export { closingClient } from './api/closing-client';
 export {
     isPollingClosingStage,
     isSettledClosingStage,
     type ClosingMode,
     type ClosingReceipt,
     type ClosingStage,
+    type ClosingSummarySettings,
     type ClosingView,
     type ClosingVote,
+    type RequestClosingInput,
 } from './api/closing-decoders';
 export { useClosing } from './api/closing-queries';
 export {
@@ -62,9 +60,11 @@ export {
     useMeetingTurnController,
     type MeetingTurnController,
 } from './hooks/use-meeting-turn-controller';
-export type { TurnGenerationSettings } from './api/turn-client';
+export type { TurnGenerationSettings } from './api/generation-settings';
 export type { TurnOperation, TurnStatus } from './api/turn-decoders';
 export type { TurnProjection, TurnToolProjection } from './api/turn-projection';
+export { clearLiveTurnProjections } from './api/turn-projection';
+export { turnProjectionKey, useTurnProjectionStore } from './api/turn-projection';
 export {
     ClosingPanel,
     type ClosingPanelProps,

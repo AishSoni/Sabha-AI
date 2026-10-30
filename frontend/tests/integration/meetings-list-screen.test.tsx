@@ -20,7 +20,7 @@ import { join } from 'node:path';
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 import { fireEvent, render, screen, waitFor } from '@testing-library/react';
 import { Providers, getQueryClient } from '@/app/providers';
-import MeetingSpacePage from '@/app/meetings/page';
+import MeetingSpacePage from '@/app/(operator)/meetings/page';
 import { createScriptedFetch, type ScriptedFetch } from '../fixtures/transport';
 
 function meetingWire(id: string, name: string, status: string) {
@@ -77,7 +77,7 @@ describe('meetings list screen ownership', () => {
 
     it('reads and commands through the meetings feature, not the legacy facade', () => {
         const pageSource = readFileSync(
-            join(process.cwd(), 'src/app/meetings/page.tsx'),
+            join(process.cwd(), 'src/app/(operator)/meetings/page.tsx'),
             'utf8'
         );
 

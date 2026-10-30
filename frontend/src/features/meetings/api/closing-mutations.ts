@@ -12,11 +12,15 @@
 import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { combineSignals } from '@/shared/runtime/scope';
 import type { MeetingsRuntime } from '../runtime/contract';
-import { closingClient, type RequestClosingInput } from './closing-client';
+import type { RequestClosingInput } from './closing-decoders';
 import type { ClosingReceipt, ClosingView } from './closing-decoders';
 import { closingKeys } from './closing-keys';
 import { meetingKeys } from './keys';
 import { turnKeys } from './turn-keys';
+
+async function liveClosingClient() {
+    return (await import('./closing-client')).closingClient;
+}
 
 export interface RequestClosingVariables extends RequestClosingInput {
     meetingId: string;
@@ -63,13 +67,15 @@ function refreshAfterStateChange(
 export function useRequestClosing(runtime?: MeetingsRuntime) {
     const queryClient = useQueryClient();
     return useMutation({
-        mutationFn: ({ meetingId, ...input }: RequestClosingVariables) =>
-            runtime
-                ? runtime.commands.requestClosing(meetingId, {
-                      ...input,
-                      signal: combineSignals(runtime.signal, input.signal),
-                  })
-                : closingClient.request(meetingId, input),
+        mutationFn: async ({ meetingId, ...input }: RequestClosingVariables) => {
+            if (runtime) {
+                return runtime.commands.requestClosing(meetingId, {
+                    ...input,
+                    signal: combineSignals(runtime.signal, input.signal),
+                });
+            }
+            return (await liveClosingClient()).request(meetingId, input);
+        },
         onSuccess: (_receipt: ClosingReceipt, variables: RequestClosingVariables) => {
             refreshAfterStateChange(queryClient, variables.meetingId, runtime);
             void queryClient.invalidateQueries({
@@ -82,10 +88,12 @@ export function useRequestClosing(runtime?: MeetingsRuntime) {
 export function useRetryClosing(runtime?: MeetingsRuntime) {
     const queryClient = useQueryClient();
     return useMutation({
-        mutationFn: (meetingId: string) =>
-            runtime
-                ? runtime.commands.retryClosing(meetingId, runtime.signal)
-                : closingClient.retry(meetingId),
+        mutationFn: async (meetingId: string) => {
+            if (runtime) {
+                return runtime.commands.retryClosing(meetingId, runtime.signal);
+            }
+            return (await liveClosingClient()).retry(meetingId);
+        },
         onSuccess: (view: ClosingView) => {
             queryClient.setQueryData(closingKey(runtime, view.meeting_id), view);
             refreshAfterStateChange(queryClient, view.meeting_id, runtime);
@@ -96,10 +104,12 @@ export function useRetryClosing(runtime?: MeetingsRuntime) {
 export function useAbortClosing(runtime?: MeetingsRuntime) {
     const queryClient = useQueryClient();
     return useMutation({
-        mutationFn: (meetingId: string) =>
-            runtime
-                ? runtime.commands.abortClosing(meetingId, runtime.signal)
-                : closingClient.abort(meetingId),
+        mutationFn: async (meetingId: string) => {
+            if (runtime) {
+                return runtime.commands.abortClosing(meetingId, runtime.signal);
+            }
+            return (await liveClosingClient()).abort(meetingId);
+        },
         onSuccess: (view: ClosingView) => {
             queryClient.setQueryData(closingKey(runtime, view.meeting_id), view);
             refreshAfterStateChange(queryClient, view.meeting_id, runtime);

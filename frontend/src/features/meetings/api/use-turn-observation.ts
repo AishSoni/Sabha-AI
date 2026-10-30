@@ -10,7 +10,6 @@
  */
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { useQueryClient } from '@tanstack/react-query';
-import { turnClient } from './turn-client';
 import {
     isTerminalTurnStatus,
     type TurnOperation,
@@ -180,9 +179,13 @@ export function useTurnObservation({
             controller = new AbortController();
             setIsObserving(true);
             try {
-                const observe = runtime
-                    ? runtime.turns.observe
-                    : turnClient.observe.bind(turnClient);
+                let observe;
+                if (runtime) {
+                    observe = runtime.turns.observe;
+                } else {
+                    const { turnClient } = await import('./turn-client');
+                    observe = turnClient.observe.bind(turnClient);
+                }
                 for await (const event of observe(meetingId, operationId, {
                     after,
                     signal: combineSignals(runtime?.signal, controller.signal),

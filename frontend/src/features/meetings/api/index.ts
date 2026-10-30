@@ -15,19 +15,17 @@ export {
     useUnarchiveMeeting,
 } from './mutations';
 export { closingKeys } from './closing-keys';
-export {
-    closingClient,
-    type ClosingSummarySettings,
-    type RequestClosingInput,
-} from './closing-client';
+export { closingClient } from './closing-client';
 export {
     isPollingClosingStage,
     isSettledClosingStage,
     type ClosingMode,
     type ClosingReceipt,
     type ClosingStage,
+    type ClosingSummarySettings,
     type ClosingView,
     type ClosingVote,
+    type RequestClosingInput,
 } from './closing-decoders';
 export { useClosing } from './closing-queries';
 export {

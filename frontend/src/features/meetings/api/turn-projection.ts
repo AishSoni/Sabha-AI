@@ -335,3 +335,18 @@ export function useTurnProjection(
             ]
     );
 }
+
+/**
+ * Drop live operation projections while preserving recorded replay epochs.
+ * Called only when private admission ends (spec-22).
+ */
+export function clearLiveTurnProjections(): void {
+    useTurnProjectionStore.setState((state) => {
+        const projections = Object.fromEntries(
+            Object.entries(state.projections).filter(
+                ([key]) => !key.startsWith('["live",')
+            )
+        );
+        return { projections };
+    });
+}

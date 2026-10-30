@@ -9,7 +9,7 @@ import { describe, expect, it } from "vitest";
 
 const UPLOAD_PAGES = [
   "src/features/knowledge/components/DocumentPanel.tsx",
-  "src/app/meetings/new/page.tsx",
+  "src/app/(operator)/meetings/new/page.tsx",
 ];
 
 function acceptTokens(source: string): string[] {

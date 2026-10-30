@@ -26,7 +26,7 @@ vi.mock('@/features/meetings', async () => {
     };
 });
 
-import MeetingRoomPage from '@/app/meetings/[id]/page';
+import MeetingRoomPage from '@/app/(operator)/meetings/[id]/page';
 
 describe('meeting room route shell', () => {
     it('passes the route id to the canonical MeetingRoom', () => {

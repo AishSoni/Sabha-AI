@@ -10,26 +10,11 @@ import { requestLiveJson } from '@/shared/access';
 import {
     decodeClosingReceipt,
     decodeClosingView,
-    type ClosingMode,
     type ClosingReceipt,
+    type ClosingSummarySettings,
     type ClosingView,
+    type RequestClosingInput,
 } from './closing-decoders';
-
-export interface ClosingSummarySettings {
-    provider?: string;
-    model?: string;
-    temperature?: number;
-    maxTokens?: number;
-    baseUrl?: string;
-}
-
-export interface RequestClosingInput {
-    mode: ClosingMode;
-    /** Stable per user intent; a replay must reuse it. */
-    requestKey: string;
-    summarySettings?: ClosingSummarySettings;
-    signal?: AbortSignal;
-}
 
 export interface ClosingReadOptions {
     signal?: AbortSignal;

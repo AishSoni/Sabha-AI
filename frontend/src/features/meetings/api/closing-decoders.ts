@@ -21,6 +21,23 @@ import type { components } from '@/shared/api/generated';
 export type ClosingVote = components['schemas']['ClosingVoteView'];
 export type ClosingMode = 'vote' | 'force';
 
+/** Browser-composed summary settings for a close request. */
+export interface ClosingSummarySettings {
+    provider?: string;
+    model?: string;
+    temperature?: number;
+    maxTokens?: number;
+    baseUrl?: string;
+}
+
+/** Stable close intent; a retry must reuse the same request key. */
+export interface RequestClosingInput {
+    mode: ClosingMode;
+    requestKey: string;
+    summarySettings?: ClosingSummarySettings;
+    signal?: AbortSignal;
+}
+
 /**
  * The generated schema types stay the contract source; this decoders-owned
  * view tightens the fields the runtime decoder always proves.

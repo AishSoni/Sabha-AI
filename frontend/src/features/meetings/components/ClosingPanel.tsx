@@ -25,17 +25,19 @@ import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
 import { isApiError } from '@/shared/api/errors';
+import { useClosing } from '../api/closing-queries';
 import {
     createClosingRequestKey,
     useAbortClosing,
-    useClosing,
     useRequestClosing,
     useRetryClosing,
-    type ClosingMode,
-    type ClosingStage,
-    type ClosingSummarySettings,
-    type ClosingVote,
-} from '../api';
+} from '../api/closing-mutations';
+import type {
+    ClosingMode,
+    ClosingStage,
+    ClosingSummarySettings,
+    ClosingVote,
+} from '../api/closing-decoders';
 import type { MeetingStatus } from '../api/decoders';
 import {
     findClosingBallotText,

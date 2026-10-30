@@ -6,8 +6,10 @@
  * execution path. The BYOK key rides `X-Provider-Key` only and never enters
  * the request body or any persisted payload.
  */
+export type { TurnGenerationSettings } from './generation-settings';
 import { fetchLiveStream, requestLiveJson } from '@/shared/access';
 import { transportApiError } from '@/shared/api/errors';
+import type { TurnGenerationSettings } from './generation-settings';
 import {
     decodeTurnCancelResult,
     decodeTurnOperation,
@@ -16,33 +18,11 @@ import {
     type TurnOperation,
 } from './turn-decoders';
 import { decodeTurnEventStream, turnEventsPath, type TurnEvent } from './turn-events';
-
-/**
- * Browser-composed generation settings. Mirrors the settings vault shape
- * without making this feature depend on the legacy store or facade.
- */
-export interface TurnGenerationSettings {
-    provider?: string;
-    model?: string;
-    temperature?: number;
-    maxTokens?: number;
-    baseUrl?: string;
-    apiKey?: string;
-}
-
-export interface TurnReadOptions {
-    signal?: AbortSignal;
-}
-
-export interface SubmitTurnInput extends TurnReadOptions {
-    participantId: string;
-    requestKey: string;
-    settings?: TurnGenerationSettings;
-}
-
-export interface ObserveTurnOptions extends TurnReadOptions {
-    after?: number;
-}
+import type {
+    ObserveTurnOptions,
+    SubmitTurnInput,
+    TurnReadOptions,
+} from './turn-inputs';
 
 function providerOverrides(settings?: TurnGenerationSettings) {
     if (!settings) return undefined;

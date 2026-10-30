@@ -21,7 +21,7 @@ vi.mock('next/navigation', () => ({
     useRouter: () => ({ push, back }),
 }));
 
-import NewMeetingPage from '@/app/meetings/new/page';
+import NewMeetingPage from '@/app/(operator)/meetings/new/page';
 
 interface PersonaFixture {
     id: string;

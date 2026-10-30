@@ -21,7 +21,7 @@ import {
     type MeetingWithParticipants,
     type Message,
 } from './decoders';
-import type { TurnGenerationSettings } from './turn-client';
+import type { TurnGenerationSettings } from './generation-settings';
 
 export interface MeetingCreateInput {
     name: string;

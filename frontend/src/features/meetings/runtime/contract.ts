@@ -19,9 +19,9 @@ import type {
     MeetingWithParticipants,
     Message,
 } from "../api/decoders";
-import type { RequestClosingInput } from "../api/closing-client";
+import type { RequestClosingInput } from "../api/closing-decoders";
 import type { ClosingReceipt, ClosingView } from "../api/closing-decoders";
-import type { TurnGenerationSettings } from "../api/turn-client";
+import type { TurnGenerationSettings } from "../api/generation-settings";
 import type { TurnCancelResult, TurnOperation } from "../api/turn-decoders";
 import type { TurnEvent } from "../api/turn-events";
 import type { TurnStatus } from "../api/turn-decoders";

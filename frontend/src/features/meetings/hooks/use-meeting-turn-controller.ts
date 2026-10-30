@@ -10,7 +10,7 @@
  * inference run.
  */
 import { useCallback, useMemo, useRef, useState } from 'react';
-import type { TurnGenerationSettings } from '../api/turn-client';
+import type { TurnGenerationSettings } from '../api/generation-settings';
 import type { TurnOperation, TurnStatus } from '../api/turn-decoders';
 import { isTerminalTurnStatus } from '../api/turn-decoders';
 import type { TurnEvent } from '../api/turn-events';
