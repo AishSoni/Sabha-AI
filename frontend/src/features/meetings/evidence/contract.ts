@@ -48,6 +48,8 @@ export interface EvidenceDescriptor {
     readiness: EvidenceReadiness;
     provenance: EvidenceProvenance;
     sha256?: string | null;
+    /** Passive original-source link offered as a secondary action only. */
+    external_url?: string | null;
     /** Present when the preview is bounded derived text rather than the original file. */
     derived_from?: EvidenceDerivedFrom | null;
     /** Honest reason shown when readiness is unavailable. */

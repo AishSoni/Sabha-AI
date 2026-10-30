@@ -185,6 +185,8 @@ export function EvidencePreviewDialog({
 }: EvidencePreviewDialogProps) {
     const unavailable =
         descriptor !== null && descriptor.readiness !== "ready";
+    const externalUrl =
+        citation.external_url ?? descriptor?.external_url ?? null;
 
     return (
         <Dialog
@@ -244,10 +246,10 @@ export function EvidencePreviewDialog({
                             />
                         ) : null}
 
-                        {citation.external_url ? (
+                        {externalUrl ? (
                             <div className="border-t pt-3">
                                 <a
-                                    href={citation.external_url}
+                                    href={externalUrl}
                                     target="_blank"
                                     rel="noopener noreferrer nofollow"
                                     className="inline-flex items-center gap-1 text-xs underline"

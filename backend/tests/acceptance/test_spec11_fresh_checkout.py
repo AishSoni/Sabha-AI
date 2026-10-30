@@ -48,7 +48,7 @@ def test_clean_checkout_imports_final_entry_points() -> None:
 
         result = backend_smoke(root, python=sys.executable)
 
-        assert result == {"paths": 54, "worker_main": True}
+        assert result == {"paths": 55, "worker_main": True}
 
 
 def test_clean_checkout_serves_the_health_endpoint() -> None:

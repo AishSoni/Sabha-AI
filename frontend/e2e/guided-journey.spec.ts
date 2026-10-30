@@ -63,13 +63,26 @@ test.describe("guided bond journey", () => {
         await expect(
             page.getByRole("tab", { name: /Disagreements 1/ })
         ).toBeVisible({ timeout: 30_000 });
-        await page.getByRole("tab", { name: "Shared Docs" }).click();
+        await page.getByRole("tab", { name: "Files" }).click();
         await expect(
             page.getByText("hdfc-v007-shared-fact-sheet.md")
         ).toBeVisible();
         await expect(
-            page.getByText(/credit-evidence|downside-worksheet|portfolio-mandate/)
-        ).toHaveCount(0);
+            page.getByRole("heading", { name: "Demo-authored participant inputs" })
+        ).toBeVisible();
+        await expect(
+            page.getByRole("button", { name: "Preview evidence: Credit evidence" })
+        ).toBeVisible();
+        await expect(
+            page.getByRole("button", {
+                name: "Preview evidence: Downside worksheet",
+            })
+        ).toBeVisible();
+        await expect(
+            page.getByRole("button", {
+                name: "Preview evidence: Portfolio mandate",
+            })
+        ).toBeVisible();
         await page.getByRole("tab", { name: "Chat" }).click();
 
         await page.getByRole("button", { name: /Send prepared follow-up/ }).click();

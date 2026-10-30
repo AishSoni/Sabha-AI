@@ -32,15 +32,18 @@ export interface ReplayEvidenceDeps {
 }
 
 function titleForAsset(asset: ReplayAsset): string {
-    const file = asset.storage_path.split("/").pop() ?? asset.asset_id;
-    const stem = file.replace(/\.[^.]+$/, "");
-    const words = stem.replace(/[-_]+/g, " ").trim();
+    const words = asset.asset_id.replace(/[-_]+/g, " ").trim();
     if (!words) return asset.asset_id;
     return words.charAt(0).toUpperCase() + words.slice(1);
 }
 
 export function isDemoAuthoredInput(asset: ReplayAsset): boolean {
-    return asset.authored && asset.public_demo && asset.storage_path.startsWith("private/");
+    return (
+        asset.authored &&
+        asset.public_demo &&
+        (asset.locator.startsWith("package:private/") ||
+            asset.storage_path.startsWith("private/"))
+    );
 }
 
 function provenanceForAsset(asset: ReplayAsset) {
@@ -94,6 +97,9 @@ export function descriptorForAsset(asset: ReplayAsset): EvidenceDescriptor {
         readiness: reason ? "unavailable" : "ready",
         provenance: provenanceForAsset(asset),
         sha256: asset.sha256,
+        external_url: /^https?:\/\//i.test(asset.locator)
+            ? asset.locator
+            : null,
         ...(reason ? { unavailable_reason: reason } : {}),
     };
 }

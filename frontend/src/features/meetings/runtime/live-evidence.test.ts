@@ -243,6 +243,83 @@ describe("createLiveEvidence", () => {
         });
     });
 
+    it("loads original TXT and CSV bytes with their own renderers", async () => {
+        const cases = [
+            {
+                file_type: "txt",
+                file_name: "notes.txt",
+                media_type: "text/plain",
+                kind: "text",
+                body: "Plain notes",
+            },
+            {
+                file_type: "csv",
+                file_name: "table.csv",
+                media_type: "text/csv",
+                kind: "csv",
+                body: "name,value\nalpha,1",
+            },
+        ] as const;
+
+        for (const item of cases) {
+            const fetchBytes = vi.fn(async () =>
+                byteResponse({
+                    bytes: new TextEncoder().encode(item.body),
+                    contentType: `${item.media_type}; charset=utf-8`,
+                })
+            );
+            const evidence = createLiveEvidence({ fetchBytes });
+            const descriptor = liveDescriptorForDocument(
+                documentRow({
+                    file_name: item.file_name,
+                    file_type: item.file_type,
+                })
+            );
+
+            const content = await evidence.load(descriptor, {
+                signal: new AbortController().signal,
+            });
+
+            expect(fetchBytes).toHaveBeenCalledWith(
+                expect.any(String),
+                expect.objectContaining({
+                    query: { representation: "original" },
+                    headers: { Accept: item.media_type },
+                })
+            );
+            expect(content).toMatchObject({
+                kind: item.kind,
+                text: item.body,
+            });
+        }
+    });
+
+    it("requests derived text for XLSX and labels it derived", async () => {
+        const fetchBytes = vi.fn(async () =>
+            byteResponse({
+                bytes: new TextEncoder().encode("Sheet: Summary\nRevenue 100"),
+                contentType: "text/plain; charset=utf-8",
+            })
+        );
+        const evidence = createLiveEvidence({ fetchBytes });
+        const descriptor = liveDescriptorForDocument(
+            documentRow({ file_name: "model.xlsx", file_type: "xlsx" })
+        );
+
+        const content = await evidence.load(descriptor, {
+            signal: new AbortController().signal,
+        });
+
+        expect(fetchBytes).toHaveBeenCalledWith(
+            expect.any(String),
+            expect.objectContaining({ query: { representation: "text" } })
+        );
+        expect(content).toMatchObject({
+            kind: "derived",
+            derived_from: "xlsx",
+        });
+    });
+
     it("creates a local blob URL for PDF and revokes it on dispose", async () => {
         const fetchBytes = vi.fn(async () =>
             byteResponse({

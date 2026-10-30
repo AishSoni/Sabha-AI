@@ -304,7 +304,7 @@ function MeetingConversation({ meeting, disagreements, consensus, initialTab }: 
                             <RoomTab
                                 value="documents"
                                 icon={<FileText className="w-4 h-4" />}
-                                label="Shared Docs"
+                                label={runtime.replay ? "Files" : "Shared Docs"}
                             />
                         )}
                         {capabilities.summary && SummaryPanel && (

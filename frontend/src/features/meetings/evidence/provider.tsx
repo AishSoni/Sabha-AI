@@ -68,6 +68,7 @@ export function EvidencePreviewProvider({
     const controllerRef = React.useRef<AbortController | null>(null);
     const requestRef = React.useRef(0);
     const contentRef = React.useRef<EvidenceContent | null>(null);
+    const returnFocusRef = React.useRef<HTMLElement | null>(null);
 
     const disposeContent = React.useCallback(() => {
         disposeEvidenceContent(contentRef.current);
@@ -125,6 +126,12 @@ export function EvidencePreviewProvider({
             descriptor: EvidenceDescriptor,
             citation: EvidenceCitationContext = {}
         ) => {
+            if (typeof document !== "undefined") {
+                const activeElement = document.activeElement;
+                if (activeElement instanceof HTMLElement) {
+                    returnFocusRef.current = activeElement;
+                }
+            }
             setActive({ descriptor, citation });
             void run(descriptor);
         },
@@ -132,10 +139,22 @@ export function EvidencePreviewProvider({
     );
 
     const close = React.useCallback(() => {
+        const returnFocus = returnFocusRef.current;
+        returnFocusRef.current = null;
         cancel();
         disposeContent();
         setActive(null);
         setState({ status: "idle" });
+        if (returnFocus && typeof window !== "undefined") {
+            // Radix restores focus to the dialog trigger when it owns one.
+            // Our trigger lives outside the dialog, so restore it explicitly
+            // after the dialog has unmounted.
+            window.setTimeout(() => {
+                if (returnFocus.isConnected) {
+                    returnFocus.focus();
+                }
+            }, 0);
+        }
     }, [cancel, disposeContent]);
 
     const retry = React.useCallback(() => {
