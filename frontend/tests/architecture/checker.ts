@@ -6,8 +6,9 @@
  * project alias, and bare packages), and flag the boundaries that are TRUE
  * for this codebase today:
  *
- * - no source file imports the Supabase browser SDK or a provider SDK;
- *   the app is fully SDK-free and server-authoritative (zero usage today);
+ * - no source file imports the Supabase browser SDK or a provider SDK,
+ *   except the single curated browser Auth adapter
+ *   (`src/shared/access/browser-session.ts`) licensed below;
  * - src/components/ui files are generic presentation: imports of app state
  *   stores must be curated. Exactly one exception is allowed today
  *   (ui/rate-limited-button.tsx reads the rate-limit store) and the list is
@@ -38,6 +39,15 @@ export const FORBIDDEN_SDK_PACKAGES = new Set([
     "anthropic",
     "@anthropic-ai/sdk",
 ]);
+
+/**
+ * Exact-file exceptions for SDK imports. The browser Auth adapter is the
+ * only place allowed to reach Supabase; database/storage/provider clients are
+ * still never constructed in the browser.
+ */
+export const SDK_IMPORT_ALLOWLIST: Readonly<Record<string, readonly string[]>> = {
+    "@supabase/supabase-js": ["src/shared/access/browser-session.ts"],
+};
 
 /**
  * Curated UI-store exceptions, as [uiFileRelativeToSrc, storeModuleRelativeToSrc].
@@ -222,18 +232,21 @@ export function scanSourceTree(root: string): { files: string[]; violations: Vio
     for (const file of files) {
         const source = ts.createSourceFile(file, fs.readFileSync(file, "utf8"), ts.ScriptTarget.Latest, true);
         for (const edge of collectImportEdges(root, file, source)) {
-            // Rule: the frontend must stay free of the Supabase browser SDK
-            // and provider SDKs (server-authoritative, no-sign-in doctrine).
+            const fileRel = relToRoot(root, edge.file);
+            // Rule: the frontend stays free of provider SDKs and of the
+            // Supabase browser SDK outside the one curated Auth adapter.
             if (edge.packageName && FORBIDDEN_SDK_PACKAGES.has(edge.packageName)) {
-                violations.push({
-                    file,
-                    spec: edge.spec,
-                    rule: RULE_FORBIDDEN_SDK_IMPORT,
-                    message: `'${edge.spec}' is a forbidden SDK import in frontend sources.`,
-                });
+                const allowedFiles = SDK_IMPORT_ALLOWLIST[edge.packageName] ?? [];
+                if (!allowedFiles.includes(fileRel)) {
+                    violations.push({
+                        file,
+                        spec: edge.spec,
+                        rule: RULE_FORBIDDEN_SDK_IMPORT,
+                        message: `'${edge.spec}' is a forbidden SDK import in frontend sources.`,
+                    });
+                }
             }
 
-            const fileRel = relToRoot(root, edge.file);
             if (edge.resolved) {
                 const targetRel = relToRoot(root, edge.resolved);
                 if (fileRel.startsWith("src/components/ui/") && targetRel.startsWith("src/stores/")) {
@@ -260,7 +273,11 @@ export function scanSourceTree(root: string): { files: string[]; violations: Vio
                     });
                 }
 
-                if (fileRel.startsWith("src/app/roster/") && targetRel === "src/lib/api.ts") {
+                if (
+                    (fileRel.startsWith("src/app/roster/") ||
+                        fileRel.startsWith("src/app/(operator)/roster/")) &&
+                    targetRel === "src/lib/api.ts"
+                ) {
                     // Rule (spec 06): roster screens consume the persona
                     // catalog feature, not the legacy facade. Screens get
                     // thin app shells; behavior lives in the feature.

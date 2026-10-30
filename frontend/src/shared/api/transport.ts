@@ -1,14 +1,14 @@
 /**
  * Shared HTTP transport for the Sabha frontend (spec-05).
  *
- * Owns the no-sign-in request contract: request composition against the
- * configured API base, JSON and multipart decoding, structured failures,
- * and deliberate AbortSignal propagation. Knows nothing about features,
- * query keys, or stores — feature-local clients compose on top of it.
+ * Owns the request composition against the configured API base, JSON and
+ * multipart decoding, structured failures, and deliberate AbortSignal
+ * propagation. Knows nothing about features, query keys, or stores.
  *
- * Credentials are intentionally never configured and no auth headers are
- * ever attached: the workspace has no sign-in, and cross-origin requests
- * must not ride on ambient cookies.
+ * The generic transport is deliberately auth-free. Live callers inject a
+ * `fetchImpl` from `shared/access/live-transport` so bearer admission and
+ * origin rules live in one narrow boundary; replay keeps using this module
+ * directly. Ambient cookies are never configured.
  */
 import {
     ApiError,
@@ -41,6 +41,8 @@ export interface JsonRequestInit {
     signal?: AbortSignal;
     /** Query parameters; undefined entries are skipped, booleans use "true"/"false". */
     query?: Record<string, string | number | boolean | undefined>;
+    /** Test/live seam; defaults to the global fetch. */
+    fetchImpl?: typeof fetch;
 }
 
 /** Absolute URLs pass through; other paths are resolved against the base. */
@@ -83,6 +85,8 @@ export interface BytesRequestInit {
     signal?: AbortSignal;
     /** Query parameters; undefined entries are skipped. */
     query?: JsonRequestInit["query"];
+    /** Test/live seam; defaults to the global fetch. */
+    fetchImpl?: typeof fetch;
 }
 
 export interface ByteResponse {
@@ -120,7 +124,7 @@ export async function requestBytes(
 ): Promise<ByteResponse> {
     let response: Response;
     try {
-        response = await fetch(apiUrl(path, init.query), {
+        response = await (init.fetchImpl ?? fetch)(apiUrl(path, init.query), {
             method: init.method ?? "GET",
             headers: init.headers,
             signal: init.signal,
@@ -160,7 +164,7 @@ export async function requestJson<T>(path: string, init: JsonRequestInit = {}): 
 
     let response: Response;
     try {
-        response = await fetch(apiUrl(path, init.query), {
+        response = await (init.fetchImpl ?? fetch)(apiUrl(path, init.query), {
             method: init.method ?? "GET",
             headers,
             body: init.body === undefined ? undefined : JSON.stringify(init.body),
@@ -183,12 +187,17 @@ export async function requestJson<T>(path: string, init: JsonRequestInit = {}): 
 export async function requestForm<T>(
     path: string,
     form: FormData,
-    init: { signal?: AbortSignal } = {}
+    init: {
+        signal?: AbortSignal;
+        headers?: Record<string, string>;
+        fetchImpl?: typeof fetch;
+    } = {}
 ): Promise<T> {
     let response: Response;
     try {
-        response = await fetch(apiUrl(path), {
+        response = await (init.fetchImpl ?? fetch)(apiUrl(path), {
             method: "POST",
+            headers: init.headers,
             body: form,
             signal: init.signal,
         });

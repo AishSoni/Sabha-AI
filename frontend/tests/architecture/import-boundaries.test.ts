@@ -19,6 +19,7 @@ import {
     RULE_SHARED_ISOLATION,
     RULE_STORE_IMPORT_IN_UI,
     RULE_TEST_IMPORT_IN_ROUTE,
+    SDK_IMPORT_ALLOWLIST,
     UI_STORE_ALLOWLIST,
     scanSourceTree,
 } from "./checker";
@@ -41,7 +42,7 @@ function rulesIn(root: string): Set<string> {
 }
 
 describe("live source tree boundaries", () => {
-    it("src is SDK-free and keeps curated UI/store imports only", () => {
+    it("src is SDK-free except the curated browser Auth adapter", () => {
         // Root at the project root: the boundary rules reason about
         // 'src/...' paths, so the live scan must see the same shape the
         // sandbox scans see (a src-rooted scan silently disables them).
@@ -50,6 +51,16 @@ describe("live source tree boundaries", () => {
         // Non-vacuous: the app tree is large and the scan really parsed it.
         expect(files.length).toBeGreaterThan(50);
         expect(violations).toEqual([]);
+    });
+
+    it("every curated SDK exception still matches a real import", () => {
+        for (const [packageName, allowedFiles] of Object.entries(SDK_IMPORT_ALLOWLIST)) {
+            expect(allowedFiles.length).toBeGreaterThan(0);
+            for (const rel of allowedFiles) {
+                const content = fs.readFileSync(path.join(FRONTEND_ROOT, rel), "utf8");
+                expect(content.includes(packageName)).toBe(true);
+            }
+        }
     });
 
     it("every curated UI-store exception still matches a real import", () => {
@@ -64,13 +75,18 @@ describe("live source tree boundaries", () => {
 });
 
 describe("checker rejects planted violations (sandbox)", () => {
-    it("flags a planted Supabase SDK import", () => {
+    it("flags a planted Supabase SDK import outside the adapter", () => {
         const root = writeSandbox({
             "src/app/page.tsx": `import { createClient } from '@supabase/supabase-js';\nexport const page = () => null;\n`,
+            "src/shared/access/browser-session.ts": `import { createClient } from '@supabase/supabase-js';\nexport const auth = createClient;\n`,
         });
 
-        const rules = rulesIn(root);
-        expect(rules.has(RULE_FORBIDDEN_SDK_IMPORT)).toBe(true);
+        const { violations } = scanSourceTree(root);
+        const sdkViolations = violations.filter(
+            (violation) => violation.rule === RULE_FORBIDDEN_SDK_IMPORT
+        );
+        expect(sdkViolations).toHaveLength(1);
+        expect(sdkViolations[0]!.file.replace(/\\/g, "/")).toMatch(/app\/page\.tsx$/);
     });
 
     it("flags a planted provider SDK import and passes legal bare imports", () => {
@@ -175,6 +191,20 @@ describe("checker rejects planted violations (sandbox)", () => {
         );
         expect(rosterViolations).toHaveLength(1);
         expect(rosterViolations[0]!.file.replace(/\\/g, "/")).toMatch(/roster\/page\.tsx$/);
+    });
+
+    it("applies the roster rule inside the operator route group", () => {
+        const root = writeSandbox({
+            "src/lib/api.ts": `export const personaApi = {};`,
+            "src/app/(operator)/roster/page.tsx": `import { personaApi } from '@/lib/api';\nexport const page = personaApi;`,
+        });
+
+        const { violations } = scanSourceTree(root);
+        expect(
+            violations.filter(
+                (violation) => violation.rule === RULE_ROSTER_SCREEN_LEGACY_IMPORT
+            )
+        ).toHaveLength(1);
     });
 
     it("passes a happy sandbox tree where features consume other features via root barrels", () => {
