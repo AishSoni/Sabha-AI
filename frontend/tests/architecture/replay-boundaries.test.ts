@@ -21,9 +21,17 @@ const DEMO_ROUTE = path.join(
     FRONTEND_ROOT,
     'src/app/demo/meetings/[id]/page.tsx'
 );
+const PUBLIC_ENTRIES = [
+    path.join(FRONTEND_ROOT, 'src/app/layout.tsx'),
+    path.join(FRONTEND_ROOT, 'src/app/providers.tsx'),
+    path.join(FRONTEND_ROOT, 'src/app/page.tsx'),
+    path.join(FRONTEND_ROOT, 'src/app/demo/layout.tsx'),
+];
 
 const FORBIDDEN_PREFIXES = [
     'src/features/settings',
+    'src/features/access',
+    'src/shared/access',
     'src/shared/credentials',
     'src/stores',
     'src/features/meetings/runtime/live',
@@ -58,9 +66,9 @@ function moduleSpecifiers(file: string): string[] {
     return specs;
 }
 
-function replayGraph(): string[] {
+function graphFrom(entries: string[]): string[] {
     const seen = new Set<string>();
-    const queue = [REPLAY_ENTRY, DEMO_ROUTE];
+    const queue = [...entries];
     const modules: string[] = [];
     while (queue.length > 0) {
         const file = queue.pop()!;
@@ -73,6 +81,10 @@ function replayGraph(): string[] {
         }
     }
     return modules;
+}
+
+function replayGraph(): string[] {
+    return graphFrom([REPLAY_ENTRY, DEMO_ROUTE]);
 }
 
 function rel(file: string): string {
@@ -105,6 +117,22 @@ describe('recorded replay module graph', () => {
             expect(source).not.toContain('X-Provider-Key');
             expect(source).not.toContain('revealFromVault');
             expect(source).not.toContain('useSettingsStore');
+        }
+    });
+
+    it('keeps the public shell and demos free of Auth/live access imports', () => {
+        const paths = graphFrom(PUBLIC_ENTRIES).map(rel);
+
+        expect(paths).toContain('src/app/layout.tsx');
+        expect(paths).toContain('src/app/demo/layout.tsx');
+        for (const forbidden of ['src/shared/access', 'src/features/access']) {
+            expect(
+                paths.filter(
+                    (candidate) =>
+                        candidate === forbidden || candidate.startsWith(`${forbidden}/`)
+                ),
+                forbidden
+            ).toEqual([]);
         }
     });
 });
