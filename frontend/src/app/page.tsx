@@ -1,228 +1,143 @@
-'use client';
-
-import { useState, useSyncExternalStore } from 'react';
 import Link from 'next/link';
-import { Users, MessageSquare, Settings, ArrowRight, Sparkles, BookOpen } from 'lucide-react';
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
+import {
+    ArrowRight,
+    BookOpen,
+    FileSearch,
+    PlayCircle,
+    RefreshCw,
+    Sparkles,
+} from 'lucide-react';
 
-const EXPERIENCE_KEY = 'sabha:experience';
-
-function subscribeToExperience(onStoreChange: () => void) {
-  window.addEventListener('storage', onStoreChange);
-  return () => window.removeEventListener('storage', onStoreChange);
-}
-
-function readExperience(): string | null {
-  try {
-    return window.localStorage.getItem(EXPERIENCE_KEY);
-  } catch {
-    return null;
-  }
-}
-
-function readServerExperience(): string | null {
-  // Preferences live in localStorage, which does not exist during SSR.
-  return null;
-}
-
-const subscribeToHydration = () => () => {};
-const readHydrated = () => true;
-const readServerHydrated = () => false;
+const FEATURES = [
+    {
+        icon: PlayCircle,
+        title: 'A complete recorded meeting',
+        body: 'Follow a prepared HDFC bond advisory session from the director’s opening question to the closing summary.',
+    },
+    {
+        icon: FileSearch,
+        title: 'Evidence you can inspect',
+        body: 'Open the citations behind each claim and read the retained source revision without leaving the room.',
+    },
+    {
+        icon: RefreshCw,
+        title: 'Restart or resume freely',
+        body: 'Replay is account-free. Restart the journey, revisit a checkpoint, or reload the page at any time.',
+    },
+];
 
 export default function HomePage() {
-  // The stored preference is an external system, so it is read through
-  // useSyncExternalStore instead of being copied into state from an effect.
-  const storedExperience = useSyncExternalStore(
-    subscribeToExperience,
-    readExperience,
-    readServerExperience,
-  );
-  const ready = useSyncExternalStore(
-    subscribeToHydration,
-    readHydrated,
-    readServerHydrated,
-  );
-  const [chosenExperience, setChosenExperience] = useState<string | null>(null);
-  const experience = chosenExperience ?? storedExperience;
+    return (
+        <div className="min-h-screen bg-gradient-to-br from-zinc-950 via-zinc-900 to-zinc-950">
+            <header className="sticky top-0 z-50 border-b border-zinc-800/50 backdrop-blur-sm">
+                <div className="mx-auto flex max-w-6xl items-center justify-between px-6 py-4">
+                    <div className="flex items-center gap-3">
+                        <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-gradient-to-br from-indigo-500 to-purple-600">
+                            <Sparkles className="h-5 w-5 text-white" />
+                        </div>
+                        <div>
+                            <h1 className="text-xl font-bold text-white">Sabha</h1>
+                            <p className="text-xs text-zinc-500">AI Advisory Board</p>
+                        </div>
+                    </div>
+                    <nav className="flex items-center gap-4 text-sm">
+                        <Link
+                            href="/login"
+                            className="text-zinc-500 transition-colors hover:text-zinc-200"
+                        >
+                            Operator
+                        </Link>
+                        <Link
+                            href="/demo"
+                            className="rounded-lg border border-indigo-800 px-3 py-1.5 text-indigo-300 transition-colors hover:bg-indigo-950/40"
+                        >
+                            Guided replay
+                        </Link>
+                    </nav>
+                </div>
+            </header>
 
-  const choose = (value: 'live' | 'guided') => {
-    setChosenExperience(value);
-    try {
-      window.localStorage.setItem(EXPERIENCE_KEY, value);
-    } catch {
-      // A preference is optional; the live app remains usable without storage.
-    }
-  };
+            <main className="mx-auto max-w-6xl px-6 py-16">
+                <section className="mx-auto max-w-3xl text-center">
+                    <p className="text-xs font-semibold uppercase tracking-[0.25em] text-indigo-400">
+                        Account-free replay
+                    </p>
+                    <h2 className="mt-4 text-4xl font-bold leading-tight text-white md:text-5xl">
+                        See how an AI advisory board reasons together
+                    </h2>
+                    <p className="mt-5 text-lg text-zinc-400">
+                        Walk through a recorded bond meeting with multiple AI
+                        participants, live disagreement and consensus, grounded
+                        evidence, and a closing summary.
+                    </p>
+                    <p className="mt-4 text-sm text-zinc-500">
+                        Interactive replay of a recorded session. Live demonstration
+                        available during interviews.
+                    </p>
+                    <div className="mt-8 flex flex-wrap items-center justify-center gap-4">
+                        <Link
+                            href="/demo"
+                            className="inline-flex items-center gap-2 rounded-xl bg-indigo-600 px-6 py-3 text-sm font-semibold text-white transition-colors hover:bg-indigo-500"
+                        >
+                            Start guided replay
+                            <ArrowRight className="h-4 w-4" />
+                        </Link>
+                        <Link
+                            href="/login"
+                            className="text-sm text-zinc-400 underline-offset-4 transition-colors hover:text-zinc-200 hover:underline"
+                        >
+                            Operator sign-in
+                        </Link>
+                    </div>
+                </section>
 
-  return (
-    <div className="min-h-screen bg-gradient-to-br from-zinc-950 via-zinc-900 to-zinc-950">
-      {/* Header */}
-      <header className="border-b border-zinc-800/50 backdrop-blur-sm sticky top-0 z-50">
-        <div className="max-w-6xl mx-auto px-6 py-4 flex items-center justify-between">
-          <div className="flex items-center gap-3">
-            <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-indigo-500 to-purple-600 flex items-center justify-center">
-              <Sparkles className="w-5 h-5 text-white" />
-            </div>
-            <div>
-              <h1 className="text-xl font-bold text-white">Sabha</h1>
-              <p className="text-xs text-zinc-500">AI Advisory Board</p>
-            </div>
-          </div>
-          <nav className="flex items-center gap-4 text-sm">
-            <Link href="/meetings" className="text-zinc-400 hover:text-white">
-              Live
-            </Link>
-            <Link
-              href="/demo"
-              className="rounded-lg border border-indigo-800 px-3 py-1.5 text-indigo-300 hover:bg-indigo-950/40"
-            >
-              Guided replay
-            </Link>
-          </nav>
+                <section className="mt-20 grid gap-5 md:grid-cols-3">
+                    {FEATURES.map(({ icon: Icon, title, body }) => (
+                        <div
+                            key={title}
+                            className="rounded-2xl border border-zinc-800 bg-zinc-900/40 p-6"
+                        >
+                            <div className="mb-4 flex h-11 w-11 items-center justify-center rounded-xl bg-indigo-500/15">
+                                <Icon className="h-5 w-5 text-indigo-300" />
+                            </div>
+                            <h3 className="font-semibold text-white">{title}</h3>
+                            <p className="mt-2 text-sm leading-relaxed text-zinc-400">
+                                {body}
+                            </p>
+                        </div>
+                    ))}
+                </section>
+
+                <section className="mt-16 rounded-2xl border border-zinc-800 bg-zinc-900/30 p-8">
+                    <div className="flex flex-wrap items-start justify-between gap-6">
+                        <div className="max-w-xl">
+                            <div className="mb-3 flex items-center gap-2 text-sm font-medium text-emerald-300">
+                                <BookOpen className="h-4 w-4" />
+                                What the recorded journey covers
+                            </div>
+                            <p className="text-sm leading-relaxed text-zinc-400">
+                                A credit analyst, a skeptical investor, and a
+                                pragmatic CTO examine an HDFC bond opportunity.
+                                The replay preserves their reasoning, the evidence
+                                they cite, and the director’s decisions at each
+                                checkpoint.
+                            </p>
+                        </div>
+                        <Link
+                            href="/demo"
+                            className="inline-flex items-center gap-2 rounded-lg border border-zinc-700 px-4 py-2 text-sm text-zinc-200 transition-colors hover:border-zinc-500"
+                        >
+                            Open the replay
+                            <ArrowRight className="h-4 w-4" />
+                        </Link>
+                    </div>
+                </section>
+
+                <p className="mt-10 text-center text-xs text-zinc-600">
+                    The live workspace is private and available only to the Sabha
+                    operator.
+                </p>
+            </main>
         </div>
-      </header>
-
-      {/* Main Content */}
-      <main className="max-w-6xl mx-auto px-6 py-12">
-        <div className="text-center mb-12">
-          <h2 className="text-3xl font-bold text-white mb-3">
-            Welcome to Sabha
-          </h2>
-          <p className="text-zinc-400 max-w-xl mx-auto">
-            Assemble your AI advisory board and get diverse perspectives on any topic.
-            Create meeting rooms, invite AI personas, and facilitate insightful discussions.
-          </p>
-        </div>
-
-        {/* First-visit choice */}
-        {ready && !experience ? (
-          <section className="mb-10 rounded-2xl border border-indigo-900/60 bg-indigo-950/20 p-6">
-            <h3 className="text-lg font-semibold text-white">How would you like to start?</h3>
-            <p className="mt-1 text-sm text-zinc-400">
-              You can switch at any time. The guided replay is a prepared historical
-              journey; the live workspace uses your own meetings and knowledge.
-            </p>
-            <div className="mt-4 grid gap-3 md:grid-cols-2">
-              <Link
-                href="/meetings/new"
-                onClick={() => choose('live')}
-                className="rounded-xl border border-zinc-700 bg-zinc-900/60 p-4 hover:border-indigo-500/60"
-              >
-                <p className="font-medium text-white">Set up live</p>
-                <p className="mt-1 text-sm text-zinc-400">
-                  Create a meeting with your own roster and documents.
-                </p>
-              </Link>
-              <Link
-                href="/demo"
-                onClick={() => choose('guided')}
-                className="rounded-xl border border-indigo-700 bg-indigo-950/40 p-4 hover:border-indigo-500"
-              >
-                <p className="font-medium text-white">Guided replay</p>
-                <p className="mt-1 text-sm text-zinc-400">
-                  Walk through a prepared historical bond meeting, step by step.
-                </p>
-              </Link>
-            </div>
-          </section>
-        ) : null}
-
-        {/* Navigation Cards */}
-        <div className="grid md:grid-cols-2 lg:grid-cols-4 gap-6">
-          {/* Meeting Space */}
-          <Link href="/meetings" className="group">
-            <Card className="bg-zinc-900/50 border-zinc-800 hover:border-indigo-500/50 transition-all duration-300 hover:shadow-lg hover:shadow-indigo-500/10 h-full">
-              <CardHeader>
-                <div className="w-12 h-12 rounded-xl bg-indigo-500/20 flex items-center justify-center mb-4 group-hover:bg-indigo-500/30 transition-colors">
-                  <MessageSquare className="w-6 h-6 text-indigo-400" />
-                </div>
-                <CardTitle className="text-white flex items-center justify-between">
-                  Meeting Space
-                  <ArrowRight className="w-4 h-4 text-zinc-600 group-hover:text-indigo-400 group-hover:translate-x-1 transition-all" />
-                </CardTitle>
-                <CardDescription className="text-zinc-400">
-                  Create and manage your AI meeting rooms
-                </CardDescription>
-              </CardHeader>
-              <CardContent>
-                <p className="text-sm text-zinc-500">
-                  Start new discussions, review past meetings, and collaborate with your AI advisory board.
-                </p>
-              </CardContent>
-            </Card>
-          </Link>
-
-          {/* AI Roster */}
-          <Link href="/roster" className="group">
-            <Card className="bg-zinc-900/50 border-zinc-800 hover:border-emerald-500/50 transition-all duration-300 hover:shadow-lg hover:shadow-emerald-500/10 h-full">
-              <CardHeader>
-                <div className="w-12 h-12 rounded-xl bg-emerald-500/20 flex items-center justify-center mb-4 group-hover:bg-emerald-500/30 transition-colors">
-                  <Users className="w-6 h-6 text-emerald-400" />
-                </div>
-                <CardTitle className="text-white flex items-center justify-between">
-                  AI Roster
-                  <ArrowRight className="w-4 h-4 text-zinc-600 group-hover:text-emerald-400 group-hover:translate-x-1 transition-all" />
-                </CardTitle>
-                <CardDescription className="text-zinc-400">
-                  Manage your AI personas and advisors
-                </CardDescription>
-              </CardHeader>
-              <CardContent>
-                <p className="text-sm text-zinc-500">
-                  Create custom AI personalities, configure their expertise, and build your dream advisory team.
-                </p>
-              </CardContent>
-            </Card>
-          </Link>
-
-          {/* Knowledge Stacks */}
-          <Link href="/knowledge-stacks" className="group">
-            <Card className="bg-zinc-900/50 border-zinc-800 hover:border-blue-500/50 transition-all duration-300 hover:shadow-lg hover:shadow-blue-500/10 h-full">
-              <CardHeader>
-                <div className="w-12 h-12 rounded-xl bg-blue-500/20 flex items-center justify-center mb-4 group-hover:bg-blue-500/30 transition-colors">
-                  <BookOpen className="w-6 h-6 text-blue-400" />
-                </div>
-                <CardTitle className="text-white flex items-center justify-between">
-                  Knowledge Stacks
-                  <ArrowRight className="w-4 h-4 text-zinc-600 group-hover:text-blue-400 group-hover:translate-x-1 transition-all" />
-                </CardTitle>
-                <CardDescription className="text-zinc-400">
-                  Curate document collections for RAG
-                </CardDescription>
-              </CardHeader>
-              <CardContent>
-                <p className="text-sm text-zinc-500">
-                  Upload and manage custom knowledge domains to power your AI advisors with exact context.
-                </p>
-              </CardContent>
-            </Card>
-          </Link>
-
-          {/* Settings */}
-          <Link href="/settings" className="group">
-            <Card className="bg-zinc-900/50 border-zinc-800 hover:border-amber-500/50 transition-all duration-300 hover:shadow-lg hover:shadow-amber-500/10 h-full">
-              <CardHeader>
-                <div className="w-12 h-12 rounded-xl bg-amber-500/20 flex items-center justify-center mb-4 group-hover:bg-amber-500/30 transition-colors">
-                  <Settings className="w-6 h-6 text-amber-400" />
-                </div>
-                <CardTitle className="text-white flex items-center justify-between">
-                  Settings
-                  <ArrowRight className="w-4 h-4 text-zinc-600 group-hover:text-amber-400 group-hover:translate-x-1 transition-all" />
-                </CardTitle>
-                <CardDescription className="text-zinc-400">
-                  Configure your Sabha experience
-                </CardDescription>
-              </CardHeader>
-              <CardContent>
-                <p className="text-sm text-zinc-500">
-                  API keys, default models, appearance preferences, and more.
-                </p>
-              </CardContent>
-            </Card>
-          </Link>
-
-        </div>
-      </main>
-    </div>
-  );
+    );
 }
