@@ -430,3 +430,57 @@ Implementation references: Supabase's current
 and [session lifecycle](https://supabase.com/docs/guides/auth/sessions)
 documentation. Recheck the installed SDK versions before implementing; a stored
 session record is not server-verified authorization.
+
+## Implementation record
+
+> Scope: local implementation and conditional acceptance. Hosted checks were
+> **not executed**; hosted protection remains **UNPROVEN** until they are.
+
+**Environment.** Windows acceptance host, Python 3.12, Node 22, Next.js 16.1.4,
+Vitest 3.2.7. No paid inference, destructive live data, or hosted Supabase,
+Vercel or Northflank setting was used.
+
+**Commands executed.**
+
+```powershell
+# backend
+cd backend
+.\venv\Scripts\python.exe -m pytest -q
+.\venv\Scripts\python.exe -m scripts.export_openapi --check
+
+# frontend
+cd ..\frontend
+npm test
+npm run lint
+npm run build
+```
+
+**Results.**
+
+- Backend: **924 passed, 1 skipped**.
+- OpenAPI fixture: **56 paths**, no drift.
+- Frontend: **67 files, 390 tests passed** (unit, integration and architecture).
+- Lint: **0 errors**, 29 pre-existing warnings.
+- Production build: passed, including `/`, `/demo`, `/login`, `/meetings`,
+  `/roster`, `/knowledge-stacks` and `/settings`.
+
+The access suites enumerate every mounted live method and path, including
+multipart uploads, byte reads, operation status, legacy adapters and SSE, and
+prove that a missing or invalid token reaches no business adapter. They also
+cover exact-operator admission, non-operator denial, Auth-unavailable handling,
+private cache headers, public replay reads, demo-write ordering, and replay-only
+startup without operator or Auth credentials.
+
+**Hosted checks not executed.** Supabase signup/anonymous/provider settings and
+the exact owner UUID; Vercel and Northflank environment configuration; direct
+origin 401/403/503 checks; CORS and preflight; reverse-proxy SSE; private cache
+headers at the deployed edge; browser login/logout/cross-tab; and direct
+hosted-project database, Storage and RPC denial. All of these remain
+**UNPROVEN** and require separate operational authorization.
+
+**Limitations.** Logout detaches the browser from admitted work but does not
+cancel an admitted turn, closing or ingestion job, and cannot retract bytes
+already delivered. Authorization is request admission, not a continuous
+session or worker lease. The product remains single-operator; there are no
+roles or multi-user workspaces. A reload starts with the provider vault locked,
+and login never unlocks it.
