@@ -10,7 +10,7 @@ and the gates that remain unproven, lives in
 
 | Piece | Entry point | Responsibility |
 | --- | --- | --- |
-| HTTP API | `backend/main.py` (`main:app`) | Live `/api/*` routes, server-sent events, `/health` |
+| HTTP API | `backend/main.py` (`main:app`) | Operator-gated live `/api/*` routes, server-sent events, `/health` |
 | Recorded replay API | `backend/main.py` (`/api/replay/*`) | Read-only recorded graph; independent of the live container |
 | Turn worker (optional) | `backend/worker.py` | Claims and executes queued turns; no HTTP |
 | Web client | `frontend/` (Next.js) | Meeting UI, uploads, operation observation |
@@ -24,6 +24,8 @@ enforced in Postgres, so two processes cannot execute the same turn.
 `TURN_RUNNER_ENABLED` selects whether the API also runs inference inline.
 
 Live and recorded replay are separate request graphs in the same process.
+Every live `/api/*` request passes through one operator admission dependency
+before any module adapter; `/api/replay/*` is mounted outside that gate.
 `/api/*` resolves only the live container; `/api/replay/*` resolves only the
 replay container and rejects every non-GET request before an adapter runs. A
 request header, workspace id, route parameter or `RUNTIME_MODE` value cannot
@@ -453,6 +455,8 @@ python -m scripts.rehearse_clean_checkout
 # frontend
 cd ..\frontend
 npm test
+npm run test:architecture
+npm run lint
 npx tsc --noEmit
 npm run test:e2e
 npm run build
