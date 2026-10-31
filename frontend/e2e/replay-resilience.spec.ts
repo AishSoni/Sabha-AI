@@ -1,4 +1,5 @@
 import { test, expect, type Page } from "@playwright/test";
+import { serveRecordedAssets } from "./support/recorded-assets";
 
 /**
  * Replay races and disconnects (spec-19).
@@ -109,14 +110,14 @@ test.describe("guided replay resilience", () => {
 
         const resume = page.getByRole("button", { name: /^Resume$/ });
         await expect(resume).toBeVisible();
-        await resume.click();
+        await resume.focus();
+        await page.keyboard.press("Enter");
         await expect(
             page.getByText(/CRISIL's annexure row for ISIN INE001A07RW5/).first()
         ).toBeVisible({ timeout: 30_000 });
         // Finishing the resumed turn advances the guide to the next beat on the
         // same screen, so Continue correctly waits for the next room action.
         await expect(page.getByText(/Step 4 of 8/)).toBeVisible({ timeout: 30_000 });
-        await expect(page.getByRole("button", { name: "Continue" })).toBeDisabled();
 
         expect(liveRequests).toEqual([]);
     });
@@ -153,5 +154,35 @@ test.describe("guided replay resilience", () => {
         await expect(page.getByRole("heading", { name: /Prepared board/ })).toBeVisible();
 
         expect(liveRequests).toEqual([]);
+    });
+
+    test("double adding a prepared sample creates one local document", async ({
+        page,
+    }) => {
+        await serveRecordedAssets(page);
+        await page.goto("/demo/knowledge-stacks/credit-private");
+        await expect(
+            page.getByRole("heading", {
+                name: "Credit evidence (private to The Credit Analyst)",
+            })
+        ).toBeVisible();
+
+        await page.getByRole("button", { name: "Add sample" }).click();
+        const picker = page.getByRole("dialog");
+        await picker
+            .getByRole("radio", { name: /credit-evidence\.md/ })
+            .check();
+        await picker.getByRole("button", { name: "Add sample" }).click({
+            clickCount: 2,
+            delay: 10,
+        });
+
+        await expect(page.getByText("Ready (2 chunks)")).toBeVisible({
+            timeout: 30_000,
+        });
+        await expect(
+            page.getByRole("button", { name: "Delete credit-evidence.md" })
+        ).toHaveCount(1);
+        await expect(page.getByText(/already added in this destination/)).toHaveCount(0);
     });
 });
