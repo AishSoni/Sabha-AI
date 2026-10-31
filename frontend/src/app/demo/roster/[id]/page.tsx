@@ -1,7 +1,7 @@
 'use client';
 
 import { use } from 'react';
-import { DemoPersonaDetail } from '@/features/persona-catalog/local';
+import { DemoPersonaRoute } from './persona-route';
 
 export default function DemoPersonaDetailPage({
     params,
@@ -9,5 +9,5 @@ export default function DemoPersonaDetailPage({
     params: Promise<{ id: string }>;
 }) {
     const { id } = use(params);
-    return <DemoPersonaDetail personaId={id} />;
+    return <DemoPersonaRoute personaId={id} />;
 }

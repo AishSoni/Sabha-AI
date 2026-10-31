@@ -3,7 +3,6 @@
 import Link from 'next/link';
 import { useCallback } from 'react';
 import { useDemoWorkspace } from '@/features/demo-workspace';
-import { useReplayRun } from '@/features/meetings/runtime/replay-run';
 import { PersonaEditorScreen } from '../presentation/persona-editor-screen';
 import { DemoCatalogGate } from './demo-catalog-gate';
 import { DemoSnapshotPanel, type BoardStackView, type RecordedParticipantView } from './demo-snapshot-panel';
@@ -12,13 +11,22 @@ import { useLocalPersonaCatalog } from './use-local-persona-catalog';
 export function DemoPersonaDetail({
     personaId,
     initialTab = 'overview',
+    boardParticipants,
+    boardStacks,
 }: {
     personaId: string;
     initialTab?: 'overview' | 'prompt';
+    boardParticipants?: RecordedParticipantView[];
+    boardStacks?: Record<string, BoardStackView>;
 }) {
     return (
         <DemoCatalogGate>
-            <Content personaId={personaId} initialTab={initialTab} />
+            <Content
+                personaId={personaId}
+                initialTab={initialTab}
+                boardParticipants={boardParticipants}
+                boardStacks={boardStacks}
+            />
         </DemoCatalogGate>
     );
 }
@@ -26,12 +34,15 @@ export function DemoPersonaDetail({
 function Content({
     personaId,
     initialTab,
+    boardParticipants,
+    boardStacks,
 }: {
     personaId: string;
     initialTab: 'overview' | 'prompt';
+    boardParticipants?: RecordedParticipantView[];
+    boardStacks?: Record<string, BoardStackView>;
 }) {
     const { seed } = useDemoWorkspace();
-    const run = useReplayRun();
     const {
         client,
         personas,
@@ -46,14 +57,8 @@ function Content({
     const template = seed?.personas.find(
         (persona) => persona.personaId === personaId
     );
-    const board = (run.safeConfig as {
-        board?: {
-            participants?: RecordedParticipantView[];
-            stacks?: Record<string, BoardStackView>;
-        };
-    } | null)?.board;
     const recordedParticipant = template?.recordedParticipantId
-        ? board?.participants?.find(
+        ? boardParticipants?.find(
               (participant) =>
                   participant.participant_id === template.recordedParticipantId
           ) ?? null
@@ -93,7 +98,7 @@ function Content({
                     baseInstructions={baseInstructions}
                     snapshots={snapshots}
                     recordedParticipant={recordedParticipant}
-                    boardStacks={board?.stacks}
+                    boardStacks={boardStacks}
                     onCapture={captureSnapshot}
                 />
             ) : null}
