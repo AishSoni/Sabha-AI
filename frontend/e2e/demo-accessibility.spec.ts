@@ -95,4 +95,28 @@ test.describe("demo keyboard and narrow-screen accessibility", () => {
         network.assertClean();
         await expectNoPublicPersistence(context, page);
     });
+
+    test("explains operator-only settings without credential controls", async ({
+        page,
+        context,
+    }) => {
+        const network = guardNetwork(page);
+        await page.goto("/demo/settings");
+
+        await expect(
+            page.getByRole("heading", { name: "Settings in the public demo" })
+        ).toBeVisible();
+        await expect(
+            page.getByText(/outside the guided route/i)
+        ).toBeVisible();
+        await expect(
+            page.getByRole("heading", { name: "Provider setup is operator-only" })
+        ).toBeVisible();
+        await expect(page.getByText(/no key fields, no reveal action/i)).toBeVisible();
+        await expect(page.getByRole("textbox")).toHaveCount(0);
+        await expect(page.getByLabel(/api key/i)).toHaveCount(0);
+
+        network.assertClean();
+        await expectNoPublicPersistence(context, page);
+    });
 });
