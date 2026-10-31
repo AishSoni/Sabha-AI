@@ -5215,6 +5215,20 @@
             }
           },
           {
+            "name": "speed",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "enum": [
+                1,
+                2
+              ],
+              "type": "integer",
+              "default": 1,
+              "title": "Speed"
+            }
+          },
+          {
             "name": "checkpoint",
             "in": "query",
             "required": false,
@@ -5310,6 +5324,20 @@
               "type": "integer",
               "default": 0,
               "title": "After"
+            }
+          },
+          {
+            "name": "speed",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "enum": [
+                1,
+                2
+              ],
+              "type": "integer",
+              "default": 1,
+              "title": "Speed"
             }
           },
           {
@@ -7626,6 +7654,22 @@
             },
             "type": "array",
             "title": "Claims"
+          },
+          "chapters": {
+            "items": {
+              "additionalProperties": true,
+              "type": "object"
+            },
+            "type": "array",
+            "title": "Chapters"
+          },
+          "transitions": {
+            "items": {
+              "additionalProperties": true,
+              "type": "object"
+            },
+            "type": "array",
+            "title": "Transitions"
           },
           "preview": {
             "$ref": "#/components/schemas/ReplayPreviewView"

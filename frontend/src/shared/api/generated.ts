@@ -2021,6 +2021,14 @@ export interface components {
             claims?: {
                 [key: string]: unknown;
             }[];
+            /** Chapters */
+            chapters?: {
+                [key: string]: unknown;
+            }[];
+            /** Transitions */
+            transitions?: {
+                [key: string]: unknown;
+            }[];
             preview?: components["schemas"]["ReplayPreviewView"];
             /**
              * Retired
@@ -6614,6 +6622,7 @@ export interface operations {
         parameters: {
             query?: {
                 after?: number;
+                speed?: 1 | 2;
                 checkpoint?: string | null;
                 package?: string | null;
                 version?: string | null;
@@ -6651,6 +6660,7 @@ export interface operations {
         parameters: {
             query?: {
                 after?: number;
+                speed?: 1 | 2;
                 checkpoint?: string | null;
                 package?: string | null;
                 version?: string | null;
