@@ -17,10 +17,7 @@ const REPLAY_ENTRY = path.join(
     FRONTEND_ROOT,
     'src/features/meetings/runtime/replay.tsx'
 );
-const DEMO_ROUTE = path.join(
-    FRONTEND_ROOT,
-    'src/app/demo/meetings/[id]/page.tsx'
-);
+const DEMO_ROOT = path.join(FRONTEND_ROOT, 'src/app/demo');
 const PUBLIC_ENTRIES = [
     path.join(FRONTEND_ROOT, 'src/app/layout.tsx'),
     path.join(FRONTEND_ROOT, 'src/app/providers.tsx'),
@@ -36,7 +33,34 @@ const FORBIDDEN_PREFIXES = [
     'src/stores',
     'src/features/meetings/runtime/live',
     'src/lib/api',
+    // Feature barrels and adapters still bind live HTTP clients/hooks.
+    // Demo screens may only import deliberately extracted presentation.
+    'src/features/persona-catalog/api',
+    'src/features/persona-catalog/index.ts',
+    'src/features/persona-catalog/ui/new-persona-screen.tsx',
+    'src/features/persona-catalog/ui/persona-editor-screen.tsx',
+    'src/features/persona-catalog/ui/roster-screen.tsx',
+    'src/features/knowledge/api',
+    'src/features/knowledge/hooks',
+    'src/features/knowledge/components',
+    'src/features/knowledge/index.ts',
 ];
+
+function demoEntries(): string[] {
+    const entries: string[] = [];
+    const visit = (directory: string) => {
+        for (const entry of fs.readdirSync(directory, { withFileTypes: true })) {
+            const absolute = path.join(directory, entry.name);
+            if (entry.isDirectory()) {
+                visit(absolute);
+            } else if (entry.name === 'page.tsx' || entry.name === 'layout.tsx') {
+                entries.push(absolute);
+            }
+        }
+    };
+    visit(DEMO_ROOT);
+    return entries;
+}
 
 function moduleSpecifiers(file: string): string[] {
     const source = fs.readFileSync(file, 'utf8');
@@ -84,7 +108,7 @@ function graphFrom(entries: string[]): string[] {
 }
 
 function replayGraph(): string[] {
-    return graphFrom([REPLAY_ENTRY, DEMO_ROUTE]);
+    return graphFrom([REPLAY_ENTRY, ...demoEntries()]);
 }
 
 function rel(file: string): string {
@@ -92,6 +116,15 @@ function rel(file: string): string {
 }
 
 describe('recorded replay module graph', () => {
+    it('covers every demo route and layout', () => {
+        const paths = demoEntries().map(rel);
+        expect(paths).toContain('src/app/demo/layout.tsx');
+        expect(paths).toContain('src/app/demo/page.tsx');
+        expect(paths).toContain('src/app/demo/new/page.tsx');
+        expect(paths).toContain('src/app/demo/meetings/page.tsx');
+        expect(paths).toContain('src/app/demo/meetings/[id]/page.tsx');
+    });
+
     it('composes the real room but never the live settings, vault, or stores', () => {
         const graph = replayGraph();
         const paths = graph.map(rel);
@@ -106,9 +139,21 @@ describe('recorded replay module graph', () => {
                 paths.filter(
                     (candidate) =>
                         candidate === forbidden || candidate.startsWith(`${forbidden}/`)
-                )
+                ),
+                forbidden
             ).toEqual([]);
         }
+    });
+
+    it('recognizes a forbidden live feature import when it exists', () => {
+        // Mechanism check: the walker must traverse into a known live feature
+        // so a future demo import of that feature cannot pass unnoticed.
+        const paths = graphFrom([
+            path.join(FRONTEND_ROOT, 'src/app/(operator)/settings/page.tsx'),
+        ]).map(rel);
+        expect(
+            paths.some((candidate) => candidate.startsWith('src/features/settings'))
+        ).toBe(true);
     });
 
     it('keeps credential handoff out of the replay entry and shared room', () => {
