@@ -25,6 +25,11 @@ async function openVersionFiveBoard(page: Page) {
 }
 
 test.describe("version-5 package compatibility", () => {
+    test.skip(
+        process.env.E2E_LEGACY !== "1",
+        "run through npm run test:e2e:legacy so the backend serves version 5"
+    );
+
     test("walks the original eight-beat journey without expanded chapters", async ({
         page,
         context,

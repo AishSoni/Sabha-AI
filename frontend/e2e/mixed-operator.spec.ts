@@ -24,6 +24,11 @@ const OPERATOR_SESSION = {
 const VAULT_SENTINEL = JSON.stringify({ envelope: "synthetic-operator-vault" });
 
 test.describe("mixed operator and demo isolation", () => {
+    test.skip(
+        process.env.E2E_MIXED !== "1",
+        "run through npm run test:e2e:mixed so the backend mounts the operator graph"
+    );
+
     test("demo edits and resets never touch the operator session or vault", async ({
         browser,
     }) => {

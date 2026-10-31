@@ -12,6 +12,7 @@ import { fileURLToPath } from "node:url";
 const root = resolve(dirname(fileURLToPath(import.meta.url)), "..");
 const env = {
     ...process.env,
+    E2E_LEGACY: "1",
     REPLAY_PACKAGE_DIR: resolve(
         root,
         "..",
