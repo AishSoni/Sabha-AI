@@ -47,6 +47,7 @@ describe('shared evidence preview boundary', () => {
                 'src/features/meetings/evidence/renderers.tsx',
                 'src/features/meetings/components/MeetingRoom.tsx',
                 'src/features/meetings/runtime/live-summary-panel.tsx',
+                'src/features/meetings/runtime/recorded-summary-panel.tsx',
             ]).toContain(rel(file));
         }
 

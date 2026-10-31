@@ -606,11 +606,8 @@ export function replayLegalActions(
                     explanation: "",
                 },
                 intent,
-                available: checkpoint === intent.checkpoint,
-                reason:
-                    checkpoint === intent.checkpoint
-                        ? null
-                        : "This action belongs to a different recorded moment.",
+                available: true,
+                reason: null,
             }));
     }
     return session.transitions
