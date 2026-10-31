@@ -148,10 +148,39 @@ export interface LocalParticipantSnapshot {
     unavailableStackIds?: string[];
 }
 
+/** A frozen participant capture for a local practice meeting. */
+export interface LocalPracticeParticipant {
+    participantId: string;
+    personaId: string;
+    name: string;
+    role: string;
+    color: string;
+    composedPrompt: string;
+    stackIds: string[];
+    sourceRevisionId: string;
+    sourceRevisionNumber: number;
+}
+
+/**
+ * A browser-memory practice setup created from the shared creation screen.
+ *
+ * The name is the live meeting name (the form's agenda field) and the agenda
+ * is the form's context field, matching the canonical creation payload.
+ */
+export interface LocalPracticeMeeting {
+    meetingId: string;
+    name: string;
+    agenda: string;
+    createdAt: string;
+    participants: LocalPracticeParticipant[];
+    sampleIds: string[];
+}
+
 export interface WorkspaceLocalState {
     personas: WorkspacePersona[];
     stacks: WorkspaceStack[];
     practiceSetups: WorkspacePracticeSetup[];
+    practiceMeetings: LocalPracticeMeeting[];
     participantSnapshots: LocalParticipantSnapshot[];
     documents: WorkspaceDocument[];
 }
@@ -200,6 +229,7 @@ export function emptyLocalState(): WorkspaceLocalState {
         personas: [],
         stacks: [],
         practiceSetups: [],
+        practiceMeetings: [],
         participantSnapshots: [],
         documents: [],
     };
@@ -220,6 +250,7 @@ export function localStateFromSeed(
         })),
         stacks: seed.stacks.map((stack) => ({ ...stack })),
         practiceSetups: seed.practiceSetups.map((setup) => ({ ...setup })),
+        practiceMeetings: [],
         participantSnapshots: [],
         documents: seed.documents.map((document) => ({
             ...document,

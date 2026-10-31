@@ -12,7 +12,6 @@ import {
 } from "../../../../tests/fixtures/demo/workspace";
 import {
     useLocalStacks,
-    type LocalStacksAdapter,
 } from "./use-local-stacks";
 
 function json(status: number, body: unknown) {
@@ -23,14 +22,15 @@ function json(status: number, body: unknown) {
     } as unknown as Response;
 }
 
-let adapter: LocalStacksAdapter;
-
 function Probe() {
     const workspace = useDemoWorkspace();
-    adapter = useLocalStacks();
+    const adapter = useLocalStacks();
     return (
         <div>
             <span data-testid="status">{workspace.status}</span>
+            <span data-testid="credit-lookup">
+                {String(adapter.getStack("credit-evidence") === null)}
+            </span>
             <span data-testid="rows">
                 {adapter.stacks
                     .map(
@@ -132,6 +132,6 @@ describe("local practice stacks", () => {
                 "Renamed credit"
             )
         );
-        expect(adapter.getStack("credit-evidence")).toBeNull();
+        expect(screen.getByTestId("credit-lookup").textContent).toBe("true");
     });
 });

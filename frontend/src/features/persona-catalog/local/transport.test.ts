@@ -48,6 +48,7 @@ function workspace(): WorkspaceLocalState {
             },
         ],
         practiceSetups: [],
+        practiceMeetings: [],
         participantSnapshots: [],
         documents: [],
     };

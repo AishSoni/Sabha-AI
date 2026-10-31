@@ -40,9 +40,13 @@ vi.mock('next/navigation', () => ({
     useRouter: () => ({ push: vi.fn(), back: vi.fn() }),
 }));
 
-vi.mock('@/features/meetings', () => ({
-    useMeetingCreation: () => mocks.pipeline,
-}));
+vi.mock('@/features/meetings', async (importOriginal) => {
+    const actual = await importOriginal<typeof import('@/features/meetings')>();
+    return {
+        ...actual,
+        useMeetingCreation: () => mocks.pipeline,
+    };
+});
 
 vi.mock('@/features/persona-catalog', () => ({
     usePersonaList: () => mocks.personaView,

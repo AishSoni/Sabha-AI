@@ -6,7 +6,9 @@ import { ArrowRight, CheckCircle2, FileText, Lock, ShieldCheck } from "lucide-re
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
+import { useDemoWorkspace } from "@/features/demo-workspace";
 import { useReplayRun } from "@/features/meetings/runtime/replay-run";
+import { PracticeSetupRoute } from "./practice-setup-route";
 
 interface Preset {
     agenda?: string;
@@ -48,13 +50,19 @@ interface SafeConfig {
 
 export default function DemoNewMeetingPage() {
     const run = useReplayRun();
+    const workspace = useDemoWorkspace();
     const [busy, setBusy] = useState(false);
+    const [editing, setEditing] = useState(false);
     const [error, setError] = useState<string | null>(null);
     const config = run.safeConfig as SafeConfig | null;
     const preset = config?.board?.preset;
     const participants = config?.board?.participants ?? [];
     const intake = config?.intake;
     const created = run.checkpoint !== run.session.initial_checkpoint;
+
+    if (editing) {
+        return <PracticeSetupRoute onExit={() => setEditing(false)} />;
+    }
 
     const create = async () => {
         setError(null);
@@ -93,6 +101,28 @@ export default function DemoNewMeetingPage() {
                     Complete the prepared creation form and confirm the supplied
                     historical document. No bytes are uploaded during replay.
                 </p>
+                <div className="mt-4 flex flex-wrap items-center gap-2">
+                    <Button
+                        type="button"
+                        variant="outline"
+                        size="sm"
+                        className="border-zinc-700 text-zinc-200"
+                        disabled={!workspace.expanded}
+                        onClick={() => setEditing(true)}
+                    >
+                        Try editing this setup
+                    </Button>
+                    <span className="text-xs text-zinc-500">
+                        Opens an inline practice editor on this same screen. It
+                        never changes the recorded intake.
+                    </span>
+                </div>
+                {!workspace.expanded ? (
+                    <p className="mt-2 text-xs text-zinc-500">
+                        Practice editing is unavailable for this recording
+                        version. The original guided journey remains usable.
+                    </p>
+                ) : null}
             </div>
 
             <div className="space-y-4">

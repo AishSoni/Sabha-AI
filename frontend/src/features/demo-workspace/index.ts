@@ -5,6 +5,8 @@ export {
     workspaceQueryKey,
     type LocalOutcome,
     type LocalParticipantSnapshot,
+    type LocalPracticeMeeting,
+    type LocalPracticeParticipant,
     type PinnedPackageIdentity,
     type PlaybackReset,
     type WorkspaceDocument,

@@ -10,7 +10,6 @@ import {
 } from "@/features/demo-workspace";
 import {
     useLocalDocuments,
-    type LocalDocumentsAdapter,
 } from "./use-local-documents";
 import {
     DEMO_PINNED_IDENTITY,
@@ -46,11 +45,9 @@ const now = () => new Date("2026-10-31T12:00:00.000Z");
 let sequence = 0;
 const idFactory = (prefix: string) => `${prefix}-${++sequence}`;
 
-let adapter: LocalDocumentsAdapter;
-
 function Probe({ stackId = "credit-evidence" }: { stackId?: string }) {
     const workspace = useDemoWorkspace();
-    adapter = useLocalDocuments(
+    const adapter = useLocalDocuments(
         { kind: "stack", id: stackId },
         {
             verifySample,

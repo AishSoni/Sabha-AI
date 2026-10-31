@@ -118,7 +118,7 @@ export function useLocalDocuments(
 ): LocalDocumentsAdapter {
     const workspace = useDemoWorkspace();
     const verifySample = options.verifySample ?? verifySampleSource;
-    const now = options.now ?? (() => new Date());
+    const now = useMemo(() => options.now ?? (() => new Date()), [options.now]);
     const idFactory = options.idFactory ?? localId;
     const queueDelayMs = options.queueDelayMs ?? QUEUE_DELAY_MS;
     const indexingDelayMs = options.indexingDelayMs ?? INDEXING_DELAY_MS;
