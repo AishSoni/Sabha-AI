@@ -1039,7 +1039,7 @@ def test_expanded_package_validates_a_bounded_exploration_graph() -> None:
     assert validate_package(package) == []
     manifest = package.manifest
     assert len(manifest.transitions) == 27
-    assert len(manifest.chapters) == 12
+    assert len(manifest.chapters) == 14
     assert sum(1 for item in manifest.transitions if item.canonical) == 8
 
 

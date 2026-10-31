@@ -6,7 +6,7 @@
   "event_version": 1,
   "title": "HDFC Ltd 7.87% 2022 debenture - guided replay",
   "as_of": "2020-07-31",
-  "content_sha256": "0ec62bc84c2bc6b20395440728dc8cf34ac591147c95b707a4ef781e59feed09",
+  "content_sha256": "48014296bc2f98c0270c72ecee7c5d527cb35536b6c9c3846ffc9590cb37113d",
   "meeting_id": "a0000000-0000-4000-8000-000000000001",
   "initial_checkpoint": "checkpoint-initial",
   "checkpoints": [
@@ -987,6 +987,37 @@
       "claim_ids": [],
       "input_asset_ids": [
         "shared-fact-sheet"
+      ]
+    },
+    {
+      "chapter_id": "chapter-setup",
+      "title": "Board setup",
+      "objective": "Inspect the prepared setup, roster, and practice-safe configuration.",
+      "checkpoint": "checkpoint-created",
+      "route": "new",
+      "tab": "roster",
+      "mode": "inspection",
+      "disclosure": "Prepared setup; editing practice settings does not change the recording.",
+      "claim_ids": [],
+      "input_asset_ids": []
+    },
+    {
+      "chapter_id": "chapter-files",
+      "title": "Files and sources",
+      "objective": "Inspect the meeting documents and retained source assets.",
+      "checkpoint": "checkpoint-credit",
+      "route": "meeting",
+      "tab": "documents",
+      "mode": "inspection",
+      "disclosure": "Recorded sources; inspection does not add or retrieve live documents.",
+      "claim_ids": [
+        "C1",
+        "C2",
+        "C10"
+      ],
+      "input_asset_ids": [
+        "shared-fact-sheet",
+        "credit-evidence"
       ]
     },
     {

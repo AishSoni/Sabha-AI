@@ -24,7 +24,7 @@ from scripts.replay_package import activate_package
 MEETING_ID = "11111111-1111-4111-8111-111111111111"
 OPERATION_ID = "66666666-6666-4666-8666-666666666666"
 APPROVED_ID = "hdfc-ine001a07rw5"
-APPROVED_SHA256 = "0ec62bc84c2bc6b20395440728dc8cf34ac591147c95b707a4ef781e59feed09"
+APPROVED_SHA256 = "48014296bc2f98c0270c72ecee7c5d527cb35536b6c9c3846ffc9590cb37113d"
 GUIDED_ROOT = (
     Path(__file__).resolve().parents[2] / "replay_packages" / APPROVED_ID
 )
@@ -135,7 +135,7 @@ def test_approved_session_exposes_claims_and_preview_assets(
     assert {claim["claim_id"] for claim in session["claims"]} == {
         f"C{index}" for index in range(1, 19)
     }
-    assert len(session["chapters"]) == 12
+    assert len(session["chapters"]) == 14
     assert len(session["transitions"]) == 27
     assert any(
         chapter["tab"] == "summary" for chapter in session["chapters"]

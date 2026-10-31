@@ -23,7 +23,7 @@ from tests.support.replay import PUBLISHER_LOGIN, READER_LOGIN, login_uri, provi
 
 REPO_ROOT = Path(__file__).resolve().parents[3]
 APPROVED_ID = "hdfc-ine001a07rw5"
-APPROVED_SHA256 = "0ec62bc84c2bc6b20395440728dc8cf34ac591147c95b707a4ef781e59feed09"
+APPROVED_SHA256 = "48014296bc2f98c0270c72ecee7c5d527cb35536b6c9c3846ffc9590cb37113d"
 PLACEHOLDER_ID = "placeholder-analyst"
 
 PUBLISH_SCRIPT = """
