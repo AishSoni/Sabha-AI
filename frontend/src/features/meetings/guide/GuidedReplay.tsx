@@ -15,6 +15,7 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import type { ReplayBeat, ReplayBeatStep } from "../runtime/contract";
 import { useReplayRun } from "../runtime/replay-run";
+import { useDemoWorkspace } from "@/features/demo-workspace";
 import { ActiveReplayIntentProvider } from "../runtime/active-intent";
 
 function beatHref(beat: ReplayBeat, meetingId: string): string {
@@ -73,6 +74,7 @@ function stepSatisfied(
 
 export function GuidedReplay({ children }: { children: ReactNode }) {
     const run = useReplayRun();
+    const workspace = useDemoWorkspace();
     const router = useRouter();
     const pathname = usePathname();
     const searchParams = useSearchParams();
@@ -193,7 +195,7 @@ export function GuidedReplay({ children }: { children: ReactNode }) {
     const canGoBack = !navigating && (index > 0 || finished);
 
     const restart = () => {
-        run.restart();
+        workspace.restartRecording();
         router.push("/demo");
     };
 

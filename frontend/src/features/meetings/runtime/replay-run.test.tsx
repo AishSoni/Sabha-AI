@@ -3,6 +3,8 @@ import { act, renderHook, waitFor } from "@testing-library/react";
 import type { ReactNode } from "react";
 
 import { ReplayRunProvider, useReplayRun } from "./replay-run";
+import { ReplaySessionProvider } from "./replay-session";
+import { DemoWorkspaceProvider } from "@/features/demo-workspace";
 
 const MEETING_ID = "11111111-1111-4111-8111-111111111111";
 
@@ -79,6 +81,9 @@ describe("ReplayRunProvider checkpoint transitions", () => {
                 const url = String(input);
                 calls.push(url);
                 if (url.endsWith("/replay/session")) return json(sessionWire());
+                if (url.includes("/workspace-seed")) {
+                    return json({ detail: "replay_workspace_seed_unavailable" }, 404);
+                }
                 if (url.includes("/safe-config")) return json({});
                 if (url.includes("/disagreements")) return json([]);
                 if (url.includes("/consensus")) return json([]);
@@ -91,7 +96,18 @@ describe("ReplayRunProvider checkpoint transitions", () => {
         );
 
         const wrapper = ({ children }: { children: ReactNode }) => (
-            <ReplayRunProvider>{children}</ReplayRunProvider>
+            <ReplaySessionProvider>
+                <DemoWorkspaceProvider
+                    identity={{
+                        packageId: "placeholder-analyst",
+                        version: "1",
+                        contentSha256: "a".repeat(64),
+                        meetingId: MEETING_ID,
+                    }}
+                >
+                    <ReplayRunProvider>{children}</ReplayRunProvider>
+                </DemoWorkspaceProvider>
+            </ReplaySessionProvider>
         );
         const { result } = renderHook(() => useReplayRun(), { wrapper });
 

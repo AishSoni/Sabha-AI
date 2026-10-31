@@ -18,21 +18,19 @@ import {
     useState,
     type ReactNode,
 } from "react";
-import { QueryClientProvider, type QueryClient } from "@tanstack/react-query";
-import { decodeObject } from "@/shared/api/decode";
-import { isApiError } from "@/shared/api/errors";
-import { requestJson } from "@/shared/api/transport";
+import { QueryClientProvider } from "@tanstack/react-query";
 import { makeQueryClient } from "@/shared/query/client";
 import { RuntimeScopeProvider, type RuntimeScope } from "@/shared/runtime/scope";
+import { useDemoWorkspace } from "@/features/demo-workspace";
 import type { MeetingsRuntime } from "./contract";
 import { MeetingsRuntimeProvider } from "./context";
 import {
     createReplayRuntime,
-    decodeReplaySession,
     fetchReplayBundle,
     replayKeyPrefix,
     type ReplaySession,
 } from "./replay";
+import { useReplaySession, type ReplaySafeConfig } from "./replay-session";
 
 export type ReplaySafeConfig = Record<string, unknown>;
 
@@ -67,26 +65,29 @@ export function useReplayRun(): ReplayRunContextValue {
 }
 
 export function ReplayRunProvider({ children }: { children: ReactNode }) {
+    const { session, safeConfig } = useReplaySession();
+    const { playbackReset } = useDemoWorkspace();
     const [epoch, setEpoch] = useState(1);
     const [runKey, setRunKey] = useState(1);
     const [checkpoint, setCheckpoint] = useState<string | null>(null);
-    const [session, setSession] = useState<ReplaySession | null>(null);
-    const [safeConfig, setSafeConfig] = useState<ReplaySafeConfig | null>(null);
     const [settledIntents, setSettledIntents] = useState<Set<string>>(new Set());
     const [closingSettled, setClosingSettled] = useState(false);
-    const [error, setError] = useState<Error | null>(null);
-    const [loading, setLoading] = useState(true);
     const transitioning = useRef(false);
     const startedIntentsRef = useRef<Set<string>>(new Set());
 
-    const queryClient = useMemo(() => makeQueryClient(), [runKey]);
-    const sessionController = useMemo(() => new AbortController(), [runKey]);
+    const queryClient = useMemo(
+        () => makeQueryClient(),
+        // A restart gets a fresh cache; the key intentionally remounts it.
+        // eslint-disable-next-line react-hooks/exhaustive-deps
+        [runKey]
+    );
     const controller = useMemo(
         () => new AbortController(),
+        // Each epoch/run owns its request lifetime.
+        // eslint-disable-next-line react-hooks/exhaustive-deps
         [epoch, runKey]
     );
-    const effectiveCheckpoint =
-        checkpoint ?? session?.initial_checkpoint ?? "";
+    const effectiveCheckpoint = checkpoint ?? session.initial_checkpoint;
     const sessionRef = useRef(session);
     sessionRef.current = session;
     const stateRef = useRef({ epoch, checkpoint: effectiveCheckpoint });
@@ -108,59 +109,19 @@ export function ReplayRunProvider({ children }: { children: ReactNode }) {
     }, []);
 
     const restart = useCallback(() => {
-        setSession(null);
         setCheckpoint(null);
-        setSafeConfig(null);
-        setError(null);
-        setLoading(true);
         startedIntentsRef.current = new Set();
         clearSettled();
         setEpoch((value) => value + 1);
         setRunKey((value) => value + 1);
     }, [clearSettled]);
 
+    const lastPlaybackReset = useRef(playbackReset.nonce);
     useEffect(() => {
-        let active = true;
-        requestJson<unknown>("/replay/session", {
-            signal: sessionController.signal,
-        })
-            .then((payload) => {
-                if (!active) return;
-                const decoded = decodeReplaySession(payload);
-                setSession(decoded);
-                setLoading(false);
-                void requestJson<unknown>(
-                    `/replay/meetings/${encodeURIComponent(
-                        decoded.meeting_id
-                    )}/safe-config?checkpoint=${encodeURIComponent(
-                        decoded.initial_checkpoint
-                    )}`,
-                    { signal: sessionController.signal }
-                )
-                    .then((config) => {
-                        if (active) {
-                            setSafeConfig(
-                                decodeObject(config, "GET /replay/safe-config")
-                            );
-                        }
-                    })
-                    .catch(() => {
-                        if (active) setSafeConfig(null);
-                    });
-            })
-            .catch((cause) => {
-                if (!active || sessionController.signal.aborted) return;
-                setError(
-                    cause instanceof Error
-                        ? cause
-                        : new Error("The recording is unavailable.")
-                );
-                setLoading(false);
-            });
-        return () => {
-            active = false;
-        };
-    }, [runKey, sessionController.signal]);
+        if (playbackReset.nonce === lastPlaybackReset.current) return;
+        lastPlaybackReset.current = playbackReset.nonce;
+        restart();
+    }, [playbackReset.nonce, restart]);
 
     useEffect(() => () => controller.abort(), [controller]);
 
@@ -355,20 +316,20 @@ export function ReplayRunProvider({ children }: { children: ReactNode }) {
         setClosingSettled(true);
     }, []);
 
-    const scope: RuntimeScope | null = session
-        ? {
-              identity: {
-                  kind: "replay",
-                  id: `${session.run_id}:${session.package_version}`,
-                  epoch,
-              },
-              label: session.label,
-              provenance: session.provenance,
-          }
-        : null;
+    const scope = useMemo<RuntimeScope>(
+        () => ({
+            identity: {
+                kind: "replay",
+                id: `${session.run_id}:${session.package_version}`,
+                epoch,
+            },
+            label: session.label,
+            provenance: session.provenance,
+        }),
+        [session, epoch]
+    );
 
     const runtime = useMemo(() => {
-        if (!session || !scope) return null;
         return createReplayRuntime(session, scope, {
             signal: controller.signal,
             checkpoint: effectiveCheckpoint,
@@ -391,37 +352,6 @@ export function ReplayRunProvider({ children }: { children: ReactNode }) {
         onClosingTerminal,
         isTurnVisible,
     ]);
-
-    if (loading) {
-        return (
-            <ReplayFrame title="Loading guided replay">
-                <p className="text-sm text-zinc-500">
-                    Fetching the recorded package and its initial checkpoint.
-                </p>
-            </ReplayFrame>
-        );
-    }
-
-    if (error || !session || !runtime || !scope) {
-        const notConfigured =
-            isApiError(error) && error.status === 503
-                ? "Recorded replay is not configured on this server."
-                : null;
-        return (
-            <ReplayFrame title="Guided replay unavailable">
-                <p className="text-sm text-zinc-400">
-                    {notConfigured ?? error?.message ?? "The recording is unavailable."}
-                </p>
-                <button
-                    type="button"
-                    onClick={restart}
-                    className="rounded-lg bg-zinc-800 px-4 py-2 text-sm text-zinc-100 hover:bg-zinc-700"
-                >
-                    Restart replay
-                </button>
-            </ReplayFrame>
-        );
-    }
 
     const value: ReplayRunContextValue = {
         session,
@@ -447,22 +377,5 @@ export function ReplayRunProvider({ children }: { children: ReactNode }) {
                 </RuntimeScopeProvider>
             </QueryClientProvider>
         </ReplayRunContext.Provider>
-    );
-}
-
-function ReplayFrame({
-    title,
-    children,
-}: {
-    title: string;
-    children: ReactNode;
-}) {
-    return (
-        <div className="min-h-screen bg-zinc-950 flex items-center justify-center p-6">
-            <div className="w-full max-w-md space-y-4 rounded-xl border border-zinc-800 bg-zinc-900/50 p-6">
-                <h1 className="text-lg font-semibold text-white">{title}</h1>
-                {children}
-            </div>
-        </div>
     );
 }

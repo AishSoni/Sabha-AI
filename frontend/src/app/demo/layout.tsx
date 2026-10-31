@@ -1,11 +1,6 @@
 import type { ReactNode } from "react";
-import { GuidedReplay } from "@/features/meetings/guide/GuidedReplay";
-import { ReplayRunProvider } from "@/features/meetings/runtime/replay-run";
+import { DemoShell } from "./demo-shell";
 
 export default function DemoLayout({ children }: { children: ReactNode }) {
-    return (
-        <ReplayRunProvider>
-            <GuidedReplay>{children}</GuidedReplay>
-        </ReplayRunProvider>
-    );
+    return <DemoShell>{children}</DemoShell>;
 }

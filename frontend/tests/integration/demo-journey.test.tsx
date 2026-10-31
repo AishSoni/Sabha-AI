@@ -179,6 +179,11 @@ function installDemoRouter() {
             if (path === `/replay/meetings/${DEMO_MEETING_ID}/turns`) {
                 return json(200, []);
             }
+            if (path === "/replay/workspace-seed") {
+                return json(404, {
+                    detail: "replay_workspace_seed_unavailable",
+                });
+            }
             throw new Error(`Unexpected demo request: ${url}`);
         })
     );
@@ -275,3 +280,23 @@ describe("canonical guided demo journey", () => {
         expect(screen.queryByText(/Room route/)).not.toBeInTheDocument();
     });
 });
+
+    it("restarts playback against the same pinned session read", async () => {
+        const calls = installDemoRouter();
+        render(
+            <DemoLayout>
+                <DemoRoute />
+            </DemoLayout>
+        );
+
+        await screen.findByText("Step 1 of 8");
+        fireEvent.click(screen.getByRole("button", { name: "Restart" }));
+
+        await screen.findByText("Step 1 of 8");
+        expect(
+            calls.filter((call) => call.url.endsWith("/replay/session"))
+        ).toHaveLength(1);
+        expect(
+            calls.filter((call) => call.url.includes("/replay/workspace-seed"))
+        ).toHaveLength(1);
+    });

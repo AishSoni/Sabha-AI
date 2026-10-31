@@ -1,0 +1,219 @@
+// @vitest-environment happy-dom
+
+import { fireEvent, render, screen, waitFor } from "@testing-library/react";
+import { afterEach, describe, expect, it, vi } from "vitest";
+import {
+    DemoWorkspaceProvider,
+    decodeWorkspaceSeedEnvelope,
+    useDemoWorkspace,
+} from "@/features/demo-workspace";
+import {
+    DEMO_PINNED_IDENTITY,
+    demoWorkspaceSeedEnvelope,
+    demoWorkspaceSeedWire,
+} from "../fixtures/demo/workspace";
+
+function json(status: number, body: unknown) {
+    return {
+        ok: status >= 200 && status < 300,
+        status,
+        json: async () => body,
+    } as unknown as Response;
+}
+
+function installSeedFetch(body: unknown, status = 200) {
+    const calls: string[] = [];
+    vi.stubGlobal(
+        "fetch",
+        vi.fn(async (input: unknown) => {
+            calls.push(String(input));
+            return json(status, body);
+        })
+    );
+    return calls;
+}
+
+function Probe() {
+    const workspace = useDemoWorkspace();
+    return (
+        <div>
+            <span data-testid="status">{workspace.status}</span>
+            <span data-testid="epoch">{workspace.workspaceEpoch}</span>
+            <span data-testid="expanded">{String(workspace.expanded)}</span>
+            <span data-testid="dirty">{String(workspace.hasPracticeEdits)}</span>
+            <span data-testid="personas">{workspace.local.personas.length}</span>
+            <span data-testid="stacks">{workspace.local.stacks.length}</span>
+            <span data-testid="bookmark">{workspace.guideBookmark ?? "none"}</span>
+            <span data-testid="reset-reason">{workspace.playbackReset.reason}</span>
+            <span data-testid="reset-nonce">{workspace.playbackReset.nonce}</span>
+            <span data-testid="error">{workspace.error ?? ""}</span>
+            <button
+                type="button"
+                onClick={() =>
+                    workspace.commitLocal((current) => ({
+                        ...current,
+                        stacks: current.stacks.slice(0, -1),
+                    }))
+                }
+            >
+                edit
+            </button>
+            <button
+                type="button"
+                onClick={() => workspace.setGuideBookmark("establish-facts")}
+            >
+                bookmark
+            </button>
+            <button type="button" onClick={workspace.restartRecording}>
+                restart
+            </button>
+            <button type="button" onClick={workspace.resetWorkspace}>
+                reset
+            </button>
+        </div>
+    );
+}
+
+function renderWorkspace() {
+    return render(
+        <DemoWorkspaceProvider identity={DEMO_PINNED_IDENTITY}>
+            <Probe />
+        </DemoWorkspaceProvider>
+    );
+}
+
+afterEach(() => {
+    vi.unstubAllGlobals();
+});
+
+describe("demo workspace provider", () => {
+    it("loads the pinned seed once and exposes the practice catalog", async () => {
+        const calls = installSeedFetch(demoWorkspaceSeedEnvelope());
+        renderWorkspace();
+
+        await waitFor(() =>
+            expect(screen.getByTestId("status").textContent).toBe("ready")
+        );
+        expect(screen.getByTestId("expanded").textContent).toBe("true");
+        expect(screen.getByTestId("personas").textContent).toBe("3");
+        expect(screen.getByTestId("stacks").textContent).toBe("4");
+        expect(screen.getByTestId("dirty").textContent).toBe("false");
+        expect(calls).toHaveLength(1);
+        expect(calls[0]).toContain("package=hdfc-ine001a07rw5");
+        expect(calls[0]).toContain("version=2");
+    });
+
+    it("restart recording keeps practice edits and clears the guide bookmark", async () => {
+        installSeedFetch(demoWorkspaceSeedEnvelope());
+        renderWorkspace();
+        await waitFor(() =>
+            expect(screen.getByTestId("status").textContent).toBe("ready")
+        );
+
+        const startingEpoch = Number(screen.getByTestId("epoch").textContent);
+        fireEvent.click(screen.getByRole("button", { name: "edit" }));
+        fireEvent.click(screen.getByRole("button", { name: "bookmark" }));
+        expect(screen.getByTestId("dirty").textContent).toBe("true");
+        expect(screen.getByTestId("stacks").textContent).toBe("3");
+
+        fireEvent.click(screen.getByRole("button", { name: "restart" }));
+
+        expect(screen.getByTestId("dirty").textContent).toBe("true");
+        expect(screen.getByTestId("stacks").textContent).toBe("3");
+        expect(screen.getByTestId("bookmark").textContent).toBe("none");
+        expect(screen.getByTestId("reset-reason").textContent).toBe("recording");
+        expect(screen.getByTestId("reset-nonce").textContent).toBe("1");
+        expect(Number(screen.getByTestId("epoch").textContent)).toBe(
+            startingEpoch + 1
+        );
+    });
+
+    it("reset workspace restores the seed and discards practice edits", async () => {
+        installSeedFetch(demoWorkspaceSeedEnvelope());
+        renderWorkspace();
+        await waitFor(() =>
+            expect(screen.getByTestId("status").textContent).toBe("ready")
+        );
+
+        fireEvent.click(screen.getByRole("button", { name: "edit" }));
+        fireEvent.click(screen.getByRole("button", { name: "reset" }));
+
+        expect(screen.getByTestId("dirty").textContent).toBe("false");
+        expect(screen.getByTestId("stacks").textContent).toBe("4");
+        expect(screen.getByTestId("reset-reason").textContent).toBe("workspace");
+        expect(screen.getByTestId("reset-nonce").textContent).toBe("1");
+    });
+
+    it("keeps the original journey available when the package has no seed", async () => {
+        installSeedFetch(
+            { detail: "replay_workspace_seed_unavailable" },
+            404
+        );
+        renderWorkspace();
+
+        await waitFor(() =>
+            expect(screen.getByTestId("status").textContent).toBe("legacy")
+        );
+        expect(screen.getByTestId("expanded").textContent).toBe("false");
+        expect(screen.getByTestId("error").textContent).toContain(
+            "original guided journey is unchanged"
+        );
+    });
+
+    it("fails closed when the seed identity does not match the pin", async () => {
+        const envelope = demoWorkspaceSeedEnvelope();
+        installSeedFetch({ ...envelope, content_sha256: "b".repeat(64) });
+        renderWorkspace();
+
+        await waitFor(() =>
+            expect(screen.getByTestId("status").textContent).toBe("mismatch")
+        );
+        expect(screen.getByTestId("expanded").textContent).toBe("false");
+        expect(screen.getByTestId("error").textContent).toContain(
+            "does not match the pinned recording"
+        );
+    });
+});
+
+describe("workspace seed decoder", () => {
+    it("rejects an active revision that is not present", () => {
+        const seed = demoWorkspaceSeedWire();
+        seed.personas[0].active_revision_id = "rev-missing";
+        expect(() =>
+            decodeWorkspaceSeedEnvelope({
+                package_id: "pkg",
+                version: "1",
+                content_sha256: "a".repeat(64),
+                seed_version: 1,
+                seed,
+            })
+        ).toThrow(/active revision is missing/);
+    });
+
+    it("rejects a persona stack that is not seeded", () => {
+        const seed = demoWorkspaceSeedWire();
+        seed.personas[0].stack_ids = ["missing-stack"];
+        expect(() =>
+            decodeWorkspaceSeedEnvelope({
+                package_id: "pkg",
+                version: "1",
+                content_sha256: "a".repeat(64),
+                seed_version: 1,
+                seed,
+            })
+        ).toThrow(/stack is not seeded/);
+    });
+
+    it("rejects an unsupported seed version", () => {
+        const seed = demoWorkspaceSeedWire();
+        expect(() =>
+            decodeWorkspaceSeedEnvelope({
+                package_id: "pkg",
+                version: "1",
+                content_sha256: "a".repeat(64),
+                seed_version: 2,
+                seed: { ...seed, seed_version: 2 },
+            })
+        ).toThrow(/unsupported seed version/);
+    });
+});
