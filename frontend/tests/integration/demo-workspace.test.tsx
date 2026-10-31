@@ -4,6 +4,7 @@ import { fireEvent, render, screen, waitFor } from "@testing-library/react";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import {
     DemoWorkspaceProvider,
+    decodeWorkspaceSeed,
     decodeWorkspaceSeedEnvelope,
     useDemoWorkspace,
 } from "@/features/demo-workspace";
@@ -211,9 +212,36 @@ describe("workspace seed decoder", () => {
                 package_id: "pkg",
                 version: "1",
                 content_sha256: "a".repeat(64),
-                seed_version: 2,
-                seed: { ...seed, seed_version: 2 },
+                seed_version: 99,
+                seed: { ...seed, seed_version: 99 },
             })
         ).toThrow(/unsupported seed version/);
+    });
+
+    it("requires base instructions and a highlighted persona for seed version 2", () => {
+        const seed = demoWorkspaceSeedWire();
+        expect(() =>
+            decodeWorkspaceSeed({ ...seed, base_instructions: undefined })
+        ).toThrow(/requires base instructions/);
+        expect(() =>
+            decodeWorkspaceSeed({ ...seed, highlighted_persona_id: "persona-missing" })
+        ).toThrow(/highlighted persona is missing/);
+    });
+
+    it("still decodes a version 1 seed without prompt assembly metadata", () => {
+        const seed = demoWorkspaceSeedWire();
+        const decoded = decodeWorkspaceSeed({
+            ...seed,
+            seed_version: 1,
+            base_instructions: undefined,
+            highlighted_persona_id: undefined,
+            personas: seed.personas.map((persona) => {
+                const { recorded_participant_id: _unused, ...rest } = persona;
+                return rest;
+            }),
+        });
+        expect(decoded.seedVersion).toBe(1);
+        expect(decoded.baseInstructions).toBeNull();
+        expect(decoded.highlightedPersonaId).toBeNull();
     });
 });

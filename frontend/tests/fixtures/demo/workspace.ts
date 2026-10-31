@@ -1,4 +1,4 @@
-import { DEMO_MEETING_ID } from "./journey";
+import { DEMO_MEETING_ID, DEMO_PARTICIPANT_IDS } from "./journey";
 
 const AS_OF = "2020-07-31";
 
@@ -13,7 +13,10 @@ function revision(revisionId: string, prompt: string, reason: string) {
 
 export function demoWorkspaceSeedWire() {
     return {
-        seed_version: 1,
+        seed_version: 2,
+        base_instructions:
+            "You are a participant in a multi-agent advisory board. Stay in character and ground every claim in the meeting record.",
+        highlighted_persona_id: "persona-credit",
         disclosure: {
             practice:
                 "Practice changes live in this browser tab only and disappear when the workspace is reset or the page is refreshed.",
@@ -55,6 +58,7 @@ export function demoWorkspaceSeedWire() {
                 color: "#2563eb",
                 stack_ids: ["shared-fact-sheet", "credit-evidence"],
                 active_revision_id: "rev-credit-3",
+                recorded_participant_id: DEMO_PARTICIPANT_IDS.credit,
                 revisions: [
                     revision(
                         "rev-credit-1",
@@ -81,6 +85,7 @@ export function demoWorkspaceSeedWire() {
                 color: "#b45309",
                 stack_ids: ["downside-worksheet"],
                 active_revision_id: "rev-downside-1",
+                recorded_participant_id: DEMO_PARTICIPANT_IDS.downside,
                 revisions: [
                     revision(
                         "rev-downside-1",
@@ -97,6 +102,7 @@ export function demoWorkspaceSeedWire() {
                 color: "#047857",
                 stack_ids: ["portfolio-mandate"],
                 active_revision_id: "rev-portfolio-1",
+                recorded_participant_id: DEMO_PARTICIPANT_IDS.portfolio,
                 revisions: [
                     revision(
                         "rev-portfolio-1",
@@ -115,7 +121,7 @@ export function demoWorkspaceSeedEnvelope() {
         package_id: "hdfc-ine001a07rw5",
         version: "2",
         content_sha256: "a".repeat(64),
-        seed_version: 1,
+        seed_version: 2,
         seed: demoWorkspaceSeedWire(),
     };
 }

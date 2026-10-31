@@ -14,7 +14,9 @@ export const WORKSPACE_LIMITS = {
     practiceSetups: 8,
     revisionsPerPersona: 16,
     promptChars: 16_384,
+    baseInstructionChars: 16_384,
     totalPromptChars: 524_288,
+    participantSnapshots: 16,
     concurrentDocumentOps: 2,
 } as const;
 
@@ -23,6 +25,8 @@ export interface WorkspaceRevision {
     prompt: string;
     reason: string;
     createdAt: string;
+    /** Authored seed history vs a temporary local edit. */
+    origin?: "seed" | "local";
 }
 
 export interface WorkspacePersona {
@@ -34,6 +38,7 @@ export interface WorkspacePersona {
     stackIds: string[];
     revisions: WorkspaceRevision[];
     activeRevisionId: string;
+    recordedParticipantId?: string | null;
 }
 
 export interface WorkspaceStack {
@@ -52,16 +57,33 @@ export interface WorkspacePracticeSetup {
 
 export interface WorkspaceSeed {
     seedVersion: number;
+    baseInstructions: string | null;
+    highlightedPersonaId: string | null;
     disclosure: { practice: string; recording: string };
     personas: WorkspacePersona[];
     stacks: WorkspaceStack[];
     practiceSetups: WorkspacePracticeSetup[];
 }
 
+/** A frozen copy of what a new practice participant would capture. */
+export interface LocalParticipantSnapshot {
+    snapshotId: string;
+    personaId: string;
+    name: string;
+    role: string;
+    color: string;
+    composedPrompt: string;
+    stackIds: string[];
+    sourceRevisionId: string;
+    sourceRevisionNumber: number;
+    createdAt: string;
+}
+
 export interface WorkspaceLocalState {
     personas: WorkspacePersona[];
     stacks: WorkspaceStack[];
     practiceSetups: WorkspacePracticeSetup[];
+    participantSnapshots: LocalParticipantSnapshot[];
 }
 
 export interface PinnedPackageIdentity {
@@ -95,7 +117,12 @@ export function workspaceQueryKey(
 }
 
 export function emptyLocalState(): WorkspaceLocalState {
-    return { personas: [], stacks: [], practiceSetups: [] };
+    return {
+        personas: [],
+        stacks: [],
+        practiceSetups: [],
+        participantSnapshots: [],
+    };
 }
 
 export function localStateFromSeed(
@@ -106,9 +133,13 @@ export function localStateFromSeed(
         personas: seed.personas.map((persona) => ({
             ...persona,
             stackIds: [...persona.stackIds],
-            revisions: persona.revisions.map((revision) => ({ ...revision })),
+            revisions: persona.revisions.map((revision) => ({
+                ...revision,
+                origin: "seed",
+            })),
         })),
         stacks: seed.stacks.map((stack) => ({ ...stack })),
         practiceSetups: seed.practiceSetups.map((setup) => ({ ...setup })),
+        participantSnapshots: [],
     };
 }

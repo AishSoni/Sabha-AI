@@ -14,7 +14,12 @@ import {
     type WorkspaceStack,
 } from "./contract";
 
-export const SUPPORTED_WORKSPACE_SEED_VERSIONS = [1] as const;
+export const SUPPORTED_WORKSPACE_SEED_VERSIONS = [1, 2] as const;
+
+function optionalText(value: unknown, path: string): string | null {
+    if (value === undefined || value === null) return null;
+    return requireString(value, path);
+}
 
 export interface WorkspaceSeedEnvelope {
     packageId: string;
@@ -82,6 +87,10 @@ function decodePersona(value: unknown, path: string): WorkspacePersona {
         ),
         revisions,
         activeRevisionId,
+        recordedParticipantId: optionalText(
+            record.recorded_participant_id,
+            `${path}.recorded_participant_id`
+        ),
     };
 }
 
@@ -121,6 +130,14 @@ export function decodeWorkspaceSeed(value: unknown): WorkspaceSeed {
     if (!(SUPPORTED_WORKSPACE_SEED_VERSIONS as readonly number[]).includes(seedVersion)) {
         fail("workspace-seed.seed_version", "unsupported seed version");
     }
+    const baseInstructions = optionalText(
+        record.base_instructions,
+        "workspace-seed.base_instructions"
+    );
+    const highlightedPersonaId = optionalText(
+        record.highlighted_persona_id,
+        "workspace-seed.highlighted_persona_id"
+    );
     const disclosure = decodeObject(
         record.disclosure,
         "workspace-seed.disclosure"
@@ -181,8 +198,31 @@ export function decodeWorkspaceSeed(value: unknown): WorkspaceSeed {
         fail("workspace-seed.personas", "total prompt ceiling exceeded");
     }
 
+    if (seedVersion >= 2) {
+        if (!baseInstructions || baseInstructions.trim().length === 0) {
+            fail("workspace-seed.base_instructions", "seed version 2 requires base instructions");
+        }
+        if (baseInstructions.length > WORKSPACE_LIMITS.baseInstructionChars) {
+            fail("workspace-seed.base_instructions", "base instructions exceed the ceiling");
+        }
+        if (!highlightedPersonaId || !personaIds.has(highlightedPersonaId)) {
+            fail(
+                "workspace-seed.highlighted_persona_id",
+                "highlighted persona is missing"
+            );
+        }
+    } else if (
+        baseInstructions !== null ||
+        highlightedPersonaId !== null ||
+        personas.some((persona) => persona.recordedParticipantId)
+    ) {
+        fail("workspace-seed.seed_version", "prompt assembly metadata requires seed version 2");
+    }
+
     return {
         seedVersion,
+        baseInstructions,
+        highlightedPersonaId,
         disclosure: {
             practice: requireString(
                 disclosure.practice,
