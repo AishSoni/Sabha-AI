@@ -7,7 +7,7 @@
  * templates, colour palette, request shape, and stack selection are the base
  * app's flow.
  */
-import { useState, useEffect } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import Link from 'next/link';
 import { ArrowLeft, Loader2, Bot, Sparkles, Wand2, BookOpen } from 'lucide-react';
 import { Button } from '@/components/ui/button';
@@ -48,6 +48,7 @@ export interface NewPersonaScreenProps {
 
 export function NewPersonaScreen({ client, loadStacks, routes, stacksHint }: NewPersonaScreenProps) {
     const [creating, setCreating] = useState(false);
+    const creatingRef = useRef(false);
     const [error, setError] = useState<string | null>(null);
 
     const [persona, setPersona] = useState<PersonaCreateInput>({
@@ -73,7 +74,7 @@ export function NewPersonaScreen({ client, loadStacks, routes, stacksHint }: New
     }, [loadStacks]);
 
     const handleCreate = async () => {
-        if (!persona.name.trim()) return;
+        if (!persona.name.trim() || creatingRef.current) return;
         const problems = validatePersonaTemplate({
             name: persona.name,
             subtitle: persona.subtitle,
@@ -85,6 +86,7 @@ export function NewPersonaScreen({ client, loadStacks, routes, stacksHint }: New
         }
 
         try {
+            creatingRef.current = true;
             setCreating(true);
             setError(null);
             const created = await client.create({
@@ -95,6 +97,7 @@ export function NewPersonaScreen({ client, loadStacks, routes, stacksHint }: New
         } catch (err) {
             setError(err instanceof Error ? err.message : 'Failed to create persona');
         } finally {
+            creatingRef.current = false;
             setCreating(false);
         }
     };
