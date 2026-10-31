@@ -52,6 +52,17 @@ DISAGREEMENT = "a0000000-0000-4000-8000-000000000501"
 CONSENSUS = "a0000000-0000-4000-8000-000000000601"
 CLOSING = "a0000000-0000-4000-8000-000000000701"
 
+# Expanded exploration content (spec 26). Each branch is a separate recorded path:
+# no transcript is spliced across branches and every branch closes and archives.
+BRANCH_OPS = {
+    "downside-first": "a0000000-0000-4000-8000-000000000310",
+    "portfolio-first": "a0000000-0000-4000-8000-000000000311",
+    "portfolio-after-first": "a0000000-0000-4000-8000-000000000312",
+    "credit-liquidity": "a0000000-0000-4000-8000-000000000313",
+    "downside-covenant": "a0000000-0000-4000-8000-000000000314",
+    "red-team": "a0000000-0000-4000-8000-000000000315",
+}
+
 AS_OF = "2020-07-31"
 CREATED_AT = "2020-07-31T09:00:24Z"
 SOURCE_DATE = "2026-10-16"
@@ -350,6 +361,56 @@ CLAIMS = [
         "locator": "Shared fact sheet, Outcome and limitations",
         "excerpt": "research checklist, not a buy/sell recommendation",
     },
+    {
+        "claim_id": "C14",
+        "kind": "demo_authored",
+        "text": (
+            "A prepared path may open with a downside review before the credit fact pack; "
+            "the evidence set does not change."
+        ),
+        "locator": "Prepared branch note, downside first",
+        "evidence_asset_id": "downside-worksheet",
+    },
+    {
+        "claim_id": "C15",
+        "kind": "demo_authored",
+        "text": (
+            "A prepared path may open with the portfolio mandate so the missing market "
+            "inputs are visible before the credit discussion."
+        ),
+        "locator": "Prepared branch note, mandate first",
+        "evidence_asset_id": "portfolio-mandate",
+    },
+    {
+        "claim_id": "C16",
+        "kind": "demo_authored",
+        "text": (
+            "The liquidity follow-up asks whether the listed debenture can be sold before "
+            "maturity without assuming a price or a buyer."
+        ),
+        "locator": "Prepared follow-up, liquidity",
+        "evidence_asset_id": "downside-worksheet",
+    },
+    {
+        "claim_id": "C17",
+        "kind": "demo_authored",
+        "text": (
+            "The covenant follow-up asks which contractual protections would survive a "
+            "rating downgrade; the record does not supply the covenant package."
+        ),
+        "locator": "Prepared follow-up, covenants",
+        "evidence_asset_id": "shared-fact-sheet",
+    },
+    {
+        "claim_id": "C18",
+        "kind": "demo_authored",
+        "text": (
+            "The red-team turn tests whether the research checklist claims more than the "
+            "retained evidence supports."
+        ),
+        "locator": "Prepared branch note, red team",
+        "evidence_asset_id": "shared-fact-sheet",
+    },
 ]
 
 CREDIT_TEXT = (
@@ -456,6 +517,77 @@ BALLOT_REASONS = {
     DOWNSIDE: "Yes - the disagreement is logged; the checklist captures the missing market evidence.",
     PORTFOLIO: "Yes - the mandate cannot be completed; closing on a research checklist is appropriate.",
 }
+
+DOWNFIRST_TEXT = (
+    "Testing the downside first is reasonable. AAA/Stable is a dated opinion, not a "
+    "guarantee. The record shows listing, not executable liquidity, and it contains no "
+    "price or yield, so any mark-to-market outcome remains unknown."
+)
+PORTFOLIO_FIRST_TEXT = (
+    "Starting with the mandate exposes the gap immediately. It requires an executable "
+    "price, yield, and liquidity assessment, and the record supplies none of them. The "
+    "only defensible output is a research checklist, not a position size or a mark."
+)
+FOLLOWUP_FIRST_TEXT = (
+    "Keep the sequence honest: the downside has been stated, but the credit terms and "
+    "rating still need to be established. Please confirm the instrument record before "
+    "the mandate is applied."
+)
+PORTFOLIO_AFTER_FIRST_TEXT = (
+    "The mandate still cannot be completed. The record supplies terms and a scheduled "
+    "maturity, not a current price, yield, or secondary-market liquidity. Treat the "
+    "scheduled date as a maturity, not as proof of payment."
+)
+LIQUIDITY_FOLLOW_TEXT = (
+    "Can the listed debenture be sold before maturity without assuming a buyer or a "
+    "price? Separate listing from executable liquidity, and state what evidence would "
+    "be needed to answer the question."
+)
+LIQUIDITY_RESPONSE_TEXT = (
+    "Listing on the wholesale debt market is not executable liquidity. Without a price, "
+    "a yield, or a demonstrated buyer, a sale before maturity cannot be assumed. The "
+    "record supports a liquidity question, not a liquidity conclusion."
+)
+COVENANT_FOLLOW_TEXT = (
+    "Which contractual protections would survive a downgrade, and does the retained "
+    "record contain the covenant package? If it does not, say so rather than inferring "
+    "protections from the rating."
+)
+COVENANT_RESPONSE_TEXT = (
+    "The retained record does not include the covenant package, so downgrade "
+    "protections cannot be established. A rating opinion is not a covenant, and the "
+    "absence of evidence should be recorded as an unknown rather than filled in."
+)
+REDTEAM_TEXT = (
+    "The checklist does not overstate the evidence. It records the terms and the dated "
+    "rating, labels the scenarios illustrative, and keeps price, yield, liquidity, "
+    "security, and payment outcome as unknowns. That is the correct boundary."
+)
+SUMMARY_FIRST_TEXT = (
+    "The committee closed after the downside-first path. Outcome: a research checklist, "
+    "not an investment approval. The terms and dated rating are recorded; the missing "
+    "price, yield, liquidity, security, and payment evidence remain unknowns."
+)
+SUMMARY_PORTFOLIO_FIRST_TEXT = (
+    "The committee closed after starting from the mandate. Outcome: the mandate cannot "
+    "be completed on the retained record. Terms and the dated rating are facts; current "
+    "market evidence and payment outcome remain unknown."
+)
+SUMMARY_LIQUIDITY_TEXT = (
+    "The committee closed after the liquidity follow-up. Outcome: listing is not "
+    "executable liquidity. The record supports the instrument terms and dated rating, "
+    "but not a sale price, buyer, yield, or payment outcome."
+)
+SUMMARY_COVENANT_TEXT = (
+    "The committee closed after the covenant follow-up. Outcome: the covenant package is "
+    "not in the record, so downgrade protections cannot be established. The checklist "
+    "keeps that gap explicit and avoids inferring protections from the rating."
+)
+SUMMARY_REDTEAM_TEXT = (
+    "The committee closed after the red-team challenge. Outcome: the checklist stays "
+    "within the evidence. Facts, judgments, and unknowns remain separated, and no "
+    "recommendation or market conclusion is asserted."
+)
 
 
 def write_json(path: Path, payload: Any) -> None:
@@ -1111,6 +1243,10 @@ def closing_view(
     *,
     archived: bool,
     completed: bool,
+    summary_text: str = SUMMARY_TEXT,
+    summary_message_id: str = SUMMARY_MSG,
+    closing_id: str = CLOSING,
+    closing_request_key: str = "closing-request-1",
 ) -> dict[str, Any]:
     if not completed:
         return {
@@ -1158,14 +1294,14 @@ def closing_view(
         "meeting_id": MEETING,
         "meeting_status": status,
         "archived": archived,
-        "closing_id": CLOSING,
-        "request_key": "closing-request-1",
+        "closing_id": closing_id,
+        "request_key": closing_request_key,
         "mode": "vote",
         "stage": "completed",
         "failed_from_stage": None,
         "votes": votes,
-        "summary": SUMMARY_TEXT,
-        "summary_message_id": SUMMARY_MSG,
+        "summary": summary_text,
+        "summary_message_id": summary_message_id,
         "error": None,
         "retryable": False,
         "abortable": False,
@@ -1262,6 +1398,10 @@ def checkpoint_reads(
     include_consensus: bool,
     closed: bool,
     archived: bool,
+    summary_text: str = SUMMARY_TEXT,
+    summary_message_id: str = SUMMARY_MSG,
+    closing_id: str = CLOSING,
+    closing_request_key: str = "closing-request-1",
 ) -> dict[str, Any]:
     reads: dict[str, Any] = {"safe_config": board_safe_config()}
     if include_meeting:
@@ -1275,6 +1415,10 @@ def checkpoint_reads(
             meeting_status,
             archived=archived,
             completed=closed,
+            summary_text=summary_text,
+            summary_message_id=summary_message_id,
+            closing_id=closing_id,
+            closing_request_key=closing_request_key,
         )
         reads["operations"] = operations
     return reads
@@ -1407,14 +1551,21 @@ def turn_tape(
     }
 
 
-def closing_tape() -> dict[str, Any]:
+def closing_tape(
+    *,
+    tape_id: str = "tape-closing",
+    closing_id: str = CLOSING,
+    initial_checkpoint: str = "checkpoint-consensus",
+    completed_checkpoint: str = "checkpoint-closed",
+    summary_text: str = SUMMARY_TEXT,
+) -> dict[str, Any]:
     events: list[dict[str, Any]] = []
     sequence = 1
     for participant_id, reason in BALLOT_REASONS.items():
         provisional = reason[: len(reason) // 2].rstrip()
         events.append(
             {
-                "event_id": f"closing-{sequence}",
+                "event_id": f"{tape_id}-{sequence}",
                 "sequence": sequence,
                 "item_id": f"ballot:{participant_id}",
                 "kind": "ballot",
@@ -1429,7 +1580,7 @@ def closing_tape() -> dict[str, Any]:
         sequence += 1
         events.append(
             {
-                "event_id": f"closing-{sequence}",
+                "event_id": f"{tape_id}-{sequence}",
                 "sequence": sequence,
                 "item_id": f"ballot:{participant_id}",
                 "kind": "ballot",
@@ -1442,7 +1593,7 @@ def closing_tape() -> dict[str, Any]:
             }
         )
         sequence += 1
-    provisional_summary = SUMMARY_TEXT[: len(SUMMARY_TEXT) // 2].rstrip()
+    provisional_summary = summary_text[: len(summary_text) // 2].rstrip()
     events.append(
         {
             "event_id": f"closing-{sequence}",
@@ -1464,7 +1615,7 @@ def closing_tape() -> dict[str, Any]:
             "sequence": sequence,
             "item_id": "summary:final",
             "kind": "summary",
-            "text": SUMMARY_TEXT,
+            "text": summary_text,
             "provisional": False,
             "terminal": True,
             "result": "completed",
@@ -1473,11 +1624,11 @@ def closing_tape() -> dict[str, Any]:
         }
     )
     return {
-        "tape_id": "tape-closing",
+        "tape_id": tape_id,
         "meeting_id": MEETING,
-        "closing_id": CLOSING,
-        "initial_checkpoint": "checkpoint-consensus",
-        "completed_checkpoint": "checkpoint-closed",
+        "closing_id": closing_id,
+        "initial_checkpoint": initial_checkpoint,
+        "completed_checkpoint": completed_checkpoint,
         "events": events,
     }
 
@@ -1515,6 +1666,1272 @@ def retrieval(
         "stack_id": stack_id,
         "query": query,
         "hits": hits,
+    }
+
+
+def exploration_content(
+    operations_downside: list[dict[str, Any]],
+    operations_portfolio: list[dict[str, Any]],
+) -> dict[str, Any]:
+    """Build the bounded, separately validated exploration graph for spec 26."""
+
+    checkpoints: dict[str, Any] = {}
+    tapes: list[dict[str, Any]] = []
+    closing_tapes: list[dict[str, Any]] = []
+    retrievals: list[dict[str, Any]] = []
+    ordinal = 9
+
+    def ai_message(
+        message_id: str,
+        sequence: int,
+        text: str,
+        participant_id: str,
+        name: str,
+        claim_ids: tuple[str, ...],
+        retrieval_key: str,
+        operation_id: str,
+        thinking: str,
+    ) -> dict[str, Any]:
+        call = retrieval_call(
+            retrieval_key, participant_id, retrieval_key.replace("-", " "), 3, retrieval_key
+        )
+        return message(
+            message_id,
+            sequence,
+            text,
+            "ai",
+            participant_id,
+            name,
+            citations(*claim_ids),
+            tool_artifacts(call),
+            f"turn-{retrieval_key}",
+            operation_id,
+            CREATED_AT,
+            thinking_content=thinking,
+        )
+
+    def director_message(
+        message_id: str, sequence: int, text: str, request_key: str
+    ) -> dict[str, Any]:
+        return message(
+            message_id,
+            sequence,
+            text,
+            "user",
+            None,
+            "Director",
+            [],
+            None,
+            request_key,
+            None,
+            CREATED_AT,
+        )
+
+    def summary_message(
+        message_id: str, sequence: int, text: str, request_key: str
+    ) -> dict[str, Any]:
+        return message(
+            message_id,
+            sequence,
+            text,
+            "system",
+            None,
+            "Sabha",
+            citations("C1", "C2", "C10", "C11", "C13"),
+            None,
+            request_key,
+            None,
+            CREATED_AT,
+        )
+
+    def add_checkpoint(
+        checkpoint_id: str,
+        messages: list[dict[str, Any]],
+        operations: list[dict[str, Any]],
+        *,
+        phase: str = "active",
+        summary_text: str = "",
+        summary_message_id: str = "",
+        closing_id: str = CLOSING,
+        closing_request_key: str = "closing-request-1",
+    ) -> None:
+        nonlocal ordinal
+        closed = phase in ("closed", "archived")
+        status = "archived" if phase == "archived" else "ended" if closed else "active"
+        reads = checkpoint_reads(
+            meeting_status=status,
+            messages=list(messages),
+            operations=operations,
+            include_meeting=True,
+            include_documents=True,
+            include_disagreement=bool(summary_text),
+            include_consensus=bool(summary_text),
+            closed=closed,
+            archived=phase == "archived",
+            summary_text=summary_text or SUMMARY_TEXT,
+            summary_message_id=summary_message_id or SUMMARY_MSG,
+            closing_id=closing_id,
+            closing_request_key=closing_request_key,
+        )
+        checkpoints[checkpoint_id] = checkpoint(checkpoint_id, ordinal, phase, reads)
+        ordinal += 1
+
+    def add_retrieval(
+        key: str,
+        participant_id: str,
+        scope: str,
+        stack_id: str | None,
+        query: str,
+        passages: list[tuple[str, str, float, str]],
+    ) -> None:
+        retrievals.append(retrieval(key, participant_id, scope, stack_id, query, passages))
+
+    # --- Choice A, alternative 1: downside first -----------------------------
+    a2_messages = [OPENING]
+    a2_ops = [
+        operation(
+            BRANCH_OPS["downside-first"],
+            DOWNSIDE,
+            "turn-retrieval-downside-first",
+            "completed",
+            1,
+            "a0000000-0000-4000-8000-000000000410",
+        )
+    ]
+    a2_messages.append(
+        ai_message(
+            "a0000000-0000-4000-8000-000000000410",
+            1,
+            DOWNFIRST_TEXT,
+            DOWNSIDE,
+            "The Downside Reviewer",
+            ("C6", "C7", "C8", "C10", "C14"),
+            "retrieval-downside-first",
+            BRANCH_OPS["downside-first"],
+            "Test the rating and liquidity assumptions before the fact pack.",
+        )
+    )
+    add_retrieval(
+        "retrieval-downside-first",
+        DOWNSIDE,
+        "private",
+        "downside-private",
+        "downside-first rating listing liquidity",
+        [
+            ("listing", "NCDs listed on the NSE/BSE wholesale debt market.", 0.9, "C6"),
+            ("liquidity", "Listing is not executable liquidity.", 0.88, "C7"),
+            ("scenario", "+200bp rate move and risk-off secondary market scenario.", 0.8, "C9"),
+        ],
+    )
+    add_checkpoint("checkpoint-downside-first", a2_messages, a2_ops)
+    a2_messages.append(
+        director_message(
+            "a0000000-0000-4000-8000-000000000411",
+            2,
+            FOLLOWUP_FIRST_TEXT,
+            "director-follow-up-first",
+        )
+    )
+    add_checkpoint("checkpoint-followup-first", a2_messages, a2_ops)
+    a2_messages.append(
+        ai_message(
+            "a0000000-0000-4000-8000-000000000412",
+            3,
+            PORTFOLIO_AFTER_FIRST_TEXT,
+            PORTFOLIO,
+            "The Portfolio Analyst",
+            ("C10", "C11", "C13", "C15"),
+            "retrieval-portfolio-after-first",
+            BRANCH_OPS["portfolio-after-first"],
+            "Apply the mandate after the downside has been stated.",
+        )
+    )
+    a2_ops = a2_ops + [
+        operation(
+            BRANCH_OPS["portfolio-after-first"],
+            PORTFOLIO,
+            "turn-retrieval-portfolio-after-first",
+            "completed",
+            2,
+            "a0000000-0000-4000-8000-000000000412",
+        )
+    ]
+    add_retrieval(
+        "retrieval-portfolio-after-first",
+        PORTFOLIO,
+        "private",
+        "portfolio-private",
+        "mandate after downside",
+        [
+            ("limits", "No executable price, yield, or secondary-market liquidity.", 0.93, "C10"),
+            ("maturity", "Scheduled maturity is 18 July 2022; no payment assertion.", 0.86, "C11"),
+            ("outcome", "A research checklist, not a recommendation.", 0.84, "C13"),
+        ],
+    )
+    add_checkpoint("checkpoint-portfolio-first-2", a2_messages, a2_ops)
+    a2_messages.append(
+        summary_message(
+            "a0000000-0000-4000-8000-000000000430",
+            4,
+            SUMMARY_FIRST_TEXT,
+            "closing-summary-first",
+        )
+    )
+    add_checkpoint(
+        "checkpoint-closed-first",
+        a2_messages,
+        a2_ops,
+        phase="closed",
+        summary_text=SUMMARY_FIRST_TEXT,
+        summary_message_id="a0000000-0000-4000-8000-000000000430",
+        closing_id="a0000000-0000-4000-8000-000000000702",
+        closing_request_key="closing-request-first",
+    )
+    add_checkpoint(
+        "checkpoint-archived-first",
+        a2_messages,
+        a2_ops,
+        phase="archived",
+        summary_text=SUMMARY_FIRST_TEXT,
+        summary_message_id="a0000000-0000-4000-8000-000000000430",
+        closing_id="a0000000-0000-4000-8000-000000000702",
+        closing_request_key="closing-request-first",
+    )
+    tapes.append(
+        turn_tape(
+            "tape-downside-first",
+            BRANCH_OPS["downside-first"],
+            DOWNSIDE,
+            "turn-retrieval-downside-first",
+            "checkpoint-created",
+            "checkpoint-downside-first",
+            a2_messages[1],
+        )
+    )
+    tapes.append(
+        turn_tape(
+            "tape-portfolio-after-first",
+            BRANCH_OPS["portfolio-after-first"],
+            PORTFOLIO,
+            "turn-retrieval-portfolio-after-first",
+            "checkpoint-followup-first",
+            "checkpoint-portfolio-first-2",
+            a2_messages[3],
+        )
+    )
+    closing_tapes.append(
+        closing_tape(
+            tape_id="tape-closing-first",
+            closing_id="a0000000-0000-4000-8000-000000000702",
+            initial_checkpoint="checkpoint-portfolio-first-2",
+            completed_checkpoint="checkpoint-closed-first",
+            summary_text=SUMMARY_FIRST_TEXT,
+        )
+    )
+
+    # --- Choice A, alternative 2: portfolio first ----------------------------
+    a3_messages = [OPENING]
+    a3_ops = [
+        operation(
+            BRANCH_OPS["portfolio-first"],
+            PORTFOLIO,
+            "turn-retrieval-portfolio-first",
+            "completed",
+            1,
+            "a0000000-0000-4000-8000-000000000413",
+        )
+    ]
+    a3_messages.append(
+        ai_message(
+            "a0000000-0000-4000-8000-000000000413",
+            1,
+            PORTFOLIO_FIRST_TEXT,
+            PORTFOLIO,
+            "The Portfolio Analyst",
+            ("C10", "C11", "C13", "C15"),
+            "retrieval-portfolio-first",
+            BRANCH_OPS["portfolio-first"],
+            "Start from the mandate and expose the missing market inputs.",
+        )
+    )
+    add_retrieval(
+        "retrieval-portfolio-first",
+        PORTFOLIO,
+        "private",
+        "portfolio-private",
+        "portfolio-first mandate",
+        [
+            ("limits", "No executable price, yield, or secondary-market liquidity.", 0.93, "C10"),
+            ("maturity", "Scheduled maturity is 18 July 2022; no payment assertion.", 0.86, "C11"),
+            ("outcome", "A research checklist, not a recommendation.", 0.84, "C13"),
+        ],
+    )
+    add_checkpoint("checkpoint-portfolio-first", a3_messages, a3_ops)
+    a3_messages.append(
+        summary_message(
+            "a0000000-0000-4000-8000-000000000431",
+            2,
+            SUMMARY_PORTFOLIO_FIRST_TEXT,
+            "closing-summary-portfolio-first",
+        )
+    )
+    add_checkpoint(
+        "checkpoint-closed-portfolio-first",
+        a3_messages,
+        a3_ops,
+        phase="closed",
+        summary_text=SUMMARY_PORTFOLIO_FIRST_TEXT,
+        summary_message_id="a0000000-0000-4000-8000-000000000431",
+        closing_id="a0000000-0000-4000-8000-000000000703",
+        closing_request_key="closing-request-portfolio-first",
+    )
+    add_checkpoint(
+        "checkpoint-archived-portfolio-first",
+        a3_messages,
+        a3_ops,
+        phase="archived",
+        summary_text=SUMMARY_PORTFOLIO_FIRST_TEXT,
+        summary_message_id="a0000000-0000-4000-8000-000000000431",
+        closing_id="a0000000-0000-4000-8000-000000000703",
+        closing_request_key="closing-request-portfolio-first",
+    )
+    tapes.append(
+        turn_tape(
+            "tape-portfolio-first",
+            BRANCH_OPS["portfolio-first"],
+            PORTFOLIO,
+            "turn-retrieval-portfolio-first",
+            "checkpoint-created",
+            "checkpoint-portfolio-first",
+            a3_messages[1],
+        )
+    )
+    closing_tapes.append(
+        closing_tape(
+            tape_id="tape-closing-portfolio-first",
+            closing_id="a0000000-0000-4000-8000-000000000703",
+            initial_checkpoint="checkpoint-portfolio-first",
+            completed_checkpoint="checkpoint-closed-portfolio-first",
+            summary_text=SUMMARY_PORTFOLIO_FIRST_TEXT,
+        )
+    )
+
+    # --- Choice B, alternative 1: liquidity follow-up ------------------------
+    b2_prefix = [OPENING, CREDIT_MESSAGE, DOWNSIDE_MESSAGE]
+    b2_messages = b2_prefix + [
+        director_message(
+            "a0000000-0000-4000-8000-000000000414",
+            3,
+            LIQUIDITY_FOLLOW_TEXT,
+            "director-follow-up-liquidity",
+        )
+    ]
+    add_checkpoint("checkpoint-followup-liquidity", b2_messages, operations_downside)
+    b2_messages = b2_messages + [
+        ai_message(
+            "a0000000-0000-4000-8000-000000000415",
+            4,
+            LIQUIDITY_RESPONSE_TEXT,
+            CREDIT,
+            "The Credit Analyst",
+            ("C6", "C7", "C10", "C16"),
+            "retrieval-credit-liquidity",
+            BRANCH_OPS["credit-liquidity"],
+            "Answer the liquidity follow-up without inventing a price or buyer.",
+        )
+    ]
+    b2_ops = operations_downside + [
+        operation(
+            BRANCH_OPS["credit-liquidity"],
+            CREDIT,
+            "turn-retrieval-credit-liquidity",
+            "completed",
+            3,
+            "a0000000-0000-4000-8000-000000000415",
+        )
+    ]
+    add_retrieval(
+        "retrieval-credit-liquidity",
+        CREDIT,
+        "shared",
+        None,
+        "liquidity before maturity",
+        [
+            ("listing", "NCDs listed on the NSE/BSE wholesale debt market.", 0.9, "C6"),
+            ("liquidity", "Listing is not executable liquidity.", 0.88, "C7"),
+            ("limits", "No executable price, yield, or secondary-market liquidity.", 0.84, "C10"),
+        ],
+    )
+    add_checkpoint("checkpoint-credit-liquidity", b2_messages, b2_ops)
+    b2_messages = b2_messages + [
+        summary_message(
+            "a0000000-0000-4000-8000-000000000432",
+            5,
+            SUMMARY_LIQUIDITY_TEXT,
+            "closing-summary-liquidity",
+        )
+    ]
+    add_checkpoint(
+        "checkpoint-closed-liquidity",
+        b2_messages,
+        b2_ops,
+        phase="closed",
+        summary_text=SUMMARY_LIQUIDITY_TEXT,
+        summary_message_id="a0000000-0000-4000-8000-000000000432",
+        closing_id="a0000000-0000-4000-8000-000000000704",
+        closing_request_key="closing-request-liquidity",
+    )
+    add_checkpoint(
+        "checkpoint-archived-liquidity",
+        b2_messages,
+        b2_ops,
+        phase="archived",
+        summary_text=SUMMARY_LIQUIDITY_TEXT,
+        summary_message_id="a0000000-0000-4000-8000-000000000432",
+        closing_id="a0000000-0000-4000-8000-000000000704",
+        closing_request_key="closing-request-liquidity",
+    )
+    tapes.append(
+        turn_tape(
+            "tape-credit-liquidity",
+            BRANCH_OPS["credit-liquidity"],
+            CREDIT,
+            "turn-retrieval-credit-liquidity",
+            "checkpoint-followup-liquidity",
+            "checkpoint-credit-liquidity",
+            b2_messages[4],
+        )
+    )
+    closing_tapes.append(
+        closing_tape(
+            tape_id="tape-closing-liquidity",
+            closing_id="a0000000-0000-4000-8000-000000000704",
+            initial_checkpoint="checkpoint-credit-liquidity",
+            completed_checkpoint="checkpoint-closed-liquidity",
+            summary_text=SUMMARY_LIQUIDITY_TEXT,
+        )
+    )
+
+    # --- Choice B, alternative 2: covenant follow-up -------------------------
+    b3_messages = b2_prefix + [
+        director_message(
+            "a0000000-0000-4000-8000-000000000416",
+            3,
+            COVENANT_FOLLOW_TEXT,
+            "director-follow-up-covenant",
+        )
+    ]
+    add_checkpoint("checkpoint-followup-covenant", b3_messages, operations_downside)
+    b3_messages = b3_messages + [
+        ai_message(
+            "a0000000-0000-4000-8000-000000000417",
+            4,
+            COVENANT_RESPONSE_TEXT,
+            DOWNSIDE,
+            "The Downside Reviewer",
+            ("C8", "C10", "C17"),
+            "retrieval-downside-covenant",
+            BRANCH_OPS["downside-covenant"],
+            "State the missing covenant evidence rather than inferring protections.",
+        )
+    ]
+    b3_ops = operations_downside + [
+        operation(
+            BRANCH_OPS["downside-covenant"],
+            DOWNSIDE,
+            "turn-retrieval-downside-covenant",
+            "completed",
+            3,
+            "a0000000-0000-4000-8000-000000000417",
+        )
+    ]
+    add_retrieval(
+        "retrieval-downside-covenant",
+        DOWNSIDE,
+        "private",
+        "downside-private",
+        "downgrade covenant protections",
+        [
+            ("rating", "AAA/Stable is a dated opinion, not a guarantee.", 0.87, "C8"),
+            ("limits", "No executable price, yield, or secondary-market liquidity.", 0.84, "C10"),
+        ],
+    )
+    add_checkpoint("checkpoint-downside-covenant", b3_messages, b3_ops)
+    b3_messages = b3_messages + [
+        summary_message(
+            "a0000000-0000-4000-8000-000000000433",
+            5,
+            SUMMARY_COVENANT_TEXT,
+            "closing-summary-covenant",
+        )
+    ]
+    add_checkpoint(
+        "checkpoint-closed-covenant",
+        b3_messages,
+        b3_ops,
+        phase="closed",
+        summary_text=SUMMARY_COVENANT_TEXT,
+        summary_message_id="a0000000-0000-4000-8000-000000000433",
+        closing_id="a0000000-0000-4000-8000-000000000705",
+        closing_request_key="closing-request-covenant",
+    )
+    add_checkpoint(
+        "checkpoint-archived-covenant",
+        b3_messages,
+        b3_ops,
+        phase="archived",
+        summary_text=SUMMARY_COVENANT_TEXT,
+        summary_message_id="a0000000-0000-4000-8000-000000000433",
+        closing_id="a0000000-0000-4000-8000-000000000705",
+        closing_request_key="closing-request-covenant",
+    )
+    tapes.append(
+        turn_tape(
+            "tape-downside-covenant",
+            BRANCH_OPS["downside-covenant"],
+            DOWNSIDE,
+            "turn-retrieval-downside-covenant",
+            "checkpoint-followup-covenant",
+            "checkpoint-downside-covenant",
+            b3_messages[4],
+        )
+    )
+    closing_tapes.append(
+        closing_tape(
+            tape_id="tape-closing-covenant",
+            closing_id="a0000000-0000-4000-8000-000000000705",
+            initial_checkpoint="checkpoint-downside-covenant",
+            completed_checkpoint="checkpoint-closed-covenant",
+            summary_text=SUMMARY_COVENANT_TEXT,
+        )
+    )
+
+    # --- Choice C, alternative: red team ------------------------------------
+    c2_messages = [
+        OPENING,
+        CREDIT_MESSAGE,
+        DOWNSIDE_MESSAGE,
+        FOLLOWUP,
+        PORTFOLIO_MESSAGE,
+    ]
+    c2_ops = operations_portfolio
+    c2_messages.append(
+        ai_message(
+            "a0000000-0000-4000-8000-000000000418",
+            5,
+            REDTEAM_TEXT,
+            CREDIT,
+            "The Credit Analyst",
+            ("C1", "C2", "C10", "C13", "C18"),
+            "retrieval-red-team",
+            BRANCH_OPS["red-team"],
+            "Test whether the checklist overstates the retained evidence.",
+        )
+    )
+    c2_ops = c2_ops + [
+        operation(
+            BRANCH_OPS["red-team"],
+            CREDIT,
+            "turn-retrieval-red-team",
+            "completed",
+            5,
+            "a0000000-0000-4000-8000-000000000418",
+        )
+    ]
+    add_retrieval(
+        "retrieval-red-team",
+        CREDIT,
+        "shared",
+        None,
+        "red team checklist evidence",
+        [
+            ("terms", "Recorded terms and rating.", 0.9, "C1"),
+            ("rating", "Rating opinion dated 31 July 2020.", 0.86, "C2"),
+            ("limits", "No executable price, yield, or secondary liquidity.", 0.84, "C10"),
+            ("outcome", "Research checklist, not investment approval.", 0.82, "C13"),
+        ],
+    )
+    add_checkpoint("checkpoint-red-team", c2_messages, c2_ops)
+    c2_messages.append(
+        summary_message(
+            "a0000000-0000-4000-8000-000000000434",
+            6,
+            SUMMARY_REDTEAM_TEXT,
+            "closing-summary-red-team",
+        )
+    )
+    add_checkpoint(
+        "checkpoint-closed-red-team",
+        c2_messages,
+        c2_ops,
+        phase="closed",
+        summary_text=SUMMARY_REDTEAM_TEXT,
+        summary_message_id="a0000000-0000-4000-8000-000000000434",
+        closing_id="a0000000-0000-4000-8000-000000000706",
+        closing_request_key="closing-request-red-team",
+    )
+    add_checkpoint(
+        "checkpoint-archived-red-team",
+        c2_messages,
+        c2_ops,
+        phase="archived",
+        summary_text=SUMMARY_REDTEAM_TEXT,
+        summary_message_id="a0000000-0000-4000-8000-000000000434",
+        closing_id="a0000000-0000-4000-8000-000000000706",
+        closing_request_key="closing-request-red-team",
+    )
+    tapes.append(
+        turn_tape(
+            "tape-red-team",
+            BRANCH_OPS["red-team"],
+            CREDIT,
+            "turn-retrieval-red-team",
+            "checkpoint-portfolio",
+            "checkpoint-red-team",
+            c2_messages[5],
+        )
+    )
+    closing_tapes.append(
+        closing_tape(
+            tape_id="tape-closing-red-team",
+            closing_id="a0000000-0000-4000-8000-000000000706",
+            initial_checkpoint="checkpoint-red-team",
+            completed_checkpoint="checkpoint-closed-red-team",
+            summary_text=SUMMARY_REDTEAM_TEXT,
+        )
+    )
+
+    intents = [
+        {
+            "intent_id": "downside-first",
+            "kind": "start_participant",
+            "checkpoint": "checkpoint-created",
+            "participant_id": DOWNSIDE,
+            "operation_id": BRANCH_OPS["downside-first"],
+            "tape_id": "tape-downside-first",
+            "label": "Test the downside first",
+        },
+        {
+            "intent_id": "portfolio-first",
+            "kind": "start_participant",
+            "checkpoint": "checkpoint-created",
+            "participant_id": PORTFOLIO,
+            "operation_id": BRANCH_OPS["portfolio-first"],
+            "tape_id": "tape-portfolio-first",
+            "label": "Start from the mandate",
+        },
+        {
+            "intent_id": "close-portfolio-first",
+            "kind": "request_closing",
+            "checkpoint": "checkpoint-portfolio-first",
+            "closing_tape_id": "tape-closing-portfolio-first",
+            "label": "Close the mandate-first branch",
+        },
+        {
+            "intent_id": "archive-portfolio-first",
+            "kind": "archive_meeting",
+            "checkpoint": "checkpoint-archived-portfolio-first",
+            "label": "Archive the mandate-first branch",
+        },
+        {
+            "intent_id": "followup-downside-first",
+            "kind": "director_follow_up",
+            "checkpoint": "checkpoint-followup-first",
+            "participant_id": DOWNSIDE,
+            "label": "Ask for the instrument record",
+        },
+        {
+            "intent_id": "portfolio-after-first",
+            "kind": "start_participant",
+            "checkpoint": "checkpoint-followup-first",
+            "participant_id": PORTFOLIO,
+            "operation_id": BRANCH_OPS["portfolio-after-first"],
+            "tape_id": "tape-portfolio-after-first",
+            "label": "Apply the mandate",
+        },
+        {
+            "intent_id": "close-first",
+            "kind": "request_closing",
+            "checkpoint": "checkpoint-portfolio-first-2",
+            "closing_tape_id": "tape-closing-first",
+            "label": "Close the first branch",
+        },
+        {
+            "intent_id": "archive-first",
+            "kind": "archive_meeting",
+            "checkpoint": "checkpoint-archived-first",
+            "label": "Archive the first branch",
+        },
+        {
+            "intent_id": "liquidity-follow-up",
+            "kind": "director_follow_up",
+            "checkpoint": "checkpoint-followup-liquidity",
+            "participant_id": CREDIT,
+            "label": "Ask about liquidity",
+        },
+        {
+            "intent_id": "credit-liquidity",
+            "kind": "start_participant",
+            "checkpoint": "checkpoint-followup-liquidity",
+            "participant_id": CREDIT,
+            "operation_id": BRANCH_OPS["credit-liquidity"],
+            "tape_id": "tape-credit-liquidity",
+            "label": "Answer the liquidity question",
+        },
+        {
+            "intent_id": "close-liquidity",
+            "kind": "request_closing",
+            "checkpoint": "checkpoint-credit-liquidity",
+            "closing_tape_id": "tape-closing-liquidity",
+            "label": "Close the liquidity branch",
+        },
+        {
+            "intent_id": "archive-liquidity",
+            "kind": "archive_meeting",
+            "checkpoint": "checkpoint-archived-liquidity",
+            "label": "Archive the liquidity branch",
+        },
+        {
+            "intent_id": "covenant-follow-up",
+            "kind": "director_follow_up",
+            "checkpoint": "checkpoint-followup-covenant",
+            "participant_id": DOWNSIDE,
+            "label": "Ask about covenants",
+        },
+        {
+            "intent_id": "downside-covenant",
+            "kind": "start_participant",
+            "checkpoint": "checkpoint-followup-covenant",
+            "participant_id": DOWNSIDE,
+            "operation_id": BRANCH_OPS["downside-covenant"],
+            "tape_id": "tape-downside-covenant",
+            "label": "Answer the covenant question",
+        },
+        {
+            "intent_id": "close-covenant",
+            "kind": "request_closing",
+            "checkpoint": "checkpoint-downside-covenant",
+            "closing_tape_id": "tape-closing-covenant",
+            "label": "Close the covenant branch",
+        },
+        {
+            "intent_id": "archive-covenant",
+            "kind": "archive_meeting",
+            "checkpoint": "checkpoint-archived-covenant",
+            "label": "Archive the covenant branch",
+        },
+        {
+            "intent_id": "red-team",
+            "kind": "start_participant",
+            "checkpoint": "checkpoint-portfolio",
+            "participant_id": CREDIT,
+            "operation_id": BRANCH_OPS["red-team"],
+            "tape_id": "tape-red-team",
+            "label": "Red-team the checklist",
+        },
+        {
+            "intent_id": "close-red-team",
+            "kind": "request_closing",
+            "checkpoint": "checkpoint-red-team",
+            "closing_tape_id": "tape-closing-red-team",
+            "label": "Close the red-team branch",
+        },
+        {
+            "intent_id": "archive-red-team",
+            "kind": "archive_meeting",
+            "checkpoint": "checkpoint-archived-red-team",
+            "label": "Archive the red-team branch",
+        },
+    ]
+
+    transitions = [
+        {
+            "transition_id": "canonical-create",
+            "source_checkpoint": "checkpoint-initial",
+            "completed_checkpoint": "checkpoint-created",
+            "intent_id": "create-meeting",
+            "kind": "create_meeting",
+            "canonical": True,
+            "prerequisites": [],
+            "label": "Start the meeting",
+            "explanation": "Canonical creation action.",
+        },
+        {
+            "transition_id": "canonical-credit",
+            "source_checkpoint": "checkpoint-created",
+            "completed_checkpoint": "checkpoint-credit",
+            "intent_id": "credit-analyst",
+            "kind": "start_participant",
+            "participant_id": CREDIT,
+            "operation_id": CREDIT_OP,
+            "tape_id": "tape-credit",
+            "canonical": True,
+            "prerequisites": [],
+            "label": "Ask the Credit Analyst",
+            "explanation": "Canonical opening turn.",
+        },
+        {
+            "transition_id": "canonical-downside",
+            "source_checkpoint": "checkpoint-credit",
+            "completed_checkpoint": "checkpoint-downside",
+            "intent_id": "downside-reviewer",
+            "kind": "start_participant",
+            "participant_id": DOWNSIDE,
+            "operation_id": DOWNSIDE_OP,
+            "tape_id": "tape-downside",
+            "canonical": True,
+            "prerequisites": [],
+            "label": "Ask the Downside Reviewer",
+            "explanation": "Canonical challenge turn.",
+        },
+        {
+            "transition_id": "canonical-followup",
+            "source_checkpoint": "checkpoint-downside",
+            "completed_checkpoint": "checkpoint-followup",
+            "intent_id": "director-follow-up",
+            "kind": "director_follow_up",
+            "participant_id": PORTFOLIO,
+            "canonical": True,
+            "prerequisites": [],
+            "label": "Send the supported follow-up",
+            "explanation": "Canonical Director follow-up.",
+        },
+        {
+            "transition_id": "canonical-portfolio",
+            "source_checkpoint": "checkpoint-followup",
+            "completed_checkpoint": "checkpoint-portfolio",
+            "intent_id": "portfolio-analyst",
+            "kind": "start_participant",
+            "participant_id": PORTFOLIO,
+            "operation_id": PORTFOLIO_OP,
+            "tape_id": "tape-portfolio",
+            "canonical": True,
+            "prerequisites": [],
+            "label": "Ask the Portfolio Analyst",
+            "explanation": "Canonical mandate turn.",
+        },
+        {
+            "transition_id": "canonical-consensus",
+            "source_checkpoint": "checkpoint-portfolio",
+            "completed_checkpoint": "checkpoint-consensus",
+            "intent_id": "concluding-discussion",
+            "kind": "start_participant",
+            "participant_id": CREDIT,
+            "operation_id": CONSENSUS_OP,
+            "tape_id": "tape-consensus",
+            "canonical": True,
+            "prerequisites": [],
+            "label": "Ask the committee to align",
+            "explanation": "Canonical concluding turn.",
+        },
+        {
+            "transition_id": "canonical-close",
+            "source_checkpoint": "checkpoint-consensus",
+            "completed_checkpoint": "checkpoint-closed",
+            "intent_id": "close-meeting",
+            "kind": "request_closing",
+            "closing_tape_id": "tape-closing",
+            "canonical": True,
+            "prerequisites": [],
+            "label": "Close meeting",
+            "explanation": "Canonical closing.",
+        },
+        {
+            "transition_id": "canonical-archive",
+            "source_checkpoint": "checkpoint-closed",
+            "completed_checkpoint": "checkpoint-archived",
+            "intent_id": "archive-meeting",
+            "kind": "archive_meeting",
+            "canonical": True,
+            "prerequisites": ["canonical-close"],
+            "label": "Archive meeting",
+            "explanation": "Canonical archive.",
+        },
+    ]
+
+    def transition(
+        transition_id: str,
+        source: str,
+        completed: str,
+        intent_id: str,
+        kind: str,
+        label: str,
+        *,
+        participant_id: str | None = None,
+        operation_id: str | None = None,
+        tape_id: str | None = None,
+        closing_tape_id: str | None = None,
+        prerequisites: list[str] | None = None,
+    ) -> dict[str, Any]:
+        return {
+            "transition_id": transition_id,
+            "source_checkpoint": source,
+            "completed_checkpoint": completed,
+            "intent_id": intent_id,
+            "kind": kind,
+            "participant_id": participant_id,
+            "operation_id": operation_id,
+            "tape_id": tape_id,
+            "closing_tape_id": closing_tape_id,
+            "canonical": False,
+            "prerequisites": prerequisites or [],
+            "label": label,
+            "explanation": "Prepared exploration path; validated separately from canonical beats.",
+        }
+
+    transitions.extend(
+        [
+            transition(
+                "explore-downside-first",
+                "checkpoint-created",
+                "checkpoint-downside-first",
+                "downside-first",
+                "start_participant",
+                "Test the downside first",
+                participant_id=DOWNSIDE,
+                operation_id=BRANCH_OPS["downside-first"],
+                tape_id="tape-downside-first",
+            ),
+            transition(
+                "explore-portfolio-first",
+                "checkpoint-created",
+                "checkpoint-portfolio-first",
+                "portfolio-first",
+                "start_participant",
+                "Start from the mandate",
+                participant_id=PORTFOLIO,
+                operation_id=BRANCH_OPS["portfolio-first"],
+                tape_id="tape-portfolio-first",
+            ),
+            transition(
+                "explore-close-portfolio-first",
+                "checkpoint-portfolio-first",
+                "checkpoint-closed-portfolio-first",
+                "close-portfolio-first",
+                "request_closing",
+                "Close the mandate-first branch",
+                closing_tape_id="tape-closing-portfolio-first",
+                prerequisites=["explore-portfolio-first"],
+            ),
+            transition(
+                "explore-archive-portfolio-first",
+                "checkpoint-closed-portfolio-first",
+                "checkpoint-archived-portfolio-first",
+                "archive-portfolio-first",
+                "archive_meeting",
+                "Archive the mandate-first branch",
+                prerequisites=["explore-close-portfolio-first"],
+            ),
+            transition(
+                "explore-followup-first",
+                "checkpoint-downside-first",
+                "checkpoint-followup-first",
+                "followup-downside-first",
+                "director_follow_up",
+                "Ask for the instrument record",
+                participant_id=DOWNSIDE,
+                prerequisites=["explore-downside-first"],
+            ),
+            transition(
+                "explore-portfolio-after-first",
+                "checkpoint-followup-first",
+                "checkpoint-portfolio-first-2",
+                "portfolio-after-first",
+                "start_participant",
+                "Apply the mandate",
+                participant_id=PORTFOLIO,
+                operation_id=BRANCH_OPS["portfolio-after-first"],
+                tape_id="tape-portfolio-after-first",
+                prerequisites=["explore-followup-first"],
+            ),
+            transition(
+                "explore-close-first",
+                "checkpoint-portfolio-first-2",
+                "checkpoint-closed-first",
+                "close-first",
+                "request_closing",
+                "Close the first branch",
+                closing_tape_id="tape-closing-first",
+                prerequisites=["explore-portfolio-after-first"],
+            ),
+            transition(
+                "explore-archive-first",
+                "checkpoint-closed-first",
+                "checkpoint-archived-first",
+                "archive-first",
+                "archive_meeting",
+                "Archive the first branch",
+                prerequisites=["explore-close-first"],
+            ),
+            transition(
+                "explore-liquidity-followup",
+                "checkpoint-downside",
+                "checkpoint-followup-liquidity",
+                "liquidity-follow-up",
+                "director_follow_up",
+                "Ask about liquidity",
+                participant_id=CREDIT,
+            ),
+            transition(
+                "explore-credit-liquidity",
+                "checkpoint-followup-liquidity",
+                "checkpoint-credit-liquidity",
+                "credit-liquidity",
+                "start_participant",
+                "Answer the liquidity question",
+                participant_id=CREDIT,
+                operation_id=BRANCH_OPS["credit-liquidity"],
+                tape_id="tape-credit-liquidity",
+                prerequisites=["explore-liquidity-followup"],
+            ),
+            transition(
+                "explore-close-liquidity",
+                "checkpoint-credit-liquidity",
+                "checkpoint-closed-liquidity",
+                "close-liquidity",
+                "request_closing",
+                "Close the liquidity branch",
+                closing_tape_id="tape-closing-liquidity",
+                prerequisites=["explore-credit-liquidity"],
+            ),
+            transition(
+                "explore-archive-liquidity",
+                "checkpoint-closed-liquidity",
+                "checkpoint-archived-liquidity",
+                "archive-liquidity",
+                "archive_meeting",
+                "Archive the liquidity branch",
+                prerequisites=["explore-close-liquidity"],
+            ),
+            transition(
+                "explore-covenant-followup",
+                "checkpoint-downside",
+                "checkpoint-followup-covenant",
+                "covenant-follow-up",
+                "director_follow_up",
+                "Ask about covenants",
+                participant_id=DOWNSIDE,
+            ),
+            transition(
+                "explore-downside-covenant",
+                "checkpoint-followup-covenant",
+                "checkpoint-downside-covenant",
+                "downside-covenant",
+                "start_participant",
+                "Answer the covenant question",
+                participant_id=DOWNSIDE,
+                operation_id=BRANCH_OPS["downside-covenant"],
+                tape_id="tape-downside-covenant",
+                prerequisites=["explore-covenant-followup"],
+            ),
+            transition(
+                "explore-close-covenant",
+                "checkpoint-downside-covenant",
+                "checkpoint-closed-covenant",
+                "close-covenant",
+                "request_closing",
+                "Close the covenant branch",
+                closing_tape_id="tape-closing-covenant",
+                prerequisites=["explore-downside-covenant"],
+            ),
+            transition(
+                "explore-archive-covenant",
+                "checkpoint-closed-covenant",
+                "checkpoint-archived-covenant",
+                "archive-covenant",
+                "archive_meeting",
+                "Archive the covenant branch",
+                prerequisites=["explore-close-covenant"],
+            ),
+            transition(
+                "explore-red-team-turn",
+                "checkpoint-portfolio",
+                "checkpoint-red-team",
+                "red-team",
+                "start_participant",
+                "Red-team the checklist",
+                participant_id=CREDIT,
+                operation_id=BRANCH_OPS["red-team"],
+                tape_id="tape-red-team",
+            ),
+            transition(
+                "explore-close-red-team",
+                "checkpoint-red-team",
+                "checkpoint-closed-red-team",
+                "close-red-team",
+                "request_closing",
+                "Close the red-team branch",
+                closing_tape_id="tape-closing-red-team",
+                prerequisites=["explore-red-team-turn"],
+            ),
+            transition(
+                "explore-archive-red-team",
+                "checkpoint-closed-red-team",
+                "checkpoint-archived-red-team",
+                "archive-red-team",
+                "archive_meeting",
+                "Archive the red-team branch",
+                prerequisites=["explore-close-red-team"],
+            ),
+        ]
+    )
+
+    chapters = [
+        {
+            "chapter_id": "chapter-board",
+            "title": "Prepared board",
+            "objective": "Inspect the three participants and their knowledge assignments.",
+            "checkpoint": "checkpoint-created",
+            "route": "board",
+            "tab": "roster",
+            "mode": "inspection",
+            "disclosure": "Prepared board; inspection does not complete a guide step.",
+            "claim_ids": [],
+            "input_asset_ids": ["shared-fact-sheet"],
+        },
+        {
+            "chapter_id": "chapter-facts",
+            "title": "Recorded facts",
+            "objective": "Inspect the Credit Analyst turn and its citations.",
+            "checkpoint": "checkpoint-credit",
+            "route": "meeting",
+            "tab": "chat",
+            "mode": "inspection",
+            "disclosure": "Recorded turn; no new model call.",
+            "claim_ids": ["C1", "C2", "C3", "C10", "C12"],
+            "input_asset_ids": ["shared-fact-sheet", "credit-evidence"],
+        },
+        {
+            "chapter_id": "chapter-disagreement",
+            "title": "Recorded disagreement",
+            "objective": "Inspect the Downside Reviewer's logged disagreement.",
+            "checkpoint": "checkpoint-downside",
+            "route": "meeting",
+            "tab": "disagreements",
+            "mode": "inspection",
+            "disclosure": "Recorded disagreement; inspection is not a new action.",
+            "claim_ids": ["C6", "C7", "C8", "C9", "C10"],
+            "input_asset_ids": ["downside-worksheet"],
+        },
+        {
+            "chapter_id": "chapter-followup",
+            "title": "Recorded follow-up",
+            "objective": "Inspect the supported Director follow-up.",
+            "checkpoint": "checkpoint-followup",
+            "route": "meeting",
+            "tab": "chat",
+            "mode": "inspection",
+            "disclosure": "Recorded follow-up; inspection does not resend it.",
+            "claim_ids": ["C10", "C11", "C13"],
+            "input_asset_ids": ["shared-fact-sheet"],
+        },
+        {
+            "chapter_id": "chapter-consensus",
+            "title": "Recorded consensus",
+            "objective": "Inspect the formal consensus and its claims.",
+            "checkpoint": "checkpoint-consensus",
+            "route": "meeting",
+            "tab": "consensus",
+            "mode": "inspection",
+            "disclosure": "Recorded consensus; inspection is not a new vote.",
+            "claim_ids": ["C1", "C2", "C10", "C13"],
+            "input_asset_ids": ["shared-fact-sheet"],
+        },
+        {
+            "chapter_id": "chapter-closing",
+            "title": "Completed closing",
+            "objective": "Inspect the recorded ballots and closing brief.",
+            "checkpoint": "checkpoint-closed",
+            "route": "meeting",
+            "tab": "closing",
+            "mode": "inspection",
+            "disclosure": "Recorded closing; no live vote or model call.",
+            "claim_ids": ["C1", "C2", "C10", "C11", "C13"],
+            "input_asset_ids": ["shared-fact-sheet"],
+        },
+        {
+            "chapter_id": "chapter-summary",
+            "title": "Recorded summary",
+            "objective": "Inspect the approved recorded system summary in its completed context.",
+            "checkpoint": "checkpoint-archived",
+            "route": "meeting",
+            "tab": "summary",
+            "mode": "inspection",
+            "disclosure": "Recorded summary from the archived meeting; not a fresh generation.",
+            "summary_message_id": SUMMARY_MSG,
+            "claim_ids": ["C1", "C2", "C10", "C11", "C13"],
+            "input_asset_ids": ["shared-fact-sheet"],
+        },
+        {
+            "chapter_id": "chapter-archive",
+            "title": "Archived result",
+            "objective": "Inspect the archived meeting overlay.",
+            "checkpoint": "checkpoint-archived",
+            "route": "list",
+            "tab": "chat",
+            "mode": "inspection",
+            "disclosure": "Archived overlay; the recording remains ended.",
+            "claim_ids": ["C13"],
+            "input_asset_ids": ["shared-fact-sheet"],
+        },
+        {
+            "chapter_id": "chapter-downside-first",
+            "title": "Downside-first branch",
+            "objective": "Inspect the alternative opening turn.",
+            "checkpoint": "checkpoint-downside-first",
+            "route": "meeting",
+            "tab": "chat",
+            "mode": "inspection",
+            "disclosure": "Prepared branch; inspection does not complete the canonical guide.",
+            "claim_ids": ["C6", "C7", "C8", "C10", "C14"],
+            "input_asset_ids": ["downside-worksheet"],
+        },
+        {
+            "chapter_id": "chapter-first-close",
+            "title": "First-branch closing",
+            "objective": "Inspect the completed first-branch closing.",
+            "checkpoint": "checkpoint-closed-first",
+            "route": "meeting",
+            "tab": "closing",
+            "mode": "inspection",
+            "disclosure": "Recorded branch closing; no live vote.",
+            "claim_ids": ["C1", "C2", "C10", "C11", "C13"],
+            "input_asset_ids": ["shared-fact-sheet"],
+        },
+        {
+            "chapter_id": "chapter-liquidity-close",
+            "title": "Liquidity-branch closing",
+            "objective": "Inspect the completed liquidity branch.",
+            "checkpoint": "checkpoint-closed-liquidity",
+            "route": "meeting",
+            "tab": "closing",
+            "mode": "inspection",
+            "disclosure": "Recorded branch closing; no live vote.",
+            "claim_ids": ["C6", "C7", "C10", "C16"],
+            "input_asset_ids": ["downside-worksheet"],
+        },
+        {
+            "chapter_id": "chapter-red-team",
+            "title": "Red-team branch",
+            "objective": "Inspect the red-team challenge before closing.",
+            "checkpoint": "checkpoint-red-team",
+            "route": "meeting",
+            "tab": "chat",
+            "mode": "inspection",
+            "disclosure": "Prepared branch; inspection does not complete the canonical guide.",
+            "claim_ids": ["C1", "C2", "C10", "C13", "C18"],
+            "input_asset_ids": ["shared-fact-sheet"],
+        },
+    ]
+
+    return {
+        "checkpoints": checkpoints,
+        "tapes": tapes,
+        "closing_tapes": closing_tapes,
+        "retrievals": retrievals,
+        "intents": intents,
+        "transitions": transitions,
+        "chapters": chapters,
     }
 
 
@@ -1838,6 +3255,70 @@ def build() -> None:
         "checkpoint-closed": closed,
         "checkpoint-archived": archived,
     }
+    exploration = exploration_content(operations_downside, operations_portfolio)
+    checkpoints.update(exploration["checkpoints"])
+    # Choice states expose every prepared operation as queued at the source. The
+    # runtime selects the operation for the explicit transition that was chosen.
+    checkpoints["checkpoint-created"]["reads"]["operations"].extend(
+        [
+            operation(
+                BRANCH_OPS["downside-first"],
+                DOWNSIDE,
+                "turn-retrieval-downside-first",
+                "queued",
+                2,
+                None,
+            ),
+            operation(
+                BRANCH_OPS["portfolio-first"],
+                PORTFOLIO,
+                "turn-retrieval-portfolio-first",
+                "queued",
+                3,
+                None,
+            ),
+        ]
+    )
+    checkpoints["checkpoint-followup-first"]["reads"]["operations"].append(
+        operation(
+            BRANCH_OPS["portfolio-after-first"],
+            PORTFOLIO,
+            "turn-retrieval-portfolio-after-first",
+            "queued",
+            3,
+            None,
+        )
+    )
+    checkpoints["checkpoint-followup-liquidity"]["reads"]["operations"].append(
+        operation(
+            BRANCH_OPS["credit-liquidity"],
+            CREDIT,
+            "turn-retrieval-credit-liquidity",
+            "queued",
+            3,
+            None,
+        )
+    )
+    checkpoints["checkpoint-followup-covenant"]["reads"]["operations"].append(
+        operation(
+            BRANCH_OPS["downside-covenant"],
+            DOWNSIDE,
+            "turn-retrieval-downside-covenant",
+            "queued",
+            3,
+            None,
+        )
+    )
+    checkpoints["checkpoint-portfolio"]["reads"]["operations"].append(
+        operation(
+            BRANCH_OPS["red-team"],
+            CREDIT,
+            "turn-retrieval-red-team",
+            "queued",
+            5,
+            None,
+        )
+    )
     for checkpoint_id, payload in checkpoints.items():
         write_json(ROOT / "checkpoints" / f"{checkpoint_id}.json", payload)
 
@@ -1880,6 +3361,10 @@ def build() -> None:
     for tape in (credit_tape, downside_tape, portfolio_tape, consensus_tape):
         write_json(ROOT / "tapes" / f"{tape['tape_id']}.json", tape)
     write_json(ROOT / "closing_tapes" / "tape-closing.json", closing_tape())
+    for tape in exploration["tapes"]:
+        write_json(ROOT / "tapes" / f"{tape['tape_id']}.json", tape)
+    for tape in exploration["closing_tapes"]:
+        write_json(ROOT / "closing_tapes" / f"{tape['tape_id']}.json", tape)
 
     retrievals = [
         retrieval(
@@ -1934,6 +3419,7 @@ def build() -> None:
             ],
         ),
     ]
+    retrievals.extend(exploration["retrievals"])
     for record in retrievals:
         write_json(ROOT / "retrieval" / f"{record['retrieval_key']}.json", record)
 
@@ -2001,6 +3487,7 @@ def build() -> None:
             "label": "Archive meeting",
         },
     ]
+    intents.extend(exploration["intents"])
 
     beats = [
         {
@@ -2229,7 +3716,7 @@ def build() -> None:
 
     manifest = {
         "package_id": "hdfc-ine001a07rw5",
-        "version": "5",
+        "version": "6",
         "schema_version": 2,
         "read_version": 1,
         "event_version": 1,
@@ -2239,8 +3726,10 @@ def build() -> None:
         "meeting_id": MEETING,
         "initial_checkpoint": "checkpoint-initial",
         "checkpoints": list(checkpoints),
-        "tapes": ["tape-credit", "tape-downside", "tape-portfolio", "tape-consensus"],
-        "closing_tapes": ["tape-closing"],
+        "tapes": ["tape-credit", "tape-downside", "tape-portfolio", "tape-consensus"]
+        + [item["tape_id"] for item in exploration["tapes"]],
+        "closing_tapes": ["tape-closing"]
+        + [item["tape_id"] for item in exploration["closing_tapes"]],
         "retrieval": [item["retrieval_key"] for item in retrievals],
         "provenance": {
             "kind": "recorded",
@@ -2256,6 +3745,8 @@ def build() -> None:
         "stack_labels": STACK_LABELS,
         "intents": intents,
         "beats": beats,
+        "transitions": exploration["transitions"],
+        "chapters": exploration["chapters"],
         "claims": CLAIMS,
         "workspace_seed": "workspace_seed.json",
         "workspace_seed_sha256": seed_sha256,

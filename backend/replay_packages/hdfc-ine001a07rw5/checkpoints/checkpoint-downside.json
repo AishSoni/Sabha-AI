@@ -525,6 +525,38 @@
         "cancel_requested": false,
         "error": null,
         "effective_generation": null
+      },
+      {
+        "operation_id": "a0000000-0000-4000-8000-000000000313",
+        "meeting_id": "a0000000-0000-4000-8000-000000000001",
+        "participant_id": "a0000000-0000-4000-8000-000000000101",
+        "request_key": "turn-retrieval-credit-liquidity",
+        "status": "queued",
+        "admission": 3,
+        "queue_position": 1,
+        "created_at": "2020-07-31T09:00:30Z",
+        "started_at": null,
+        "completed_at": null,
+        "final_message_id": null,
+        "cancel_requested": false,
+        "error": null,
+        "effective_generation": null
+      },
+      {
+        "operation_id": "a0000000-0000-4000-8000-000000000314",
+        "meeting_id": "a0000000-0000-4000-8000-000000000001",
+        "participant_id": "a0000000-0000-4000-8000-000000000102",
+        "request_key": "turn-retrieval-downside-covenant",
+        "status": "queued",
+        "admission": 3,
+        "queue_position": 1,
+        "created_at": "2020-07-31T09:00:30Z",
+        "started_at": null,
+        "completed_at": null,
+        "final_message_id": null,
+        "cancel_requested": false,
+        "error": null,
+        "effective_generation": null
       }
     ]
   }

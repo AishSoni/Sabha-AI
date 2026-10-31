@@ -791,7 +791,7 @@ def test_workspace_seed_size_ceiling_is_enforced(tmp_path: Path) -> None:
 def test_guided_package_carries_the_expanded_workspace_seed() -> None:
     package = load_package(GUIDED_ROOT)
     assert package.manifest.schema_version == 2
-    assert package.manifest.version == "5"
+    assert package.manifest.version == "6"
     assert package.manifest.workspace_seed == "workspace_seed.json"
     assert package.workspace_seed is not None
     seed = package.workspace_seed
@@ -1024,3 +1024,110 @@ def _refresh_seed_hash(root: Path) -> None:
         "manifest.json",
         lambda payload: payload.update({"workspace_seed_sha256": digest}),
     )
+
+
+def _exploration_codes(tmp_path: Path, mutate) -> set[str]:
+    root = _copy_guided(tmp_path)
+    _edit_json(root, "manifest.json", mutate)
+    _finalize(root)
+    _, codes = _load(root)
+    return codes
+
+
+def test_expanded_package_validates_a_bounded_exploration_graph() -> None:
+    package = load_package(GUIDED_ROOT)
+    assert validate_package(package) == []
+    manifest = package.manifest
+    assert len(manifest.transitions) == 27
+    assert len(manifest.chapters) == 12
+    assert sum(1 for item in manifest.transitions if item.canonical) == 8
+
+
+def test_exploration_rejects_a_cycle(tmp_path: Path) -> None:
+    def mutate(payload):
+        payload["transitions"].append(
+            {
+                "transition_id": "explore-cycle",
+                "source_checkpoint": "checkpoint-archived",
+                "completed_checkpoint": "checkpoint-created",
+                "intent_id": "archive-meeting",
+                "kind": "archive_meeting",
+                "canonical": False,
+                "label": "Cycle",
+                "explanation": "Invalid cycle.",
+            }
+        )
+
+    assert "exploration_cycle" in _exploration_codes(tmp_path, mutate)
+
+
+def test_exploration_requires_a_closing_continuation(tmp_path: Path) -> None:
+    def mutate(payload):
+        payload["transitions"] = [
+            transition
+            for transition in payload["transitions"]
+            if transition["kind"] != "request_closing"
+        ]
+
+    assert "missing_continuation" in _exploration_codes(tmp_path, mutate)
+
+
+def test_exploration_rejects_an_unreachable_prerequisite(tmp_path: Path) -> None:
+    def mutate(payload):
+        transition = next(
+            item
+            for item in payload["transitions"]
+            if item["transition_id"] == "explore-credit-liquidity"
+        )
+        transition["prerequisites"] = ["explore-close-first"]
+
+    assert "invalid_prerequisite" in _exploration_codes(tmp_path, mutate)
+
+
+def test_exploration_rejects_a_discarded_branch_message(tmp_path: Path) -> None:
+    root = _copy_guided(tmp_path)
+    _edit_json(
+        root,
+        "checkpoints/checkpoint-followup-liquidity.json",
+        lambda payload: payload["reads"]["meeting"]["messages"].pop(1),
+    )
+    _finalize(root)
+    _, codes = _load(root)
+    assert "invalid_merge" in codes
+
+
+def test_schema_one_cannot_carry_exploration_metadata(tmp_path: Path) -> None:
+    root = tmp_path / "legacy"
+    shutil.copytree(PACKAGE_ROOT, root)
+    checkpoint = load_package(root).manifest.initial_checkpoint
+
+    def mutate(payload):
+        payload["chapters"] = [
+            {
+                "chapter_id": "chapter-legacy",
+                "title": "Legacy",
+                "objective": "Legacy chapter.",
+                "checkpoint": checkpoint,
+                "route": "meeting",
+                "tab": "chat",
+                "mode": "inspection",
+                "disclosure": "Legacy chapter.",
+            }
+        ]
+        payload["transitions"] = [
+            {
+                "transition_id": "legacy-transition",
+                "source_checkpoint": checkpoint,
+                "completed_checkpoint": checkpoint,
+                "intent_id": payload["intents"][0]["intent_id"],
+                "kind": payload["intents"][0]["kind"],
+                "canonical": True,
+                "label": "Legacy",
+                "explanation": "Legacy transition.",
+            }
+        ]
+
+    _edit_json(root, "manifest.json", mutate)
+    _finalize(root)
+    _, codes = _load(root)
+    assert "invalid_exploration" in codes

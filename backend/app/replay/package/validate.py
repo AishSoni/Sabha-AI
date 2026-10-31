@@ -1274,11 +1274,19 @@ def _validate_exploration(package: LoadedPackage, issues: _Issues) -> None:
                     "checkpoint follow-up must complete the intent checkpoint",
                 )
             if source is not None and completed is not None:
-                if _meeting_message_ids(source) != _meeting_message_ids(completed):
+                initial_ids = _meeting_message_ids(source)
+                completed_ids = _meeting_message_ids(completed)
+                if completed_ids[: len(initial_ids)] != initial_ids:
                     issues.add(
                         "invalid_merge",
                         path,
                         "checkpoint follow-up must preserve the transcript",
+                    )
+                elif len(completed_ids) != len(initial_ids) + 1:
+                    issues.add(
+                        "invalid_merge",
+                        path,
+                        "checkpoint follow-up must add exactly the Director message",
                     )
 
     # Each intent maps to one transition, and every transition has a unique
@@ -1503,7 +1511,8 @@ def _validate_exploration(package: LoadedPackage, issues: _Issues) -> None:
             if asset_id not in asset_ids:
                 issues.add("dangling_id", path, f"chapter asset {asset_id} is missing")
         if chapter.tab == "summary":
-            meeting = reads.get("meeting")            messages = meeting.get("messages") if isinstance(meeting, dict) else []
+            meeting = reads.get("meeting")
+            messages = meeting.get("messages") if isinstance(meeting, dict) else []
             summary = next(
                 (
                     message
