@@ -27,15 +27,20 @@ from app.replay.runtime import ReplayRuntime
 from app.replay.source import ReplaySource
 from app.replay.streaming import StreamLimiter
 from tests.support.replay import (
+    BACKEND,
     READER_LOGIN,
     FakeStorage,
     login_uri,
     provision_logins,
+    publish_dir,
     publish_placeholder,
 )
 
-MEETING_ID = "11111111-1111-4111-8111-111111111111"
-OPERATION_ID = "66666666-6666-4666-8666-666666666666"
+PLACEHOLDER_MEETING_ID = "11111111-1111-4111-8111-111111111111"
+PLACEHOLDER_OPERATION_ID = "66666666-6666-4666-8666-666666666666"
+EXPANDED = BACKEND / "replay_packages" / "hdfc-ine001a07rw5"
+EXPANDED_MEETING_ID = "a0000000-0000-4000-8000-000000000001"
+EXPANDED_OPERATION_ID = "a0000000-0000-4000-8000-000000000301"
 PROVIDER_SENTINEL = "sk-spec19-must-not-leak"
 
 
@@ -107,10 +112,23 @@ def _tuple_counts(db):
         ).fetchone()
 
 
-@pytest.fixture()
-def effect_server(disposable_db, monkeypatch):
+@pytest.fixture(params=["placeholder", "expanded"])
+def effect_server(request, disposable_db, monkeypatch):
     provision_logins(disposable_db)
-    storage = publish_placeholder(disposable_db)
+    if request.param == "expanded":
+        storage = publish_dir(disposable_db, EXPANDED)
+        package_id = "hdfc-ine001a07rw5"
+        meeting_id = EXPANDED_MEETING_ID
+        operation_id = EXPANDED_OPERATION_ID
+        checkpoint = "checkpoint-created"
+        closing_checkpoint = "checkpoint-closed"
+    else:
+        storage = publish_placeholder(disposable_db)
+        package_id = "placeholder-analyst"
+        meeting_id = PLACEHOLDER_MEETING_ID
+        operation_id = PLACEHOLDER_OPERATION_ID
+        checkpoint = "checkpoint-active"
+        closing_checkpoint = "checkpoint-closed"
     storage_before = dict(storage.objects)
     monkeypatch.setattr(
         settings, "replay_database_url", login_uri(disposable_db, READER_LOGIN)
@@ -119,7 +137,7 @@ def effect_server(disposable_db, monkeypatch):
     statements: list[tuple] = []
     runtime = ReplayRuntime(
         _RecordingSource(statements),
-        package_id="placeholder-analyst",
+        package_id=package_id,
         limiter=StreamLimiter(max_global=4, max_per_client=2),
     )
     live = _LiveGraph()
@@ -152,6 +170,11 @@ def effect_server(disposable_db, monkeypatch):
             "live": live,
             "storage": storage,
             "storage_before": storage_before,
+            "package_id": package_id,
+            "meeting_id": meeting_id,
+            "operation_id": operation_id,
+            "checkpoint": checkpoint,
+            "closing_checkpoint": closing_checkpoint,
         }
     finally:
         server.should_exit = True
@@ -162,6 +185,10 @@ def test_complete_replay_session_produces_no_live_effects(
     effect_server, disposable_db, monkeypatch
 ) -> None:
     base_url = effect_server["base_url"]
+    meeting_id = effect_server["meeting_id"]
+    operation_id = effect_server["operation_id"]
+    checkpoint = effect_server["checkpoint"]
+    closing_checkpoint = effect_server["closing_checkpoint"]
     outbound: list[tuple] = []
     original_connect = socket.socket.connect
 
@@ -181,23 +208,29 @@ def test_complete_replay_session_produces_no_live_effects(
         assert session.status_code == 200
         bodies.append(session.text)
         session_body = session.json()
-        assert session_body["meeting_id"] == MEETING_ID
+        assert session_body["meeting_id"] == meeting_id
+        assert session_body["package_id"] == effect_server["package_id"]
+
+        seed = client.get(f"{base_url}/api/replay/workspace-seed")
+        if effect_server["package_id"] == "hdfc-ine001a07rw5":
+            assert seed.status_code == 200, (seed.status_code, seed.text)
+            bodies.append(seed.text)
+        else:
+            assert seed.status_code == 404
 
         for path in (
             "/api/replay/meetings",
-            f"/api/replay/meetings/{MEETING_ID}",
-            f"/api/replay/meetings/{MEETING_ID}/disagreements",
-            f"/api/replay/meetings/{MEETING_ID}/consensus",
-            f"/api/replay/meetings/{MEETING_ID}/context-stats",
-            f"/api/replay/meetings/{MEETING_ID}/documents",
-            f"/api/replay/meetings/{MEETING_ID}/safe-config",
-            f"/api/replay/meetings/{MEETING_ID}/closing",
-            f"/api/replay/meetings/{MEETING_ID}/turns",
-            f"/api/replay/meetings/{MEETING_ID}/turns/{OPERATION_ID}",
+            f"/api/replay/meetings/{meeting_id}",
+            f"/api/replay/meetings/{meeting_id}/disagreements",
+            f"/api/replay/meetings/{meeting_id}/consensus",
+            f"/api/replay/meetings/{meeting_id}/context-stats",
+            f"/api/replay/meetings/{meeting_id}/documents",
+            f"/api/replay/meetings/{meeting_id}/safe-config",
+            f"/api/replay/meetings/{meeting_id}/closing",
+            f"/api/replay/meetings/{meeting_id}/turns",
+            f"/api/replay/meetings/{meeting_id}/turns/{operation_id}",
         ):
-            response = client.get(
-                base_url + path, params={"checkpoint": "checkpoint-active"}
-            )
+            response = client.get(base_url + path, params={"checkpoint": checkpoint})
             assert response.status_code == 200, (path, response.status_code, response.text)
             bodies.append(response.text)
 
@@ -208,9 +241,9 @@ def test_complete_replay_session_produces_no_live_effects(
 
         with client.stream(
             "GET",
-            f"{base_url}/api/replay/meetings/{MEETING_ID}/turns/"
-            f"{OPERATION_ID}/events",
-            params={"checkpoint": "checkpoint-active", "after": 0},
+            f"{base_url}/api/replay/meetings/{meeting_id}/turns/"
+            f"{operation_id}/events",
+            params={"checkpoint": checkpoint, "after": 0, "speed": 2},
         ) as response:
             assert response.status_code == 200
             for line in response.iter_lines():
@@ -219,8 +252,8 @@ def test_complete_replay_session_produces_no_live_effects(
 
         with client.stream(
             "GET",
-            f"{base_url}/api/replay/meetings/{MEETING_ID}/closing/events",
-            params={"checkpoint": "checkpoint-closed"},
+            f"{base_url}/api/replay/meetings/{meeting_id}/closing/events",
+            params={"checkpoint": closing_checkpoint, "speed": 1},
         ) as response:
             assert response.status_code == 200
             for line in response.iter_lines():

@@ -23,11 +23,21 @@ from app.platform.config import settings
 from app.replay.runtime import ReplayRuntime
 from app.replay.source import ReplaySource
 from app.replay.streaming import StreamLimiter
-from tests.support.replay import READER_LOGIN, login_uri, provision_logins, publish_placeholder
+from tests.support.replay import (
+    BACKEND,
+    READER_LOGIN,
+    login_uri,
+    provision_logins,
+    publish_dir,
+    publish_placeholder,
+)
 
 MEETING_ID = "11111111-1111-4111-8111-111111111111"
 UNKNOWN_MEETING_ID = "99999999-9999-4999-8999-999999999999"
 OPERATION_ID = "66666666-6666-4666-8666-666666666666"
+EXPANDED = BACKEND / "replay_packages" / "hdfc-ine001a07rw5"
+EXPANDED_MEETING_ID = "a0000000-0000-4000-8000-000000000001"
+EXPANDED_OPERATION_ID = "a0000000-0000-4000-8000-000000000301"
 
 
 class _LiveReads:
@@ -108,6 +118,76 @@ def shared_server(disposable_db, monkeypatch):
     finally:
         server.should_exit = True
         thread.join(timeout=5)
+
+
+@pytest.fixture()
+def expanded_server(disposable_db, monkeypatch):
+    """The expanded package with live routes mounted beside it."""
+
+    provision_logins(disposable_db)
+    publish_dir(disposable_db, EXPANDED)
+    monkeypatch.setattr(
+        settings, "replay_database_url", login_uri(disposable_db, READER_LOGIN)
+    )
+    runtime = ReplayRuntime(
+        ReplaySource(),
+        package_id="hdfc-ine001a07rw5",
+        limiter=StreamLimiter(max_global=4, max_per_client=2),
+    )
+    live_reads = _LiveReads()
+    app = authorise(
+        create_app(
+            Container(prompt_catalog=object(), meeting_reads=live_reads),
+            runtime,
+            mount_live=True,
+        )
+    )
+    base_url, server, thread = _serve(app)
+    try:
+        yield base_url, live_reads
+    finally:
+        server.should_exit = True
+        thread.join(timeout=5)
+
+
+def test_expanded_seed_and_paced_streams_stay_on_the_recorded_boundary(
+    expanded_server,
+):
+    base_url, live_reads = expanded_server
+    with httpx.Client(timeout=20) as client:
+        session = client.get(f"{base_url}/api/replay/session")
+        assert session.status_code == 200
+        assert session.json()["package_version"] == "6"
+
+        seed = client.get(f"{base_url}/api/replay/workspace-seed")
+        assert seed.status_code == 200
+        assert seed.json()["seed_version"] == 3
+
+        for path in (
+            f"/api/replay/meetings/{EXPANDED_MEETING_ID}",
+            f"/api/replay/meetings/{EXPANDED_MEETING_ID}/turns",
+            f"/api/replay/meetings/{EXPANDED_MEETING_ID}/documents",
+            f"/api/replay/meetings/{EXPANDED_MEETING_ID}/closing",
+        ):
+            response = client.get(
+                base_url + path, params={"checkpoint": "checkpoint-created"}
+            )
+            assert response.status_code == 200, (path, response.status_code)
+
+        with client.stream(
+            "GET",
+            f"{base_url}/api/replay/meetings/{EXPANDED_MEETING_ID}/turns/"
+            f"{EXPANDED_OPERATION_ID}/events",
+            params={
+                "checkpoint": "checkpoint-created",
+                "after": 0,
+                "speed": 2,
+            },
+        ) as response:
+            assert response.status_code == 200
+            assert any(line.startswith("data: ") for line in response.iter_lines())
+
+    assert live_reads.calls == []
 
 
 def test_live_routes_are_mounted_and_replay_reads_never_reach_them(shared_server):
