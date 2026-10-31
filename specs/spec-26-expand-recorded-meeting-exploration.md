@@ -242,4 +242,50 @@ working path. Unapproved or missing branch content is not passed by disabling
 its tests or advertising empty controls. New publication and hosted checks
 remain gated by Spec 27; rollback retains the compatible canonical package.
 
+### Executed evidence
+
+Executed 2026-10-31 on branch `main` with the local backend virtual environment
+and the frontend test/build toolchain. No hosted deployment, new model run, or
+browser acceptance was performed.
+
+- `backend`: the expanded package is version `6`, schema `2`, with content
+  SHA-256
+  `48014296bc2f98c0270c72ecee7c5d527cb35536b6c9c3846ffc9590cb37113d`.
+  It contains 28 checkpoints, 10 participant tapes, 6 closing tapes, 27 intents,
+  27 transitions (8 canonical), 14 chapters, 18 claims, and the 8 unchanged
+  canonical beats. The package validates with zero issues, and every prepared
+  transition reaches closing and archive.
+- `backend`: the combined validation, streaming-speed, package-runtime,
+  clean-checkout, HTTP-boundary, and SSE-socket run passed 87 tests. It covers
+  canonical and schema-1 compatibility, graph negative cases, every prepared
+  transition through real HTTP reads, prefix transcript accumulation, closing
+  summaries and archived status, chapter snapshots, 2x pacing, suffix resume,
+  before-stream rejection of unsupported speeds, and the unchanged live/replay
+  boundary.
+- `frontend`: `npx vitest run` passed 93 files / 529 tests. Coverage includes the
+  original guided journey, schema-1 fallback, legal-action selection at all three
+  choice states, repeated-participant identity, prerequisite withholding,
+  chapter bootstrap success/unknown/mismatch/retired/route errors, recorded
+  summary inspection without live settings/generation hooks, playback controls,
+  and the existing meeting-room, closing, evidence, practice-workspace, and
+  live-summary regressions.
+- `frontend`: `npm run test:architecture` passed 4 files / 27 tests, including
+  the recorded module graph and evidence boundaries.
+- `frontend`: `npx tsc --noEmit` passed.
+- `frontend`: `npm run lint` reported 0 errors and 22 warnings; all remaining
+  warnings are outside the Spec 26 implementation.
+- `frontend`: `npm run build` compiled successfully and emitted the existing
+  demo and operator routes.
+- The expanded content approval is recorded in the
+  [Spec 26 content ledger](spec-26-expanded-meeting-content.md). All branch
+  dialogue, follow-ups, closing summaries, and chapter metadata are demo-authored
+  (`model_run: none`). The recorded Summary chapter reuses the approved system
+  message `a0000000-0000-4000-8000-000000000407`; it is labeled **Recorded
+  summary** and remains inspection-only.
+
+Not executed: Playwright or other real-browser acceptance, hosted replay
+acceptance, a real screen-reader or mobile-device pass, and any provider/model
+call. Speed, skip, replay, chapter, and resume behavior were exercised through
+jsdom, socket, and HTTP boundary tests, not a hosted deployment.
+
 Next: [Expanded-demo acceptance](spec-27-expanded-demo-acceptance.md).

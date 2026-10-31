@@ -251,7 +251,7 @@ values return `400 replay_selector_invalid`. Every non-GET path returns
 
 | Method & path | Class | Receipt / shape | Request keys | Safe errors | Notes |
 |---|---|---|---|---|---|
-| `GET /api/replay/session` | observation | `ReplaySessionView` | `package`, `version`, `checkpoint` | `400` selector; `503` | Run/package identity, checkpoints, intents, tapes, assets, capabilities, provenance |
+| `GET /api/replay/session` | observation | `ReplaySessionView` | `package`, `version`, `checkpoint` | `400` selector; `503` | Run/package identity, checkpoints, intents, prepared transitions, chapters, tapes, assets, capabilities, provenance |
 | `GET /api/replay/workspace-seed` | observation | `ReplayWorkspaceSeedView` | `package`, `version`, `checkpoint` | `404` legacy package; `503` | Inert schema-2 practice seed; pinned package/version/hash envelope |
 | `GET /api/replay/meetings` | observation | `Meeting[]` | `checkpoint` | `503` | Recorded meeting list |
 | `GET /api/replay/meetings/{meeting_id}` | observation | `MeetingWithParticipants` | `checkpoint` | `404`; `503` | Recorded detail; ids outside the package are not found |
@@ -261,10 +261,10 @@ values return `400 replay_selector_invalid`. Every non-GET path returns
 | `GET /api/replay/meetings/{meeting_id}/documents` | observation | `DocumentResponse[]` | `checkpoint` | `404`; `503` | Recorded document status; assets are passive URLs |
 | `GET /api/replay/meetings/{meeting_id}/safe-config` | observation | safe config object | `checkpoint` | `404`; `503` | Recorded participant/stack/provider labels only; no secrets |
 | `GET /api/replay/meetings/{meeting_id}/closing` | observation | `ClosingView` | `checkpoint` | `404`; `503` | Recorded closing snapshot |
-| `GET /api/replay/meetings/{meeting_id}/closing/events` | observation | typed closing SSE | `checkpoint`, `after` cursor | `404` before stream; `503` | Ballot/summary text only; never a participant turn |
+| `GET /api/replay/meetings/{meeting_id}/closing/events` | observation | typed closing SSE | `checkpoint`, `after` cursor, `speed` (`1` or `2`) | `404` before stream; `422` unsupported speed; `503` | Ballot/summary text only; never a participant turn. Pacing is capped before applying speed |
 | `GET /api/replay/meetings/{meeting_id}/turns` | observation | `TurnOperationResponse[]` | `checkpoint`, `limit` | `404`; `503` | Recorded operation list |
 | `GET /api/replay/meetings/{meeting_id}/turns/{operation_id}` | observation | `TurnOperationResponse` | `checkpoint` | `404`; `503` | Recorded operation status; never starts work |
-| `GET /api/replay/meetings/{meeting_id}/turns/{operation_id}/events` | observation | SSE recorded event stream | `checkpoint`, `after` cursor | `404` before stream; `429` stream limit; `503` | Paced recorded events; no live polling or provider call |
+| `GET /api/replay/meetings/{meeting_id}/turns/{operation_id}/events` | observation | SSE recorded event stream | `checkpoint`, `after` cursor, `speed` (`1` or `2`) | `404` before stream; `422` unsupported speed; `429` stream limit; `503` | Paced recorded events; no live polling or provider call. Suffix resume and immediate first frame are preserved |
 | `GET /api/replay/assets/{asset_id}` | observation | recorded asset metadata | — | `404`; `503` | Passive public URL and provenance; no bytes proxied |
 | `POST /api/replay/{path:path}` | command rejection | `{detail:"replay_read_only"}` | — | `403` | Catch-all rejects before any adapter |
 | `PUT /api/replay/{path:path}` | command rejection | `{detail:"replay_read_only"}` | — | `403` | Same |
