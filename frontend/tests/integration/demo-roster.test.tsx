@@ -14,7 +14,7 @@ import DemoLayout from "@/app/demo/layout";
 import DemoBoardPage from "@/app/demo/page";
 import DemoRosterPage from "@/app/demo/roster/page";
 import DemoNewPersonaPage from "@/app/demo/roster/new/page";
-import { DemoPersonaDetail } from "@/features/persona-catalog/local";
+import { DemoPersonaRoute } from "@/app/demo/roster/[id]/persona-route";
 import {
     DEMO_BOARD_PARTICIPANTS,
     DEMO_MEETING_ID,
@@ -126,7 +126,7 @@ function DemoRoute() {
     const match = /^\/demo\/roster\/([^/]+?)(\/history)?$/.exec(pathname);
     if (match) {
         return (
-            <DemoPersonaDetail
+            <DemoPersonaRoute
                 personaId={match[1]!}
                 initialTab={match[2] ? "prompt" : "overview"}
             />
@@ -227,7 +227,7 @@ describe("demo persona catalog", () => {
     });
 
     it("inspects a revision without activating it, then saves and restores one", async () => {
-        installDemoRouter();
+        const calls = installDemoRouter();
         await renderAt("/demo/roster/persona-credit");
 
         expect(
@@ -264,6 +264,12 @@ describe("demo persona catalog", () => {
             )
         );
         await waitFor(() => expect(screen.getAllByText("Active")).toHaveLength(1));
+        expect(calls.every((call) => call.url.startsWith(`${API}/replay/`))).toBe(true);
+        expect(
+            calls.some((call) =>
+                /\/(personas|knowledge_stacks|providers?)(\/|$)/.test(call.url)
+            )
+        ).toBe(false);
     });
 
     it("captures a practice participant snapshot that later template edits do not rewrite", async () => {
@@ -312,6 +318,39 @@ describe("demo persona catalog", () => {
                 /State covenant headroom and flag unsupported assumptions/
             )
         ).toBeInTheDocument();
+    });
+
+    it("duplicates and deletes a local template without touching the recording", async () => {
+        const calls = installDemoRouter();
+        const confirm = vi.spyOn(window, "confirm").mockReturnValue(true);
+        await renderAt("/demo/roster");
+        await screen.findByText("Practice personas");
+        await screen.findByText("The Credit Analyst");
+
+        fireEvent.pointerDown(
+            screen.getByRole("button", { name: "Actions for The Credit Analyst" })
+        );
+        fireEvent.click(await screen.findByText("Duplicate"));
+        expect(
+            await screen.findByText("The Credit Analyst (Copy)")
+        ).toBeInTheDocument();
+
+        fireEvent.pointerDown(
+            screen.getByRole("button", {
+                name: "Actions for The Credit Analyst (Copy)",
+            })
+        );
+        fireEvent.click(await screen.findByText("Delete"));
+        await waitFor(() =>
+            expect(
+                screen.queryByText("The Credit Analyst (Copy)")
+            ).not.toBeInTheDocument()
+        );
+        expect(confirm).toHaveBeenCalledWith(
+            expect.stringMatching(/recorded participants are not affected/i)
+        );
+        expect(screen.getByText("The Credit Analyst")).toBeInTheDocument();
+        expect(calls.every((call) => call.url.startsWith(`${API}/replay/`))).toBe(true);
     });
 
     it("detours to the highlighted persona history and returns to the guided beat", async () => {

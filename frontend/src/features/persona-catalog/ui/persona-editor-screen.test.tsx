@@ -256,6 +256,62 @@ describe("persona editor prompt version controls", () => {
         expect(screen.getByRole("button", { name: /save as new version/i })).not.toBeDisabled();
     });
 
+    it("does not apply a pending save to a different persona", async () => {
+        const pending = deferred<ReturnType<typeof versionFixture>>();
+        mocks.createPromptVersion.mockReturnValueOnce(pending.promise);
+        mocks.get.mockImplementation((id: string) =>
+            Promise.resolve(
+                id === PERSONA_ID
+                    ? personaFixture
+                    : {
+                          ...personaFixture,
+                          id: "persona-2",
+                          name: "The Second Analyst",
+                          active_prompt: "Second persona prompt",
+                          active_prompt_version: 1,
+                      }
+            )
+        );
+        mocks.listPromptVersions.mockImplementation((id: string) =>
+            Promise.resolve(
+                id === PERSONA_ID
+                    ? [
+                          versionFixture("v1", 1, "First revision directive", false),
+                          versionFixture("v2", 2, "Second revision directive", true),
+                      ]
+                    : [
+                          {
+                              ...versionFixture("p2v1", 1, "Second persona prompt", true),
+                              persona_id: "persona-2",
+                          },
+                      ]
+            )
+        );
+
+        const view = render(<PersonaDetailContent personaId={PERSONA_ID} />);
+        await screen.findByText("The Analyst");
+        await loadedVersionRows();
+        fireEvent.change(screen.getByRole("textbox"), {
+            target: { value: "Draft for the first persona" },
+        });
+        fireEvent.click(screen.getByRole("button", { name: /save as new version/i }));
+
+        view.rerender(<PersonaDetailContent personaId="persona-2" />);
+        await screen.findByText("The Second Analyst");
+
+        await act(async () => {
+            pending.resolve(versionFixture("v3", 3, "Draft for the first persona", true));
+            await pending.promise;
+        });
+
+        expect(screen.getByText("The Second Analyst")).toBeInTheDocument();
+        await openPromptTab();
+        expect((screen.getByRole("textbox") as HTMLTextAreaElement).value).toBe(
+            "Second persona prompt"
+        );
+        expect(screen.queryByText("Draft for the first persona")).not.toBeInTheDocument();
+    });
+
     it("warns before leaving with an unsaved draft", async () => {
         renderRosterPage();
         await screen.findByText("The Analyst");

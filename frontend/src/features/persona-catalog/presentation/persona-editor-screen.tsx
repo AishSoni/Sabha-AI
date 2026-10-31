@@ -647,10 +647,11 @@ export function PersonaEditorScreen({
                                         {!viewedRevision.is_active && (
                                             <Button
                                                 size="sm"
+                                                aria-label={`Activate version ${viewedRevision.version} from the revision view`}
                                                 onClick={() => requestActivation(viewedRevision.version)}
                                                 disabled={saving}
                                             >
-                                                Make version {viewedRevision.version} active
+                                                Make this version active
                                             </Button>
                                         )}
                                     </CardContent>

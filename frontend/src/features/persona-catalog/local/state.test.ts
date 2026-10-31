@@ -112,12 +112,10 @@ describe("local persona catalog state", () => {
 
     it("saves metadata without touching prompt history", () => {
         const state = workspace();
-        const result = updatePersona(
-            state,
-            "persona-1",
-            { name: "Renamed", stack_ids: [] },
-            deps()
-        );
+        const result = updatePersona(state, "persona-1", {
+            name: "Renamed",
+            stack_ids: [],
+        });
         expect(result.ok).toBe(true);
         if (!result.ok) return;
         expect(result.value.persona.name).toBe("Renamed");
@@ -220,7 +218,7 @@ describe("local persona catalog state", () => {
 
     it("returns not-found for unknown personas and versions", () => {
         const state = workspace();
-        expect(updatePersona(state, "missing", { name: "x" }, deps()).ok).toBe(false);
+        expect(updatePersona(state, "missing", { name: "x" }).ok).toBe(false);
         expect(deletePersona(state, "missing").ok).toBe(false);
         expect(saveRevision(state, "missing", "x", deps()).ok).toBe(false);
         expect(activateRevision(state, "persona-1", 9).ok).toBe(false);
