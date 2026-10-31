@@ -99,6 +99,17 @@ BEAT_TABS = (
     "closing",
 )
 
+EXPLORATION_MODES = ("inspection", "playback")
+
+# Exploration metadata is bounded policy: a package may not enlarge these
+# limits, and the browser enforces the same ceilings while navigating.
+MAX_EXPLORATION_CHECKPOINTS = 64
+MAX_EXPLORATION_TRANSITIONS = 128
+MAX_EXPLORATION_OUTGOING = 4
+MAX_EXPLORATION_CHAPTERS = 32
+MAX_PARTICIPANT_TAPES = 32
+MAX_CLOSING_TAPES = 16
+
 CLAIM_KINDS = (
     "fact",
     "derived",
@@ -291,6 +302,115 @@ class BeatRecord(StrictModel):
         for item in value:
             if not _is_safe_slug(item):
                 raise ValueError(f"unsafe reference: {item!r}")
+        return value
+
+
+class ChapterRecord(StrictModel):
+    """One approved, read-only inspection or playback chapter.
+
+    A chapter names an existing checkpoint and feature surface. It cannot invent
+    a route, execute a callback, or grant access to a resource outside the
+    pinned package.
+    """
+
+    chapter_id: str
+    title: str
+    objective: str
+    checkpoint: str
+    route: Literal[BEAT_ROUTES]
+    tab: Literal[BEAT_TABS]
+    mode: Literal[EXPLORATION_MODES]
+    disclosure: str
+    summary_message_id: str | None = None
+    claim_ids: list[str] = Field(default_factory=list)
+    input_asset_ids: list[str] = Field(default_factory=list)
+
+    @field_validator("chapter_id", "checkpoint", "summary_message_id")
+    @classmethod
+    def validate_chapter_ref(cls, value: str | None) -> str | None:
+        if value is not None and not _is_safe_slug(value):
+            raise ValueError("chapter references must be safe identifiers")
+        return value
+
+    @field_validator("title", "objective", "disclosure")
+    @classmethod
+    def validate_chapter_text(cls, value: str) -> str:
+        if not value.strip():
+            raise ValueError("chapter text must not be empty")
+        return value
+
+    @field_validator("claim_ids", "input_asset_ids")
+    @classmethod
+    def validate_chapter_ids(cls, value: list[str]) -> list[str]:
+        if len(set(value)) != len(value):
+            raise ValueError("chapter references must be unique")
+        for item in value:
+            if not _is_safe_slug(item):
+                raise ValueError(f"unsafe chapter reference: {item!r}")
+        return value
+
+    @model_validator(mode="after")
+    def validate_summary_chapter(self) -> "ChapterRecord":
+        if self.tab == "summary" and self.summary_message_id is None:
+            raise ValueError("a summary chapter requires summary_message_id")
+        if self.tab != "summary" and self.summary_message_id is not None:
+            raise ValueError("only a summary chapter may name a summary message")
+        return self
+
+
+class TransitionRecord(StrictModel):
+    """One validated legal action in the exploration graph.
+
+    Unlike an intent, a transition states its source coordinate explicitly.
+    That is what makes repeated participants unambiguous and keeps chapter
+    inspection from being mistaken for a completed action.
+    """
+
+    transition_id: str
+    source_checkpoint: str
+    completed_checkpoint: str
+    intent_id: str
+    kind: Literal[INTENT_KINDS]
+    participant_id: str | None = None
+    operation_id: str | None = None
+    tape_id: str | None = None
+    closing_tape_id: str | None = None
+    canonical: bool = False
+    prerequisites: list[str] = Field(default_factory=list)
+    label: str
+    explanation: str = ""
+
+    @field_validator(
+        "transition_id",
+        "source_checkpoint",
+        "completed_checkpoint",
+        "intent_id",
+        "participant_id",
+        "operation_id",
+        "tape_id",
+        "closing_tape_id",
+    )
+    @classmethod
+    def validate_transition_ref(cls, value: str | None) -> str | None:
+        if value is not None and not _is_safe_slug(value):
+            raise ValueError("transition references must be safe identifiers")
+        return value
+
+    @field_validator("label")
+    @classmethod
+    def validate_transition_label(cls, value: str) -> str:
+        if not value.strip():
+            raise ValueError("transition label must not be empty")
+        return value
+
+    @field_validator("prerequisites")
+    @classmethod
+    def validate_prerequisites(cls, value: list[str]) -> list[str]:
+        if len(set(value)) != len(value):
+            raise ValueError("transition prerequisites must be unique")
+        for item in value:
+            if not _is_safe_slug(item):
+                raise ValueError(f"unsafe transition prerequisite: {item!r}")
         return value
 
 
@@ -770,6 +890,8 @@ class Manifest(StrictModel):
     intents: list[IntentRecord] = Field(default_factory=list)
     beats: list[BeatRecord] = Field(default_factory=list)
     claims: list[ClaimRecord] = Field(default_factory=list)
+    chapters: list[ChapterRecord] = Field(default_factory=list)
+    transitions: list[TransitionRecord] = Field(default_factory=list)
     workspace_seed: str | None = None
     workspace_seed_sha256: str | None = None
     # Publication copies the validated seed into the immutable manifest row so
@@ -841,6 +963,24 @@ class Manifest(StrictModel):
         claim_ids = [claim.claim_id for claim in value]
         if len(set(claim_ids)) != len(claim_ids):
             raise ValueError("claim_ids must be unique")
+        return value
+
+    @field_validator("chapters")
+    @classmethod
+    def validate_chapter_ids(cls, value: list[ChapterRecord]) -> list[ChapterRecord]:
+        chapter_ids = [chapter.chapter_id for chapter in value]
+        if len(set(chapter_ids)) != len(chapter_ids):
+            raise ValueError("chapter_ids must be unique")
+        return value
+
+    @field_validator("transitions")
+    @classmethod
+    def validate_transition_ids(
+        cls, value: list[TransitionRecord]
+    ) -> list[TransitionRecord]:
+        transition_ids = [transition.transition_id for transition in value]
+        if len(set(transition_ids)) != len(transition_ids):
+            raise ValueError("transition_ids must be unique")
         return value
 
     @field_validator("stack_labels")

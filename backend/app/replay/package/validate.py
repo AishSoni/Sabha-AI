@@ -36,6 +36,12 @@ from app.replay.constants import MAX_TAPE_BYTES, MAX_TAPE_EVENTS
 from .issues import PackageIssue
 from .loader import LoadedPackage, _canonical_sha256
 from .model import (
+    MAX_CLOSING_TAPES,
+    MAX_EXPLORATION_CHAPTERS,
+    MAX_EXPLORATION_CHECKPOINTS,
+    MAX_EXPLORATION_OUTGOING,
+    MAX_EXPLORATION_TRANSITIONS,
+    MAX_PARTICIPANT_TAPES,
     MAX_WORKSPACE_CHUNKS_PER_DOCUMENT,
     MAX_WORKSPACE_DOCUMENTS,
     MAX_WORKSPACE_PERSONAS,
@@ -697,12 +703,27 @@ def _validate_closing_tape(tape, package: LoadedPackage, issues: _Issues) -> Non
         issues.add("invalid_closing", path, "recorded closing tape requires a completed closing")
 
     # No earlier checkpoint may already expose the closing prose. The visible
-    # closing snapshot at a non-completed checkpoint must remain empty.
+    # closing snapshot at a non-completed checkpoint must remain empty. With an
+    # exploration graph, "earlier" means graph ancestry; checkpoint ordinals are
+    # serialization metadata only.
     terminal_texts = [event.text for event in tape.events if event.terminal]
-    for checkpoint in package.checkpoints.values():
+    if package.manifest.transitions:
+        earlier_ids = _transition_reachability(package).get(
+            tape.completed_checkpoint, {tape.completed_checkpoint}
+        ) - {tape.completed_checkpoint}
+        earlier_checkpoints = [
+            package.checkpoints[checkpoint_id]
+            for checkpoint_id in earlier_ids
+            if checkpoint_id in package.checkpoints
+        ]
+    else:
+        earlier_checkpoints = [
+            checkpoint
+            for checkpoint in package.checkpoints.values()
+            if checkpoint.ordinal < completed.ordinal
+        ]
+    for checkpoint in earlier_checkpoints:
         if checkpoint.checkpoint_id == tape.completed_checkpoint:
-            continue
-        if checkpoint.ordinal >= completed.ordinal:
             continue
         earlier = checkpoint.reads.get("closing")
         if not isinstance(earlier, dict):
@@ -953,6 +974,557 @@ def _validate_claim_reference(
 
 
 def _validate_guided_intents(package: LoadedPackage, issues: _Issues) -> None:
+    manifest = package.manifest
+    for index, intent in enumerate(manifest.intents):
+        intent_path = f"manifest.json#/intents[{index}]"
+        checkpoint = package.checkpoints.get(intent.checkpoint)
+        if intent.kind in ("create_meeting", "archive_meeting"):
+            if intent.operation_id or intent.tape_id or intent.closing_tape_id:
+                issues.add(
+                    "invalid_intent",
+                    intent_path,
+                    "checkpoint intents cannot reference a tape or operation",
+                )
+            if checkpoint is not None:
+                if intent.kind == "create_meeting" and checkpoint.phase != "active":
+                    issues.add(
+                        "invalid_intent",
+                        intent_path,
+                        "create meeting intent must select an active checkpoint",
+                    )
+                if intent.kind == "create_meeting" and "meeting" not in checkpoint.reads:
+                    issues.add(
+                        "invalid_intent",
+                        intent_path,
+                        "create meeting intent must select a meeting checkpoint",
+                    )
+                if intent.kind == "archive_meeting" and checkpoint.phase != "archived":
+                    issues.add(
+                        "invalid_intent",
+                        intent_path,
+                        "archive intent must select an archived checkpoint",
+                    )
+        if intent.kind == "request_closing" and (intent.operation_id or intent.tape_id):
+            issues.add(
+                "invalid_intent",
+                intent_path,
+                "closing intents cannot reference a turn operation or tape",
+            )
+        if (
+            intent.kind == "director_follow_up"
+            and not intent.operation_id
+            and not intent.tape_id
+        ):
+            if intent.closing_tape_id:
+                issues.add(
+                    "invalid_intent",
+                    intent_path,
+                    "a checkpoint follow-up cannot reference a closing tape",
+                )
+            if checkpoint is not None:
+                if checkpoint.phase != "active":
+                    issues.add(
+                        "invalid_intent",
+                        intent_path,
+                        "a checkpoint follow-up must select an active checkpoint",
+                    )
+                if "meeting" not in checkpoint.reads:
+                    issues.add(
+                        "invalid_intent",
+                        intent_path,
+                        "a checkpoint follow-up must select a meeting checkpoint",
+                    )
+
+
+def _meeting_message_ids(checkpoint) -> list[str]:
+    if checkpoint is None:
+        return []
+    meeting = checkpoint.reads.get("meeting")
+    if not isinstance(meeting, dict):
+        return []
+    return [
+        str(message.get("id"))
+        for message in meeting.get("messages") or []
+        if isinstance(message, dict)
+    ]
+
+
+def _transition_reachability(package: LoadedPackage) -> dict[str, set[str]]:
+    """Return checkpoints that can reach each checkpoint (including itself)."""
+
+    adjacency: dict[str, set[str]] = {
+        checkpoint_id: set() for checkpoint_id in package.checkpoints
+    }
+    for transition in package.manifest.transitions:
+        adjacency.setdefault(transition.source_checkpoint, set()).add(
+            transition.completed_checkpoint
+        )
+    reverse: dict[str, set[str]] = {
+        checkpoint_id: set() for checkpoint_id in adjacency
+    }
+    for source, destinations in adjacency.items():
+        for destination in destinations:
+            reverse.setdefault(destination, set()).add(source)
+    ancestors: dict[str, set[str]] = {}
+    for checkpoint_id in adjacency:
+        seen = {checkpoint_id}
+        stack = [checkpoint_id]
+        while stack:
+            current = stack.pop()
+            for parent in reverse.get(current, ()):
+                if parent not in seen:
+                    seen.add(parent)
+                    stack.append(parent)
+        ancestors[checkpoint_id] = seen
+    return ancestors
+
+
+def _transition_kind_issue(kinds: set[str]) -> str | None:
+    if "request_closing" in kinds and len(kinds) > 1:
+        return "closing cannot share a source state with other actions"
+    if "create_meeting" in kinds and len(kinds) > 1:
+        return "meeting creation cannot share a source state"
+    if "archive_meeting" in kinds and len(kinds) > 1:
+        return "archiving cannot share a source state"
+    return None
+
+
+def _validate_exploration(package: LoadedPackage, issues: _Issues) -> None:
+    """Validate the bounded prepared-transition graph and chapter catalog.
+
+    Canonical beats keep their separate linear gate. This validator only
+    accepts explicit, data-only legal actions whose source, tape, transcript,
+    and terminal state agree.
+    """
+
+    manifest = package.manifest
+    transitions = manifest.transitions
+    chapters = manifest.chapters
+
+    if manifest.schema_version < 2 and (transitions or chapters):
+        issues.add(
+            "invalid_exploration",
+            "manifest.json",
+            "exploration metadata requires schema version 2",
+        )
+        return
+    if not transitions and not chapters:
+        return
+    if not transitions or not chapters:
+        issues.add(
+            "invalid_exploration",
+            "manifest.json",
+            "chapters and transitions must be authored together",
+        )
+    if len(package.checkpoints) > MAX_EXPLORATION_CHECKPOINTS:
+        issues.add("exploration_limit", "checkpoints", "too many checkpoints")
+    if len(transitions) > MAX_EXPLORATION_TRANSITIONS:
+        issues.add("exploration_limit", "manifest.json#/transitions", "too many transitions")
+    if len(chapters) > MAX_EXPLORATION_CHAPTERS:
+        issues.add("exploration_limit", "manifest.json#/chapters", "too many chapters")
+    if len(package.tapes) > MAX_PARTICIPANT_TAPES:
+        issues.add("exploration_limit", "tapes", "too many participant tapes")
+    if len(package.closing_tapes) > MAX_CLOSING_TAPES:
+        issues.add("exploration_limit", "closing_tapes", "too many closing tapes")
+
+    intents = {intent.intent_id: intent for intent in manifest.intents}
+    transition_by_id = {
+        transition.transition_id: transition for transition in transitions
+    }
+    asset_ids = {asset.asset_id for asset in package.assets.assets}
+    claim_ids = {claim.claim_id for claim in manifest.claims}
+    outgoing: dict[str, list] = {}
+
+    for index, transition in enumerate(transitions):
+        path = f"manifest.json#/transitions[{index}]"
+        source = package.checkpoints.get(transition.source_checkpoint)
+        completed = package.checkpoints.get(transition.completed_checkpoint)
+        intent = intents.get(transition.intent_id)
+        outgoing.setdefault(transition.source_checkpoint, []).append(transition)
+        if source is None:
+            issues.add("dangling_id", path, "source checkpoint is missing")
+        if completed is None:
+            issues.add("dangling_id", path, "completed checkpoint is missing")
+        if intent is None:
+            issues.add("dangling_id", path, "transition intent is missing")
+            continue
+        if transition.kind != intent.kind:
+            issues.add("mismatched_id", path, "transition kind disagrees with intent")
+        for field in (
+            "participant_id",
+            "operation_id",
+            "tape_id",
+            "closing_tape_id",
+        ):
+            declared = getattr(intent, field)
+            if declared is not None and declared != getattr(transition, field):
+                issues.add(
+                    "mismatched_id",
+                    path,
+                    f"transition {field} disagrees with intent",
+                )
+        if transition.source_checkpoint == transition.completed_checkpoint:
+            issues.add("invalid_transition", path, "transition must advance the checkpoint")
+
+        if transition.kind in ("start_participant", "director_follow_up") and (
+            transition.tape_id or transition.operation_id
+        ):
+            tape = package.tapes.get(transition.tape_id or "")
+            if tape is None:
+                issues.add("dangling_id", path, "transition tape is missing")
+            else:
+                if tape.initial_checkpoint != transition.source_checkpoint:
+                    issues.add("mismatched_id", path, "tape does not start at the transition source")
+                if tape.completed_checkpoint != transition.completed_checkpoint:
+                    issues.add("mismatched_id", path, "tape does not end at the transition destination")
+                if tape.participant_id != transition.participant_id:
+                    issues.add("mismatched_id", path, "tape participant disagrees")
+                if tape.operation_id != transition.operation_id:
+                    issues.add("mismatched_id", path, "tape operation disagrees")
+                if source is not None and completed is not None:
+                    initial_ids = _meeting_message_ids(source)
+                    completed_ids = _meeting_message_ids(completed)
+                    if completed_ids[: len(initial_ids)] != initial_ids:
+                        issues.add(
+                            "invalid_merge",
+                            path,
+                            "branch transcript does not accumulate the source transcript",
+                        )
+                    done = next(
+                        (
+                            event
+                            for event in reversed(tape.events)
+                            if event.type == "done"
+                        ),
+                        None,
+                    )
+                    final_message_id = (
+                        done.payload.get("message_id") if done is not None else None
+                    )
+                    if not final_message_id:
+                        issues.add("missing_terminal", path, "tape has no final message id")
+                    elif completed_ids[-1:] != [str(final_message_id)]:
+                        issues.add(
+                            "mismatched_terminal",
+                            path,
+                            "completed checkpoint does not end with the tape message",
+                        )
+                    elif len(completed_ids) != len(initial_ids) + 1:
+                        issues.add(
+                            "invalid_merge",
+                            path,
+                            "turn transition must add exactly one message",
+                        )
+
+        if transition.kind == "request_closing":
+            tape = package.closing_tapes.get(transition.closing_tape_id or "")
+            if tape is None:
+                issues.add("dangling_id", path, "transition closing tape is missing")
+            else:
+                if tape.initial_checkpoint != transition.source_checkpoint:
+                    issues.add("mismatched_id", path, "closing tape does not start at the source")
+                if tape.completed_checkpoint != transition.completed_checkpoint:
+                    issues.add("mismatched_id", path, "closing tape does not end at the destination")
+                if completed is not None and completed.phase != "closed":
+                    issues.add("invalid_transition", path, "closing must complete a closed checkpoint")
+                if source is not None and completed is not None:
+                    initial_ids = _meeting_message_ids(source)
+                    completed_ids = _meeting_message_ids(completed)
+                    if completed_ids[: len(initial_ids)] != initial_ids:
+                        issues.add(
+                            "invalid_merge",
+                            path,
+                            "closing transcript does not accumulate the source transcript",
+                        )
+                    if len(completed_ids) not in (len(initial_ids), len(initial_ids) + 1):
+                        issues.add(
+                            "invalid_merge",
+                            path,
+                            "closing transition may add at most one final message",
+                        )
+
+        if transition.kind in ("create_meeting", "archive_meeting"):
+            if transition.completed_checkpoint != intent.checkpoint:
+                issues.add(
+                    "mismatched_id",
+                    path,
+                    "instant transition must complete the intent checkpoint",
+                )
+            if transition.tape_id or transition.closing_tape_id or transition.operation_id:
+                issues.add("invalid_transition", path, "instant transition cannot use a tape")
+            if transition.kind == "create_meeting" and completed is not None:
+                if completed.phase != "active":
+                    issues.add("invalid_transition", path, "create must complete an active checkpoint")
+            if transition.kind == "archive_meeting":
+                if completed is not None and completed.phase != "archived":
+                    issues.add("invalid_transition", path, "archive must complete an archived checkpoint")
+                if source is not None and completed is not None:
+                    if _meeting_message_ids(source) != _meeting_message_ids(completed):
+                        issues.add(
+                            "invalid_merge",
+                            path,
+                            "archive transition must preserve the transcript",
+                        )
+
+        if transition.kind == "director_follow_up" and not transition.tape_id:
+            if transition.completed_checkpoint != intent.checkpoint:
+                issues.add(
+                    "mismatched_id",
+                    path,
+                    "checkpoint follow-up must complete the intent checkpoint",
+                )
+            if source is not None and completed is not None:
+                if _meeting_message_ids(source) != _meeting_message_ids(completed):
+                    issues.add(
+                        "invalid_merge",
+                        path,
+                        "checkpoint follow-up must preserve the transcript",
+                    )
+
+    # Each intent maps to one transition, and every transition has a unique
+    # intent. This keeps repeated participants unambiguous.
+    by_intent: dict[str, list] = {}
+    for transition in transitions:
+        by_intent.setdefault(transition.intent_id, []).append(transition)
+    for intent_id, items in by_intent.items():
+        if len(items) != 1:
+            issues.add(
+                "duplicate_id",
+                "manifest.json#/transitions",
+                f"intent {intent_id!r} has more than one transition",
+            )
+    for intent_id in intents:
+        if intent_id not in by_intent:
+            issues.add(
+                "dangling_id",
+                "manifest.json#/transitions",
+                f"intent {intent_id!r} has no transition",
+            )
+
+    for source, items in outgoing.items():
+        if len(items) > MAX_EXPLORATION_OUTGOING:
+            issues.add(
+                "exploration_limit",
+                f"manifest.json#/transitions[{source}]",
+                "too many outgoing choices",
+            )
+        destinations = [item.completed_checkpoint for item in items]
+        if len(set(destinations)) != len(destinations):
+            issues.add("duplicate_id", f"manifest.json#/transitions[{source}]", "duplicate destination")
+        kinds = {item.kind for item in items}
+        if kind := _transition_kind_issue(kinds):
+            issues.add("invalid_transition", f"manifest.json#/transitions[{source}]", kind)
+
+    # Directed acyclic graph. Checkpoint ordinals are serialization metadata,
+    # never branch chronology.
+    state: dict[str, int] = {}
+
+    def visit(node: str) -> None:
+        state[node] = 1
+        for item in outgoing.get(node, ()):
+            target = item.completed_checkpoint
+            if state.get(target) == 1:
+                issues.add(
+                    "exploration_cycle",
+                    "manifest.json#/transitions",
+                    f"cycle through {target!r}",
+                )
+            elif state.get(target, 0) == 0:
+                visit(target)
+        state[node] = 2
+
+    for checkpoint_id in package.checkpoints:
+        if state.get(checkpoint_id, 0) == 0:
+            visit(checkpoint_id)
+
+    ancestors = _transition_reachability(package)
+    for index, transition in enumerate(transitions):
+        path = f"manifest.json#/transitions[{index}]"
+        for prerequisite_id in transition.prerequisites:
+            prerequisite = transition_by_id.get(prerequisite_id)
+            if prerequisite is None:
+                issues.add("dangling_id", path, "prerequisite transition is missing")
+                continue
+            if prerequisite.completed_checkpoint not in ancestors.get(
+                transition.source_checkpoint, set()
+            ):
+                issues.add(
+                    "invalid_prerequisite",
+                    path,
+                    "prerequisite is not completed before this source state",
+                )
+
+    # Reject implicit branch merges: one checkpoint may only receive multiple
+    # transitions when their source transcripts are genuinely identical.
+    incoming: dict[str, list] = {}
+    for transition in transitions:
+        incoming.setdefault(transition.completed_checkpoint, []).append(transition)
+    for destination, items in incoming.items():
+        if len(items) < 2:
+            continue
+        transcripts = {
+            tuple(_meeting_message_ids(package.checkpoints.get(item.source_checkpoint)))
+            for item in items
+        }
+        if len(transcripts) > 1:
+            issues.add(
+                "invalid_merge",
+                f"manifest.json#/transitions[{destination}]",
+                "different branch transcripts merge into one checkpoint",
+            )
+
+    # Every reachable state must offer a coherent route to a closed and
+    # archived result. Dead ends and closings without archive fail closed.
+    archived = {
+        checkpoint_id
+        for checkpoint_id, checkpoint in package.checkpoints.items()
+        if checkpoint.phase == "archived"
+    }
+    closed = {
+        checkpoint_id
+        for checkpoint_id, checkpoint in package.checkpoints.items()
+        if checkpoint.phase == "closed"
+    }
+    forward: dict[str, set[str]] = {
+        checkpoint_id: set() for checkpoint_id in package.checkpoints
+    }
+    for transition in transitions:
+        forward.setdefault(transition.source_checkpoint, set()).add(
+            transition.completed_checkpoint
+        )
+
+    def reachable(start: str, targets: set[str]) -> bool:
+        seen: set[str] = set()
+        stack = [start]
+        while stack:
+            node = stack.pop()
+            if node in seen:
+                continue
+            seen.add(node)
+            if node in targets:
+                return True
+            stack.extend(forward.get(node, ()))
+        return False
+
+    reachable_states: set[str] = set()
+    stack = [manifest.initial_checkpoint]
+    while stack:
+        node = stack.pop()
+        if node in reachable_states or node not in package.checkpoints:
+            continue
+        reachable_states.add(node)
+        stack.extend(forward.get(node, ()))
+    for checkpoint_id in reachable_states:
+        if checkpoint_id in archived:
+            continue
+        if not reachable(checkpoint_id, archived):
+            issues.add(
+                "missing_continuation",
+                f"checkpoints/{checkpoint_id}.json",
+                "checkpoint cannot reach an archived result",
+            )
+        if checkpoint_id not in closed and not reachable(checkpoint_id, closed):
+            issues.add(
+                "missing_continuation",
+                f"checkpoints/{checkpoint_id}.json",
+                "checkpoint cannot reach a completed closing",
+            )
+
+    # Two meaningful choice opportunities: participant turns and prepared
+    # Director follow-ups. Cosmetic duplicate labels are rejected.
+    participant_sources = {
+        source: [item for item in items if item.kind == "start_participant"]
+        for source, items in outgoing.items()
+    }
+    director_sources = {
+        source: [item for item in items if item.kind == "director_follow_up"]
+        for source, items in outgoing.items()
+    }
+    if not any(len(items) >= 2 for items in participant_sources.values()):
+        issues.add(
+            "invalid_exploration",
+            "manifest.json#/transitions",
+            "expanded package needs a state with two prepared participant turns",
+        )
+    if not any(len(items) >= 2 for items in director_sources.values()):
+        issues.add(
+            "invalid_exploration",
+            "manifest.json#/transitions",
+            "expanded package needs a state with two prepared Director follow-ups",
+        )
+    for source, items in director_sources.items():
+        labels = [item.label.strip().lower() for item in items]
+        if len(set(labels)) != len(labels):
+            issues.add(
+                "invalid_exploration",
+                f"manifest.json#/transitions[{source}]",
+                "prepared follow-ups need distinct labels",
+            )
+
+    # Canonical steps keep their approved linear path through canonical
+    # transitions. A branch action can never complete an unrelated beat.
+    canonical_by_intent = {
+        item.intent_id: item for item in transitions if item.canonical
+    }
+    for index, beat in enumerate(manifest.beats):
+        for step_index, step in enumerate(beat.steps):
+            if step.intent_id is None or step.completion == "acknowledge":
+                continue
+            transition = canonical_by_intent.get(step.intent_id)
+            if transition is None:
+                issues.add(
+                    "invalid_beat",
+                    f"manifest.json#/beats[{index}]/steps[{step_index}]",
+                    "canonical step has no canonical transition",
+                )
+
+    for index, chapter in enumerate(chapters):
+        path = f"manifest.json#/chapters[{index}]"
+        checkpoint = package.checkpoints.get(chapter.checkpoint)
+        if checkpoint is None:
+            issues.add("dangling_id", path, "chapter checkpoint is missing")
+            continue
+        reads = checkpoint.reads
+        if chapter.route == "list" and "meetings" not in reads:
+            issues.add("invalid_chapter", path, "list chapter needs a meetings read")
+        if chapter.route == "new" and "safe_config" not in reads:
+            issues.add("invalid_chapter", path, "new chapter needs the board safe config")
+        if chapter.route in ("board", "meeting") and "meeting" not in reads:
+            issues.add("invalid_chapter", path, "chapter needs a meeting read")
+        if chapter.tab in ("disagreements", "consensus", "closing", "documents"):
+            if chapter.tab not in reads:
+                issues.add("invalid_chapter", path, f"chapter needs a {chapter.tab} read")
+        if chapter.tab in ("chat", "roster") and "meeting" not in reads:
+            issues.add("invalid_chapter", path, "conversation chapters need a meeting read")
+        for claim_id in chapter.claim_ids:
+            if claim_id not in claim_ids:
+                issues.add("dangling_id", path, f"chapter claim {claim_id} is missing")
+        for asset_id in chapter.input_asset_ids:
+            if asset_id not in asset_ids:
+                issues.add("dangling_id", path, f"chapter asset {asset_id} is missing")
+        if chapter.tab == "summary":
+            meeting = reads.get("meeting")            messages = meeting.get("messages") if isinstance(meeting, dict) else []
+            summary = next(
+                (
+                    message
+                    for message in messages or []
+                    if isinstance(message, dict)
+                    and str(message.get("id")) == chapter.summary_message_id
+                ),
+                None,
+            )
+            if summary is None:
+                issues.add("dangling_id", path, "summary message is missing")
+            else:
+                if summary.get("sender_type") != "system":
+                    issues.add("invalid_chapter", path, "recorded summary must be a system message")
+                if not isinstance(summary.get("content"), str) or not summary["content"].strip():
+                    issues.add("invalid_chapter", path, "recorded summary must have text")
+                if summary.get("estimated_cost"):
+                    issues.add("synthetic_cost", path, "recorded summary must not carry a charge")
+
+
+
     manifest = package.manifest
     for index, intent in enumerate(manifest.intents):
         intent_path = f"manifest.json#/intents[{index}]"
@@ -1597,6 +2169,7 @@ def validate_package(package: LoadedPackage) -> list[PackageIssue]:
 
     _validate_guided_intents(package, issues)
     _validate_guided_beats(package, issues)
+    _validate_exploration(package, issues)
     _validate_workspace_seed(package, issues)
 
     costs_recorded = manifest.provenance.get("costs") == "recorded"
