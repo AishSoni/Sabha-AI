@@ -15,6 +15,7 @@ import { useDemoWorkspace } from "../provider";
 const DESTINATIONS = [
     { href: "/demo", label: "Board", exact: true },
     { href: "/demo/new", label: "New meeting", exact: true },
+    { href: "/demo/roster", label: "Personas", exact: false },
     { href: "/demo/meetings", label: "Meetings", exact: false },
     { href: "/demo/settings", label: "Demo settings", exact: true },
 ] as const;

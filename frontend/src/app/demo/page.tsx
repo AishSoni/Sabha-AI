@@ -4,6 +4,7 @@ import Link from "next/link";
 import { ArrowRight, BookOpen, Lock, ShieldCheck, Users } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Card } from "@/components/ui/card";
+import { useDemoWorkspace } from "@/features/demo-workspace";
 import { useReplayRun } from "@/features/meetings/runtime/replay-run";
 
 interface BoardStack {
@@ -33,8 +34,20 @@ interface BoardPreview {
 
 export default function DemoBoardPage() {
     const run = useReplayRun();
+    const workspace = useDemoWorkspace();
     const config = run.safeConfig as { board?: BoardPreview } | null;
     const board = config?.board;
+    const catalogByParticipant = new Map<string, string>();
+    if (workspace.status === "ready") {
+        for (const persona of workspace.seed?.personas ?? []) {
+            if (persona.recordedParticipantId) {
+                catalogByParticipant.set(
+                    persona.recordedParticipantId,
+                    persona.personaId
+                );
+            }
+        }
+    }
 
     if (!board) {
         return (
@@ -88,6 +101,9 @@ export default function DemoBoardPage() {
                         const assigned = participant.stack_ids
                             .map((id) => ({ id, ...(stacks[id] ?? { label: "Unlabeled stack", scope: "private" as const }) }))
                             .filter(Boolean);
+                        const catalogPersonaId = catalogByParticipant.get(
+                            participant.participant_id
+                        );
                         return (
                             <Card key={participant.participant_id} className="border-zinc-800 bg-zinc-900/50 p-5">
                                 <div className="flex items-center gap-3">
@@ -128,10 +144,47 @@ export default function DemoBoardPage() {
                                         ))}
                                     </ul>
                                 </details>
+                                {catalogPersonaId ? (
+                                    <Link
+                                        href={`/demo/roster/${catalogPersonaId}`}
+                                        className="mt-4 inline-flex items-center gap-2 text-xs font-medium text-indigo-300 hover:text-indigo-200"
+                                    >
+                                        Compare with practice template
+                                        <ArrowRight className="h-3.5 w-3.5" />
+                                    </Link>
+                                ) : null}
                             </Card>
                         );
                     })}
                 </div>
+            </section>
+
+            <section
+                aria-labelledby="snapshot-heading"
+                className="mt-6 rounded-xl border border-zinc-800 bg-zinc-900/40 p-4 text-sm text-zinc-400"
+            >
+                <h2
+                    id="snapshot-heading"
+                    className="font-medium text-zinc-300"
+                >
+                    Prepared participants are frozen snapshots
+                </h2>
+                <p className="mt-1 max-w-3xl">
+                    Each participant above was captured for this recording with
+                    its own system prompt and knowledge assignments. The
+                    practice catalog holds separate temporary templates:
+                    editing a template does not rename this board, rewrite a
+                    recorded reply, or add a speaker to the meeting.
+                </p>
+                {workspace.status === "ready" ? (
+                    <Link
+                        href="/demo/roster"
+                        className="mt-3 inline-flex items-center gap-2 text-xs font-medium text-indigo-300 hover:text-indigo-200"
+                    >
+                        Open the practice persona catalog
+                        <ArrowRight className="h-3.5 w-3.5" />
+                    </Link>
+                ) : null}
             </section>
 
             <div className="mt-6 rounded-xl border border-zinc-800 bg-zinc-900/40 p-4 text-sm text-zinc-400">

@@ -23,3 +23,7 @@ export {
     useLocalPersonaCatalog,
     type LocalPersonaCatalog,
 } from './use-local-persona-catalog';
+export { DemoCatalogGate } from './demo-catalog-gate';
+export { DemoPersonaRoster } from './demo-persona-roster';
+export { DemoPersonaNew } from './demo-persona-new';
+export { DemoPersonaDetail } from './demo-persona-detail';

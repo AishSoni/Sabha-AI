@@ -53,6 +53,7 @@ export interface RosterListProps {
     error: string | null;
     hrefs: RosterHrefs;
     heading?: string;
+    description?: string;
     onDuplicate: (persona: RosterPersonaView) => void;
     onDelete: (personaId: string) => void;
 }
@@ -63,6 +64,7 @@ export function RosterList({
     error,
     hrefs,
     heading = "AI Roster",
+    description = "Manage your AI personas",
     onDuplicate,
     onDelete,
 }: RosterListProps) {
@@ -80,7 +82,7 @@ export function RosterList({
                         </Link>
                         <div>
                             <h1 className="text-xl font-bold text-white">{heading}</h1>
-                            <p className="text-xs text-zinc-500">Manage your AI personas</p>
+                            <p className="text-xs text-zinc-500">{description}</p>
                         </div>
                     </div>
 
