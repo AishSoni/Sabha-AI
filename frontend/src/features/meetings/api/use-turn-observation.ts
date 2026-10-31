@@ -37,6 +37,8 @@ export interface UseTurnObservationOptions {
     meetingId: string;
     operation: TurnOperation | null | undefined;
     enabled?: boolean;
+    /** Recorded playback pacing; default 1x. */
+    speed?: 1 | 2;
     /** Composed runtime graph; omit for the historical live HTTP defaults. */
     runtime?: MeetingsRuntime;
     /** Called once per terminal transition, including a terminal status read. */
@@ -64,6 +66,7 @@ export function useTurnObservation({
     operation,
     enabled = true,
     runtime,
+    speed = 1,
     onTerminal,
 }: UseTurnObservationOptions): UseTurnObservationResult {
     const queryClient = useQueryClient();
@@ -188,6 +191,7 @@ export function useTurnObservation({
                 }
                 for await (const event of observe(meetingId, operationId, {
                     after,
+                    speed,
                     signal: combineSignals(runtime?.signal, controller.signal),
                 })) {
                     if (cancelled) return;
@@ -229,7 +233,7 @@ export function useTurnObservation({
             cancelled = true;
             controller?.abort();
         };
-    }, [enabled, epoch, meetingId, operationId, runtime, scopeId, settle, status]);
+    }, [enabled, epoch, meetingId, operationId, runtime, scopeId, settle, speed, status]);
 
     const resume = useCallback(() => {
         if (!operationId) return;

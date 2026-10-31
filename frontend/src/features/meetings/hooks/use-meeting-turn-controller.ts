@@ -106,6 +106,7 @@ export function useMeetingTurnController({
         meetingId,
         operation: activeOperation,
         runtime,
+        speed: runtime?.replay?.playbackSpeed ?? 1,
         onTerminal,
     });
 

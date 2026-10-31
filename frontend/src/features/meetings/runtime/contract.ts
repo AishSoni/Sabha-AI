@@ -56,6 +56,45 @@ export interface ReplayIntent {
     label?: string;
 }
 
+export interface ReplayChapter {
+    chapter_id: string;
+    title: string;
+    objective: string;
+    checkpoint: string;
+    route: "board" | "new" | "meeting" | "list";
+    tab: string;
+    mode: "inspection" | "playback";
+    disclosure: string;
+    summary_message_id: string | null;
+    claim_ids: string[];
+    input_asset_ids: string[];
+}
+
+export interface ReplayTransition {
+    transition_id: string;
+    source_checkpoint: string;
+    completed_checkpoint: string;
+    intent_id: string;
+    kind: string;
+    participant_id: string | null;
+    operation_id: string | null;
+    tape_id: string | null;
+    closing_tape_id: string | null;
+    canonical: boolean;
+    prerequisites: string[];
+    label: string;
+    explanation: string;
+}
+
+export interface ReplayLegalAction {
+    transition: ReplayTransition;
+    intent: ReplayIntent;
+    available: boolean;
+    reason: string | null;
+}
+
+export type ReplayPlaybackSpeed = 1 | 2;
+
 export interface ReplayTape {
     tape_id: string;
     operation_id: string;
@@ -135,12 +174,20 @@ export interface ReplayRuntimeInfo {
     stackLabels: Record<string, string>;
     beats: ReplayBeat[];
     intents: ReplayIntent[];
+    chapters: ReplayChapter[];
+    transitions: ReplayTransition[];
     tapes: ReplayTape[];
     assets: ReplayAsset[];
     claims: ReplayClaim[];
     preview: ReplayPreview;
     retired: boolean;
+    playbackSpeed: ReplayPlaybackSpeed;
+    setPlaybackSpeed(speed: ReplayPlaybackSpeed): void;
+    legalActions(participantId?: string | null): ReplayLegalAction[];
     startIntent(intentId: string): Promise<void>;
+    skipIntent(intentId: string): Promise<void>;
+    replayIntent(intentId: string): Promise<void>;
+    goToChapter(chapterId: string): Promise<void>;
     switchCheckpoint(checkpointId: string): Promise<void>;
 }
 
@@ -159,7 +206,7 @@ export interface ClosingStreamApi {
     observe(
         meetingId: string,
         closingId: string,
-        options: { after?: number; signal?: AbortSignal }
+        options: { after?: number; speed?: ReplayPlaybackSpeed; signal?: AbortSignal }
     ): AsyncGenerator<ClosingTextEvent, void, unknown>;
 }
 
@@ -198,7 +245,7 @@ export interface MeetingsTurnsApi {
     observe(
         meetingId: string,
         operationId: string,
-        options: { after?: number; signal?: AbortSignal }
+        options: { after?: number; speed?: ReplayPlaybackSpeed; signal?: AbortSignal }
     ): AsyncGenerator<TurnEvent, void, unknown>;
     submit(
         meetingId: string,

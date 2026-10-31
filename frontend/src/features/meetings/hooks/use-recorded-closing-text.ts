@@ -35,6 +35,7 @@ export function useRecordedClosingText({
     const streamRef = useRef(stream);
     streamRef.current = stream;
     const runtimeSignal = runtime?.signal;
+    const speed = runtime?.replay?.playbackSpeed ?? 1;
     const runtimeKey = runtime
         ? `${runtime.scope.identity.id}:${runtime.scope.identity.epoch}`
         : 'live';
@@ -57,6 +58,7 @@ export function useRecordedClosingText({
             try {
                 for await (const event of source.observe(meetingId, closingId, {
                     after: 0,
+                    speed,
                     signal: combineSignals(runtimeSignal, controller.signal),
                 })) {
                     if (cancelled) return;
@@ -89,7 +91,7 @@ export function useRecordedClosingText({
             cancelled = true;
             controller?.abort();
         };
-    }, [closingId, enabled, meetingId, runtimeKey, runtimeSignal]);
+    }, [closingId, enabled, meetingId, runtimeKey, runtimeSignal, speed]);
 
     return view;
 }

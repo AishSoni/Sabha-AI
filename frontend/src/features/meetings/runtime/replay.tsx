@@ -59,10 +59,14 @@ import type {
     ReplayAsset,
     ReplayBeat,
     ReplayBeatStep,
+    ReplayChapter,
     ReplayClaim,
     ReplayIntent,
+    ReplayLegalAction,
+    ReplayPlaybackSpeed,
     ReplayPreview,
     ReplayTape,
+    ReplayTransition,
 } from "./contract";
 import { MeetingsRuntimeProvider } from "./context";
 import { RecordedParticipantAction } from "./recorded-participant-action";
@@ -88,6 +92,8 @@ export interface ReplaySession {
     checkpoints: string[];
     intents: ReplayIntent[];
     beats: ReplayBeat[];
+    chapters: ReplayChapter[];
+    transitions: ReplayTransition[];
     tapes: ReplayTape[];
     assets: ReplayAsset[];
     claims: ReplayClaim[];
@@ -103,6 +109,8 @@ const BEAT_COMPLETIONS = [
 ] as const;
 
 const BEAT_ROUTES = ["board", "new", "meeting", "list"] as const;
+
+const EXPLORATION_MODES = ["inspection", "playback"] as const;
 
 function requireChoice<T extends string>(
     value: unknown,
@@ -192,6 +200,68 @@ function decodeBeat(value: unknown, path: string): ReplayBeat {
             `${path}.input_asset_ids`,
             (item, itemPath) => requireString(item, itemPath)
         ),
+    };
+}
+
+function decodeChapter(value: unknown, path: string): ReplayChapter {
+    const record = decodeObject(value, path);
+    return {
+        chapter_id: requireString(record.chapter_id, `${path}.chapter_id`),
+        title: requireString(record.title, `${path}.title`),
+        objective: requireString(record.objective, `${path}.objective`),
+        checkpoint: requireString(record.checkpoint, `${path}.checkpoint`),
+        route: requireChoice(record.route, `${path}.route`, BEAT_ROUTES),
+        tab: requireString(record.tab, `${path}.tab`),
+        mode: requireChoice(record.mode, `${path}.mode`, EXPLORATION_MODES),
+        disclosure: requireString(record.disclosure, `${path}.disclosure`),
+        summary_message_id:
+            optionalString(
+                record.summary_message_id,
+                `${path}.summary_message_id`
+            ) ?? null,
+        claim_ids: requireArray(
+            record.claim_ids ?? [],
+            `${path}.claim_ids`,
+            (item, itemPath) => requireString(item, itemPath)
+        ),
+        input_asset_ids: requireArray(
+            record.input_asset_ids ?? [],
+            `${path}.input_asset_ids`,
+            (item, itemPath) => requireString(item, itemPath)
+        ),
+    };
+}
+
+function decodeTransition(value: unknown, path: string): ReplayTransition {
+    const record = decodeObject(value, path);
+    return {
+        transition_id: requireString(record.transition_id, `${path}.transition_id`),
+        source_checkpoint: requireString(
+            record.source_checkpoint,
+            `${path}.source_checkpoint`
+        ),
+        completed_checkpoint: requireString(
+            record.completed_checkpoint,
+            `${path}.completed_checkpoint`
+        ),
+        intent_id: requireString(record.intent_id, `${path}.intent_id`),
+        kind: requireString(record.kind, `${path}.kind`),
+        participant_id:
+            optionalString(record.participant_id, `${path}.participant_id`) ?? null,
+        operation_id:
+            optionalString(record.operation_id, `${path}.operation_id`) ?? null,
+        tape_id: optionalString(record.tape_id, `${path}.tape_id`) ?? null,
+        closing_tape_id:
+            optionalString(record.closing_tape_id, `${path}.closing_tape_id`) ?? null,
+        canonical: requireBoolean(record.canonical ?? false, `${path}.canonical`),
+        prerequisites: requireArray(
+            record.prerequisites ?? [],
+            `${path}.prerequisites`,
+            (item, itemPath) => requireString(item, itemPath)
+        ),
+        label: optionalString(record.label, `${path}.label`) ?? "",
+        explanation:
+            optionalString(record.explanation, `${path}.explanation`) ?? "",
     };
 }
 
@@ -350,6 +420,16 @@ export function decodeReplaySession(value: unknown): ReplaySession {
             "GET /replay/session.beats",
             decodeBeat
         ),
+        chapters: requireArray(
+            record.chapters ?? [],
+            "GET /replay/session.chapters",
+            decodeChapter
+        ),
+        transitions: requireArray(
+            record.transitions ?? [],
+            "GET /replay/session.transitions",
+            decodeTransition
+        ),
         tapes: requireArray(
             record.tapes ?? [],
             "GET /replay/session.tapes",
@@ -388,12 +468,13 @@ function replayTurnEventsUrl(
     meetingId: string,
     operationId: string,
     checkpoint: string,
-    after = 0
+    after = 0,
+    speed: 1 | 2 = 1
 ): string {
     const base = resolveApiBaseUrl();
     const query = checkpoint
-        ? `checkpoint=${encodeURIComponent(checkpoint)}&after=${after}`
-        : `after=${after}`;
+        ? `checkpoint=${encodeURIComponent(checkpoint)}&after=${after}&speed=${speed}`
+        : `after=${after}&speed=${speed}`;
     return (
         `${base}/replay/meetings/${encodeURIComponent(meetingId)}` +
         `/turns/${encodeURIComponent(operationId)}/events?${query}`
@@ -403,12 +484,13 @@ function replayTurnEventsUrl(
 function replayClosingEventsUrl(
     meetingId: string,
     checkpoint: string,
-    after = 0
+    after = 0,
+    speed: 1 | 2 = 1
 ): string {
     const base = resolveApiBaseUrl();
     const query = checkpoint
-        ? `checkpoint=${encodeURIComponent(checkpoint)}&after=${after}`
-        : `after=${after}`;
+        ? `checkpoint=${encodeURIComponent(checkpoint)}&after=${after}&speed=${speed}`
+        : `after=${after}&speed=${speed}`;
     return (
         `${base}/replay/meetings/${encodeURIComponent(meetingId)}` +
         `/closing/events?${query}`
@@ -484,9 +566,92 @@ interface ReplayRuntimeOptions {
         options?: { expectedMessageId?: string | null; expectedOperationId?: string | null }
     ) => Promise<void>;
     startIntent: (intentId: string) => Promise<void>;
+    skipIntent: (intentId: string) => Promise<void>;
+    replayIntent: (intentId: string) => Promise<void>;
+    goToChapter: (chapterId: string) => Promise<void>;
+    setPlaybackSpeed: (speed: ReplayPlaybackSpeed) => void;
+    playbackSpeed: ReplayPlaybackSpeed;
+    settledIntents: ReadonlySet<string>;
     onTurnSettled?: (intentId: string) => void;
     onClosingTerminal?: () => void;
     isTurnVisible?: (operationId: string) => boolean;
+}
+
+export function replayLegalActions(
+    session: ReplaySession,
+    checkpoint: string,
+    settledIntents: ReadonlySet<string>,
+    participantId?: string | null
+): ReplayLegalAction[] {
+    if (session.transitions.length === 0) {
+        return session.intents
+            .filter(
+                (intent) =>
+                    !participantId || intent.participant_id === participantId
+            )
+            .map((intent) => ({
+                transition: {
+                    transition_id: `legacy-${intent.intent_id}`,
+                    source_checkpoint: intent.checkpoint,
+                    completed_checkpoint: intent.checkpoint,
+                    intent_id: intent.intent_id,
+                    kind: intent.kind,
+                    participant_id: intent.participant_id ?? null,
+                    operation_id: intent.operation_id ?? null,
+                    tape_id: intent.tape_id ?? null,
+                    closing_tape_id: intent.closing_tape_id ?? null,
+                    canonical: true,
+                    prerequisites: [],
+                    label: intent.label ?? "",
+                    explanation: "",
+                },
+                intent,
+                available: checkpoint === intent.checkpoint,
+                reason:
+                    checkpoint === intent.checkpoint
+                        ? null
+                        : "This action belongs to a different recorded moment.",
+            }));
+    }
+    return session.transitions
+        .filter(
+            (transition) =>
+                !participantId || transition.participant_id === participantId
+        )
+        .map((transition) => {
+            const intent = session.intents.find(
+                (item) => item.intent_id === transition.intent_id
+            );
+            if (!intent) {
+                return null;
+            }
+            const missing = transition.prerequisites.filter(
+                (prerequisite) => {
+                    const required = session.transitions.find(
+                        (item) => item.transition_id === prerequisite
+                    );
+                    return !required || !settledIntents.has(required.intent_id);
+                }
+            );
+            const source = session.chapters.find(
+                (chapter) => chapter.checkpoint === transition.source_checkpoint
+            );
+            let reason: string | null = null;
+            if (transition.source_checkpoint !== checkpoint) {
+                reason = source
+                    ? `Available from “${source.title}”.`
+                    : "This action belongs to a different recorded moment.";
+            } else if (missing.length > 0) {
+                reason = "Complete the preceding prepared action first.";
+            }
+            return {
+                transition,
+                intent,
+                available: reason === null,
+                reason,
+            };
+        })
+        .filter((action): action is ReplayLegalAction => action !== null);
 }
 
 export function createReplayRuntime(
@@ -651,7 +816,8 @@ export function createReplayRuntime(
                         meetingId,
                         operationId,
                         checkpoint,
-                        observeOptions.after ?? 0
+                        observeOptions.after ?? 0,
+                        observeOptions.speed ?? options.playbackSpeed
                     ),
                     {
                         headers: { Accept: "text/event-stream" },
@@ -741,12 +907,26 @@ export function createReplayRuntime(
             stackLabels: session.stack_labels,
             beats: session.beats,
             intents: session.intents,
+            chapters: session.chapters,
+            transitions: session.transitions,
             tapes: session.tapes,
             assets: session.assets,
             claims: session.claims,
             preview: session.preview,
             retired: session.retired,
+            playbackSpeed: options.playbackSpeed,
+            setPlaybackSpeed: options.setPlaybackSpeed,
+            legalActions: (participantId?: string | null) =>
+                replayLegalActions(
+                    session,
+                    checkpoint,
+                    options.settledIntents,
+                    participantId
+                ),
             startIntent: options.startIntent,
+            skipIntent: options.skipIntent,
+            replayIntent: options.replayIntent,
+            goToChapter: options.goToChapter,
             switchCheckpoint: async (next) => {
                 await options.switchCheckpoint(next);
             },
@@ -777,7 +957,8 @@ export function createReplayRuntime(
                     replayClosingEventsUrl(
                         meetingId,
                         checkpoint,
-                        observeOptions.after ?? 0
+                        observeOptions.after ?? 0,
+                        observeOptions.speed ?? options.playbackSpeed
                     ),
                     {
                         headers: { Accept: "text/event-stream" },
@@ -802,6 +983,8 @@ export function ReplayMeetingRoom({ meetingId }: { meetingId: string }) {
     const [runKey, setRunKey] = useState(1);
     const [checkpoint, setCheckpoint] = useState<string | null>(null);
     const [session, setSession] = useState<ReplaySession | null>(null);
+    const [playbackSpeed, setPlaybackSpeed] = useState<1 | 2>(1);
+    const [settledIntents, setSettledIntents] = useState<Set<string>>(new Set());
     const [error, setError] = useState<Error | null>(null);
     const [loading, setLoading] = useState(true);
     const transitioning = useRef(false);
@@ -964,6 +1147,44 @@ export function ReplayMeetingRoom({ meetingId }: { meetingId: string }) {
         [switchCheckpoint]
     );
 
+    const skipIntent = useCallback(
+        async (intentId: string) => {
+            const current = sessionRef.current;
+            const transition = current?.transitions.find(
+                (item) => item.intent_id === intentId
+            );
+            if (!transition) throw new Error("That prepared result is unavailable.");
+            await switchCheckpoint(transition.completed_checkpoint);
+            setSettledIntents((previous) => new Set(previous).add(intentId));
+        },
+        [switchCheckpoint]
+    );
+
+    const replayIntent = useCallback(
+        async (intentId: string) => {
+            const current = sessionRef.current;
+            const transition = current?.transitions.find(
+                (item) => item.intent_id === intentId
+            );
+            if (!transition) throw new Error("That prepared turn cannot be replayed.");
+            await switchCheckpoint(transition.source_checkpoint);
+            await startIntent(intentId);
+        },
+        [startIntent, switchCheckpoint]
+    );
+
+    const goToChapter = useCallback(
+        async (chapterId: string) => {
+            const current = sessionRef.current;
+            const chapter = current?.chapters.find(
+                (item) => item.chapter_id === chapterId
+            );
+            if (!chapter) throw new Error("That recorded chapter is unavailable.");
+            await switchCheckpoint(chapter.checkpoint);
+        },
+        [switchCheckpoint]
+    );
+
     if (loading) {
         return (
             <ReplayFrame title="Loading recorded session">
@@ -1011,6 +1232,12 @@ export function ReplayMeetingRoom({ meetingId }: { meetingId: string }) {
         queryClient,
         switchCheckpoint,
         startIntent,
+        skipIntent,
+        replayIntent,
+        goToChapter,
+        playbackSpeed,
+        setPlaybackSpeed,
+        settledIntents,
     });
 
     return (

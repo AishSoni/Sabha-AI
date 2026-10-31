@@ -47,9 +47,15 @@ interface ReplayRunContextValue {
         options?: {
             expectedMessageId?: string | null;
             expectedOperationId?: string | null;
+            force?: boolean;
         }
     ) => Promise<void>;
     startIntent: (intentId: string) => Promise<void>;
+    skipIntent: (intentId: string) => Promise<void>;
+    replayIntent: (intentId: string) => Promise<void>;
+    goToChapter: (chapterId: string) => Promise<void>;
+    playbackSpeed: 1 | 2;
+    setPlaybackSpeed: (speed: 1 | 2) => void;
     restart: () => void;
     clearSettled: () => void;
 }
@@ -72,6 +78,7 @@ export function ReplayRunProvider({ children }: { children: ReactNode }) {
     const [checkpoint, setCheckpoint] = useState<string | null>(null);
     const [settledIntents, setSettledIntents] = useState<Set<string>>(new Set());
     const [closingSettled, setClosingSettled] = useState(false);
+    const [playbackSpeed, setPlaybackSpeed] = useState<1 | 2>(1);
     const transitioning = useRef(false);
     const startedIntentsRef = useRef<Set<string>>(new Set());
     const generationRef = useRef(0);
@@ -133,11 +140,12 @@ export function ReplayRunProvider({ children }: { children: ReactNode }) {
             options?: {
                 expectedMessageId?: string | null;
                 expectedOperationId?: string | null;
+                force?: boolean;
             }
         ) => {
             const current = sessionRef.current;
             if (!current) throw new Error("Replay session is not loaded.");
-            if (next === stateRef.current.checkpoint) return;
+            if (next === stateRef.current.checkpoint && !options?.force) return;
             if (!current.checkpoints.includes(next)) {
                 throw new Error("That checkpoint is not part of this recording.");
             }
@@ -165,6 +173,7 @@ export function ReplayRunProvider({ children }: { children: ReactNode }) {
                         );
                     }
                     controller.abort();
+                    stateRef.current = { epoch: nextEpoch, checkpoint: next };
                     setCheckpoint(next);
                     setEpoch(nextEpoch);
                     return;
@@ -242,6 +251,7 @@ export function ReplayRunProvider({ children }: { children: ReactNode }) {
                 }
 
                 controller.abort();
+                stateRef.current = { epoch: nextEpoch, checkpoint: next };
                 setCheckpoint(next);
                 setEpoch(nextEpoch);
             } finally {
@@ -259,6 +269,17 @@ export function ReplayRunProvider({ children }: { children: ReactNode }) {
                 (item) => item.intent_id === intentId
             );
             if (!intent) throw new Error("That recorded intent is not available.");
+            const transition = current.transitions.find(
+                (item) => item.intent_id === intent.intent_id
+            );
+            if (
+                transition &&
+                transition.source_checkpoint !== stateRef.current.checkpoint
+            ) {
+                throw new Error(
+                    "That prepared action is not available from this recorded moment."
+                );
+            }
             const generation = generationRef.current;
             startedIntentsRef.current = new Set(startedIntentsRef.current).add(
                 intent.intent_id
@@ -267,12 +288,15 @@ export function ReplayRunProvider({ children }: { children: ReactNode }) {
                 const closingBeat = current.beats.find((beat) =>
                     beat.steps.some((step) => step.intent_id === intent.intent_id)
                 );
-                if (!closingBeat?.completed_checkpoint) {
+                const completed =
+                    transition?.completed_checkpoint ??
+                    closingBeat?.completed_checkpoint;
+                if (!completed) {
                     throw new Error(
                         "The recorded closing does not declare a completed checkpoint."
                     );
                 }
-                await switchCheckpoint(closingBeat.completed_checkpoint);
+                await switchCheckpoint(completed);
                 if (generationRef.current !== generation) return;
                 setSettledIntents((previous) => {
                     const next = new Set(previous);
@@ -281,7 +305,8 @@ export function ReplayRunProvider({ children }: { children: ReactNode }) {
                 });
                 return;
             }
-            await switchCheckpoint(intent.checkpoint);
+            const source = transition?.source_checkpoint ?? intent.checkpoint;
+            await switchCheckpoint(source);
             if (generationRef.current !== generation) return;
             const visibleState = stateRef.current;
             const scopeId = `${current.run_id}:${current.package_version}`;
@@ -297,9 +322,10 @@ export function ReplayRunProvider({ children }: { children: ReactNode }) {
                 ],
             });
             if (
-                intent.kind === "create_meeting" ||
-                intent.kind === "archive_meeting" ||
-                intent.kind === "director_follow_up"
+                (intent.kind === "create_meeting" ||
+                    intent.kind === "archive_meeting" ||
+                    intent.kind === "director_follow_up") &&
+                !transition?.tape_id
             ) {
                 setSettledIntents((previous) => {
                     const next = new Set(previous);
@@ -310,6 +336,65 @@ export function ReplayRunProvider({ children }: { children: ReactNode }) {
         },
         [switchCheckpoint, queryClient]
     );
+
+    const skipIntent = useCallback(
+        async (intentId: string) => {
+            const current = sessionRef.current;
+            if (!current) throw new Error("Replay session is not loaded.");
+            const transition = current.transitions.find(
+                (item) => item.intent_id === intentId
+            );
+            if (!transition) {
+                throw new Error("That prepared result is not available.");
+            }
+            await switchCheckpoint(transition.completed_checkpoint, {
+                expectedOperationId: transition.operation_id,
+                force: true,
+            });
+            if (transition.kind === "request_closing") {
+                setClosingSettled(true);
+            }
+            setSettledIntents((previous) => {
+                const next = new Set(previous);
+                next.add(intentId);
+                return next;
+            });
+        },
+        [switchCheckpoint]
+    );
+
+    const replayIntent = useCallback(
+        async (intentId: string) => {
+            const current = sessionRef.current;
+            if (!current) throw new Error("Replay session is not loaded.");
+            const transition = current.transitions.find(
+                (item) => item.intent_id === intentId
+            );
+            if (!transition) {
+                throw new Error("That prepared turn cannot be replayed.");
+            }
+            await switchCheckpoint(transition.source_checkpoint, { force: true });
+            startedIntentsRef.current = new Set(
+                [...startedIntentsRef.current].filter((item) => item !== intentId)
+            );
+            await startIntent(intentId);
+        },
+        [startIntent, switchCheckpoint]
+    );
+
+    const goToChapter = useCallback(
+        async (chapterId: string) => {
+            const current = sessionRef.current;
+            if (!current) throw new Error("Replay session is not loaded.");
+            const chapter = current.chapters.find(
+                (item) => item.chapter_id === chapterId
+            );
+            if (!chapter) throw new Error("That recorded chapter is unavailable.");
+            await switchCheckpoint(chapter.checkpoint);
+        },
+        [switchCheckpoint]
+    );
+
 
     const onTurnSettled = useCallback((intentId: string) => {
         setSettledIntents((previous) => {
@@ -343,6 +428,12 @@ export function ReplayRunProvider({ children }: { children: ReactNode }) {
             queryClient,
             switchCheckpoint,
             startIntent,
+            skipIntent,
+            replayIntent,
+            goToChapter,
+            playbackSpeed,
+            setPlaybackSpeed,
+            settledIntents,
             onTurnSettled,
             onClosingTerminal,
             isTurnVisible,
@@ -355,6 +446,11 @@ export function ReplayRunProvider({ children }: { children: ReactNode }) {
         queryClient,
         switchCheckpoint,
         startIntent,
+        skipIntent,
+        replayIntent,
+        goToChapter,
+        playbackSpeed,
+        settledIntents,
         onTurnSettled,
         onClosingTerminal,
         isTurnVisible,
@@ -370,6 +466,11 @@ export function ReplayRunProvider({ children }: { children: ReactNode }) {
         closingSettled,
         switchCheckpoint,
         startIntent,
+        skipIntent,
+        replayIntent,
+        goToChapter,
+        playbackSpeed,
+        setPlaybackSpeed,
         restart,
         clearSettled,
     };
