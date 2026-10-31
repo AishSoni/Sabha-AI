@@ -16,6 +16,8 @@ import { useAbortClosing, useRequestClosing, useRetryClosing } from './closing-m
 import { useClosingObservation } from './use-closing-observation';
 import { meetingKeys } from './keys';
 import { turnKeys } from './turn-keys';
+import { createLiveMeetingsRuntime } from '../runtime/live';
+import type { MeetingsRuntime } from '../runtime/contract';
 
 const viewJson = (overrides: Record<string, unknown> = {}) => ({
     meeting_id: 'meeting-1',
@@ -47,6 +49,7 @@ const receiptJson = {
 
 let scripted: ScriptedFetch;
 let queryClient: ReturnType<typeof makeQueryClient>;
+let runtime: MeetingsRuntime;
 
 function wrapper({ children }: { children: React.ReactNode }) {
     return <QueryClientProvider client={queryClient}>{children}</QueryClientProvider>;
@@ -65,6 +68,7 @@ function trackInvalidations() {
 beforeEach(() => {
     scripted = createScriptedFetch();
     queryClient = makeQueryClient();
+    runtime = createLiveMeetingsRuntime();
 });
 
 afterEach(() => {
@@ -88,7 +92,10 @@ describe('closing reads', () => {
         scripted.install();
         scripted.enqueueJson(200, viewJson());
 
-        const { result } = renderHook(() => useClosing('meeting-1'), { wrapper });
+        const { result } = renderHook(
+            () => useClosing('meeting-1', true, runtime),
+            { wrapper }
+        );
 
         await waitFor(() => expect(result.current.data?.stage).toBe('draining'));
         expect(scripted.calls).toHaveLength(1);
@@ -104,7 +111,7 @@ describe('closing commands', () => {
         scripted.install();
         scripted.enqueueJson(202, receiptJson);
         const invalidated = trackInvalidations();
-        const { result } = renderHook(() => useRequestClosing(), { wrapper });
+        const { result } = renderHook(() => useRequestClosing(runtime), { wrapper });
 
         await act(async () => {
             await result.current.mutateAsync({
@@ -145,8 +152,8 @@ describe('closing commands', () => {
         scripted.install();
         scripted.enqueueJson(202, viewJson({ stage: 'summarizing', abortable: false }));
         scripted.enqueueJson(200, viewJson({ stage: 'aborted', meeting_status: 'active' }));
-        const { result: retry } = renderHook(() => useRetryClosing(), { wrapper });
-        const { result: abort } = renderHook(() => useAbortClosing(), { wrapper });
+        const { result: retry } = renderHook(() => useRetryClosing(runtime), { wrapper });
+        const { result: abort } = renderHook(() => useAbortClosing(runtime), { wrapper });
 
         await act(async () => {
             await retry.current.mutateAsync('meeting-1');
@@ -185,7 +192,12 @@ describe('closing observation', () => {
         const onSettled = vi.fn();
 
         const { result } = renderHook(
-            () => useClosingObservation({ meetingId: 'meeting-1', onSettled }),
+            () =>
+                useClosingObservation({
+                    meetingId: 'meeting-1',
+                    runtime,
+                    onSettled,
+                }),
             { wrapper }
         );
 
@@ -205,7 +217,7 @@ describe('closing observation', () => {
         scripted.enqueueJson(200, viewJson({ stage: 'voting' }));
 
         const { result } = renderHook(
-            () => useClosingObservation({ meetingId: 'meeting-1' }),
+            () => useClosingObservation({ meetingId: 'meeting-1', runtime }),
             { wrapper }
         );
 

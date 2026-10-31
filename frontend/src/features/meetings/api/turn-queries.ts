@@ -9,15 +9,10 @@
  */
 import { useQuery, type UseQueryResult } from '@tanstack/react-query';
 import { isTerminalTurnStatus, type TurnOperation } from './turn-decoders';
-import { turnKeys } from './turn-keys';
 import type { MeetingsRuntime } from '../runtime/contract';
 import { combineSignals } from '@/shared/runtime/scope';
 
 const ACTIVE_QUEUE_POLL_MS = 4_000;
-
-async function liveTurnClient() {
-    return (await import('./turn-client')).turnClient;
-}
 
 export function hasActiveTurns(operations: TurnOperation[] | undefined): boolean {
     return Boolean(operations?.some((operation) => !isTerminalTurnStatus(operation.status)));
@@ -25,20 +20,16 @@ export function hasActiveTurns(operations: TurnOperation[] | undefined): boolean
 
 export function useMeetingTurns(
     meetingId: string,
-    enabled = true,
-    runtime?: MeetingsRuntime
+    enabled: boolean,
+    runtime: MeetingsRuntime
 ): UseQueryResult<TurnOperation[], Error> {
     return useQuery({
-        queryKey: runtime?.keys.turnList(meetingId) ?? turnKeys.list(meetingId),
-        queryFn: async ({ signal }) => {
-            if (runtime) {
-                return runtime.turns.list(
-                    meetingId,
-                    combineSignals(runtime.signal, signal)
-                );
-            }
-            return (await liveTurnClient()).list(meetingId, 100, { signal });
-        },
+        queryKey: runtime.keys.turnList(meetingId),
+        queryFn: async ({ signal }) =>
+            runtime.turns.list(
+                meetingId,
+                combineSignals(runtime.signal, signal)
+            ),
         enabled: enabled && meetingId.length > 0,
         refetchInterval: (query) =>
             hasActiveTurns(query.state.data) ? ACTIVE_QUEUE_POLL_MS : false,
@@ -48,23 +39,17 @@ export function useMeetingTurns(
 export function useTurnOperation(
     meetingId: string,
     operationId: string,
-    enabled = true,
-    runtime?: MeetingsRuntime
+    enabled: boolean,
+    runtime: MeetingsRuntime
 ): UseQueryResult<TurnOperation, Error> {
     return useQuery({
-        queryKey:
-            runtime?.keys.turnDetail(meetingId, operationId) ??
-            turnKeys.detail(meetingId, operationId),
-        queryFn: async ({ signal }) => {
-            if (runtime) {
-                return runtime.turns.get(
-                    meetingId,
-                    operationId,
-                    combineSignals(runtime.signal, signal)
-                );
-            }
-            return (await liveTurnClient()).get(meetingId, operationId, { signal });
-        },
+        queryKey: runtime.keys.turnDetail(meetingId, operationId),
+        queryFn: async ({ signal }) =>
+            runtime.turns.get(
+                meetingId,
+                operationId,
+                combineSignals(runtime.signal, signal)
+            ),
         enabled: enabled && meetingId.length > 0 && operationId.length > 0,
         refetchInterval: (query) =>
             query.state.data && !isTerminalTurnStatus(query.state.data.status)

@@ -16,6 +16,7 @@ import type { TurnEvent } from './turn-events';
 import { useTurnProjectionStore } from './turn-projection';
 import { useTurnObservation } from './use-turn-observation';
 import type { MeetingsRuntime } from '../runtime/contract';
+import { createLiveMeetingsRuntime } from '../runtime/live';
 
 const operation: TurnOperation = {
     operation_id: 'operation-1',
@@ -48,6 +49,7 @@ function wire(sequence: number, overrides: Record<string, unknown>): string {
 
 let scripted: ScriptedFetch;
 let queryClient: ReturnType<typeof makeQueryClient>;
+let liveRuntime: MeetingsRuntime;
 
 function wrapper({ children }: { children: React.ReactNode }) {
     return <QueryClientProvider client={queryClient}>{children}</QueryClientProvider>;
@@ -56,6 +58,7 @@ function wrapper({ children }: { children: React.ReactNode }) {
 beforeEach(() => {
     scripted = createScriptedFetch();
     queryClient = makeQueryClient();
+    liveRuntime = createLiveMeetingsRuntime();
     useTurnProjectionStore.getState().reset({
         meetingId: 'meeting-1',
         operationId: 'operation-1',
@@ -84,6 +87,7 @@ describe('useTurnObservation', () => {
                 useTurnObservation({
                     meetingId: 'meeting-1',
                     operation,
+                    runtime: liveRuntime,
                     onTerminal,
                 }),
             { wrapper }
@@ -110,6 +114,7 @@ describe('useTurnObservation', () => {
                 useTurnObservation({
                     meetingId: 'meeting-1',
                     operation,
+                    runtime: liveRuntime,
                 }),
             { wrapper }
         );
@@ -143,6 +148,7 @@ describe('useTurnObservation', () => {
                 useTurnObservation({
                     meetingId: 'meeting-1',
                     operation: completed,
+                    runtime: liveRuntime,
                     onTerminal,
                 }),
             { wrapper }
@@ -163,6 +169,7 @@ describe('useTurnObservation', () => {
                 useTurnObservation({
                     meetingId: 'meeting-1',
                     operation,
+                    runtime: liveRuntime,
                 }),
             { wrapper }
         );

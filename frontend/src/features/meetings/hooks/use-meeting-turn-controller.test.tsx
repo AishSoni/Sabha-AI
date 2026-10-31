@@ -10,6 +10,7 @@ import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { act, renderHook, waitFor } from '@testing-library/react';
 import { ApiError } from '@/shared/api/errors';
 import type { TurnOperation } from '../api/turn-decoders';
+import { createLiveMeetingsRuntime } from '../runtime/live';
 import { useMeetingTurnController } from './use-meeting-turn-controller';
 
 const mocks = vi.hoisted(() => ({
@@ -77,7 +78,11 @@ describe('meeting turn controller', () => {
             .mockResolvedValueOnce(operation({ operation_id: 'operation-2' }));
 
         const { result } = renderHook(() =>
-            useMeetingTurnController({ meetingId: 'meeting-1', createRequestKey })
+            useMeetingTurnController({
+                meetingId: 'meeting-1',
+                runtime: createLiveMeetingsRuntime(),
+                createRequestKey,
+            })
         );
 
         await act(async () => {
@@ -109,7 +114,11 @@ describe('meeting turn controller', () => {
             .mockResolvedValueOnce(operation());
 
         const { result } = renderHook(() =>
-            useMeetingTurnController({ meetingId: 'meeting-1', createRequestKey })
+            useMeetingTurnController({
+                meetingId: 'meeting-1',
+                runtime: createLiveMeetingsRuntime(),
+                createRequestKey,
+            })
         );
 
         await act(async () => {
@@ -137,7 +146,10 @@ describe('meeting turn controller', () => {
         ];
 
         const { result } = renderHook(() =>
-            useMeetingTurnController({ meetingId: 'meeting-1' })
+            useMeetingTurnController({
+                meetingId: 'meeting-1',
+                runtime: createLiveMeetingsRuntime(),
+            })
         );
 
         expect(result.current.activeOperation?.operation_id).toBe('executing');
@@ -150,7 +162,10 @@ describe('meeting turn controller', () => {
     it('keeps cancellation as its own command', async () => {
         mocks.cancel.mockResolvedValue({ outcome: 'cancel_requested', status: 'executing' });
         const { result } = renderHook(() =>
-            useMeetingTurnController({ meetingId: 'meeting-1' })
+            useMeetingTurnController({
+                meetingId: 'meeting-1',
+                runtime: createLiveMeetingsRuntime(),
+            })
         );
 
         await act(async () => {

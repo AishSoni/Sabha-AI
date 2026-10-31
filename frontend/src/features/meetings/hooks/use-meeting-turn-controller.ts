@@ -22,8 +22,8 @@ import { isApiError } from '@/shared/api/errors';
 
 export interface MeetingTurnControllerOptions {
     meetingId: string;
-    /** Composed runtime graph; omit for the historical live HTTP defaults. */
-    runtime?: MeetingsRuntime;
+    /** Composed runtime graph; the room always supplies live or recorded. */
+    runtime: MeetingsRuntime;
     /** Test seam for deterministic request keys; production uses Web Crypto. */
     createRequestKey?: () => string;
     /** Called once per terminal transition, e.g. to refresh a legacy screen read. */
@@ -81,7 +81,7 @@ export function useMeetingTurnController({
 }: MeetingTurnControllerOptions): MeetingTurnController {
     const turns = useMeetingTurns(
         meetingId,
-        meetingId.length > 0 && (runtime?.capabilities.turnObservation ?? true),
+        meetingId.length > 0 && runtime.capabilities.turnObservation,
         runtime
     );
     const submitMutation = useSubmitTurn(runtime);
@@ -106,7 +106,7 @@ export function useMeetingTurnController({
         meetingId,
         operation: activeOperation,
         runtime,
-        speed: runtime?.replay?.playbackSpeed ?? 1,
+        speed: runtime.replay?.playbackSpeed ?? 1,
         onTerminal,
     });
 
@@ -115,7 +115,7 @@ export function useMeetingTurnController({
             participantId: string,
             settings?: TurnGenerationSettings
         ): Promise<TurnOperation | null> => {
-            if (runtime && !runtime.capabilities.submitTurn) return null;
+            if (!runtime.capabilities.submitTurn) return null;
             if (!meetingId || submitInFlight.current) return null;
             submitInFlight.current = true;
             setActionError(null);
@@ -156,7 +156,7 @@ export function useMeetingTurnController({
 
     const cancel = useCallback(
         async (operationId: string): Promise<boolean> => {
-            if (runtime && !runtime.capabilities.cancelTurn) return false;
+            if (!runtime.capabilities.cancelTurn) return false;
             if (!meetingId || !operationId) return false;
             setActionError(null);
             setCancelingOperationId(operationId);

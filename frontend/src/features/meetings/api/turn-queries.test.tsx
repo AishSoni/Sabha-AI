@@ -12,6 +12,8 @@ import { createScriptedFetch, type ScriptedFetch } from '../../../../tests/fixtu
 import { turnKeys } from './turn-keys';
 import { useMeetingTurns } from './turn-queries';
 import { useCancelTurn, useSubmitTurn } from './turn-mutations';
+import { createLiveMeetingsRuntime } from '../runtime/live';
+import type { MeetingsRuntime } from '../runtime/contract';
 
 const operationJson = {
     operation_id: 'operation-1',
@@ -32,6 +34,7 @@ const operationJson = {
 
 let scripted: ScriptedFetch;
 let queryClient: ReturnType<typeof makeQueryClient>;
+let runtime: MeetingsRuntime;
 
 function wrapper({ children }: { children: React.ReactNode }) {
     return <QueryClientProvider client={queryClient}>{children}</QueryClientProvider>;
@@ -40,6 +43,7 @@ function wrapper({ children }: { children: React.ReactNode }) {
 beforeEach(() => {
     scripted = createScriptedFetch();
     queryClient = makeQueryClient();
+    runtime = createLiveMeetingsRuntime();
 });
 
 afterEach(() => {
@@ -69,7 +73,10 @@ describe('turn reads', () => {
         scripted.install();
         scripted.enqueueJson(200, [operationJson]);
 
-        const { result } = renderHook(() => useMeetingTurns('meeting-1'), { wrapper });
+        const { result } = renderHook(
+            () => useMeetingTurns('meeting-1', true, runtime),
+            { wrapper }
+        );
 
         await waitFor(() => expect(result.current.data).toHaveLength(1));
         expect(result.current.data?.[0]?.operation_id).toBe('operation-1');
@@ -84,7 +91,7 @@ describe('turn commands', () => {
     it('submits once, seeds the operation identity, and sends the BYOK header', async () => {
         scripted.install();
         scripted.enqueueJson(202, operationJson);
-        const { result } = renderHook(() => useSubmitTurn(), { wrapper });
+        const { result } = renderHook(() => useSubmitTurn(runtime), { wrapper });
 
         await act(async () => {
             await result.current.mutateAsync({
@@ -116,7 +123,7 @@ describe('turn commands', () => {
             return original(filters as never);
         }) as typeof queryClient.invalidateQueries;
 
-        const { result } = renderHook(() => useCancelTurn(), { wrapper });
+        const { result } = renderHook(() => useCancelTurn(runtime), { wrapper });
         await act(async () => {
             await result.current.mutateAsync({
                 meetingId: 'meeting-1',

@@ -18,13 +18,11 @@ import {
     isSettledClosingStage,
     type ClosingView,
 } from './closing-decoders';
-import { meetingKeys } from './keys';
-import { turnKeys } from './turn-keys';
 
 export interface UseClosingObservationOptions {
     meetingId: string;
     enabled?: boolean;
-    runtime?: MeetingsRuntime;
+    runtime: MeetingsRuntime;
     /** Called once per settled closing attempt, including a reloaded snapshot. */
     onSettled?: (view: ClosingView) => void;
 }
@@ -68,13 +66,10 @@ export function useClosingObservation({
 
         // Committed effects live in canonical reads, not this snapshot.
         void queryClient.invalidateQueries({
-            queryKey:
-                runtime?.keys.meetingDetail(meetingId) ??
-                meetingKeys.detail(meetingId),
+            queryKey: runtime.keys.meetingDetail(meetingId),
         });
         void queryClient.invalidateQueries({
-            queryKey:
-                runtime?.keys.turnList(meetingId) ?? turnKeys.list(meetingId),
+            queryKey: runtime.keys.turnList(meetingId),
         });
         settledCallback.current?.(view);
     }, [meetingId, queryClient, runtime, settlementKey, stage, view]);

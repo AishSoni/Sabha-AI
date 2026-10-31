@@ -11,12 +11,7 @@
 import { useMutation, useQueryClient } from '@tanstack/react-query';
 import type { SubmitTurnInput } from './turn-inputs';
 import type { TurnCancelResult, TurnOperation } from './turn-decoders';
-import { turnKeys } from './turn-keys';
 import type { MeetingsRuntime } from '../runtime/contract';
-
-async function liveTurnClient() {
-    return (await import('./turn-client')).turnClient;
-}
 
 export interface SubmitTurnVariables extends SubmitTurnInput {
     meetingId: string;
@@ -27,22 +22,17 @@ export interface CancelTurnVariables {
     operationId: string;
 }
 
-export function useSubmitTurn(runtime?: MeetingsRuntime) {
+export function useSubmitTurn(runtime: MeetingsRuntime) {
     const queryClient = useQueryClient();
     return useMutation({
-        mutationFn: async (variables: SubmitTurnVariables) => {
-            if (runtime) {
-                return runtime.turns.submit(variables.meetingId, variables);
-            }
-            return (await liveTurnClient()).submit(variables.meetingId, variables);
-        },
+        mutationFn: async (variables: SubmitTurnVariables) =>
+            runtime.turns.submit(variables.meetingId, variables),
         onSuccess: (operation: TurnOperation) => {
-            const detailKey =
-                runtime?.keys.turnDetail(operation.meeting_id, operation.operation_id) ??
-                turnKeys.detail(operation.meeting_id, operation.operation_id);
-            const listKey =
-                runtime?.keys.turnList(operation.meeting_id) ??
-                turnKeys.list(operation.meeting_id);
+            const detailKey = runtime.keys.turnDetail(
+                operation.meeting_id,
+                operation.operation_id
+            );
+            const listKey = runtime.keys.turnList(operation.meeting_id);
             queryClient.setQueryData(detailKey, operation);
             queryClient.setQueryData<TurnOperation[]>(
                 listKey,
@@ -58,27 +48,20 @@ export function useSubmitTurn(runtime?: MeetingsRuntime) {
     });
 }
 
-export function useCancelTurn(runtime?: MeetingsRuntime) {
+export function useCancelTurn(runtime: MeetingsRuntime) {
     const queryClient = useQueryClient();
     return useMutation({
-        mutationFn: async ({ meetingId, operationId }: CancelTurnVariables) => {
-            if (runtime) {
-                return runtime.turns.cancel(meetingId, operationId, runtime.signal);
-            }
-            return (await liveTurnClient()).cancel(meetingId, operationId);
-        },
+        mutationFn: async ({ meetingId, operationId }: CancelTurnVariables) =>
+            runtime.turns.cancel(meetingId, operationId, runtime.signal),
         onSuccess: (_result: TurnCancelResult, variables: CancelTurnVariables) => {
             queryClient.invalidateQueries({
-                queryKey:
-                    runtime?.keys.turnList(variables.meetingId) ??
-                    turnKeys.list(variables.meetingId),
+                queryKey: runtime.keys.turnList(variables.meetingId),
             });
             queryClient.invalidateQueries({
-                queryKey:
-                    runtime?.keys.turnDetail(
-                        variables.meetingId,
-                        variables.operationId
-                    ) ?? turnKeys.detail(variables.meetingId, variables.operationId),
+                queryKey: runtime.keys.turnDetail(
+                    variables.meetingId,
+                    variables.operationId
+                ),
             });
         },
     });

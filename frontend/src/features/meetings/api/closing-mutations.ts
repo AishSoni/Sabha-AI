@@ -14,13 +14,6 @@ import { combineSignals } from '@/shared/runtime/scope';
 import type { MeetingsRuntime } from '../runtime/contract';
 import type { RequestClosingInput } from './closing-decoders';
 import type { ClosingReceipt, ClosingView } from './closing-decoders';
-import { closingKeys } from './closing-keys';
-import { meetingKeys } from './keys';
-import { turnKeys } from './turn-keys';
-
-async function liveClosingClient() {
-    return (await import('./closing-client')).closingClient;
-}
 
 export interface RequestClosingVariables extends RequestClosingInput {
     meetingId: string;
@@ -34,84 +27,56 @@ export function createClosingRequestKey(): string {
     return `closing-${Date.now().toString(36)}-${Math.random().toString(36).slice(2)}`;
 }
 
-function closingKey(runtime: MeetingsRuntime | undefined, meetingId: string) {
-    return runtime?.keys.closing(meetingId) ?? closingKeys.detail(meetingId);
-}
-
-function meetingDetailKey(runtime: MeetingsRuntime | undefined, meetingId: string) {
-    return runtime?.keys.meetingDetail(meetingId) ?? meetingKeys.detail(meetingId);
-}
-
-function meetingListKey(runtime: MeetingsRuntime | undefined) {
-    return runtime?.keys.meetingList() ?? meetingKeys.list();
-}
-
-function turnListKey(runtime: MeetingsRuntime | undefined, meetingId: string) {
-    return runtime?.keys.turnList(meetingId) ?? turnKeys.list(meetingId);
-}
-
 function refreshAfterStateChange(
     queryClient: ReturnType<typeof useQueryClient>,
     meetingId: string,
-    runtime?: MeetingsRuntime
+    runtime: MeetingsRuntime
 ): void {
     void queryClient.invalidateQueries({
-        queryKey: meetingDetailKey(runtime, meetingId),
+        queryKey: runtime.keys.meetingDetail(meetingId),
     });
-    void queryClient.invalidateQueries({ queryKey: meetingListKey(runtime) });
+    void queryClient.invalidateQueries({ queryKey: runtime.keys.meetingList() });
     void queryClient.invalidateQueries({
-        queryKey: turnListKey(runtime, meetingId),
+        queryKey: runtime.keys.turnList(meetingId),
     });
 }
 
-export function useRequestClosing(runtime?: MeetingsRuntime) {
+export function useRequestClosing(runtime: MeetingsRuntime) {
     const queryClient = useQueryClient();
     return useMutation({
-        mutationFn: async ({ meetingId, ...input }: RequestClosingVariables) => {
-            if (runtime) {
-                return runtime.commands.requestClosing(meetingId, {
-                    ...input,
-                    signal: combineSignals(runtime.signal, input.signal),
-                });
-            }
-            return (await liveClosingClient()).request(meetingId, input);
-        },
+        mutationFn: async ({ meetingId, ...input }: RequestClosingVariables) =>
+            runtime.commands.requestClosing(meetingId, {
+                ...input,
+                signal: combineSignals(runtime.signal, input.signal),
+            }),
         onSuccess: (_receipt: ClosingReceipt, variables: RequestClosingVariables) => {
             refreshAfterStateChange(queryClient, variables.meetingId, runtime);
             void queryClient.invalidateQueries({
-                queryKey: closingKey(runtime, variables.meetingId),
+                queryKey: runtime.keys.closing(variables.meetingId),
             });
         },
     });
 }
 
-export function useRetryClosing(runtime?: MeetingsRuntime) {
+export function useRetryClosing(runtime: MeetingsRuntime) {
     const queryClient = useQueryClient();
     return useMutation({
-        mutationFn: async (meetingId: string) => {
-            if (runtime) {
-                return runtime.commands.retryClosing(meetingId, runtime.signal);
-            }
-            return (await liveClosingClient()).retry(meetingId);
-        },
+        mutationFn: async (meetingId: string) =>
+            runtime.commands.retryClosing(meetingId, runtime.signal),
         onSuccess: (view: ClosingView) => {
-            queryClient.setQueryData(closingKey(runtime, view.meeting_id), view);
+            queryClient.setQueryData(runtime.keys.closing(view.meeting_id), view);
             refreshAfterStateChange(queryClient, view.meeting_id, runtime);
         },
     });
 }
 
-export function useAbortClosing(runtime?: MeetingsRuntime) {
+export function useAbortClosing(runtime: MeetingsRuntime) {
     const queryClient = useQueryClient();
     return useMutation({
-        mutationFn: async (meetingId: string) => {
-            if (runtime) {
-                return runtime.commands.abortClosing(meetingId, runtime.signal);
-            }
-            return (await liveClosingClient()).abort(meetingId);
-        },
+        mutationFn: async (meetingId: string) =>
+            runtime.commands.abortClosing(meetingId, runtime.signal),
         onSuccess: (view: ClosingView) => {
-            queryClient.setQueryData(closingKey(runtime, view.meeting_id), view);
+            queryClient.setQueryData(runtime.keys.closing(view.meeting_id), view);
             refreshAfterStateChange(queryClient, view.meeting_id, runtime);
         },
     });

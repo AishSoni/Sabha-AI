@@ -12,30 +12,21 @@ import { useQuery, type UseQueryResult } from '@tanstack/react-query';
 import type { MeetingsRuntime } from '../runtime/contract';
 import { combineSignals } from '@/shared/runtime/scope';
 import { isPollingClosingStage, type ClosingView } from './closing-decoders';
-import { closingKeys } from './closing-keys';
 
 const CLOSING_POLL_MS = 3_000;
 
-async function liveClosingClient() {
-    return (await import('./closing-client')).closingClient;
-}
-
 export function useClosing(
     meetingId: string,
-    enabled = true,
-    runtime?: MeetingsRuntime
+    enabled: boolean,
+    runtime: MeetingsRuntime
 ): UseQueryResult<ClosingView, Error> {
     return useQuery({
-        queryKey: runtime?.keys.closing(meetingId) ?? closingKeys.detail(meetingId),
-        queryFn: async ({ signal }) => {
-            if (runtime) {
-                return runtime.reads.closing(
-                    meetingId,
-                    combineSignals(runtime.signal, signal)
-                );
-            }
-            return (await liveClosingClient()).get(meetingId, { signal });
-        },
+        queryKey: runtime.keys.closing(meetingId),
+        queryFn: async ({ signal }) =>
+            runtime.reads.closing(
+                meetingId,
+                combineSignals(runtime.signal, signal)
+            ),
         enabled: enabled && meetingId.length > 0,
         refetchInterval: (query) =>
             isPollingClosingStage(query.state.data?.stage) ? CLOSING_POLL_MS : false,

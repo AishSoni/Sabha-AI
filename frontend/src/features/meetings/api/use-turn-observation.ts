@@ -15,7 +15,6 @@ import {
     type TurnOperation,
     type TurnStatus,
 } from './turn-decoders';
-import { meetingKeys } from './keys';
 import {
     localObservationInterruption,
     type TurnEvent,
@@ -26,7 +25,6 @@ import {
     useTurnProjectionStore,
     type TurnProjection,
 } from './turn-projection';
-import { turnKeys } from './turn-keys';
 import type { MeetingsRuntime } from '../runtime/contract';
 import {
     combineSignals,
@@ -39,8 +37,8 @@ export interface UseTurnObservationOptions {
     enabled?: boolean;
     /** Recorded playback pacing; default 1x. */
     speed?: 1 | 2;
-    /** Composed runtime graph; omit for the historical live HTTP defaults. */
-    runtime?: MeetingsRuntime;
+    /** Composed runtime graph; the room always supplies live or recorded. */
+    runtime: MeetingsRuntime;
     /** Called once per terminal transition, including a terminal status read. */
     onTerminal?: (event: TurnEvent | null, status: TurnStatus) => void;
 }
@@ -70,7 +68,7 @@ export function useTurnObservation({
     onTerminal,
 }: UseTurnObservationOptions): UseTurnObservationResult {
     const queryClient = useQueryClient();
-    const scopeId = runtime ? runtimeProjectionScopeId(runtime.scope) : 'live';
+    const scopeId = runtimeProjectionScopeId(runtime.scope);
     const projection = useTurnProjection(
         meetingId,
         operation?.operation_id ?? '',
@@ -98,14 +96,9 @@ export function useTurnObservation({
                 if (handledTerminal.current === scopeKey) return;
                 handledTerminal.current = scopeKey;
 
-                const detailKey =
-                    runtime?.keys.turnDetail(meetingId, operationId) ??
-                    turnKeys.detail(meetingId, operationId);
-                const listKey =
-                    runtime?.keys.turnList(meetingId) ?? turnKeys.list(meetingId);
-                const meetingKey =
-                    runtime?.keys.meetingDetail(meetingId) ??
-                    meetingKeys.detail(meetingId);
+                const detailKey = runtime.keys.turnDetail(meetingId, operationId);
+                const listKey = runtime.keys.turnList(meetingId);
+                const meetingKey = runtime.keys.meetingDetail(meetingId);
                 queryClient.setQueryData<TurnOperation>(
                     detailKey,
                     (current) =>
@@ -127,7 +120,7 @@ export function useTurnObservation({
                 terminalCallback.current?.(event, terminalStatus);
             };
 
-            const hook = runtime?.settlement;
+            const hook = runtime.settlement;
             if (!hook) {
                 finish();
                 return;
@@ -182,17 +175,10 @@ export function useTurnObservation({
             controller = new AbortController();
             setIsObserving(true);
             try {
-                let observe;
-                if (runtime) {
-                    observe = runtime.turns.observe;
-                } else {
-                    const { turnClient } = await import('./turn-client');
-                    observe = turnClient.observe.bind(turnClient);
-                }
-                for await (const event of observe(meetingId, operationId, {
+                for await (const event of runtime.turns.observe(meetingId, operationId, {
                     after,
                     speed,
-                    signal: combineSignals(runtime?.signal, controller.signal),
+                    signal: combineSignals(runtime.signal, controller.signal),
                 })) {
                     if (cancelled) return;
                     useTurnProjectionStore.getState().apply(scope, event);
