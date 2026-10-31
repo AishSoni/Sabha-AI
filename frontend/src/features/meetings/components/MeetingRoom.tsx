@@ -388,7 +388,10 @@ function MeetingConversation({ meeting, disagreements, consensus, initialTab }: 
                 </TabsContent>
 
                 {capabilities.documents && DocumentsPanel && (
-                    <TabsContent value="documents" className="flex-1 m-0 min-h-0">
+                    <TabsContent
+                        value="documents"
+                        className="flex-1 m-0 min-h-0 overflow-y-auto"
+                    >
                         <DocumentsPanel meetingId={meeting.id} />
                     </TabsContent>
                 )}
