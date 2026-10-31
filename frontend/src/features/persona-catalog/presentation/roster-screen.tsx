@@ -18,6 +18,7 @@ export interface RosterScreenProps {
     hrefs: RosterHrefs;
     heading?: string;
     description?: string;
+    highlightedPersonaId?: string;
     confirmDelete?: (persona: RosterPersonaView) => boolean;
 }
 
@@ -32,7 +33,14 @@ function toView(persona: Persona): RosterPersonaView {
     };
 }
 
-export function RosterScreen({ client, hrefs, heading, description, confirmDelete }: RosterScreenProps) {
+export function RosterScreen({
+    client,
+    hrefs,
+    heading,
+    description,
+    highlightedPersonaId,
+    confirmDelete,
+}: RosterScreenProps) {
     const [personas, setPersonas] = useState<Persona[]>([]);
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState<string | null>(null);
@@ -101,6 +109,7 @@ export function RosterScreen({ client, hrefs, heading, description, confirmDelet
             hrefs={hrefs}
             heading={heading}
             description={description}
+            highlightedPersonaId={highlightedPersonaId}
             onDuplicate={(persona) => void handleDuplicate(persona)}
             onDelete={(id) => void handleDelete(id)}
         />

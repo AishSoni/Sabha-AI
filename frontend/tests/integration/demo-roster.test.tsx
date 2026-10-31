@@ -220,6 +220,7 @@ describe("demo persona catalog", () => {
 
         expect(await screen.findByText("Practice personas")).toBeInTheDocument();
         expect(await screen.findByText("The Credit Analyst")).toBeInTheDocument();
+        expect(screen.getByText("Start here")).toBeInTheDocument();
         expect(screen.getByText("The Downside Reviewer")).toBeInTheDocument();
         expect(screen.getByText("The Portfolio Analyst")).toBeInTheDocument();
         expect(screen.getAllByText(/Prompt v/).length).toBeGreaterThan(0);

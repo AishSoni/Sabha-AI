@@ -54,6 +54,7 @@ export interface RosterListProps {
     hrefs: RosterHrefs;
     heading?: string;
     description?: string;
+    highlightedPersonaId?: string;
     onDuplicate: (persona: RosterPersonaView) => void;
     onDelete: (personaId: string) => void;
 }
@@ -65,6 +66,7 @@ export function RosterList({
     hrefs,
     heading = "AI Roster",
     description = "Manage your AI personas",
+    highlightedPersonaId,
     onDuplicate,
     onDelete,
 }: RosterListProps) {
@@ -156,6 +158,11 @@ export function RosterList({
                                                         >
                                                             {persona.subtitle}
                                                         </CardDescription>
+                                                    )}
+                                                    {highlightedPersonaId === persona.id && (
+                                                        <span className="mt-1 inline-block rounded-full bg-indigo-500/15 px-2 py-0.5 text-[10px] font-medium text-indigo-300">
+                                                            Start here
+                                                        </span>
                                                     )}
                                                 </div>
                                             </div>

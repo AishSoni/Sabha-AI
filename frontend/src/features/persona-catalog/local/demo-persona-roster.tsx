@@ -1,5 +1,6 @@
 'use client';
 
+import { useDemoWorkspace } from '@/features/demo-workspace';
 import { RosterScreen } from '../presentation/roster-screen';
 import { DemoCatalogGate } from './demo-catalog-gate';
 import { useLocalPersonaCatalog } from './use-local-persona-catalog';
@@ -14,10 +15,12 @@ export function DemoPersonaRoster() {
 
 function Content() {
     const { client } = useLocalPersonaCatalog();
+    const { seed } = useDemoWorkspace();
 
     return (
         <RosterScreen
             client={client}
+            highlightedPersonaId={seed?.highlightedPersonaId ?? undefined}
             hrefs={{
                 home: '/demo',
                 create: '/demo/roster/new',

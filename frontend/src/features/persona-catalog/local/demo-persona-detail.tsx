@@ -89,6 +89,7 @@ function Content({
                 description={template?.description}
                 revisionNotes={revisionNotes}
                 revisionBadges={revisionBadges}
+                historyNote="Seeded dates are authored practice history, not model runs. Revisions captured in this tab are temporary."
             />
             {template ? (
                 <DemoSnapshotPanel

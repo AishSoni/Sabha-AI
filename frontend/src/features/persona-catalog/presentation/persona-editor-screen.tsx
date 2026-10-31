@@ -35,6 +35,7 @@ export interface PersonaEditorScreenProps {
     description?: string | null;
     revisionNotes?: Record<string, string>;
     revisionBadges?: Record<string, string>;
+    historyNote?: string;
 }
 
 export function PersonaEditorScreen({
@@ -46,6 +47,7 @@ export function PersonaEditorScreen({
     description,
     revisionNotes,
     revisionBadges,
+    historyNote,
 }: PersonaEditorScreenProps) {
     const id = personaId;
 
@@ -564,6 +566,11 @@ export function PersonaEditorScreen({
                             <Card className="bg-zinc-900/50 border-zinc-800">
                                 <CardHeader>
                                     <CardTitle className="text-white text-sm">System Prompt Version History</CardTitle>
+                                    {historyNote ? (
+                                        <p className="text-[11px] leading-relaxed text-zinc-500">
+                                            {historyNote}
+                                        </p>
+                                    ) : null}
                                 </CardHeader>
                                 <CardContent className="space-y-2">
                                     {promptVersions.length === 0 ? (
