@@ -29,6 +29,11 @@ export {
     type PersonaRequestInit,
 } from './model/client';
 export {
+    normalizeStackIds,
+    validatePersonaTemplate,
+    type PersonaTemplateFields,
+} from './presentation/validation';
+export {
     decodePersona,
     decodePromptRevision,
     requirePersonaListResponse,

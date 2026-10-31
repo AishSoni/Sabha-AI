@@ -4,6 +4,7 @@ export {
     localStateFromSeed,
     workspaceQueryKey,
     type LocalOutcome,
+    type LocalParticipantSnapshot,
     type PinnedPackageIdentity,
     type PlaybackReset,
     type WorkspaceLocalState,

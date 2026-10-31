@@ -17,6 +17,7 @@ import { Textarea } from '@/components/ui/textarea';
 import { Card, CardContent } from '@/components/ui/card';
 import type { PersonaCatalogClient } from '../model/client';
 import type { PersonaCreateInput, PersonaStackOption } from '../model/types';
+import { normalizeStackIds, validatePersonaTemplate } from './validation';
 
 const COLORS = [
     '#ef4444', '#f97316', '#eab308', '#22c55e', '#14b8a6',
@@ -73,11 +74,23 @@ export function NewPersonaScreen({ client, loadStacks, routes, stacksHint }: New
 
     const handleCreate = async () => {
         if (!persona.name.trim()) return;
+        const problems = validatePersonaTemplate({
+            name: persona.name,
+            subtitle: persona.subtitle,
+            color: persona.color,
+        });
+        if (problems.length > 0) {
+            setError(problems.join('; '));
+            return;
+        }
 
         try {
             setCreating(true);
             setError(null);
-            const created = await client.create({ ...persona, stack_ids: selectedStacks });
+            const created = await client.create({
+                ...persona,
+                stack_ids: normalizeStackIds(selectedStacks),
+            });
             routes.afterCreate(created.id);
         } catch (err) {
             setError(err instanceof Error ? err.message : 'Failed to create persona');

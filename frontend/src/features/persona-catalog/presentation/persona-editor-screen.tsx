@@ -18,6 +18,7 @@ import { Textarea } from '@/components/ui/textarea';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import type { PersonaCatalogClient } from '../model/client';
 import type { Persona, PersonaStackOption, PersonaUpdateInput, PromptRevision } from '../model/types';
+import { normalizeStackIds, validatePersonaTemplate } from './validation';
 
 const COLORS = ['#ef4444', '#f97316', '#eab308', '#22c55e', '#14b8a6', '#3b82f6', '#6366f1', '#a855f7', '#ec4899'];
 
@@ -130,11 +131,21 @@ export function PersonaEditorScreen({
 
     async function handleSaveMetadata() {
         if (!persona || savingRef.current) return;
+        const problems = validatePersonaTemplate({ name, subtitle, color });
+        if (problems.length > 0) {
+            setError(problems.join('; '));
+            return;
+        }
 
         try {
             savingRef.current = true;
             setSaving(true);
-            const update: PersonaUpdateInput = { name, subtitle, color, stack_ids: selectedStacks };
+            const update: PersonaUpdateInput = {
+                name,
+                subtitle,
+                color,
+                stack_ids: normalizeStackIds(selectedStacks),
+            };
             const updated = await client.update(id, update);
             if (!mountedRef.current) return;
             setPersona(updated);
