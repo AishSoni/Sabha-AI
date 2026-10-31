@@ -203,3 +203,149 @@ describe("ReplayRunProvider reset fencing", () => {
         expect(result.current.checkpoint).toBe("checkpoint-initial");
     });
 });
+
+function expandedSessionWire() {
+    return {
+        ...sessionWire(),
+        intents: [
+            {
+                intent_id: "credit",
+                kind: "start_participant",
+                checkpoint: "checkpoint-created",
+                participant_id: "participant-1",
+                operation_id: "operation-1",
+                tape_id: "tape-1",
+                closing_tape_id: null,
+                label: "Ask the Credit Analyst",
+            },
+        ],
+        tapes: [
+            {
+                tape_id: "tape-1",
+                operation_id: "operation-1",
+                participant_id: "participant-1",
+                initial_checkpoint: "checkpoint-initial",
+                completed_checkpoint: "checkpoint-created",
+            },
+        ],
+        transitions: [
+            {
+                transition_id: "canonical-credit",
+                source_checkpoint: "checkpoint-initial",
+                completed_checkpoint: "checkpoint-created",
+                intent_id: "credit",
+                kind: "start_participant",
+                participant_id: "participant-1",
+                operation_id: "operation-1",
+                tape_id: "tape-1",
+                closing_tape_id: null,
+                canonical: true,
+                prerequisites: [],
+                label: "Ask the Credit Analyst",
+                explanation: "",
+            },
+        ],
+    };
+}
+
+function completedMeetingWire() {
+    return {
+        ...meetingWire(),
+        messages: [
+            {
+                id: "message-1",
+                meeting_id: MEETING_ID,
+                sender_type: "ai",
+                sender_id: "participant-1",
+                sender_name: "The Credit Analyst",
+                content: "Recorded credit answer",
+                citations: [],
+                tool_artifacts: null,
+                thinking_content: null,
+                estimated_cost: 0,
+                created_at: "2026-01-15T10:00:20Z",
+            },
+        ],
+    };
+}
+
+function completedOperationWire() {
+    return {
+        operation_id: "operation-1",
+        meeting_id: MEETING_ID,
+        participant_id: "participant-1",
+        request_key: "turn-1",
+        status: "completed",
+        admission: 1,
+        queue_position: null,
+        created_at: "2026-01-15T10:00:05Z",
+        started_at: "2026-01-15T10:00:05Z",
+        completed_at: "2026-01-15T10:00:20Z",
+        final_message_id: "message-1",
+        cancel_requested: false,
+        error: null,
+        effective_generation: null,
+    };
+}
+
+describe("ReplayRunProvider prepared playback", () => {
+    afterEach(() => {
+        vi.unstubAllGlobals();
+    });
+
+    it("skips to the completed turn and replays from the approved source state", async () => {
+        vi.stubGlobal(
+            "fetch",
+            vi.fn(async (input: unknown) => {
+                const url = String(input);
+                if (url.endsWith("/replay/session")) return json(expandedSessionWire());
+                if (url.includes("/workspace-seed")) {
+                    return json({ detail: "replay_workspace_seed_unavailable" }, 404);
+                }
+                if (url.includes("/safe-config")) return json({});
+                if (url.includes("/disagreements")) return json([]);
+                if (url.includes("/consensus")) return json([]);
+                if (url.includes("/turns")) return json([completedOperationWire()]);
+                if (url.includes(`/replay/meetings/${MEETING_ID}?`)) {
+                    return json(completedMeetingWire());
+                }
+                return json({ detail: "replay_read_unavailable" }, 404);
+            })
+        );
+
+        const wrapper = ({ children }: { children: ReactNode }) => (
+            <ReplaySessionProvider>
+                <DemoWorkspaceProvider
+                    identity={{
+                        packageId: "placeholder-analyst",
+                        version: "1",
+                        contentSha256: "a".repeat(64),
+                        meetingId: MEETING_ID,
+                    }}
+                >
+                    <ReplayRunProvider>{children}</ReplayRunProvider>
+                </DemoWorkspaceProvider>
+            </ReplaySessionProvider>
+        );
+        const { result } = renderHook(() => useReplayRun(), { wrapper });
+        await waitFor(() => expect(result.current.session).not.toBeNull());
+
+        await act(async () => {
+            await result.current.skipIntent("credit");
+        });
+        expect(result.current.checkpoint).toBe("checkpoint-created");
+        expect(result.current.settledIntents.has("credit")).toBe(true);
+
+        await act(async () => {
+            await result.current.replayIntent("credit");
+        });
+        expect(result.current.checkpoint).toBe("checkpoint-initial");
+        expect(result.current.startedIntents.has("credit")).toBe(true);
+        expect(result.current.settledIntents.has("credit")).toBe(true);
+
+        act(() => {
+            result.current.setPlaybackSpeed(2);
+        });
+        expect(result.current.playbackSpeed).toBe(2);
+    });
+});
