@@ -57,12 +57,20 @@ export function guardNetwork(page: Page): NetworkGuard {
             if (method !== "GET" && method !== "HEAD") {
                 violations.push(`${method} ${url}`);
             }
+            const headers = request.headers();
+            if (headers.authorization || headers.cookie) {
+                violations.push(`credentialed replay request ${url}`);
+            }
             return;
         }
 
         if (url.startsWith(`${ASSET_ORIGIN}/replay-assets/`)) {
             if (method !== "GET") {
                 violations.push(`${method} ${url}`);
+            }
+            const headers = request.headers();
+            if (headers.authorization || headers.cookie) {
+                violations.push(`credentialed asset request ${url}`);
             }
             return;
         }
