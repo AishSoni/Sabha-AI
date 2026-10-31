@@ -1,0 +1,98 @@
+{
+  "retrieval_key": "retrieval-consensus",
+  "meeting_id": "a0000000-0000-4000-8000-000000000001",
+  "participant_id": "a0000000-0000-4000-8000-000000000101",
+  "scope": "shared",
+  "stack_id": null,
+  "query": "HDFC 7.87% 2022 facts judgments unknowns checklist",
+  "hits": [
+    {
+      "rank": 1,
+      "document_id": "a0000000-0000-4000-8000-000000000201",
+      "revision_id": "a0000000-0000-4000-8000-000000000202",
+      "chunk_id": "terms",
+      "content_sha256": "e9152159719221ffdb0ba2b90e0044bd39eea44f72b22b1ea65fbfcc56701bcd",
+      "passage": "Recorded terms and rating.",
+      "score": 0.9,
+      "file_name": "hdfc-v007-shared-fact-sheet.md",
+      "page_number": 1,
+      "locator": {
+        "section": "terms"
+      },
+      "citation": {
+        "source": "CRISIL rating rationale",
+        "title": "CRISIL Rating Rationale, 31 July 2020",
+        "url": "https://www.crisil.com/mnt/winshare/Ratings/RatingList/RatingDocs/Housing_Development_Finance_Corporation_Limited_July_31_2020_RR.html",
+        "snippet": "CRISIL's annexure row for ISIN INE001A07RW5 lists a 7.87% coupon, allotment on 18 July 2019, scheduled maturity on 18 July 2022, and an issue size of Rs 5,000 crore.",
+        "claim_id": "C1",
+        "locator": "S1 annexure row for ISIN INE001A07RW5"
+      }
+    },
+    {
+      "rank": 2,
+      "document_id": "a0000000-0000-4000-8000-000000000201",
+      "revision_id": "a0000000-0000-4000-8000-000000000202",
+      "chunk_id": "rating",
+      "content_sha256": "e9152159719221ffdb0ba2b90e0044bd39eea44f72b22b1ea65fbfcc56701bcd",
+      "passage": "Rating opinion dated 31 July 2020.",
+      "score": 0.86,
+      "file_name": "hdfc-v007-shared-fact-sheet.md",
+      "page_number": 1,
+      "locator": {
+        "section": "rating"
+      },
+      "citation": {
+        "source": "CRISIL rating rationale",
+        "title": "CRISIL Rating Rationale, 31 July 2020",
+        "url": "https://www.crisil.com/mnt/winshare/Ratings/RatingList/RatingDocs/Housing_Development_Finance_Corporation_Limited_July_31_2020_RR.html",
+        "snippet": "CRISIL assigned AAA/Stable on 31 July 2020.",
+        "claim_id": "C2",
+        "locator": "S1 rating action"
+      }
+    },
+    {
+      "rank": 3,
+      "document_id": "a0000000-0000-4000-8000-000000000201",
+      "revision_id": "a0000000-0000-4000-8000-000000000202",
+      "chunk_id": "limits",
+      "content_sha256": "e9152159719221ffdb0ba2b90e0044bd39eea44f72b22b1ea65fbfcc56701bcd",
+      "passage": "No executable price, yield, or liquidity.",
+      "score": 0.84,
+      "file_name": "hdfc-v007-shared-fact-sheet.md",
+      "page_number": 1,
+      "locator": {
+        "section": "limits"
+      },
+      "citation": {
+        "source": "Record evidence",
+        "title": "Shared fact sheet, What is not established",
+        "url": null,
+        "snippet": "The meeting record contains no executable price, yield, or secondary-market liquidity data for the series.",
+        "claim_id": "C10",
+        "locator": "Shared fact sheet, What is not established"
+      }
+    },
+    {
+      "rank": 4,
+      "document_id": "a0000000-0000-4000-8000-000000000201",
+      "revision_id": "a0000000-0000-4000-8000-000000000202",
+      "chunk_id": "outcome",
+      "content_sha256": "e9152159719221ffdb0ba2b90e0044bd39eea44f72b22b1ea65fbfcc56701bcd",
+      "passage": "Research checklist, not investment approval.",
+      "score": 0.82,
+      "file_name": "hdfc-v007-shared-fact-sheet.md",
+      "page_number": 1,
+      "locator": {
+        "section": "outcome"
+      },
+      "citation": {
+        "source": "Committee judgment",
+        "title": "Shared fact sheet, Outcome and limitations",
+        "url": null,
+        "snippet": "The outcome is a research checklist, not a buy/sell recommendation or investment approval.",
+        "claim_id": "C13",
+        "locator": "Shared fact sheet, Outcome and limitations"
+      }
+    }
+  ]
+}

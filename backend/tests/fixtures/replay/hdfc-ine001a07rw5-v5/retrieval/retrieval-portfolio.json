@@ -1,0 +1,76 @@
+{
+  "retrieval_key": "retrieval-portfolio",
+  "meeting_id": "a0000000-0000-4000-8000-000000000001",
+  "participant_id": "a0000000-0000-4000-8000-000000000103",
+  "scope": "private",
+  "stack_id": "portfolio-private",
+  "query": "HDFC 7.87% 2022 mandate price yield liquidity",
+  "hits": [
+    {
+      "rank": 1,
+      "document_id": "a0000000-0000-4000-8000-000000000201",
+      "revision_id": "a0000000-0000-4000-8000-000000000202",
+      "chunk_id": "limits",
+      "content_sha256": "e9152159719221ffdb0ba2b90e0044bd39eea44f72b22b1ea65fbfcc56701bcd",
+      "passage": "No executable price, yield, or secondary-market liquidity.",
+      "score": 0.93,
+      "file_name": "hdfc-v007-shared-fact-sheet.md",
+      "page_number": 1,
+      "locator": {
+        "section": "limits"
+      },
+      "citation": {
+        "source": "Record evidence",
+        "title": "Shared fact sheet, What is not established",
+        "url": null,
+        "snippet": "The meeting record contains no executable price, yield, or secondary-market liquidity data for the series.",
+        "claim_id": "C10",
+        "locator": "Shared fact sheet, What is not established"
+      }
+    },
+    {
+      "rank": 2,
+      "document_id": "a0000000-0000-4000-8000-000000000201",
+      "revision_id": "a0000000-0000-4000-8000-000000000202",
+      "chunk_id": "maturity",
+      "content_sha256": "e9152159719221ffdb0ba2b90e0044bd39eea44f72b22b1ea65fbfcc56701bcd",
+      "passage": "Scheduled maturity is 18 July 2022; no payment assertion.",
+      "score": 0.86,
+      "file_name": "hdfc-v007-shared-fact-sheet.md",
+      "page_number": 1,
+      "locator": {
+        "section": "maturity"
+      },
+      "citation": {
+        "source": "Record evidence",
+        "title": "Shared fact sheet, What is not established",
+        "url": null,
+        "snippet": "Scheduled maturity is 18 July 2022; the meeting does not assert that payment occurred.",
+        "claim_id": "C11",
+        "locator": "Shared fact sheet, What is not established"
+      }
+    },
+    {
+      "rank": 3,
+      "document_id": "a0000000-0000-4000-8000-000000000201",
+      "revision_id": "a0000000-0000-4000-8000-000000000202",
+      "chunk_id": "outcome",
+      "content_sha256": "e9152159719221ffdb0ba2b90e0044bd39eea44f72b22b1ea65fbfcc56701bcd",
+      "passage": "A research checklist, not a recommendation.",
+      "score": 0.84,
+      "file_name": "hdfc-v007-shared-fact-sheet.md",
+      "page_number": 1,
+      "locator": {
+        "section": "outcome"
+      },
+      "citation": {
+        "source": "Committee judgment",
+        "title": "Shared fact sheet, Outcome and limitations",
+        "url": null,
+        "snippet": "The outcome is a research checklist, not a buy/sell recommendation or investment approval.",
+        "claim_id": "C13",
+        "locator": "Shared fact sheet, Outcome and limitations"
+      }
+    }
+  ]
+}
