@@ -1,261 +1,250 @@
-# Sabha Your Personal AI Advisory Board
+<div align="center">
 
-> *"Don't ask one AI. Convene a board."*
+# Sabha
 
-Sabha is an open-source, multi-agent collaborative workspace where you host **structured meetings** with a roster of distinct AI personas. Unlike a standard chatbot, Sabha's agents have persistent personalities, private knowledge bases, and formal roles. They debate, disagree, and reach consensus — all trackable in real time on a live scoreboard.
+**A multi-agent advisory board for consequential decisions.**
 
----
+[**Live project →**](https://sabha-ai-as.vercel.app/) · [**Architecture**](#architecture)
 
-## ✨ What Makes Sabha Different
+[![Live project](https://img.shields.io/badge/Live_project-sabha--ai--as.vercel.app-6E56CF?style=for-the-badge)](https://sabha-ai-as.vercel.app/)
+[![No account required](https://img.shields.io/badge/Guided_replay-no_account_required-2EA043?style=for-the-badge)](https://sabha-ai-as.vercel.app/)
 
-| Feature | Standard Chatbot | Sabha |
+[![Next.js 16](https://img.shields.io/badge/Next.js-16-000000?style=flat-square&logo=nextdotjs&logoColor=white)](https://nextjs.org/)
+[![React 19](https://img.shields.io/badge/React-19-61DAFB?style=flat-square&logo=react&logoColor=white)](https://react.dev/)
+[![FastAPI](https://img.shields.io/badge/FastAPI-Python_3.12-009688?style=flat-square&logo=fastapi&logoColor=white)](https://fastapi.tiangolo.com/)
+[![PostgreSQL 16](https://img.shields.io/badge/PostgreSQL-16-4169E1?style=flat-square&logo=postgresql&logoColor=white)](https://www.postgresql.org/)
+[![Qdrant](https://img.shields.io/badge/Qdrant-vector_search-DC244C?style=flat-square&logo=qdrant&logoColor=white)](https://qdrant.tech/)
+
+</div>
+
+Sabha is a multi-agent advisory board for consequential decisions. A human director convenes a meeting, chooses a roster of AI participants, and decides who speaks next. Each participant has a distinct mandate, a versioned prompt, and access to shared meeting material plus its own private knowledge stack. Disagreement and consensus are recorded as first-class outcomes, not buried in chat text.
+
+The product has two surfaces:
+
+| Surface | Audience | What it is |
 |---|---|---|
-| Number of AIs | 1 | Multiple (full roster) |
-| Turn control | AI-controlled | **User-directed** |
-| Disagreements | Ignored | First-class tracked objects |
-| Knowledge | Shared | Private per-agent + shared meeting docs |
-| Grounding | Hallucinations possible | Durable RAG with revision-level eligibility |
-| Cost tracking | None | Per-message & per-meeting |
-| Durability | A dropped connection loses the answer | Accepted turns survive disconnects and worker restarts |
+| **Live workspace** | The configured operator | A private board room for creating meetings, managing the roster, uploading evidence, running turns, and closing with a summary. |
+| **Guided replay** | Anyone, no account required | A read-only reconstruction of a recorded meeting, served from a pinned package. [Open the project →](https://sabha-ai-as.vercel.app/) |
+
+Sabha is deliberately not an auto-facilitator. The director drives the agenda and turn order; the system makes the work durable, attributable, and inspectable.
 
 ---
 
-## 🗺️ Table of Contents
+## Contents
 
-1. [Core Concepts](#-core-concepts)
-2. [Architecture](#-architecture)
-3. [Tech Stack](#-tech-stack)
-4. [Project Structure](#-project-structure)
-5. [Getting Started](#-getting-started)
-6. [Configuration](#-configuration)
-7. [Database, Migrations, and Access](#-database-migrations-and-access)
-8. [LLM Providers](#-llm-providers)
-9. [Knowledge Pipeline](#-knowledge-pipeline)
-10. [API Reference](#-api-reference)
-11. [Operations](#-operations)
-12. [Hosted Verification (Manual Gate)](#-hosted-verification-manual-gate)
-13. [Testing and Acceptance](#-testing-and-acceptance)
-14. [Agent Specification](#-agent-specification)
-15. [Roadmap](#-roadmap)
-16. [Contributing](#-contributing)
-
----
-
-## 🧠 Core Concepts
-
-### The Meeting
-A **Meeting** (Sabha) is the primary workspace. It has:
-- A **name** and an **agenda** that every participant sees
-- A **roster** of AI participants, each with a unique persona
-- A **shared document pool** (meeting-scope knowledge)
-- A live **Disagreement Scoreboard** and **Consensus Log**
-- A running **cost tracker** backed by recorded inference events
-- A durable **turn queue**: submitted turns are accepted, then executed by a worker
-
-### The Roster
-Your **AI Roster** is a library of reusable personas. Each persona has:
-- A **name** and **role** (e.g., "The Investor", "The CTO")
-- A versioned **system prompt** defining personality, focus, and tone
-- Optional **Knowledge Stack** assignments — documents only assigned agents can retrieve
-- A **provider configuration** (provider, model, generation settings), snapshotted into the participant at meeting creation
-
-### Turn-Taking (User-Controlled Orchestration)
-Sabha does not auto-run. You are the **Director**: you choose which AI speaks next. Submission is admission only — the turn is durably queued and the answer is observed through a separate, replayable stream. A disconnect never cancels accepted work, and reading a status never triggers generation. There is no auto-facilitate mode.
-
-### Disagreements & Consensus
-These are **first-class tracked objects**, not just text. When an agent calls `log_disagreement` or `log_consensus`:
-- The event is persisted with the meeting
-- The scoreboard updates in real time
-- Disagreements carry a **severity** (1–5); consensus carries a **strength** (1–5)
-
-### Public Replay, Private Live Workspace
-Guided replay is the public entry and needs **no account**. `/`, `/demo/**`, public replay assets and its read-only recorded graph remain account-free.
-
-The live workspace is private. Every `/api/*` route except `/api/replay/*` requires a Supabase Auth bearer token whose user id exactly matches the server's `OPERATOR_USER_ID`. A valid Supabase account alone is not enough: the backend verifies the token against the configured project's `/auth/v1/user` endpoint on every request and rejects non-operators with `403`. There is no shared live workspace and no unauthenticated live fallback.
-
-`demo` remains a strict read-only runtime for the live graph: admission runs first (`401` without a token), and an admitted operator still receives the existing read-only `403`. The browser never talks to the database directly; it uses the Supabase SDK only for Auth. See [Configuration](#-configuration) and the [operations runbook](docs/OPERATIONS.md).
+- [Architecture](#architecture)
+- [Why Sabha](#why-sabha)
+- [How it works](#how-it-works)
+- [Stack](#stack)
+- [Repository layout](#repository-layout)
+- [Quick start](#quick-start)
+- [Configuration](#configuration)
+- [Database, migrations, and access](#database-migrations-and-access)
+- [API surface](#api-surface)
+- [Recorded replay](#recorded-replay)
+- [Testing and acceptance](#testing-and-acceptance)
+- [Operations](#operations)
+- [Status and release gates](#status-and-release-gates)
+- [Limitations](#limitations)
+- [Roadmap and deferred work](#roadmap-and-deferred-work)
+- [Contributing](#contributing)
+- [License](#license)
 
 ---
 
-## 🏗️ Architecture
+## Architecture
 
-```
-┌────────────────────────────────────────────────────────────────────┐
-│                         Sabha Application                         │
-│                                                                    │
-│  ┌──────────────┐   REST/SSE    ┌──────────────────────────────┐   │
-│  │  Next.js 16  │◄─────────────►│  FastAPI API                 │   │
-│  │  React 19    │               │  routes → application →      │   │
-│  │  TypeScript  │               │  domain → adapters           │   │
-│  │  TanStack Q. │               └───────┬──────────────┬───────┘   │
-│  │  Zustand     │                       │              │           │
-│  └──────────────┘                       │              │           │
-│                                 ┌───────▼────────┐  ┌──▼────────┐  │
-│                                 │ Worker         │  │ Postgres  │  │
-│                                 │ (optional)     │  │ (Supabase)│  │
-│                                 └───────┬────────┘  └──┬────────┘  │
-│                                         │              │           │
-│                    ┌────────────────────┼──────────────┘           │
-│                    │                    │                          │
-│              ┌─────▼──────┐      ┌──────▼──────┐   ┌────────────┐  │
-│              │ Qdrant     │      │ Supabase    │   │ LLM APIs   │  │
-│              │ (vectors)  │      │ Storage     │   │ OpenRouter │  │
-│              └────────────┘      │ (bytes)     │   │ Gemini /   │  │
-│                                  └─────────────┘   │ Ollama     │  │
-│                                                    └────────────┘  │
-└────────────────────────────────────────────────────────────────────┘
+Sabha separates the live advisory workspace from the recorded replay at the request boundary. The browser uses Supabase only for authentication; every meeting, document, turn, and evidence read flows through FastAPI.
+
+```mermaid
+flowchart LR
+    Director[Director] --> Browser
+
+    Browser --> Next[Next.js application]
+    Next -->|Supabase Auth| Auth[Supabase Auth]
+    Next -->|live /api, bearer token| LiveAPI[FastAPI live graph]
+    Next -->|public /api/replay| ReplayAPI[FastAPI replay graph]
+
+    LiveAPI --> PG[(PostgreSQL / Supabase)]
+    LiveAPI --> Store[(Private object storage)]
+    LiveAPI --> Qdrant[(Qdrant projection)]
+    LiveAPI --> LLM[LLM providers]
+
+    Worker[Turn worker] --> PG
+    Worker --> LLM
+    Worker --> Qdrant
+
+    ReplayAPI --> ReplayReader[(Replay reader DB)]
+    ReplayAPI --> ReplayAssets[(replay-assets bucket)]
 ```
 
-### Durable turn lifecycle
-
-```
-1. SUBMIT    → POST /api/meetings/{id}/turns with a participant and request key
-2. ADMIT     → Postgres records the operation, idempotency key, FIFO position,
-               per-meeting queue limit, and an admission event
-3. CLAIM     → The API's inline runner or a dedicated worker claims the operation
-               under a lease and a monotonically increasing fence
-4. ATTEMPT   → A durable attempt row is written before any provider call
-5. EXECUTE   → Bounded context + tools (knowledge search, disagreement, consensus)
-6. PUBLISH   → Fenced publication of the message, evidence, usage, and events
-7. TERMINAL  → completed | failed | interrupted | cancelled
-```
-
-Observation is independent of execution: `GET .../turns/{op}` returns status and
-`GET .../turns/{op}/events` replays the stream from a sequence cursor.
-
-### Recovery semantics
-
-- A worker that dies **before** a provider call: the operation is requeued at
-  startup, with no provider call and no charge.
-- A worker that dies **after** a provider call starts: the operation becomes
-  `interrupted` / `unknown_outcome`. Sabha never guesses whether the call was
-  billed, so it never replays it automatically. A retry is a new operation.
-- Physical deletion failures stay visible in `knowledge_cleanup` with attempts
-  and errors; retries are idempotent. Evidence redaction does not depend on
-  storage or vector availability.
-- Restore replays the retained deletion ledger **before** retrieval reopens.
-
----
-
-## 🛠️ Tech Stack
-
-Versions measured on the acceptance host (see [Testing and Acceptance](#-testing-and-acceptance)):
-
-### Frontend
-| Tech | Version | Purpose |
+| Plane | Owns | Isolation |
 |---|---|---|
-| Next.js | 16.1.4 | React framework + App Router |
-| React / React DOM | 19.2.3 | UI library |
-| TypeScript | 5.x | Type safety |
-| Tailwind CSS | 4.x | Styling |
-| Radix UI | latest | Accessible headless components |
-| TanStack Query | 5.x | Server-state cache |
-| Zustand | 5.x | Client/UI state |
-| `react-markdown` | 10.x | Markdown rendering |
+| **Live API** | Meetings, roster, knowledge, settings, turn admission, closing | Operator bearer token, then the demo write guard; `Cache-Control: private, no-store` |
+| **Turn worker** | Claims and executes admitted turns | Same production container, no HTTP; Postgres lease and fence |
+| **Replay API** | Published meetings, turns, events, evidence, and assets | Separate GET-only graph and database reader; no fallback to live data |
 
-### Backend
-| Tech | Version | Purpose |
-|---|---|---|
-| Python | 3.12 | Runtime |
-| FastAPI | 0.128 | REST API + SSE |
-| Pydantic | 2.12 | Validation and settings |
-| PostgreSQL | 16.2 | Authoritative store, queue, RPC guards |
-| psycopg | 3.3 | PostgreSQL driver |
-| Qdrant | 1.16.x client | Vector projection |
-| `sse-starlette` | 3.2+ | Server-Sent Events |
-| `tiktoken` | 0.5+ | Token counting |
-| `pypdf`, `python-docx`, `openpyxl` | latest | Document parsing |
-| `pypdfium2`, `Pillow`, `RapidOCR`, `onnxruntime`, `psutil` | pinned | Bounded local PDF OCR fallback |
-| `langchain-text-splitters` | latest | Text chunking |
-| `cohere`, `openai` | latest | Embedding providers |
+`backend/main.py` builds the live app from `app.bootstrap`: one Supabase client, meeting service, turn queue service, closing service, and optional turn runner behind a protected router. `backend/worker.py` runs the same container without HTTP and refuses `REPLAY_ONLY=true`. `app.replay` has its own contracts, reads, streaming, cache, and package loader.
+
+The browser never receives a database, storage, or vector credential.
 
 ---
 
-## 📁 Project Structure
+## Why Sabha
 
-```
+Most multi-agent chat demos put several models in a loop and let them talk until a token budget runs out. Sabha starts from a different premise: a board meeting has a chair, an agenda, a record, and evidence.
+
+- **The director chooses the next speaker.** There is no hidden facilitator and no automatic round-robin.
+- **Every participant has a mandate.** Investor, CTO, and Analyst are built-in templates; custom personas are supported with versioned prompts.
+- **Knowledge is scoped.** Meeting documents are shared with the room. Persona and knowledge-stack documents are private to the participants assigned to them.
+- **Turns survive failure.** A submitted turn is a durable operation in Postgres, not an HTTP request held open until a model replies.
+- **Conflict is visible.** Disagreements carry a target, topic, reasoning, and severity from 1–5. Consensus carries participants and strength.
+- **Citations resolve to evidence.** Retrieval results are tied to immutable document revisions and previewable source bytes.
+- **Recorded meetings replay without live infrastructure.** A replay package contains the meeting, turns, events, evidence, and closing record needed to reconstruct the room.
+
+---
+
+## How it works
+
+### 1. Build a roster
+
+A persona defines a name, role, system prompt, provider configuration, and optional knowledge stacks. Prompt versions are immutable; activating a version changes future turns. When a meeting is created, participant configuration is snapshotted so later roster edits do not rewrite history.
+
+### 2. Convene a meeting
+
+The director creates a meeting with an agenda, selects participants, and attaches shared documents. The meeting moves through explicit statuses; archiving is reversible, and archived meetings reject new turns.
+
+### 3. Run a turn
+
+A turn is accepted before inference starts:
+
+1. `POST /api/meetings/{meeting_id}/turns` admits an operation with idempotency, FIFO ordering, and a per-meeting queue limit.
+2. A runner claims the operation under a lease and monotonic fence.
+3. A durable attempt row is written **before** the provider call.
+4. The participant receives bounded context and can call `search_knowledge_base`, `log_disagreement`, and `log_consensus`.
+5. Results, citations, usage, and events are published under the same fence.
+6. The operation ends as `completed`, `failed`, `interrupted`, or `cancelled`.
+
+Observation is independent of execution: the client can fetch status and replay events from a sequence cursor. If a runner dies before a provider call, the turn can be requeued without charge. If it dies after the call starts, the operation is marked `interrupted` with an unknown outcome and is never silently replayed. Retrying creates a new operation.
+
+### 4. Record disagreement and consensus
+
+`log_disagreement` and `log_consensus` write durable rows tied to the turn invocation. The room exposes a live scoreboard, and the closing summary reflects the recorded positions rather than inferring them only from prose.
+
+### 5. Ground claims in evidence
+
+Documents are uploaded to private object storage, parsed, chunked, embedded, and published as immutable revisions. Qdrant is a rebuildable projection; Postgres is authoritative for eligibility. At retrieval time, eligibility is revalidated so a deleted or retired revision cannot be cited. An evidence viewer opens the exact source revision or replay asset without executing active content.
+
+### 6. Close and archive
+
+Closing is a coordinated operation with lease and drain controls. Summary checkpoints make a long close recoverable. Once closed, the meeting can be archived; live and recorded rooms present the closing record consistently.
+
+### 7. Replay a recorded meeting
+
+A guided replay is served from a pinned package through a separate request graph. It never composes the live container and never writes. The player can move between checkpoints such as creation, credit analysis, downside case, portfolio fit, consensus, close, and archive, while seeing the turns and evidence that existed at that point.
+
+---
+
+## Stack
+
+| Layer | Technology |
+|---|---|
+| Frontend | Next.js 16.1.4 (App Router), React 19.2.3, TypeScript 5, Tailwind CSS 4, Radix UI |
+| Client state | TanStack Query 5 for server state, Zustand 5 for client/UI preferences |
+| Backend | Python 3.12, FastAPI, Pydantic 2, Uvicorn |
+| Durability | PostgreSQL 16 through psycopg 3; Supabase for Auth and private Storage |
+| Retrieval | Qdrant, with Postgres as the source of truth for eligibility |
+| Documents | pypdf, pypdfium2, RapidOCR/ONNX Runtime, python-docx, openpyxl |
+| Providers | Gemini, OpenRouter, and Ollama; embeddings through Gemini, OpenAI, Cohere, or Ollama |
+| Tests | pytest, Vitest, Testing Library, Playwright |
+
+The measured acceptance environment and pinned versions are listed in [docs/OPERATIONS.md](docs/OPERATIONS.md). The OpenAPI contract is frozen at **56 paths**.
+
+---
+
+## Repository layout
+
+```text
 Sabha/
-├── .env.example                    # Backend environment template
-├── AGENTS.md                       # Agent architecture & tool specification
-├── docs/OPERATIONS.md              # Deploy, backup, restore, recovery runbook
-├── specs/                          # Implementation specs and contracts
-│
 ├── backend/
-│   ├── main.py                     # FastAPI entry point
-│   ├── worker.py                   # Optional dedicated turn worker
-│   ├── supabase_schema.sql         # Baseline migration (000_baseline)
-│   ├── migrations/                 # Ordered 002…030 SQL history
-│   ├── scripts/
-│   │   ├── migrate.py              # Checksummed migration runner
-│   │   ├── backup.py               # SQL + bytes + deletion ledger
-│   │   ├── restore.py              # Restore, replay, cleanup, marker
-│   │   ├── export_openapi.py       # Contract snapshot check
-│   │   └── rehearse_clean_checkout.py
-│   └── app/
-│       ├── modules/
-│       │   ├── meetings/           # Lifecycle, participants, messages,
-│       │   │                       # durable turns, closing
-│       │   ├── persona_catalog/    # Templates, prompt history, stacks
-│       │   ├── knowledge/          # Upload, ingest, retrieve, delete
-│       │   ├── settings/           # Provider settings
-│       │   └── access/             # Write guards (demo mode)
-│       ├── capabilities/           # Inference, runtime, configuration
-│       ├── platform/               # Settings, Supabase client
-│       └── presentation/           # Router assembly, dependencies
-│
-└── frontend/
-    ├── src/app/                    # App Router pages
-    ├── src/features/               # Feature-scoped API + components
-    ├── src/shared/                 # Transport, generated API types
-    ├── src/stores/                 # Client state
-    └── tests/fixtures/openapi.json # Frozen 40-path contract
+│   ├── app/
+│   │   ├── modules/             # access, meetings, persona_catalog, knowledge, settings
+│   │   ├── capabilities/        # inference, runtime supervision, configuration
+│   │   ├── platform/            # settings, Supabase client, database access
+│   │   ├── presentation/        # router assembly, dependencies, errors, timing
+│   │   └── replay/              # package-backed read graph
+│   ├── migrations/              # ordered SQL history after the baseline
+│   ├── replay_packages/         # tracked guided and test packages
+│   ├── scripts/                 # migration, backup, replay, acceptance tooling
+│   ├── tests/
+│   ├── main.py                  # live application entry point
+│   ├── worker.py                # durable turn worker
+│   ├── supabase_schema.sql      # migration 000_baseline
+│   └── requirements.txt
+├── frontend/
+│   ├── src/app/                 # public, demo, and operator route groups
+│   ├── src/features/            # access, knowledge, meetings, persona-catalog, settings
+│   ├── src/shared/              # API transport, auth, credentials, query, runtime
+│   ├── e2e/                     # Playwright journeys and backend starter
+│   └── tests/fixtures/          # frozen OpenAPI contract
+├── docs/                        # operations, permissions, PDF extraction
+├── specs/                       # product and implementation specifications
+├── .env.example
+├── AGENTS.md                    # participant prompts and tool contract
+└── README.md
 ```
-
-The former `app/api`, `app/core`, `app/llm`, `app/models`, `app/services` and
-`app/infrastructure` layers were removed in Spec 10. Only stale `__pycache__`
-directories may remain locally.
 
 ---
 
-## 🚀 Getting Started
+## Quick start
 
 ### Prerequisites
 
-- **Python 3.12**
-- **Node.js 20+** and npm
-- A [Supabase](https://supabase.com) project (Postgres + Storage)
-- A [Qdrant](https://qdrant.tech) instance — cloud or local via Docker
-- At least one provider: local Ollama, an OpenRouter key, or a Gemini key
+- Python 3.12
+- PostgreSQL 16 reachable through a direct/session connection string
+- Node.js 20 or newer and npm
+- A Supabase project for Auth and private Storage
+- A Qdrant instance
+- One configured model provider: Ollama locally, or an OpenRouter or Gemini key
 
-### 1. Clone and install
+For the full live workspace you also need the Supabase Auth user UUID that will be the single operator. The backend intentionally fails closed without operator access configuration.
+
+### 1. Install the backend
 
 ```bash
-git clone https://github.com/your-username/Sabha.git
-cd Sabha/backend
+cd backend
 python -m venv venv
 # Windows: venv\Scripts\activate
 # macOS/Linux: source venv/bin/activate
 pip install -r requirements.txt
 ```
 
-### 2. Configure the backend
+### 2. Create the backend environment
 
 ```bash
 cp ../.env.example .env
 ```
 
-Fill in `SUPABASE_URL`, `SUPABASE_KEY`, `SUPABASE_SERVICE_KEY`, `DATABASE_URL`,
-`QDRANT_URL`, the provider settings and `RUNTIME_MODE`. Set
-`REPLAY_DATABASE_URL` only when running strict replay; it is a separate
-server-only login, never the live credential. See
-[Configuration](#-configuration).
+At minimum, set:
 
-### 3. Apply the SQL history
+```env
+SUPABASE_URL=...
+SUPABASE_KEY=...                    # project anon/publishable key
+SUPABASE_SERVICE_KEY=...            # server-only; never browser-exposed
+OPERATOR_USER_ID=...                # exact Supabase Auth user UUID
+SUPABASE_AUTH_PUBLISHABLE_KEY=...   # public key used to verify bearer tokens
+DATABASE_URL=...                    # direct/session URL, not the transaction pooler
+QDRANT_URL=...
+RUNTIME_MODE=local
+```
 
-Do **not** run only `supabase_schema.sql`: it is the `000_baseline` migration,
-and the remaining `backend/migrations/*.sql` files add the queue, closing,
-knowledge and cleanup schema. Apply the ordered history with the migration
-runner:
+Then choose a provider and embedding configuration. See [Configuration](#configuration) and the complete [`.env.example`](.env.example).
+
+### 3. Prepare storage and the schema
+
+Create a private Supabase Storage bucket named `knowledge-sources`, or set `KNOWLEDGE_BUCKET` to another name. The adapter can create the bucket when the service key is configured, but creating it explicitly keeps the deployment auditable.
+
+Do not run only `supabase_schema.sql`: it is migration `000_baseline`. Apply the full ordered history with the runner:
 
 ```bash
 python -m scripts.migrate --status
@@ -263,440 +252,281 @@ python -m scripts.migrate
 python -m scripts.migrate --status   # every version must be applied
 ```
 
-A database that already holds Phase 1 tables but no `schema_migrations` history
-must be adopted deliberately:
+Existing databases without migration history use an explicit adoption path:
 
 ```bash
-python -m scripts.migrate --adopt-phase-one
+python -m scripts.migrate --adopt-phase-one   # Phase 1 tables, no history
+python -m scripts.migrate --adopt-legacy      # knowledge-stack-era schema
 ```
 
-A database that stopped at the older knowledge-stack schema (the state produced
-by pasting `supabase_schema.sql` and the first numbered files by hand) uses the
-legacy adoption path instead. It verifies the complete 003 markers, records
-`000..003`, and applies `004..028`:
+Both paths verify schema markers before recording history. Applied migrations are checksum-verified and never edited.
 
-```bash
-python -m scripts.migrate --adopt-legacy
-```
-
-Both adoption paths are idempotent and refuse to record history for a schema
-whose markers do not match what they claim to adopt.
-
-The runner records a checksum per version, commits each file atomically with its
-tracking row, and serializes deployers with a Postgres advisory lock. See
-[Database, Migrations, and Access](#-database-migrations-and-access).
-
-Create a **private** Storage bucket named `knowledge-sources` (or set
-`KNOWLEDGE_BUCKET`). The adapter can create it when the service key is
-configured, but creating it explicitly keeps the deployment auditable.
-
-### 4. Start the backend
+### 4. Start the API
 
 ```bash
 uvicorn main:app --reload --port 8000
 ```
 
-API: `http://localhost:8000` · Docs: `http://localhost:8000/docs`
+- API: <http://localhost:8000>
+- Interactive docs: <http://localhost:8000/docs>
+- Health: <http://localhost:8000/health>
 
-By default the API also runs inference inline. To run a dedicated worker
-instead, set `TURN_RUNNER_ENABLED=false` and start:
+By default the API runs turn inference inline. To use a dedicated worker instead, set `TURN_RUNNER_ENABLED=false` and start it separately:
 
 ```bash
 python worker.py
 ```
 
-The database arbitrates between both placements; running the API runner and a
-worker concurrently is safe.
+Both placements are safe to run concurrently; Postgres owns admission and claiming.
 
 ### 5. Start the frontend
 
 ```bash
 cd ../frontend
 npm ci
-npm run sync:openapi
 npm run dev
 ```
 
-Frontend: `http://localhost:3000`
-
-Create `frontend/.env.local` only when the API is not on the default URL:
+Open <http://localhost:3000>. The frontend defaults its API base URL to `http://localhost:8000/api`. Create `frontend/.env.local` when you need a different URL or operator sign-in:
 
 ```env
 NEXT_PUBLIC_API_URL=http://localhost:8000/api
+NEXT_PUBLIC_SUPABASE_URL=https://your-project.supabase.co
+NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY=your_publishable_or_anon_key
 ```
 
-`/health` returns `{"status":"healthy"}` without probing dependencies. Use a
-real read (`GET /api/meetings`) plus worker logs as the readiness check.
+Sign in at `/login` with the Supabase user whose UUID matches `OPERATOR_USER_ID`. The public guided replay at `/` and `/demo/**` does not require Supabase configuration.
 
 ---
 
-## 🔐 Configuration
+## Configuration
 
-All backend variables live in `backend/.env` (see `.env.example`).
+Backend variables live in `backend/.env`. The checked-in [`.env.example`](.env.example) is the starting point; [docs/OPERATIONS.md](docs/OPERATIONS.md) documents the operational variables and supported versions.
 
-| Variable | Default | Purpose |
+| Area | Key variables | Notes |
 |---|---|---|
-| `SUPABASE_URL` | required | Supabase project URL |
-| `SUPABASE_KEY` | required | Project configuration only; the live server never uses it as a database credential |
-| `SUPABASE_SERVICE_KEY` | required | Server database client, byte access, backup and restore. Migration `030` removes live `anon` access, so the backend fails clearly without it; never expose it to the browser |
-| `OPERATOR_USER_ID` | required for live | Exact Supabase Auth user UUID allowed into the live workspace. Live HTTP refuses to start without it |
-| `SUPABASE_AUTH_PUBLISHABLE_KEY` | required for live | Public Auth API key used to verify bearer tokens at `/auth/v1/user`; must not be the service/secret key |
-| `ACCESS_VERIFICATION_TIMEOUT_SECONDS` | 5 | Bounded Auth verification timeout |
-| `ACCESS_VERIFICATION_MAX_CONNECTIONS` | 10 | Bounded pooled Auth connections |
-| `DATABASE_URL` | scripts | Direct/session PostgreSQL URL for scripts and restore |
-| `REPLAY_DATABASE_URL` | replay only | Dedicated `sabha_replay_reader` login connection; server-only, never the live service credential |
-| `DEFAULT_LLM_PROVIDER` | `ollama` | `ollama`, `openrouter` or `gemini` |
-| `OLLAMA_BASE_URL` / `OLLAMA_DEFAULT_MODEL` | `http://localhost:11434` / `llama3.2` | Local inference |
-| `OLLAMA_ALLOWED_ORIGINS` | empty | SSRF allowlist for user-supplied Ollama origins |
-| `OPENROUTER_API_KEY` / `OPENROUTER_DEFAULT_MODEL` | empty / Claude Sonnet | OpenRouter |
-| `GEMINI_API_KEY` / `GEMINI_DEFAULT_MODEL` | empty / `gemini-1.5-flash` | Google Gemini |
-| `QDRANT_URL` / `QDRANT_API_KEY` | `http://localhost:6333` / empty | Vector projection |
-| `EMBEDDING_PROVIDER` | `ollama` | `gemini`, `openai`, `cohere`, `ollama` |
-| `EMBEDDING_MODEL` / `EMBEDDING_DIMENSION` | `nomic-embed-text` / 768 | Must match the collection |
-| `OPENAI_API_KEY`, `COHERE_API_KEY` | empty | Embedding providers |
-| `KNOWLEDGE_BUCKET` | `knowledge-sources` | Original-byte bucket |
-| `RUNTIME_MODE` | `local` | `local`, `hosted` (writable) or `demo` (read-only) |
-| `CORS_ORIGINS` | `http://localhost:3000` | JSON array of browser origins (e.g. `["https://app.example.com"]`) |
-| `TURN_MAX_QUEUED_PER_MEETING` | 10 | Admission limit |
-| `TURN_GLOBAL_CONCURRENCY` | 1 | Worker parallelism |
-| `TURN_LEASE_SECONDS` | 60 | Claim lease |
-| `TURN_POLL_SECONDS` | 0.5 | Worker poll interval |
-| `TURN_RUNNER_ENABLED` | true | Inline runner in the API |
-| `TURN_EXECUTION_TIMEOUT_SECONDS` | 300 | Per-turn deadline |
-| `CLOSING_ATTEMPT_LEASE_SECONDS` | 120 | Vote/summary attempt lease |
-| `CLOSING_DRAIN_TIMEOUT_SECONDS` | 300 | Graceful drain |
+| Supabase | `SUPABASE_URL`, `SUPABASE_KEY`, `SUPABASE_SERVICE_KEY` | The service key is server-only. Live data access never falls back to the anon key. |
+| Operator access | `OPERATOR_USER_ID`, `SUPABASE_AUTH_PUBLISHABLE_KEY`, `ACCESS_VERIFICATION_*` | Exact UUID match is required. Missing or unsafe live config fails startup. |
+| Database | `DATABASE_URL` | Direct/session URL used by migrations, backup, and restore. |
+| Replay | `REPLAY_DATABASE_URL`, `REPLAY_PACKAGE_ID`, `REPLAY_PACKAGE_VERSION`, `REPLAY_PACKAGE_SHA256`, `REPLAY_ONLY` | Replay uses a separate server-only reader login. |
+| Provider | `DEFAULT_LLM_PROVIDER`, `GEMINI_*`, `OPENROUTER_*`, `OLLAMA_*` | Invalid provider values fail at startup; there is no silent fallback. |
+| Embeddings | `EMBEDDING_PROVIDER`, `EMBEDDING_MODEL`, `EMBEDDING_DIMENSION`, provider keys | Must match the Qdrant collection configuration. |
+| Vector store | `QDRANT_URL`, `QDRANT_API_KEY` | Rebuildable projection; not the system of record. |
+| Runtime | `APP_ENV`, `RUNTIME_MODE`, `CORS_ORIGINS` | `RUNTIME_MODE=local\|hosted\|demo`. Demo admits the operator then denies writes. |
+| Turn queue | `TURN_MAX_QUEUED_PER_MEETING`, `TURN_GLOBAL_CONCURRENCY`, `TURN_LEASE_SECONDS`, `TURN_POLL_SECONDS`, `TURN_RUNNER_ENABLED`, `TURN_EXECUTION_TIMEOUT_SECONDS` | Postgres arbitrates admission and recovery. |
+| Closing | `CLOSING_ATTEMPT_LEASE_SECONDS`, `CLOSING_DRAIN_TIMEOUT_SECONDS` | Coordinated close and retry behavior. |
+| Frontend | `NEXT_PUBLIC_API_URL`, `NEXT_PUBLIC_SUPABASE_URL`, `NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY` | Only public values belong in the browser bundle. |
 
-Runtime modes:
+Frontend rate-limit display hints can be set with optional `NEXT_PUBLIC_RATE_LIMIT_GEMINI`, `NEXT_PUBLIC_RATE_LIMIT_OPENROUTER`, `NEXT_PUBLIC_RATE_LIMIT_OLLAMA`, and `NEXT_PUBLIC_RATE_LIMIT_DEFAULT`.
 
-| Mode | Writes | Accounts | Notes |
-|---|---|---|---|
-| `local` | allowed | operator only | Default developer runtime; operator login still required |
-| `hosted` | allowed | operator only | Hosted deployment; same operator gate |
-| `demo` | denied (403) | operator only | Admission first, then read-only; guided replay at `/demo` remains public |
-
-Invalid runtime, provider or embedding values fail at process start. Sabha
-never silently switches a provider or truncates data to fit a configuration.
-
-Frontend variables:
-
-| Variable | Default | Purpose |
-|---|---|---|
-| `NEXT_PUBLIC_API_URL` | `http://localhost:8000/api` | Backend base URL; use the deployed HTTPS origin in production |
-| `NEXT_PUBLIC_SUPABASE_URL` | - | Supabase project URL used only by the browser Auth adapter |
-| `NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY` | - | Public Auth API key (publishable or legacy anon); never the service/secret key |
-| `NEXT_PUBLIC_RATE_LIMIT_<PROVIDER>` | - | Client-side pacing hints (`GEMINI`, `OPENROUTER`, `OLLAMA`, `DEFAULT`) |
-
-Only the public Auth key is present in the browser bundle. Database, storage and
-vector access remains server-side. Public replay does not initialize Auth and
-works with neither Supabase variable set.
+Provider selection is snapshotted per participant when a meeting is created. A blank participant provider configuration falls back to the system AI settings and then to environment defaults.
 
 ---
 
-## 🗄️ Database, Migrations, and Access
+## Database, migrations, and access
 
-### Ordered history
+- `backend/supabase_schema.sql` is `000_baseline`.
+- `backend/migrations/` contains the ordered history through `036_batched_turn_events`.
+- Each migration commits atomically with its tracking row.
+- The runner records a checksum per version and serializes concurrent deployers with a Postgres advisory lock.
+- There are no down migrations. Recover forward or restore a verified backup.
+- Add new schema as the next numbered file; never edit an applied migration.
 
-- `backend/supabase_schema.sql` is recorded as `000_baseline`.
-- Numbered files in `backend/migrations/` follow in lexical order (through
-  `031_pdf_extraction_provenance`).
-- `schema_migrations` stores version, checksum, applied time and duration.
-- Each migration and its tracking row commit in one transaction; a failure
-  leaves no partial DDL and no tracking row.
-- A run holds a Postgres advisory lock, so two deployers serialize.
-- An edited, already-applied file is rejected by checksum instead of silently
-  diverging from the deployed schema.
-- There are **no down-migrations**. Forward recovery is to fix the step and
-  rerun; a schema rollback means restoring a verified backup.
+The live database is server-owned. Migration `030_database_read_isolation` closes PUBLIC, anon, and authenticated access. The live database client requires `SUPABASE_SERVICE_KEY` and fails closed without it; the browser never connects directly to Postgres.
 
-### Access model
+Authenticated **live** routes require a Supabase Auth bearer token whose user ID exactly equals `OPERATOR_USER_ID`:
 
-- Supabase Postgres is authoritative; Qdrant is a rebuildable projection.
-- The browser never talks to Supabase. `anon` and `authenticated` cannot read
-  or write live application tables directly; the backend uses the service key
-  and narrow RPCs. `030_database_read_isolation` revokes the inherited `PUBLIC`
-  reads and drops the all-row policies, so RLS default-denies even if a table
-  grant is added later.
-- The live backend requires `SUPABASE_SERVICE_KEY` and refuses to fall back to
-  the anon key. Migration `030` also sets safe defaults for future tables,
-  sequences and functions created by the migration owner.
-- Strict replay uses a separate PostgreSQL login role in
-  `sabha_replay_reader`, provisioned by `python -m scripts.replay_roles`.
-  Replay code reads through `REPLAY_DATABASE_URL`; it never receives the live
-  service credential.
-- RLS and grants are part of the migration history, so an empty install and an
-  upgraded install end in the same permission state. See
-  [docs/DATABASE_PERMISSIONS.md](docs/DATABASE_PERMISSIONS.md) for the matrix,
-  provisioning, rotation and hosted checks.
-- There is no anonymous Auth bootstrap and no browser database credential. The only Auth surface is the dedicated browser adapter used for operator sign-in; every live request is verified server-side.
-- Provider credentials entered by a browser are held in process memory only for
-  the duration of an operation and never written to the database, logs, or
-  operation events.
-
-### First run versus upgrade
-
-| Starting point | Command |
+| Condition | Response |
 |---|---|
-| Empty database | `python -m scripts.migrate` |
-| Phase 1 database without history | `python -m scripts.migrate --adopt-phase-one` |
-| Knowledge-stack-era database without history | `python -m scripts.migrate --adopt-legacy` |
-| Database with history | `python -m scripts.migrate` (resumes pending versions) |
-| Inspect only | `python -m scripts.migrate --status` |
+| Missing, malformed, expired, or wrong-project token | `401` |
+| Valid account that is not the configured operator | `403` |
+| Supabase Auth unavailable | `503` |
+| Replay-only process without live Auth config | Live graph not mounted; replay remains available |
 
-Full deploy, backup and restore procedures live in
-[docs/OPERATIONS.md](docs/OPERATIONS.md).
+`RUNTIME_MODE=demo` still admits the operator, then denies writes with `403`. `REPLAY_ONLY=true` skips the live graph and operator configuration entirely.
 
----
-
-## 🤖 LLM Providers
-
-Sabha uses a pluggable provider adapter. Every provider implements `complete()`
-and `stream()`.
-
-| Provider | Config Value | Notes |
-|---|---|---|
-| **Google Gemini** | `gemini` | Streaming + thinking tokens |
-| **OpenRouter** | `openrouter` | Claude, GPT, Mistral, and 100+ models |
-| **Ollama** | `ollama` | Fully local; no API key |
-
-Per-participant overrides are stored in `provider_config` and snapshotted at
-meeting creation:
-
-```json
-{
-  "provider": "openrouter",
-  "model": "anthropic/claude-opus-4",
-  "temperature": 0.7
-}
-```
-
-Blank values fall back to the saved system AI settings, then to the environment.
-Provider settings and test-key probes are served by `/api/settings/providers`,
-`/api/settings/models` and `/api/settings/test-key`; secrets are never returned.
+The replay process connects with a separate login in the `sabha_replay_reader` role. Offline package publishing uses `sabha_replay_provisioner`. See [docs/DATABASE_PERMISSIONS.md](docs/DATABASE_PERMISSIONS.md) for the full role and denial matrix.
 
 ---
 
-## 📚 Knowledge Pipeline
+## API surface
 
-```
-Upload → staged source object → parse → chunk → embed → revision publish
-       → Qdrant upsert → eligible retrieval → evidence recorded
-```
+The frozen contract lives at `frontend/tests/fixtures/openapi.json` (**56 paths**). A running API exposes Swagger at `/docs` and ReDoc at `/redoc`.
 
-- **Source of truth:** original bytes live in Supabase Storage under
-  `sources/{scope}/{owner_id}/{document_id}/{revision_id}/{file_name}`.
-  Unfinished uploads live under `staging/` and are swept at startup.
-- **Revisions:** documents are immutable revisions. Publishing a new revision
-  retires the old one; retrieval revalidates eligibility against Postgres
-  before dispatching context, so a stale vector cannot leak a revoked revision.
-- **Scopes:** meeting documents are visible to every participant in that
-  meeting; stack/persona documents are visible only to assigned participants.
-- **Deletion:** revocation closes eligibility first, then physical cleanup
-  removes the source object and vector points and redacts retained raw
-  passages. Failed physical steps remain durable and retryable.
-- **Restore:** backups include SQL, actual bytes, and the deletion ledger.
-  Restore replays the ledger and drains cleanup before retrieval reopens, so an
-  older backup cannot resurrect deleted knowledge or raw passages.
-
-PDFs are parsed page by page. Usable embedded text wins; pages with no usable
-text are rendered locally and transcribed by RapidOCR in a bounded child
-process. The chosen method, page count, OCR page count and each chunk's
-1-based page locator are retained through retrieval and the search API. OCR
-models ship inside the RapidOCR wheel, so no system OCR package or runtime
-model download is required. A page that cannot be read fails the revision
-instead of publishing an empty or partial document.
-
-Supported formats: `.pdf`, `.docx`, `.xlsx`, `.csv`, `.txt`, `.md`.
-
----
-
-## 📡 API Reference
-
-Interactive docs: `http://localhost:8000/docs`. The frozen contract is
-`frontend/tests/fixtures/openapi.json` (46 paths) and is checked by
-`python -m scripts.export_openapi --check`. The frontend regenerates types with
-`npm run sync:openapi`.
-
-| Area | Endpoints |
+| Area | Representative routes |
 |---|---|
-| Meetings | `GET/POST /api/meetings`, `GET/DELETE /api/meetings/{id}`, `POST .../message`, `POST .../summary`, `POST .../archive`, `POST .../unarchive`, `GET .../context-stats` |
-| Turns | `POST/GET .../turns`, `GET .../turns/{op}`, `POST .../turns/{op}/cancel`, `GET .../turns/{op}/events`, `POST .../turn`, `POST .../turn/stream` |
-| Closing | `GET/POST .../closing`, `POST .../closing/retry`, `POST .../closing/abort` |
-| Records | `GET .../disagreements`, `GET .../consensus` |
-| Roster | `GET/POST /api/personas`, `GET/PUT/DELETE /api/personas/{id}`, `GET/POST /api/personas/{id}/prompts`, `POST /api/personas/{id}/prompts/{version}/activate` |
-| Participants | `POST /api/participants`, `GET /api/participants/templates` |
-| Knowledge stacks | `GET/POST /api/knowledge_stacks`, `GET/PUT/DELETE /api/knowledge_stacks/{id}` |
-| Documents | `POST /api/documents/upload`, `GET .../operations/{op}`, `POST .../operations/{op}/retry`, `GET .../meeting/{id}`, `GET .../persona/{id}`, `GET .../stack/{id}`, `GET/DELETE .../{document_id}`, `POST /api/documents/search` |
-| Settings | `GET /api/settings/providers`, `PUT /api/settings/system-ai`, `POST /api/settings/models`, `POST /api/settings/test-key` |
-| Health | `GET /health`, `GET /` |
+| Health | `GET /`, `GET /health` |
+| Access | `GET /api/access/session` |
+| Meetings | `GET/POST /api/meetings`, `GET/DELETE /api/meetings/{id}`, message, archive, unarchive |
+| Records | `GET /api/meetings/{id}/disagreements`, `/consensus`, `/context-stats` |
+| Turns | `POST/GET /api/meetings/{id}/turns`, status, cancel, event stream |
+| Closing | `POST/GET /api/meetings/{id}/closing`, retry, abort |
+| Roster | `GET/POST /api/personas`, prompt history and activation, participant templates and creation |
+| Knowledge | Upload, operation status/retry, document and revision reads, scoped lists, search |
+| Stacks | `GET/POST /api/knowledge_stacks`, `GET/PUT/DELETE /api/knowledge_stacks/{id}` |
+| Settings | Provider inventory, system AI settings, model listing, key test |
+| Replay | Session, meetings, records, documents, safe config, closing, turns, events, assets — all GET |
 
-`POST /api/meetings/{id}/turns` returns an operation receipt; execution is
-server-owned. The legacy `POST .../turn` and `.../turn/stream` routes remain for
-compatibility and delegate to the same durable path.
+`/api/meetings/{id}/turn` and `/turn/stream` remain for compatibility; new clients use the durable turns API. Replay responses are public and read-only; live responses are private and non-cacheable.
 
 ---
 
-## 🧰 Operations
+## Recorded replay
 
-The full runbook is [docs/OPERATIONS.md](docs/OPERATIONS.md). Summary:
+The guided journey is the HDFC Ltd 7.87% 2022 debenture meeting, pinned as package `hdfc-ine001a07rw5`:
+
+- Manifest version **2**, content SHA-256 `5fb2a800c907f4de3be69c4b4b1262e32b1570b0abe03f8819ed783baac9bc82`
+- 9 checkpoints: initial, created, credit, downside, followup, portfolio, consensus, closed, archived
+- 4 turn tapes plus a closing tape, 4 retrieval sets, and 7 previewable assets
+
+A second package, `placeholder-analyst`, supports synthetic tests. Assets are stored immutably in the public read-only `replay-assets` bucket under a content-addressed path.
+
+The replay runtime is pinned by `REPLAY_DATABASE_URL` and `REPLAY_PACKAGE_ID`, optionally with a version and SHA-256. If no source is configured, `/api/replay/*` returns `503` (`replay_not_configured` or `replay_package_unavailable`). It never falls back to live data. Streaming is bounded per client and globally; see [docs/OPERATIONS.md](docs/OPERATIONS.md) for limits and the hosted acceptance runbook.
+
+Package tooling:
 
 ```bash
-cd backend
-python -m scripts.migrate --status
-python -m scripts.backup --output /backups/sabha-2026-10-27 --label pre-upgrade
-python -m scripts.backup --verify --output /backups/sabha-2026-10-27
-python -m scripts.backup --export-ledger /ledgers/deletion-events.json
-python -m scripts.restore --backup /backups/sabha-2026-10-27 \
-  --database-url "$DATABASE_URL" \
-  --ledger /ledgers/deletion-events.json \
-  --marker /restores/complete.json
+python -m scripts.build_guided_package
+python -m scripts.replay_package validate backend/replay_packages/hdfc-ine001a07rw5
+python -m scripts.replay_package publish <directory>
+python -m scripts.replay_package activate <package-id> <version>
+python -m scripts.replay_package prune --older-than-days 30
+python -m scripts.replay_package list
+python -m scripts.replay_roles --reader-login ... --provisioner-login ...
 ```
 
-- **Deploy:** declared maintenance window; backend first, then frontend.
-- **Backups:** SQL dump + original bytes + manifest checksums + deletion ledger.
-- **Restore:** fails closed; writes a completion marker only after every cleanup
-  intent is resolved. Keep retrieval closed until then.
-- **Ledger:** retain it independently and append-only. Omitting `--ledger` uses
-  the stale in-backup copy, which can let deleted knowledge reappear.
-- **Recovery:** interrupted turns and failed cleanups are visible and retryable;
-  provider calls are never replayed automatically.
+The package is validated before publication; the runtime verifies checkpoint and asset hashes and can pin the package content digest.
 
 ---
 
-## 🔒 Hosted Verification (Manual Gate)
+## Testing and acceptance
 
-The automated acceptance suite exercises the real adapter code against real
-PostgreSQL and controlled HTTP transports. The acceptance host has **no Docker
-and no managed Supabase/Qdrant instance**, so live hosted behavior has **not**
-been executed. This is a recorded gate, not a completed check.
+### Backend
 
-Run this checklist once against a real project before claiming hosted
-acceptance:
-
-1. Create the Supabase project, the private `knowledge-sources` bucket, and a
-   reachable Qdrant instance. Set `RUNTIME_MODE=hosted`.
-2. Apply the migration history and confirm `python -m scripts.migrate --status`
-   reports every version applied.
-3. Upload a real PDF to a meeting; confirm the operation reaches `ready`, the
-   object exists under `sources/`, and retrieval returns its content.
-4. Open two independent browsers. One opens `/` and `/demo` without signing in
-   (replay works and never calls the live API); the other signs in as the
-   operator, creates a live meeting, uploads a document, and observes SSE.
-5. Confirm an unauthenticated direct request and a valid non-operator token are
-   denied at the backend origin, and that live responses carry
-   `Cache-Control: private, no-store`.
-5. Take a verified backup with the service key; confirm the manifest lists the
-   uploaded object and its checksum.
-6. Revoke the document, export a fresh ledger, restore the backup into a fresh
-   database, and confirm the passage is redacted, the revision is revoked, and
-   retrieval returns nothing.
-7. Confirm Qdrant no longer holds the deleted revision and that
-   `knowledge_cleanup` has no unresolved rows.
-
-Record the executed results in the Spec 11 completion record. Until then, hosted
-source-store and vector verification remains an unresolved gate.
-
----
-
-## ✅ Testing and Acceptance
+Run from `backend/`:
 
 ```bash
-# backend (run from backend/)
 python -m pytest -q
 python -m scripts.export_openapi --check
 python -m scripts.rehearse_clean_checkout
+```
 
-# frontend (run from frontend/)
+The required suite uses a disposable PostgreSQL cluster through `pgserver`; set `SABHA_TEST_PG_HOME` to reuse a writable cluster. Inference is a scripted provider and storage is a controlled HTTP double. Required tests do not call paid providers.
+
+### Frontend
+
+Run from `frontend/`:
+
+```bash
 npm test
+npm run test:unit
+npm run test:architecture
 npx tsc --noEmit
+npm run lint
 npm run build
 ```
 
-- Required tests never call a paid provider. They use a scripted provider and
-  fake storage transports, with real PostgreSQL where durability matters.
-- `rehearse_clean_checkout` archives the **tracked** tree with `git archive`, so
-  it proves the runtime does not depend on author-local `.env` files, virtualenvs,
-  `node_modules`, `.next`, or untracked seed documents.
-- The OpenAPI check fails on contract drift.
-- Executed results and unresolved gates are recorded in
-  [the Spec 11 completion record](specs/spec-11-upgrade-and-architecture-acceptance.md#completion-record).
+`npm run test:architecture` guards the transport, state, and feature boundaries. The Vitest suite uses controlled fetch transports and fixtures; it does not need a live backend.
+
+### Browser journeys
+
+```bash
+cd frontend
+npm run test:e2e        # dev server
+npm run test:e2e:prod   # production build, then next start
+```
+
+Playwright starts a disposable replay backend through `e2e/start-backend.mjs` on port 8123 and the frontend on port 3100. The guided journey, replay isolation, replay resilience, and evidence preview specs run without live Supabase or a provider key.
+
+The latest recorded local acceptance passed 924 backend tests with 1 skipped, and 391 frontend tests across 68 files. The OpenAPI fixture remained at 56 paths with no drift, lint reported 0 errors and 29 pre-existing warnings, and the production build passed.
 
 ---
 
-## 🤖 Agent Specification
+## Operations
 
-See [`AGENTS.md`](./AGENTS.md) for the agent architecture, base system prompt,
-default personas, and tool contracts. Runtime prompts live in
-`backend/app/modules/meetings/application/prompts.py`; the tool loop lives in
-`backend/app/modules/meetings/infrastructure/turns.py`.
+The detailed runbooks are:
 
-| Persona | Focus | Tone |
+- [docs/OPERATIONS.md](docs/OPERATIONS.md) — runtime shape, supported versions, deployment, backup/restore, worker recovery, replay publishing, PDF/OCR, verification, and hosted acceptance.
+- [docs/DATABASE_PERMISSIONS.md](docs/DATABASE_PERMISSIONS.md) — database and storage identities, role grants, and denial expectations.
+- [docs/PDF_EXTRACTION.md](docs/PDF_EXTRACTION.md) — extraction and OCR behavior, provenance, and failure policy.
+
+Common operator commands, run from `backend/`:
+
+```bash
+python -m scripts.migrate --status
+python -m scripts.backup --output <dir>
+python -m scripts.backup --verify --output <dir>
+python -m scripts.restore --backup <dir> --database-url <url> --marker <file>
+python -m scripts.export_openapi --check
+```
+
+Backups include SQL, original document bytes, a manifest, and the append-only deletion ledger. Restore replays deletions before retrieval is reopened. Do not use a transaction-pooler URL for migrations, backup, or restore.
+
+`GET /health` reports process liveness only; it does not probe dependencies. Use an authenticated read such as `GET /api/meetings` plus worker logs for readiness.
+
+---
+
+## Status and release gates
+
+| Area | Local status | Hosted status |
 |---|---|---|
-| **The Investor** | ROI, TAM, CAC/LTV, exit strategy | Direct, skeptical, numbers-first |
-| **The CTO** | Tech stack, scalability, security, debt | Analytical, buzzword-averse |
-| **The Analyst** | User trends, competitor data, citations | Neutral, data-driven |
+| Live operator workspace | Implemented and locally accepted | Protection and deployment checks unproven |
+| Durable turns and closing | Implemented and locally accepted | Hosted worker/reverse-proxy behavior unexecuted |
+| Guided replay | Implemented; conditional local acceptance | **Public release blocked** pending hosted acceptance |
+| Evidence preview | Implemented for live documents and replay assets | Hosted storage/browser checks unexecuted |
+| Multi-user tenancy | Not implemented | Out of scope for the current design |
 
-`search_knowledge_base`, `log_disagreement` and `log_consensus` are implemented.
-`web_search` is declared to agents but **not implemented**: the tool loop tells
-the model to answer without it rather than fabricating a result.
-
----
-
-## 🗺️ Roadmap
-
-### ✅ Phase 1 — Core loop
-Multi-meeting workspace, roster, streaming, disagreements/consensus, provider
-selection, per-agent model overrides, cost accounting.
-
-### ✅ Phase 2 — Durable architecture
-- [x] Domain/application/infrastructure boundaries and composition root
-- [x] Durable turn queue with leases, fences, events and recovery
-- [x] Durable knowledge revisions, source bytes, redaction and cleanup
-- [x] Coordinated meeting closing and checkpointed summaries
-- [x] Byte-inclusive backup, ledger replay, fail-closed restore
-- [x] Migration history, empty-install and Phase 1 upgrade acceptance
-- [x] Public guided replay with an operator-only live workspace and exact-UUID backend gate
-- [x] Guided replay for `demo` (conditional local acceptance; public release blocked pending the hosted gate)
-
-### 🔄 Deferred
-- [ ] Web search provider integration
-- [ ] Context compression for very long meetings
-- [ ] Fork/replay a meeting from an arbitrary point
-- [ ] Cost dashboard and billing overview
-- [ ] Auto-facilitate mode
-- [ ] Multi-user accounts and tenancy (deliberately out of scope; the live workspace
-      has exactly one operator, while replay is public)
+The remaining release work is verification, not a feature demo: hosted Supabase signup and anonymous access checks, exact owner UUID enforcement, deployment environment variables, direct-origin 401/403/503 behavior, CORS and preflight, reverse-proxy SSE, edge caching, browser login/logout and cross-tab behavior, and hosted database, Storage, and RPC denials. The full checklist is in [docs/OPERATIONS.md](docs/OPERATIONS.md).
 
 ---
 
-## 🤝 Contributing
+## Limitations
 
-1. Fork the repository
-2. Create a feature branch: `git checkout -b feat/your-feature`
-3. Make your changes following the module boundaries (routes → application →
-   domain → adapters)
-4. Add or update tests; required tests must not call paid providers
-5. Run the commands in [Testing and Acceptance](#-testing-and-acceptance)
-6. Open a Pull Request with a clear description
+These are known properties of the current design, not hidden failure modes:
 
-### Development Tips
-
-- **Backend hot-reload:** `uvicorn main:app --reload`
-- **API docs:** `/docs` (Swagger) and `/redoc`
-- **Contract:** edit the backend, then `python -m scripts.export_openapi`, then
-  `npm run sync:openapi`
-- **Types:** `npx tsc --noEmit` in `frontend/`
-- **Agent behavior:** edit `backend/app/modules/meetings/application/prompts.py`
-- **Schema change:** add the next numbered file in `backend/migrations/`; never
-  edit an applied migration
+- **One operator.** The live workspace has a single authorized Supabase user. There are no roles, invitations, or multi-tenant boundaries.
+- **Logout is not a kill switch.** Signing out detaches the browser, but it does not cancel an already admitted turn, closing operation, or ingestion, and it cannot retract bytes already delivered to a client.
+- **Authorization is admission-time.** A request is checked when it enters; it is not a continuous session or worker lease.
+- **The provider vault locks on reload.** Signing in does not unlock stored provider credentials; they must be unlocked again in the browser.
+- **Hosted latency is not proven.** Local latency work is complete, but the co-located absolute p95 gate and multi-region placement were not executed.
+- **Web search is declared but disabled.** The `web_search` tool definition exists, but the runtime returns “not yet implemented” and asks the model to answer without it. `get_default_tools()` does not include it.
+- **No license is granted.** There is no root LICENSE file.
 
 ---
 
-## 📄 License
+## Roadmap and deferred work
+
+The near-term priority is closing the hosted acceptance gate described above. Deferred product work includes:
+
+- Web search provider integration
+- Context compression for very long meetings
+- Forking or replaying a live meeting from an arbitrary point
+- Cost dashboards and billing views
+- Auto-facilitate mode
+- Multi-user accounts and tenancy
+
+These are directions, not commitments or dates.
+
+---
+
+## Contributing
+
+1. Create a feature branch.
+2. Preserve the module boundaries: routes → application services → domain/adapters. Adapters must not bypass transactional invariants enforced in Postgres.
+3. Add or update tests. Required tests must not call paid providers.
+4. For an API change, export the contract from the backend and regenerate frontend types:
+
+   ```bash
+   cd backend && python -m scripts.export_openapi
+   cd ../frontend && npm run sync:openapi
+   ```
+
+5. Run the backend and frontend checks above before opening a pull request.
+
+Agent behavior lives in `backend/app/modules/meetings/application/prompts.py` and the tool loop in `backend/app/modules/meetings/infrastructure/turns.py`. The participant contract is documented in [AGENTS.md](AGENTS.md).
+
+---
+
+## License
 
 This project is currently unlicensed. All rights reserved by the author.
-
----
-
-<div align="center">
-  <p>Built with ❤️ — <em>Your personal AI advisory board</em></p>
-</div>
