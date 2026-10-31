@@ -262,13 +262,14 @@ browser acceptance was performed.
   summaries and archived status, chapter snapshots, 2x pacing, suffix resume,
   before-stream rejection of unsupported speeds, and the unchanged live/replay
   boundary.
-- `frontend`: `npx vitest run` passed 93 files / 529 tests. Coverage includes the
+- `frontend`: `npx vitest run` passed 94 files / 533 tests. Coverage includes the
   original guided journey, schema-1 fallback, legal-action selection at all three
   choice states, repeated-participant identity, prerequisite withholding,
   chapter bootstrap success/unknown/mismatch/retired/route errors, recorded
-  summary inspection without live settings/generation hooks, playback controls,
-  and the existing meeting-room, closing, evidence, practice-workspace, and
-  live-summary regressions.
+  summary inspection without live settings/generation hooks, skip/replay
+  settlement at prepared turns, 1x/2x speed selection, and the existing
+  meeting-room, closing, evidence, practice-workspace, and live-summary
+  regressions.
 - `frontend`: `npm run test:architecture` passed 4 files / 27 tests, including
   the recorded module graph and evidence boundaries.
 - `frontend`: `npx tsc --noEmit` passed.
