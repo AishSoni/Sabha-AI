@@ -8,7 +8,7 @@ import { resolve } from "node:path";
 import { describe, expect, it } from "vitest";
 
 const UPLOAD_PAGES = [
-  "src/features/knowledge/components/DocumentPanel.tsx",
+  "src/features/knowledge/presentation/document-panel.tsx",
   "src/app/(operator)/meetings/new/page.tsx",
 ];
 

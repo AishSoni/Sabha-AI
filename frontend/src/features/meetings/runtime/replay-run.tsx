@@ -32,7 +32,7 @@ import {
 } from "./replay";
 import { useReplaySession, type ReplaySafeConfig } from "./replay-session";
 
-export type ReplaySafeConfig = Record<string, unknown>;
+export type { ReplaySafeConfig } from "./replay-session";
 
 interface ReplayRunContextValue {
     session: ReplaySession;

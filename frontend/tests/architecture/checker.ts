@@ -87,6 +87,11 @@ function featureRootSpec(feature: string): string {
     return `@/features/${feature}`;
 }
 
+/** Explicitly named safe presentation entry (spec-23). */
+function featurePresentationSpec(feature: string): string {
+    return `@/features/${feature}/presentation`;
+}
+
 function featureNameOf(rel: string): string | null {
     const segments = rel.split("/");
     if (segments.length >= 3 && segments[0] === "src" && segments[1] === "features") {
@@ -310,7 +315,8 @@ export function scanSourceTree(root: string): { files: string[]; violations: Vio
                         const sameFeature = targetFeature === importerFeature;
                         const throughRoot =
                             edge.spec === featureRootSpec(targetFeature) ||
-                            edge.spec.startsWith(`${featureRootSpec(targetFeature)}/index`);
+                            edge.spec.startsWith(`${featureRootSpec(targetFeature)}/index`) ||
+                            edge.spec === featurePresentationSpec(targetFeature);
                         if (!sameFeature && !throughRoot) {
                             violations.push({
                                 file,
