@@ -7,9 +7,9 @@
  * injected. The screen keeps the base app's Overview/System Prompt tabs,
  * metadata save, immutable revision save, and activation command.
  */
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import Link from 'next/link';
-import { ArrowLeft, Bot, Loader2, Save, History, Settings2, BookOpen } from 'lucide-react';
+import { ArrowLeft, Bot, Eye, Loader2, Save, History, Settings2, BookOpen } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
@@ -63,54 +63,100 @@ export function PersonaEditorScreen({
     const [availableStacks, setAvailableStacks] = useState<PersonaStackOption[]>([]);
     const [selectedStacks, setSelectedStacks] = useState<string[]>([]);
 
+    // Revision inspection is deliberately separate from activation.
+    const [viewedVersion, setViewedVersion] = useState<number | null>(null);
+    const [pendingActivation, setPendingActivation] = useState<number | null>(null);
+    const [leaveConfirm, setLeaveConfirm] = useState(false);
+    const [announcement, setAnnouncement] = useState('');
+
+    const promptRef = useRef('');
+    const savingRef = useRef(false);
+    const mountedRef = useRef(true);
+    const loadTokenRef = useRef(0);
+    const inspectorRef = useRef<HTMLDivElement | null>(null);
+
     useEffect(() => {
-        let active = true;
+        mountedRef.current = true;
+        return () => {
+            mountedRef.current = false;
+        };
+    }, []);
+
+    useEffect(() => {
+        if (!promptDirty) return;
+        const handler = (event: BeforeUnloadEvent) => {
+            event.preventDefault();
+            event.returnValue = '';
+        };
+        window.addEventListener('beforeunload', handler);
+        return () => window.removeEventListener('beforeunload', handler);
+    }, [promptDirty]);
+
+    useEffect(() => {
+        if (viewedVersion !== null) inspectorRef.current?.focus();
+    }, [viewedVersion]);
+
+    useEffect(() => {
+        const token = ++loadTokenRef.current;
         setLoading(true);
+        setError(null);
+        setViewedVersion(null);
+        setPendingActivation(null);
+        setLeaveConfirm(false);
+        setAnnouncement('');
         Promise.all([client.get(id), client.listPromptVersions(id), loadStacks()])
             .then(([p, versions, stacks]) => {
-                if (!active) return;
+                if (token !== loadTokenRef.current || !mountedRef.current) return;
                 setPersona(p);
                 setName(p.name);
                 setSubtitle(p.subtitle || '');
                 setColor(p.color);
                 setPromptContent(p.active_prompt || '');
+                promptRef.current = p.active_prompt || '';
+                setPromptDirty(false);
                 setPromptVersions(versions);
                 setAvailableStacks(stacks);
                 setSelectedStacks(p.stack_ids || []);
             })
             .catch((err) => {
-                if (active) setError(err instanceof Error ? err.message : 'Failed to load persona');
+                if (token === loadTokenRef.current && mountedRef.current) {
+                    setError(err instanceof Error ? err.message : 'Failed to load persona');
+                }
             })
             .finally(() => {
-                if (active) setLoading(false);
+                if (token === loadTokenRef.current && mountedRef.current) setLoading(false);
             });
-        return () => {
-            active = false;
-        };
     }, [id, client, loadStacks]);
 
     async function handleSaveMetadata() {
-        if (!persona) return;
+        if (!persona || savingRef.current) return;
 
         try {
+            savingRef.current = true;
             setSaving(true);
             const update: PersonaUpdateInput = { name, subtitle, color, stack_ids: selectedStacks };
             const updated = await client.update(id, update);
+            if (!mountedRef.current) return;
             setPersona(updated);
+            setAnnouncement('Persona settings saved.');
         } catch (err) {
             setError(err instanceof Error ? err.message : 'Failed to save');
         } finally {
-            setSaving(false);
+            savingRef.current = false;
+            if (mountedRef.current) setSaving(false);
         }
     }
 
     async function handleSavePrompt() {
-        if (!persona) return;
+        if (!persona || savingRef.current) return;
 
-        const submitted = promptContent;
+        const submitted = promptRef.current;
+        const token = loadTokenRef.current;
         try {
+            savingRef.current = true;
             setSaving(true);
             const saved = await client.createPromptVersion(id, submitted);
+            if (token !== loadTokenRef.current || !mountedRef.current) return;
             // Serialized functional update: the saved revision becomes the
             // ONLY active one; overwriting based on a captured snapshot
             // would leave the previous revision flagged active.
@@ -125,40 +171,80 @@ export function PersonaEditorScreen({
             );
             // Only clear the draft marker when the editor still holds the
             // submitted content. A later edit survives an earlier save.
-            setPromptContent((current) => {
-                if (current === submitted) setPromptDirty(false);
-                return current;
-            });
+            if (promptRef.current === submitted) setPromptDirty(false);
+            setAnnouncement(`Saved version ${saved.version} and made it active.`);
         } catch (err) {
-            setError(err instanceof Error ? err.message : 'Failed to save prompt');
+            if (token === loadTokenRef.current && mountedRef.current) {
+                setError(err instanceof Error ? err.message : 'Failed to save prompt');
+            }
         } finally {
-            setSaving(false);
+            savingRef.current = false;
+            if (token === loadTokenRef.current && mountedRef.current) setSaving(false);
         }
     }
 
-    async function handleActivateVersion(version: number) {
-        if (!persona) return;
+    async function performActivation(version: number) {
+        if (!persona || savingRef.current) return;
+        const revision = promptVersions.find((v) => v.version === version);
+        if (!revision) return;
+        if (revision.is_active) {
+            setViewedVersion(version);
+            return;
+        }
 
+        const token = loadTokenRef.current;
         try {
+            savingRef.current = true;
             setSaving(true);
+            setPendingActivation(null);
             await client.activatePromptVersion(id, version);
-            const activated = promptVersions.find(v => v.version === version);
-            if (activated) {
-                setPromptContent(activated.content);
-                setPersona({ ...persona, active_prompt: activated.content, active_prompt_version: version });
-                // Serialized functional update: exactly one active revision.
-                setPromptVersions(prev => prev.map(v => ({
+            if (token !== loadTokenRef.current || !mountedRef.current) return;
+            setPromptContent(revision.content);
+            promptRef.current = revision.content;
+            setPersona((current) =>
+                current
+                    ? { ...current, active_prompt: revision.content, active_prompt_version: version }
+                    : current
+            );
+            // Serialized functional update: exactly one active revision.
+            setPromptVersions((prev) =>
+                prev.map((v) => ({
                     ...v,
                     is_active: v.version === version,
-                })));
-                setPromptDirty(false);
-            }
+                }))
+            );
+            setPromptDirty(false);
+            setViewedVersion(version);
+            setAnnouncement(`Version ${version} is now active.`);
         } catch (err) {
-            setError(err instanceof Error ? err.message : 'Failed to activate version');
+            if (token === loadTokenRef.current && mountedRef.current) {
+                setError(err instanceof Error ? err.message : 'Failed to activate version');
+            }
         } finally {
-            setSaving(false);
+            savingRef.current = false;
+            if (token === loadTokenRef.current && mountedRef.current) setSaving(false);
         }
     }
+
+    function requestActivation(version: number) {
+        const revision = promptVersions.find((v) => v.version === version);
+        if (!revision || revision.is_active || savingRef.current) return;
+        if (promptDirty) {
+            setPendingActivation(version);
+            return;
+        }
+        void performActivation(version);
+    }
+
+    function viewRevision(version: number) {
+        setViewedVersion(version);
+        setAnnouncement(`Viewing version ${version}. The active version is unchanged.`);
+    }
+
+    const viewedRevision =
+        viewedVersion === null
+            ? null
+            : promptVersions.find((revision) => revision.version === viewedVersion) ?? null;
 
     if (loading) {
         return (
@@ -187,7 +273,16 @@ export function PersonaEditorScreen({
             <header className="border-b border-zinc-800/50 backdrop-blur-sm sticky top-0 z-50">
                 <div className="max-w-4xl mx-auto px-6 py-4 flex items-center justify-between">
                     <div className="flex items-center gap-4">
-                        <Link href={routes.roster} className="text-zinc-400 hover:text-white transition-colors">
+                        <Link
+                            href={routes.roster}
+                            className="text-zinc-400 hover:text-white transition-colors"
+                            aria-label="Back to roster"
+                            onClick={(event) => {
+                                if (!promptDirty) return;
+                                event.preventDefault();
+                                setLeaveConfirm(true);
+                            }}
+                        >
                             <ArrowLeft className="w-5 h-5" />
                         </Link>
                         <div className="flex items-center gap-3">
@@ -216,6 +311,65 @@ export function PersonaEditorScreen({
                 {error && (
                     <div className="bg-red-500/10 border border-red-500/30 rounded-lg p-4 mb-6">
                         <p className="text-red-400 text-sm">{error}</p>
+                    </div>
+                )}
+
+                <p role="status" aria-live="polite" className="text-xs text-emerald-400 min-h-4 mb-4">
+                    {announcement}
+                </p>
+
+                {leaveConfirm && (
+                    <div
+                        role="alertdialog"
+                        aria-label="Unsaved system prompt"
+                        className="bg-amber-500/10 border border-amber-500/30 rounded-lg p-4 mb-6"
+                    >
+                        <p className="text-amber-300 text-sm mb-3">
+                            You have an unsaved system prompt draft. Leaving this page will discard it.
+                        </p>
+                        <div className="flex flex-wrap items-center gap-2">
+                            <Link href={routes.roster}>
+                                <Button variant="destructive" size="sm">
+                                    Discard and leave
+                                </Button>
+                            </Link>
+                            <Button variant="ghost" size="sm" autoFocus onClick={() => setLeaveConfirm(false)}>
+                                Keep editing
+                            </Button>
+                        </div>
+                    </div>
+                )}
+
+                {pendingActivation !== null && (
+                    <div
+                        role="alertdialog"
+                        aria-label="Confirm revision activation"
+                        className="bg-amber-500/10 border border-amber-500/30 rounded-lg p-4 mb-6"
+                        onKeyDown={(event) => {
+                            if (event.key === 'Escape') setPendingActivation(null);
+                        }}
+                    >
+                        <p className="text-amber-300 text-sm mb-3">
+                            Activating version {pendingActivation} will replace the unsaved system prompt
+                            in the editor. The draft will be discarded.
+                        </p>
+                        <div className="flex flex-wrap items-center gap-2">
+                            <Button
+                                variant="destructive"
+                                size="sm"
+                                onClick={() => void performActivation(pendingActivation)}
+                            >
+                                Discard draft and activate version {pendingActivation}
+                            </Button>
+                            <Button
+                                variant="ghost"
+                                size="sm"
+                                autoFocus
+                                onClick={() => setPendingActivation(null)}
+                            >
+                                Keep editing
+                            </Button>
+                        </div>
                     </div>
                 )}
 
@@ -357,7 +511,9 @@ export function PersonaEditorScreen({
                                     <Textarea
                                         value={promptContent}
                                         onChange={(e) => {
-                                            setPromptContent(e.target.value);
+                                            const next = e.target.value;
+                                            setPromptContent(next);
+                                            promptRef.current = next;
                                             setPromptDirty(true);
                                         }}
                                         placeholder="Define this persona's personality, expertise, and behavior..."
@@ -384,20 +540,18 @@ export function PersonaEditorScreen({
                             {/* Version History */}
                             <Card className="bg-zinc-900/50 border-zinc-800">
                                 <CardHeader>
-                                    <CardTitle className="text-white text-sm">Version History</CardTitle>
+                                    <CardTitle className="text-white text-sm">System Prompt Version History</CardTitle>
                                 </CardHeader>
                                 <CardContent className="space-y-2">
                                     {promptVersions.length === 0 ? (
                                         <p className="text-sm text-zinc-500">No versions yet</p>
                                     ) : (
                                         promptVersions.map((v) => (
-                                            <button
+                                            <div
                                                 key={v.id}
-                                                onClick={() => handleActivateVersion(v.version)}
-                                                disabled={v.is_active}
-                                                className={`w-full text-left p-3 rounded-lg transition-colors ${v.is_active
+                                                className={`w-full p-3 rounded-lg transition-colors ${v.is_active
                                                     ? 'bg-emerald-500/10 border border-emerald-500/30'
-                                                    : 'bg-zinc-800/50 hover:bg-zinc-800 border border-transparent'
+                                                    : 'bg-zinc-800/50 border border-transparent'
                                                     }`}
                                             >
                                                 <div className="flex items-center justify-between mb-1">
@@ -421,12 +575,77 @@ export function PersonaEditorScreen({
                                                 <span className="text-xs text-zinc-500">
                                                     {new Date(v.created_at).toLocaleDateString()}
                                                 </span>
-                                            </button>
+                                                <div className="flex flex-wrap items-center gap-2 mt-2">
+                                                    <Button
+                                                        variant="ghost"
+                                                        size="sm"
+                                                        className="h-7 px-2 text-zinc-300"
+                                                        aria-label={`View version ${v.version}`}
+                                                        onClick={() => viewRevision(v.version)}
+                                                    >
+                                                        <Eye className="w-3.5 h-3.5 mr-1" />
+                                                        View revision
+                                                    </Button>
+                                                    <Button
+                                                        variant="outline"
+                                                        size="sm"
+                                                        className="h-7 px-2"
+                                                        aria-label={`Make version ${v.version} active`}
+                                                        disabled={v.is_active || saving}
+                                                        onClick={() => requestActivation(v.version)}
+                                                    >
+                                                        Make active
+                                                    </Button>
+                                                </div>
+                                            </div>
                                         ))
                                     )}
                                 </CardContent>
                             </Card>
                         </div>
+
+                        {viewedRevision && (
+                            <div
+                                ref={inspectorRef}
+                                tabIndex={-1}
+                                aria-label={`Version ${viewedRevision.version} content`}
+                                className="mt-6 outline-none"
+                            >
+                                <Card className="bg-zinc-900/50 border-zinc-700">
+                                    <CardHeader>
+                                        <div className="flex flex-wrap items-center justify-between gap-2">
+                                            <CardTitle className="text-white">
+                                                Version {viewedRevision.version}
+                                            </CardTitle>
+                                            <span className="text-xs text-zinc-500">
+                                                {viewedRevision.is_active
+                                                    ? 'This revision is active.'
+                                                    : 'Viewing only — not active.'}
+                                            </span>
+                                        </div>
+                                    </CardHeader>
+                                    <CardContent className="space-y-3">
+                                        {revisionNotes?.[viewedRevision.id] && (
+                                            <p className="text-xs text-zinc-400">
+                                                {revisionNotes[viewedRevision.id]}
+                                            </p>
+                                        )}
+                                        <pre className="whitespace-pre-wrap break-words font-mono text-sm text-zinc-300 bg-zinc-950/60 border border-zinc-800 rounded-lg p-4">
+                                            {viewedRevision.content}
+                                        </pre>
+                                        {!viewedRevision.is_active && (
+                                            <Button
+                                                size="sm"
+                                                onClick={() => requestActivation(viewedRevision.version)}
+                                                disabled={saving}
+                                            >
+                                                Make version {viewedRevision.version} active
+                                            </Button>
+                                        )}
+                                    </CardContent>
+                                </Card>
+                            </div>
+                        )}
                     </TabsContent>
                 </Tabs>
             </main>

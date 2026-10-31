@@ -1,20 +1,14 @@
 // @vitest-environment jsdom
 /**
- * Regression: persona prompt version controls must reflect a single active
- * revision immediately after save/activate actions, and dirty state must
- * clear only for submitted revisions.
+ * Regression coverage for the shared persona editor.
  *
- * Evidence (spec spec-01 finding finding-11e): handleSavePrompt prepended the
- * new active version without deactivating the previous one in local state —
- * rendering two "Active" badges and leaving the old row disabled until
- * reload. State updates also read captured snapshots instead of functional
- * updaters (stale under serialized actions).
- *
- * Migrated with the screen into the persona-catalog feature (spec-06): the
- * mocks now target the feature client and the knowledge feature barrel.
+ * The editor is the base app's screen, now fed by an injected client. These
+ * tests pin the parts Spec 24 must not regress: exactly one active revision,
+ * metadata vs prompt separation, explicit inspection without activation,
+ * draft protection, and stale-response handling.
  */
 import { beforeEach, describe, expect, it, vi } from "vitest";
-import { fireEvent, render, screen, waitFor } from "@testing-library/react";
+import { act, fireEvent, render, screen, waitFor } from "@testing-library/react";
 import { PersonaDetailContent } from "./persona-editor-screen";
 
 const PERSONA_ID = "persona-1";
@@ -69,6 +63,16 @@ const versionFixture = (id: string, version: number, content: string, isActive: 
     created_at: `2026-01-0${version}T00:00:00Z`,
 });
 
+function deferred<T>() {
+    let resolve!: (value: T) => void;
+    let reject!: (reason?: unknown) => void;
+    const promise = new Promise<T>((res, rej) => {
+        resolve = res;
+        reject = rej;
+    });
+    return { promise, resolve, reject };
+}
+
 function renderRosterPage() {
     // Renders the content component directly: the default export's React 19
     // use(params) suspension does not retry under vitest (environment
@@ -84,9 +88,8 @@ async function openPromptTab() {
 
 async function loadedVersionRows() {
     await openPromptTab();
-    // Version History rows render as buttons labeled "Version N"
-    await screen.findByText("Version 2");
-    return ["Version 1", "Version 2"];
+    await screen.findByRole("button", { name: "Make version 1 active" });
+    await screen.findByRole("button", { name: "Make version 2 active" });
 }
 
 beforeEach(() => {
@@ -107,8 +110,7 @@ describe("persona editor prompt version controls", () => {
     it("deactivates the previous revision when a new prompt revision is saved", async () => {
         renderRosterPage();
         await screen.findByText("The Analyst");
-        const rows = await loadedVersionRows();
-        expect(rows.length).toBe(2);
+        await loadedVersionRows();
 
         const textarea = screen.getByRole("textbox");
         fireEvent.change(textarea, { target: { value: "Third revision directive" } });
@@ -120,8 +122,7 @@ describe("persona editor prompt version controls", () => {
             expect(screen.getAllByText("Active")).toHaveLength(1);
         });
         // Previously active revision (v2) must be reactivatable.
-        const v2Row = screen.getByText("Version 2").closest("button");
-        expect(v2Row).not.toBeDisabled();
+        expect(screen.getByRole("button", { name: "Make version 2 active" })).not.toBeDisabled();
     });
 
     it("activates an older revision with a single Active marker", async () => {
@@ -129,27 +130,7 @@ describe("persona editor prompt version controls", () => {
         await screen.findByText("The Analyst");
         await loadedVersionRows();
 
-        fireEvent.click(screen.getByText("Version 1"));
-
-        await waitFor(() => {
-            expect(screen.getAllByText("Active")).toHaveLength(1);
-        });
-        // The newly-active row is intentionally not reactivatable; the
-        // previously active revision must be.
-        const v1Row = screen.getByText("Version 1").closest("button");
-        expect(v1Row).toBeDisabled();
-        const v2Row = screen.getByText("Version 2").closest("button");
-        expect(v2Row).not.toBeDisabled();
-    });
-
-    it("loads the activated revision content and clears the draft marker", async () => {
-        renderRosterPage();
-        await screen.findByText("The Analyst");
-        await loadedVersionRows();
-
-        const textarea = screen.getByRole("textbox");
-        fireEvent.change(textarea, { target: { value: "Unsaved draft" } });
-        fireEvent.click(screen.getByText("Version 1"));
+        fireEvent.click(screen.getByRole("button", { name: "Make version 1 active" }));
 
         await waitFor(() => {
             expect(mocks.activatePromptVersion).toHaveBeenCalledWith(PERSONA_ID, 1);
@@ -159,6 +140,82 @@ describe("persona editor prompt version controls", () => {
                 "First revision directive"
             );
         });
+        await waitFor(() => {
+            expect(screen.getAllByText("Active")).toHaveLength(1);
+        });
+        // The newly-active row is intentionally not reactivatable; the
+        // previously active revision must be.
+        expect(screen.getByRole("button", { name: "Make version 1 active" })).toBeDisabled();
+        expect(screen.getByRole("button", { name: "Make version 2 active" })).not.toBeDisabled();
+    });
+
+    it("inspects a revision without activating it or mutating the draft", async () => {
+        renderRosterPage();
+        await screen.findByText("The Analyst");
+        await loadedVersionRows();
+
+        fireEvent.click(screen.getByRole("button", { name: "View version 1" }));
+
+        expect(await screen.findByLabelText("Version 1 content")).toBeInTheDocument();
+        expect(screen.getByText("First revision directive")).toBeInTheDocument();
+        expect((screen.getByRole("textbox") as HTMLTextAreaElement).value).toBe(
+            "Second revision directive"
+        );
+        expect(mocks.activatePromptVersion).not.toHaveBeenCalled();
+        expect(screen.getAllByText("Active")).toHaveLength(1);
+        expect(screen.getByRole("status")).toHaveTextContent("Viewing version 1");
+    });
+
+    it("asks before replacing an unsaved draft with an activation", async () => {
+        renderRosterPage();
+        await screen.findByText("The Analyst");
+        await loadedVersionRows();
+
+        const textarea = screen.getByRole("textbox");
+        fireEvent.change(textarea, { target: { value: "Unsaved draft" } });
+        fireEvent.click(screen.getByRole("button", { name: "Make version 1 active" }));
+
+        const dialog = await screen.findByRole("alertdialog", {
+            name: "Confirm revision activation",
+        });
+        expect(mocks.activatePromptVersion).not.toHaveBeenCalled();
+
+        fireEvent.click(
+            screen.getByRole("button", { name: "Discard draft and activate version 1" })
+        );
+
+        await waitFor(() => {
+            expect(mocks.activatePromptVersion).toHaveBeenCalledWith(PERSONA_ID, 1);
+        });
+        await waitFor(() => {
+            expect((screen.getByRole("textbox") as HTMLTextAreaElement).value).toBe(
+                "First revision directive"
+            );
+        });
+        expect(dialog).not.toBeInTheDocument();
+    });
+
+    it("keeps the draft when the activation confirmation is cancelled", async () => {
+        renderRosterPage();
+        await screen.findByText("The Analyst");
+        await loadedVersionRows();
+
+        const textarea = screen.getByRole("textbox");
+        fireEvent.change(textarea, { target: { value: "Unsaved draft" } });
+        fireEvent.click(screen.getByRole("button", { name: "Make version 1 active" }));
+
+        const dialog = await screen.findByRole("alertdialog", {
+            name: "Confirm revision activation",
+        });
+        fireEvent.keyDown(dialog, { key: "Escape" });
+
+        await waitFor(() => {
+            expect(
+                screen.queryByRole("alertdialog", { name: "Confirm revision activation" })
+            ).not.toBeInTheDocument();
+        });
+        expect((screen.getByRole("textbox") as HTMLTextAreaElement).value).toBe("Unsaved draft");
+        expect(mocks.activatePromptVersion).not.toHaveBeenCalled();
     });
 
     it("keeps the unsaved draft flagged when saving fails", async () => {
@@ -174,5 +231,45 @@ describe("persona editor prompt version controls", () => {
         expect(await screen.findByText(/network down/i)).toBeInTheDocument();
         // Save remains possible: the revision was NOT submitted.
         expect(screen.getByRole("button", { name: /save as new version/i })).not.toBeDisabled();
+    });
+
+    it("does not erase text typed while an earlier save is in flight", async () => {
+        const pending = deferred<ReturnType<typeof versionFixture>>();
+        mocks.createPromptVersion.mockReturnValueOnce(pending.promise);
+        renderRosterPage();
+        await screen.findByText("The Analyst");
+        await loadedVersionRows();
+
+        const textarea = screen.getByRole("textbox");
+        fireEvent.change(textarea, { target: { value: "Third revision directive" } });
+        fireEvent.click(screen.getByRole("button", { name: /save as new version/i }));
+        fireEvent.change(textarea, { target: { value: "Fourth revision directive" } });
+
+        await act(async () => {
+            pending.resolve(versionFixture("v3", 3, "Third revision directive", true));
+            await pending.promise;
+        });
+
+        expect((screen.getByRole("textbox") as HTMLTextAreaElement).value).toBe(
+            "Fourth revision directive"
+        );
+        expect(screen.getByRole("button", { name: /save as new version/i })).not.toBeDisabled();
+    });
+
+    it("warns before leaving with an unsaved draft", async () => {
+        renderRosterPage();
+        await screen.findByText("The Analyst");
+        await openPromptTab();
+
+        fireEvent.change(screen.getByRole("textbox"), { target: { value: "Unsaved draft" } });
+        fireEvent.click(screen.getByLabelText("Back to roster"));
+
+        expect(
+            await screen.findByRole("alertdialog", { name: "Unsaved system prompt" })
+        ).toBeInTheDocument();
+        fireEvent.click(screen.getByRole("button", { name: "Keep editing" }));
+        expect(
+            screen.queryByRole("alertdialog", { name: "Unsaved system prompt" })
+        ).not.toBeInTheDocument();
     });
 });
