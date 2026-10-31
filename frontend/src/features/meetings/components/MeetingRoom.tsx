@@ -407,7 +407,7 @@ function MeetingConversation({ meeting, disagreements, consensus, initialTab }: 
                                     meetingId={meeting.id}
                                     meetingStatus={meeting.status}
                                     textProjection={
-                                        runtime.closingStream
+                                        runtime.closingStream && !skipClosingText
                                             ? recordedClosingText
                                             : undefined
                                     }
