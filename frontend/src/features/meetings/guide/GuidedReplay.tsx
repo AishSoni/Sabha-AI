@@ -173,6 +173,10 @@ export function GuidedReplay({ children }: { children: ReactNode }) {
     const finished = index >= beats.length;
     const current = beats[index] ?? null;
     const journeyRoute = isJourneyRoute(pathname);
+    const highlightedPersonaId =
+        workspace.seed?.highlightedPersonaId ??
+        workspace.seed?.personas[0]?.personaId ??
+        null;
     const { setGuideBookmark } = workspace;
 
     useEffect(() => {
@@ -363,6 +367,14 @@ export function GuidedReplay({ children }: { children: ReactNode }) {
                                 <p className="mt-2 text-sm text-indigo-100/90">
                                     {current.objective}
                                 </p>
+                                {workspace.expanded && highlightedPersonaId ? (
+                                    <Link
+                                        href={`/demo/roster/${highlightedPersonaId}/history`}
+                                        className="mt-1 inline-block text-xs font-medium text-indigo-300 underline underline-offset-2"
+                                    >
+                                        Explore persona system-prompt history
+                                    </Link>
+                                ) : null}
                                 <p className="mt-1 text-xs text-indigo-200/70" aria-live="polite">
                                     {satisfied
                                         ? "Recorded condition complete. Review the screen, then continue."
