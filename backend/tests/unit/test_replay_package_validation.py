@@ -239,6 +239,32 @@ def test_checked_in_packages_are_valid() -> None:
         assert codes == set(), root
 
 
+def test_schema_one_fixtures_keep_their_published_identity() -> None:
+    """Schema 2 must not rewrite the already-published schema-1 fixtures."""
+    legacy = {
+        "fixture-minimal": (
+            "1",
+            "a17dad569249af149a7b45d0391d243924c9b77bdafa89b4358864e9bdb4ab00",
+        ),
+        "fixture-minimal-v2": (
+            "2",
+            "e457cac097cce9323d72a569a3ed84b6cca88486f2a099c013a00ebabb52678a",
+        ),
+    }
+    for name, (version, content_sha256) in legacy.items():
+        root = FIXTURES / name
+        manifest = json.loads((root / "manifest.json").read_text(encoding="utf-8"))
+        assert manifest["schema_version"] == 1
+        assert manifest["read_version"] == 1
+        assert manifest["event_version"] == 1
+        assert manifest["version"] == version
+        assert manifest["content_sha256"] == content_sha256
+
+        package = load_package(root)
+        assert package.content_sha256 == content_sha256
+        assert validate_package(package) == []
+
+
 def test_guided_persona_tapes_stream_prepared_reasoning() -> None:
     package = load_package(GUIDED_ROOT)
     for tape_id in ("tape-credit", "tape-downside", "tape-portfolio", "tape-consensus"):
