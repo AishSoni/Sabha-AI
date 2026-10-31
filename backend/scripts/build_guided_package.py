@@ -11,6 +11,7 @@ import json
 from pathlib import Path
 from typing import Any
 
+from app.modules.meetings.application.prompts import BASE_SYSTEM_PROMPT
 from app.replay.constants import (
     DELAY_BALLOT_PROVISIONAL_MS,
     DELAY_BALLOT_TERMINAL_MS,
@@ -642,6 +643,7 @@ def workspace_seed() -> dict[str, Any]:
                 "stack_ids": participant["stack_ids"],
                 "revisions": revisions,
                 "active_revision_id": revisions[-1]["revision_id"],
+                "recorded_participant_id": participant_id,
             }
         )
 
@@ -660,7 +662,9 @@ def workspace_seed() -> dict[str, Any]:
     ]
 
     return {
-        "seed_version": 1,
+        "seed_version": 2,
+        "base_instructions": BASE_SYSTEM_PROMPT,
+        "highlighted_persona_id": "persona-credit",
         "disclosure": {
             "practice": (
                 "Practice changes live in this browser tab only and disappear "
@@ -2102,7 +2106,7 @@ def build() -> None:
 
     manifest = {
         "package_id": "hdfc-ine001a07rw5",
-        "version": "3",
+        "version": "4",
         "schema_version": 2,
         "read_version": 1,
         "event_version": 1,

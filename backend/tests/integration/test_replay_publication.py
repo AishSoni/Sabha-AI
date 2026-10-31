@@ -329,7 +329,7 @@ def test_tracked_package_needs_no_ignored_inputs() -> None:
 
 def test_schema_two_seed_is_published_with_its_own_identity(replay_db, tmp_path) -> None:
     root = tmp_path / "expanded"
-    build_expanded(root, version="3")
+    build_expanded(root, version="4")
     storage = FakeStorage()
 
     with _publisher(replay_db) as conn:
@@ -342,12 +342,14 @@ def test_schema_two_seed_is_published_with_its_own_identity(replay_db, tmp_path)
         row = reader.execute(
             "SELECT manifest FROM replay.v_published_package "
             "WHERE package_id = %s AND version = %s",
-            ("fixture-expanded", "3"),
+            ("fixture-expanded", "4"),
         ).fetchone()
     assert row is not None
     manifest = row[0]
     payload = manifest["workspace_seed_payload"]
     assert manifest["workspace_seed"] == "workspace_seed.json"
     assert len(manifest["workspace_seed_sha256"]) == 64
-    assert payload["seed_version"] == 1
+    assert payload["seed_version"] == 2
+    assert payload["base_instructions"]
+    assert payload["highlighted_persona_id"] == "persona-credit"
     assert len(payload["personas"]) == 3

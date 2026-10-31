@@ -1232,6 +1232,24 @@ def _validate_workspace_seed(package: LoadedPackage, issues: _Issues) -> None:
             issues.add("duplicate_id", stack_path, "stack_id repeats")
         stack_ids.add(stack.stack_id)
 
+    board_participant_ids: set[str] = set()
+    initial = package.checkpoints.get(manifest.initial_checkpoint)
+    if initial is not None:
+        safe_config = initial.reads.get("safe_config") or {}
+        if isinstance(safe_config, dict):
+            board = safe_config.get("board")
+            candidates: list[Any] = []
+            if isinstance(board, dict):
+                candidates.extend(board.get("participants") or [])
+            # Legacy/fixture safe-config snapshots carry the participant list
+            # at the top level; accept both shapes for the same cross-check.
+            candidates.extend(safe_config.get("participants") or [])
+            for participant in candidates:
+                if isinstance(participant, dict):
+                    participant_id = participant.get("participant_id")
+                    if participant_id:
+                        board_participant_ids.add(str(participant_id))
+
     persona_ids: set[str] = set()
     total_prompt_chars = 0
     for index, persona in enumerate(seed.personas):
@@ -1239,6 +1257,14 @@ def _validate_workspace_seed(package: LoadedPackage, issues: _Issues) -> None:
         if persona.persona_id in persona_ids:
             issues.add("duplicate_id", persona_path, "persona_id repeats")
         persona_ids.add(persona.persona_id)
+        if persona.recorded_participant_id is not None and (
+            persona.recorded_participant_id not in board_participant_ids
+        ):
+            issues.add(
+                "dangling_id",
+                persona_path,
+                "recorded_participant_id is not a prepared board participant",
+            )
         if len(persona.revisions) > MAX_WORKSPACE_REVISIONS_PER_PERSONA:
             issues.add(
                 "too_many_records",

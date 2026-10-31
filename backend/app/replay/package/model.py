@@ -126,13 +126,14 @@ CLOSING_RESULTS = ("yes", "no", "no-vote", "completed")
 # The seed is inert authoring data for the browser-memory practice workspace.
 # These ceilings are validation policy: a seed may not enlarge them, and the
 # frontend enforces the same values on local mutations.
-WORKSPACE_SEED_VERSION = 1
-SUPPORTED_WORKSPACE_SEED_VERSIONS = (WORKSPACE_SEED_VERSION,)
+WORKSPACE_SEED_VERSION = 2
+SUPPORTED_WORKSPACE_SEED_VERSIONS = (1, WORKSPACE_SEED_VERSION)
 MAX_WORKSPACE_SEED_BYTES = 1024 * 1024
 MAX_WORKSPACE_PERSONAS = 16
 MAX_WORKSPACE_STACKS = 16
 MAX_WORKSPACE_REVISIONS_PER_PERSONA = 16
 MAX_WORKSPACE_PROMPT_CHARS = 16_384
+MAX_WORKSPACE_BASE_INSTRUCTIONS_CHARS = 16_384
 MAX_WORKSPACE_TOTAL_PROMPT_CHARS = 524_288
 MAX_WORKSPACE_PRACTICE_SETUPS = 8
 
@@ -414,12 +415,22 @@ class WorkspacePersona(StrictModel):
     stack_ids: list[str] = Field(default_factory=list)
     revisions: list[WorkspaceRevision] = Field(min_length=1)
     active_revision_id: str
+    # Links the practice template to the prepared participant whose prompt it
+    # mirrors. This is display-only; it never renames or mutates the recording.
+    recorded_participant_id: str | None = None
 
     @field_validator("persona_id", "active_revision_id")
     @classmethod
     def validate_persona_id(cls, value: str) -> str:
         if not _is_safe_slug(value):
             raise ValueError("persona identifiers must be safe")
+        return value
+
+    @field_validator("recorded_participant_id")
+    @classmethod
+    def validate_recorded_participant_id(cls, value: str | None) -> str | None:
+        if value is not None and not _is_safe_slug(value):
+            raise ValueError("recorded_participant_id must be a safe identifier")
         return value
 
     @field_validator("name", "role", "description")
@@ -529,10 +540,50 @@ class WorkspaceSeed(StrictModel):
     """Strict data-only seed for the browser-memory practice workspace."""
 
     seed_version: int
+    # Seed version 2 carries the approved base instructions so the browser can
+    # preview the exact composed system prompt without a live prompt endpoint.
+    base_instructions: str | None = Field(
+        default=None, max_length=MAX_WORKSPACE_BASE_INSTRUCTIONS_CHARS
+    )
+    highlighted_persona_id: str | None = None
     disclosure: WorkspaceDisclosure
     personas: list[WorkspacePersona] = Field(default_factory=list)
     stacks: list[WorkspaceStack] = Field(default_factory=list)
     practice_setups: list[WorkspacePracticeSetup] = Field(default_factory=list)
+
+    @field_validator("highlighted_persona_id")
+    @classmethod
+    def validate_highlighted_persona_id(cls, value: str | None) -> str | None:
+        if value is not None and not _is_safe_slug(value):
+            raise ValueError("highlighted_persona_id must be a safe identifier")
+        return value
+
+    @model_validator(mode="after")
+    def validate_versioned_prompt_metadata(self) -> "WorkspaceSeed":
+        if self.seed_version >= 2:
+            if self.base_instructions is None or not self.base_instructions.strip():
+                raise ValueError("seed version 2 requires base_instructions")
+            if self.highlighted_persona_id is None:
+                raise ValueError("seed version 2 requires highlighted_persona_id")
+            if self.highlighted_persona_id not in {
+                persona.persona_id for persona in self.personas
+            }:
+                raise ValueError(
+                    "highlighted_persona_id must name one of the seeded personas"
+                )
+        else:
+            if (
+                self.base_instructions is not None
+                or self.highlighted_persona_id is not None
+                or any(
+                    persona.recorded_participant_id is not None
+                    for persona in self.personas
+                )
+            ):
+                raise ValueError(
+                    "prompt assembly and participant mappings require seed version 2"
+                )
+        return self
 
 
 class Manifest(StrictModel):

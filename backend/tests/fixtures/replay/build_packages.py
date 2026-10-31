@@ -818,7 +818,9 @@ def workspace_seed() -> dict:
         }
 
     return {
-        "seed_version": 1,
+        "seed_version": 2,
+        "base_instructions": "You are a participant in a multi-agent advisory board.",
+        "highlighted_persona_id": "persona-credit",
         "disclosure": {
             "practice": (
                 "Practice changes live in this browser tab only and disappear "
@@ -867,6 +869,7 @@ def workspace_seed() -> dict:
                 "color": "#2563eb",
                 "stack_ids": ["shared-fact-sheet", "credit-evidence"],
                 "active_revision_id": "rev-credit-3",
+                "recorded_participant_id": PARTICIPANT_ID,
                 "revisions": [
                     revision(
                         "rev-credit-1",

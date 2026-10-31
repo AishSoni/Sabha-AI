@@ -9,6 +9,7 @@ from pathlib import Path
 
 import pytest
 
+from app.modules.meetings.application.prompts import BASE_SYSTEM_PROMPT, get_full_prompt
 from app.replay.package import (
     PackageLoadError,
     load_package,
@@ -693,18 +694,18 @@ def test_guided_claim_reference_needs_readable_snippet_and_locator(tmp_path: Pat
 
 def test_schema_two_package_with_workspace_seed_is_valid(tmp_path: Path) -> None:
     root = tmp_path / "expanded"
-    build_expanded(root, version="3")
+    build_expanded(root, version="4")
     package, codes = _load(root)
     assert codes == set()
     assert package.manifest.schema_version == 2
     assert package.workspace_seed is not None
-    assert package.workspace_seed.seed_version == 1
+    assert package.workspace_seed.seed_version == 2
     assert package.workspace_seed_sha256 is not None
 
 
 def test_schema_two_package_requires_a_declared_seed(tmp_path: Path) -> None:
     root = tmp_path / "expanded"
-    build_expanded(root, version="3")
+    build_expanded(root, version="4")
     _edit_json(root, "manifest.json", lambda payload: payload.pop("workspace_seed"))
     _finalize(root)
     _, codes = _load(root)
@@ -713,7 +714,7 @@ def test_schema_two_package_requires_a_declared_seed(tmp_path: Path) -> None:
 
 def test_legacy_package_cannot_declare_a_workspace_seed(tmp_path: Path) -> None:
     root = tmp_path / "expanded"
-    build_expanded(root, version="3")
+    build_expanded(root, version="4")
     _edit_json(
         root, "manifest.json", lambda payload: payload.update({"schema_version": 1})
     )
@@ -724,7 +725,7 @@ def test_legacy_package_cannot_declare_a_workspace_seed(tmp_path: Path) -> None:
 
 def test_workspace_seed_rejects_a_dangling_stack(tmp_path: Path) -> None:
     root = tmp_path / "expanded"
-    build_expanded(root, version="3")
+    build_expanded(root, version="4")
     _edit_json(
         root,
         "workspace_seed.json",
@@ -740,7 +741,7 @@ def test_workspace_seed_rejects_a_dangling_stack(tmp_path: Path) -> None:
 
 def test_workspace_seed_rejects_a_missing_active_revision(tmp_path: Path) -> None:
     root = tmp_path / "expanded"
-    build_expanded(root, version="3")
+    build_expanded(root, version="4")
     _edit_json(
         root,
         "workspace_seed.json",
@@ -756,7 +757,7 @@ def test_workspace_seed_rejects_a_missing_active_revision(tmp_path: Path) -> Non
 
 def test_workspace_seed_prompt_ceiling_is_enforced(tmp_path: Path) -> None:
     root = tmp_path / "expanded"
-    build_expanded(root, version="3")
+    build_expanded(root, version="4")
     _edit_json(
         root,
         "workspace_seed.json",
@@ -772,7 +773,7 @@ def test_workspace_seed_prompt_ceiling_is_enforced(tmp_path: Path) -> None:
 
 def test_workspace_seed_size_ceiling_is_enforced(tmp_path: Path) -> None:
     root = tmp_path / "expanded"
-    build_expanded(root, version="3")
+    build_expanded(root, version="4")
     payload = workspace_seed()
     (root / "workspace_seed.json").write_text(
         json.dumps({**payload, "padding": "x" * (1024 * 1024)}), encoding="utf-8"
@@ -784,14 +785,120 @@ def test_workspace_seed_size_ceiling_is_enforced(tmp_path: Path) -> None:
 def test_guided_package_carries_the_expanded_workspace_seed() -> None:
     package = load_package(GUIDED_ROOT)
     assert package.manifest.schema_version == 2
-    assert package.manifest.version == "3"
+    assert package.manifest.version == "4"
     assert package.manifest.workspace_seed == "workspace_seed.json"
     assert package.workspace_seed is not None
-    assert package.workspace_seed.seed_version == 1
-    assert len(package.workspace_seed.personas) == 3
-    assert len(package.workspace_seed.stacks) == 4
-    assert len(package.workspace_seed.personas[0].revisions) == 3
+    seed = package.workspace_seed
+    assert seed.seed_version == 2
+    assert seed.base_instructions == BASE_SYSTEM_PROMPT
+    assert seed.highlighted_persona_id == "persona-credit"
+    assert len(seed.personas) == 3
+    assert len(seed.stacks) == 4
+    assert len(seed.personas[0].revisions) == 3
     assert validate_package(package) == []
+
+
+def test_guided_seed_prompts_match_the_prepared_board_prompts() -> None:
+    package = load_package(GUIDED_ROOT)
+    seed = package.workspace_seed
+    assert seed is not None
+    initial = package.checkpoints[package.manifest.initial_checkpoint]
+    board = initial.reads["safe_config"]["board"]
+    participants = {
+        str(participant["participant_id"]): participant
+        for participant in board["participants"]
+    }
+
+    linked = 0
+    for persona in seed.personas:
+        if persona.recorded_participant_id is None:
+            continue
+        linked += 1
+        participant = participants[persona.recorded_participant_id]
+        active = next(
+            revision
+            for revision in persona.revisions
+            if revision.revision_id == persona.active_revision_id
+        )
+        assert participant["persona_summary"] == active.prompt
+        assert get_full_prompt(active.prompt) == get_full_prompt(
+            participant["persona_summary"]
+        )
+
+    assert linked == 3
+
+
+def test_workspace_seed_v1_remains_readable(tmp_path: Path) -> None:
+    root = tmp_path / "expanded"
+    build_expanded(root, version="4")
+    _edit_json(
+        root,
+        "workspace_seed.json",
+        lambda payload: payload.update(
+            {
+                "seed_version": 1,
+                "base_instructions": None,
+                "highlighted_persona_id": None,
+            }
+        ),
+    )
+    _edit_json(
+        root,
+        "workspace_seed.json",
+        lambda payload: [
+            persona.pop("recorded_participant_id", None) for persona in payload["personas"]
+        ],
+    )
+    _refresh_seed_hash(root)
+    _finalize(root)
+    package, codes = _load(root)
+    assert codes == set()
+    assert package.workspace_seed is not None
+    assert package.workspace_seed.seed_version == 1
+
+
+def test_workspace_seed_v2_requires_base_instructions(tmp_path: Path) -> None:
+    root = tmp_path / "expanded"
+    build_expanded(root, version="4")
+    _edit_json(
+        root,
+        "workspace_seed.json",
+        lambda payload: payload.pop("base_instructions"),
+    )
+    _refresh_seed_hash(root)
+    _finalize(root)
+    with pytest.raises(PackageLoadError):
+        load_package(root)
+
+
+def test_workspace_seed_rejects_an_unknown_recorded_participant(tmp_path: Path) -> None:
+    root = tmp_path / "expanded"
+    build_expanded(root, version="4")
+    _edit_json(
+        root,
+        "workspace_seed.json",
+        lambda payload: payload["personas"][0].update(
+            {"recorded_participant_id": "unknown-participant"}
+        ),
+    )
+    _refresh_seed_hash(root)
+    _finalize(root)
+    _, codes = _load(root)
+    assert "dangling_id" in codes
+
+
+def test_workspace_seed_rejects_an_unknown_highlighted_persona(tmp_path: Path) -> None:
+    root = tmp_path / "expanded"
+    build_expanded(root, version="4")
+    _edit_json(
+        root,
+        "workspace_seed.json",
+        lambda payload: payload.update({"highlighted_persona_id": "persona-missing"}),
+    )
+    _refresh_seed_hash(root)
+    _finalize(root)
+    with pytest.raises(PackageLoadError):
+        load_package(root)
 
 def _refresh_seed_hash(root: Path) -> None:
     seed = json.loads((root / "workspace_seed.json").read_text(encoding="utf-8"))
