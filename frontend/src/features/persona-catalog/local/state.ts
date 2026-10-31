@@ -84,6 +84,18 @@ export function activeRevision(
     );
 }
 
+function totalPromptChars(state: WorkspaceLocalState): number {
+    return state.personas.reduce(
+        (total, persona) =>
+            total +
+            persona.revisions.reduce(
+                (personaTotal, revision) => personaTotal + revision.prompt.length,
+                0
+            ),
+        0
+    );
+}
+
 function validateStacks(
     stackIds: string[],
     state: WorkspaceLocalState
@@ -121,6 +133,13 @@ export function createPersona(
     const prompt = input.system_prompt ?? '';
     if (prompt.length > WORKSPACE_LIMITS.promptChars) {
         return failure('invalid', 'The system prompt exceeds the practice ceiling.', 400);
+    }
+    if (totalPromptChars(state) + prompt.length > WORKSPACE_LIMITS.totalPromptChars) {
+        return failure(
+            'limit_reached',
+            'The practice workspace prompt budget is full.',
+            409
+        );
     }
 
     const createdAt = deps.clock();
@@ -272,6 +291,13 @@ export function saveRevision(
     }
     if (content.length > WORKSPACE_LIMITS.promptChars) {
         return failure('invalid', 'The system prompt exceeds the practice ceiling.', 400);
+    }
+    if (totalPromptChars(state) + content.length > WORKSPACE_LIMITS.totalPromptChars) {
+        return failure(
+            'limit_reached',
+            'The practice workspace prompt budget is full.',
+            409
+        );
     }
 
     const revision: WorkspaceRevision = {

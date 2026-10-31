@@ -99,7 +99,10 @@ export function PersonaEditorScreen({
 
     useEffect(() => {
         const token = ++loadTokenRef.current;
+        savingRef.current = false;
+        setSaving(false);
         setLoading(true);
+        setPersona(null);
         setError(null);
         setViewedVersion(null);
         setPendingActivation(null);
@@ -137,6 +140,7 @@ export function PersonaEditorScreen({
             return;
         }
 
+        const token = loadTokenRef.current;
         try {
             savingRef.current = true;
             setSaving(true);
@@ -147,14 +151,18 @@ export function PersonaEditorScreen({
                 stack_ids: normalizeStackIds(selectedStacks),
             };
             const updated = await client.update(id, update);
-            if (!mountedRef.current) return;
+            if (token !== loadTokenRef.current || !mountedRef.current) return;
             setPersona(updated);
             setAnnouncement('Persona settings saved.');
         } catch (err) {
-            setError(err instanceof Error ? err.message : 'Failed to save');
+            if (token === loadTokenRef.current && mountedRef.current) {
+                setError(err instanceof Error ? err.message : 'Failed to save');
+            }
         } finally {
-            savingRef.current = false;
-            if (mountedRef.current) setSaving(false);
+            if (token === loadTokenRef.current) {
+                savingRef.current = false;
+                if (mountedRef.current) setSaving(false);
+            }
         }
     }
 
@@ -189,8 +197,10 @@ export function PersonaEditorScreen({
                 setError(err instanceof Error ? err.message : 'Failed to save prompt');
             }
         } finally {
-            savingRef.current = false;
-            if (token === loadTokenRef.current && mountedRef.current) setSaving(false);
+            if (token === loadTokenRef.current) {
+                savingRef.current = false;
+                if (mountedRef.current) setSaving(false);
+            }
         }
     }
 
@@ -232,8 +242,10 @@ export function PersonaEditorScreen({
                 setError(err instanceof Error ? err.message : 'Failed to activate version');
             }
         } finally {
-            savingRef.current = false;
-            if (token === loadTokenRef.current && mountedRef.current) setSaving(false);
+            if (token === loadTokenRef.current) {
+                savingRef.current = false;
+                if (mountedRef.current) setSaving(false);
+            }
         }
     }
 
