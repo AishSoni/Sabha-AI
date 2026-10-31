@@ -264,4 +264,58 @@ answers. The original guided document/meeting path and live knowledge flows
 still pass. Content approval and executed test evidence are required before
 calling the expanded sample library accepted; publication is separately gated.
 
+### Executed evidence
+
+Executed 2026-10-31 on branch `main` with the local backend virtual environment
+and the frontend test/build toolchain. No hosted deployment, new model run, or
+browser acceptance was performed.
+
+- `backend`: the published package is version `5` with seed version `3` and
+  content SHA-256
+  `005a274a178ed7489bb108d7703d833316ac9e1933093866ec87040340f65d8f`. Its
+  upload allowlist contains four demo-authored Markdown samples: the shared
+  fact sheet (4 chunks, meeting and stack destinations), credit notes (2 chunks,
+  stack only), portfolio mandate (3 chunks, stack only), and the downside
+  worksheet (3 chunks, meeting and stack, fails once before succeeding on
+  retry). The CRISIL and HDFC excerpts and the evidence-only source register
+  remain outside the upload allowlist. Rebuilding produced the same content
+  hash.
+- `backend`: `python -m pytest tests/unit/test_replay_package_validation.py`
+  passed 52 tests, including seed v3 sample/asset integrity, rights and
+  destination validation, evidence-only asset rejection, seeded document scope,
+  fail-once requirements, and v1/v2 compatibility.
+- `backend`: publication and runtime suites passed 9 and 9 tests; the combined
+  validation, publication and runtime run passed 70 tests. The clean-checkout
+  suite passed 2 tests after its package-version expectation was updated to
+  version `5`.
+- `frontend`: `npm test` passed 90 files / 516 tests. Coverage includes the
+  sample allowlist and integrity gate, local document state machine,
+  fail-once/retry identity, stack deletion and snapshot behaviour, picker and
+  shared presentation, demo knowledge-stack journeys, practice meeting creation
+  and discard, the recorded-example mapping, the original recorded journey,
+  live meeting creation/upload/no-clone, and the live knowledge regressions.
+- `frontend`: `npm run test:architecture` passed 4 files / 27 tests. Practice
+  routes import the shared knowledge presentation and local adapters only; no
+  live knowledge API, hook, component, or feature barrel is reachable from the
+  demo graph.
+- `frontend`: `npx tsc --noEmit` passed.
+- `frontend`: `npm run lint` reported 0 errors and 22 warnings; all remaining
+  warnings are outside the Spec 25 implementation.
+- `frontend`: `npm run build` compiled successfully and emitted
+  `/demo/knowledge-stacks`, `/demo/knowledge-stacks/new`,
+  `/demo/knowledge-stacks/[id]`, and the existing demo routes alongside the
+  unchanged operator routes.
+- Recorded-example links use an explicit mapping: a sample is linked only to
+  recorded claims whose validated `evidence_asset_id` is exactly that sample's
+  retained package asset. The UI labels the card **Recorded example using the
+  prepared input** and states that it is a recorded citation, not fresh
+  retrieval against practice edits or proof of parsing/indexing. The shared
+  bounded evidence preview is composed at the demo route boundary.
+
+Not executed: Playwright browser acceptance, hosted replay acceptance, a real
+screen-reader or mobile-device pass, and any new provider/model call. The
+picker, simulated ingestion, retry/removal, stack and practice journeys, and
+the no-live-request assertions were exercised in jsdom tests, not against a
+hosted deployment.
+
 Next: [Expanded recorded-meeting exploration](spec-26-expand-recorded-meeting-exploration.md).
