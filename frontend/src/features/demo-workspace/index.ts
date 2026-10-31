@@ -12,6 +12,7 @@ export {
     type WorkspaceLocalState,
     type WorkspacePersona,
     type WorkspacePracticeSetup,
+    type WorkspacePublishedAsset,
     type WorkspaceRevision,
     type WorkspaceSample,
     type WorkspaceSampleRole,

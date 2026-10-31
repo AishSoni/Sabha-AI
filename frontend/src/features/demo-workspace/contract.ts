@@ -115,6 +115,7 @@ export interface WorkspaceDocument {
     errorMessage?: string | null;
     /** Bounded retry count for the prepared scenario. */
     attempts?: number;
+    revokedAt?: string;
     /** Authored seed state vs a temporary local document. */
     origin?: "seed" | "local";
 }
@@ -143,6 +144,8 @@ export interface LocalParticipantSnapshot {
     sourceRevisionId: string;
     sourceRevisionNumber: number;
     createdAt: string;
+    /** Saved stack references whose stack template has since been deleted. */
+    unavailableStackIds?: string[];
 }
 
 export interface WorkspaceLocalState {
@@ -158,6 +161,15 @@ export interface PinnedPackageIdentity {
     version: string;
     contentSha256: string;
     meetingId: string;
+}
+
+/** Metadata for an immutable public package asset, passed in by composition. */
+export interface WorkspacePublishedAsset {
+    assetId: string;
+    publicUrl: string;
+    mediaType: string;
+    sha256: string;
+    sizeBytes: number;
 }
 
 export type WorkspaceStatus =

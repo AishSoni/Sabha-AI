@@ -18,7 +18,16 @@ function PinnedWorkspace({ children }: { children: ReactNode }) {
         meetingId: session.meeting_id,
     };
     return (
-        <DemoWorkspaceProvider identity={identity}>
+        <DemoWorkspaceProvider
+            identity={identity}
+            publishedAssets={session.assets.map((asset) => ({
+                assetId: asset.asset_id,
+                publicUrl: asset.public_url,
+                mediaType: asset.media_type,
+                sha256: asset.sha256,
+                sizeBytes: asset.size,
+            }))}
+        >
             <ReplayRunProvider>
                 <DemoNav />
                 <GuidedReplay>{children}</GuidedReplay>

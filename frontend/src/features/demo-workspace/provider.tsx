@@ -29,6 +29,7 @@ import {
     type PinnedPackageIdentity,
     type PlaybackReset,
     type WorkspaceLocalState,
+    type WorkspacePublishedAsset,
     type WorkspaceSeed,
     type WorkspaceStatus,
 } from "./contract";
@@ -40,6 +41,7 @@ interface DemoWorkspaceContextValue {
     status: WorkspaceStatus;
     error: string | null;
     seed: WorkspaceSeed | null;
+    publishedAssets: WorkspacePublishedAsset[];
     local: WorkspaceLocalState;
     limits: typeof WORKSPACE_LIMITS;
     expanded: boolean;
@@ -91,9 +93,11 @@ const WORKSPACE_RESET: LocalOutcome<never> = {
 
 export function DemoWorkspaceProvider({
     identity,
+    publishedAssets = [],
     children,
 }: {
     identity: PinnedPackageIdentity;
+    publishedAssets?: WorkspacePublishedAsset[];
     children: ReactNode;
 }) {
     const [workspaceId] = useState(newWorkspaceId);
@@ -247,6 +251,7 @@ export function DemoWorkspaceProvider({
             status,
             error,
             seed,
+            publishedAssets,
             local,
             limits: WORKSPACE_LIMITS,
             expanded: status === "ready",
@@ -269,6 +274,7 @@ export function DemoWorkspaceProvider({
             status,
             error,
             seed,
+            publishedAssets,
             local,
             hasPracticeEdits,
             guideCollapsed,
