@@ -24,7 +24,7 @@ from scripts.replay_package import activate_package
 MEETING_ID = "11111111-1111-4111-8111-111111111111"
 OPERATION_ID = "66666666-6666-4666-8666-666666666666"
 APPROVED_ID = "hdfc-ine001a07rw5"
-APPROVED_SHA256 = "005a274a178ed7489bb108d7703d833316ac9e1933093866ec87040340f65d8f"
+APPROVED_SHA256 = "0ec62bc84c2bc6b20395440728dc8cf34ac591147c95b707a4ef781e59feed09"
 GUIDED_ROOT = (
     Path(__file__).resolve().parents[2] / "replay_packages" / APPROVED_ID
 )
@@ -131,10 +131,16 @@ def test_approved_session_exposes_claims_and_preview_assets(
     assert session["package_id"] == APPROVED_ID
     assert session["content_sha256"] == APPROVED_SHA256
     assert session["checkpoint_id"] == "checkpoint-initial"
-    assert len(session["claims"]) == 13
+    assert len(session["claims"]) == 18
     assert {claim["claim_id"] for claim in session["claims"]} == {
-        f"C{index}" for index in range(1, 14)
+        f"C{index}" for index in range(1, 19)
     }
+    assert len(session["chapters"]) == 12
+    assert len(session["transitions"]) == 27
+    assert any(
+        chapter["tab"] == "summary" for chapter in session["chapters"]
+    )
+    assert session["capabilities"]["summary"] is True
     assert all(
         claim["evidence_asset_id"] in session["preview"]["asset_ids"]
         for claim in session["claims"]

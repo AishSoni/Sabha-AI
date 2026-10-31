@@ -81,6 +81,8 @@ class ReplaySession:
     tapes: tuple[dict[str, Any], ...] = ()
     assets: tuple[dict[str, Any], ...] = ()
     claims: tuple[dict[str, Any], ...] = ()
+    chapters: tuple[dict[str, Any], ...] = ()
+    transitions: tuple[dict[str, Any], ...] = ()
     preview: ReplayPreview = field(default_factory=ReplayPreview)
     retired: bool = False
 

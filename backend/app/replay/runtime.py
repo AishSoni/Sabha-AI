@@ -51,7 +51,9 @@ def _capabilities(published: PublishedPackage) -> ReplayCapabilities:
         send_message=False,
         submit_turn=False,
         cancel_turn=False,
-        summary=False,
+        summary=any(
+            chapter.tab == "summary" for chapter in published.manifest.chapters
+        ),
         documents="documents" in keys,
         closing="closing" in keys,
     )
@@ -158,6 +160,14 @@ class ReplayRuntime:
             assets=published.assets,
             claims=tuple(
                 claim.model_dump(mode="json") for claim in published.manifest.claims
+            ),
+            chapters=tuple(
+                chapter.model_dump(mode="json")
+                for chapter in published.manifest.chapters
+            ),
+            transitions=tuple(
+                transition.model_dump(mode="json")
+                for transition in published.manifest.transitions
             ),
             preview=ReplayPreview(
                 available=bool(preview_asset_ids),

@@ -82,6 +82,8 @@ class ReplaySessionView(BaseModel):
     tapes: list[dict] = Field(default_factory=list)
     assets: list[dict] = Field(default_factory=list)
     claims: list[dict] = Field(default_factory=list)
+    chapters: list[dict] = Field(default_factory=list)
+    transitions: list[dict] = Field(default_factory=list)
     preview: ReplayPreviewView = Field(default_factory=ReplayPreviewView)
     retired: bool = False
 
@@ -195,6 +197,8 @@ async def read_session(replay: ReplayContainer = Depends(get_replay)):
         tapes=list(session.tapes),
         assets=list(session.assets),
         claims=list(session.claims),
+        chapters=list(session.chapters),
+        transitions=list(session.transitions),
         preview=ReplayPreviewView(
             available=session.preview.available,
             asset_ids=list(session.preview.asset_ids),
