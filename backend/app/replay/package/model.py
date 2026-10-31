@@ -558,6 +558,11 @@ class Manifest(StrictModel):
     beats: list[BeatRecord] = Field(default_factory=list)
     claims: list[ClaimRecord] = Field(default_factory=list)
     workspace_seed: str | None = None
+    workspace_seed_sha256: str | None = None
+    # Publication copies the validated seed into the immutable manifest row so
+    # the runtime reader needs no extra table or live catalog. It is excluded
+    # from reserialization and never reaches a session DTO.
+    workspace_seed_payload: dict[str, Any] | None = Field(default=None, exclude=True)
 
     @field_validator("package_id", "version")
     @classmethod
@@ -579,6 +584,15 @@ class Manifest(StrictModel):
         ):
             raise ValueError("workspace_seed must be a safe relative package path")
         return value
+
+    @field_validator("workspace_seed_sha256")
+    @classmethod
+    def validate_workspace_seed_hash(cls, value: str | None) -> str | None:
+        if value is None:
+            return None
+        if not _is_sha256(value):
+            raise ValueError("workspace_seed_sha256 must be 64 lowercase hex characters")
+        return value.lower()
 
     @field_validator("content_sha256")
     @classmethod

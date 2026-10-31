@@ -732,6 +732,7 @@ def test_workspace_seed_rejects_a_dangling_stack(tmp_path: Path) -> None:
             {"stack_ids": ["shared-fact-sheet", "missing-stack"]}
         ),
     )
+    _refresh_seed_hash(root)
     _finalize(root)
     _, codes = _load(root)
     assert "dangling_id" in codes
@@ -747,6 +748,7 @@ def test_workspace_seed_rejects_a_missing_active_revision(tmp_path: Path) -> Non
             {"active_revision_id": "rev-missing"}
         ),
     )
+    _refresh_seed_hash(root)
     _finalize(root)
     with pytest.raises(PackageLoadError):
         load_package(root)
@@ -762,6 +764,7 @@ def test_workspace_seed_prompt_ceiling_is_enforced(tmp_path: Path) -> None:
             {"prompt": "x" * 16_385}
         ),
     )
+    _refresh_seed_hash(root)
     _finalize(root)
     with pytest.raises(PackageLoadError):
         load_package(root)
@@ -777,3 +780,28 @@ def test_workspace_seed_size_ceiling_is_enforced(tmp_path: Path) -> None:
     with pytest.raises(PackageLoadError) as excinfo:
         load_package(root)
     assert any(issue.code == "file_too_large" for issue in excinfo.value.issues)
+
+def test_guided_package_carries_the_expanded_workspace_seed() -> None:
+    package = load_package(GUIDED_ROOT)
+    assert package.manifest.schema_version == 2
+    assert package.manifest.version == "3"
+    assert package.manifest.workspace_seed == "workspace_seed.json"
+    assert package.workspace_seed is not None
+    assert package.workspace_seed.seed_version == 1
+    assert len(package.workspace_seed.personas) == 3
+    assert len(package.workspace_seed.stacks) == 4
+    assert len(package.workspace_seed.personas[0].revisions) == 3
+    assert validate_package(package) == []
+
+def _refresh_seed_hash(root: Path) -> None:
+    seed = json.loads((root / "workspace_seed.json").read_text(encoding="utf-8"))
+    digest = hashlib.sha256(
+        json.dumps(seed, sort_keys=True, separators=(",", ":"), ensure_ascii=True).encode(
+            "utf-8"
+        )
+    ).hexdigest()
+    _edit_json(
+        root,
+        "manifest.json",
+        lambda payload: payload.update({"workspace_seed_sha256": digest}),
+    )

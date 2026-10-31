@@ -1,0 +1,127 @@
+{
+  "seed_version": 1,
+  "disclosure": {
+    "practice": "Practice changes live in this browser tab only and disappear when the workspace is reset or the page is refreshed.",
+    "recording": "Participant replies, retrieval, and evidence come from the prepared recording; practice edits never change recorded content."
+  },
+  "personas": [
+    {
+      "persona_id": "persona-credit",
+      "name": "The Credit Analyst",
+      "role": "Credit Analyst",
+      "description": "Tests the issuer record, covenant context, and evidence quality before the board relies on a fact.",
+      "color": "#6366f1",
+      "stack_ids": [
+        "shared-meeting-documents",
+        "credit-private"
+      ],
+      "revisions": [
+        {
+          "revision_id": "rev-credit-1",
+          "prompt": "You are The Credit Analyst. Test the record: terms, rating, issuer context, and what is missing.",
+          "reason": "Initial authored role.",
+          "created_at": "2026-10-24"
+        },
+        {
+          "revision_id": "rev-credit-2",
+          "prompt": "You are The Credit Analyst. Test the record, separate facts from judgments, and name the retained evidence behind each conclusion.",
+          "reason": "Adds evidence separation after the first board review.",
+          "created_at": "2026-10-27"
+        },
+        {
+          "revision_id": "rev-credit-3",
+          "prompt": "You are The Credit Analyst. Test the record: terms, rating, issuer context, and what is missing.",
+          "reason": "Aligns the practice template with the recorded participant prompt.",
+          "created_at": "2026-10-30"
+        }
+      ],
+      "active_revision_id": "rev-credit-3"
+    },
+    {
+      "persona_id": "persona-downside",
+      "name": "The Downside Reviewer",
+      "role": "Downside Reviewer",
+      "description": "Presents the strongest failure case and labels demo-authored scenarios as authored.",
+      "color": "#f59e0b",
+      "stack_ids": [
+        "shared-meeting-documents",
+        "downside-private"
+      ],
+      "revisions": [
+        {
+          "revision_id": "rev-downside-1",
+          "prompt": "You are The Downside Reviewer. Stress-test the case and label demo-authored scenarios.",
+          "reason": "Initial authored role.",
+          "created_at": "2026-10-25"
+        },
+        {
+          "revision_id": "rev-downside-2",
+          "prompt": "You are The Downside Reviewer. Stress-test the case: ratings are opinions; rates and liquidity can change.",
+          "reason": "Aligns the practice template with the recorded participant prompt.",
+          "created_at": "2026-10-30"
+        }
+      ],
+      "active_revision_id": "rev-downside-2"
+    },
+    {
+      "persona_id": "persona-portfolio",
+      "name": "The Portfolio Analyst",
+      "role": "Portfolio Analyst",
+      "description": "Checks the instrument against the fictional mandate and keeps residual uncertainty visible.",
+      "color": "#10b981",
+      "stack_ids": [
+        "shared-meeting-documents",
+        "portfolio-private"
+      ],
+      "revisions": [
+        {
+          "revision_id": "rev-portfolio-1",
+          "prompt": "You are The Portfolio Analyst. Apply a fictional mandate and state the residual uncertainty.",
+          "reason": "Initial authored role.",
+          "created_at": "2026-10-26"
+        },
+        {
+          "revision_id": "rev-portfolio-2",
+          "prompt": "You are The Portfolio Analyst. Apply a fictional mandate and distinguish what can be concluded from what cannot.",
+          "reason": "Aligns the practice template with the recorded participant prompt.",
+          "created_at": "2026-10-30"
+        }
+      ],
+      "active_revision_id": "rev-portfolio-2"
+    }
+  ],
+  "stacks": [
+    {
+      "stack_id": "shared-meeting-documents",
+      "label": "Meeting documents (shared)",
+      "scope": "shared",
+      "description": "Shared reference material for the recorded board."
+    },
+    {
+      "stack_id": "credit-private",
+      "label": "Credit evidence (private to The Credit Analyst)",
+      "scope": "private",
+      "description": "Private working papers for the recorded participant."
+    },
+    {
+      "stack_id": "downside-private",
+      "label": "Downside worksheet (private to The Downside Reviewer)",
+      "scope": "private",
+      "description": "Private working papers for the recorded participant."
+    },
+    {
+      "stack_id": "portfolio-private",
+      "label": "Portfolio mandate (private to The Portfolio Analyst)",
+      "scope": "private",
+      "description": "Private working papers for the recorded participant."
+    }
+  ],
+  "practice_setups": [
+    {
+      "setup_id": "practice-intake",
+      "label": "Practice the recorded intake",
+      "description": "Try temporary setup edits against a practice meeting. The original recorded creation stays canonical.",
+      "recorded_example_id": "start-the-meeting"
+    }
+  ]
+}

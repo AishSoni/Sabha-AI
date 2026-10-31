@@ -84,7 +84,7 @@ runtime views. Reader access is granted only on:
 `v_published_package`, `v_published_checkpoint`, `v_published_turn_tape`,
 `v_published_turn_event`, `v_published_closing_tape`,
 `v_published_closing_event`, `v_published_retrieval`, `v_published_asset`,
-`v_published_workspace_seed`, `v_package_registry`.
+`v_package_registry`.
 
 Views expose only rows with `published_at IS NOT NULL`; staged rows are
 invisible, and retired rows stay readable so pinned runs keep serving. The

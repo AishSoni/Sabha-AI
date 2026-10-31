@@ -550,6 +550,7 @@ def manifest(
     provenance: dict,
     schema_version: int = 1,
     workspace_seed: str | None = None,
+    workspace_seed_sha256: str | None = None,
 ) -> dict:
     payload = {
         "package_id": package_id,
@@ -573,6 +574,8 @@ def manifest(
     }
     if workspace_seed is not None:
         payload["workspace_seed"] = workspace_seed
+    if workspace_seed_sha256 is not None:
+        payload["workspace_seed_sha256"] = workspace_seed_sha256
     return payload
 
 
@@ -949,7 +952,13 @@ def build_expanded(root: Path, *, version: str) -> None:
         include_documents=False,
     )
     write_json(root / "checkpoints" / "checkpoint-initial.json", payload)
-    write_json(root / "workspace_seed.json", workspace_seed())
+    seed = workspace_seed()
+    write_json(root / "workspace_seed.json", seed)
+    seed_sha256 = hashlib.sha256(
+        json.dumps(
+            seed, sort_keys=True, separators=(",", ":"), ensure_ascii=True
+        ).encode("utf-8")
+    ).hexdigest()
     write_json(
         root / "manifest.json",
         manifest(
@@ -966,6 +975,7 @@ def build_expanded(root: Path, *, version: str) -> None:
             provenance={"kind": "recorded", "authored": True, "synthetic": True},
             schema_version=2,
             workspace_seed="workspace_seed.json",
+            workspace_seed_sha256=seed_sha256,
         ),
     )
     finalize(root)

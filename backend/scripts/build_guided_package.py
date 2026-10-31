@@ -552,6 +552,141 @@ STACK_LABELS = {
 }
 
 
+def workspace_seed() -> dict[str, Any]:
+    """Author the schema-2 practice seed for the expanded demo workspace.
+
+    The seed mirrors the recorded board: three personas with authored revision
+    history, the same four stacks, and one practice intake preset linked to the
+    recorded creation beat. It contains no provider configuration or live ID.
+    """
+
+    histories = {
+        CREDIT: [
+            (
+                "rev-credit-1",
+                "You are The Credit Analyst. Test the record: terms, rating, issuer context, and what is missing.",
+                "Initial authored role.",
+                "2026-10-24",
+            ),
+            (
+                "rev-credit-2",
+                "You are The Credit Analyst. Test the record, separate facts from judgments, and name the retained evidence behind each conclusion.",
+                "Adds evidence separation after the first board review.",
+                "2026-10-27",
+            ),
+            (
+                "rev-credit-3",
+                PARTICIPANT_BY_ID[CREDIT]["system_prompt"],
+                "Aligns the practice template with the recorded participant prompt.",
+                "2026-10-30",
+            ),
+        ],
+        DOWNSIDE: [
+            (
+                "rev-downside-1",
+                "You are The Downside Reviewer. Stress-test the case and label demo-authored scenarios.",
+                "Initial authored role.",
+                "2026-10-25",
+            ),
+            (
+                "rev-downside-2",
+                PARTICIPANT_BY_ID[DOWNSIDE]["system_prompt"],
+                "Aligns the practice template with the recorded participant prompt.",
+                "2026-10-30",
+            ),
+        ],
+        PORTFOLIO: [
+            (
+                "rev-portfolio-1",
+                "You are The Portfolio Analyst. Apply a fictional mandate and state the residual uncertainty.",
+                "Initial authored role.",
+                "2026-10-26",
+            ),
+            (
+                "rev-portfolio-2",
+                PARTICIPANT_BY_ID[PORTFOLIO]["system_prompt"],
+                "Aligns the practice template with the recorded participant prompt.",
+                "2026-10-30",
+            ),
+        ],
+    }
+    descriptions = {
+        CREDIT: "Tests the issuer record, covenant context, and evidence quality before the board relies on a fact.",
+        DOWNSIDE: "Presents the strongest failure case and labels demo-authored scenarios as authored.",
+        PORTFOLIO: "Checks the instrument against the fictional mandate and keeps residual uncertainty visible.",
+    }
+    persona_ids = {
+        CREDIT: "persona-credit",
+        DOWNSIDE: "persona-downside",
+        PORTFOLIO: "persona-portfolio",
+    }
+    personas = []
+    for participant in PARTICIPANTS:
+        participant_id = participant["id"]
+        revisions = [
+            {
+                "revision_id": revision_id,
+                "prompt": prompt,
+                "reason": reason,
+                "created_at": created_at,
+            }
+            for revision_id, prompt, reason, created_at in histories[participant_id]
+        ]
+        personas.append(
+            {
+                "persona_id": persona_ids[participant_id],
+                "name": participant["name"],
+                "role": participant["role"],
+                "description": descriptions[participant_id],
+                "color": participant["color"],
+                "stack_ids": participant["stack_ids"],
+                "revisions": revisions,
+                "active_revision_id": revisions[-1]["revision_id"],
+            }
+        )
+
+    stacks = [
+        {
+            "stack_id": stack_id,
+            "label": label,
+            "scope": "shared" if stack_id == "shared-meeting-documents" else "private",
+            "description": (
+                "Shared reference material for the recorded board."
+                if stack_id == "shared-meeting-documents"
+                else "Private working papers for the recorded participant."
+            ),
+        }
+        for stack_id, label in STACK_LABELS.items()
+    ]
+
+    return {
+        "seed_version": 1,
+        "disclosure": {
+            "practice": (
+                "Practice changes live in this browser tab only and disappear "
+                "when the workspace is reset or the page is refreshed."
+            ),
+            "recording": (
+                "Participant replies, retrieval, and evidence come from the "
+                "prepared recording; practice edits never change recorded content."
+            ),
+        },
+        "personas": personas,
+        "stacks": stacks,
+        "practice_setups": [
+            {
+                "setup_id": "practice-intake",
+                "label": "Practice the recorded intake",
+                "description": (
+                    "Try temporary setup edits against a practice meeting. The "
+                    "original recorded creation stays canonical."
+                ),
+                "recorded_example_id": "start-the-meeting",
+            }
+        ],
+    }
+
+
 def message(
     message_id: str,
     sequence: int,
@@ -1954,10 +2089,21 @@ def build() -> None:
         },
     ]
 
+    seed_payload = workspace_seed()
+    write_json(ROOT / "workspace_seed.json", seed_payload)
+    seed_sha256 = hashlib.sha256(
+        json.dumps(
+            seed_payload,
+            sort_keys=True,
+            separators=(",", ":"),
+            ensure_ascii=True,
+        ).encode("utf-8")
+    ).hexdigest()
+
     manifest = {
         "package_id": "hdfc-ine001a07rw5",
-        "version": "2",
-        "schema_version": 1,
+        "version": "3",
+        "schema_version": 2,
         "read_version": 1,
         "event_version": 1,
         "title": "HDFC Ltd 7.87% 2022 debenture - guided replay",
@@ -1984,6 +2130,8 @@ def build() -> None:
         "intents": intents,
         "beats": beats,
         "claims": CLAIMS,
+        "workspace_seed": "workspace_seed.json",
+        "workspace_seed_sha256": seed_sha256,
     }
     write_json(ROOT / "manifest.json", manifest)
 

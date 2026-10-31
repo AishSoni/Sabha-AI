@@ -271,7 +271,6 @@ BASE_TABLES = (
     "closing_event",
     "retrieval_record",
     "asset",
-    "workspace_seed",
 )
 
 PUBLISHED_VIEWS = (
@@ -283,7 +282,6 @@ PUBLISHED_VIEWS = (
     "v_published_closing_event",
     "v_published_retrieval",
     "v_published_asset",
-    "v_published_workspace_seed",
     "v_package_registry",
 )
 
@@ -342,14 +340,14 @@ def test_schema_two_seed_is_published_with_its_own_identity(replay_db, tmp_path)
 
     with _reader(replay_db) as reader:
         row = reader.execute(
-            "SELECT seed_version, payload, sha256 "
-            "FROM replay.v_published_workspace_seed "
+            "SELECT manifest FROM replay.v_published_package "
             "WHERE package_id = %s AND version = %s",
             ("fixture-expanded", "3"),
         ).fetchone()
     assert row is not None
-    seed_version, payload, sha256 = row
-    assert seed_version == 1
+    manifest = row[0]
+    payload = manifest["workspace_seed_payload"]
+    assert manifest["workspace_seed"] == "workspace_seed.json"
+    assert len(manifest["workspace_seed_sha256"]) == 64
     assert payload["seed_version"] == 1
     assert len(payload["personas"]) == 3
-    assert len(sha256) == 64

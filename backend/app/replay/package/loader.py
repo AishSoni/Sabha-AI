@@ -133,6 +133,17 @@ def _read_workspace_seed(root: Path, relative: str) -> Any:
         ) from exc
 
 
+def _canonical_sha256(payload: Any) -> str:
+    return hashlib.sha256(
+        json.dumps(
+            payload,
+            sort_keys=True,
+            separators=(",", ":"),
+            ensure_ascii=True,
+        ).encode("utf-8")
+    ).hexdigest()
+
+
 def compute_content_sha256(
     file_hashes: Mapping[str, str],
     manifest: Mapping[str, Any] | None = None,
@@ -214,6 +225,19 @@ def load_package(root: Path | str) -> LoadedPackage:
                         "missing_file",
                         manifest.workspace_seed,
                         "workspace seed is not part of the package",
+                    )
+                ]
+            )
+        if (
+            manifest.workspace_seed_sha256 is not None
+            and manifest.workspace_seed_sha256 != _canonical_sha256(workspace_seed_payload)
+        ):
+            raise PackageLoadError(
+                [
+                    PackageIssue(
+                        "hash_mismatch",
+                        manifest.workspace_seed,
+                        "declared seed hash disagrees with the file",
                     )
                 ]
             )

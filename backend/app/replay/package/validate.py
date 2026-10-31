@@ -34,7 +34,7 @@ from app.modules.meetings.presentation.schemas import ClosingView
 from app.replay.constants import MAX_TAPE_BYTES, MAX_TAPE_EVENTS
 
 from .issues import PackageIssue
-from .loader import LoadedPackage
+from .loader import LoadedPackage, _canonical_sha256
 from .model import (
     MAX_WORKSPACE_PERSONAS,
     MAX_WORKSPACE_PRACTICE_SETUPS,
@@ -1173,6 +1173,22 @@ def _validate_workspace_seed(package: LoadedPackage, issues: _Issues) -> None:
             )
         elif seed is None:
             issues.add("missing_file", path, "declared workspace seed is missing")
+        if manifest.workspace_seed_sha256 is None:
+            issues.add(
+                "invalid_manifest",
+                "manifest.json",
+                "schema 2 requires a workspace seed hash",
+            )
+        elif (
+            package.workspace_seed_payload is not None
+            and manifest.workspace_seed_sha256
+            != _canonical_sha256(package.workspace_seed_payload)
+        ):
+            issues.add(
+                "hash_mismatch",
+                path,
+                "declared workspace seed hash disagrees with the file",
+            )
     elif manifest.workspace_seed is not None:
         issues.add(
             "invalid_manifest",

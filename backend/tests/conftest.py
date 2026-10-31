@@ -83,7 +83,6 @@ SCHEMA_FILES = [
     BACKEND_ROOT / "migrations" / "034_persona_snapshot_batch.sql",
     BACKEND_ROOT / "migrations" / "035_knowledge_ingestion_read.sql",
     BACKEND_ROOT / "migrations" / "036_batched_turn_events.sql",
-    BACKEND_ROOT / "migrations" / "037_replay_workspace_seed.sql",
 ]
 
 # The chain immediately before Spec 12's isolation migration. Tests use this
