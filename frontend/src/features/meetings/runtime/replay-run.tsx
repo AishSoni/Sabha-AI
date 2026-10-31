@@ -74,6 +74,7 @@ export function ReplayRunProvider({ children }: { children: ReactNode }) {
     const [closingSettled, setClosingSettled] = useState(false);
     const transitioning = useRef(false);
     const startedIntentsRef = useRef<Set<string>>(new Set());
+    const generationRef = useRef(0);
 
     const queryClient = useMemo(
         () => makeQueryClient(),
@@ -109,6 +110,7 @@ export function ReplayRunProvider({ children }: { children: ReactNode }) {
     }, []);
 
     const restart = useCallback(() => {
+        generationRef.current += 1;
         setCheckpoint(null);
         startedIntentsRef.current = new Set();
         clearSettled();
@@ -143,6 +145,7 @@ export function ReplayRunProvider({ children }: { children: ReactNode }) {
                 throw new Error("A checkpoint transition is already in progress.");
             }
             transitioning.current = true;
+            const generation = generationRef.current;
             const nextEpoch = stateRef.current.epoch + 1;
             const scopeId = `${current.run_id}:${current.package_version}`;
             const prefetch = new AbortController();
@@ -173,6 +176,7 @@ export function ReplayRunProvider({ children }: { children: ReactNode }) {
                     next,
                     prefetch.signal
                 );
+                if (generationRef.current !== generation) return;
                 const operation = options?.expectedOperationId
                     ? bundle.turns.find(
                           (item) => item.operation_id === options.expectedOperationId
@@ -255,6 +259,7 @@ export function ReplayRunProvider({ children }: { children: ReactNode }) {
                 (item) => item.intent_id === intentId
             );
             if (!intent) throw new Error("That recorded intent is not available.");
+            const generation = generationRef.current;
             startedIntentsRef.current = new Set(startedIntentsRef.current).add(
                 intent.intent_id
             );
@@ -268,6 +273,7 @@ export function ReplayRunProvider({ children }: { children: ReactNode }) {
                     );
                 }
                 await switchCheckpoint(closingBeat.completed_checkpoint);
+                if (generationRef.current !== generation) return;
                 setSettledIntents((previous) => {
                     const next = new Set(previous);
                     next.add(intent.intent_id);
@@ -276,6 +282,7 @@ export function ReplayRunProvider({ children }: { children: ReactNode }) {
                 return;
             }
             await switchCheckpoint(intent.checkpoint);
+            if (generationRef.current !== generation) return;
             const visibleState = stateRef.current;
             const scopeId = `${current.run_id}:${current.package_version}`;
             void queryClient.invalidateQueries({

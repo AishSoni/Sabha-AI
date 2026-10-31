@@ -141,3 +141,65 @@ describe("ReplayRunProvider checkpoint transitions", () => {
         ).toBe(false);
     });
 });
+
+describe("ReplayRunProvider reset fencing", () => {
+    afterEach(() => {
+        vi.unstubAllGlobals();
+    });
+
+    it("discards a checkpoint bundle that resolves after a reset", async () => {
+        let resolveMeeting: ((value: Response) => void) | undefined;
+        const pendingMeeting = new Promise<Response>((resolve) => {
+            resolveMeeting = resolve;
+        });
+        vi.stubGlobal(
+            "fetch",
+            vi.fn(async (input: unknown) => {
+                const url = String(input);
+                if (url.endsWith("/replay/session")) return json(sessionWire());
+                if (url.includes("/workspace-seed")) {
+                    return json({ detail: "replay_workspace_seed_unavailable" }, 404);
+                }
+                if (url.includes("/safe-config")) return json({});
+                if (url.includes("/disagreements")) return json([]);
+                if (url.includes("/consensus")) return json([]);
+                if (url.endsWith("/turns") || url.includes("/turns?")) return json([]);
+                if (url.includes(`/replay/meetings/${MEETING_ID}?`)) {
+                    return pendingMeeting;
+                }
+                return json({ detail: "replay_read_unavailable" }, 404);
+            })
+        );
+
+        const wrapper = ({ children }: { children: ReactNode }) => (
+            <ReplaySessionProvider>
+                <DemoWorkspaceProvider
+                    identity={{
+                        packageId: "placeholder-analyst",
+                        version: "1",
+                        contentSha256: "a".repeat(64),
+                        meetingId: MEETING_ID,
+                    }}
+                >
+                    <ReplayRunProvider>{children}</ReplayRunProvider>
+                </DemoWorkspaceProvider>
+            </ReplaySessionProvider>
+        );
+        const { result } = renderHook(() => useReplayRun(), { wrapper });
+        await waitFor(() => expect(result.current.session).toBeDefined());
+
+        let transition: Promise<void> | undefined;
+        act(() => {
+            transition = result.current.switchCheckpoint("checkpoint-created");
+        });
+        act(() => {
+            result.current.restart();
+        });
+        resolveMeeting?.(json(meetingWire()) as Response);
+        await act(async () => {
+            await transition;
+        });
+
+        expect(result.current.checkpoint).toBe("checkpoint-initial");
+    });
+});
