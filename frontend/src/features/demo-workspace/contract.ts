@@ -18,6 +18,10 @@ export const WORKSPACE_LIMITS = {
     totalPromptChars: 524_288,
     participantSnapshots: 16,
     concurrentDocumentOps: 2,
+    samples: 16,
+    sampleBytes: 2_097_152,
+    totalSampleBytes: 8_388_608,
+    chunksPerDocument: 256,
 } as const;
 
 export interface WorkspaceRevision {
@@ -55,6 +59,64 @@ export interface WorkspacePracticeSetup {
     recordedExampleId: string;
 }
 
+export type WorkspaceDocumentStatus =
+    | "pending"
+    | "processing"
+    | "ready"
+    | "failed"
+    | "revoked"
+    | "unavailable";
+
+export type SampleDestination = "meeting" | "stack";
+
+export type WorkspaceSampleRole =
+    | "shared-research"
+    | "participant-notes"
+    | "mandate-material"
+    | "failure-retry";
+
+/**
+ * One explicitly approved source in the practice upload allowlist.
+ *
+ * The sample record is separate from the evidence asset catalog. An asset can
+ * be previewable or cited without becoming uploadable.
+ */
+export interface WorkspaceSample {
+    sampleId: string;
+    assetId: string;
+    fileName: string;
+    mediaType: string;
+    sizeBytes: number;
+    sha256: string;
+    role: WorkspaceSampleRole;
+    destinationKinds: SampleDestination[];
+    description: string;
+    accessibleLabel: string;
+    provenance: "demo-authored" | "approved-source";
+    rightsStatus: "approved-for-upload";
+    approvedAt: string;
+    previewMode: "inline" | "unsupported";
+    previewNote: string | null;
+    scenarioId: "ready-after-indexing" | "fail-once";
+    preparedChunkCount: number;
+    failureMessage: string | null;
+}
+
+export interface WorkspaceDocument {
+    documentId: string;
+    sampleId: string;
+    scopeKind: SampleDestination;
+    scopeId: string;
+    status: WorkspaceDocumentStatus;
+    operationId: string;
+    revisionId: string;
+    chunkCount: number;
+    createdAt: string;
+    errorMessage?: string | null;
+    /** Authored seed state vs a temporary local document. */
+    origin?: "seed" | "local";
+}
+
 export interface WorkspaceSeed {
     seedVersion: number;
     baseInstructions: string | null;
@@ -63,6 +125,8 @@ export interface WorkspaceSeed {
     personas: WorkspacePersona[];
     stacks: WorkspaceStack[];
     practiceSetups: WorkspacePracticeSetup[];
+    samples: WorkspaceSample[];
+    documents: WorkspaceDocument[];
 }
 
 /** A frozen copy of what a new practice participant would capture. */
@@ -84,6 +148,7 @@ export interface WorkspaceLocalState {
     stacks: WorkspaceStack[];
     practiceSetups: WorkspacePracticeSetup[];
     participantSnapshots: LocalParticipantSnapshot[];
+    documents: WorkspaceDocument[];
 }
 
 export interface PinnedPackageIdentity {
@@ -122,6 +187,7 @@ export function emptyLocalState(): WorkspaceLocalState {
         stacks: [],
         practiceSetups: [],
         participantSnapshots: [],
+        documents: [],
     };
 }
 
@@ -141,5 +207,9 @@ export function localStateFromSeed(
         stacks: seed.stacks.map((stack) => ({ ...stack })),
         practiceSetups: seed.practiceSetups.map((setup) => ({ ...setup })),
         participantSnapshots: [],
+        documents: seed.documents.map((document) => ({
+            ...document,
+            origin: "seed",
+        })),
     };
 }

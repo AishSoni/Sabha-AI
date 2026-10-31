@@ -44,6 +44,8 @@ function Probe() {
             <span data-testid="dirty">{String(workspace.hasPracticeEdits)}</span>
             <span data-testid="personas">{workspace.local.personas.length}</span>
             <span data-testid="stacks">{workspace.local.stacks.length}</span>
+            <span data-testid="documents">{workspace.local.documents.length}</span>
+            <span data-testid="samples">{workspace.seed?.samples.length ?? 0}</span>
             <span data-testid="bookmark">{workspace.guideBookmark ?? "none"}</span>
             <span data-testid="reset-reason">{workspace.playbackReset.reason}</span>
             <span data-testid="reset-nonce">{workspace.playbackReset.nonce}</span>
@@ -98,6 +100,8 @@ describe("demo workspace provider", () => {
         expect(screen.getByTestId("expanded").textContent).toBe("true");
         expect(screen.getByTestId("personas").textContent).toBe("3");
         expect(screen.getByTestId("stacks").textContent).toBe("4");
+        expect(screen.getByTestId("samples").textContent).toBe("4");
+        expect(screen.getByTestId("documents").textContent).toBe("1");
         expect(screen.getByTestId("dirty").textContent).toBe("false");
         expect(calls).toHaveLength(1);
         expect(calls[0]).toContain("package=hdfc-ine001a07rw5");
@@ -141,6 +145,7 @@ describe("demo workspace provider", () => {
 
         expect(screen.getByTestId("dirty").textContent).toBe("false");
         expect(screen.getByTestId("stacks").textContent).toBe("4");
+        expect(screen.getByTestId("documents").textContent).toBe("1");
         expect(screen.getByTestId("reset-reason").textContent).toBe("workspace");
         expect(screen.getByTestId("reset-nonce").textContent).toBe("1");
     });
@@ -228,6 +233,54 @@ describe("workspace seed decoder", () => {
         ).toThrow(/highlighted persona is missing/);
     });
 
+    it("decodes the version 3 upload allowlist and seeded documents", () => {
+        const decoded = decodeWorkspaceSeed(demoWorkspaceSeedWire());
+        expect(decoded.seedVersion).toBe(3);
+        expect(decoded.samples.map((sample) => sample.sampleId)).toEqual([
+            "sample-shared-fact-sheet",
+            "sample-credit-notes",
+            "sample-portfolio-mandate",
+            "sample-downside-retry",
+        ]);
+        expect(decoded.documents).toHaveLength(1);
+        expect(decoded.documents[0]?.chunkCount).toBe(4);
+        expect(decoded.samples[3]?.failureMessage).toContain(
+            "Retry reuses this same document and operation"
+        );
+    });
+
+    it("rejects samples that are not approved for upload", () => {
+        const seed = demoWorkspaceSeedWire();
+        seed.samples[0].rights_status = "redistribution-review";
+        expect(() => decodeWorkspaceSeed(seed)).toThrow(
+            /unsupported value redistribution-review/
+        );
+    });
+
+    it("rejects duplicate sample ids and mismatched seeded chunk counts", () => {
+        const duplicate = demoWorkspaceSeedWire();
+        duplicate.samples[1].sample_id = duplicate.samples[0].sample_id;
+        expect(() => decodeWorkspaceSeed(duplicate)).toThrow(
+            /sample ids must be unique/
+        );
+
+        const mismatch = demoWorkspaceSeedWire();
+        mismatch.documents[0].chunk_count = 99;
+        expect(() => decodeWorkspaceSeed(mismatch)).toThrow(
+            /chunk count does not match the prepared sample/
+        );
+    });
+
+    it("rejects sample fields in older seed versions", () => {
+        const seed = demoWorkspaceSeedWire();
+        expect(() =>
+            decodeWorkspaceSeed({
+                ...seed,
+                seed_version: 2,
+            })
+        ).toThrow(/sample library requires seed version 3/);
+    });
+
     it("still decodes a version 1 seed without prompt assembly metadata", () => {
         const seed = demoWorkspaceSeedWire();
         const decoded = decodeWorkspaceSeed({
@@ -235,6 +288,8 @@ describe("workspace seed decoder", () => {
             seed_version: 1,
             base_instructions: undefined,
             highlighted_persona_id: undefined,
+            samples: undefined,
+            documents: undefined,
             personas: seed.personas.map((persona) => {
                 const rest: Record<string, unknown> = { ...persona };
                 delete rest.recorded_participant_id;
