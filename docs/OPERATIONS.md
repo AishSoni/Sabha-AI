@@ -588,8 +588,8 @@ Runtime configuration:
 ```text
 REPLAY_DATABASE_URL=postgresql://sabha_replay_login:<password>@<host>:5432/postgres
 REPLAY_PACKAGE_ID=hdfc-ine001a07rw5
-REPLAY_PACKAGE_VERSION=4              # optional; registry default otherwise
-REPLAY_PACKAGE_SHA256=d7d6cdddeaf0aee2f2e48f51ec9ff6f45c12dc5813f792d8d4b7c46c8fc42dc7
+REPLAY_PACKAGE_VERSION=5              # optional; registry default otherwise
+REPLAY_PACKAGE_SHA256=005a274a178ed7489bb108d7703d833316ac9e1933093866ec87040340f65d8f
 REPLAY_ONLY=true                      # serve no live graph
 REPLAY_STREAM_MAX_PER_CLIENT=2
 REPLAY_STREAM_MAX_GLOBAL=8
@@ -606,12 +606,13 @@ synthetic backend fixture instead. Install the browser once with
 
 ### Guided bond journey (spec 18)
 
-The guided package is `backend/replay_packages/hdfc-ine001a07rw5` version `4`
-with content hash `d7d6cdddeaf0aee2f2e48f51ec9ff6f45c12dc5813f792d8d4b7c46c8fc42dc7`.
-Version 4 keeps the recorded journey and the schema-2 practice workspace seed,
-and adds the approved base instructions, highlighted persona, and prepared
-participant links used by the system-prompt exploration screens. Version 3
-remains published for pinned runs.
+The guided package is `backend/replay_packages/hdfc-ine001a07rw5` version `5`
+with content hash `005a274a178ed7489bb108d7703d833316ac9e1933093866ec87040340f65d8f`.
+Version 5 keeps the recorded journey and adds a schema-3 practice workspace
+seed with an explicit four-sample upload allowlist, one seeded practice
+document, and a deterministic fail-once retry scenario. Evidence-only assets,
+including the source register and the attributed third-party excerpts, stay
+outside that allowlist. Version 4 remains published for pinned runs.
 It was approved through
 [the content ledger](../specs/spec-18-guided-bond-journey-content.md): short
 attributed source excerpts, exact locators, a source register, and no untracked

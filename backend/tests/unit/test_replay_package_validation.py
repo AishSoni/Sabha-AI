@@ -35,6 +35,12 @@ def _copy(tmp_path: Path) -> Path:
     return destination
 
 
+def _copy_guided(tmp_path: Path) -> Path:
+    destination = tmp_path / "guided"
+    shutil.copytree(GUIDED_ROOT, destination)
+    return destination
+
+
 def _edit_json(root: Path, relative: str, mutate) -> None:
     path = root / relative
     payload = json.loads(path.read_text(encoding="utf-8"))
@@ -785,17 +791,113 @@ def test_workspace_seed_size_ceiling_is_enforced(tmp_path: Path) -> None:
 def test_guided_package_carries_the_expanded_workspace_seed() -> None:
     package = load_package(GUIDED_ROOT)
     assert package.manifest.schema_version == 2
-    assert package.manifest.version == "4"
+    assert package.manifest.version == "5"
     assert package.manifest.workspace_seed == "workspace_seed.json"
     assert package.workspace_seed is not None
     seed = package.workspace_seed
-    assert seed.seed_version == 2
+    assert seed.seed_version == 3
     assert seed.base_instructions == BASE_SYSTEM_PROMPT
     assert seed.highlighted_persona_id == "persona-credit"
     assert len(seed.personas) == 3
     assert len(seed.stacks) == 4
     assert len(seed.personas[0].revisions) == 3
     assert validate_package(package) == []
+
+
+def test_guided_package_publishes_a_validated_upload_sample_library() -> None:
+    package = load_package(GUIDED_ROOT)
+    seed = package.workspace_seed
+    assert seed is not None
+    assert seed.seed_version == 3
+    assert 4 <= len(seed.samples) <= 16
+    assets = {asset.asset_id: asset for asset in package.assets.assets}
+
+    assert {sample.sample_id for sample in seed.samples} == {
+        "sample-shared-fact-sheet",
+        "sample-credit-notes",
+        "sample-portfolio-mandate",
+        "sample-downside-retry",
+    }
+    sample_assets = {sample.asset_id for sample in seed.samples}
+    assert "source-register" not in sample_assets
+    assert "crisil-annexure" not in sample_assets
+    assert "hdfc-fy20-mda" not in sample_assets
+
+    total = 0
+    for sample in seed.samples:
+        asset = assets[sample.asset_id]
+        assert asset.upload_approved is True
+        assert asset.public_demo is True
+        assert asset.authored is True
+        assert sample.file_name == asset.path.rsplit("/", 1)[-1]
+        assert sample.media_type == asset.media_type
+        assert sample.size_bytes == asset.size
+        assert sample.sha256 == asset.sha256
+        assert sample.rights_status == "approved-for-upload"
+        assert sample.destination_kinds
+        assert sample.preview_mode == "inline"
+        total += sample.size_bytes
+    assert total <= 8 * 1024 * 1024
+
+    assert len(seed.documents) == 1
+    document = seed.documents[0]
+    assert document.scope_kind == "stack"
+    assert document.scope_id == "shared-meeting-documents"
+    assert document.status == "ready"
+    assert document.sample_id == "sample-shared-fact-sheet"
+
+
+def test_workspace_sample_fields_must_match_the_package_asset(tmp_path: Path) -> None:
+    root = _copy_guided(tmp_path)
+    _edit_json(
+        root,
+        "workspace_seed.json",
+        lambda payload: payload["samples"][0].update({"size_bytes": 999}),
+    )
+    _refresh_seed_hash(root)
+    _finalize(root)
+    _, codes = _load(root)
+    assert "sample_mismatch" in codes
+
+
+def test_workspace_sample_cannot_bypass_upload_approval(tmp_path: Path) -> None:
+    root = _copy_guided(tmp_path)
+
+    def revoke_upload_approval(payload):
+        for asset in payload["assets"]:
+            if asset["asset_id"] == "shared-fact-sheet":
+                asset["upload_approved"] = False
+
+    _edit_json(root, "assets/index.json", revoke_upload_approval)
+    _finalize(root)
+    _, codes = _load(root)
+    assert "invalid_sample" in codes
+
+
+def test_workspace_document_must_name_an_uploadable_sample(tmp_path: Path) -> None:
+    root = _copy_guided(tmp_path)
+    _edit_json(
+        root,
+        "workspace_seed.json",
+        lambda payload: payload["documents"][0].update({"sample_id": "sample-missing"}),
+    )
+    _refresh_seed_hash(root)
+    _finalize(root)
+    _, codes = _load(root)
+    assert "dangling_id" in codes
+
+
+def test_workspace_sample_rejects_an_incomplete_failure_scenario(tmp_path: Path) -> None:
+    root = _copy_guided(tmp_path)
+    _edit_json(
+        root,
+        "workspace_seed.json",
+        lambda payload: payload["samples"][3].pop("failure_message"),
+    )
+    _refresh_seed_hash(root)
+    _finalize(root)
+    with pytest.raises(PackageLoadError):
+        load_package(root)
 
 
 def test_prompt_assembly_fixture_matches_the_backend_composer() -> None:

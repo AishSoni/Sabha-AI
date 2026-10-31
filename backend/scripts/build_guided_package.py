@@ -551,6 +551,44 @@ STACK_LABELS = {
     "downside-private": "Downside worksheet (private to The Downside Reviewer)",
     "portfolio-private": "Portfolio mandate (private to The Portfolio Analyst)",
 }
+SAMPLE_APPROVED_AT = "2026-10-31"
+
+
+def upload_sample(
+    *,
+    sample_id: str,
+    asset_id: str,
+    path: str,
+    content: str,
+    role: str,
+    destinations: list[str],
+    description: str,
+    accessible_label: str,
+    scenario_id: str,
+    chunks: int,
+    failure_message: str | None = None,
+) -> dict[str, Any]:
+    """Build one reviewed upload sample from its retained package bytes."""
+
+    return {
+        "sample_id": sample_id,
+        "asset_id": asset_id,
+        "file_name": path.rsplit("/", 1)[-1],
+        "media_type": "text/markdown",
+        "size_bytes": len(content.encode("utf-8")),
+        "sha256": sha256(content),
+        "role": role,
+        "destination_kinds": destinations,
+        "description": description,
+        "accessible_label": accessible_label,
+        "provenance": "demo-authored",
+        "rights_status": "approved-for-upload",
+        "approved_at": SAMPLE_APPROVED_AT,
+        "preview_mode": "inline",
+        "scenario_id": scenario_id,
+        "prepared_chunk_count": chunks,
+        "failure_message": failure_message,
+    }
 
 
 def workspace_seed() -> dict[str, Any]:
@@ -661,8 +699,75 @@ def workspace_seed() -> dict[str, Any]:
         for stack_id, label in STACK_LABELS.items()
     ]
 
+    samples = [
+        upload_sample(
+            sample_id="sample-shared-fact-sheet",
+            asset_id="shared-fact-sheet",
+            path="shared/hdfc-v007-shared-fact-sheet.md",
+            content=FACT_SHEET,
+            role="shared-research",
+            destinations=["meeting", "stack"],
+            description=(
+                "Prepared historical terms, rating, and stated limits for the "
+                "HDFC debenture. Shared reference material."
+            ),
+            accessible_label="Shared HDFC fact sheet, Markdown, four prepared chunks",
+            scenario_id="ready-after-indexing",
+            chunks=4,
+        ),
+        upload_sample(
+            sample_id="sample-credit-notes",
+            asset_id="credit-evidence",
+            path="private/credit-evidence.md",
+            content=CREDIT_EVIDENCE,
+            role="participant-notes",
+            destinations=["stack"],
+            description=(
+                "Private credit working notes. Only the Credit Analyst is "
+                "assigned to this practice stack."
+            ),
+            accessible_label="Credit analyst notes, Markdown, two prepared chunks",
+            scenario_id="ready-after-indexing",
+            chunks=2,
+        ),
+        upload_sample(
+            sample_id="sample-portfolio-mandate",
+            asset_id="portfolio-mandate",
+            path="private/portfolio-mandate.md",
+            content=PORTFOLIO_MANDATE,
+            role="mandate-material",
+            destinations=["stack"],
+            description=(
+                "Fictional portfolio mandate for the Portfolio Analyst practice "
+                "stack, with explicit record limits."
+            ),
+            accessible_label="Portfolio mandate, Markdown, three prepared chunks",
+            scenario_id="ready-after-indexing",
+            chunks=3,
+        ),
+        upload_sample(
+            sample_id="sample-downside-retry",
+            asset_id="downside-worksheet",
+            path="private/downside-worksheet.md",
+            content=DOWNSIDE_WORKSHEET,
+            role="failure-retry",
+            destinations=["meeting", "stack"],
+            description=(
+                "Demo-authored downside worksheet. This sample fails once on "
+                "purpose so the retry path can be practised safely."
+            ),
+            accessible_label="Downside worksheet failure and retry sample, Markdown",
+            scenario_id="fail-once",
+            chunks=3,
+            failure_message=(
+                "Prepared simulation: the first ingestion attempt stopped before "
+                "indexing. Retry reuses this same document and operation."
+            ),
+        ),
+    ]
+
     return {
-        "seed_version": 2,
+        "seed_version": 3,
         "base_instructions": BASE_SYSTEM_PROMPT,
         "highlighted_persona_id": "persona-credit",
         "disclosure": {
@@ -686,6 +791,20 @@ def workspace_seed() -> dict[str, Any]:
                     "original recorded creation stays canonical."
                 ),
                 "recorded_example_id": "start-the-meeting",
+            }
+        ],
+        "samples": samples,
+        "documents": [
+            {
+                "document_id": "practice-document-shared-fact",
+                "sample_id": "sample-shared-fact-sheet",
+                "scope_kind": "stack",
+                "scope_id": "shared-meeting-documents",
+                "status": "ready",
+                "operation_id": "practice-operation-shared-fact",
+                "revision_id": "practice-revision-shared-fact",
+                "chunk_count": 4,
+                "created_at": SAMPLE_APPROVED_AT,
             }
         ],
     }
@@ -1434,6 +1553,7 @@ def build() -> None:
             "rights": "Authored historical fact sheet for this replay",
             "authored": True,
             "public_demo": True,
+            "upload_approved": True,
             "extraction": "offline markdown",
         },
         {
@@ -1490,6 +1610,7 @@ def build() -> None:
             "rights": "Demo-authored private input",
             "authored": True,
             "public_demo": True,
+            "upload_approved": True,
             "extraction": "offline markdown",
         },
         {
@@ -1504,6 +1625,7 @@ def build() -> None:
             "rights": "Demo-authored private input",
             "authored": True,
             "public_demo": True,
+            "upload_approved": True,
             "extraction": "offline markdown",
         },
         {
@@ -1518,6 +1640,7 @@ def build() -> None:
             "rights": "Demo-authored private input",
             "authored": True,
             "public_demo": True,
+            "upload_approved": True,
             "extraction": "offline markdown",
         },
     ]
@@ -2106,7 +2229,7 @@ def build() -> None:
 
     manifest = {
         "package_id": "hdfc-ine001a07rw5",
-        "version": "4",
+        "version": "5",
         "schema_version": 2,
         "read_version": 1,
         "event_version": 1,

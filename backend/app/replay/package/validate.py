@@ -36,12 +36,16 @@ from app.replay.constants import MAX_TAPE_BYTES, MAX_TAPE_EVENTS
 from .issues import PackageIssue
 from .loader import LoadedPackage, _canonical_sha256
 from .model import (
+    MAX_WORKSPACE_CHUNKS_PER_DOCUMENT,
+    MAX_WORKSPACE_DOCUMENTS,
     MAX_WORKSPACE_PERSONAS,
     MAX_WORKSPACE_PRACTICE_SETUPS,
     MAX_WORKSPACE_PROMPT_CHARS,
     MAX_WORKSPACE_REVISIONS_PER_PERSONA,
+    MAX_WORKSPACE_SAMPLES,
     MAX_WORKSPACE_STACKS,
     MAX_WORKSPACE_TOTAL_PROMPT_CHARS,
+    MAX_WORKSPACE_TOTAL_SAMPLE_BYTES,
     PREVIEWABLE_MEDIA_TYPES,
     SUPPORTED_EVENT_VERSIONS,
     SUPPORTED_READ_VERSIONS,
@@ -1231,6 +1235,133 @@ def _validate_workspace_seed(package: LoadedPackage, issues: _Issues) -> None:
         if stack.stack_id in stack_ids:
             issues.add("duplicate_id", stack_path, "stack_id repeats")
         stack_ids.add(stack.stack_id)
+
+    assets = {asset.asset_id: asset for asset in package.assets.assets}
+    if len(seed.samples) > MAX_WORKSPACE_SAMPLES:
+        issues.add(
+            "too_many_records",
+            path,
+            f"workspace seed exceeds {MAX_WORKSPACE_SAMPLES} upload samples",
+        )
+    sample_ids: set[str] = set()
+    total_sample_bytes = 0
+    for index, sample in enumerate(seed.samples):
+        sample_path = f"{path}#/samples[{index}]"
+        if sample.sample_id in sample_ids:
+            issues.add("duplicate_id", sample_path, "sample_id repeats")
+        sample_ids.add(sample.sample_id)
+        total_sample_bytes += sample.size_bytes
+        asset = assets.get(sample.asset_id)
+        if asset is None:
+            issues.add(
+                "dangling_id",
+                sample_path,
+                f"sample asset {sample.asset_id!r} is not in the package",
+            )
+            continue
+        if not asset.upload_approved:
+            issues.add(
+                "invalid_sample",
+                sample_path,
+                "sample asset is not approved for upload",
+            )
+        if not asset.public_demo:
+            issues.add(
+                "invalid_sample",
+                sample_path,
+                "sample bytes must be public package assets",
+            )
+        if sample.provenance == "demo-authored" and not asset.authored:
+            issues.add(
+                "invalid_sample",
+                sample_path,
+                "demo-authored samples must reference authored bytes",
+            )
+        if sample.provenance == "approved-source" and asset.authored:
+            issues.add(
+                "invalid_sample",
+                sample_path,
+                "approved-source samples must reference sourced bytes",
+            )
+        if sample.file_name != asset.path.rsplit("/", 1)[-1]:
+            issues.add("sample_mismatch", sample_path, "file_name does not match the asset")
+        if sample.media_type != asset.media_type:
+            issues.add("sample_mismatch", sample_path, "media_type does not match the asset")
+        if sample.size_bytes != asset.size:
+            issues.add("sample_mismatch", sample_path, "size_bytes does not match the asset")
+        if sample.sha256 != asset.sha256:
+            issues.add("sample_mismatch", sample_path, "sha256 does not match the asset")
+        if sample.preview_mode == "inline" and sample.media_type not in PREVIEWABLE_MEDIA_TYPES:
+            issues.add(
+                "invalid_sample",
+                sample_path,
+                "inline preview needs a supported preview media type",
+            )
+    if total_sample_bytes > MAX_WORKSPACE_TOTAL_SAMPLE_BYTES:
+        issues.add(
+            "too_many_records",
+            path,
+            f"upload samples exceed {MAX_WORKSPACE_TOTAL_SAMPLE_BYTES} bytes",
+        )
+
+    if len(seed.documents) > MAX_WORKSPACE_DOCUMENTS:
+        issues.add(
+            "too_many_records",
+            path,
+            f"workspace seed exceeds {MAX_WORKSPACE_DOCUMENTS} seeded documents",
+        )
+    sample_by_id = {sample.sample_id: sample for sample in seed.samples}
+    document_ids: set[str] = set()
+    for index, document in enumerate(seed.documents):
+        document_path = f"{path}#/documents[{index}]"
+        if document.document_id in document_ids:
+            issues.add("duplicate_id", document_path, "document_id repeats")
+        document_ids.add(document.document_id)
+        sample = sample_by_id.get(document.sample_id)
+        if sample is None:
+            issues.add(
+                "dangling_id",
+                document_path,
+                f"sample {document.sample_id!r} is not seeded",
+            )
+            continue
+        if document.status != "ready":
+            issues.add(
+                "invalid_document",
+                document_path,
+                "seeded documents must start ready",
+            )
+        if document.chunk_count != sample.prepared_chunk_count:
+            issues.add(
+                "invalid_document",
+                document_path,
+                "seeded chunk count does not match the sample scenario",
+            )
+        if document.chunk_count > MAX_WORKSPACE_CHUNKS_PER_DOCUMENT:
+            issues.add(
+                "invalid_document",
+                document_path,
+                "chunk count exceeds the practice ceiling",
+            )
+        if document.scope_kind not in sample.destination_kinds:
+            issues.add(
+                "invalid_document",
+                document_path,
+                "sample is not permitted in this destination kind",
+            )
+        if document.scope_kind == "stack":
+            if document.scope_id not in stack_ids:
+                issues.add(
+                    "dangling_id",
+                    document_path,
+                    f"stack {document.scope_id!r} is not seeded",
+                )
+        else:
+            issues.add(
+                "invalid_document",
+                document_path,
+                "seeded practice documents must belong to a stack",
+            )
 
     board_participant_ids: set[str] = set()
     initial = package.checkpoints.get(manifest.initial_checkpoint)

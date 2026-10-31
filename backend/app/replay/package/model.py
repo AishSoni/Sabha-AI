@@ -126,8 +126,8 @@ CLOSING_RESULTS = ("yes", "no", "no-vote", "completed")
 # The seed is inert authoring data for the browser-memory practice workspace.
 # These ceilings are validation policy: a seed may not enlarge them, and the
 # frontend enforces the same values on local mutations.
-WORKSPACE_SEED_VERSION = 2
-SUPPORTED_WORKSPACE_SEED_VERSIONS = (1, WORKSPACE_SEED_VERSION)
+WORKSPACE_SEED_VERSION = 3
+SUPPORTED_WORKSPACE_SEED_VERSIONS = (1, 2, WORKSPACE_SEED_VERSION)
 MAX_WORKSPACE_SEED_BYTES = 1024 * 1024
 MAX_WORKSPACE_PERSONAS = 16
 MAX_WORKSPACE_STACKS = 16
@@ -136,6 +136,22 @@ MAX_WORKSPACE_PROMPT_CHARS = 16_384
 MAX_WORKSPACE_BASE_INSTRUCTIONS_CHARS = 16_384
 MAX_WORKSPACE_TOTAL_PROMPT_CHARS = 524_288
 MAX_WORKSPACE_PRACTICE_SETUPS = 8
+MAX_WORKSPACE_SAMPLES = 16
+MAX_WORKSPACE_SAMPLE_BYTES = 2 * 1024 * 1024
+MAX_WORKSPACE_TOTAL_SAMPLE_BYTES = 8 * 1024 * 1024
+MAX_WORKSPACE_DOCUMENTS = 64
+MAX_WORKSPACE_CHUNKS_PER_DOCUMENT = 256
+
+SAMPLE_ROLES = (
+    "shared-research",
+    "participant-notes",
+    "mandate-material",
+    "failure-retry",
+)
+SAMPLE_DESTINATIONS = ("meeting", "stack")
+SAMPLE_SCENARIOS = ("ready-after-indexing", "fail-once")
+SAMPLE_PREVIEW_MODES = ("inline", "unsupported")
+SAMPLE_PROVENANCE = ("demo-authored", "approved-source")
 
 _HEX64 = set("0123456789abcdef")
 
@@ -536,6 +552,145 @@ class WorkspaceDisclosure(StrictModel):
         return value
 
 
+class WorkspaceSample(StrictModel):
+    """One explicitly uploadable, approved practice document.
+
+    The upload allowlist is this record set, not the package asset list. An
+    asset may be previewable evidence and still be ineligible for upload unless
+    an approved sample names it. Display metadata is duplicated from the asset
+    on purpose: publication cross-checks every declared value against the
+    retained package bytes so a stale or forged sample fails closed.
+    """
+
+    sample_id: str
+    asset_id: str
+    file_name: str
+    media_type: str
+    size_bytes: int = Field(ge=0, le=MAX_WORKSPACE_SAMPLE_BYTES)
+    sha256: str
+    role: Literal[
+        "shared-research", "participant-notes", "mandate-material", "failure-retry"
+    ]
+    destination_kinds: list[Literal["meeting", "stack"]] = Field(min_length=1)
+    description: str
+    accessible_label: str
+    provenance: Literal["demo-authored", "approved-source"]
+    rights_status: Literal["approved-for-upload"]
+    approved_at: str
+    preview_mode: Literal["inline", "unsupported"]
+    preview_note: str | None = None
+    scenario_id: Literal["ready-after-indexing", "fail-once"]
+    prepared_chunk_count: int = Field(ge=1, le=MAX_WORKSPACE_CHUNKS_PER_DOCUMENT)
+    failure_message: str | None = None
+
+    @field_validator("sample_id", "asset_id")
+    @classmethod
+    def validate_sample_ids(cls, value: str) -> str:
+        if not _is_safe_slug(value):
+            raise ValueError("sample identifiers must be safe")
+        return value
+
+    @field_validator("file_name")
+    @classmethod
+    def validate_file_name(cls, value: str) -> str:
+        if (
+            not value
+            or value in {".", ".."}
+            or "/" in value
+            or "\\" in value
+            or ":" in value
+        ):
+            raise ValueError("sample file_name must be a plain file name")
+        return value
+
+    @field_validator("media_type", "description", "accessible_label", "preview_note")
+    @classmethod
+    def validate_sample_text(cls, value: str | None) -> str | None:
+        if value is not None and not value.strip():
+            raise ValueError("sample text fields must not be empty")
+        return value
+
+    @field_validator("sha256")
+    @classmethod
+    def validate_sample_sha(cls, value: str) -> str:
+        if not _is_sha256(value):
+            raise ValueError("sample sha256 must be 64 lowercase hex characters")
+        return value.lower()
+
+    @field_validator("approved_at")
+    @classmethod
+    def validate_approved_at(cls, value: str) -> str:
+        from datetime import date
+
+        try:
+            date.fromisoformat(value)
+        except ValueError as exc:
+            raise ValueError("approved_at must be an ISO date") from exc
+        return value
+
+    @field_validator("destination_kinds")
+    @classmethod
+    def validate_destinations(
+        cls, value: list[Literal[SAMPLE_DESTINATIONS]]
+    ) -> list[Literal[SAMPLE_DESTINATIONS]]:
+        if len(set(value)) != len(value):
+            raise ValueError("destination kinds must be unique")
+        return value
+
+    @model_validator(mode="after")
+    def validate_scenario(self) -> "WorkspaceSample":
+        if self.scenario_id == "fail-once":
+            if self.failure_message is None or not self.failure_message.strip():
+                raise ValueError("a fail-once sample requires a failure_message")
+        elif self.failure_message is not None:
+            raise ValueError("only a fail-once sample may declare a failure_message")
+        if self.preview_mode == "unsupported":
+            if self.preview_note is None or not self.preview_note.strip():
+                raise ValueError("an unsupported preview requires an explanation")
+        elif self.preview_note is not None:
+            raise ValueError("an inline preview must not declare an unsupported note")
+        return self
+
+
+class WorkspaceDocument(StrictModel):
+    """A seeded practice document/operation in the local workspace."""
+
+    document_id: str
+    sample_id: str
+    scope_kind: Literal[SAMPLE_DESTINATIONS]
+    scope_id: str
+    status: Literal["pending", "processing", "ready", "failed"]
+    operation_id: str
+    revision_id: str
+    chunk_count: int = Field(ge=0, le=MAX_WORKSPACE_CHUNKS_PER_DOCUMENT)
+    created_at: str
+
+    @field_validator("document_id", "scope_id", "operation_id", "revision_id")
+    @classmethod
+    def validate_document_ids(cls, value: str) -> str:
+        if not _is_safe_slug(value):
+            raise ValueError("document identifiers must be safe")
+        return value
+
+    @field_validator("sample_id")
+    @classmethod
+    def validate_document_sample(cls, value: str) -> str:
+        if not _is_safe_slug(value):
+            raise ValueError("sample_id must be a safe identifier")
+        return value
+
+    @field_validator("created_at")
+    @classmethod
+    def validate_created_at(cls, value: str) -> str:
+        from datetime import date
+
+        try:
+            date.fromisoformat(value)
+        except ValueError as exc:
+            raise ValueError("created_at must be an ISO date") from exc
+        return value
+
+
 class WorkspaceSeed(StrictModel):
     """Strict data-only seed for the browser-memory practice workspace."""
 
@@ -550,6 +705,8 @@ class WorkspaceSeed(StrictModel):
     personas: list[WorkspacePersona] = Field(default_factory=list)
     stacks: list[WorkspaceStack] = Field(default_factory=list)
     practice_setups: list[WorkspacePracticeSetup] = Field(default_factory=list)
+    samples: list[WorkspaceSample] = Field(default_factory=list)
+    documents: list[WorkspaceDocument] = Field(default_factory=list)
 
     @field_validator("highlighted_persona_id")
     @classmethod
@@ -583,6 +740,11 @@ class WorkspaceSeed(StrictModel):
                 raise ValueError(
                     "prompt assembly and participant mappings require seed version 2"
                 )
+        if self.seed_version >= 3:
+            if not self.samples:
+                raise ValueError("seed version 3 requires an upload sample library")
+        elif self.samples or self.documents:
+            raise ValueError("upload samples and documents require seed version 3")
         return self
 
 
@@ -834,6 +996,9 @@ class AssetRecord(StrictModel):
     rights: str
     authored: bool
     public_demo: bool = True
+    # Explicit publication allowlist for the practice sample picker. Evidence
+    # and preview assets stay false; only reviewed uploadable bytes opt in.
+    upload_approved: bool = False
     extraction: str | None = None
 
     @field_validator("asset_id")

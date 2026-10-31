@@ -12,6 +12,7 @@
       "rights": "Authored historical fact sheet for this replay",
       "authored": true,
       "public_demo": true,
+      "upload_approved": true,
       "extraction": "offline markdown"
     },
     {
@@ -68,6 +69,7 @@
       "rights": "Demo-authored private input",
       "authored": true,
       "public_demo": true,
+      "upload_approved": true,
       "extraction": "offline markdown"
     },
     {
@@ -82,6 +84,7 @@
       "rights": "Demo-authored private input",
       "authored": true,
       "public_demo": true,
+      "upload_approved": true,
       "extraction": "offline markdown"
     },
     {
@@ -96,6 +99,7 @@
       "rights": "Demo-authored private input",
       "authored": true,
       "public_demo": true,
+      "upload_approved": true,
       "extraction": "offline markdown"
     }
   ]
