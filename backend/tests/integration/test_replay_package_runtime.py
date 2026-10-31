@@ -153,7 +153,112 @@ def test_approved_session_exposes_claims_and_preview_assets(
     assert all(asset["media_type"] == "text/markdown" for asset in session["assets"])
 
 
-def test_checkpoint_reads_are_coherent_and_never_early(replay_db, monkeypatch) -> None:
+def test_expanded_exploration_reads_every_prepared_transition(
+    replay_db, monkeypatch
+) -> None:
+    publish_dir(replay_db, GUIDED_ROOT)
+    monkeypatch.setattr(
+        settings, "replay_database_url", login_uri(replay_db, READER_LOGIN)
+    )
+    runtime = ReplayRuntime(ReplaySource(), package_id=APPROVED_ID)
+    with _client(runtime) as client:
+        session = client.get("/api/replay/session").json()
+        meeting_id = session["meeting_id"]
+        meetings: dict[str, dict] = {}
+
+        def meeting(checkpoint: str, optional: bool = False) -> dict | None:
+            if checkpoint not in meetings:
+                response = client.get(
+                    f"/api/replay/meetings/{meeting_id}",
+                    params={"checkpoint": checkpoint},
+                )
+                if optional and response.status_code == 404:
+                    return None
+                assert response.status_code == 200, (checkpoint, response.text)
+                meetings[checkpoint] = response.json()
+            return meetings[checkpoint]
+
+        transitions = session["transitions"]
+        assert len(transitions) == 27
+        assert sum(1 for item in transitions if item["canonical"]) == 8
+
+        by_source: dict[str, list[dict]] = {}
+        for transition in transitions:
+            source = transition["source_checkpoint"]
+            completed = transition["completed_checkpoint"]
+            by_source.setdefault(source, []).append(transition)
+            before = meeting(source, optional=True)
+            after = meeting(completed)
+            assert after is not None
+            if before is not None:
+                before_messages = before["messages"]
+                after_messages = after["messages"]
+                assert after_messages[: len(before_messages)] == before_messages
+            else:
+                before_messages = []
+                after_messages = after["messages"]
+
+            kind = transition["kind"]
+            if kind == "start_participant":
+                assert len(after_messages) == len(before_messages) + 1
+                assert after_messages[-1]["sender_type"] == "ai"
+                assert after_messages[-1]["sender_id"] == transition["participant_id"]
+            elif kind == "director_follow_up":
+                assert len(after_messages) == len(before_messages) + 1
+                assert after_messages[-1]["sender_type"] == "user"
+            elif kind == "request_closing":
+                closing = client.get(
+                    f"/api/replay/meetings/{meeting_id}/closing",
+                    params={"checkpoint": completed},
+                )
+                assert closing.status_code == 200
+                payload = closing.json()
+                assert (payload["summary"] or "").strip()
+                assert payload["summary_message_id"]
+                assert after["status"] == "ended"
+            elif kind == "archive_meeting":
+                assert after["status"] == "archived"
+
+        assert len(
+            [
+                item
+                for item in by_source["checkpoint-created"]
+                if item["kind"] == "start_participant"
+            ]
+        ) >= 3
+        assert len(
+            [
+                item
+                for item in by_source["checkpoint-downside"]
+                if item["kind"] == "director_follow_up"
+            ]
+        ) >= 3
+        assert len(
+            [
+                item
+                for item in by_source["checkpoint-portfolio"]
+                if item["kind"] == "start_participant"
+            ]
+        ) >= 2
+
+        for chapter in session["chapters"]:
+            response = client.get(
+                f"/api/replay/meetings/{meeting_id}",
+                params={"checkpoint": chapter["checkpoint"]},
+            )
+            assert response.status_code == 200
+            if chapter["tab"] == "summary":
+                messages = response.json()["messages"]
+                assert any(
+                    message["id"] == chapter["summary_message_id"]
+                    and message["sender_type"] == "system"
+                    for message in messages
+                )
+
+
+def test_checkpoint_reads_are_coherent_and_never_early(
+    replay_db, monkeypatch
+) -> None:
     runtime = _runtime(monkeypatch, replay_db)
     with _client(runtime) as client:
         initial = client.get(f"/api/replay/meetings/{MEETING_ID}").json()
