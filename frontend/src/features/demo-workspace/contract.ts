@@ -113,6 +113,8 @@ export interface WorkspaceDocument {
     chunkCount: number;
     createdAt: string;
     errorMessage?: string | null;
+    /** Bounded retry count for the prepared scenario. */
+    attempts?: number;
     /** Authored seed state vs a temporary local document. */
     origin?: "seed" | "local";
 }
