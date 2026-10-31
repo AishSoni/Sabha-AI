@@ -208,6 +208,6 @@ def test_checkout_provisions_both_packages_without_local_inputs(
             "ORDER BY package_id"
         ).fetchall()
     assert rows == [
-        (APPROVED_ID, "4", "published"),
+        (APPROVED_ID, "5", "published"),
         (PLACEHOLDER_ID, "1", "published"),
     ]
