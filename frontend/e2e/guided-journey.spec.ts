@@ -1,18 +1,15 @@
 import { test, expect } from "@playwright/test";
+import {
+    expectNoPublicPersistence,
+    guardNetwork,
+} from "./support/guardrails";
 
 test.describe("guided bond journey", () => {
-    test("walks the prepared HDFC replay through archive", async ({ page }) => {
-        const liveMutations: string[] = [];
-        page.on("request", (request) => {
-            const url = request.url();
-            if (
-                url.includes("/api/meetings") &&
-                !url.includes("/api/replay") &&
-                request.method() !== "GET"
-            ) {
-                liveMutations.push(`${request.method()} ${url}`);
-            }
-        });
+    test("walks the prepared HDFC replay through archive", async ({
+        page,
+        context,
+    }) => {
+        const network = guardNetwork(page);
 
         await page.goto("/");
         await page.evaluate(() => window.localStorage.clear());
@@ -59,10 +56,12 @@ test.describe("guided bond journey", () => {
         await expect(
             page.getByText(/I disagree with treating AAA\/Stable as sufficient comfort/).first()
         ).toBeVisible({ timeout: 30_000 });
-        await expect(page.getByText(/Step 5 of 8/)).toBeVisible({ timeout: 30_000 });
         await expect(
             page.getByRole("tab", { name: /Disagreements 1/ })
         ).toBeVisible({ timeout: 30_000 });
+        await page.getByRole("tab", { name: /Disagreements 1/ }).click();
+        await page.getByRole("button", { name: "Continue" }).click();
+        await expect(page.getByText(/Step 5 of 8/)).toBeVisible({ timeout: 30_000 });
         await page.getByRole("tab", { name: "Files" }).click();
         await expect(
             page.getByText("hdfc-v007-shared-fact-sheet.md")
@@ -85,9 +84,9 @@ test.describe("guided bond journey", () => {
         ).toBeVisible();
         await page.getByRole("tab", { name: "Chat" }).click();
 
-        await page.getByRole("button", { name: /Send prepared follow-up/ }).click();
+        await page.getByRole("button", { name: "Send the supported follow-up" }).click();
         await expect(
-            page.getByRole("button", { name: /Send prepared follow-up/ })
+            page.getByRole("button", { name: "Send the supported follow-up" })
         ).toHaveCount(0, { timeout: 30_000 });
         await expect(page.getByText(/Step 5 of 8/)).toBeVisible();
         await page.getByRole("button", { name: "Ask the Portfolio Analyst" }).click();
@@ -100,8 +99,9 @@ test.describe("guided bond journey", () => {
         await expect(
             page.getByText(/The committee can align on a bounded checklist/).first()
         ).toBeVisible({ timeout: 30_000 });
-        await expect(page.getByText(/Step 7 of 8/)).toBeVisible({ timeout: 30_000 });
+        await page.getByRole("tab", { name: /Consensus 1/ }).click();
         await page.getByRole("button", { name: "Continue" }).click();
+        await expect(page.getByText(/Step 7 of 8/)).toBeVisible({ timeout: 30_000 });
 
         await expect(page).toHaveURL(/\/demo\/meetings\/[^/]+\?tab=closing$/);
         await expect(page.getByText(/Step 7 of 8/)).toBeVisible();
@@ -134,14 +134,29 @@ test.describe("guided bond journey", () => {
         await expect(page.getByText(/Step 8 of 8/)).toBeVisible({
             timeout: 60_000,
         });
-        await expect(page.getByText("Journey complete")).toHaveCount(0);
-        await expect(page.getByTestId("archive-meeting")).toBeEnabled({
+        // Back rewinds the inspected snapshot but does not erase the completed
+        // canonical journey. The list may retain its archived tab, so return
+        // to the active/ended view to inspect the pre-archive snapshot.
+        await expect(page.getByText("Journey complete")).toBeVisible();
+        await page.getByRole("button", { name: "Active and ended" }).click();
+        // The recorded archive is already settled, so the action cannot be
+        // submitted a second time from the rewound snapshot.
+        await expect(page.getByTestId("archive-meeting")).toBeDisabled({
             timeout: 60_000,
         });
-        expect(liveMutations).toEqual([]);
+        await expect(page.getByTestId("archive-meeting")).toHaveAttribute(
+            "title",
+            "This action is only available in the archive step"
+        );
+        network.assertClean();
+        await expectNoPublicPersistence(context, page);
     });
 
-    test("keeps the guide keyboard-accessible and resets on a deep link", async ({ page }) => {
+    test("keeps the guide keyboard-accessible and resets on a deep link", async ({
+        page,
+        context,
+    }) => {
+        const network = guardNetwork(page);
         await page.setViewportSize({ width: 390, height: 844 });
         await page.emulateMedia({ reducedMotion: "reduce" });
         await page.goto("/demo");
@@ -161,7 +176,9 @@ test.describe("guided bond journey", () => {
 
         await page.getByRole("button", { name: "Back" }).click();
         await expect(page).toHaveURL(/\/demo$/);
-        await expect(page.getByText(/Step 1 of 8/)).toBeVisible();
+        // Back moves the exploration cursor; it does not un-acknowledge the
+        // completed board step, so the guide remains on step 2.
+        await expect(page.getByText(/Step 2 of 8/)).toBeVisible();
 
         await page.getByRole("button", { name: "Restart" }).click();
         await expect(page.getByText(/Step 1 of 8/)).toBeVisible();
@@ -171,5 +188,7 @@ test.describe("guided bond journey", () => {
         await expect(
             page.getByRole("heading", { name: /Prepared board/ })
         ).toBeVisible();
+        network.assertClean();
+        await expectNoPublicPersistence(context, page);
     });
 });

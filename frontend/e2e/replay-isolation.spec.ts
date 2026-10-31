@@ -1,4 +1,5 @@
 import { test, expect, type Page } from "@playwright/test";
+import { expectNoPublicPersistence } from "./support/guardrails";
 
 /**
  * Two visitors, two browsers (spec-19).
@@ -61,8 +62,10 @@ test.describe("guided replay visitor isolation", () => {
 
             await pageA.getByRole("button", { name: "Back" }).click();
             await expect(pageA).toHaveURL(/\/demo$/);
-            await expectStep(pageA, 1);
-            await pageA.getByRole("button", { name: "Restart" }).click();
+            // Back moves the inspection cursor; the acknowledged board step
+            // remains complete, so the guide stays on step 2.
+            await expectStep(pageA, 2);
+            await pageA.getByRole("button", { name: "Restart recording" }).click();
             await expect(pageA).toHaveURL(/\/demo$/);
             await expectStep(pageA, 1);
             await pageA.reload();
@@ -78,25 +81,16 @@ test.describe("guided replay visitor isolation", () => {
                 pageB.getByRole("button", { name: "Create recorded meeting" })
             ).toBeVisible();
 
-            // Progress is not persisted in the browser or in a session cookie.
-            for (const context of [contextA, contextB]) {
-                const page = context === contextA ? pageA : pageB;
-                const storageKeys = await page.evaluate(() =>
-                    Object.keys(window.localStorage)
-                );
-                expect(
-                    storageKeys.filter((key) => key !== "sabha:experience")
-                ).toEqual([]);
-                const cookies = await context.cookies(BASE);
-                expect(cookies).toEqual([]);
-            }
+            // Progress is not persisted in any browser store or cookie.
+            await expectNoPublicPersistence(contextA, pageA);
+            await expectNoPublicPersistence(contextB, pageB);
         } finally {
             await contextA.close();
             await contextB.close();
         }
     });
 
-    test("a restarted visitor gets a fresh run while the other keeps its own", async ({
+    test("restarting playback resets only the visitor's local state", async ({
         browser,
     }) => {
         const contextA = await browser.newContext();
@@ -110,21 +104,17 @@ test.describe("guided replay visitor isolation", () => {
                 openBoard(pageB),
             ]);
 
-            const restarted = pageA.waitForResponse(
-                (candidate) =>
-                    new URL(candidate.url()).pathname === "/api/replay/session" &&
-                    candidate.status() === 200
-            );
-            await pageA.getByRole("button", { name: "Restart" }).click();
-            const restartedSession = (await (await restarted).json()) as {
-                run_id: string;
-            };
+            await pageA.getByRole("button", { name: "Restart recording" }).click();
+            await expect(pageA).toHaveURL(/\/demo$/);
+            await expectStep(pageA, 1);
 
-            expect(restartedSession.run_id).not.toBe(sessionA.run_id);
-            expect(restartedSession.run_id).not.toBe(sessionB.run_id);
+            // The other visitor keeps its own run and its own guide position.
+            expect(sessionA.run_id).not.toBe(sessionB.run_id);
             await expect(pageB).toHaveURL(/\/demo$/);
             await expectStep(pageB, 1);
             await expect(pageB.getByRole("heading", { name: /Prepared board/ })).toBeVisible();
+            await expectNoPublicPersistence(contextA, pageA);
+            await expectNoPublicPersistence(contextB, pageB);
         } finally {
             await contextA.close();
             await contextB.close();
