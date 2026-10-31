@@ -342,7 +342,8 @@ export function ReplayRunProvider({ children }: { children: ReactNode }) {
                 return;
             }
             const source = transition?.source_checkpoint ?? intent.checkpoint;
-            const completed = transition?.completed_checkpoint;
+            const completed =
+                transition?.completed_checkpoint ?? intent.checkpoint;
             const completesWithoutTape =
                 !transition?.tape_id &&
                 Boolean(completed) &&

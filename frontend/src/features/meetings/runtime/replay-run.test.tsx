@@ -273,6 +273,25 @@ function expandedSessionWire() {
     };
 }
 
+function legacySessionWire() {
+    return {
+        ...sessionWire(),
+        intents: [
+            {
+                intent_id: "create",
+                kind: "create_meeting",
+                checkpoint: "checkpoint-created",
+                participant_id: null,
+                operation_id: null,
+                tape_id: null,
+                closing_tape_id: null,
+                label: "Create the meeting",
+            },
+        ],
+        transitions: [],
+    };
+}
+
 function completedMeetingWire() {
     return {
         ...meetingWire(),
@@ -424,5 +443,50 @@ describe("ReplayRunProvider prepared playback", () => {
                 url.includes("checkpoint=checkpoint-created")
             )
         ).toBe(true);
+    });
+
+    it("settles a non-tape intent from a legacy package without transitions", async () => {
+        vi.stubGlobal(
+            "fetch",
+            vi.fn(async (input: unknown) => {
+                const url = String(input);
+                if (url.endsWith("/replay/session")) return json(legacySessionWire());
+                if (url.includes("/workspace-seed")) {
+                    return json({ detail: "replay_workspace_seed_unavailable" }, 404);
+                }
+                if (url.includes("/safe-config")) return json({});
+                if (url.includes("/disagreements")) return json([]);
+                if (url.includes("/consensus")) return json([]);
+                if (url.includes("/turns")) return json([]);
+                if (url.includes(`/replay/meetings/${MEETING_ID}?`)) {
+                    return json(meetingWire());
+                }
+                return json({ detail: "replay_read_unavailable" }, 404);
+            })
+        );
+
+        const wrapper = ({ children }: { children: ReactNode }) => (
+            <ReplaySessionProvider>
+                <DemoWorkspaceProvider
+                    identity={{
+                        packageId: "placeholder-analyst",
+                        version: "1",
+                        contentSha256: "a".repeat(64),
+                        meetingId: MEETING_ID,
+                    }}
+                >
+                    <ReplayRunProvider>{children}</ReplayRunProvider>
+                </DemoWorkspaceProvider>
+            </ReplaySessionProvider>
+        );
+        const { result } = renderHook(() => useReplayRun(), { wrapper });
+        await waitFor(() => expect(result.current.session).not.toBeNull());
+
+        await act(async () => {
+            await result.current.startIntent("create");
+        });
+
+        expect(result.current.checkpoint).toBe("checkpoint-created");
+        expect(result.current.settledIntents.has("create")).toBe(true);
     });
 });
