@@ -97,3 +97,5 @@ class ReplayContainer:
     closing_events: Any | None = None
     checkpoint_id: str = ""
     limiter: Any | None = None
+    workspace_seed: dict[str, Any] | None = None
+    workspace_seed_version: int | None = None

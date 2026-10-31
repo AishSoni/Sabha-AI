@@ -248,6 +248,28 @@ def _insert_retrieval(conn, package: LoadedPackage) -> None:
         )
 
 
+def _insert_workspace_seed(conn, package: LoadedPackage) -> None:
+    payload = package.workspace_seed_payload
+    seed = package.workspace_seed
+    if payload is None or seed is None:
+        return
+    manifest = package.manifest
+    conn.execute(
+        """
+        INSERT INTO replay.workspace_seed
+            (package_id, version, seed_version, payload, sha256)
+        VALUES (%s, %s, %s, %s, %s)
+        """,
+        (
+            manifest.package_id,
+            manifest.version,
+            seed.seed_version,
+            Jsonb(payload),
+            bundle_sha256(payload),
+        ),
+    )
+
+
 def _insert_assets(
     conn,
     package: LoadedPackage,
@@ -367,6 +389,7 @@ def publish_package(
     _insert_checkpoints(conn, package)
     _insert_tapes(conn, package)
     _insert_retrieval(conn, package)
+    _insert_workspace_seed(conn, package)
     asset_count = _insert_assets(conn, package, storage)
 
     conn.execute(

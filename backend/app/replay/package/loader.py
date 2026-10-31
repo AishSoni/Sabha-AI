@@ -21,12 +21,14 @@ from app.replay.constants import MAX_FILE_BYTES, MAX_FILES, MAX_PACKAGE_BYTES
 
 from .issues import PackageIssue, PackageLoadError
 from .model import (
+    MAX_WORKSPACE_SEED_BYTES,
     AssetIndex,
     Checkpoint,
     ClosingTape,
     Manifest,
     RetrievalRecord,
     TurnTape,
+    WorkspaceSeed,
 )
 
 
@@ -42,6 +44,9 @@ class LoadedPackage:
     asset_bytes: Mapping[str, bytes]
     file_hashes: Mapping[str, str]
     content_sha256: str
+    workspace_seed: WorkspaceSeed | None = None
+    workspace_seed_payload: Mapping[str, Any] | None = None
+    workspace_seed_sha256: str | None = None
 
 
 def _iter_files(root: Path) -> list[Path]:
@@ -98,6 +103,33 @@ def _parse(model, payload, relative: str):
                     else "invalid shape",
                 )
             ]
+        ) from exc
+
+
+def _read_workspace_seed(root: Path, relative: str) -> Any:
+    """Read the expanded-workspace seed under its own tighter byte ceiling."""
+
+    path = root / relative
+    if not path.is_file():
+        raise PackageLoadError(
+            [PackageIssue("missing_file", relative, "referenced file is missing")]
+        )
+    raw = path.read_bytes()
+    if len(raw) > MAX_WORKSPACE_SEED_BYTES:
+        raise PackageLoadError(
+            [
+                PackageIssue(
+                    "file_too_large",
+                    relative,
+                    "workspace seed exceeds the decoded JSON cap",
+                )
+            ]
+        )
+    try:
+        return json.loads(raw.decode("utf-8"))
+    except (UnicodeDecodeError, json.JSONDecodeError) as exc:
+        raise PackageLoadError(
+            [PackageIssue("invalid_json", relative, str(exc))]
         ) from exc
 
 
@@ -164,6 +196,28 @@ def load_package(root: Path | str) -> LoadedPackage:
     manifest_payload = _read_json(root_path, "manifest.json")
     manifest = _parse(Manifest, manifest_payload, "manifest.json")
 
+    workspace_seed = None
+    workspace_seed_payload = None
+    workspace_seed_sha256 = None
+    if manifest.workspace_seed is not None:
+        workspace_seed_payload = _read_workspace_seed(
+            root_path, manifest.workspace_seed
+        )
+        workspace_seed = _parse(
+            WorkspaceSeed, workspace_seed_payload, manifest.workspace_seed
+        )
+        workspace_seed_sha256 = file_hashes.get(manifest.workspace_seed)
+        if workspace_seed_sha256 is None:
+            raise PackageLoadError(
+                [
+                    PackageIssue(
+                        "missing_file",
+                        manifest.workspace_seed,
+                        "workspace seed is not part of the package",
+                    )
+                ]
+            )
+
     checkpoints: dict[str, Checkpoint] = {}
     for checkpoint_id in manifest.checkpoints:
         relative = f"checkpoints/{checkpoint_id}.json"
@@ -221,4 +275,7 @@ def load_package(root: Path | str) -> LoadedPackage:
         asset_bytes=asset_bytes,
         file_hashes=file_hashes,
         content_sha256=compute_content_sha256(file_hashes, manifest_payload),
+        workspace_seed=workspace_seed,
+        workspace_seed_payload=workspace_seed_payload,
+        workspace_seed_sha256=workspace_seed_sha256,
     )

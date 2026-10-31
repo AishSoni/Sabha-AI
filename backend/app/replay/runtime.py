@@ -185,6 +185,8 @@ class ReplayRuntime:
             ),
             checkpoint_id=selected,
             limiter=self.limiter,
+            workspace_seed=published.workspace_seed,
+            workspace_seed_version=published.workspace_seed_version,
         )
 
 

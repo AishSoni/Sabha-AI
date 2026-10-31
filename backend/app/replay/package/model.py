@@ -15,11 +15,11 @@ from pydantic import BaseModel, ConfigDict, Field, field_validator, model_valida
 
 from app.replay.constants import TAPE_DELAY_CEILING_MS
 
-SCHEMA_VERSION = 1
+SCHEMA_VERSION = 2
 READ_VERSION = 1
 EVENT_VERSION = 1
 
-SUPPORTED_SCHEMA_VERSIONS = (SCHEMA_VERSION,)
+SUPPORTED_SCHEMA_VERSIONS = (1, SCHEMA_VERSION)
 SUPPORTED_READ_VERSIONS = (READ_VERSION,)
 SUPPORTED_EVENT_VERSIONS = (EVENT_VERSION,)
 
@@ -121,6 +121,20 @@ PREVIEWABLE_MEDIA_TYPES = frozenset(
 
 CLOSING_EVENT_KINDS = ("ballot", "summary")
 CLOSING_RESULTS = ("yes", "no", "no-vote", "completed")
+
+# --- Expanded demo workspace seed (spec-23) ---------------------------------
+# The seed is inert authoring data for the browser-memory practice workspace.
+# These ceilings are validation policy: a seed may not enlarge them, and the
+# frontend enforces the same values on local mutations.
+WORKSPACE_SEED_VERSION = 1
+SUPPORTED_WORKSPACE_SEED_VERSIONS = (WORKSPACE_SEED_VERSION,)
+MAX_WORKSPACE_SEED_BYTES = 1024 * 1024
+MAX_WORKSPACE_PERSONAS = 16
+MAX_WORKSPACE_STACKS = 16
+MAX_WORKSPACE_REVISIONS_PER_PERSONA = 16
+MAX_WORKSPACE_PROMPT_CHARS = 16_384
+MAX_WORKSPACE_TOTAL_PROMPT_CHARS = 524_288
+MAX_WORKSPACE_PRACTICE_SETUPS = 8
 
 _HEX64 = set("0123456789abcdef")
 
@@ -351,6 +365,176 @@ class ClaimRecord(StrictModel):
         return self
 
 
+class WorkspaceRevision(StrictModel):
+    """One authored, immutable practice prompt revision.
+
+    Revisions are display/catalog content only. They carry no provider setting,
+    credential, or executable behaviour.
+    """
+
+    revision_id: str
+    prompt: str = Field(min_length=1, max_length=MAX_WORKSPACE_PROMPT_CHARS)
+    reason: str
+    created_at: str
+
+    @field_validator("revision_id")
+    @classmethod
+    def validate_revision_id(cls, value: str) -> str:
+        if not _is_safe_slug(value):
+            raise ValueError("revision_id must be a safe identifier")
+        return value
+
+    @field_validator("reason")
+    @classmethod
+    def validate_reason(cls, value: str) -> str:
+        if not value.strip():
+            raise ValueError("revision reason must not be empty")
+        return value
+
+    @field_validator("created_at")
+    @classmethod
+    def validate_created_at(cls, value: str) -> str:
+        from datetime import date
+
+        try:
+            date.fromisoformat(value)
+        except ValueError as exc:
+            raise ValueError("created_at must be an ISO date") from exc
+        return value
+
+
+class WorkspacePersona(StrictModel):
+    """One seeded persona template with its authored revision history."""
+
+    persona_id: str
+    name: str
+    role: str
+    description: str
+    color: str = ""
+    stack_ids: list[str] = Field(default_factory=list)
+    revisions: list[WorkspaceRevision] = Field(min_length=1)
+    active_revision_id: str
+
+    @field_validator("persona_id", "active_revision_id")
+    @classmethod
+    def validate_persona_id(cls, value: str) -> str:
+        if not _is_safe_slug(value):
+            raise ValueError("persona identifiers must be safe")
+        return value
+
+    @field_validator("name", "role", "description")
+    @classmethod
+    def validate_text(cls, value: str) -> str:
+        if not value.strip():
+            raise ValueError("persona text must not be empty")
+        return value
+
+    @field_validator("color")
+    @classmethod
+    def validate_color(cls, value: str) -> str:
+        if value and (
+            len(value) != 7
+            or not value.startswith("#")
+            or any(character not in "0123456789abcdefABCDEF" for character in value[1:])
+        ):
+            raise ValueError("color must be an empty value or a hex colour")
+        return value
+
+    @field_validator("stack_ids")
+    @classmethod
+    def validate_stack_ids(cls, value: list[str]) -> list[str]:
+        if len(set(value)) != len(value):
+            raise ValueError("stack assignments must be unique")
+        for item in value:
+            if not _is_safe_slug(item):
+                raise ValueError(f"unsafe stack reference: {item!r}")
+        return value
+
+    @field_validator("revisions")
+    @classmethod
+    def validate_revisions(
+        cls, value: list[WorkspaceRevision]
+    ) -> list[WorkspaceRevision]:
+        revision_ids = [revision.revision_id for revision in value]
+        if len(set(revision_ids)) != len(revision_ids):
+            raise ValueError("revision_ids must be unique within a persona")
+        return value
+
+    @model_validator(mode="after")
+    def validate_active_revision(self) -> "WorkspacePersona":
+        if self.active_revision_id not in {
+            revision.revision_id for revision in self.revisions
+        }:
+            raise ValueError("active_revision_id must name one of the revisions")
+        return self
+
+
+class WorkspaceStack(StrictModel):
+    stack_id: str
+    label: str
+    scope: Literal["shared", "private"]
+    description: str = ""
+
+    @field_validator("stack_id")
+    @classmethod
+    def validate_stack_id(cls, value: str) -> str:
+        if not _is_safe_slug(value):
+            raise ValueError("stack_id must be a safe identifier")
+        return value
+
+    @field_validator("label")
+    @classmethod
+    def validate_label(cls, value: str) -> str:
+        if not value.strip():
+            raise ValueError("stack label must not be empty")
+        return value
+
+
+class WorkspacePracticeSetup(StrictModel):
+    """A seeded preset that links practice edits to a recorded example."""
+
+    setup_id: str
+    label: str
+    description: str = ""
+    recorded_example_id: str
+
+    @field_validator("setup_id", "recorded_example_id")
+    @classmethod
+    def validate_setup_id(cls, value: str) -> str:
+        if not _is_safe_slug(value):
+            raise ValueError("practice setup identifiers must be safe")
+        return value
+
+    @field_validator("label")
+    @classmethod
+    def validate_label(cls, value: str) -> str:
+        if not value.strip():
+            raise ValueError("practice setup label must not be empty")
+        return value
+
+
+class WorkspaceDisclosure(StrictModel):
+    practice: str
+    recording: str
+
+    @field_validator("practice", "recording")
+    @classmethod
+    def validate_disclosure(cls, value: str) -> str:
+        if not value.strip():
+            raise ValueError("workspace disclosures must not be empty")
+        return value
+
+
+class WorkspaceSeed(StrictModel):
+    """Strict data-only seed for the browser-memory practice workspace."""
+
+    seed_version: int
+    disclosure: WorkspaceDisclosure
+    personas: list[WorkspacePersona] = Field(default_factory=list)
+    stacks: list[WorkspaceStack] = Field(default_factory=list)
+    practice_setups: list[WorkspacePracticeSetup] = Field(default_factory=list)
+
+
 class Manifest(StrictModel):
     package_id: str
     version: str
@@ -373,12 +557,27 @@ class Manifest(StrictModel):
     intents: list[IntentRecord] = Field(default_factory=list)
     beats: list[BeatRecord] = Field(default_factory=list)
     claims: list[ClaimRecord] = Field(default_factory=list)
+    workspace_seed: str | None = None
 
     @field_validator("package_id", "version")
     @classmethod
     def validate_slug(cls, value: str) -> str:
         if not _is_safe_slug(value):
             raise ValueError("must be a safe identifier")
+        return value
+
+    @field_validator("workspace_seed")
+    @classmethod
+    def validate_workspace_seed(cls, value: str | None) -> str | None:
+        if value is None:
+            return None
+        if (
+            not _is_safe_slug(value)
+            or value.startswith("/")
+            or "\\" in value
+            or ".." in value.split("/")
+        ):
+            raise ValueError("workspace_seed must be a safe relative package path")
         return value
 
     @field_validator("content_sha256")

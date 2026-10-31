@@ -35,8 +35,10 @@ from app.replay.package.model import (
     SUPPORTED_EVENT_VERSIONS,
     SUPPORTED_READ_VERSIONS,
     SUPPORTED_SCHEMA_VERSIONS,
+    SUPPORTED_WORKSPACE_SEED_VERSIONS,
     Checkpoint,
     Manifest,
+    WorkspaceSeed,
 )
 
 SELECTOR = re.compile(r"^[A-Za-z0-9._-]{1,128}$")
@@ -76,6 +78,9 @@ class PublishedPackage:
     checkpoints: tuple[Checkpoint, ...]
     assets: tuple[dict[str, Any], ...] = ()
     tapes: tuple[dict[str, Any], ...] = ()
+    workspace_seed: dict[str, Any] | None = None
+    workspace_seed_version: int | None = None
+    workspace_seed_sha256: str | None = None
 
 
 @dataclass(frozen=True)
@@ -116,6 +121,7 @@ class _PackageRows:
     checkpoints: tuple[tuple[str, int, str, dict[str, Any], str], ...]
     assets: tuple[tuple[Any, ...], ...]
     tapes: tuple[tuple[Any, ...], ...]
+    workspace_seed: tuple[int, dict[str, Any], str] | None = None
 
 
 def _selector(value: str | None, name: str) -> str | None:
@@ -197,6 +203,29 @@ def _published(
         for asset in rows.assets
     )
 
+    seed: dict[str, Any] | None = None
+    seed_version: int | None = None
+    seed_sha: str | None = None
+    if manifest.schema_version >= 2:
+        if manifest.workspace_seed is None or rows.workspace_seed is None:
+            raise ReplayPackageUnavailable("the workspace seed is missing")
+        seed_version, seed_payload, seed_sha = rows.workspace_seed
+        if _sha256(seed_payload) != seed_sha:
+            raise ReplayPackageUnavailable("the workspace seed failed its hash check")
+        if seed_version not in SUPPORTED_WORKSPACE_SEED_VERSIONS:
+            raise ReplayPackageUnavailable("the workspace seed version is unsupported")
+        try:
+            parsed_seed = WorkspaceSeed.model_validate(copy.deepcopy(seed_payload))
+        except ValidationError as exc:
+            raise ReplayPackageUnavailable("the workspace seed is corrupt") from exc
+        if parsed_seed.seed_version != seed_version:
+            raise ReplayPackageUnavailable("the workspace seed identity is inconsistent")
+        seed = seed_payload
+    elif rows.workspace_seed is not None:
+        raise ReplayPackageUnavailable(
+            "a schema 1 package cannot carry a workspace seed"
+        )
+
     return PublishedPackage(
         package_id=rows.package_id,
         version=rows.version,
@@ -219,6 +248,9 @@ def _published(
             }
             for tape in rows.tapes
         ),
+        workspace_seed=seed,
+        workspace_seed_version=seed_version,
+        workspace_seed_sha256=seed_sha,
     )
 
 
@@ -377,12 +409,20 @@ class ReplaySource:
                 """,
                 (package_id, version),
             ).fetchall()
-            return row, checkpoints, assets, tapes
+            seed = conn.execute(
+                """
+                SELECT seed_version, payload, sha256
+                FROM replay.v_published_workspace_seed
+                WHERE package_id = %s AND version = %s
+                """,
+                (package_id, version),
+            ).fetchone()
+            return row, checkpoints, assets, tapes, seed
 
         result = await self._run(operation)
         if result is None:
             raise ReplayPackageUnavailable("the requested package is not published")
-        row, checkpoint_rows, asset_rows, tape_rows = result
+        row, checkpoint_rows, asset_rows, tape_rows, seed_row = result
         (
             package_id,
             version,
@@ -411,6 +451,11 @@ class ReplaySource:
             ),
             assets=tuple(tuple(asset) for asset in asset_rows),
             tapes=tuple(tuple(tape) for tape in tape_rows),
+            workspace_seed=(
+                (int(seed_row[0]), dict(seed_row[1]), str(seed_row[2]))
+                if seed_row is not None
+                else None
+            ),
         )
         # Validate once at load time; cached reads skip the hash pass because
         # the content cannot change while the version stays published.

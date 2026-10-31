@@ -24,6 +24,7 @@ from scripts.replay_package import (
     retire_package,
 )
 from scripts.replay_roles import provision
+from tests.fixtures.replay.build_packages import build_expanded
 BACKEND = Path(__file__).resolve().parents[2]
 PACKAGE_ROOT = BACKEND / "replay_packages" / "placeholder-analyst"
 FIXTURE_V1 = BACKEND / "tests" / "fixtures" / "replay" / "fixture-minimal"
@@ -270,6 +271,7 @@ BASE_TABLES = (
     "closing_event",
     "retrieval_record",
     "asset",
+    "workspace_seed",
 )
 
 PUBLISHED_VIEWS = (
@@ -281,6 +283,7 @@ PUBLISHED_VIEWS = (
     "v_published_closing_event",
     "v_published_retrieval",
     "v_published_asset",
+    "v_published_workspace_seed",
     "v_package_registry",
 )
 
@@ -325,3 +328,28 @@ def test_tracked_package_needs_no_ignored_inputs() -> None:
     }
     assert files
     assert files <= tracked, sorted(files - tracked)
+
+def test_schema_two_seed_is_published_with_its_own_identity(replay_db, tmp_path) -> None:
+    root = tmp_path / "expanded"
+    build_expanded(root, version="3")
+    storage = FakeStorage()
+
+    with _publisher(replay_db) as conn:
+        result = publish_package(conn, load_package(root), storage)
+    assert result.status == "published"
+    assert result.checkpoints == 1
+    assert result.assets == 0
+
+    with _reader(replay_db) as reader:
+        row = reader.execute(
+            "SELECT seed_version, payload, sha256 "
+            "FROM replay.v_published_workspace_seed "
+            "WHERE package_id = %s AND version = %s",
+            ("fixture-expanded", "3"),
+        ).fetchone()
+    assert row is not None
+    seed_version, payload, sha256 = row
+    assert seed_version == 1
+    assert payload["seed_version"] == 1
+    assert len(payload["personas"]) == 3
+    assert len(sha256) == 64

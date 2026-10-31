@@ -548,11 +548,13 @@ def manifest(
     intents: list[dict],
     beats: list[dict],
     provenance: dict,
+    schema_version: int = 1,
+    workspace_seed: str | None = None,
 ) -> dict:
-    return {
+    payload = {
         "package_id": package_id,
         "version": version,
-        "schema_version": 1,
+        "schema_version": schema_version,
         "read_version": 1,
         "event_version": 1,
         "title": title,
@@ -569,6 +571,9 @@ def manifest(
         "intents": intents,
         "beats": beats,
     }
+    if workspace_seed is not None:
+        payload["workspace_seed"] = workspace_seed
+    return payload
 
 
 def finalize(root: Path) -> None:
@@ -793,6 +798,174 @@ def build_minimal(root: Path, *, version: str, title: str) -> None:
             intents=[],
             beats=[],
             provenance={"kind": "recorded", "authored": True, "synthetic": True},
+        ),
+    )
+    finalize(root)
+
+
+def workspace_seed() -> dict:
+    """A small schema-2 seed that mirrors the HDFC board structure."""
+
+    def revision(revision_id: str, prompt: str, reason: str) -> dict:
+        return {
+            "revision_id": revision_id,
+            "prompt": prompt,
+            "reason": reason,
+            "created_at": AS_OF,
+        }
+
+    return {
+        "seed_version": 1,
+        "disclosure": {
+            "practice": (
+                "Practice changes live in this browser tab only and disappear "
+                "when the workspace is reset or the page is refreshed."
+            ),
+            "recording": (
+                "Participant replies and evidence come from the prepared "
+                "recording; practice edits never change recorded content."
+            ),
+        },
+        "stacks": [
+            {
+                "stack_id": "shared-fact-sheet",
+                "label": "Issuer fact sheet",
+                "scope": "shared",
+                "description": "Shared reference material for the recorded board.",
+            },
+            {
+                "stack_id": "credit-evidence",
+                "label": "Credit evidence",
+                "scope": "private",
+                "description": "Private credit-analysis working papers.",
+            },
+            {
+                "stack_id": "downside-worksheet",
+                "label": "Downside worksheet",
+                "scope": "private",
+                "description": "Demo-authored downside review worksheet.",
+            },
+            {
+                "stack_id": "portfolio-mandate",
+                "label": "Portfolio mandate",
+                "scope": "private",
+                "description": "Practice mandate constraints for the portfolio role.",
+            },
+        ],
+        "personas": [
+            {
+                "persona_id": "persona-credit",
+                "name": "The Credit Analyst",
+                "role": "Credit Analyst",
+                "description": (
+                    "Tests issuer coverage, covenant headroom, and evidence "
+                    "quality before the board relies on a fact."
+                ),
+                "color": "#2563eb",
+                "stack_ids": ["shared-fact-sheet", "credit-evidence"],
+                "active_revision_id": "rev-credit-3",
+                "revisions": [
+                    revision(
+                        "rev-credit-1",
+                        "You are the Credit Analyst. Ground every claim in the "
+                        "issuer evidence and name the document you used.",
+                        "Initial authored role.",
+                    ),
+                    revision(
+                        "rev-credit-2",
+                        "You are the Credit Analyst. Ground every claim in the "
+                        "issuer evidence, state the covenant headroom, and "
+                        "separate fact from interpretation.",
+                        "Adds covenant-headroom discipline after the first review.",
+                    ),
+                    revision(
+                        "rev-credit-3",
+                        "You are the Credit Analyst. Ground every claim in the "
+                        "issuer evidence, state the covenant headroom, separate "
+                        "fact from interpretation, and flag any unsupported "
+                        "assumption before the board relies on it.",
+                        "Tightens the evidence standard for the recorded meeting.",
+                    ),
+                ],
+            },
+            {
+                "persona_id": "persona-downside",
+                "name": "The Downside Reviewer",
+                "role": "Risk Reviewer",
+                "description": (
+                    "Looks for the failure case and distinguishes authored "
+                    "worksheet scenarios from issuer research."
+                ),
+                "color": "#b45309",
+                "stack_ids": ["downside-worksheet"],
+                "active_revision_id": "rev-downside-1",
+                "revisions": [
+                    revision(
+                        "rev-downside-1",
+                        "You are the Downside Reviewer. Present the strongest "
+                        "failure case and label demo-authored scenarios.",
+                        "Initial authored role.",
+                    )
+                ],
+            },
+            {
+                "persona_id": "persona-portfolio",
+                "name": "The Portfolio Analyst",
+                "role": "Portfolio Analyst",
+                "description": (
+                    "Checks whether the instrument fits the fictional mandate "
+                    "and keeps uncertainty visible."
+                ),
+                "color": "#047857",
+                "stack_ids": ["portfolio-mandate"],
+                "active_revision_id": "rev-portfolio-1",
+                "revisions": [
+                    revision(
+                        "rev-portfolio-1",
+                        "You are the Portfolio Analyst. Compare the instrument "
+                        "with the mandate and state the residual uncertainty.",
+                        "Initial authored role.",
+                    )
+                ],
+            },
+        ],
+        "practice_setups": [],
+    }
+
+
+def build_expanded(root: Path, *, version: str) -> None:
+    if root.exists():
+        shutil.rmtree(root)
+    root.mkdir(parents=True)
+    payload = checkpoint(
+        "checkpoint-initial",
+        0,
+        "initial",
+        status="active",
+        messages=[],
+        operations=[],
+        closing_view=closing(status="active"),
+        include_consensus=False,
+        include_documents=False,
+    )
+    write_json(root / "checkpoints" / "checkpoint-initial.json", payload)
+    write_json(root / "workspace_seed.json", workspace_seed())
+    write_json(
+        root / "manifest.json",
+        manifest(
+            package_id="fixture-expanded",
+            version=version,
+            title="Fixture expanded",
+            content_sha256="0" * 64,
+            checkpoints=["checkpoint-initial"],
+            tapes=[],
+            closing_tapes=[],
+            retrieval_keys=[],
+            intents=[],
+            beats=[],
+            provenance={"kind": "recorded", "authored": True, "synthetic": True},
+            schema_version=2,
+            workspace_seed="workspace_seed.json",
         ),
     )
     finalize(root)

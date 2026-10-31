@@ -252,6 +252,7 @@ values return `400 replay_selector_invalid`. Every non-GET path returns
 | Method & path | Class | Receipt / shape | Request keys | Safe errors | Notes |
 |---|---|---|---|---|---|
 | `GET /api/replay/session` | observation | `ReplaySessionView` | `package`, `version`, `checkpoint` | `400` selector; `503` | Run/package identity, checkpoints, intents, tapes, assets, capabilities, provenance |
+| `GET /api/replay/workspace-seed` | observation | `ReplayWorkspaceSeedView` | `package`, `version`, `checkpoint` | `404` legacy package; `503` | Inert schema-2 practice seed; pinned package/version/hash envelope |
 | `GET /api/replay/meetings` | observation | `Meeting[]` | `checkpoint` | `503` | Recorded meeting list |
 | `GET /api/replay/meetings/{meeting_id}` | observation | `MeetingWithParticipants` | `checkpoint` | `404`; `503` | Recorded detail; ids outside the package are not found |
 | `GET /api/replay/meetings/{meeting_id}/disagreements` | observation | `Disagreement[]` | `checkpoint` | `404`; `503` | Recorded scoreboard |

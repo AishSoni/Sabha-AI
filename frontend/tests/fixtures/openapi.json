@@ -4178,6 +4178,88 @@
         }
       }
     },
+    "/api/replay/workspace-seed": {
+      "get": {
+        "tags": [
+          "replay"
+        ],
+        "summary": "Read Workspace Seed",
+        "description": "Serve the pinned package's inert practice-workspace seed.\n\nThe response is resolved through the same package/version selector as every\nother replay read. A legacy package without expansion returns 404 so the\nclient can keep the original guided journey without inventing content.",
+        "operationId": "read_workspace_seed_api_replay_workspace_seed_get",
+        "parameters": [
+          {
+            "name": "checkpoint",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Checkpoint"
+            }
+          },
+          {
+            "name": "package",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Package"
+            }
+          },
+          {
+            "name": "version",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Version"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ReplayWorkspaceSeedView"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/api/replay/meetings": {
       "get": {
         "tags": [
@@ -7563,6 +7645,40 @@
           "capabilities"
         ],
         "title": "ReplaySessionView"
+      },
+      "ReplayWorkspaceSeedView": {
+        "properties": {
+          "package_id": {
+            "type": "string",
+            "title": "Package Id"
+          },
+          "version": {
+            "type": "string",
+            "title": "Version"
+          },
+          "content_sha256": {
+            "type": "string",
+            "title": "Content Sha256"
+          },
+          "seed_version": {
+            "type": "integer",
+            "title": "Seed Version"
+          },
+          "seed": {
+            "additionalProperties": true,
+            "type": "object",
+            "title": "Seed"
+          }
+        },
+        "type": "object",
+        "required": [
+          "package_id",
+          "version",
+          "content_sha256",
+          "seed_version",
+          "seed"
+        ],
+        "title": "ReplayWorkspaceSeedView"
       },
       "RequestProviderSettings": {
         "properties": {

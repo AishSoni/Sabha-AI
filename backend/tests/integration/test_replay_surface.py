@@ -360,3 +360,43 @@ def test_live_worker_refuses_a_replay_only_composition(monkeypatch):
 
     with pytest.raises(SystemExit, match="REPLAY_ONLY"):
         asyncio.run(worker._main())
+
+def test_workspace_seed_is_absent_for_a_legacy_package():
+    app = create_app(replay=_replay(), mount_live=False)
+
+    with TestClient(app) as client:
+        response = client.get("/api/replay/workspace-seed")
+
+    assert response.status_code == 404
+    assert response.json()["detail"] == "replay_workspace_seed_unavailable"
+
+
+def test_workspace_seed_returns_the_pinned_identity_envelope():
+    seed = {"seed_version": 1, "personas": [], "stacks": []}
+    container = ReplayContainer(
+        session=ReplaySession(
+            run_id="run-1",
+            package_version="3",
+            meeting_id=MEETING_ID,
+            package_id="hdfc-ine001a07rw5",
+            content_sha256="b" * 64,
+            capabilities=ReplayCapabilities(),
+        ),
+        reads=_Reads(),
+        observation=_Observation(),
+        workspace_seed=seed,
+        workspace_seed_version=1,
+    )
+    app = create_app(replay=container, mount_live=False)
+
+    with TestClient(app) as client:
+        response = client.get("/api/replay/workspace-seed")
+
+    assert response.status_code == 200
+    assert response.json() == {
+        "package_id": "hdfc-ine001a07rw5",
+        "version": "3",
+        "content_sha256": "b" * 64,
+        "seed_version": 1,
+        "seed": seed,
+    }

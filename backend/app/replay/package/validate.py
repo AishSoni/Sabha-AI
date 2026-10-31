@@ -36,10 +36,17 @@ from app.replay.constants import MAX_TAPE_BYTES, MAX_TAPE_EVENTS
 from .issues import PackageIssue
 from .loader import LoadedPackage
 from .model import (
+    MAX_WORKSPACE_PERSONAS,
+    MAX_WORKSPACE_PRACTICE_SETUPS,
+    MAX_WORKSPACE_PROMPT_CHARS,
+    MAX_WORKSPACE_REVISIONS_PER_PERSONA,
+    MAX_WORKSPACE_STACKS,
+    MAX_WORKSPACE_TOTAL_PROMPT_CHARS,
     PREVIEWABLE_MEDIA_TYPES,
     SUPPORTED_EVENT_VERSIONS,
     SUPPORTED_READ_VERSIONS,
     SUPPORTED_SCHEMA_VERSIONS,
+    SUPPORTED_WORKSPACE_SEED_VERSIONS,
     TERMINAL_EVENT_TYPES,
     resolve_passive_url,
 )
@@ -1150,6 +1157,123 @@ def _validate_guided_beats(package: LoadedPackage, issues: _Issues) -> None:
         previous_completed = beat.completed_checkpoint
 
 
+def _validate_workspace_seed(package: LoadedPackage, issues: _Issues) -> None:
+    """Validate the optional schema-2 expansion without inventing live links."""
+
+    manifest = package.manifest
+    seed = package.workspace_seed
+    path = manifest.workspace_seed or "manifest.json#/workspace_seed"
+
+    if manifest.schema_version >= 2:
+        if manifest.workspace_seed is None:
+            issues.add(
+                "invalid_manifest",
+                "manifest.json",
+                "schema 2 requires a workspace seed reference",
+            )
+        elif seed is None:
+            issues.add("missing_file", path, "declared workspace seed is missing")
+    elif manifest.workspace_seed is not None:
+        issues.add(
+            "invalid_manifest",
+            path,
+            "schema 1 packages cannot declare a workspace seed",
+        )
+
+    if seed is None:
+        return
+
+    if seed.seed_version not in SUPPORTED_WORKSPACE_SEED_VERSIONS:
+        issues.add(
+            "unsupported_version",
+            path,
+            f"seed_version {seed.seed_version} is not supported",
+        )
+
+    if len(seed.personas) > MAX_WORKSPACE_PERSONAS:
+        issues.add(
+            "too_many_records",
+            path,
+            f"workspace seed exceeds {MAX_WORKSPACE_PERSONAS} personas",
+        )
+    if len(seed.stacks) > MAX_WORKSPACE_STACKS:
+        issues.add(
+            "too_many_records",
+            path,
+            f"workspace seed exceeds {MAX_WORKSPACE_STACKS} stacks",
+        )
+    if len(seed.practice_setups) > MAX_WORKSPACE_PRACTICE_SETUPS:
+        issues.add(
+            "too_many_records",
+            path,
+            f"workspace seed exceeds {MAX_WORKSPACE_PRACTICE_SETUPS} practice setups",
+        )
+
+    stack_ids = set()
+    for index, stack in enumerate(seed.stacks):
+        stack_path = f"{path}#/stacks[{index}]"
+        if stack.stack_id in stack_ids:
+            issues.add("duplicate_id", stack_path, "stack_id repeats")
+        stack_ids.add(stack.stack_id)
+
+    persona_ids: set[str] = set()
+    total_prompt_chars = 0
+    for index, persona in enumerate(seed.personas):
+        persona_path = f"{path}#/personas[{index}]"
+        if persona.persona_id in persona_ids:
+            issues.add("duplicate_id", persona_path, "persona_id repeats")
+        persona_ids.add(persona.persona_id)
+        if len(persona.revisions) > MAX_WORKSPACE_REVISIONS_PER_PERSONA:
+            issues.add(
+                "too_many_records",
+                persona_path,
+                f"persona exceeds {MAX_WORKSPACE_REVISIONS_PER_PERSONA} revisions",
+            )
+        for revision in persona.revisions:
+            revision_path = f"{persona_path}/revisions/{revision.revision_id}"
+            if len(revision.prompt) > MAX_WORKSPACE_PROMPT_CHARS:
+                issues.add(
+                    "invalid_prompt",
+                    revision_path,
+                    f"prompt exceeds {MAX_WORKSPACE_PROMPT_CHARS} characters",
+                )
+            total_prompt_chars += len(revision.prompt)
+        for stack_id in persona.stack_ids:
+            if stack_id not in stack_ids:
+                issues.add(
+                    "dangling_id",
+                    persona_path,
+                    f"stack {stack_id!r} is not seeded",
+                )
+
+    if total_prompt_chars > MAX_WORKSPACE_TOTAL_PROMPT_CHARS:
+        issues.add(
+            "too_many_records",
+            path,
+            f"workspace seed prompts exceed {MAX_WORKSPACE_TOTAL_PROMPT_CHARS} characters",
+        )
+
+    recorded_ids = (
+        {intent.intent_id for intent in manifest.intents}
+        | {beat.beat_id for beat in manifest.beats}
+        | set(manifest.checkpoints)
+    )
+    setup_ids: set[str] = set()
+    for index, setup in enumerate(seed.practice_setups):
+        setup_path = f"{path}#/practice_setups[{index}]"
+        if setup.setup_id in setup_ids:
+            issues.add("duplicate_id", setup_path, "setup_id repeats")
+        setup_ids.add(setup.setup_id)
+        if setup.recorded_example_id not in recorded_ids:
+            issues.add(
+                "dangling_id",
+                setup_path,
+                "recorded_example_id does not name a recorded example",
+            )
+
+    _scan_secrets(seed.model_dump(mode="json"), path, issues)
+
+
 def validate_package(package: LoadedPackage) -> list[PackageIssue]:
     issues = _Issues()
     manifest = package.manifest
@@ -1300,6 +1424,7 @@ def validate_package(package: LoadedPackage) -> list[PackageIssue]:
 
     _validate_guided_intents(package, issues)
     _validate_guided_beats(package, issues)
+    _validate_workspace_seed(package, issues)
 
     costs_recorded = manifest.provenance.get("costs") == "recorded"
     if not costs_recorded:

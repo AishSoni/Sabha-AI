@@ -45,7 +45,7 @@ def test_target_history_upgrades_the_seeded_dataset(phase_one_db) -> None:
     applied = dataset.apply_target_migrations()
 
     assert applied[0] == "000_baseline"
-    assert applied[-1] == "036_batched_turn_events"
+    assert applied[-1] == "037_replay_workspace_seed"
     assert len(applied) == 36
     assert phase_one_db.query(
         "SELECT count(*) FROM schema_migrations"

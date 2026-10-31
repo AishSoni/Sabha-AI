@@ -86,6 +86,14 @@ class ReplaySessionView(BaseModel):
     retired: bool = False
 
 
+class ReplayWorkspaceSeedView(BaseModel):
+    package_id: str
+    version: str
+    content_sha256: str
+    seed_version: int
+    seed: dict
+
+
 def _unavailable(exc: Exception) -> HTTPException:
     return HTTPException(status_code=503, detail=str(exc) or "replay_package_unavailable")
 
@@ -192,6 +200,30 @@ async def read_session(replay: ReplayContainer = Depends(get_replay)):
             asset_ids=list(session.preview.asset_ids),
         ),
         retired=session.retired,
+    )
+
+
+@router.get("/workspace-seed", response_model=ReplayWorkspaceSeedView)
+async def read_workspace_seed(replay: ReplayContainer = Depends(get_replay)):
+    """Serve the pinned package's inert practice-workspace seed.
+
+    The response is resolved through the same package/version selector as every
+    other replay read. A legacy package without expansion returns 404 so the
+    client can keep the original guided journey without inventing content.
+    """
+
+    seed = replay.workspace_seed
+    version = replay.workspace_seed_version
+    if seed is None or version is None:
+        raise HTTPException(
+            status_code=404, detail="replay_workspace_seed_unavailable"
+        )
+    return ReplayWorkspaceSeedView(
+        package_id=replay.session.package_id,
+        version=replay.session.package_version,
+        content_sha256=replay.session.content_sha256,
+        seed_version=version,
+        seed=seed,
     )
 
 
