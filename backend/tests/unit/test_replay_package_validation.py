@@ -798,6 +798,16 @@ def test_guided_package_carries_the_expanded_workspace_seed() -> None:
     assert validate_package(package) == []
 
 
+def test_prompt_assembly_fixture_matches_the_backend_composer() -> None:
+    fixture = json.loads(
+        (BACKEND.parent / "frontend/tests/fixtures/demo/prompt-assembly.json").read_text(
+            encoding="utf-8"
+        )
+    )
+    assert fixture["base_instructions"] == BASE_SYSTEM_PROMPT
+    assert get_full_prompt(fixture["persona_prompt"]) == fixture["composed_prompt"]
+
+
 def test_guided_seed_prompts_match_the_prepared_board_prompts() -> None:
     package = load_package(GUIDED_ROOT)
     seed = package.workspace_seed

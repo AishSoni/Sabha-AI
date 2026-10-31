@@ -6,7 +6,7 @@
  * the prepared board immutable, prove revision inspection is not activation,
  * and check that no live persona or stack request is ever made.
  */
-import { act, fireEvent, render, screen, waitFor } from "@testing-library/react";
+import { act, fireEvent, render, screen, waitFor, within } from "@testing-library/react";
 import { usePathname } from "next/navigation";
 import type { ReactNode } from "react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
@@ -264,6 +264,54 @@ describe("demo persona catalog", () => {
             )
         );
         await waitFor(() => expect(screen.getAllByText("Active")).toHaveLength(1));
+    });
+
+    it("captures a practice participant snapshot that later template edits do not rewrite", async () => {
+        installDemoRouter();
+        await renderAt("/demo/roster/persona-credit");
+        await screen.findByRole("heading", { name: "The Credit Analyst" });
+
+        const panel = await screen.findByRole("region", {
+            name: "Practice participant snapshot",
+        });
+        expect(
+            within(panel).getByText(/No source prompt version was stored/)
+        ).toBeInTheDocument();
+        fireEvent.click(
+            within(panel).getByRole("button", {
+                name: "Capture practice snapshot",
+            })
+        );
+
+        expect(
+            await within(panel).findByText(/Captured practice snapshots \(1\)/)
+        ).toBeInTheDocument();
+        const capturedItem = () =>
+            within(panel).getByText(/from v3/).closest("li")!;
+        expect(
+            within(capturedItem()).getByText(
+                /State covenant headroom and flag unsupported assumptions/
+            )
+        ).toBeInTheDocument();
+
+        await openPromptTab();
+        fireEvent.change(screen.getByRole("textbox"), {
+            target: { value: "A new template prompt after capture." },
+        });
+        fireEvent.click(screen.getByRole("button", { name: /Save as New Version/ }));
+        await screen.findByText("Version 4");
+
+        const preview = within(panel)
+            .getByText("Read the composed system prompt")
+            .closest("details")!;
+        expect(
+            within(preview).getByText(/A new template prompt after capture/)
+        ).toBeInTheDocument();
+        expect(
+            within(capturedItem()).getByText(
+                /State covenant headroom and flag unsupported assumptions/
+            )
+        ).toBeInTheDocument();
     });
 
     it("creates a local persona, then reset restores the seeded catalog", async () => {

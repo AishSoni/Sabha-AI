@@ -15,6 +15,7 @@ import { createLocalPersonaRequest } from './transport';
 
 export interface LocalPersonaCatalog {
     client: PersonaCatalogClient;
+    personas: WorkspaceLocalState["personas"];
     stacks: PersonaStackOption[];
     baseInstructions: string | null;
     snapshots: LocalParticipantSnapshot[];
@@ -131,6 +132,7 @@ export function useLocalPersonaCatalog(): LocalPersonaCatalog {
 
     return {
         client,
+        personas: local.personas,
         stacks,
         baseInstructions,
         snapshots: local.participantSnapshots,

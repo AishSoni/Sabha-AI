@@ -3,8 +3,10 @@
 import Link from 'next/link';
 import { useCallback } from 'react';
 import { useDemoWorkspace } from '@/features/demo-workspace';
+import { useReplayRun } from '@/features/meetings/runtime/replay-run';
 import { PersonaEditorScreen } from '../presentation/persona-editor-screen';
 import { DemoCatalogGate } from './demo-catalog-gate';
+import { DemoSnapshotPanel, type BoardStackView, type RecordedParticipantView } from './demo-snapshot-panel';
 import { useLocalPersonaCatalog } from './use-local-persona-catalog';
 
 export function DemoPersonaDetail({
@@ -29,12 +31,33 @@ function Content({
     initialTab: 'overview' | 'prompt';
 }) {
     const { seed } = useDemoWorkspace();
-    const { client, stacks, revisionNotes, revisionBadges } =
-        useLocalPersonaCatalog();
+    const run = useReplayRun();
+    const {
+        client,
+        personas,
+        stacks,
+        baseInstructions,
+        snapshots,
+        revisionNotes,
+        revisionBadges,
+        captureSnapshot,
+    } = useLocalPersonaCatalog();
     const loadStacks = useCallback(async () => stacks, [stacks]);
     const template = seed?.personas.find(
         (persona) => persona.personaId === personaId
     );
+    const board = (run.safeConfig as {
+        board?: {
+            participants?: RecordedParticipantView[];
+            stacks?: Record<string, BoardStackView>;
+        };
+    } | null)?.board;
+    const recordedParticipant = template?.recordedParticipantId
+        ? board?.participants?.find(
+              (participant) =>
+                  participant.participant_id === template.recordedParticipantId
+          ) ?? null
+        : null;
 
     return (
         <div className="min-h-screen bg-zinc-950">
@@ -62,6 +85,18 @@ function Content({
                 revisionNotes={revisionNotes}
                 revisionBadges={revisionBadges}
             />
+            {template ? (
+                <DemoSnapshotPanel
+                    personaId={personaId}
+                    personas={personas}
+                    stacks={stacks}
+                    baseInstructions={baseInstructions}
+                    snapshots={snapshots}
+                    recordedParticipant={recordedParticipant}
+                    boardStacks={board?.stacks}
+                    onCapture={captureSnapshot}
+                />
+            ) : null}
         </div>
     );
 }

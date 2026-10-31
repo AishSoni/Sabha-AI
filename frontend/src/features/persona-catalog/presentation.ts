@@ -33,6 +33,7 @@ export {
     validatePersonaTemplate,
     type PersonaTemplateFields,
 } from './presentation/validation';
+export { composeSystemPrompt } from './presentation/prompt';
 export {
     decodePersona,
     decodePromptRevision,
