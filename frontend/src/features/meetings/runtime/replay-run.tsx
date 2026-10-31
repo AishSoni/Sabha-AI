@@ -342,7 +342,19 @@ export function ReplayRunProvider({ children }: { children: ReactNode }) {
                 return;
             }
             const source = transition?.source_checkpoint ?? intent.checkpoint;
-            await switchCheckpoint(source);
+            const completed = transition?.completed_checkpoint;
+            const completesWithoutTape =
+                !transition?.tape_id &&
+                Boolean(completed) &&
+                intent.kind !== "start_participant";
+            if (completesWithoutTape && completed) {
+                // Creation, archive, and director actions have no recorded
+                // tape to observe. Install their completed snapshot directly
+                // so the screen and guide agree on what just happened.
+                await switchCheckpoint(completed);
+            } else {
+                await switchCheckpoint(source);
+            }
             if (generationRef.current !== generation) return;
             const visibleState = stateRef.current;
             const scopeId = `${current.run_id}:${current.package_version}`;
@@ -357,12 +369,7 @@ export function ReplayRunProvider({ children }: { children: ReactNode }) {
                     current.meeting_id,
                 ],
             });
-            if (
-                (intent.kind === "create_meeting" ||
-                    intent.kind === "archive_meeting" ||
-                    intent.kind === "director_follow_up") &&
-                !transition?.tape_id
-            ) {
+            if (completesWithoutTape) {
                 setSettledIntents((previous) => {
                     const next = new Set(previous);
                     next.add(intent.intent_id);

@@ -209,6 +209,16 @@ function expandedSessionWire() {
         ...sessionWire(),
         intents: [
             {
+                intent_id: "create",
+                kind: "create_meeting",
+                checkpoint: "checkpoint-initial",
+                participant_id: null,
+                operation_id: null,
+                tape_id: null,
+                closing_tape_id: null,
+                label: "Create the meeting",
+            },
+            {
                 intent_id: "credit",
                 kind: "start_participant",
                 checkpoint: "checkpoint-created",
@@ -230,8 +240,23 @@ function expandedSessionWire() {
         ],
         transitions: [
             {
-                transition_id: "canonical-credit",
+                transition_id: "canonical-create",
                 source_checkpoint: "checkpoint-initial",
+                completed_checkpoint: "checkpoint-created",
+                intent_id: "create",
+                kind: "create_meeting",
+                participant_id: null,
+                operation_id: null,
+                tape_id: null,
+                closing_tape_id: null,
+                canonical: true,
+                prerequisites: [],
+                label: "Create the meeting",
+                explanation: "",
+            },
+            {
+                transition_id: "canonical-credit",
+                source_checkpoint: "checkpoint-created",
                 completed_checkpoint: "checkpoint-created",
                 intent_id: "credit",
                 kind: "start_participant",
@@ -339,7 +364,7 @@ describe("ReplayRunProvider prepared playback", () => {
         await act(async () => {
             await result.current.replayIntent("credit");
         });
-        expect(result.current.checkpoint).toBe("checkpoint-initial");
+        expect(result.current.checkpoint).toBe("checkpoint-created");
         expect(result.current.startedIntents.has("credit")).toBe(true);
         expect(result.current.settledIntents.has("credit")).toBe(true);
 
@@ -347,5 +372,57 @@ describe("ReplayRunProvider prepared playback", () => {
             result.current.setPlaybackSpeed(2);
         });
         expect(result.current.playbackSpeed).toBe(2);
+    });
+
+    it("installs the completed snapshot for a creation intent without a tape", async () => {
+        const calls: string[] = [];
+        vi.stubGlobal(
+            "fetch",
+            vi.fn(async (input: unknown) => {
+                const url = String(input);
+                calls.push(url);
+                if (url.endsWith("/replay/session")) return json(expandedSessionWire());
+                if (url.includes("/workspace-seed")) {
+                    return json({ detail: "replay_workspace_seed_unavailable" }, 404);
+                }
+                if (url.includes("/safe-config")) return json({});
+                if (url.includes("/disagreements")) return json([]);
+                if (url.includes("/consensus")) return json([]);
+                if (url.includes("/turns")) return json([completedOperationWire()]);
+                if (url.includes(`/replay/meetings/${MEETING_ID}?`)) {
+                    return json(completedMeetingWire());
+                }
+                return json({ detail: "replay_read_unavailable" }, 404);
+            })
+        );
+
+        const wrapper = ({ children }: { children: ReactNode }) => (
+            <ReplaySessionProvider>
+                <DemoWorkspaceProvider
+                    identity={{
+                        packageId: "placeholder-analyst",
+                        version: "1",
+                        contentSha256: "a".repeat(64),
+                        meetingId: MEETING_ID,
+                    }}
+                >
+                    <ReplayRunProvider>{children}</ReplayRunProvider>
+                </DemoWorkspaceProvider>
+            </ReplaySessionProvider>
+        );
+        const { result } = renderHook(() => useReplayRun(), { wrapper });
+        await waitFor(() => expect(result.current.session).not.toBeNull());
+
+        await act(async () => {
+            await result.current.startIntent("create");
+        });
+
+        expect(result.current.checkpoint).toBe("checkpoint-created");
+        expect(result.current.settledIntents.has("create")).toBe(true);
+        expect(
+            calls.some((url) =>
+                url.includes("checkpoint=checkpoint-created")
+            )
+        ).toBe(true);
     });
 });
