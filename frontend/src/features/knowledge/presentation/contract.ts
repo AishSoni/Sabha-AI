@@ -41,6 +41,11 @@ export interface KnowledgeStackView {
     id: string;
     name: string;
     description?: string | null;
+    /** Practice adapters expose real counts; the live list leaves them unset. */
+    documentCount?: number;
+    readyCount?: number;
+    assignedParticipantNames?: string[];
+    scope?: "shared" | "private";
 }
 
 export interface KnowledgeHrefs {

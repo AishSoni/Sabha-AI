@@ -45,10 +45,13 @@ export interface DocumentPanelViewProps {
     localError?: string | null;
     deletingId?: string | null;
     retrying?: boolean;
-    onUploadFile: (file: File | undefined) => void;
+    onUploadFile?: (file: File | undefined) => void;
     onRetry: (operationId: string) => void;
     onDelete: (document: KnowledgeDocumentView) => void;
     renderPreviewAction?: (document: KnowledgeDocumentView) => ReactNode;
+    /** Demo composition replaces the native chooser with the sample picker. */
+    uploadAction?: ReactNode;
+    emptyMessage?: string;
 }
 
 function statusBadge(document: KnowledgeDocumentView) {
@@ -101,6 +104,8 @@ export function DocumentPanelView({
     onRetry,
     onDelete,
     renderPreviewAction,
+    uploadAction,
+    emptyMessage,
 }: DocumentPanelViewProps) {
     const inputRef = useRef<HTMLInputElement>(null);
 
@@ -118,28 +123,32 @@ export function DocumentPanelView({
                     </CardDescription>
                 </div>
                 <div>
-                    <input
-                        ref={inputRef}
-                        type="file"
-                        accept=".pdf,.docx,.xlsx,.csv,.txt,.md"
-                        className="hidden"
-                        onChange={(event) =>
-                            onUploadFile(event.target.files?.[0])
-                        }
-                    />
-                    <Button
-                        type="button"
-                        size="sm"
-                        disabled={uploading}
-                        onClick={() => inputRef.current?.click()}
-                    >
-                        {uploading ? (
-                            <Loader2 className="mr-1 h-4 w-4 animate-spin" />
-                        ) : (
-                            <Upload className="mr-1 h-4 w-4" />
-                        )}
-                        Upload
-                    </Button>
+                    {uploadAction ?? (
+                        <>
+                            <input
+                                ref={inputRef}
+                                type="file"
+                                accept=".pdf,.docx,.xlsx,.csv,.txt,.md"
+                                className="hidden"
+                                onChange={(event) =>
+                                    onUploadFile?.(event.target.files?.[0])
+                                }
+                            />
+                            <Button
+                                type="button"
+                                size="sm"
+                                disabled={uploading}
+                                onClick={() => inputRef.current?.click()}
+                            >
+                                {uploading ? (
+                                    <Loader2 className="mr-1 h-4 w-4 animate-spin" />
+                                ) : (
+                                    <Upload className="mr-1 h-4 w-4" />
+                                )}
+                                Upload
+                            </Button>
+                        </>
+                    )}
                 </div>
             </CardHeader>
             <CardContent className="space-y-3">
@@ -178,7 +187,8 @@ export function DocumentPanelView({
                 )}
                 {!isLoading && !isError && (documents?.length ?? 0) === 0 && (
                     <p className="rounded-lg border border-dashed border-zinc-800 px-3 py-6 text-center text-sm text-zinc-500">
-                        No documents yet. Upload a PDF, DOCX, XLSX, CSV, TXT, or Markdown file.
+                        {emptyMessage ??
+                            "No documents yet. Upload a PDF, DOCX, XLSX, CSV, TXT, or Markdown file."}
                     </p>
                 )}
 

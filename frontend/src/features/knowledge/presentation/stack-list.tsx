@@ -110,14 +110,38 @@ export function StackListView({
                                 <Trash2 className="h-4 w-4" />
                             </Button>
                         </CardHeader>
-                        <CardContent className="flex items-center justify-between">
-                            <Badge variant="outline">Documents</Badge>
-                            <Link
-                                href={hrefs.stack(stack.id)}
-                                className="text-sm text-cyan-400 hover:text-cyan-300"
-                            >
-                                Open →
-                            </Link>
+                        <CardContent className="space-y-2">
+                            <div className="flex flex-wrap items-center justify-between gap-2">
+                                {stack.documentCount === undefined ? (
+                                    <Badge variant="outline">Documents</Badge>
+                                ) : (
+                                    <div className="flex flex-wrap gap-2">
+                                        <Badge variant="outline">
+                                            {stack.documentCount} document
+                                            {stack.documentCount === 1 ? "" : "s"}
+                                        </Badge>
+                                        <Badge
+                                            variant="secondary"
+                                            className="text-emerald-300"
+                                        >
+                                            {stack.readyCount ?? 0} ready
+                                        </Badge>
+                                    </div>
+                                )}
+                                <Link
+                                    href={hrefs.stack(stack.id)}
+                                    className="text-sm text-cyan-400 hover:text-cyan-300"
+                                >
+                                    Open →
+                                </Link>
+                            </div>
+                            {stack.assignedParticipantNames && (
+                                <p className="text-xs text-zinc-500">
+                                    {stack.assignedParticipantNames.length > 0
+                                        ? `Assigned to ${stack.assignedParticipantNames.join(", ")}`
+                                        : "No practice participant assigned"}
+                                </p>
+                            )}
                         </CardContent>
                     </Card>
                 ))}

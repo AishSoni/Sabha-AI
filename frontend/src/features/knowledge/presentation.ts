@@ -13,9 +13,17 @@ export {
     type StackListViewProps,
 } from "./presentation/stack-list";
 export {
+    StackEditorView,
+    type StackEditorViewProps,
+} from "./presentation/stack-editor";
+export {
     UploadProgressView,
     type UploadProgressViewProps,
 } from "./presentation/upload-progress";
+export {
+    SamplePicker,
+    type SamplePickerProps,
+} from "./presentation/sample-picker";
 export type {
     IngestionProgressView,
     KnowledgeDocumentView,
