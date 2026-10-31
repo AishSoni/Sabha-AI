@@ -6,8 +6,12 @@
  * It binds the base app's persona client to the in-memory request transport
  * and exposes the workspace stack registry and seeded revision annotations.
  */
-import { useCallback, useMemo, useRef } from 'react';
-import { useDemoWorkspace, type LocalParticipantSnapshot, type WorkspaceLocalState } from '@/features/demo-workspace';
+import { useCallback, useMemo } from 'react';
+import {
+    useDemoWorkspace,
+    type LocalParticipantSnapshot,
+    type WorkspaceLocalState,
+} from '@/features/demo-workspace';
 import { createPersonaClient, type PersonaCatalogClient } from '../model/client';
 import type { PersonaStackOption } from '../model/types';
 import { captureSnapshot as captureSnapshotState } from './state';
@@ -15,7 +19,7 @@ import { createLocalPersonaRequest } from './transport';
 
 export interface LocalPersonaCatalog {
     client: PersonaCatalogClient;
-    personas: WorkspaceLocalState["personas"];
+    personas: WorkspaceLocalState['personas'];
     stacks: PersonaStackOption[];
     baseInstructions: string | null;
     snapshots: LocalParticipantSnapshot[];
@@ -33,31 +37,31 @@ function newId(): string {
 }
 
 export function useLocalPersonaCatalog(): LocalPersonaCatalog {
-    const { local, seed, workspaceEpoch, commitLocal, isCurrentEpoch } =
-        useDemoWorkspace();
+    const {
+        local,
+        seed,
+        workspaceEpoch,
+        commitLocal,
+        getLocal,
+        isCurrentEpoch,
+    } = useDemoWorkspace();
 
-    const localRef = useRef<WorkspaceLocalState>(local);
-    localRef.current = local;
-    const epochRef = useRef(workspaceEpoch);
-    epochRef.current = workspaceEpoch;
     const baseInstructions = seed?.baseInstructions ?? null;
-    const baseRef = useRef(baseInstructions);
-    baseRef.current = baseInstructions;
 
     const client = useMemo(
         () =>
             createPersonaClient(
                 createLocalPersonaRequest({
-                    getState: () => localRef.current,
+                    getState: getLocal,
                     commit: commitLocal,
-                    getEpoch: () => epochRef.current,
+                    getEpoch: () => workspaceEpoch,
                     isCurrentEpoch,
                     baseInstructions,
                 })
             ),
         // The client is stable across local edits but replaces on a workspace
         // reset/restart so mounted screens reload from the restored seed.
-        [commitLocal, isCurrentEpoch, workspaceEpoch, baseInstructions]
+        [getLocal, commitLocal, isCurrentEpoch, workspaceEpoch, baseInstructions]
     );
 
     const stacks = useMemo<PersonaStackOption[]>(
@@ -96,8 +100,7 @@ export function useLocalPersonaCatalog(): LocalPersonaCatalog {
     const captureSnapshot = useCallback(
         async (personaId: string): Promise<LocalParticipantSnapshot> => {
             await Promise.resolve();
-            const capturedEpoch = epochRef.current;
-            if (!isCurrentEpoch(capturedEpoch)) {
+            if (!isCurrentEpoch(workspaceEpoch)) {
                 throw new Error(
                     'This workspace was reset; the participant snapshot was not saved.'
                 );
@@ -109,7 +112,7 @@ export function useLocalPersonaCatalog(): LocalPersonaCatalog {
                 const result = captureSnapshotState(
                     current,
                     personaId,
-                    baseRef.current,
+                    baseInstructions,
                     {
                         idFactory: newId,
                         clock: () => new Date().toISOString(),
@@ -127,7 +130,12 @@ export function useLocalPersonaCatalog(): LocalPersonaCatalog {
             if (!snapshot) throw new Error('The participant snapshot was not saved.');
             return snapshot;
         },
-        [commitLocal, isCurrentEpoch]
+        [
+            baseInstructions,
+            commitLocal,
+            isCurrentEpoch,
+            workspaceEpoch,
+        ]
     );
 
     return {

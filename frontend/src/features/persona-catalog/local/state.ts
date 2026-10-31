@@ -153,8 +153,7 @@ export function createPersona(
 export function updatePersona(
     state: WorkspaceLocalState,
     personaId: string,
-    input: PersonaUpdateInput,
-    deps: LocalCatalogDeps
+    input: PersonaUpdateInput
 ): LocalCatalogResult<{ persona: WorkspacePersona }> {
     const persona = state.personas.find((item) => item.personaId === personaId);
     if (!persona) return failure('not_found', 'Persona not found.', 404);

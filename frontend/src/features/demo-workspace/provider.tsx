@@ -54,6 +54,8 @@ interface DemoWorkspaceContextValue {
     commitLocal: (
         update: (current: WorkspaceLocalState) => WorkspaceLocalState
     ) => LocalOutcome<void>;
+    /** Latest committed state, for adapters that must not capture a render. */
+    getLocal: () => WorkspaceLocalState;
     isCurrentEpoch: (epoch: number) => boolean;
     queryKey: (domain: string) => readonly [string, string, string];
 }
@@ -201,6 +203,8 @@ export function DemoWorkspaceProvider({
         []
     );
 
+    const getLocal = useCallback(() => localRef.current, []);
+
     const isCurrentEpoch = useCallback(
         (epoch: number) => epochRef.current === epoch,
         []
@@ -255,6 +259,7 @@ export function DemoWorkspaceProvider({
             resetWorkspace,
             restartRecording,
             commitLocal,
+            getLocal,
             isCurrentEpoch,
             queryKey,
         }),
@@ -272,6 +277,7 @@ export function DemoWorkspaceProvider({
             resetWorkspace,
             restartRecording,
             commitLocal,
+            getLocal,
             isCurrentEpoch,
             queryKey,
         ]

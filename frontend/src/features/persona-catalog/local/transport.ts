@@ -12,7 +12,6 @@ import {
     activateRevision,
     createPersona,
     deletePersona,
-    duplicatePersona,
     personaListWire,
     personaWire,
     revisionWire,
@@ -170,8 +169,7 @@ export function createLocalPersonaRequest(
                     updatePersona(
                         current,
                         personaId,
-                        init.body as PersonaUpdateInput,
-                        { idFactory, clock }
+                        init.body as PersonaUpdateInput
                     )
                 );
                 return personaWire(updated.persona) as T;

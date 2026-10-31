@@ -39,7 +39,6 @@ export function RosterScreen({ client, hrefs, heading, description, confirmDelet
 
     useEffect(() => {
         let active = true;
-        setLoading(true);
         client
             .list()
             .then((response) => {
