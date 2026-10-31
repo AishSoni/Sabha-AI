@@ -163,4 +163,43 @@ revision, restore an older one and explain why an existing participant did not
 change. The original guided path and live catalog still work. Record executed
 checks later; no hosted acceptance or new model run is implied.
 
+### Executed evidence
+
+Executed 2026-10-31 on branch `main` with the local backend virtual environment
+and the frontend test/build toolchain. No hosted deployment, new model run, or
+browser acceptance was performed.
+
+- `frontend`: `npm test` passed 76 files / 447 tests, including the local
+  catalog state and transport suites, the shared editor revision tests, the demo
+  roster integration suite, the canonical journey experience, and the existing
+  live persona-editor tests.
+- `frontend`: `npm run test:architecture` passed 4 files / 27 tests with no new
+  feature-barrel, deep-import, or presentation-boundary exception. The demo
+  route imports the catalog through `presentation` and `local`; the app-level
+  bridge reads the prepared board for the snapshot comparison.
+- `frontend`: `npx tsc --noEmit` passed.
+- `frontend`: `npm run lint` reported 0 errors and 23 warnings; all remaining
+  warnings are outside the Spec 24 implementation.
+- `frontend`: `npm run build` compiled successfully and emitted `/demo/roster`,
+  `/demo/roster/new`, `/demo/roster/[id]`, and
+  `/demo/roster/[id]/history` alongside the unchanged operator routes.
+- `backend`: `python -m pytest tests/unit/test_replay_package_validation.py`
+  passed 47 tests, including seed v2 requirements, v1 compatibility, prepared
+  participant links, prompt-assembly parity, and the package's active prompts.
+- `backend`: publication, runtime, surface, clean-checkout, participant
+  construction, persona isolation, and persona snapshot suites passed
+  (`test_replay_publication.py` 9, `test_replay_package_runtime.py` 9,
+  `test_replay_clean_checkout.py` 2, the combined surface/snapshot/isolation
+  run 22, and the combined participant/persona regression run 22).
+- `backend`: `python -m scripts.replay_package validate
+  replay_packages/hdfc-ine001a07rw5` returned `ok: true`, version `4`, content
+  SHA-256 `d7d6cdddeaf0aee2f2e48f51ec9ff6f45c12dc5813f792d8d4b7c46c8fc42dc7`.
+- The package build was run twice; the second run produced the same content
+  hash and left the working tree clean.
+
+Not executed: Playwright browser acceptance, hosted replay acceptance, a real
+screen-reader or mobile-device pass, and any new provider/model call. The
+snapshot capture, reset, and no-live-request assertions were exercised in the
+DOM-level integration suite, not against a hosted deployment.
+
 Next: [Knowledge stacks and restricted sample documents](spec-25-demo-knowledge-and-sample-documents.md).

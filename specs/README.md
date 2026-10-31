@@ -15,7 +15,8 @@ closing/archive path remain supported. Local edits do not generate recorded
 answers; refresh/full reset discards them. This narrowly supersedes guide-only
 navigation and non-editable-UI restrictions, not server read-only isolation,
 no-Auth replay, immutable published versions or earlier outstanding gates.
-These five specs are planned, not implemented or accepted.
+Specs 23 and 24 are implemented in this workspace; Specs 25–27 remain planned.
+Hosted acceptance remains outstanding.
 
 ## Ordered specs
 

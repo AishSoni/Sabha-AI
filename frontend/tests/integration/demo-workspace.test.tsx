@@ -236,7 +236,8 @@ describe("workspace seed decoder", () => {
             base_instructions: undefined,
             highlighted_persona_id: undefined,
             personas: seed.personas.map((persona) => {
-                const { recorded_participant_id: _unused, ...rest } = persona;
+                const rest: Record<string, unknown> = { ...persona };
+                delete rest.recorded_participant_id;
                 return rest;
             }),
         });
