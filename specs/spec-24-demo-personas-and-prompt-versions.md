@@ -169,7 +169,7 @@ Executed 2026-10-31 on branch `main` with the local backend virtual environment
 and the frontend test/build toolchain. No hosted deployment, new model run, or
 browser acceptance was performed.
 
-- `frontend`: `npm test` passed 76 files / 447 tests, including the local
+- `frontend`: `npm test` passed 77 files / 449 tests, including the local
   catalog state and transport suites, the shared editor revision tests, the demo
   roster integration suite, the canonical journey experience, and the existing
   live persona-editor tests.
