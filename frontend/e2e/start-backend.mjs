@@ -25,6 +25,7 @@ const child = spawn(
     [
         'scripts/e2e_provision.py',
         '--serve',
+        ...(process.env.E2E_MIXED === '1' ? ['--mixed'] : []),
         '--env-out',
         join('..', 'frontend', '.e2e-env.json'),
     ],

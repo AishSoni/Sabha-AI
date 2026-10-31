@@ -79,6 +79,7 @@ def main(argv: list[str] | None = None) -> int:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--json", action="store_true")
     parser.add_argument("--serve", action="store_true")
+    parser.add_argument("--mixed", action="store_true")
     parser.add_argument("--env-out", default="")
     parser.add_argument("--port", type=int, default=8123)
     parser.add_argument("--home", default=DEFAULT_HOME)
@@ -126,7 +127,7 @@ def main(argv: list[str] | None = None) -> int:
         publish_package(conn, package, MemoryStorage())
 
     env = {
-        "REPLAY_ONLY": "true",
+        "REPLAY_ONLY": "false" if args.mixed else "true",
         "REPLAY_DATABASE_URL": login_uri(database_uri, READER_LOGIN),
         "REPLAY_PACKAGE_ID": package.manifest.package_id,
         "REPLAY_PACKAGE_VERSION": package.manifest.version,
@@ -141,7 +142,7 @@ def main(argv: list[str] | None = None) -> int:
         os.environ.update(env)
         from app.platform.config import settings
 
-        settings.replay_only = True
+        settings.replay_only = not args.mixed
         settings.replay_database_url = env["REPLAY_DATABASE_URL"]
         settings.replay_package_id = env["REPLAY_PACKAGE_ID"]
         settings.replay_package_version = env["REPLAY_PACKAGE_VERSION"]
@@ -150,7 +151,52 @@ def main(argv: list[str] | None = None) -> int:
         settings.cors_origins = ["http://127.0.0.1:3100"]
         import uvicorn
 
-        from main import app
+        if args.mixed:
+            from app.bootstrap import Container, create_app
+            from app.modules.access.application.contracts import VerifiedIdentity
+            from app.modules.access.presentation.http import require_operator_access
+            from app.replay.runtime import ReplayRuntime
+            from app.replay.source import ReplaySource
+            from app.replay.streaming import StreamLimiter
+
+            class _SentinelLiveReads:
+                def __init__(self) -> None:
+                    self.calls: list[tuple] = []
+
+                async def list_meetings(self):
+                    self.calls.append(("list_meetings",))
+                    return []
+
+                async def get_meeting(self, meeting_id):
+                    self.calls.append(("get_meeting", meeting_id))
+                    return None
+
+                async def get_disagreements(self, meeting_id):
+                    self.calls.append(("get_disagreements", meeting_id))
+                    return []
+
+                async def get_consensus_list(self, meeting_id):
+                    self.calls.append(("get_consensus_list", meeting_id))
+                    return []
+
+            runtime = ReplayRuntime(
+                ReplaySource(),
+                package_id=package.manifest.package_id,
+                limiter=StreamLimiter(max_global=4, max_per_client=2),
+            )
+            app = create_app(
+                Container(
+                    prompt_catalog=object(),
+                    meeting_reads=_SentinelLiveReads(),
+                ),
+                runtime,
+                mount_live=True,
+            )
+            app.dependency_overrides[require_operator_access] = lambda: VerifiedIdentity(
+                user_id="11111111-1111-4111-8111-111111111111"
+            )
+        else:
+            from main import app
 
         uvicorn.run(app, host="127.0.0.1", port=args.port, log_level="warning")
         return 0
