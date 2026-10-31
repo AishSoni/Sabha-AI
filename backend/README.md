@@ -142,8 +142,8 @@ A replay process needs no live Supabase, provider, or operator configuration. Se
 REPLAY_ONLY=true
 REPLAY_DATABASE_URL=...      # login in sabha_replay_reader
 REPLAY_PACKAGE_ID=hdfc-ine001a07rw5
-REPLAY_PACKAGE_VERSION=2
-REPLAY_PACKAGE_SHA256=5fb2a800c907f4de3be69c4b4b1262e32b1570b0abe03f8819ed783baac9bc82
+REPLAY_PACKAGE_VERSION=3
+REPLAY_PACKAGE_SHA256=24d66230793547dc95f2e902b07b88d1035aef47b57602647ce4dc57a8637261
 ```
 
 Then start the same app. The live graph is not mounted; `/`, `/health`, and the replay routes remain available.
