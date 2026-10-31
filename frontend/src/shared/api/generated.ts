@@ -6622,7 +6622,7 @@ export interface operations {
         parameters: {
             query?: {
                 after?: number;
-                speed?: 1 | 2;
+                speed?: number;
                 checkpoint?: string | null;
                 package?: string | null;
                 version?: string | null;
@@ -6660,7 +6660,7 @@ export interface operations {
         parameters: {
             query?: {
                 after?: number;
-                speed?: 1 | 2;
+                speed?: number;
                 checkpoint?: string | null;
                 package?: string | null;
                 version?: string | null;

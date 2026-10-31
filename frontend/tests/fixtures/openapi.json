@@ -5219,11 +5219,9 @@
             "in": "query",
             "required": false,
             "schema": {
-              "enum": [
-                1,
-                2
-              ],
               "type": "integer",
+              "maximum": 2,
+              "minimum": 1,
               "default": 1,
               "title": "Speed"
             }
@@ -5331,11 +5329,9 @@
             "in": "query",
             "required": false,
             "schema": {
-              "enum": [
-                1,
-                2
-              ],
               "type": "integer",
+              "maximum": 2,
+              "minimum": 1,
               "default": 1,
               "title": "Speed"
             }
