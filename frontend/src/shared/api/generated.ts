@@ -851,6 +851,30 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/replay/workspace-seed": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Read Workspace Seed
+         * @description Serve the pinned package's inert practice-workspace seed.
+         *
+         *     The response is resolved through the same package/version selector as every
+         *     other replay read. A legacy package without expansion returns 404 so the
+         *     client can keep the original guided journey without inventing content.
+         */
+        get: operations["read_workspace_seed_api_replay_workspace_seed_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/replay/meetings": {
         parameters: {
             query?: never;
@@ -2003,6 +2027,21 @@ export interface components {
              * @default false
              */
             retired: boolean;
+        };
+        /** ReplayWorkspaceSeedView */
+        ReplayWorkspaceSeedView: {
+            /** Package Id */
+            package_id: string;
+            /** Version */
+            version: string;
+            /** Content Sha256 */
+            content_sha256: string;
+            /** Seed Version */
+            seed_version: number;
+            /** Seed */
+            seed: {
+                [key: string]: unknown;
+            };
         };
         /**
          * RequestProviderSettings
@@ -6175,6 +6214,39 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["ReplaySessionView"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    read_workspace_seed_api_replay_workspace_seed_get: {
+        parameters: {
+            query?: {
+                checkpoint?: string | null;
+                package?: string | null;
+                version?: string | null;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ReplayWorkspaceSeedView"];
                 };
             };
             /** @description Validation Error */
