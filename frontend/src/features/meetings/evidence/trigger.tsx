@@ -20,6 +20,7 @@ export interface EvidenceTriggerProps {
     descriptor: EvidenceDescriptor;
     citation?: EvidenceCitationRef | null;
     label?: string;
+    ariaLabel?: string;
     className?: string;
 }
 
@@ -27,6 +28,7 @@ export function EvidenceTrigger({
     descriptor,
     citation,
     label = "Preview",
+    ariaLabel,
     className,
 }: EvidenceTriggerProps) {
     const { open } = useEvidencePreview();
@@ -36,7 +38,7 @@ export function EvidenceTrigger({
             variant="outline"
             size="sm"
             className={className}
-            aria-label={`Preview evidence: ${descriptor.title}`}
+            aria-label={ariaLabel ?? `Preview evidence: ${descriptor.title}`}
             onClick={() => open(descriptor, citationContext(citation))}
         >
             <Eye className="size-3.5" />

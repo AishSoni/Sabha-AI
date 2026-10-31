@@ -3,6 +3,7 @@
 import { useMemo } from "react";
 import { useDemoWorkspace } from "@/features/demo-workspace";
 import { DemoStackDetail } from "@/features/knowledge/local";
+import { collectRecordedExamples } from "@/features/knowledge/local";
 import { EvidencePreviewProvider } from "@/features/meetings/evidence/provider";
 import { EvidencePreviewHost } from "@/features/meetings/evidence/host";
 import { EvidenceTrigger } from "@/features/meetings/evidence/trigger";
@@ -32,6 +33,14 @@ export function DemoKnowledgeStackRoute({ stackId }: { stackId: string }) {
         () => new Map(session.assets.map((asset) => [asset.asset_id, asset])),
         [session.assets]
     );
+    const recordedExamples = useMemo(
+        () =>
+            collectRecordedExamples(
+                workspace.seed?.samples ?? [],
+                session.claims
+            ),
+        [workspace.seed, session.claims]
+    );
     const revokedIds = workspace.local.documents
         .filter((document) => document.status === "revoked")
         .map((document) => document.documentId)
@@ -42,6 +51,7 @@ export function DemoKnowledgeStackRoute({ stackId }: { stackId: string }) {
         <EvidencePreviewProvider adapter={evidence} epoch={previewEpoch}>
             <DemoStackDetail
                 stackId={stackId}
+                recordedExamples={recordedExamples}
                 renderPreviewAction={(sample) => {
                     const asset = assetsById.get(sample.assetId);
                     if (!asset) return null;
@@ -52,6 +62,31 @@ export function DemoKnowledgeStackRoute({ stackId }: { stackId: string }) {
                                 title: sample.fileName,
                             }}
                             label="Preview source"
+                        />
+                    );
+                }}
+                renderRecordedPreviewAction={(example) => {
+                    const sample = workspace.seed?.samples.find(
+                        (candidate) => candidate.sampleId === example.sampleId
+                    );
+                    if (!sample) return null;
+                    const asset = assetsById.get(sample.assetId);
+                    if (!asset) return null;
+                    return (
+                        <EvidenceTrigger
+                            descriptor={{
+                                ...descriptorForAsset(asset),
+                                title: sample.fileName,
+                            }}
+                            citation={{
+                                source: example.sourceTitle ?? "Recorded evidence",
+                                title: sample.fileName,
+                                snippet: example.excerpt,
+                                claim_id: example.claimId,
+                                locator: example.locator,
+                            }}
+                            label="Preview recorded example"
+                            ariaLabel={`Preview recorded example: ${sample.fileName}`}
                         />
                     );
                 }}

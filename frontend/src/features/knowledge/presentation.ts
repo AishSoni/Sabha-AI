@@ -24,6 +24,11 @@ export {
     SamplePicker,
     type SamplePickerProps,
 } from "./presentation/sample-picker";
+export {
+    RecordedExamplesView,
+    type RecordedExampleView,
+    type RecordedExamplesViewProps,
+} from "./presentation/recorded-examples";
 export type {
     IngestionProgressView,
     KnowledgeDocumentView,

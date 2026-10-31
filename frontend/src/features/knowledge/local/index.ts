@@ -49,3 +49,8 @@ export {
     updateLocalStack,
     type StackParticipants,
 } from "./stack-state";
+export {
+    collectRecordedExamples,
+    type RecordedClaimLike,
+    type RecordedSampleLike,
+} from "./recorded-examples";

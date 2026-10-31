@@ -27,9 +27,21 @@ import {
     demoMeetingWire,
     replaySessionWire,
 } from "../fixtures/demo/journey";
+import type {
+    ReplayAsset,
+    ReplayClaim,
+} from "@/features/meetings/runtime/contract";
 import { demoWorkspaceSeedEnvelope } from "../fixtures/demo/workspace";
 
 const API = "http://localhost:8000/api";
+
+type DemoSessionTestWire = Omit<
+    ReturnType<typeof replaySessionWire>,
+    "assets" | "claims"
+> & {
+    assets: ReplayAsset[];
+    claims: ReplayClaim[];
+};
 
 const verifySample = vi.hoisted(() => vi.fn(async () => undefined));
 
@@ -152,7 +164,10 @@ function json(status: number, body: unknown): Response {
     } as unknown as Response;
 }
 
-function installDemoRouter(seedStatus = 200) {
+function installDemoRouter(
+    seedStatus = 200,
+    session: DemoSessionTestWire = replaySessionWire() as DemoSessionTestWire
+) {
     const calls: { url: string; method: string }[] = [];
     vi.stubGlobal(
         "fetch",
@@ -161,7 +176,7 @@ function installDemoRouter(seedStatus = 200) {
             calls.push({ url, method: init?.method ?? "GET" });
             const parsed = new URL(url);
             const path = parsed.pathname.replace(/^\/api/, "");
-            if (path === "/replay/session") return json(200, replaySessionWire());
+            if (path === "/replay/session") return json(200, session);
             if (path === `/replay/meetings/${DEMO_MEETING_ID}/safe-config`) {
                 return json(200, demoSafeConfigWire());
             }
@@ -189,6 +204,42 @@ function installDemoRouter(seedStatus = 200) {
         })
     );
     return calls;
+}
+
+function sessionWithRecordedExample() {
+    const session = replaySessionWire();
+    const assets: ReplayAsset[] = [
+        {
+            asset_id: "shared-fact-sheet",
+            storage_path: "assets/shared/hdfc-v007-shared-fact-sheet.md",
+            media_type: "text/markdown",
+            sha256: "b".repeat(64),
+            size: 1350,
+            locator: "assets/shared/hdfc-v007-shared-fact-sheet.md",
+            public_url:
+                "https://cdn.example.test/replay/hdfc-v007-shared-fact-sheet.md",
+            source: "Demo-authored prepared input",
+            capture_date: "2026-10-16",
+            rights: "Demo-authored for this replay.",
+            authored: true,
+            public_demo: true,
+            extraction: null,
+        },
+    ];
+    const claims: ReplayClaim[] = [
+        {
+            claim_id: "C10",
+            kind: "unknown",
+            text: "The meeting record contains no executable price or yield.",
+            evidence_asset_id: "shared-fact-sheet",
+            locator: "Shared fact sheet, What is not established",
+            excerpt: "No executable price, yield, or secondary-market liquidity",
+            source_url: null,
+            source_title: "Shared fact sheet",
+            capture_date: null,
+        },
+    ];
+    return { ...session, assets, claims };
 }
 
 async function renderAt(pathname: string) {
@@ -320,6 +371,33 @@ describe("demo practice knowledge stacks", () => {
             expect.stringMatching(/recorded meeting and its documents are unchanged/i)
         );
         expect(screen.getByText(/0 documents · 0 ready/)).toBeInTheDocument();
+    });
+
+    it("links a prepared sample to its explicit recorded claim and never performs a live retrieval", async () => {
+        const calls = installDemoRouter(200, sessionWithRecordedExample());
+        await renderAt("/demo/knowledge-stacks/shared-fact-sheet");
+
+        expect(
+            await screen.findByText("Recorded example using the prepared input")
+        ).toBeInTheDocument();
+        expect(
+            screen.getByText(
+                "The meeting record contains no executable price or yield."
+            )
+        ).toBeInTheDocument();
+        expect(screen.getByText(/Claim C10/)).toBeInTheDocument();
+        expect(
+            screen.getByRole("button", {
+                name: /Preview recorded example/,
+            })
+        ).toBeInTheDocument();
+        expect(
+            calls.every(
+                (call) =>
+                    call.url.startsWith(`${API}/replay/`) &&
+                    !/\/(knowledge_stacks|documents)(\/|$)/.test(call.url)
+            )
+        ).toBe(true);
     });
 
     it("creates and renames a local stack, then deletes it with its documents", async () => {

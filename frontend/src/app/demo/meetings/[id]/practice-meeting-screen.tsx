@@ -22,6 +22,10 @@ import {
 import { useDemoWorkspace } from "@/features/demo-workspace";
 import type { WorkspaceSample } from "@/features/demo-workspace";
 import { DocumentPanelView } from "@/features/knowledge/presentation";
+import {
+    RecordedExamplesView,
+    type RecordedExampleView,
+} from "@/features/knowledge/presentation";
 import { SamplePicker } from "@/features/knowledge/presentation";
 import {
     useLocalDocuments,
@@ -31,13 +35,17 @@ import {
 export interface PracticeMeetingScreenProps {
     meetingId: string;
     originalRecordingHref: string;
+    recordedExamples?: RecordedExampleView[];
     renderPreviewAction?: (sample: WorkspaceSample) => ReactNode;
+    renderRecordedPreviewAction?: (example: RecordedExampleView) => ReactNode;
 }
 
 export function PracticeMeetingScreen({
     meetingId,
     originalRecordingHref,
+    recordedExamples,
     renderPreviewAction,
+    renderRecordedPreviewAction,
 }: PracticeMeetingScreenProps) {
     const workspace = useDemoWorkspace();
     const practice = useLocalPracticeMeetings();
@@ -60,6 +68,13 @@ export function PracticeMeetingScreen({
                 ])
             ),
         [workspace.local.stacks]
+    );
+    const visibleSampleIds = useMemo(
+        () => new Set(meeting?.sampleIds ?? []),
+        [meeting?.sampleIds]
+    );
+    const examples = (recordedExamples ?? []).filter((example) =>
+        visibleSampleIds.has(example.sampleId)
     );
 
     if (!meeting) {
@@ -237,6 +252,11 @@ export function PracticeMeetingScreen({
                     </Button>
                 }
                 emptyMessage="No shared practice documents in this setup yet. Add an approved sample to watch simulated ingestion."
+            />
+
+            <RecordedExamplesView
+                examples={examples}
+                renderPreviewAction={renderRecordedPreviewAction}
             />
 
             <Card className="border-zinc-800 bg-zinc-900/50">

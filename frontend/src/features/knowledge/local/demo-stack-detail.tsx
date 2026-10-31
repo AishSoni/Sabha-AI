@@ -15,6 +15,7 @@ import {
     type WorkspaceSample,
 } from "@/features/demo-workspace";
 import { DocumentPanelView } from "../presentation/document-panel";
+import { RecordedExamplesView, type RecordedExampleView } from "../presentation/recorded-examples";
 import { SamplePicker } from "../presentation/sample-picker";
 import { StackEditorView } from "../presentation/stack-editor";
 import { DemoKnowledgeGate } from "./demo-knowledge-gate";
@@ -24,21 +25,35 @@ import { useLocalStacks } from "./use-local-stacks";
 
 export interface DemoStackDetailProps {
     stackId: string;
+    recordedExamples?: RecordedExampleView[];
     renderPreviewAction?: (sample: WorkspaceSample) => ReactNode;
+    renderRecordedPreviewAction?: (example: RecordedExampleView) => ReactNode;
 }
 
 export function DemoStackDetail({
     stackId,
+    recordedExamples,
     renderPreviewAction,
+    renderRecordedPreviewAction,
 }: DemoStackDetailProps) {
     return (
         <DemoKnowledgeGate>
-            <Content stackId={stackId} renderPreviewAction={renderPreviewAction} />
+            <Content
+                stackId={stackId}
+                recordedExamples={recordedExamples}
+                renderPreviewAction={renderPreviewAction}
+                renderRecordedPreviewAction={renderRecordedPreviewAction}
+            />
         </DemoKnowledgeGate>
     );
 }
 
-function Content({ stackId, renderPreviewAction }: DemoStackDetailProps) {
+function Content({
+    stackId,
+    recordedExamples,
+    renderPreviewAction,
+    renderRecordedPreviewAction,
+}: DemoStackDetailProps) {
     const workspace = useDemoWorkspace();
     const stacks = useLocalStacks();
     const [pickerOpen, setPickerOpen] = useState(false);
@@ -76,6 +91,12 @@ function Content({ stackId, renderPreviewAction }: DemoStackDetailProps) {
 
     const eligibleSamples = documents.samples.filter((sample) =>
         sample.destinationKinds.includes("stack")
+    );
+    const availableSampleIds = new Set(
+        eligibleSamples.map((sample) => sample.sampleId)
+    );
+    const examples = (recordedExamples ?? []).filter((example) =>
+        availableSampleIds.has(example.sampleId)
     );
     const audience = audienceLabel(participants);
 
@@ -196,6 +217,11 @@ function Content({ stackId, renderPreviewAction }: DemoStackDetailProps) {
                     </div>
                 </CardContent>
             </Card>
+
+            <RecordedExamplesView
+                examples={examples}
+                renderPreviewAction={renderRecordedPreviewAction}
+            />
 
             <StackEditorView
                 key={stack.id}
