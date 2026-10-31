@@ -111,6 +111,9 @@ export function createPersona(
     input: PersonaCreateInput,
     deps: LocalCatalogDeps
 ): LocalCatalogResult<{ persona: WorkspacePersona }> {
+    if (typeof input.name !== 'string') {
+        return failure('invalid', 'name must not be empty', 400);
+    }
     const problems = validatePersonaTemplate({
         name: input.name,
         subtitle: input.subtitle,
