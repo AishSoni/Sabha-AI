@@ -102,6 +102,24 @@ def test_sse_frames_arrive_incrementally_over_a_real_socket(live_server) -> None
     assert stamps[-1] - stamps[0] >= 0.3
 
 
+def test_explicit_playback_speeds_are_accepted_over_http(live_server) -> None:
+    base_url, _ = live_server
+    for speed in (1, 2):
+        with httpx.Client(timeout=15) as client:
+            with client.stream(
+                "GET",
+                base_url + BASE,
+                params={
+                    "checkpoint": "checkpoint-active",
+                    "after": 0,
+                    "speed": speed,
+                },
+            ) as response:
+                assert response.status_code == 200
+                events, _ = _read_events(response)
+        assert events[-1]["type"] == "done"
+
+
 def test_resume_and_disconnect_release_the_client_slot(live_server) -> None:
     base_url, runtime = live_server
     with httpx.Client(timeout=15) as client:
