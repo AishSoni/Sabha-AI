@@ -83,8 +83,15 @@ class ReplayTurnStream:
         self._max_seconds = max_seconds
 
     async def events(
-        self, meeting_id: str, operation_id: str, *, after: int = 0
+        self,
+        meeting_id: str,
+        operation_id: str,
+        *,
+        after: int = 0,
+        speed: int = 1,
     ) -> AsyncGenerator[dict[str, str], None]:
+        if speed not in (1, 2):
+            raise ValueError("speed must be 1 or 2")
         tape = await self._source.read_tape(
             self._published.package_id,
             self._published.version,
@@ -106,7 +113,7 @@ class ReplayTurnStream:
             delay_ms = 0 if first else int(event.get("delay_ms") or 0)
             first = False
             if delay_ms > 0:
-                await self._clock(min(delay_ms, self._max_delay_ms) / 1000.0)
+                await self._clock(min(delay_ms, self._max_delay_ms) / 1000.0 / speed)
             frame = json.dumps(event_dto(event))
             if sent + len(frame.encode("utf-8")) > self._max_bytes:
                 return
@@ -135,8 +142,15 @@ class ReplayClosingStream:
         self._max_seconds = max_seconds
 
     async def events(
-        self, meeting_id: str, closing_id: str, *, after: int = 0
+        self,
+        meeting_id: str,
+        closing_id: str,
+        *,
+        after: int = 0,
+        speed: int = 1,
     ) -> AsyncGenerator[dict[str, str], None]:
+        if speed not in (1, 2):
+            raise ValueError("speed must be 1 or 2")
         tape = await self._source.read_closing_tape(
             self._published.package_id,
             self._published.version,
@@ -158,7 +172,7 @@ class ReplayClosingStream:
             delay_ms = 0 if first else int(event.get("delay_ms") or 0)
             first = False
             if delay_ms > 0:
-                await self._clock(min(delay_ms, self._max_delay_ms) / 1000.0)
+                await self._clock(min(delay_ms, self._max_delay_ms) / 1000.0 / speed)
             payload: dict[str, Any] = event.get("payload") or {}
             envelope = {
                 "event_id": event["id"],

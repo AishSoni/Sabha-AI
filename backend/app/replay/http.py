@@ -8,7 +8,7 @@ resolves the pinned package/version plus one allowlisted checkpoint selector.
 
 from __future__ import annotations
 
-from typing import Any
+from typing import Any, Literal
 
 from fastapi import APIRouter, Depends, FastAPI, HTTPException, Query, Request
 from fastapi.responses import JSONResponse
@@ -348,6 +348,7 @@ async def observe_turn(
     meeting_id: str,
     operation_id: str,
     after: int = 0,
+    speed: Literal[1, 2] = 1,
     replay: ReplayContainer = Depends(get_replay),
 ):
     _require_recorded_meeting(replay, meeting_id)
@@ -374,7 +375,7 @@ async def observe_turn(
     async def body():
         try:
             async for frame in stream.events(
-                meeting_id, operation_id, after=max(0, after)
+                meeting_id, operation_id, after=max(0, after), speed=speed
             ):
                 yield frame
         finally:
@@ -388,6 +389,7 @@ async def observe_closing(
     request: Request,
     meeting_id: str,
     after: int = 0,
+    speed: Literal[1, 2] = 1,
     replay: ReplayContainer = Depends(get_replay),
 ):
     _require_recorded_meeting(replay, meeting_id)
@@ -405,7 +407,7 @@ async def observe_closing(
     async def body():
         try:
             async for frame in stream.events(
-                meeting_id, closing_id, after=max(0, after)
+                meeting_id, closing_id, after=max(0, after), speed=speed
             ):
                 yield frame
         finally:

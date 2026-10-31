@@ -270,6 +270,23 @@ def test_closing_sse_uses_the_typed_recorded_envelope(
         )
 
 
+def test_unsupported_playback_speed_is_rejected_before_streaming(
+    replay_db, monkeypatch
+) -> None:
+    runtime = _runtime(monkeypatch, replay_db)
+    with _client(runtime) as client:
+        turn = client.get(
+            f"/api/replay/meetings/{MEETING_ID}/turns/{OPERATION_ID}/events",
+            params={"checkpoint": "checkpoint-active", "speed": 3},
+        )
+        closing = client.get(
+            f"/api/replay/meetings/{MEETING_ID}/closing/events",
+            params={"checkpoint": "checkpoint-closed", "speed": 0},
+        )
+    assert turn.status_code == 422
+    assert closing.status_code == 422
+
+
 def test_two_visitors_get_independent_ephemeral_runs(replay_db, monkeypatch) -> None:
     runtime = _runtime(monkeypatch, replay_db)
     with _client(runtime) as client:
