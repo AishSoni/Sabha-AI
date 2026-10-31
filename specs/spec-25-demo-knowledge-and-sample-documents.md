@@ -288,12 +288,13 @@ browser acceptance was performed.
   validation, publication and runtime run passed 70 tests. The clean-checkout
   suite passed 2 tests after its package-version expectation was updated to
   version `5`.
-- `frontend`: `npm test` passed 90 files / 516 tests. Coverage includes the
+- `frontend`: `npm test` passed 90 files / 517 tests. Coverage includes the
   sample allowlist and integrity gate, local document state machine,
   fail-once/retry identity, stack deletion and snapshot behaviour, picker and
   shared presentation, demo knowledge-stack journeys, practice meeting creation
-  and discard, the recorded-example mapping, the original recorded journey,
-  live meeting creation/upload/no-clone, and the live knowledge regressions.
+  and discard, the recorded-example mapping and its bounded shared-preview
+  opening, the original recorded journey, live meeting creation/upload/no-clone,
+  and the live knowledge regressions.
 - `frontend`: `npm run test:architecture` passed 4 files / 27 tests. Practice
   routes import the shared knowledge presentation and local adapters only; no
   live knowledge API, hook, component, or feature barrel is reachable from the

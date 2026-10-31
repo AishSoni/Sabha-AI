@@ -34,6 +34,8 @@ import type {
 import { demoWorkspaceSeedEnvelope } from "../fixtures/demo/workspace";
 
 const API = "http://localhost:8000/api";
+const RECORDED_SAMPLE_TEXT =
+    "# Shared fact sheet\n\nNo executable price, yield, or secondary-market liquidity.\n";
 
 type DemoSessionTestWire = Omit<
     ReturnType<typeof replaySessionWire>,
@@ -174,6 +176,25 @@ function installDemoRouter(
         vi.fn(async (input: unknown, init?: RequestInit) => {
             const url = String(input);
             calls.push({ url, method: init?.method ?? "GET" });
+            if (
+                url ===
+                "https://cdn.example.test/replay/hdfc-v007-shared-fact-sheet.md"
+            ) {
+                const bytes = new TextEncoder().encode(RECORDED_SAMPLE_TEXT);
+                return {
+                    ok: true,
+                    status: 200,
+                    arrayBuffer: async () => Uint8Array.from(bytes).buffer,
+                    headers: {
+                        get: (name: string) =>
+                            name.toLowerCase() === "content-type"
+                                ? "text/markdown"
+                                : name.toLowerCase() === "content-length"
+                                  ? String(bytes.byteLength)
+                                  : null,
+                    },
+                } as unknown as Response;
+            }
             const parsed = new URL(url);
             const path = parsed.pathname.replace(/^\/api/, "");
             if (path === "/replay/session") return json(200, session);
@@ -213,8 +234,9 @@ function sessionWithRecordedExample() {
             asset_id: "shared-fact-sheet",
             storage_path: "assets/shared/hdfc-v007-shared-fact-sheet.md",
             media_type: "text/markdown",
-            sha256: "b".repeat(64),
-            size: 1350,
+            sha256:
+                "c963852414676f57ba5be08233fab709f94d56343482c9316b7b7dda8a43f4b7",
+            size: 80,
             locator: "assets/shared/hdfc-v007-shared-fact-sheet.md",
             public_url:
                 "https://cdn.example.test/replay/hdfc-v007-shared-fact-sheet.md",
@@ -398,6 +420,35 @@ describe("demo practice knowledge stacks", () => {
                     !/\/(knowledge_stacks|documents)(\/|$)/.test(call.url)
             )
         ).toBe(true);
+    });
+
+    it("opens the shared bounded preview for the recorded example", async () => {
+        const calls = installDemoRouter(200, sessionWithRecordedExample());
+        await renderAt("/demo/knowledge-stacks/shared-fact-sheet");
+
+        fireEvent.click(
+            await screen.findByRole("button", {
+                name: "Preview recorded example: hdfc-v007-shared-fact-sheet.md",
+            })
+        );
+
+        const dialog = await screen.findByRole("dialog");
+        expect(
+            await within(dialog).findByText("Shared fact sheet")
+        ).toBeInTheDocument();
+        expect(
+            await within(dialog).findAllByText(/No executable price, yield/)
+        ).not.toHaveLength(0);
+        expect(
+            calls.filter(
+                (call) =>
+                    call.url ===
+                    "https://cdn.example.test/replay/hdfc-v007-shared-fact-sheet.md"
+            )
+        ).toHaveLength(1);
+        expect(
+            calls.some((call) => /\/(knowledge_stacks|documents)(\/|$)/.test(call.url))
+        ).toBe(false);
     });
 
     it("creates and renames a local stack, then deletes it with its documents", async () => {
