@@ -17,4 +17,6 @@ export interface SubmitTurnInput extends TurnReadOptions {
 
 export interface ObserveTurnOptions extends TurnReadOptions {
     after?: number;
+    /** Recorded playback speed; live observations ignore this. */
+    speed?: 1 | 2;
 }
