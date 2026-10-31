@@ -1,10 +1,10 @@
 "use client";
 
 /**
- * Recorded director follow-up (spec-18).
+ * Recorded director follow-up (spec-18, expanded by spec-26).
  *
- * The composer is a prepared message, not a free text field. It selects the
- * declared checkpoint intent and never posts to the live command graph.
+ * The composer offers every prepared follow-up that belongs to this recorded
+ * moment. It never posts to the live command graph and never accepts free text.
  */
 import { useState } from "react";
 import { Send } from "lucide-react";
@@ -17,15 +17,25 @@ export function RecordedDirectorAction() {
     const runtime = useMeetingsRuntime();
     const replay = runtime.replay;
     const activeIntentId = useActiveReplayIntentId();
-    const [busy, setBusy] = useState(false);
+    const [busyIntent, setBusyIntent] = useState<string | null>(null);
 
-    const intent = replay?.intents.find(
-        (item) =>
-            item.kind === "director_follow_up" &&
-            (activeIntentId === null || item.intent_id === activeIntentId)
-    );
+    if (!replay) return null;
 
-    if (!intent) return null;
+    const legacy = replay.transitions.length === 0;
+    const actions = replay
+        .legalActions()
+        .filter(
+            (action) =>
+                action.intent.kind === "director_follow_up" &&
+                (!legacy ||
+                    activeIntentId === null ||
+                    action.intent.intent_id === activeIntentId)
+        );
+
+    if (actions.length === 0) return null;
+
+    const available = actions.filter((action) => action.available);
+    const unavailable = actions.filter((action) => !action.available);
 
     return (
         <Card className="mb-4 border-zinc-800 bg-zinc-900/60 p-4">
@@ -33,26 +43,56 @@ export function RecordedDirectorAction() {
                 Prepared director follow-up
             </p>
             <p className="mt-1 text-sm text-zinc-300">
-                A supported follow-up is available for this step. Editing is
-                disabled so the recorded response stays aligned with the
-                supplied record.
+                {available.length > 1
+                    ? "More than one follow-up is supported for this moment. Choose the question you want the board to answer."
+                    : "A supported follow-up is available for this step. Editing is disabled so the recorded response stays aligned with the supplied record."}
             </p>
-            <Button
-                className="mt-3 bg-indigo-600 hover:bg-indigo-700"
-                disabled={busy}
-                onClick={async () => {
-                    if (!replay) return;
-                    setBusy(true);
-                    try {
-                        await replay.startIntent(intent.intent_id);
-                    } finally {
-                        setBusy(false);
-                    }
-                }}
-            >
-                <Send className="mr-2 h-4 w-4" />
-                {busy ? "Sending recorded follow-up…" : "Send prepared follow-up"}
-            </Button>
+            {available.length > 0 ? (
+                <div className="mt-3 flex flex-wrap gap-2">
+                    {available.map((action) => {
+                        const busy = busyIntent === action.intent.intent_id;
+                        return (
+                            <Button
+                                key={action.transition.transition_id}
+                                className="bg-indigo-600 hover:bg-indigo-700"
+                                disabled={busy}
+                                title={action.transition.explanation || undefined}
+                                onClick={async () => {
+                                    setBusyIntent(action.intent.intent_id);
+                                    try {
+                                        await replay.startIntent(
+                                            action.intent.intent_id
+                                        );
+                                    } finally {
+                                        setBusyIntent(null);
+                                    }
+                                }}
+                            >
+                                <Send className="mr-2 h-4 w-4" />
+                                {busy
+                                    ? "Sending recorded follow-up…"
+                                    : action.transition.label ||
+                                      action.intent.label ||
+                                      "Send prepared follow-up"}
+                            </Button>
+                        );
+                    })}
+                </div>
+            ) : null}
+            {unavailable.length > 0 ? (
+                <ul className="mt-3 space-y-1 text-xs text-zinc-500">
+                    {unavailable.map((action) => (
+                        <li key={action.transition.transition_id}>
+                            <span className="text-zinc-400">
+                                {action.transition.label ||
+                                    action.intent.label ||
+                                    "Prepared follow-up"}
+                            </span>
+                            {action.reason ? ` — ${action.reason}` : null}
+                        </li>
+                    ))}
+                </ul>
+            ) : null}
         </Card>
     );
 }

@@ -47,7 +47,6 @@ import {
     type ClosingTextView,
 } from '../model/closing-text';
 import { useMeetingsRuntime } from '../runtime/context';
-import { useActiveReplayIntentId } from '../runtime/active-intent';
 import { ClosingGeneratedText } from './ClosingGeneratedText';
 
 export interface ClosingPanelProps {
@@ -225,7 +224,6 @@ export function ClosingPanel({
     textProjection,
 }: ClosingPanelProps) {
     const runtime = useMeetingsRuntime();
-    const activeIntentId = useActiveReplayIntentId();
     const [confirmMode, setConfirmMode] = useState<ClosingMode | null>(null);
     const [actionError, setActionError] = useState<string | null>(null);
     const pendingIntent = useRef<PendingIntent | null>(null);
@@ -253,21 +251,21 @@ export function ClosingPanel({
     const ended = status === 'ended' || stage === 'completed';
     const votes = closing?.votes ?? [];
     const busy = request.isPending || retry.isPending || abort.isPending;
-    const replayClosingIntent = runtime.replay?.intents.find(
-        (intent) => intent.kind === 'request_closing'
-    );
-    const replayCloseActive = Boolean(
-        runtime.replay &&
-            replayClosingIntent &&
-            activeIntentId === replayClosingIntent.intent_id
-    );
+    const replayClosingAction =
+        runtime.replay
+            ?.legalActions()
+            .find(
+                (action) =>
+                    action.intent.kind === 'request_closing' && action.available
+            ) ?? null;
+    const replayClosingIntent = replayClosingAction?.intent ?? null;
     const canStart =
         !archived &&
         !ended &&
         (status === 'active' || status === 'voting') &&
         !isAdvancing(stage) &&
         stage !== 'failed' &&
-        (runtime.replay ? replayCloseActive : true);
+        (runtime.replay ? Boolean(replayClosingIntent) : true);
 
     const startClose = async (mode: ClosingMode) => {
         setConfirmMode(null);

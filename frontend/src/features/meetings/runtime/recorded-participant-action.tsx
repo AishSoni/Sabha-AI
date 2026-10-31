@@ -1,10 +1,12 @@
 "use client";
 
 /**
- * Recorded participant intent (spec-17).
+ * Recorded participant intent (spec-17, expanded by spec-26).
  *
- * The button selects a declared recorded operation and checkpoint; it never
- * posts a command or reaches the live vault/provider/cooldown graph.
+ * The buttons select declared recorded operations and checkpoints; they never
+ * post a command or reach the live vault/provider/cooldown graph. Every legal
+ * prepared turn is offered, so a participant with more than one recorded turn
+ * is resolved by intent identity rather than the first matching intent.
  */
 import { useState } from "react";
 import { Play } from "lucide-react";
@@ -21,34 +23,56 @@ export function RecordedParticipantAction({
     const runtime = useMeetingsRuntime();
     const replay = runtime.replay;
     const activeIntentId = useActiveReplayIntentId();
-    const [busy, setBusy] = useState(false);
-    const intent = replay?.intents.find(
-        (item) =>
-            item.kind === "start_participant" &&
-            item.participant_id === participant.id &&
-            (activeIntentId === null || item.intent_id === activeIntentId)
-    );
+    const [busyIntent, setBusyIntent] = useState<string | null>(null);
 
-    if (!intent) return null;
+    if (!replay) return null;
+
+    const legacy = replay.transitions.length === 0;
+    const actions = replay
+        .legalActions(participant.id)
+        .filter(
+            (action) =>
+                action.intent.kind === "start_participant" &&
+                action.available &&
+                (!legacy ||
+                    activeIntentId === null ||
+                    action.intent.intent_id === activeIntentId)
+        );
+
+    if (actions.length === 0) return null;
 
     return (
-        <Button
-            variant="outline"
-            size="sm"
-            disabled={busy || isActive || isQueued}
-            className="border-indigo-700 bg-indigo-950/40 text-indigo-300 hover:bg-indigo-900/40"
-            onClick={async () => {
-                if (!replay) return;
-                setBusy(true);
-                try {
-                    await replay.startIntent(intent.intent_id);
-                } finally {
-                    setBusy(false);
-                }
-            }}
-        >
-            <Play className="w-4 h-4 mr-1" />
-            {busy ? "Preparing…" : intent.label || participant.name}
-        </Button>
+        <div className="flex flex-wrap gap-2">
+            {actions.map((action) => {
+                const busy = busyIntent === action.intent.intent_id;
+                return (
+                    <Button
+                        key={action.transition.transition_id}
+                        variant="outline"
+                        size="sm"
+                        disabled={busy || isActive || isQueued}
+                        className="border-indigo-700 bg-indigo-950/40 text-indigo-300 hover:bg-indigo-900/40"
+                        title={action.transition.explanation || undefined}
+                        onClick={async () => {
+                            setBusyIntent(action.intent.intent_id);
+                            try {
+                                await replay.startIntent(
+                                    action.intent.intent_id
+                                );
+                            } finally {
+                                setBusyIntent(null);
+                            }
+                        }}
+                    >
+                        <Play className="w-4 h-4 mr-1" />
+                        {busy
+                            ? "Preparing…"
+                            : action.transition.label ||
+                              action.intent.label ||
+                              participant.name}
+                    </Button>
+                );
+            })}
+        </div>
     );
 }
