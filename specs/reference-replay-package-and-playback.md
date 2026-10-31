@@ -4,12 +4,20 @@
 
 This is the proposed Phase 3 contract, not an implemented API or another numbered step. [Spec 14](spec-14-live-and-replay-composition.md) owns runtime composition, [Spec 15](spec-15-closing-ui-integration.md) the closing presentation seam, [Spec 17](spec-17-replay-package-and-streaming.md) the package/transport/controller implementation, [Spec 18](spec-18-guided-bond-journey.md) approved content and guide, and [Spec 19](spec-19-replay-release-acceptance.md) release evidence. The [runtime contract](reference-runtime-modes-and-credentials.md) governs isolation and credentials.
 
+**Phase 7 additive update (planned):** [Spec 23](spec-23-expand-existing-demo-workspace.md)
+adds a validated workspace seed and retains schema-1 packages; Specs 24–25 add
+browser-memory practice workflows; [Spec 26](spec-26-expand-recorded-meeting-exploration.md)
+adds separately validated prepared choices/chapters and bounded playback speed.
+The original linear guide and immutable published versions remain supported.
+These requirements supersede guide-only UI restrictions, not server read-only
+authority, canonical read-frontier rules or prior unexecuted release gates.
+
 ## Invariants
 
-1. Replay and live use the same hosted app and real feature UI. Replay reads immutable preprovisioned Supabase demo data; no replay-attributable application writes, live inference, embedding, vector search, OCR, tool effects or live vault access occur. Independent live work may coexist.
+1. Replay and live use the same hosted app and real feature UI. Replay reads immutable preprovisioned Supabase demo data; no replay-attributable persistent application writes, live inference, embedding, vector search, OCR, tool effects or live vault access occur. Independent live work may coexist. Specs 23–27 permit bounded volatile practice mutations, not backend commands or persisted browser workspaces.
 2. Server composition pins an approved package registry and restricted reader. A package/version/checkpoint selector cannot choose a database schema, credential, live workspace or live adapter.
 3. A package is **data only**. No executable callbacks, SQL, provider/adapter URLs, policy overrides, arbitrary component imports, or string-evaluated transitions. Source citation URLs are validated passive evidence links, not fetch/tool instructions.
-4. The guide selects permitted intents/order and real UI anchors. Shared policies and typed read/event/projection contracts remain the source of product behavior. No second meeting workflow or fake successful persistence.
+4. The guide recommends its canonical intents/order and real UI anchors. In expanded packages, a separate validated prepared-transition contract supplies other legal choices; hiding guidance does not make arbitrary turns valid. Shared policies and typed read/event/projection contracts remain the source of product behavior. No second meeting workflow or fake successful persistence.
 5. All supposedly generated text, including vote explanations and final summary, streams from the backend. Fixed labels/source excerpts/form presets need not stream. No fabricated private chain-of-thought or usage.
 6. One published journey initially. Another subject should normally require approved package data, not a code branch. New product capability can require a reviewed contract change; package flexibility is not an unbounded tutorial engine.
 
@@ -70,6 +78,12 @@ Bound tape size, open streams per client/deployment, concurrent timers, connecti
 ## Ephemeral playback and read frontier
 
 The client runtime owns only volatile package identity, beat/checkpoint, active observation offsets, provisional projection and run epoch. No database/session/progress/analytics writes and no persisted Query/Zustand tutorial state. A non-secret entry preference, if used, is not progress. Refresh starts over; route navigation within the mounted replay runtime preserves the run.
+
+Specs 23–27 compose a separate volatile workspace identity around that playback
+runtime for local template revisions, stacks, sample-document operations and
+practice setups. Checkpoint/epoch changes do not discard those edits. Full
+demo reset clears both lifetimes; recording-only restart clears playback and
+guide progress without clearing practice edits. Neither lifetime persists.
 
 For one generated operation:
 
