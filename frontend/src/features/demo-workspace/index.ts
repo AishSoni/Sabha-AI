@@ -15,6 +15,7 @@ export {
     type WorkspaceStatus,
 } from "./contract";
 export { DemoWorkspaceProvider, useDemoWorkspace } from "./provider";
+export { DemoNav } from "./ui/demo-nav";
 export {
     SUPPORTED_WORKSPACE_SEED_VERSIONS,
     decodeWorkspaceSeed,

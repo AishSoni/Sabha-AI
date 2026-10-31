@@ -1,7 +1,7 @@
 "use client";
 
 import type { ReactNode } from "react";
-import { DemoWorkspaceProvider } from "@/features/demo-workspace";
+import { DemoNav, DemoWorkspaceProvider } from "@/features/demo-workspace";
 import {
     ReplaySessionProvider,
     useReplaySession,
@@ -20,6 +20,7 @@ function PinnedWorkspace({ children }: { children: ReactNode }) {
     return (
         <DemoWorkspaceProvider identity={identity}>
             <ReplayRunProvider>
+                <DemoNav />
                 <GuidedReplay>{children}</GuidedReplay>
             </ReplayRunProvider>
         </DemoWorkspaceProvider>

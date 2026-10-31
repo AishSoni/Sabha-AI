@@ -15,6 +15,7 @@ import DemoBoardPage from "@/app/demo/page";
 import DemoNewMeetingPage from "@/app/demo/new/page";
 import DemoMeetingListPage from "@/app/demo/meetings/page";
 import DemoMeetingPage from "@/app/demo/meetings/[id]/page";
+import DemoSettingsPage from "@/app/demo/settings/page";
 import { useReplayRun } from "@/features/meetings/runtime/replay-run";
 import {
     DEMO_MEETING_ID,
@@ -135,6 +136,7 @@ function RoomRoute({ id }: { id: string }) {
 
 function DemoRoute() {
     const pathname = usePathname();
+    if (pathname === "/demo/settings") return <DemoSettingsPage />;
     if (pathname === "/demo") return <DemoBoardPage />;
     if (pathname === "/demo/new") return <DemoNewMeetingPage />;
     if (pathname === "/demo/meetings") return <DemoMeetingListPage />;
@@ -290,7 +292,7 @@ describe("canonical guided demo journey", () => {
         );
 
         await screen.findByText("Step 1 of 8");
-        fireEvent.click(screen.getByRole("button", { name: "Restart" }));
+        fireEvent.click(screen.getByRole("button", { name: "Restart recording" }));
 
         await screen.findByText("Step 1 of 8");
         expect(
@@ -299,4 +301,59 @@ describe("canonical guided demo journey", () => {
         expect(
             calls.filter((call) => call.url.includes("/replay/workspace-seed"))
         ).toHaveLength(1);
+    });
+
+    it("keeps the guided journey paused on the auth-free demo settings page", async () => {
+        const calls = installDemoRouter();
+        render(
+            <DemoLayout>
+                <DemoRoute />
+            </DemoLayout>
+        );
+
+        await screen.findByText("Step 1 of 8");
+        fireEvent.click(screen.getByRole("link", { name: "Demo settings" }));
+
+        expect(
+            await screen.findByRole("heading", {
+                name: "Settings in the public demo",
+            })
+        ).toBeInTheDocument();
+        expect(
+            screen.getByText(/outside the guided route/i)
+        ).toBeInTheDocument();
+        expect(screen.getByText("Step 1 of 8")).toBeInTheDocument();
+        expect(
+            screen.getByText(/Provider setup is operator-only/i)
+        ).toBeInTheDocument();
+        expect(
+            screen.queryByLabelText(/api key/i)
+        ).not.toBeInTheDocument();
+        expect(
+            calls.filter((call) => call.url.endsWith("/replay/session"))
+        ).toHaveLength(1);
+    });
+
+    it("collapses and restores the guide without moving the journey", async () => {
+        installDemoRouter();
+        render(
+            <DemoLayout>
+                <DemoRoute />
+            </DemoLayout>
+        );
+
+        await screen.findByText("Step 1 of 8");
+        fireEvent.click(screen.getByRole("button", { name: "Hide guide" }));
+
+        expect(
+            screen.getByRole("button", { name: "Show guide" })
+        ).toBeInTheDocument();
+        expect(screen.getByText("Step 1 of 8")).toBeInTheDocument();
+        expect(screen.queryByText("Hide guide")).not.toBeInTheDocument();
+
+        fireEvent.click(screen.getByRole("button", { name: "Show guide" }));
+        expect(
+            screen.getByRole("button", { name: "Hide guide" })
+        ).toBeInTheDocument();
+        expect(screen.getByText("Step 1 of 8")).toBeInTheDocument();
     });

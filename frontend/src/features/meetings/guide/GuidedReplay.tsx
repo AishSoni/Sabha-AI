@@ -7,7 +7,7 @@
  * Continue/Back/Restart. It never clicks DOM controls or invents meeting state.
  * A step completes only when the recorded package condition is present.
  */
-import { useMemo, useState, type ReactNode } from "react";
+import { useEffect, useMemo, useState, type ReactNode } from "react";
 import Link from "next/link";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import { ArrowLeft, ArrowRight, RotateCcw, Sparkles } from "lucide-react";
@@ -69,6 +69,15 @@ function stepSatisfied(
         destinationIndex >= 0 &&
         currentIndex >= 0 &&
         destinationIndex <= currentIndex
+    );
+}
+
+function isJourneyRoute(pathname: string): boolean {
+    return (
+        pathname === "/demo" ||
+        pathname === "/demo/new" ||
+        pathname === "/demo/meetings" ||
+        /^\/demo\/meetings\/[^/]+$/.test(pathname)
     );
 }
 
@@ -163,6 +172,12 @@ export function GuidedReplay({ children }: { children: ReactNode }) {
 
     const finished = index >= beats.length;
     const current = beats[index] ?? null;
+    const journeyRoute = isJourneyRoute(pathname);
+    const { setGuideBookmark } = workspace;
+
+    useEffect(() => {
+        if (current) setGuideBookmark(current.beat_id);
+    }, [current, setGuideBookmark]);
     const activeStep = current?.steps.find(
         (step) => step.intent_id && !stepSatisfied(step, current, run)
     );
@@ -247,9 +262,9 @@ export function GuidedReplay({ children }: { children: ReactNode }) {
 
     return (
         <ActiveReplayIntentProvider intentId={activeIntentId}>
-            <div className="border-b border-indigo-900/50 bg-indigo-950/30">
-                <div className="mx-auto max-w-6xl px-4 py-3">
-                    <div className="flex flex-wrap items-center gap-x-3 gap-y-2">
+            {workspace.guideCollapsed ? (
+                <div className="border-b border-indigo-900/50 bg-indigo-950/30">
+                    <div className="mx-auto flex max-w-6xl flex-wrap items-center gap-2 px-4 py-2">
                         <Badge className="bg-indigo-600 text-white hover:bg-indigo-600">
                             <Sparkles className="mr-1 h-3 w-3" />
                             Guided replay
@@ -260,85 +275,131 @@ export function GuidedReplay({ children }: { children: ReactNode }) {
                         <span className="text-sm font-medium text-white">
                             {finished ? "Journey complete" : current?.title}
                         </span>
-                        <div className="ml-auto flex flex-wrap gap-2">
-                            <Button
-                                type="button"
-                                size="sm"
-                                variant="outline"
-                                className="border-indigo-800 text-indigo-200 hover:bg-indigo-900/40"
-                                disabled={!canGoBack}
-                                onClick={() => void back()}
-                            >
-                                <ArrowLeft className="mr-1 h-4 w-4" />
-                                Back
-                            </Button>
-                            <Button
-                                type="button"
-                                size="sm"
-                                className="bg-indigo-600 hover:bg-indigo-700"
-                                disabled={!canContinue || navigating}
-                                onClick={advance}
-                            >
-                                Continue
-                                <ArrowRight className="ml-1 h-4 w-4" />
-                            </Button>
-                            <Button
-                                type="button"
-                                size="sm"
-                                variant="ghost"
-                                className="text-indigo-200 hover:bg-indigo-900/40"
-                                onClick={restart}
-                            >
-                                <RotateCcw className="mr-1 h-4 w-4" />
-                                Restart
-                            </Button>
-                        </div>
-                    </div>
-
-                    {finished ? (
-                        <p className="mt-2 text-sm text-indigo-100/90" aria-live="polite">
-                            The recorded meeting is archived and remains ended. Restart
-                            to replay the journey from the beginning.
-                        </p>
-                    ) : current ? (
-                        <>
-                            <p className="mt-2 text-sm text-indigo-100/90">
-                                {current.objective}
-                            </p>
-                            <p className="mt-1 text-xs text-indigo-200/70" aria-live="polite">
-                                {satisfied
-                                    ? "Recorded condition complete. Review the screen, then continue."
-                                    : "Complete the supported action on this screen. The guide waits for the recorded result."}
-                            </p>
-                            {!onTarget ? (
-                                <Link
-                                    href={targetHref}
-                                    className="mt-2 inline-block text-xs font-medium text-indigo-300 underline underline-offset-2"
-                                >
-                                    Open the current step
-                                </Link>
-                            ) : null}
-                            {current.disclosure ? (
-                                <p className="mt-1 text-xs text-indigo-200/60">
-                                    {current.disclosure}
-                                </p>
-                            ) : null}
-                        </>
-                    ) : null}
-
-                    {error ? (
-                        <p
-                            className="mt-2 rounded-md border border-red-800 bg-red-950/40 px-2 py-1 text-xs text-red-200"
-                            role="alert"
+                        <Button
+                            type="button"
+                            size="sm"
+                            variant="outline"
+                            className="ml-auto border-indigo-800 text-indigo-200 hover:bg-indigo-900/40"
+                            onClick={() => workspace.setGuideCollapsed(false)}
                         >
-                            {error}
-                        </p>
-                    ) : null}
-                    <p className="mt-2 text-[11px] leading-relaxed text-indigo-200/60">
-                        {run.session.disclosure}
-                    </p>
+                            Show guide
+                        </Button>
+                    </div>
                 </div>
-            </div>
+            ) : (
+                <div className="border-b border-indigo-900/50 bg-indigo-950/30">
+                    <div className="mx-auto max-w-6xl px-4 py-3">
+                        <div className="flex flex-wrap items-center gap-x-3 gap-y-2">
+                            <Badge className="bg-indigo-600 text-white hover:bg-indigo-600">
+                                <Sparkles className="mr-1 h-3 w-3" />
+                                Guided replay
+                            </Badge>
+                            <span className="text-xs text-indigo-200/80">
+                                Step {Math.min(index + 1, beats.length)} of {beats.length}
+                            </span>
+                            <span className="text-sm font-medium text-white">
+                                {finished ? "Journey complete" : current?.title}
+                            </span>
+                            <div className="ml-auto flex flex-wrap gap-2">
+                                <Button
+                                    type="button"
+                                    size="sm"
+                                    variant="ghost"
+                                    className="text-indigo-200 hover:bg-indigo-900/40"
+                                    onClick={() => workspace.setGuideCollapsed(true)}
+                                >
+                                    Hide guide
+                                </Button>
+                                <Button
+                                    type="button"
+                                    size="sm"
+                                    variant="outline"
+                                    className="border-indigo-800 text-indigo-200 hover:bg-indigo-900/40"
+                                    disabled={!canGoBack}
+                                    onClick={() => void back()}
+                                >
+                                    <ArrowLeft className="mr-1 h-4 w-4" />
+                                    Back
+                                </Button>
+                                <Button
+                                    type="button"
+                                    size="sm"
+                                    className="bg-indigo-600 hover:bg-indigo-700"
+                                    disabled={!canContinue || navigating}
+                                    onClick={advance}
+                                >
+                                    Continue
+                                    <ArrowRight className="ml-1 h-4 w-4" />
+                                </Button>
+                                <Button
+                                    type="button"
+                                    size="sm"
+                                    variant="ghost"
+                                    className="text-indigo-200 hover:bg-indigo-900/40"
+                                    onClick={restart}
+                                >
+                                    <RotateCcw className="mr-1 h-4 w-4" />
+                                    Restart recording
+                                </Button>
+                            </div>
+                        </div>
+
+                        {finished ? (
+                            <p className="mt-2 text-sm text-indigo-100/90" aria-live="polite">
+                                The recorded meeting is archived and remains ended. Restart
+                                the recording to replay the journey from the beginning.
+                            </p>
+                        ) : current ? (
+                            <>
+                                {!journeyRoute ? (
+                                    <p
+                                        className="mt-2 rounded-md border border-indigo-800/60 bg-indigo-950/40 px-2 py-1.5 text-xs text-indigo-100"
+                                        role="status"
+                                    >
+                                        This page is outside the guided route. The recording
+                                        is paused here and the journey has not advanced.
+                                    </p>
+                                ) : null}
+                                <p className="mt-2 text-sm text-indigo-100/90">
+                                    {current.objective}
+                                </p>
+                                <p className="mt-1 text-xs text-indigo-200/70" aria-live="polite">
+                                    {satisfied
+                                        ? "Recorded condition complete. Review the screen, then continue."
+                                        : "Complete the supported action on this screen. The guide waits for the recorded result."}
+                                </p>
+                                {!onTarget ? (
+                                    <Link
+                                        href={targetHref}
+                                        className="mt-2 inline-block text-xs font-medium text-indigo-300 underline underline-offset-2"
+                                    >
+                                        {journeyRoute
+                                            ? "Open the current step"
+                                            : "Return to the current guided step"}
+                                    </Link>
+                                ) : null}
+                                {current.disclosure ? (
+                                    <p className="mt-1 text-xs text-indigo-200/60">
+                                        {current.disclosure}
+                                    </p>
+                                ) : null}
+                            </>
+                        ) : null}
+
+                        {error ? (
+                            <p
+                                className="mt-2 rounded-md border border-red-800 bg-red-950/40 px-2 py-1 text-xs text-red-200"
+                                role="alert"
+                            >
+                                {error}
+                            </p>
+                        ) : null}
+                        <p className="mt-2 text-[11px] leading-relaxed text-indigo-200/60">
+                            {run.session.disclosure}
+                        </p>
+                    </div>
+                </div>
+            )}
             {children}
         </ActiveReplayIntentProvider>
     );
