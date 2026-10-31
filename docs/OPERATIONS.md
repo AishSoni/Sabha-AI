@@ -588,8 +588,8 @@ Runtime configuration:
 ```text
 REPLAY_DATABASE_URL=postgresql://sabha_replay_login:<password>@<host>:5432/postgres
 REPLAY_PACKAGE_ID=hdfc-ine001a07rw5
-REPLAY_PACKAGE_VERSION=5              # optional; registry default otherwise
-REPLAY_PACKAGE_SHA256=005a274a178ed7489bb108d7703d833316ac9e1933093866ec87040340f65d8f
+REPLAY_PACKAGE_VERSION=6              # optional; registry default otherwise
+REPLAY_PACKAGE_SHA256=48014296bc2f98c0270c72ecee7c5d527cb35536b6c9c3846ffc9590cb37113d
 REPLAY_ONLY=true                      # serve no live graph
 REPLAY_STREAM_MAX_PER_CLIENT=2
 REPLAY_STREAM_MAX_GLOBAL=8
@@ -606,13 +606,19 @@ synthetic backend fixture instead. Install the browser once with
 
 ### Guided bond journey (spec 18)
 
-The guided package is `backend/replay_packages/hdfc-ine001a07rw5` version `5`
-with content hash `005a274a178ed7489bb108d7703d833316ac9e1933093866ec87040340f65d8f`.
-Version 5 keeps the recorded journey and adds a schema-3 practice workspace
-seed with an explicit four-sample upload allowlist, one seeded practice
-document, and a deterministic fail-once retry scenario. Evidence-only assets,
-including the source register and the attributed third-party excerpts, stay
-outside that allowlist. Version 4 remains published for pinned runs.
+The guided package is `backend/replay_packages/hdfc-ine001a07rw5` version `6`
+with content hash `48014296bc2f98c0270c72ecee7c5d527cb35536b6c9c3846ffc9590cb37113d`.
+Version 6 keeps the original eight-beat journey and adds the approved expanded
+exploration graph: 28 checkpoints, 27 transitions (8 canonical), 14 chapters,
+three prepared choice states, and six recorded closings. The schema-2 package
+uses a schema-3 practice workspace seed with an explicit four-sample upload
+allowlist, one seeded practice document, and a deterministic fail-once retry
+scenario. Evidence-only assets, including the source register and the
+attributed third-party excerpts, stay outside that allowlist. The version-5
+package is retained as a checked-in compatibility fixture at
+`backend/tests/fixtures/replay/hdfc-ine001a07rw5-v5` with its original hash.
+Older published versions remain subject to the documented retention policy;
+they are not replaced for active pinned runs.
 It was approved through
 [the content ledger](../specs/spec-18-guided-bond-journey-content.md): short
 attributed source excerpts, exact locators, a source register, and no untracked
@@ -625,12 +631,24 @@ python -m scripts.replay_package validate replay_packages/hdfc-ine001a07rw5
 ```
 
 The browser routes are `/demo` (prepared board), `/demo/new` (locked creation
-preset and recorded intake), `/demo/meetings` (recorded list and archive), and
-`/demo/meetings/[id]` (real room with guide tab hints). The guide owns only the
-step order, anchors, Continue/Back/Restart, and route/tab coordination; it never
-synthesizes clicks or writes progress. Refresh and deep links reset to the entry
-checkpoint. A non-secret `sabha:experience` browser preference only controls the
-first-visit live/replay prompt.
+preset, recorded intake, and the inline temporary setup), `/demo/meetings`
+(recorded list, practice setups, and archive), `/demo/meetings/[id]` (real room
+with guide tab hints), `/demo/roster` (practice personas and prompt history),
+`/demo/knowledge-stacks` (practice stacks and samples), and `/demo/settings`
+(operator-provider explanation only). The guide owns only the canonical step
+order, anchors, Continue/Back/Restart, chapter links, and route/tab
+coordination; it never synthesizes clicks or writes progress. Expanded
+packages also expose the approved prepared choices, 1x/2x playback, skip,
+replay, and recorded-summary inspection. Back moves the inspection cursor and
+does not un-complete canonical evidence. Refresh or a fresh tab starts a new
+volatile workspace; a direct recorded-meeting link otherwise returns to the
+entry checkpoint, while an explicit chapter link installs that chapter after
+the session loads. Reset discards practice edits and returns to step one;
+Restart recording resets only playback and the bookmark. No practice edit,
+bookmark, draft, or sample is persisted in localStorage, sessionStorage,
+IndexedDB, cookies, Cache Storage, or a service worker. The only browser
+persistence is the separate operator Auth/vault envelope, which the public demo
+never reads or writes.
 
 The isolated browser suite is `frontend/e2e/guided-journey.spec.ts`:
 
@@ -641,10 +659,28 @@ npm run test:e2e -- e2e/guided-journey.spec.ts
 
 It covers the full eight-beat journey, source disclosure, private-scope
 separation, small screens, reduced motion, keyboard operation, back/restart,
-deep-link reset, and the absence of live meeting mutations. `replay-isolation`
-adds two browser contexts at different beats, and `replay-resilience` adds
-double actions, refocus/poll, stream abort and resume, mid-stream restart and
-deep-link refresh. Run the journey against the production build separately:
+deep-link reset, and the absence of live meeting mutations. The expanded
+acceptance slice adds:
+
+- `legacy-journey.spec.ts` via `npm run test:e2e:legacy` for the checked-in
+  version-5 package and its original guide.
+- `integrated-practice.spec.ts` for persona revisions, stack samples,
+  failure/retry/removal, and the unchanged recorded turn.
+- `temporary-setup.spec.ts` for captured prompts, fixed snapshots, current
+  stack contents, and no fabricated transcript.
+- `exploration-playback.spec.ts` for chapter deep links, recorded summary,
+  1x/2x speed, skip/replay, bookmark restoration, and both opening branches.
+- `replay-isolation.spec.ts` for two visitors, practice edits, reset scopes,
+  and recording-only restart.
+- `replay-resilience.spec.ts` for double actions, double sample adds,
+  refocus/poll, stream abort/resume, and stale-state refresh.
+- `demo-accessibility.spec.ts` and `demo-failure.spec.ts` for keyboard-only
+  narrow-screen operation, focus restoration, overflow, seed outage, and
+  interrupted-stream recovery.
+- `mixed-operator.spec.ts` via `npm run test:e2e:mixed` for an independently
+  mounted operator Auth/vault envelope beside the demo.
+
+Run the journey against the production build separately:
 
 ```powershell
 cd frontend

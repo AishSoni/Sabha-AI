@@ -2,15 +2,26 @@
 
 ## Status and ownership
 
-This is the proposed Phase 3 contract, not an implemented API or another numbered step. [Spec 14](spec-14-live-and-replay-composition.md) owns runtime composition, [Spec 15](spec-15-closing-ui-integration.md) the closing presentation seam, [Spec 17](spec-17-replay-package-and-streaming.md) the package/transport/controller implementation, [Spec 18](spec-18-guided-bond-journey.md) approved content and guide, and [Spec 19](spec-19-replay-release-acceptance.md) release evidence. The [runtime contract](reference-runtime-modes-and-credentials.md) governs isolation and credentials.
+This is the shared replay contract implemented through the local Spec 23–27
+slices. [Spec 14](spec-14-live-and-replay-composition.md) owns runtime
+composition, [Spec 15](spec-15-closing-ui-integration.md) the closing
+presentation seam, [Spec 17](spec-17-replay-package-and-streaming.md) the
+package/transport/controller implementation, [Spec 18](spec-18-guided-bond-journey.md)
+approved content and guide, [Spec 19](spec-19-replay-release-acceptance.md)
+release evidence, and [Spec 27](spec-27-expanded-demo-acceptance.md) the
+expanded local acceptance gate. The [runtime contract](reference-runtime-modes-and-credentials.md)
+governs isolation and credentials.
 
-**Phase 7 additive update (planned):** [Spec 23](spec-23-expand-existing-demo-workspace.md)
+**Phase 7 additive update (implemented locally):** [Spec 23](spec-23-expand-existing-demo-workspace.md)
 adds a validated workspace seed and retains schema-1 packages; Specs 24–25 add
 browser-memory practice workflows; [Spec 26](spec-26-expand-recorded-meeting-exploration.md)
-adds separately validated prepared choices/chapters and bounded playback speed.
-The original linear guide and immutable published versions remain supported.
+adds separately validated prepared choices/chapters and bounded playback speed;
+[Spec 27](spec-27-expanded-demo-acceptance.md) records the browser, state, and
+failure acceptance. The original linear guide and immutable published versions
+remain supported, including the checked-in version-5 compatibility fixture.
 These requirements supersede guide-only UI restrictions, not server read-only
-authority, canonical read-frontier rules or prior unexecuted release gates.
+authority, canonical read-frontier rules or prior unexecuted hosted release
+gates.
 
 ## Invariants
 
