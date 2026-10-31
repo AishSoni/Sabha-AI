@@ -59,6 +59,10 @@ export interface ClosingPanelProps {
      * falls back to snapshot prose.
      */
     textProjection?: ClosingTextView | null;
+    /** Recorded playback may skip to the validated completed result. */
+    onSkipText?: () => void;
+    /** Restart the prepared closing observation from its source state. */
+    onReplayClosing?: () => void;
 }
 
 interface PendingIntent {
@@ -222,6 +226,8 @@ export function ClosingPanel({
     meetingStatus,
     summarySettings,
     textProjection,
+    onSkipText,
+    onReplayClosing,
 }: ClosingPanelProps) {
     const runtime = useMeetingsRuntime();
     const [confirmMode, setConfirmMode] = useState<ClosingMode | null>(null);
@@ -245,6 +251,9 @@ export function ClosingPanel({
               ? textProjection
               : null;
     const summaryText = projection ? findClosingSummaryText(projection) : undefined;
+    const textTerminal = Boolean(
+        projection?.items.some((item) => item.kind === 'summary' && item.terminal)
+    );
     const stage = closing?.stage ?? null;
     const status = closing?.meeting_status ?? meetingStatus;
     const archived = status === 'archived' || Boolean(closing?.archived);
@@ -513,6 +522,32 @@ export function ClosingPanel({
                             }
                         />
                     ))}
+                </div>
+            ) : null}
+
+            {(onSkipText && textProjection && !textTerminal) || (ended && onReplayClosing) ? (
+                <div className="flex flex-wrap items-center gap-2 rounded-lg border border-zinc-800 bg-zinc-900/40 px-3 py-2">
+                    <span className="text-xs text-zinc-400">Recorded closing</span>
+                    {onSkipText && textProjection && !textTerminal ? (
+                        <Button
+                            type="button"
+                            size="sm"
+                            variant="outline"
+                            onClick={onSkipText}
+                        >
+                            Skip to prepared result
+                        </Button>
+                    ) : null}
+                    {ended && onReplayClosing ? (
+                        <Button
+                            type="button"
+                            size="sm"
+                            variant="ghost"
+                            onClick={onReplayClosing}
+                        >
+                            Replay closing
+                        </Button>
+                    ) : null}
                 </div>
             ) : null}
 

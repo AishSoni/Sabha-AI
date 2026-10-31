@@ -63,6 +63,10 @@ import { isNearScrollBottom, scrollBehavior } from '../model/scroll';
 import { useMeetingTurnController } from '../hooks/use-meeting-turn-controller';
 import { useMeetingsRuntime } from '../runtime/context';
 import {
+    PreparedTurnControls,
+    ReplaySpeedControl,
+} from '../runtime/playback-controls';
+import {
     useRuntimeConsensus,
     useRuntimeContextStats,
     useRuntimeDisagreements,
@@ -243,11 +247,16 @@ function MeetingConversation({ meeting, disagreements, consensus, initialTab }: 
         enabled: capabilities.closing,
         runtime,
     });
+    const [skipClosingText, setSkipClosingText] = useState(false);
+    const replayCheckpoint = runtime.replay?.checkpoint;
+    useEffect(() => {
+        setSkipClosingText(false);
+    }, [replayCheckpoint]);
     const recordedClosingText = useRecordedClosingText({
         runtime,
         meetingId: meeting.id,
         closingId: closingObservation.closing?.closing_id ?? null,
-        enabled: capabilities.closing,
+        enabled: capabilities.closing && !skipClosingText,
     });
     const [tab, setTab] = useState(initialTab ?? 'chat');
     // Keep the active tab in sync with the requested tab (e.g. ?tab=closing)
@@ -274,6 +283,15 @@ function MeetingConversation({ meeting, disagreements, consensus, initialTab }: 
     const readOnly = ended || (!capabilities.submitTurn && !hasRecordedIntents);
 
     const openClosing = () => setTab('closing');
+    const replayClosing = runtime.replay?.transitions.find(
+        (transition) =>
+            transition.kind === 'request_closing' &&
+            transition.completed_checkpoint === runtime.replay?.checkpoint
+    );
+    const replayClosingTurn = () => {
+        setSkipClosingText(false);
+        if (replayClosing) void runtime.replay?.replayIntent(replayClosing.intent_id);
+    };
 
     return (
         <div className="flex-1 flex flex-col bg-zinc-950 min-h-0 overflow-hidden">
@@ -384,6 +402,10 @@ function MeetingConversation({ meeting, disagreements, consensus, initialTab }: 
                                         runtime.closingStream
                                             ? recordedClosingText
                                             : undefined
+                                    }
+                                    onSkipText={() => setSkipClosingText(true)}
+                                    onReplayClosing={
+                                        replayClosing ? replayClosingTurn : undefined
                                     }
                                 />
                             </div>
@@ -660,6 +682,13 @@ function RoomControls({ meeting, turns }: RoomControlsProps) {
                 </div>
 
                 {DirectorAction ? <DirectorAction /> : null}
+
+                <PreparedTurnControls
+                    activeOperationId={turns.activeOperation?.operation_id}
+                />
+                <div className="mb-3 flex justify-end">
+                    <ReplaySpeedControl />
+                </div>
 
                 {nonTerminal.length > 0 && (
                     <div className="mb-4 rounded-lg border border-zinc-800 bg-zinc-900/60 divide-y divide-zinc-800">
