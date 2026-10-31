@@ -24,7 +24,7 @@ from scripts.replay_package import activate_package
 MEETING_ID = "11111111-1111-4111-8111-111111111111"
 OPERATION_ID = "66666666-6666-4666-8666-666666666666"
 APPROVED_ID = "hdfc-ine001a07rw5"
-APPROVED_SHA256 = "5fb2a800c907f4de3be69c4b4b1262e32b1570b0abe03f8819ed783baac9bc82"
+APPROVED_SHA256 = "d7d6cdddeaf0aee2f2e48f51ec9ff6f45c12dc5813f792d8d4b7c46c8fc42dc7"
 GUIDED_ROOT = (
     Path(__file__).resolve().parents[2] / "replay_packages" / APPROVED_ID
 )

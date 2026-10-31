@@ -375,10 +375,10 @@ The frozen contract lives at `frontend/tests/fixtures/openapi.json` (**56 paths*
 
 The guided journey is the HDFC Ltd 7.87% 2022 debenture meeting, pinned as package `hdfc-ine001a07rw5`:
 
-- Manifest version **3**, schema **2**, content SHA-256 `24d66230793547dc95f2e902b07b88d1035aef47b57602647ce4dc57a8637261`
+- Manifest version **4**, schema **2**, content SHA-256 `d7d6cdddeaf0aee2f2e48f51ec9ff6f45c12dc5813f792d8d4b7c46c8fc42dc7`
 - 9 checkpoints: initial, created, credit, downside, followup, portfolio, consensus, closed, archived
 - 4 turn tapes plus a closing tape, 4 retrieval sets, and 7 previewable assets
-- One validated browser-memory workspace seed (3 personas, 4 stacks, 1 practice intake preset)
+- One validated browser-memory workspace seed (3 personas, 4 stacks, 1 practice intake preset) with the approved base instructions, a highlighted persona, and links to the prepared board participants
 
 A second package, `placeholder-analyst`, supports synthetic tests. Assets are stored immutably in the public read-only `replay-assets` bucket under a content-addressed path.
 

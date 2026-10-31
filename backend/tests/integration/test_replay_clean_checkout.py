@@ -23,7 +23,7 @@ from tests.support.replay import PUBLISHER_LOGIN, READER_LOGIN, login_uri, provi
 
 REPO_ROOT = Path(__file__).resolve().parents[3]
 APPROVED_ID = "hdfc-ine001a07rw5"
-APPROVED_SHA256 = "5fb2a800c907f4de3be69c4b4b1262e32b1570b0abe03f8819ed783baac9bc82"
+APPROVED_SHA256 = "d7d6cdddeaf0aee2f2e48f51ec9ff6f45c12dc5813f792d8d4b7c46c8fc42dc7"
 PLACEHOLDER_ID = "placeholder-analyst"
 
 PUBLISH_SCRIPT = """
@@ -157,7 +157,7 @@ def test_approved_and_placeholder_packages_validate_from_the_checkout(
     approved_result = json.loads(approved.stdout)
     assert approved_result["ok"] is True
     assert approved_result["package_id"] == APPROVED_ID
-    assert approved_result["version"] == "2"
+    assert approved_result["version"] == "4"
     assert approved_result["content_sha256"] == APPROVED_SHA256
 
     placeholder = _run(
@@ -208,6 +208,6 @@ def test_checkout_provisions_both_packages_without_local_inputs(
             "ORDER BY package_id"
         ).fetchall()
     assert rows == [
-        (APPROVED_ID, "2", "published"),
+        (APPROVED_ID, "4", "published"),
         (PLACEHOLDER_ID, "1", "published"),
     ]

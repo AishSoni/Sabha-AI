@@ -549,7 +549,7 @@ python -m scripts.replay_package validate replay_packages/hdfc-ine001a07rw5
 python -m scripts.replay_package --database-url $env:REPLAY_PROVISIONER_DATABASE_URL `
     publish replay_packages/hdfc-ine001a07rw5
 python -m scripts.replay_package --database-url $env:REPLAY_PROVISIONER_DATABASE_URL `
-    activate hdfc-ine001a07rw5 3
+    activate hdfc-ine001a07rw5 4
 python -m scripts.replay_package --database-url $env:REPLAY_PROVISIONER_DATABASE_URL `
     prune --older-than-days 30
 python -m scripts.replay_package --database-url $env:REPLAY_PROVISIONER_DATABASE_URL list
@@ -588,8 +588,8 @@ Runtime configuration:
 ```text
 REPLAY_DATABASE_URL=postgresql://sabha_replay_login:<password>@<host>:5432/postgres
 REPLAY_PACKAGE_ID=hdfc-ine001a07rw5
-REPLAY_PACKAGE_VERSION=3              # optional; registry default otherwise
-REPLAY_PACKAGE_SHA256=24d66230793547dc95f2e902b07b88d1035aef47b57602647ce4dc57a8637261
+REPLAY_PACKAGE_VERSION=4              # optional; registry default otherwise
+REPLAY_PACKAGE_SHA256=d7d6cdddeaf0aee2f2e48f51ec9ff6f45c12dc5813f792d8d4b7c46c8fc42dc7
 REPLAY_ONLY=true                      # serve no live graph
 REPLAY_STREAM_MAX_PER_CLIENT=2
 REPLAY_STREAM_MAX_GLOBAL=8
@@ -606,10 +606,12 @@ synthetic backend fixture instead. Install the browser once with
 
 ### Guided bond journey (spec 18)
 
-The guided package is `backend/replay_packages/hdfc-ine001a07rw5` version `3`
-with content hash `24d66230793547dc95f2e902b07b88d1035aef47b57602647ce4dc57a8637261`.
-Version 3 keeps the recorded journey and adds the schema-2 practice workspace
-seed; version 2 remains published for pinned runs.
+The guided package is `backend/replay_packages/hdfc-ine001a07rw5` version `4`
+with content hash `d7d6cdddeaf0aee2f2e48f51ec9ff6f45c12dc5813f792d8d4b7c46c8fc42dc7`.
+Version 4 keeps the recorded journey and the schema-2 practice workspace seed,
+and adds the approved base instructions, highlighted persona, and prepared
+participant links used by the system-prompt exploration screens. Version 3
+remains published for pinned runs.
 It was approved through
 [the content ledger](../specs/spec-18-guided-bond-journey-content.md): short
 attributed source excerpts, exact locators, a source register, and no untracked
