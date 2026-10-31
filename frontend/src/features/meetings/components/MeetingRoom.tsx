@@ -247,11 +247,19 @@ function MeetingConversation({ meeting, disagreements, consensus, initialTab }: 
         enabled: capabilities.closing,
         runtime,
     });
-    const [skipClosingText, setSkipClosingText] = useState(false);
     const replayCheckpoint = runtime.replay?.checkpoint;
-    useEffect(() => {
-        setSkipClosingText(false);
-    }, [replayCheckpoint]);
+    const [skippedClosingCheckpoint, setSkippedClosingCheckpoint] = useState<
+        string | null | undefined
+    >(undefined);
+    if (
+        skippedClosingCheckpoint !== undefined &&
+        skippedClosingCheckpoint !== replayCheckpoint
+    ) {
+        setSkippedClosingCheckpoint(undefined);
+    }
+    const skipClosingText =
+        replayCheckpoint !== undefined &&
+        skippedClosingCheckpoint === replayCheckpoint;
     const recordedClosingText = useRecordedClosingText({
         runtime,
         meetingId: meeting.id,
@@ -289,7 +297,7 @@ function MeetingConversation({ meeting, disagreements, consensus, initialTab }: 
             transition.completed_checkpoint === runtime.replay?.checkpoint
     );
     const replayClosingTurn = () => {
-        setSkipClosingText(false);
+        setSkippedClosingCheckpoint(undefined);
         if (replayClosing) void runtime.replay?.replayIntent(replayClosing.intent_id);
     };
 
@@ -403,7 +411,11 @@ function MeetingConversation({ meeting, disagreements, consensus, initialTab }: 
                                             ? recordedClosingText
                                             : undefined
                                     }
-                                    onSkipText={() => setSkipClosingText(true)}
+                                    onSkipText={() =>
+                                        setSkippedClosingCheckpoint(
+                                            replayCheckpoint ?? null
+                                        )
+                                    }
                                     onReplayClosing={
                                         replayClosing ? replayClosingTurn : undefined
                                     }

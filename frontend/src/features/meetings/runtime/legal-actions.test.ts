@@ -66,7 +66,7 @@ function session(
         disclosure: "",
         stack_labels: {},
         provenance: {},
-        capabilities: {},
+        capabilities: {} as ReplaySession["capabilities"],
         package_id: "package-1",
         content_sha256: "a".repeat(64),
         checkpoint_id: "checkpoint-created",

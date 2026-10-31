@@ -20,71 +20,72 @@ import {
 
 const retryDelayMs = 40;
 
+type Failure = {
+    chapterId: string;
+    attempt: number;
+    message: string;
+};
+
 export function ChapterBootstrap({ children }: { children: ReactNode }) {
-    const run = useReplayRun();
+    const { session, checkpoint, goToChapter } = useReplayRun();
     const pathname = usePathname();
     const searchParams = useSearchParams();
     const chapterId = searchParams.get("chapter");
     const requestedTab = searchParams.get("tab");
-    const [ready, setReady] = useState(chapterId === null);
-    const [error, setError] = useState<string | null>(null);
     const [attempt, setAttempt] = useState(0);
+    const [failure, setFailure] = useState<Failure | null>(null);
+    const [restored, setRestored] = useState<string | null>(null);
 
     const chapter = chapterId
-        ? run.session.chapters.find((item) => item.chapter_id === chapterId) ??
-          null
+        ? session.chapters.find((item) => item.chapter_id === chapterId) ?? null
         : null;
     const tab = chapter ? chapterTab(chapter, requestedTab) : null;
     const invalid =
         chapterId !== null &&
         (!chapter ||
             tab === null ||
-            run.session.retired ||
-            !chapterPathMatches(chapter, run.session.meeting_id, pathname));
+            session.retired ||
+            !chapterPathMatches(chapter, session.meeting_id, pathname));
+    const installed =
+        chapter !== null &&
+        (checkpoint === chapter.checkpoint || restored === chapter.chapter_id);
+    const error =
+        failure &&
+        failure.chapterId === chapterId &&
+        failure.attempt === attempt
+            ? failure.message
+            : null;
 
     useEffect(() => {
-        setError(null);
-        if (chapterId === null) {
-            setReady(true);
-            return;
-        }
-        if (invalid || !chapter) {
-            setReady(false);
-            return;
-        }
-        if (run.checkpoint === chapter.checkpoint) {
-            setReady(true);
-            return;
-        }
+        if (chapterId === null || invalid || !chapter || installed) return;
 
         const controller = new AbortController();
         let cancelled = false;
-        setReady(false);
-        run.goToChapter(chapter.chapter_id, {
+        goToChapter(chapter.chapter_id, {
             signal: controller.signal,
-        }).then(
-            () => {
-                if (!cancelled) setReady(true);
-            },
-            (cause: unknown) => {
-                if (cancelled || controller.signal.aborted) return;
-                const message =
-                    cause instanceof Error
-                        ? cause.message
-                        : "The recorded chapter could not be restored.";
-                if (message.includes("already in progress")) {
-                    // A previous navigation is still settling. Retrying after
-                    // it finishes lets the latest URL win without exposing a
-                    // transient failure to the visitor.
-                    window.setTimeout(() => {
-                        if (!cancelled) setAttempt((value) => value + 1);
-                    }, retryDelayMs);
-                    return;
+        })
+            .then(() => {
+                if (!cancelled && !controller.signal.aborted) {
+                    setRestored(chapter.chapter_id);
                 }
-                setReady(false);
-                setError(message);
+            })
+            .catch((cause: unknown) => {
+            if (cancelled || controller.signal.aborted) return;
+            const message =
+                cause instanceof Error
+                    ? cause.message
+                    : "The recorded chapter could not be restored.";
+            if (message.includes("already in progress")) {
+                // A previous navigation is still settling. Retrying after it
+                // finishes lets the latest URL win without exposing a
+                // transient failure to the visitor.
+                window.setTimeout(() => {
+                    if (!cancelled) setAttempt((value) => value + 1);
+                }, retryDelayMs);
+                return;
             }
-        );
+            setFailure({ chapterId, attempt, message });
+        });
 
         return () => {
             cancelled = true;
@@ -94,16 +95,15 @@ export function ChapterBootstrap({ children }: { children: ReactNode }) {
         attempt,
         chapter,
         chapterId,
+        goToChapter,
+        installed,
         invalid,
-        pathname,
-        run.checkpoint,
-        run.goToChapter,
-        run.session.meeting_id,
-        run.session.retired,
+        session.meeting_id,
+        session.retired,
     ]);
 
     if (invalid || error) {
-        const reason = run.session.retired
+        const reason = session.retired
             ? "This recorded package has been retired. Chapters and prepared actions are no longer available."
             : error ??
               (chapter
@@ -135,7 +135,7 @@ export function ChapterBootstrap({ children }: { children: ReactNode }) {
         );
     }
 
-    if (!ready) {
+    if (chapterId !== null && !installed) {
         return (
             <ReplayFrame title="Restoring recorded chapter">
                 <p className="text-sm text-zinc-400">
