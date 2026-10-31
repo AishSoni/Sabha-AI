@@ -8,6 +8,7 @@ import {
 } from "@/features/meetings/runtime/replay-session";
 import { GuidedReplay } from "@/features/meetings/guide/GuidedReplay";
 import { ReplayRunProvider } from "@/features/meetings/runtime/replay-run";
+import { ChapterBootstrap } from "./chapter-bootstrap";
 
 function PinnedWorkspace({ children }: { children: ReactNode }) {
     const { session } = useReplaySession();
@@ -29,8 +30,10 @@ function PinnedWorkspace({ children }: { children: ReactNode }) {
             }))}
         >
             <ReplayRunProvider>
-                <DemoNav />
-                <GuidedReplay>{children}</GuidedReplay>
+                <ChapterBootstrap>
+                    <DemoNav />
+                    <GuidedReplay>{children}</GuidedReplay>
+                </ChapterBootstrap>
             </ReplayRunProvider>
         </DemoWorkspaceProvider>
     );

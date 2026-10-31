@@ -41,6 +41,8 @@ interface ReplayRunContextValue {
     checkpoint: string;
     epoch: number;
     settledIntents: ReadonlySet<string>;
+    startedIntents: ReadonlySet<string>;
+    acknowledgedBeats: ReadonlySet<string>;
     closingSettled: boolean;
     switchCheckpoint: (
         next: string,
@@ -48,12 +50,17 @@ interface ReplayRunContextValue {
             expectedMessageId?: string | null;
             expectedOperationId?: string | null;
             force?: boolean;
+            signal?: AbortSignal;
         }
     ) => Promise<void>;
     startIntent: (intentId: string) => Promise<void>;
     skipIntent: (intentId: string) => Promise<void>;
     replayIntent: (intentId: string) => Promise<void>;
-    goToChapter: (chapterId: string) => Promise<void>;
+    goToChapter: (
+        chapterId: string,
+        options?: { force?: boolean; signal?: AbortSignal }
+    ) => Promise<void>;
+    acknowledgeBeat: (beatId: string) => void;
     playbackSpeed: 1 | 2;
     setPlaybackSpeed: (speed: 1 | 2) => void;
     restart: () => void;
@@ -77,6 +84,10 @@ export function ReplayRunProvider({ children }: { children: ReactNode }) {
     const [runKey, setRunKey] = useState(1);
     const [checkpoint, setCheckpoint] = useState<string | null>(null);
     const [settledIntents, setSettledIntents] = useState<Set<string>>(new Set());
+    const [startedIntents, setStartedIntents] = useState<Set<string>>(new Set());
+    const [acknowledgedBeats, setAcknowledgedBeats] = useState<Set<string>>(
+        new Set()
+    );
     const [closingSettled, setClosingSettled] = useState(false);
     const [playbackSpeed, setPlaybackSpeed] = useState<1 | 2>(1);
     const transitioning = useRef(false);
@@ -106,6 +117,23 @@ export function ReplayRunProvider({ children }: { children: ReactNode }) {
         setClosingSettled(false);
     }, []);
 
+    const markStarted = useCallback((intentId: string, started: boolean) => {
+        const next = new Set(startedIntentsRef.current);
+        if (started) next.add(intentId);
+        else next.delete(intentId);
+        startedIntentsRef.current = next;
+        setStartedIntents(next);
+    }, []);
+
+    const acknowledgeBeat = useCallback((beatId: string) => {
+        setAcknowledgedBeats((current) => {
+            if (current.has(beatId)) return current;
+            const next = new Set(current);
+            next.add(beatId);
+            return next;
+        });
+    }, []);
+
     const isTurnVisible = useCallback((operationId: string) => {
         const current = sessionRef.current;
         if (!current) return true;
@@ -120,6 +148,8 @@ export function ReplayRunProvider({ children }: { children: ReactNode }) {
         generationRef.current += 1;
         setCheckpoint(null);
         startedIntentsRef.current = new Set();
+        setStartedIntents(new Set());
+        setAcknowledgedBeats(new Set());
         clearSettled();
         setEpoch((value) => value + 1);
         setRunKey((value) => value + 1);
@@ -141,6 +171,7 @@ export function ReplayRunProvider({ children }: { children: ReactNode }) {
                 expectedMessageId?: string | null;
                 expectedOperationId?: string | null;
                 force?: boolean;
+                signal?: AbortSignal;
             }
         ) => {
             const current = sessionRef.current;
@@ -149,6 +180,7 @@ export function ReplayRunProvider({ children }: { children: ReactNode }) {
             if (!current.checkpoints.includes(next)) {
                 throw new Error("That checkpoint is not part of this recording.");
             }
+            if (options?.signal?.aborted) return;
             if (transitioning.current) {
                 throw new Error("A checkpoint transition is already in progress.");
             }
@@ -157,6 +189,10 @@ export function ReplayRunProvider({ children }: { children: ReactNode }) {
             const nextEpoch = stateRef.current.epoch + 1;
             const scopeId = `${current.run_id}:${current.package_version}`;
             const prefetch = new AbortController();
+            const abortPrefetch = () => prefetch.abort();
+            options?.signal?.addEventListener("abort", abortPrefetch, {
+                once: true,
+            });
             try {
                 // The initial checkpoint is the pre-meeting snapshot: the
                 // guided package deliberately exposes only safe-config there.
@@ -186,6 +222,7 @@ export function ReplayRunProvider({ children }: { children: ReactNode }) {
                     prefetch.signal
                 );
                 if (generationRef.current !== generation) return;
+                if (options?.signal?.aborted) return;
                 const operation = options?.expectedOperationId
                     ? bundle.turns.find(
                           (item) => item.operation_id === options.expectedOperationId
@@ -255,6 +292,7 @@ export function ReplayRunProvider({ children }: { children: ReactNode }) {
                 setCheckpoint(next);
                 setEpoch(nextEpoch);
             } finally {
+                options?.signal?.removeEventListener("abort", abortPrefetch);
                 transitioning.current = false;
             }
         },
@@ -281,9 +319,7 @@ export function ReplayRunProvider({ children }: { children: ReactNode }) {
                 );
             }
             const generation = generationRef.current;
-            startedIntentsRef.current = new Set(startedIntentsRef.current).add(
-                intent.intent_id
-            );
+            markStarted(intent.intent_id, true);
             if (intent.kind === "request_closing") {
                 const closingBeat = current.beats.find((beat) =>
                     beat.steps.some((step) => step.intent_id === intent.intent_id)
@@ -334,7 +370,7 @@ export function ReplayRunProvider({ children }: { children: ReactNode }) {
                 });
             }
         },
-        [switchCheckpoint, queryClient]
+        [markStarted, switchCheckpoint, queryClient]
     );
 
     const skipIntent = useCallback(
@@ -374,23 +410,24 @@ export function ReplayRunProvider({ children }: { children: ReactNode }) {
                 throw new Error("That prepared turn cannot be replayed.");
             }
             await switchCheckpoint(transition.source_checkpoint, { force: true });
-            startedIntentsRef.current = new Set(
-                [...startedIntentsRef.current].filter((item) => item !== intentId)
-            );
+            markStarted(intentId, false);
             await startIntent(intentId);
         },
-        [startIntent, switchCheckpoint]
+        [markStarted, startIntent, switchCheckpoint]
     );
 
     const goToChapter = useCallback(
-        async (chapterId: string) => {
+        async (chapterId: string, options?: { force?: boolean; signal?: AbortSignal }) => {
             const current = sessionRef.current;
             if (!current) throw new Error("Replay session is not loaded.");
             const chapter = current.chapters.find(
                 (item) => item.chapter_id === chapterId
             );
             if (!chapter) throw new Error("That recorded chapter is unavailable.");
-            await switchCheckpoint(chapter.checkpoint);
+            await switchCheckpoint(chapter.checkpoint, {
+                force: options?.force ?? false,
+                signal: options?.signal,
+            });
         },
         [switchCheckpoint]
     );
@@ -463,12 +500,15 @@ export function ReplayRunProvider({ children }: { children: ReactNode }) {
         checkpoint: effectiveCheckpoint,
         epoch,
         settledIntents,
+        startedIntents,
+        acknowledgedBeats,
         closingSettled,
         switchCheckpoint,
         startIntent,
         skipIntent,
         replayIntent,
         goToChapter,
+        acknowledgeBeat,
         playbackSpeed,
         setPlaybackSpeed,
         restart,

@@ -10,10 +10,11 @@
 import { useEffect, useMemo, useState, type ReactNode } from "react";
 import Link from "next/link";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
-import { ArrowLeft, ArrowRight, RotateCcw, Sparkles } from "lucide-react";
+import { ArrowLeft, ArrowRight, Play, RotateCcw, Sparkles } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import type { ReplayBeat, ReplayBeatStep } from "../runtime/contract";
+import { chapterHref } from "../runtime/chapters";
 import { useReplayRun } from "../runtime/replay-run";
 import { useDemoWorkspace } from "@/features/demo-workspace";
 import { ActiveReplayIntentProvider } from "../runtime/active-intent";
@@ -41,35 +42,14 @@ function stepSatisfied(
     beat: ReplayBeat,
     run: ReturnType<typeof useReplayRun>
 ): boolean {
-    if (step.completion === "acknowledge") return true;
-    if (!step.intent_id) return false;
+    if (step.completion === "acknowledge") {
+        return run.acknowledgedBeats.has(beat.beat_id);
+    }
+    if (!step.intent_id || !run.settledIntents.has(step.intent_id)) return false;
     if (step.completion === "closing_completed" && !run.closingSettled) {
         return false;
     }
-    if (!run.settledIntents.has(step.intent_id)) return false;
-    const intent = run.session.intents.find(
-        (item) => item.intent_id === step.intent_id
-    );
-    if (!intent) return false;
-    let destination: string | null = null;
-    if (step.completion === "closing_completed") {
-        destination = beat.completed_checkpoint;
-    } else if (step.completion === "checkpoint") {
-        destination = intent.checkpoint;
-    } else {
-        const tape = run.session.tapes.find(
-            (item) => item.tape_id === intent.tape_id
-        );
-        destination = tape?.completed_checkpoint ?? null;
-    }
-    if (!destination) return false;
-    const destinationIndex = run.session.checkpoints.indexOf(destination);
-    const currentIndex = run.session.checkpoints.indexOf(run.checkpoint);
-    return (
-        destinationIndex >= 0 &&
-        currentIndex >= 0 &&
-        destinationIndex <= currentIndex
-    );
+    return true;
 }
 
 function isJourneyRoute(pathname: string): boolean {
@@ -103,76 +83,22 @@ export function GuidedReplay({ children }: { children: ReactNode }) {
         beat.steps.every((step) => stepSatisfied(step, beat, run));
 
     /**
-     * The checkpoint is the single source of truth for progress. Derive the
-     * current beat from it instead of keeping a second, independently mutable
-     * step counter. When a recorded action settles, the checkpoint moves and
-     * the guide advances in the same render.
+     * Progress is recorded evidence, never the ordinal of the snapshot the
+     * visitor happens to be inspecting. A branch action or a chapter detour
+     * cannot complete a canonical beat, and jumping to a later snapshot cannot
+     * make an unfinished beat look done.
      */
     const index = (() => {
-        if (beats.length === 0) return 0;
-
-        let candidate = 0;
-        if (run.checkpoint === run.session.initial_checkpoint) {
-            // The board and the intake form share the initial checkpoint.
-            // Their route disambiguates which beat is current.
-            const routeIndex = beats.findIndex(
-                (beat) =>
-                    beat.checkpoint === run.checkpoint &&
-                    beatMatchesLocation(
-                        beat,
-                        run.session.meeting_id,
-                        pathname,
-                        tab
-                    )
-            );
-            candidate = routeIndex >= 0 ? routeIndex : 0;
-        } else {
-            const position = run.session.checkpoints.indexOf(run.checkpoint);
-            for (let i = 0; i < beats.length; i += 1) {
-                const beat = beats[i];
-                const start = run.session.checkpoints.indexOf(
-                    beat.start_checkpoint ?? beat.checkpoint
-                );
-                const end = run.session.checkpoints.indexOf(
-                    beat.completed_checkpoint ?? beat.checkpoint
-                );
-                if (start >= 0 && end >= 0 && position >= start && position < end) {
-                    candidate = i;
-                    break;
-                }
-            }
-            if (
-                beats[beats.length - 1]?.completed_checkpoint === run.checkpoint
-            ) {
-                candidate = beats.length;
-            } else if (candidate === 0) {
-                // A checkpoint can be the start of a beat without being inside
-                // the previous beat's half-open interval (notably the last
-                // beat's start checkpoint, which has no following beat).
-                const startIndex = beats.findIndex(
-                    (beat) =>
-                        (beat.start_checkpoint ?? beat.checkpoint) ===
-                        run.checkpoint
-                );
-                if (startIndex >= 0) candidate = startIndex;
-            }
+        for (let i = 0; i < beats.length; i += 1) {
+            if (!beatSatisfied(beats[i])) return i;
         }
-
-        // Never move into a beat whose recorded result has not happened yet.
-        // This keeps the closing beat visible until its terminal settles even
-        // though requesting the closing switches the checkpoint early.
-        while (candidate > 0) {
-            const previous = beats[Math.min(candidate, beats.length) - 1];
-            if (beatSatisfied(previous)) break;
-            candidate = Math.min(candidate, beats.length) - 1;
-        }
-
-        return candidate;
+        return beats.length;
     })();
 
     const finished = index >= beats.length;
     const current = beats[index] ?? null;
     const journeyRoute = isJourneyRoute(pathname);
+    const chapterParam = searchParams.get("chapter");
     const highlightedPersonaId =
         workspace.seed?.highlightedPersonaId ??
         workspace.seed?.personas[0]?.personaId ??
@@ -180,8 +106,10 @@ export function GuidedReplay({ children }: { children: ReactNode }) {
     const { setGuideBookmark } = workspace;
 
     useEffect(() => {
-        if (current) setGuideBookmark(current.beat_id);
-    }, [current, setGuideBookmark]);
+        const bookmark = current ?? (finished ? beats[beats.length - 1] : null);
+        if (bookmark) setGuideBookmark(bookmark.beat_id);
+    }, [beats, current, finished, setGuideBookmark]);
+
     const activeStep = current?.steps.find(
         (step) => step.intent_id && !stepSatisfied(step, current, run)
     );
@@ -189,6 +117,13 @@ export function GuidedReplay({ children }: { children: ReactNode }) {
         ? (activeStep?.intent_id ?? "__guided-none__")
         : "__guided-none__";
     const satisfied = current ? beatSatisfied(current) : false;
+    const pendingAcknowledge = current
+        ? current.steps.some(
+              (step) =>
+                  step.completion === "acknowledge" &&
+                  !stepSatisfied(step, current, run)
+          )
+        : false;
     const targetHref = current
         ? beatHref(current, run.session.meeting_id)
         : "/demo";
@@ -208,14 +143,60 @@ export function GuidedReplay({ children }: { children: ReactNode }) {
         !finished &&
         current !== null &&
         (!onTarget ||
+            pendingAcknowledge ||
             (satisfied &&
                 index < beats.length - 1 &&
                 nextHref !== targetHref));
     const canGoBack = !navigating && (index > 0 || finished);
+    const interruptedIntentIds = current
+        ? current.steps
+              .map((step) => step.intent_id)
+              .filter(
+                  (intentId): intentId is string =>
+                      typeof intentId === "string" &&
+                      run.startedIntents.has(intentId) &&
+                      !run.settledIntents.has(intentId)
+              )
+        : [];
+    const canResume = Boolean(
+        workspace.guideBookmark || chapterParam || interruptedIntentIds.length > 0
+    );
 
     const restart = () => {
         workspace.restartRecording();
         router.push("/demo");
+    };
+
+    const resume = async () => {
+        if (!current && !finished) return;
+        setNavigating(true);
+        setError(null);
+        try {
+            if (interruptedIntentIds.length > 0) {
+                for (const intentId of interruptedIntentIds) {
+                    await run.replayIntent(intentId);
+                }
+            } else {
+                const target = finished
+                    ? beats[beats.length - 1]
+                    : current;
+                const checkpoint =
+                    target?.start_checkpoint ?? target?.checkpoint;
+                if (checkpoint) {
+                    await run.switchCheckpoint(checkpoint, { force: true });
+                }
+            }
+            const target = current ?? beats[beats.length - 1];
+            if (target) router.push(beatHref(target, run.session.meeting_id));
+        } catch (cause) {
+            setError(
+                cause instanceof Error
+                    ? cause.message
+                    : "The bookmarked guided position could not be restored."
+            );
+        } finally {
+            setNavigating(false);
+        }
     };
 
     const back = async () => {
@@ -227,9 +208,8 @@ export function GuidedReplay({ children }: { children: ReactNode }) {
         setNavigating(true);
         setError(null);
         try {
-            // Restore the state before the target beat ran. Using the target
-            // beat's start checkpoint (rather than the previous completed
-            // checkpoint) is what makes the derived index move backwards.
+            // Back only moves the exploration cursor. Completed canonical
+            // actions stay complete, so the guide never rewinds evidence.
             const checkpoint = target.start_checkpoint ?? target.checkpoint;
             if (checkpoint && checkpoint !== run.checkpoint) {
                 await run.switchCheckpoint(checkpoint);
@@ -249,18 +229,26 @@ export function GuidedReplay({ children }: { children: ReactNode }) {
     const advance = () => {
         if (!canContinue || !current) return;
 
-        // Progress has already moved the counter when an action settles. The
-        // button's job is to bring the UI to the current beat's screen.
+        // Progress is derived from recorded evidence. The button only brings
+        // the visitor to the current beat's screen or acknowledges a review.
         if (!onTarget) {
             router.push(targetHref);
             return;
         }
 
-        // Acknowledge-only beats do not change the checkpoint, so Continue is
-        // the action that moves to the next screen.
-        if (satisfied && index < beats.length - 1) {
-            const next = beats[index + 1];
-            router.push(beatHref(next, run.session.meeting_id));
+        if (pendingAcknowledge) {
+            run.acknowledgeBeat(current.beat_id);
+            const completesBeat = current.steps.every(
+                (step) =>
+                    step.completion === "acknowledge" ||
+                    stepSatisfied(step, current, run)
+            );
+            if (completesBeat && nextHref) router.push(nextHref);
+            return;
+        }
+
+        if (satisfied && nextHref) {
+            router.push(nextHref);
         }
     };
 
@@ -319,6 +307,17 @@ export function GuidedReplay({ children }: { children: ReactNode }) {
                                     size="sm"
                                     variant="outline"
                                     className="border-indigo-800 text-indigo-200 hover:bg-indigo-900/40"
+                                    disabled={!canResume || navigating}
+                                    onClick={() => void resume()}
+                                >
+                                    <Play className="mr-1 h-4 w-4" />
+                                    Resume guided journey
+                                </Button>
+                                <Button
+                                    type="button"
+                                    size="sm"
+                                    variant="outline"
+                                    className="border-indigo-800 text-indigo-200 hover:bg-indigo-900/40"
                                     disabled={!canGoBack}
                                     onClick={() => void back()}
                                 >
@@ -332,7 +331,9 @@ export function GuidedReplay({ children }: { children: ReactNode }) {
                                     disabled={!canContinue || navigating}
                                     onClick={advance}
                                 >
-                                    Continue
+                                    {pendingAcknowledge
+                                        ? "Continue (acknowledge)"
+                                        : "Continue"}
                                     <ArrowRight className="ml-1 h-4 w-4" />
                                 </Button>
                                 <Button
@@ -367,6 +368,37 @@ export function GuidedReplay({ children }: { children: ReactNode }) {
                                 <p className="mt-2 text-sm text-indigo-100/90">
                                     {current.objective}
                                 </p>
+                                {run.session.chapters.length > 0 ? (
+                                    <details className="mt-2 rounded-md border border-indigo-800/60 bg-indigo-950/30 px-2 py-1.5">
+                                        <summary className="cursor-pointer text-xs font-medium text-indigo-200">
+                                            Chapters and inspection screens
+                                        </summary>
+                                        <div className="mt-1 flex flex-wrap gap-x-3 gap-y-1">
+                                            {run.session.chapters.map((chapter) => (
+                                                <Link
+                                                    key={chapter.chapter_id}
+                                                    href={chapterHref(
+                                                        chapter,
+                                                        run.session.meeting_id
+                                                    )}
+                                                    aria-current={
+                                                        chapterParam === chapter.chapter_id
+                                                            ? "page"
+                                                            : undefined
+                                                    }
+                                                    className="text-xs font-medium text-indigo-300 underline underline-offset-2 aria-[current=page]:text-white"
+                                                >
+                                                    {chapter.title}
+                                                </Link>
+                                            ))}
+                                        </div>
+                                        <p className="mt-1 text-[11px] leading-relaxed text-indigo-200/60">
+                                            Opening a chapter inspects its approved
+                                            snapshot. It does not complete a guided
+                                            step or create a new turn.
+                                        </p>
+                                    </details>
+                                ) : null}
                                 {workspace.expanded && highlightedPersonaId ? (
                                     <Link
                                         href={`/demo/roster/${highlightedPersonaId}/history`}
@@ -380,6 +412,13 @@ export function GuidedReplay({ children }: { children: ReactNode }) {
                                         ? "Recorded condition complete. Review the screen, then continue."
                                         : "Complete the supported action on this screen. The guide waits for the recorded result."}
                                 </p>
+                                {interruptedIntentIds.length > 0 ? (
+                                    <p className="mt-1 text-xs text-amber-200/80">
+                                        An interrupted prepared turn will restart from its
+                                        approved start when you resume. Completed guide steps
+                                        and practice edits stay in place.
+                                    </p>
+                                ) : null}
                                 {!onTarget ? (
                                     <Link
                                         href={targetHref}

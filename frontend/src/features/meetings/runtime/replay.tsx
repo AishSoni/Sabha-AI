@@ -72,7 +72,7 @@ import { MeetingsRuntimeProvider } from "./context";
 import { RecordedParticipantAction } from "./recorded-participant-action";
 import { RecordedDirectorAction } from "./recorded-director-action";
 import { RecordedDocumentsPanel } from "./recorded-documents-panel";
-import { createReplayEvidence } from "./replay-evidence";
+import { RecordedSummaryPanel } from "./recorded-summary-panel";import { createReplayEvidence } from "./replay-evidence";
 
 export interface ReplaySession {
     run_id: string;
@@ -892,6 +892,7 @@ export function createReplayRuntime(
             participantAction: RecordedParticipantAction,
             directorAction: RecordedDirectorAction,
             documentPanel: RecordedDocumentsPanel,
+            summaryPanel: RecordedSummaryPanel,
         },
         signal: options.signal,
         ...(options.restart ? { restart: options.restart } : {}),
