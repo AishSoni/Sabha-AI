@@ -123,6 +123,11 @@ describe('recorded replay module graph', () => {
         expect(paths).toContain('src/app/demo/new/page.tsx');
         expect(paths).toContain('src/app/demo/meetings/page.tsx');
         expect(paths).toContain('src/app/demo/meetings/[id]/page.tsx');
+        expect(paths).toContain('src/app/demo/knowledge-stacks/page.tsx');
+        expect(paths).toContain('src/app/demo/knowledge-stacks/new/page.tsx');
+        expect(paths).toContain(
+            'src/app/demo/knowledge-stacks/[id]/page.tsx'
+        );
     });
 
     it('composes the real room but never the live settings, vault, or stores', () => {

@@ -1,7 +1,7 @@
 import { fireEvent, render, screen, waitFor } from "@testing-library/react";
 import { useState } from "react";
 import { describe, expect, it, vi } from "vitest";
-import type { WorkspaceSample } from "@/features/demo-workspace/contract";
+import type { WorkspaceSample } from "@/features/demo-workspace";
 import { SamplePicker } from "./sample-picker";
 
 const SHARED: WorkspaceSample = {

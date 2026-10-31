@@ -7,8 +7,8 @@
  * document scopes. Live stack adapters remain separate.
  */
 import { useCallback, useMemo, useState } from "react";
-import { useDemoWorkspace } from "@/features/demo-workspace/provider";
-import type { WorkspaceStack } from "@/features/demo-workspace/contract";
+import { useDemoWorkspace } from "@/features/demo-workspace";
+import type { WorkspaceStack } from "@/features/demo-workspace";
 import type { KnowledgeStackView } from "../presentation/contract";
 import {
     assignedPersonas,

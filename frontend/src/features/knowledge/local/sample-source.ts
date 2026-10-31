@@ -10,7 +10,7 @@ import {
     WORKSPACE_LIMITS,
     type WorkspacePublishedAsset,
     type WorkspaceSample,
-} from "@/features/demo-workspace/contract";
+} from "@/features/demo-workspace";
 
 export type SampleSourceFailure =
     | "missing_asset"

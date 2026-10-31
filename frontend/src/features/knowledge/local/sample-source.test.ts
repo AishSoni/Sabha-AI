@@ -3,7 +3,7 @@ import {
     WORKSPACE_LIMITS,
     type WorkspacePublishedAsset,
     type WorkspaceSample,
-} from "@/features/demo-workspace/contract";
+} from "@/features/demo-workspace";
 import { SampleSourceError, verifySampleSource } from "./sample-source";
 
 const SAMPLE: WorkspaceSample = {

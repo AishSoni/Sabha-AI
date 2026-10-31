@@ -10,7 +10,7 @@ import {
     type WorkspaceDocument,
     type WorkspaceLocalState,
     type WorkspaceSample,
-} from "@/features/demo-workspace/contract";
+} from "@/features/demo-workspace";
 
 export type AddDocumentFailure =
     | "sample_unavailable"

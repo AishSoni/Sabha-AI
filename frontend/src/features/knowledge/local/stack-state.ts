@@ -9,7 +9,7 @@ import {
     WORKSPACE_LIMITS,
     type WorkspaceLocalState,
     type WorkspaceStack,
-} from "@/features/demo-workspace/contract";
+} from "@/features/demo-workspace";
 import { scopeCounts } from "./document-state";
 
 export type StackMutationFailure =
@@ -133,6 +133,25 @@ export function assignedPersonas(
     return state.personas
         .filter((persona) => persona.stackIds.includes(stackId))
         .map((persona) => persona.name);
+}
+
+export interface StackParticipants {
+    /** Defaults applied when a new practice participant snapshot is captured. */
+    templateDefaults: string[];
+    /** Snapshots that already reference this stack by saved stack id. */
+    savedParticipants: string[];
+}
+
+export function stackParticipants(
+    state: WorkspaceLocalState,
+    stackId: string
+): StackParticipants {
+    return {
+        templateDefaults: assignedPersonas(state, stackId),
+        savedParticipants: state.participantSnapshots
+            .filter((snapshot) => snapshot.stackIds.includes(stackId))
+            .map((snapshot) => snapshot.name),
+    };
 }
 
 export function stackDocumentCounts(

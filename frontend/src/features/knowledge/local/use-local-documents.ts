@@ -8,11 +8,11 @@
  * server-side work.
  */
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { useDemoWorkspace } from "@/features/demo-workspace/provider";
+import { useDemoWorkspace } from "@/features/demo-workspace";
 import type {
     WorkspaceDocument,
     WorkspaceSample,
-} from "@/features/demo-workspace/contract";
+} from "@/features/demo-workspace";
 import type { KnowledgeDocumentView } from "../presentation/contract";
 import {
     addLocalDocument,
@@ -88,6 +88,9 @@ export interface LocalDocumentsAdapter {
     retryDocument: (operationId: string) => void;
     removeDocument: (document: KnowledgeDocumentView) => void;
     isAlreadyAdded: (sample: WorkspaceSample) => boolean;
+    sampleForDocument: (
+        document: KnowledgeDocumentView
+    ) => WorkspaceSample | undefined;
     participantCanRetrieve: (
         document: WorkspaceDocument,
         participant: {
@@ -337,6 +340,16 @@ export function useLocalDocuments(
         [scope, workspace]
     );
 
+    const sampleForDocument = useCallback(
+        (document: KnowledgeDocumentView) => {
+            const record = workspace.local.documents.find(
+                (candidate) => candidate.documentId === document.id
+            );
+            return record ? samplesById.get(record.sampleId) : undefined;
+        },
+        [samplesById, workspace.local.documents]
+    );
+
     return {
         documents,
         counts,
@@ -352,6 +365,7 @@ export function useLocalDocuments(
         retryDocument,
         removeDocument,
         isAlreadyAdded: alreadyAdded,
+        sampleForDocument,
         participantCanRetrieve,
     };
 }

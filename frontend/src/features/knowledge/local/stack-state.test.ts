@@ -3,12 +3,13 @@ import {
     localStateFromSeed,
     type WorkspaceDocument,
     type WorkspaceSeed,
-} from "@/features/demo-workspace/contract";
+} from "@/features/demo-workspace";
 import {
     assignedPersonas,
     createLocalStack,
     deleteLocalStack,
     stackDocumentCounts,
+    stackParticipants,
     updateLocalStack,
 } from "./stack-state";
 
@@ -164,6 +165,36 @@ describe("practice knowledge stack state", () => {
             "The Credit Analyst",
             "The Downside Reviewer",
         ]);
+    });
+
+    it("separates template defaults from captured participant assignments", () => {
+        const state = localStateFromSeed(seed());
+        const withSnapshot = {
+            ...state,
+            participantSnapshots: [
+                {
+                    snapshotId: "snapshot-credit",
+                    personaId: "persona-credit",
+                    name: "The Credit Analyst",
+                    role: "Credit Analyst",
+                    color: "#2563eb",
+                    composedPrompt: "Credit prompt.",
+                    stackIds: ["credit-stack"],
+                    sourceRevisionId: "rev-credit",
+                    sourceRevisionNumber: 1,
+                    createdAt: "2026-10-31",
+                },
+            ],
+        };
+
+        expect(stackParticipants(withSnapshot, "credit-stack")).toEqual({
+            templateDefaults: ["The Credit Analyst", "The Downside Reviewer"],
+            savedParticipants: ["The Credit Analyst"],
+        });
+        expect(stackParticipants(withSnapshot, "shared-stack")).toEqual({
+            templateDefaults: ["The Credit Analyst"],
+            savedParticipants: [],
+        });
     });
 
     it("revokes stack documents first, clears current defaults, and keeps saved snapshot refs unavailable", () => {

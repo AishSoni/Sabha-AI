@@ -19,7 +19,7 @@ import {
     DialogHeader,
     DialogTitle,
 } from "@/components/ui/dialog";
-import type { WorkspaceSample } from "@/features/demo-workspace/contract";
+import type { WorkspaceSample } from "@/features/demo-workspace";
 
 export interface SamplePickerProps {
     open: boolean;
