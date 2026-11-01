@@ -91,6 +91,9 @@ export function ReplayRunProvider({ children }: { children: ReactNode }) {
     const [acknowledgedBeats, setAcknowledgedBeats] = useState<Set<string>>(
         new Set()
     );
+    const [closingTerminals, setClosingTerminals] = useState<Set<string>>(
+        new Set()
+    );
     const [playbackSpeed, setPlaybackSpeed] = useState<1 | 2>(1);
     const transitioning = useRef(false);
     const startedIntentsRef = useRef<Set<string>>(new Set());
@@ -118,9 +121,10 @@ export function ReplayRunProvider({ children }: { children: ReactNode }) {
         return session.transitions.some(
             (transition) =>
                 transition.kind === "request_closing" &&
-                settledIntents.has(transition.intent_id)
+                settledIntents.has(transition.intent_id) &&
+                closingTerminals.has(transition.intent_id)
         );
-    }, [session.transitions, settledIntents]);
+    }, [session.transitions, settledIntents, closingTerminals]);
 
     const settleIntent = useCallback((intentId: string) => {
         setSettledIntents((previous) => {
@@ -131,8 +135,18 @@ export function ReplayRunProvider({ children }: { children: ReactNode }) {
         });
     }, []);
 
+    const markClosingTerminal = useCallback((intentId: string) => {
+        setClosingTerminals((previous) => {
+            if (previous.has(intentId)) return previous;
+            const next = new Set(previous);
+            next.add(intentId);
+            return next;
+        });
+    }, []);
+
     const clearSettled = useCallback(() => {
         setSettledIntents(new Set());
+        setClosingTerminals(new Set());
     }, []);
 
     const markStarted = useCallback((intentId: string, started: boolean) => {
@@ -465,6 +479,9 @@ export function ReplayRunProvider({ children }: { children: ReactNode }) {
                 startedIntentsRef.current.has(intentId)
             ) {
                 settleIntent(intentId);
+                if (transition.kind === "request_closing") {
+                    markClosingTerminal(intentId);
+                }
                 return;
             }
             const outcome = await transitionToCheckpoint(
@@ -480,8 +497,11 @@ export function ReplayRunProvider({ children }: { children: ReactNode }) {
             // path. Closing progress therefore lives on the intent ledger, not
             // in a separate room-local flag.
             settleIntent(intentId);
+            if (transition.kind === "request_closing") {
+                markClosingTerminal(intentId);
+            }
         },
-        [settleIntent, transitionToCheckpoint]
+        [markClosingTerminal, settleIntent, transitionToCheckpoint]
     );
 
     const replayIntent = useCallback(
@@ -541,8 +561,9 @@ export function ReplayRunProvider({ children }: { children: ReactNode }) {
         (intentId: string) => {
             if (!startedIntentsRef.current.has(intentId)) return;
             settleIntent(intentId);
+            markClosingTerminal(intentId);
         },
-        [settleIntent]
+        [markClosingTerminal, settleIntent]
     );
 
     const scope = useMemo<RuntimeScope>(

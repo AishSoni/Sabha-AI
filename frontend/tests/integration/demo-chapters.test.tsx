@@ -11,8 +11,10 @@ const demoLocation = vi.hoisted(() => ({
 
 const replayRun = vi.hoisted(() => ({
     checkpoint: "checkpoint-initial",
+    runGeneration: 1,
     goToChapter: vi.fn(),
     session: {
+        run_id: "run-1",
         meeting_id: "meeting-1",
         retired: false,
         chapters: [] as ReplayChapter[],
@@ -61,6 +63,7 @@ describe("ChapterBootstrap", () => {
         demoLocation.pathname = "/demo/meetings/meeting-1";
         demoLocation.params = new URLSearchParams("");
         replayRun.checkpoint = "checkpoint-initial";
+        replayRun.runGeneration = 1;
         replayRun.goToChapter.mockReset();
         replayRun.goToChapter.mockResolvedValue(undefined);
         replayRun.session.retired = false;
@@ -135,6 +138,42 @@ describe("ChapterBootstrap", () => {
                 "This chapter is not available at the requested route or tab."
             )
         ).toBeInTheDocument();
+    });
+
+    it("restores again when the same chapter is re-entered after playback moved on", async () => {
+        demoLocation.params = new URLSearchParams(
+            "chapter=chapter-facts&tab=documents"
+        );
+        const view = renderChapter();
+        replayRun.checkpoint = "checkpoint-credit";
+        expect(await screen.findByText("Chapter content")).toBeInTheDocument();
+
+        // Playback legitimately moved away from the chapter while the same
+        // entry stayed mounted; the receipt must still hide a forced rewind.
+        replayRun.checkpoint = "checkpoint-downside";
+        demoLocation.params = new URLSearchParams("");
+        view.rerender(
+            <ChapterBootstrap>
+                <p>Chapter content</p>
+            </ChapterBootstrap>
+        );
+        replayRun.goToChapter.mockClear();
+
+        demoLocation.params = new URLSearchParams(
+            "chapter=chapter-facts&tab=documents"
+        );
+        view.rerender(
+            <ChapterBootstrap>
+                <p>Chapter content</p>
+            </ChapterBootstrap>
+        );
+
+        expect(screen.getByText("Restoring recorded chapter")).toBeInTheDocument();
+        await waitFor(() =>
+            expect(replayRun.goToChapter).toHaveBeenCalledWith("chapter-facts", {
+                signal: expect.any(AbortSignal),
+            })
+        );
     });
 
     it("rejects every chapter from a retired package", () => {

@@ -27,26 +27,36 @@ type Failure = {
 };
 
 export function ChapterBootstrap({ children }: { children: ReactNode }) {
-    const { session, checkpoint, goToChapter, runGeneration } = useReplayRun();
+    const { session, runGeneration } = useReplayRun();
+    const chapterId = useSearchParams().get("chapter");
+    /**
+     * A chapter entry is identified by the chapter named in the URL and the
+     * replay run that owns it. Re-entering the chapter, or resetting the
+     * recording, remounts this entry and therefore restores again. Playback
+     * inside one entry keeps its receipt and is not forced back to the start.
+     */
+    const entryKey = `${chapterId ?? "journey"}:${runGeneration}:${session.run_id}`;
+    return (
+        <ChapterEntry key={entryKey} chapterId={chapterId}>
+            {children}
+        </ChapterEntry>
+    );
+}
+
+function ChapterEntry({
+    chapterId,
+    children,
+}: {
+    chapterId: string | null;
+    children: ReactNode;
+}) {
+    const { session, checkpoint, goToChapter } = useReplayRun();
     const pathname = usePathname();
     const searchParams = useSearchParams();
-    const chapterId = searchParams.get("chapter");
     const requestedTab = searchParams.get("tab");
     const [attempt, setAttempt] = useState(0);
     const [failure, setFailure] = useState<Failure | null>(null);
-    const [restored, setRestored] = useState<{
-        chapterId: string;
-        generation: number;
-    } | null>(null);
-
-    /**
-     * A restoration receipt belongs to one chapter entry in one replay run.
-     * Leaving and re-entering the same chapter, or resetting the recording,
-     * must restore again rather than trusting an old boolean forever.
-     */
-    useEffect(() => {
-        setRestored(null);
-    }, [chapterId, runGeneration]);
+    const [restored, setRestored] = useState<string | null>(null);
 
     const chapter = chapterId
         ? session.chapters.find((item) => item.chapter_id === chapterId) ?? null
@@ -61,9 +71,7 @@ export function ChapterBootstrap({ children }: { children: ReactNode }) {
     const installed =
         chapter !== null &&
         (checkpoint === chapter.checkpoint ||
-            (restored !== null &&
-                restored.chapterId === chapter.chapter_id &&
-                restored.generation === runGeneration));
+            restored === chapter.chapter_id);
     const error =
         failure &&
         failure.chapterId === chapterId &&
@@ -81,10 +89,7 @@ export function ChapterBootstrap({ children }: { children: ReactNode }) {
         })
             .then(() => {
                 if (!cancelled && !controller.signal.aborted) {
-                    setRestored({
-                        chapterId: chapter.chapter_id,
-                        generation: runGeneration,
-                    });
+                    setRestored(chapter.chapter_id);
                 }
             })
             .catch((cause: unknown) => {
@@ -116,7 +121,6 @@ export function ChapterBootstrap({ children }: { children: ReactNode }) {
         goToChapter,
         installed,
         invalid,
-        runGeneration,
         session.meeting_id,
         session.retired,
     ]);

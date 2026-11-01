@@ -115,7 +115,7 @@ export function useRecordedClosingText({
                         }
                     }
                 }
-            } catch (error) {
+            } catch {
                 if (cancelled) return;
                 // Keep the last provisional view. A dropped observation is not
                 // evidence of a completed closing.

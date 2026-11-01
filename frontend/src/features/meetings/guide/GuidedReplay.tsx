@@ -33,7 +33,6 @@ import { ActiveReplayIntentProvider } from "../runtime/active-intent";
 import { GuideActionsProvider } from "./guide-actions";
 import {
     destinationIncludesLocation,
-    replayBeatHref,
     resolveGuidedBeatDestination,
     type GuidedBeatDestination,
 } from "./replay-destination";
