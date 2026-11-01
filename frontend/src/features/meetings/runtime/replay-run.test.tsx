@@ -15,6 +15,47 @@ function json(body: unknown, status = 200) {
     });
 }
 
+function stubReplayReads(session: unknown) {
+    vi.stubGlobal(
+        "fetch",
+        vi.fn(async (input: unknown) => {
+            const url = String(input);
+            if (url.endsWith("/replay/session")) return json(session);
+            if (url.includes("/workspace-seed")) {
+                return json({ detail: "replay_workspace_seed_unavailable" }, 404);
+            }
+            if (url.includes("/safe-config")) return json({});
+            if (url.includes("/disagreements")) return json([]);
+            if (url.includes("/consensus")) return json([]);
+            if (url.endsWith("/turns") || url.includes("/turns?")) {
+                return json([completedOperationWire()]);
+            }
+            if (url.includes(`/replay/meetings/${MEETING_ID}?`)) {
+                return json(completedMeetingWire());
+            }
+            return json({ detail: "replay_read_unavailable" }, 404);
+        })
+    );
+}
+
+function renderReplayRun() {
+    const wrapper = ({ children }: { children: ReactNode }) => (
+        <ReplaySessionProvider>
+            <DemoWorkspaceProvider
+                identity={{
+                    packageId: "placeholder-analyst",
+                    version: "1",
+                    contentSha256: "a".repeat(64),
+                    meetingId: MEETING_ID,
+                }}
+            >
+                <ReplayRunProvider>{children}</ReplayRunProvider>
+            </DemoWorkspaceProvider>
+        </ReplaySessionProvider>
+    );
+    return renderHook(() => useReplayRun(), { wrapper });
+}
+
 function sessionWire() {
     return {
         run_id: "run-1",
@@ -341,6 +382,45 @@ function expandedSessionWire() {
     };
 }
 
+function closingSessionWire(canonical = true) {
+    const base = expandedSessionWire();
+    return {
+        ...base,
+        checkpoints: [...base.checkpoints, "checkpoint-closed"],
+        intents: [
+            ...base.intents,
+            {
+                intent_id: "close",
+                kind: "request_closing",
+                checkpoint: "checkpoint-created",
+                participant_id: null,
+                operation_id: null,
+                tape_id: null,
+                closing_tape_id: null,
+                label: "Close the meeting",
+            },
+        ],
+        transitions: [
+            ...base.transitions,
+            {
+                transition_id: "canonical-close",
+                source_checkpoint: "checkpoint-created",
+                completed_checkpoint: "checkpoint-closed",
+                intent_id: "close",
+                kind: "request_closing",
+                participant_id: null,
+                operation_id: null,
+                tape_id: null,
+                closing_tape_id: null,
+                canonical,
+                prerequisites: [],
+                label: "Close the meeting",
+                explanation: "",
+            },
+        ],
+    };
+}
+
 function legacySessionWire() {
     return {
         ...sessionWire(),
@@ -561,79 +641,10 @@ describe("ReplayRunProvider prepared playback", () => {
         expect(result.current.settledIntents.has("create")).toBe(true);
     });
 
-    it("keeps closing evidence pending until the started close is skipped or terminates", async () => {
-        const base = expandedSessionWire();
-        const closingIntent = {
-            intent_id: "close",
-            kind: "request_closing",
-            checkpoint: "checkpoint-created",
-            participant_id: null,
-            operation_id: null,
-            tape_id: null,
-            closing_tape_id: null,
-            label: "Close the meeting",
-        };
-        const closingTransition = {
-            transition_id: "canonical-close",
-            source_checkpoint: "checkpoint-created",
-            completed_checkpoint: "checkpoint-closed",
-            intent_id: "close",
-            kind: "request_closing",
-            participant_id: null,
-            operation_id: null,
-            tape_id: null,
-            closing_tape_id: null,
-            canonical: true,
-            prerequisites: [],
-            label: "Close the meeting",
-            explanation: "",
-        };
-        vi.stubGlobal(
-            "fetch",
-            vi.fn(async (input: unknown) => {
-                const url = String(input);
-                if (url.endsWith("/replay/session")) {
-                    return json({
-                        ...base,
-                        checkpoints: [...base.checkpoints, "checkpoint-closed"],
-                        intents: [...base.intents, closingIntent],
-                        transitions: [...base.transitions, closingTransition],
-                    });
-                }
-                if (url.includes("/workspace-seed")) {
-                    return json(
-                        { detail: "replay_workspace_seed_unavailable" },
-                        404
-                    );
-                }
-                if (url.includes("/safe-config")) return json({});
-                if (url.includes("/disagreements")) return json([]);
-                if (url.includes("/consensus")) return json([]);
-                if (url.endsWith("/turns") || url.includes("/turns?")) {
-                    return json([completedOperationWire()]);
-                }
-                if (url.includes(`/replay/meetings/${MEETING_ID}?`)) {
-                    return json(completedMeetingWire());
-                }
-                return json({ detail: "replay_read_unavailable" }, 404);
-            })
-        );
+    it("completes the canonical closing when the close action is started", async () => {
+        stubReplayReads(closingSessionWire());
 
-        const wrapper = ({ children }: { children: ReactNode }) => (
-            <ReplaySessionProvider>
-                <DemoWorkspaceProvider
-                    identity={{
-                        packageId: "placeholder-analyst",
-                        version: "1",
-                        contentSha256: "a".repeat(64),
-                        meetingId: MEETING_ID,
-                    }}
-                >
-                    <ReplayRunProvider>{children}</ReplayRunProvider>
-                </DemoWorkspaceProvider>
-            </ReplaySessionProvider>
-        );
-        const { result } = renderHook(() => useReplayRun(), { wrapper });
+        const { result } = renderReplayRun();
         await waitFor(() => expect(result.current.session).not.toBeNull());
 
         await act(async () => {
@@ -644,11 +655,48 @@ describe("ReplayRunProvider prepared playback", () => {
         });
         expect(result.current.checkpoint).toBe("checkpoint-closed");
         expect(result.current.settledIntents.has("close")).toBe(true);
-        expect(result.current.closingSettled).toBe(false);
+        expect(result.current.closingCompleted).toBe(true);
 
         await act(async () => {
             await result.current.skipIntent("close");
         });
-        expect(result.current.closingSettled).toBe(true);
+        expect(result.current.closingCompleted).toBe(true);
+
+        await act(async () => {
+            result.current.restart();
+        });
+        expect(result.current.closingCompleted).toBe(false);
+    });
+
+    it("does not complete the canonical closing when inspecting a completed snapshot", async () => {
+        stubReplayReads(closingSessionWire());
+
+        const { result } = renderReplayRun();
+        await waitFor(() => expect(result.current.session).not.toBeNull());
+
+        await act(async () => {
+            await result.current.switchCheckpoint("checkpoint-closed");
+        });
+
+        expect(result.current.checkpoint).toBe("checkpoint-closed");
+        expect(result.current.settledIntents.has("close")).toBe(false);
+        expect(result.current.closingCompleted).toBe(false);
+    });
+
+    it("does not complete the canonical closing for an exploration-only close", async () => {
+        stubReplayReads(closingSessionWire(false));
+
+        const { result } = renderReplayRun();
+        await waitFor(() => expect(result.current.session).not.toBeNull());
+
+        await act(async () => {
+            await result.current.switchCheckpoint("checkpoint-created");
+        });
+        await act(async () => {
+            await result.current.startIntent("close");
+        });
+
+        expect(result.current.settledIntents.has("close")).toBe(true);
+        expect(result.current.closingCompleted).toBe(false);
     });
 });

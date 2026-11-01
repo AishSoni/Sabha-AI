@@ -590,8 +590,6 @@ interface ReplayRuntimeOptions {
     playbackSpeed: ReplayPlaybackSpeed;
     settledIntents: ReadonlySet<string>;
     onTurnSettled?: (intentId: string) => void;
-    /** The closing intent whose approved terminal event was observed. */
-    onClosingTerminal?: (intentId: string) => void;
     isTurnVisible?: (operationId: string) => boolean;
 }
 
@@ -680,19 +678,6 @@ export function createReplayRuntime(
         `/replay/meetings/${encodeURIComponent(session.meeting_id)}`,
         checkpoint
     );
-    /**
-     * Canonical closing evidence belongs to exactly one intents record. A
-     * completed snapshot may contain that closing while the visitor only
-     * inspects a chapter; the controller still decides whether the intent was
-     * actually started in this run before treating the terminal as progress.
-     */
-    const closingIntent = session.transitions.find(
-        (transition) =>
-            transition.kind === "request_closing" &&
-            (transition.completed_checkpoint === checkpoint ||
-                transition.source_checkpoint === checkpoint)
-    );
-
     return {
         scope,
         evidence: createReplayEvidence({
@@ -1001,14 +986,7 @@ export function createReplayRuntime(
                         signal: combineSignals(options.signal, observeOptions.signal),
                     }
                 );
-                let terminalSeen = false;
                 for await (const event of decodeClosingTextStream(response)) {
-                    if (event.terminal && event.kind === "summary" && !terminalSeen) {
-                        terminalSeen = true;
-                        if (closingIntent) {
-                            options.onClosingTerminal?.(closingIntent.intent_id);
-                        }
-                    }
                     yield event;
                 }
             },

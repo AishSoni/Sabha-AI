@@ -47,7 +47,7 @@ function stepSatisfied(
         return acknowledgedBeats.has(beat.beat_id);
     }
     if (!step.intent_id || !run.settledIntents.has(step.intent_id)) return false;
-    if (step.completion === "closing_completed" && !run.closingSettled) {
+    if (step.completion === "closing_completed" && !run.closingCompleted) {
         return false;
     }
     return true;
@@ -146,7 +146,7 @@ export function GuidedReplay({ children }: { children: ReactNode }) {
     );
     const index = archived
         ? beats.length
-        : run.closingSettled && closingBeatIndex >= 0
+        : run.closingCompleted && closingBeatIndex >= 0
           ? Math.max(settledIndex, closingBeatIndex + 1)
           : settledIndex;
 
