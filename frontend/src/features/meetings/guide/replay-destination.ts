@@ -48,11 +48,14 @@ export function resolveGuidedBeatDestination(
     options: {
         pendingStep?: ReplayBeatStep;
         interruptedIntentId?: string | null;
+        /** The pending action already installed its completed snapshot. */
+        pendingIntentSettled?: boolean;
         /** Exploration Back inspects the state before a completed action. */
         preferStart?: boolean;
     } = {}
 ): GuidedBeatDestination {
     const pending = options.pendingStep;
+    const pendingIntentSettled = options.pendingIntentSettled === true;
     const interrupted = options.interruptedIntentId
         ? transitions.find(
               (transition) =>
@@ -72,6 +75,10 @@ export function resolveGuidedBeatDestination(
         checkpoint = interrupted.source_checkpoint;
     } else if (pending?.completion === "acknowledge") {
         checkpoint = beat.completed_checkpoint ?? beat.checkpoint ?? null;
+    } else if (pendingIntentSettled && pendingTransition) {
+        // A settled closing action has already installed its completed
+        // snapshot; only its terminal playback evidence is still pending.
+        checkpoint = pendingTransition.completed_checkpoint;
     } else if (pendingTransition) {
         checkpoint = pendingTransition.source_checkpoint;
     } else if (pending?.intent_id) {

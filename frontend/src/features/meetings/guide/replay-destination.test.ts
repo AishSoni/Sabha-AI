@@ -122,6 +122,32 @@ describe("resolveGuidedBeatDestination", () => {
         expect(destination.checkpoint).toBe("checkpoint-downside");
     });
 
+    it("keeps a settled closing on its completed snapshot while its text is still pending", () => {
+        const destination = resolveGuidedBeatDestination(
+            beat,
+            "meeting-1",
+            [
+                transition({
+                    intent_id: "close-meeting",
+                    kind: "request_closing",
+                    source_checkpoint: "checkpoint-downside",
+                    completed_checkpoint: "checkpoint-closed",
+                    operation_id: null,
+                    tape_id: null,
+                }),
+            ],
+            {
+                pendingStep: step({
+                    intent_id: "close-meeting",
+                    completion: "closing_completed",
+                }),
+                pendingIntentSettled: true,
+            }
+        );
+
+        expect(destination.checkpoint).toBe("checkpoint-closed");
+    });
+
     it("exploration Back inspects the start of an already completed beat", () => {
         const destination = resolveGuidedBeatDestination(
             beat,

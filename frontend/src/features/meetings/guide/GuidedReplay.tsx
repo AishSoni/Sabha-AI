@@ -204,6 +204,10 @@ export function GuidedReplay({ children }: { children: ReactNode }) {
             {
                 pendingStep,
                 interruptedIntentId,
+                pendingIntentSettled: Boolean(
+                    pendingStep?.intent_id &&
+                        run.settledIntents.has(pendingStep.intent_id)
+                ),
                 preferStart: options?.preferStart,
             }
         );
