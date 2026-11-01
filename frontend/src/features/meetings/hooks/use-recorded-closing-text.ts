@@ -40,24 +40,50 @@ export function useRecordedClosingText({
         ? `${runtime.scope.identity.id}:${runtime.scope.identity.epoch}`
         : 'live';
     const [view, setView] = useState<ClosingTextView | null>(null);
+    const projectionRef = useRef<{
+        key: string;
+        view: ClosingTextView;
+        after: number;
+    } | null>(null);
 
     useEffect(() => {
         const source = streamRef.current;
         if (!source || !enabled || !closingId) {
+            projectionRef.current = null;
             setView(null);
+            return;
+        }
+
+        const key = `${runtimeKey}:${meetingId}:${closingId}`;
+        let entry = projectionRef.current;
+        if (!entry || entry.key !== key) {
+            entry = {
+                key,
+                view: createClosingTextState(closingId, 'recorded-stream'),
+                after: 0,
+            };
+            projectionRef.current = entry;
+        }
+        // A speed change reconnects at the last accepted sequence. It never
+        // clears text the visitor has already seen or restarts at zero.
+        setView(entry.view);
+        if (
+            entry.view.items.some(
+                (item) => item.terminal && item.kind === 'summary'
+            )
+        ) {
             return;
         }
 
         let cancelled = false;
         let controller: AbortController | null = null;
-        let state = createClosingTextState(closingId, 'recorded-stream');
-        setView(state);
+        const current = entry;
 
         const run = async () => {
             controller = new AbortController();
             try {
                 for await (const event of source.observe(meetingId, closingId, {
-                    after: 0,
+                    after: current.after,
                     speed,
                     signal: combineSignals(runtimeSignal, controller.signal),
                 })) {
@@ -75,8 +101,19 @@ export function useRecordedClosingText({
                         provenance: 'recorded-stream',
                         ...(event.subjectId ? { subjectId: event.subjectId } : {}),
                     };
-                    state = applyClosingTextItem(state, item);
-                    if (!cancelled) setView(state);
+                    const next = applyClosingTextItem(current.view, item);
+                    if (next !== current.view) {
+                        current.view = next;
+                        current.after = Math.max(
+                            current.after,
+                            Number.isSafeInteger(item.sequence)
+                                ? item.sequence
+                                : current.after
+                        );
+                        if (projectionRef.current === current) {
+                            setView(next);
+                        }
+                    }
                 }
             } catch (error) {
                 if (cancelled) return;

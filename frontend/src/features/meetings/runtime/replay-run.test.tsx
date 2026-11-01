@@ -188,7 +188,7 @@ describe("ReplayRunProvider reset fencing", () => {
         const { result } = renderHook(() => useReplayRun(), { wrapper });
         await waitFor(() => expect(result.current.session).toBeDefined());
 
-        let transition: Promise<void> | undefined;
+        let transition: Promise<unknown> | undefined;
         act(() => {
             transition = result.current.switchCheckpoint("checkpoint-created");
         });
@@ -201,6 +201,74 @@ describe("ReplayRunProvider reset fencing", () => {
         });
 
         expect(result.current.checkpoint).toBe("checkpoint-initial");
+    });
+
+    it("does not settle a skipped action whose bundle resolves after a reset", async () => {
+        let meetingCalls = 0;
+        let resolveSecondMeeting: ((value: Response) => void) | undefined;
+        const secondMeeting = new Promise<Response>((resolve) => {
+            resolveSecondMeeting = resolve;
+        });
+        vi.stubGlobal(
+            "fetch",
+            vi.fn(async (input: unknown) => {
+                const url = String(input);
+                if (url.endsWith("/replay/session")) {
+                    return json(expandedSessionWire());
+                }
+                if (url.includes("/workspace-seed")) {
+                    return json({ detail: "replay_workspace_seed_unavailable" }, 404);
+                }
+                if (url.includes("/safe-config")) return json({});
+                if (url.includes("/disagreements")) return json([]);
+                if (url.includes("/consensus")) return json([]);
+                if (url.endsWith("/turns") || url.includes("/turns?")) {
+                    return json([completedOperationWire()]);
+                }
+                if (url.includes(`/replay/meetings/${MEETING_ID}?`)) {
+                    meetingCalls += 1;
+                    if (meetingCalls === 1) return json(completedMeetingWire());
+                    return secondMeeting;
+                }
+                return json({ detail: "replay_read_unavailable" }, 404);
+            })
+        );
+
+        const wrapper = ({ children }: { children: ReactNode }) => (
+            <ReplaySessionProvider>
+                <DemoWorkspaceProvider
+                    identity={{
+                        packageId: "placeholder-analyst",
+                        version: "1",
+                        contentSha256: "a".repeat(64),
+                        meetingId: MEETING_ID,
+                    }}
+                >
+                    <ReplayRunProvider>{children}</ReplayRunProvider>
+                </DemoWorkspaceProvider>
+            </ReplaySessionProvider>
+        );
+        const { result } = renderHook(() => useReplayRun(), { wrapper });
+        await waitFor(() => expect(result.current.session).not.toBeNull());
+
+        await act(async () => {
+            await result.current.switchCheckpoint("checkpoint-created");
+        });
+        let skipped: Promise<void> | undefined;
+        act(() => {
+            skipped = result.current.skipIntent("credit");
+        });
+        act(() => {
+            result.current.restart();
+        });
+        resolveSecondMeeting?.(json(completedMeetingWire()) as Response);
+        await act(async () => {
+            await skipped;
+        });
+
+        expect(result.current.checkpoint).toBe("checkpoint-initial");
+        expect(result.current.settledIntents.has("credit")).toBe(false);
+        expect(result.current.startedIntents.has("credit")).toBe(false);
     });
 });
 
@@ -374,6 +442,9 @@ describe("ReplayRunProvider prepared playback", () => {
         const { result } = renderHook(() => useReplayRun(), { wrapper });
         await waitFor(() => expect(result.current.session).not.toBeNull());
 
+        await act(async () => {
+            await result.current.switchCheckpoint("checkpoint-created");
+        });
         await act(async () => {
             await result.current.skipIntent("credit");
         });

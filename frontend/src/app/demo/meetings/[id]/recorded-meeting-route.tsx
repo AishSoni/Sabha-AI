@@ -1,9 +1,10 @@
 "use client";
 
-import { useEffect } from "react";
-import { useRouter, useSearchParams } from "next/navigation";
+import { useCallback, useEffect } from "react";
+import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import { MeetingRoom } from "@/features/meetings/components/MeetingRoom";
 import { useReplayRun } from "@/features/meetings/runtime/replay-run";
+import { chapterHref } from "@/features/meetings/runtime/chapters";
 
 /**
  * The canonical recorded meeting route (spec-18). Local practice IDs never
@@ -11,9 +12,22 @@ import { useReplayRun } from "@/features/meetings/runtime/replay-run";
  */
 export function RecordedMeetingRoute({ meetingId }: { meetingId: string }) {
     const router = useRouter();
+    const pathname = usePathname();
     const searchParams = useSearchParams();
     const run = useReplayRun();
-    const initialTab = searchParams.get("tab") ?? undefined;
+    const chapterId = searchParams.get("chapter");
+    const chapter = chapterId
+        ? (run.session.chapters.find(
+              (item) => item.chapter_id === chapterId
+          ) ?? null)
+        : null;
+    /**
+     * A chapter's approved tab is part of that chapter record. The room always
+     * opens on it even if the URL omitted the tab, while an explicit mismatched
+     * tab remains a bootstrap failure.
+     */
+    const selectedTab =
+        chapter?.tab ?? searchParams.get("tab") ?? "chat";
     const notCreated =
         run.checkpoint === run.session.initial_checkpoint ||
         run.session.meeting_id !== meetingId;
@@ -23,6 +37,24 @@ export function RecordedMeetingRoute({ meetingId }: { meetingId: string }) {
             router.replace("/demo");
         }
     }, [notCreated, router]);
+
+    useEffect(() => {
+        if (chapter && !searchParams.get("tab")) {
+            router.replace(chapterHref(chapter, run.session.meeting_id));
+        }
+    }, [chapter, router, run.session.meeting_id, searchParams]);
+
+    const changeTab = useCallback(
+        (nextTab: string) => {
+            const next = new URLSearchParams(searchParams.toString());
+            next.set("tab", nextTab);
+            // Choosing another tab explicitly leaves chapter inspection; the
+            // recorded checkpoint and canonical progress stay untouched.
+            next.delete("chapter");
+            router.replace(`${pathname}?${next.toString()}`);
+        },
+        [pathname, router, searchParams]
+    );
 
     if (notCreated) {
         return (
@@ -35,5 +67,12 @@ export function RecordedMeetingRoute({ meetingId }: { meetingId: string }) {
         );
     }
 
-    return <MeetingRoom meetingId={meetingId} initialTab={initialTab} />;
+    return (
+        <MeetingRoom
+            meetingId={meetingId}
+            initialTab={selectedTab}
+            activeTab={selectedTab}
+            onTabChange={changeTab}
+        />
+    );
 }

@@ -10,40 +10,42 @@
 import { useEffect, useMemo, useState, type ReactNode } from "react";
 import Link from "next/link";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
-import { ArrowLeft, ArrowRight, Play, RotateCcw, Sparkles } from "lucide-react";
+import {
+    ArrowLeft,
+    ArrowRight,
+    FileText,
+    Play,
+    RotateCcw,
+    Sparkles,
+} from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import type { ReplayBeat, ReplayBeatStep } from "../runtime/contract";
+import type {
+    ReplayAsset,
+    ReplayBeat,
+    ReplayBeatStep,
+} from "../runtime/contract";
 import { chapterHref } from "../runtime/chapters";
+import { descriptorForAsset } from "../runtime/replay-evidence";
 import { useReplayRun } from "../runtime/replay-run";
 import { useDemoWorkspace } from "@/features/demo-workspace";
 import { ActiveReplayIntentProvider } from "../runtime/active-intent";
-
-function beatHref(beat: ReplayBeat, meetingId: string): string {
-    if (beat.route === "board") return "/demo";
-    if (beat.route === "new") return "/demo/new";
-    if (beat.route === "list") return "/demo/meetings";
-    const tab = beat.tab ? `?tab=${encodeURIComponent(beat.tab)}` : "";
-    return `/demo/meetings/${encodeURIComponent(meetingId)}${tab}`;
-}
-
-function beatMatchesLocation(
-    beat: ReplayBeat,
-    meetingId: string,
-    pathname: string,
-    tab: string | null
-): boolean {
-    const target = new URL(beatHref(beat, meetingId), "http://sabha.local");
-    return pathname === target.pathname && tab === target.searchParams.get("tab");
-}
+import { GuideActionsProvider } from "./guide-actions";
+import {
+    destinationIncludesLocation,
+    replayBeatHref,
+    resolveGuidedBeatDestination,
+    type GuidedBeatDestination,
+} from "./replay-destination";
 
 function stepSatisfied(
     step: ReplayBeatStep,
     beat: ReplayBeat,
-    run: ReturnType<typeof useReplayRun>
+    run: ReturnType<typeof useReplayRun>,
+    acknowledgedBeats: ReadonlySet<string> = run.acknowledgedBeats
 ): boolean {
     if (step.completion === "acknowledge") {
-        return run.acknowledgedBeats.has(beat.beat_id);
+        return acknowledgedBeats.has(beat.beat_id);
     }
     if (!step.intent_id || !run.settledIntents.has(step.intent_id)) return false;
     if (step.completion === "closing_completed" && !run.closingSettled) {
@@ -69,6 +71,9 @@ export function GuidedReplay({ children }: { children: ReactNode }) {
     const searchParams = useSearchParams();
     const tab = searchParams.get("tab");
     const [navigating, setNavigating] = useState(false);
+    const [explorationIndex, setExplorationIndex] = useState<number | null>(
+        null
+    );
     const [error, setError] = useState<string | null>(null);
 
     const beats = useMemo(() => {
@@ -79,8 +84,41 @@ export function GuidedReplay({ children }: { children: ReactNode }) {
         });
     }, [run.session.beats]);
 
+    /**
+     * A review is the last action in its beat. Once a later canonical beat has
+     * actually run, the review window has passed and the guide must not remain
+     * stranded behind the recorded meeting. Chapter detours do not settle
+     * canonical intents, so inspecting a snapshot still cannot advance the
+     * guide.
+     */
+    const acknowledgedBeats = useMemo(() => {
+        const result = new Set(run.acknowledgedBeats);
+        beats.forEach((beat, beatIndex) => {
+            if (
+                !beat.steps.some(
+                    (step) => step.completion === "acknowledge"
+                )
+            ) {
+                return;
+            }
+            const laterCanonicalSettled = beats
+                .slice(beatIndex + 1)
+                .some((laterBeat) =>
+                    laterBeat.steps.some(
+                        (step) =>
+                            step.intent_id &&
+                            run.settledIntents.has(step.intent_id)
+                    )
+                );
+            if (laterCanonicalSettled) result.add(beat.beat_id);
+        });
+        return result;
+    }, [beats, run.acknowledgedBeats, run.settledIntents]);
+
     const beatSatisfied = (beat: ReplayBeat) =>
-        beat.steps.every((step) => stepSatisfied(step, beat, run));
+        beat.steps.every((step) =>
+            stepSatisfied(step, beat, run, acknowledgedBeats)
+        );
 
     /**
      * Progress is recorded evidence, never the ordinal of the snapshot the
@@ -88,15 +126,48 @@ export function GuidedReplay({ children }: { children: ReactNode }) {
      * cannot complete a canonical beat, and jumping to a later snapshot cannot
      * make an unfinished beat look done.
      */
-    const index = (() => {
+    const settledIndex = (() => {
         for (let i = 0; i < beats.length; i += 1) {
             if (!beatSatisfied(beats[i])) return i;
         }
         return beats.length;
     })();
 
+    // Terminal recorded states dominate the linear cursor. If the meeting has
+    // already ended, the guide must show the archive step rather than an
+    // earlier review that is now moot. An archived meeting is complete.
+    const closingBeatIndex = beats.findIndex((beat) =>
+        beat.steps.some((step) => step.completion === "closing_completed")
+    );
+    const archiveIntentId = beats[beats.length - 1]?.steps.find(
+        (step) => step.intent_id
+    )?.intent_id;
+    const archived = Boolean(
+        archiveIntentId && run.settledIntents.has(archiveIntentId)
+    );
+    const index = archived
+        ? beats.length
+        : run.closingSettled && closingBeatIndex >= 0
+          ? Math.max(settledIndex, closingBeatIndex + 1)
+          : settledIndex;
+
     const finished = index >= beats.length;
     const current = beats[index] ?? null;
+    const stepAssets = Array.from(
+        new Set(current?.input_asset_ids ?? [])
+    )
+        .map((assetId) =>
+            run.session.assets.find((asset) => asset.asset_id === assetId)
+        )
+        .filter((asset): asset is ReplayAsset => Boolean(asset));
+    const canOpenStepDocuments =
+        current?.route === "meeting" &&
+        run.checkpoint !== run.session.initial_checkpoint;
+    const stepDocumentsHref = canOpenStepDocuments
+        ? `/demo/meetings/${encodeURIComponent(
+              run.session.meeting_id
+          )}?tab=documents`
+        : null;
     const journeyRoute = isJourneyRoute(pathname);
     const chapterParam = searchParams.get("chapter");
     const highlightedPersonaId =
@@ -110,44 +181,65 @@ export function GuidedReplay({ children }: { children: ReactNode }) {
         if (bookmark) setGuideBookmark(bookmark.beat_id);
     }, [beats, current, finished, setGuideBookmark]);
 
-    const activeStep = current?.steps.find(
-        (step) => step.intent_id && !stepSatisfied(step, current, run)
-    );
-    const activeIntentId = current
-        ? (activeStep?.intent_id ?? "__guided-none__")
-        : "__guided-none__";
     const satisfied = current ? beatSatisfied(current) : false;
-    const pendingAcknowledge = current
-        ? current.steps.some(
-              (step) =>
-                  step.completion === "acknowledge" &&
-                  !stepSatisfied(step, current, run)
-          )
-        : false;
-    const targetHref = current
-        ? beatHref(current, run.session.meeting_id)
-        : "/demo";
-    const onTarget = current
-        ? beatMatchesLocation(
-              current,
-              run.session.meeting_id,
+    const destinationFor = (beat: ReplayBeat): GuidedBeatDestination => {
+        const pendingStep = beat.steps.find(
+            (step) => !stepSatisfied(step, beat, run, acknowledgedBeats)
+        );
+        const interruptedIntentId =
+            beat.steps
+                .map((step) => step.intent_id)
+                .find(
+                    (intentId): intentId is string =>
+                        typeof intentId === "string" &&
+                        run.startedIntents.has(intentId) &&
+                        !run.settledIntents.has(intentId)
+                ) ?? null;
+        return resolveGuidedBeatDestination(
+            beat,
+            run.session.meeting_id,
+            run.session.transitions,
+            { pendingStep, interruptedIntentId }
+        );
+    };
+    const firstUnsatisfiedStep = current?.steps.find(
+        (step) => !stepSatisfied(step, current, run, acknowledgedBeats)
+    );
+    const activeIntentId = firstUnsatisfiedStep?.intent_id ?? null;
+    const reviewStep =
+        firstUnsatisfiedStep?.completion === "acknowledge"
+            ? firstUnsatisfiedStep
+            : undefined;
+    const pendingAcknowledge = Boolean(reviewStep);
+    const reviewTabLabel = reviewStep?.requires_tab
+        ? reviewStep.requires_tab.charAt(0).toUpperCase() +
+          reviewStep.requires_tab.slice(1)
+        : null;
+    const currentDestination = current ? destinationFor(current) : null;
+    const targetHref = currentDestination?.href ?? "/demo";
+    const onTarget = currentDestination
+        ? destinationIncludesLocation(
+              currentDestination,
               pathname,
               tab
           )
         : false;
-    const nextHref =
+    /**
+     * The URL can name the right screen while the installed snapshot is a
+     * chapter or an older beat. Acknowledgement and Continue require both.
+     */
+    const atDestination = Boolean(
+        onTarget &&
+            currentDestination &&
+            (currentDestination.checkpoint === null ||
+                run.checkpoint === currentDestination.checkpoint)
+    );
+    const nextDestination =
         current && index < beats.length - 1
-            ? beatHref(beats[index + 1], run.session.meeting_id)
+            ? destinationFor(beats[index + 1])
             : null;
-    const canContinue =
-        !finished &&
-        current !== null &&
-        (!onTarget ||
-            pendingAcknowledge ||
-            (satisfied &&
-                index < beats.length - 1 &&
-                nextHref !== targetHref));
-    const canGoBack = !navigating && (index > 0 || finished);
+    const nextHref = nextDestination?.href ?? null;
+    const nextTab = nextDestination?.tab ?? null;
     const interruptedIntentIds = current
         ? current.steps
               .map((step) => step.intent_id)
@@ -161,100 +253,156 @@ export function GuidedReplay({ children }: { children: ReactNode }) {
     const canResume = Boolean(
         workspace.guideBookmark || chapterParam || interruptedIntentIds.length > 0
     );
+    const canContinue =
+        !finished &&
+        current !== null &&
+        (!atDestination ||
+            pendingAcknowledge ||
+            (satisfied &&
+                index < beats.length - 1 &&
+                nextHref !== null &&
+                nextHref !== targetHref));
+    const backBase = explorationIndex ?? (finished ? beats.length : index);
+    const canGoBack = !navigating && backBase > 0;
 
     const restart = () => {
+        setExplorationIndex(null);
         workspace.restartRecording();
         router.push("/demo");
     };
 
-    const resume = async () => {
-        if (!current && !finished) return;
+    const navigateTo = async (
+        destination: GuidedBeatDestination,
+        operation?: () => Promise<void>
+    ) => {
         setNavigating(true);
         setError(null);
         try {
-            if (interruptedIntentIds.length > 0) {
-                for (const intentId of interruptedIntentIds) {
-                    await run.replayIntent(intentId);
-                }
-            } else {
-                const target = finished
-                    ? beats[beats.length - 1]
-                    : current;
-                const checkpoint =
-                    target?.start_checkpoint ?? target?.checkpoint;
-                if (checkpoint) {
-                    await run.switchCheckpoint(checkpoint, { force: true });
-                }
+            if (operation) {
+                await operation();
+            } else if (
+                destination.checkpoint &&
+                destination.checkpoint !== run.checkpoint
+            ) {
+                const outcome = await run.switchCheckpoint(
+                    destination.checkpoint,
+                    { force: true }
+                );
+                if (outcome === "aborted" || outcome === "superseded") return;
             }
-            const target = current ?? beats[beats.length - 1];
-            if (target) router.push(beatHref(target, run.session.meeting_id));
+            setExplorationIndex(null);
+            router.push(destination.href);
         } catch (cause) {
             setError(
                 cause instanceof Error
                     ? cause.message
-                    : "The bookmarked guided position could not be restored."
+                    : "The guided destination could not be restored."
             );
         } finally {
             setNavigating(false);
         }
     };
 
+    const completeReview = (): boolean => {
+        if (!current || !reviewStep) return false;
+        if (
+            currentDestination?.checkpoint &&
+            run.checkpoint !== currentDestination.checkpoint
+        ) {
+            setError(
+                "Restore the recorded result for this step before acknowledging it."
+            );
+            return false;
+        }
+        if (
+            current.route === "meeting" &&
+            reviewStep.requires_tab &&
+            tab !== reviewStep.requires_tab
+        ) {
+            setError(
+                `Open the ${
+                    reviewStep.requires_tab
+                } tab before acknowledging this step.`
+            );
+            return false;
+        }
+        run.acknowledgeBeat(current.beat_id);
+        const completesBeat = current.steps.every(
+            (step) =>
+                step.completion === "acknowledge" ||
+                stepSatisfied(step, current, run, acknowledgedBeats)
+        );
+        if (completesBeat && nextDestination) {
+            void navigateTo(nextDestination);
+        }
+        return true;
+    };
+
+    const resume = async () => {
+        const target = finished ? beats[beats.length - 1] : current;
+        if (!target) return;
+        const interruptedIntentId = interruptedIntentIds[0];
+        const destination = destinationFor(target);
+        await navigateTo(
+            destination,
+            interruptedIntentId
+                ? () => run.replayIntent(interruptedIntentId)
+                : undefined
+        );
+    };
+
     const back = async () => {
         if (!canGoBack) return;
-        const targetIndex = finished ? beats.length - 1 : index - 1;
+        const targetIndex = backBase - 1;
         const target = beats[targetIndex];
         if (!target) return;
-
-        setNavigating(true);
-        setError(null);
-        try {
-            // Back only moves the exploration cursor. Completed canonical
-            // actions stay complete, so the guide never rewinds evidence.
-            const checkpoint = target.start_checkpoint ?? target.checkpoint;
-            if (checkpoint && checkpoint !== run.checkpoint) {
-                await run.switchCheckpoint(checkpoint);
-            }
-            router.push(beatHref(target, run.session.meeting_id));
-        } catch (cause) {
-            setError(
-                cause instanceof Error
-                    ? cause.message
-                    : "The previous recorded step could not be restored."
-            );
-        } finally {
-            setNavigating(false);
-        }
+        // Back only moves the exploration cursor. Completed canonical actions
+        // stay complete, so the guide never rewinds evidence.
+        setExplorationIndex(targetIndex);
+        await navigateTo(destinationFor(target));
     };
 
     const advance = () => {
         if (!canContinue || !current) return;
 
-        // Progress is derived from recorded evidence. The button only brings
-        // the visitor to the current beat's screen or acknowledges a review.
-        if (!onTarget) {
-            router.push(targetHref);
+        // Progress is derived from recorded evidence. The button restores the
+        // exact snapshot the next action or review requires.
+        if (!atDestination && currentDestination) {
+            void navigateTo(currentDestination);
             return;
         }
 
         if (pendingAcknowledge) {
-            run.acknowledgeBeat(current.beat_id);
-            const completesBeat = current.steps.every(
-                (step) =>
-                    step.completion === "acknowledge" ||
-                    stepSatisfied(step, current, run)
-            );
-            if (completesBeat && nextHref) router.push(nextHref);
+            completeReview();
             return;
         }
 
-        if (satisfied && nextHref) {
-            router.push(nextHref);
+        if (satisfied && nextDestination) {
+            void navigateTo(nextDestination);
         }
     };
 
     return (
-        <ActiveReplayIntentProvider intentId={activeIntentId}>
-            {workspace.guideCollapsed ? (
+        <GuideActionsProvider
+            value={{
+                review:
+                    current && reviewStep?.requires_tab
+                        ? {
+                              beatId: current.beat_id,
+                              tab: reviewStep.requires_tab,
+                              label: reviewStep.label,
+                              complete: completeReview,
+                          }
+                        : null,
+                activeIntentId,
+                currentHref: targetHref,
+                nextHref,
+                nextTab,
+                advance,
+            }}
+        >
+            <ActiveReplayIntentProvider intentId={activeIntentId}>
+                {workspace.guideCollapsed ? (
                 <div className="border-b border-indigo-900/50 bg-indigo-950/30">
                     <div className="mx-auto flex max-w-6xl flex-wrap items-center gap-2 px-4 py-2">
                         <Badge className="bg-indigo-600 text-white hover:bg-indigo-600">
@@ -368,6 +516,46 @@ export function GuidedReplay({ children }: { children: ReactNode }) {
                                 <p className="mt-2 text-sm text-indigo-100/90">
                                     {current.objective}
                                 </p>
+                                {stepAssets.length > 0 ? (
+                                    <div
+                                        className="mt-2 flex flex-wrap items-center gap-1.5"
+                                        data-testid="guide-step-documents"
+                                    >
+                                        <span className="text-[11px] font-medium uppercase tracking-wide text-indigo-200/60">
+                                            Documents in this step
+                                        </span>
+                                        {stepAssets.map((asset) => {
+                                            const label =
+                                                descriptorForAsset(asset).title;
+                                            const className =
+                                                "inline-flex items-center gap-1 rounded-full border border-indigo-800/70 bg-indigo-950/40 px-2 py-0.5 text-xs font-medium text-indigo-200";
+                                            const content = (
+                                                <>
+                                                    <FileText className="h-3 w-3" />
+                                                    {label}
+                                                </>
+                                            );
+                                            return stepDocumentsHref ? (
+                                                <Link
+                                                    key={asset.asset_id}
+                                                    href={stepDocumentsHref}
+                                                    data-testid={`guide-document-${asset.asset_id}`}
+                                                    className={className}
+                                                >
+                                                    {content}
+                                                </Link>
+                                            ) : (
+                                                <span
+                                                    key={asset.asset_id}
+                                                    data-testid={`guide-document-${asset.asset_id}`}
+                                                    className={className}
+                                                >
+                                                    {content}
+                                                </span>
+                                            );
+                                        })}
+                                    </div>
+                                ) : null}
                                 {run.session.chapters.length > 0 ? (
                                     <details className="mt-2 rounded-md border border-indigo-800/60 bg-indigo-950/30 px-2 py-1.5">
                                         <summary className="cursor-pointer text-xs font-medium text-indigo-200">
@@ -410,7 +598,9 @@ export function GuidedReplay({ children }: { children: ReactNode }) {
                                 <p className="mt-1 text-xs text-indigo-200/70" aria-live="polite">
                                     {satisfied
                                         ? "Recorded condition complete. Review the screen, then continue."
-                                        : "Complete the supported action on this screen. The guide waits for the recorded result."}
+                                        : reviewTabLabel
+                                          ? `Open the ${reviewTabLabel} tab and review the recorded result to continue.`
+                                          : "Complete the supported action on this screen. The guide waits for the recorded result."}
                                 </p>
                                 {interruptedIntentIds.length > 0 ? (
                                     <p className="mt-1 text-xs text-amber-200/80">
@@ -451,7 +641,8 @@ export function GuidedReplay({ children }: { children: ReactNode }) {
                     </div>
                 </div>
             )}
-            {children}
-        </ActiveReplayIntentProvider>
+                {children}
+            </ActiveReplayIntentProvider>
+        </GuideActionsProvider>
     );
 }

@@ -28,7 +28,11 @@ import {
     requireString,
 } from "@/shared/api/decode";
 import { isApiError } from "@/shared/api/errors";
-import { requestJson, resolveApiBaseUrl } from "@/shared/api/transport";
+import {
+    requestJson,
+    resolveApiBaseUrl,
+    SESSION_REQUEST_RETRY,
+} from "@/shared/api/transport";
 import { makeQueryClient } from "@/shared/query/client";
 import { ApiError } from "@/shared/api/errors";
 import {
@@ -552,6 +556,18 @@ export async function fetchReplayBundle(
     return { meeting, disagreements, consensus, contextStats, closing, turns };
 }
 
+/**
+ * Explicit outcome for an asynchronous checkpoint install. Callers must not
+ * treat "the promise resolved" as "this transition is still the current one":
+ * a reset or a newer navigation can supersede it while its bundle is in
+ * flight, even when the underlying fetch ignored cancellation.
+ */
+export type ReplayTransitionOutcome =
+    | "committed"
+    | "unchanged"
+    | "aborted"
+    | "superseded";
+
 interface ReplayRuntimeOptions {
     signal: AbortSignal;
     /**
@@ -565,7 +581,7 @@ interface ReplayRuntimeOptions {
     switchCheckpoint: (
         checkpoint: string,
         options?: { expectedMessageId?: string | null; expectedOperationId?: string | null }
-    ) => Promise<void>;
+    ) => Promise<ReplayTransitionOutcome>;
     startIntent: (intentId: string) => Promise<void>;
     skipIntent: (intentId: string) => Promise<void>;
     replayIntent: (intentId: string) => Promise<void>;
@@ -574,7 +590,8 @@ interface ReplayRuntimeOptions {
     playbackSpeed: ReplayPlaybackSpeed;
     settledIntents: ReadonlySet<string>;
     onTurnSettled?: (intentId: string) => void;
-    onClosingTerminal?: () => void;
+    /** The closing intent whose approved terminal event was observed. */
+    onClosingTerminal?: (intentId: string) => void;
     isTurnVisible?: (operationId: string) => boolean;
 }
 
@@ -662,6 +679,18 @@ export function createReplayRuntime(
     const meetingPath = checkpointQuery(
         `/replay/meetings/${encodeURIComponent(session.meeting_id)}`,
         checkpoint
+    );
+    /**
+     * Canonical closing evidence belongs to exactly one intents record. A
+     * completed snapshot may contain that closing while the visitor only
+     * inspects a chapter; the controller still decides whether the intent was
+     * actually started in this run before treating the terminal as progress.
+     */
+    const closingIntent = session.transitions.find(
+        (transition) =>
+            transition.kind === "request_closing" &&
+            (transition.completed_checkpoint === checkpoint ||
+                transition.source_checkpoint === checkpoint)
     );
 
     return {
@@ -915,6 +944,7 @@ export function createReplayRuntime(
             retired: session.retired,
             playbackSpeed: options.playbackSpeed,
             setPlaybackSpeed: options.setPlaybackSpeed,
+            settledIntents: options.settledIntents,
             legalActions: (participantId?: string | null) =>
                 replayLegalActions(
                     session,
@@ -936,10 +966,17 @@ export function createReplayRuntime(
                     (item) => item.operation_id === operationId
                 );
                 if (!tape) return;
-                await options.switchCheckpoint(tape.completed_checkpoint, {
-                    expectedMessageId: event?.messageId ?? null,
-                    expectedOperationId: operationId,
-                });
+                const outcome = await options.switchCheckpoint(
+                    tape.completed_checkpoint,
+                    {
+                        expectedMessageId: event?.messageId ?? null,
+                        expectedOperationId: operationId,
+                    }
+                );
+                // A stale observer must not settle an action after its run or
+                // navigation was superseded. The controller also independently
+                // fences the settlement callback against its run generation.
+                if (outcome !== "committed" && outcome !== "unchanged") return;
                 const intent = session.intents.find(
                     (item) => item.operation_id === operationId
                 );
@@ -968,7 +1005,9 @@ export function createReplayRuntime(
                 for await (const event of decodeClosingTextStream(response)) {
                     if (event.terminal && event.kind === "summary" && !terminalSeen) {
                         terminalSeen = true;
-                        options.onClosingTerminal?.();
+                        if (closingIntent) {
+                            options.onClosingTerminal?.(closingIntent.intent_id);
+                        }
                     }
                     yield event;
                 }
@@ -1014,6 +1053,7 @@ export function ReplayMeetingRoom({ meetingId }: { meetingId: string }) {
         let active = true;
         requestJson<unknown>("/replay/session", {
             signal: sessionController.signal,
+            retry: SESSION_REQUEST_RETRY,
         })
             .then((payload) => {
                 if (!active) return;
@@ -1049,10 +1089,10 @@ export function ReplayMeetingRoom({ meetingId }: { meetingId: string }) {
                 expectedMessageId?: string | null;
                 expectedOperationId?: string | null;
             }
-        ) => {
+        ): Promise<ReplayTransitionOutcome> => {
             const current = sessionRef.current;
             if (!current) throw new Error("Replay session is not loaded.");
-            if (next === stateRef.current.checkpoint) return;
+            if (next === stateRef.current.checkpoint) return "unchanged";
             if (!current.checkpoints.includes(next)) {
                 throw new Error("That checkpoint is not part of this recording.");
             }
@@ -1126,6 +1166,7 @@ export function ReplayMeetingRoom({ meetingId }: { meetingId: string }) {
                 controller.abort();
                 setCheckpoint(next);
                 setEpoch(nextEpoch);
+                return "committed";
             } finally {
                 transitioning.current = false;
             }

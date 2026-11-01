@@ -39,6 +39,7 @@ import { Card } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip';
 import {
     Collapsible,
     CollapsibleContent,
@@ -59,7 +60,7 @@ import type { ClosingStage } from '../api/closing-decoders';
 import { isPollingClosingStage } from '../api/closing-decoders';
 import { useClosingObservation } from '../api/use-closing-observation';
 import { useRecordedClosingText } from '../hooks/use-recorded-closing-text';
-import { isNearScrollBottom, scrollBehavior } from '../model/scroll';
+import { isNearScrollBottom } from '../model/scroll';
 import { useMeetingTurnController } from '../hooks/use-meeting-turn-controller';
 import { useMeetingsRuntime } from '../runtime/context';
 import {
@@ -88,10 +89,17 @@ import { ClosingPanel } from './ClosingPanel';
 import { EvidenceCitationTrigger } from '../evidence/trigger';
 import { EvidencePreviewHost } from '../evidence/host';
 import { EvidencePreviewProvider } from '../evidence/provider';
+import {
+    useGuideActions,
+    type GuideReview,
+} from '../guide/guide-actions';
 
 export interface MeetingRoomProps {
     meetingId: string;
     initialTab?: string;
+    /** Route-owned tab for a routable room. Omit for the live room. */
+    activeTab?: string;
+    onTabChange?: (tab: string) => void;
 }
 
 const TERMINAL_STATUSES = ['completed', 'failed', 'interrupted', 'cancelled'];
@@ -100,7 +108,12 @@ function isTerminal(status: string): boolean {
     return TERMINAL_STATUSES.includes(status);
 }
 
-export function MeetingRoom({ meetingId, initialTab }: MeetingRoomProps) {
+export function MeetingRoom({
+    meetingId,
+    initialTab,
+    activeTab,
+    onTabChange,
+}: MeetingRoomProps) {
     const runtime = useMeetingsRuntime();
     const meetingQuery = useRuntimeMeeting(meetingId);
     const disagreementsQuery = useRuntimeDisagreements(meetingId);
@@ -183,6 +196,8 @@ export function MeetingRoom({ meetingId, initialTab }: MeetingRoomProps) {
                     disagreements={disagreementsQuery.data ?? []}
                     consensus={consensusQuery.data ?? []}
                     initialTab={initialTab}
+                    activeTab={activeTab}
+                    onTabChange={onTabChange}
                 />
                 <RoomDetailsPanel
                     meeting={meeting}
@@ -233,9 +248,45 @@ interface ConversationProps {
     disagreements: Disagreement[];
     consensus: Consensus[];
     initialTab?: string;
+    activeTab?: string;
+    onTabChange?: (tab: string) => void;
 }
 
-function MeetingConversation({ meeting, disagreements, consensus, initialTab }: ConversationProps) {
+function GuideReviewBanner({
+    review,
+    onComplete,
+}: {
+    review: GuideReview;
+    onComplete: () => void;
+}) {
+    return (
+        <div
+            className="shrink-0 border-b border-zinc-800 bg-zinc-900/70 px-4 py-3"
+            data-testid="guide-review"
+        >
+            <div className="mx-auto flex max-w-3xl items-center gap-3">
+                <div className="min-w-0 flex-1">
+                    <p className="text-sm text-zinc-200">{review.label}</p>
+                    <p className="text-xs text-zinc-500">
+                        This review is part of the recorded journey.
+                    </p>
+                </div>
+                <Button type="button" size="sm" onClick={onComplete}>
+                    Continue
+                </Button>
+            </div>
+        </div>
+    );
+}
+
+function MeetingConversation({
+    meeting,
+    disagreements,
+    consensus,
+    initialTab,
+    activeTab,
+    onTabChange,
+}: ConversationProps) {
     const runtime = useMeetingsRuntime();
     const { capabilities, slots } = runtime;
     const turns = useMeetingTurnController({
@@ -266,14 +317,23 @@ function MeetingConversation({ meeting, disagreements, consensus, initialTab }: 
         closingId: closingObservation.closing?.closing_id ?? null,
         enabled: capabilities.closing && !skipClosingText,
     });
-    const [tab, setTab] = useState(initialTab ?? 'chat');
-    // Keep the active tab in sync with the requested tab (e.g. ?tab=closing)
-    // by adjusting state during render instead of in an effect.
-    const [appliedInitialTab, setAppliedInitialTab] = useState(initialTab);
-    if (initialTab !== appliedInitialTab) {
-        setAppliedInitialTab(initialTab);
-        if (initialTab) setTab(initialTab);
-    }
+    const [localTab, setLocalTab] = useState(initialTab ?? 'chat');
+    /**
+     * A routable room is controlled by its URL. The URL is the only owner of
+     * the visible tab, so the guide and the room cannot disagree about which
+     * evidence is on screen. The live room keeps its local fallback.
+     */
+    const tab = activeTab ?? localTab;
+    const setTab = (next: string) => {
+        if (activeTab === undefined) setLocalTab(next);
+        onTabChange?.(next);
+    };
+    const guide = useGuideActions();
+    const review = guide?.review?.tab === tab ? guide.review : null;
+    const completeGuideReview = () => {
+        if (!review) return;
+        review.complete();
+    };
     const DocumentsPanel = slots.documentPanel;
     const SummaryPanel = slots.summaryPanel;
 
@@ -372,14 +432,36 @@ function MeetingConversation({ meeting, disagreements, consensus, initialTab }: 
                 </TabsContent>
 
                 {capabilities.disagreements && (
-                    <TabsContent value="disagreements" className="flex-1 m-0 min-h-0">
-                        <DisagreementsPanel disagreements={disagreements} />
+                    <TabsContent
+                        value="disagreements"
+                        className="flex-1 m-0 min-h-0 flex flex-col"
+                    >
+                        {review ? (
+                            <GuideReviewBanner
+                                review={review}
+                                onComplete={completeGuideReview}
+                            />
+                        ) : null}
+                        <div className="min-h-0 flex-1">
+                            <DisagreementsPanel disagreements={disagreements} />
+                        </div>
                     </TabsContent>
                 )}
 
                 {capabilities.consensus && (
-                    <TabsContent value="consensus" className="flex-1 m-0 min-h-0">
-                        <ConsensusPanel consensus={consensus} />
+                    <TabsContent
+                        value="consensus"
+                        className="flex-1 m-0 min-h-0 flex flex-col"
+                    >
+                        {review ? (
+                            <GuideReviewBanner
+                                review={review}
+                                onComplete={completeGuideReview}
+                            />
+                        ) : null}
+                        <div className="min-h-0 flex-1">
+                            <ConsensusPanel consensus={consensus} />
+                        </div>
                     </TabsContent>
                 )}
 
@@ -414,15 +496,35 @@ function MeetingConversation({ meeting, disagreements, consensus, initialTab }: 
                                             ? recordedClosingText
                                             : undefined
                                     }
-                                    onSkipText={() =>
+                                    onSkipText={() => {
                                         setSkippedClosingCheckpoint(
                                             replayCheckpoint ?? null
-                                        )
-                                    }
+                                        );
+                                        // Skipping the text is a playback
+                                        // choice, but it must still settle the
+                                        // canonical closing intent so the guide
+                                        // reaches Archive.
+                                        if (replayClosing) {
+                                            void runtime.replay?.skipIntent(
+                                                replayClosing.intent_id
+                                            );
+                                        }
+                                    }}
                                     onReplayClosing={
                                         replayClosing ? replayClosingTurn : undefined
                                     }
                                 />
+                                {runtime.replay &&
+                                    ended &&
+                                    guide?.currentHref === '/demo/meetings' && (
+                                        <div className="mt-4 flex justify-center">
+                                            <Button asChild variant="outline">
+                                                <Link href="/demo/meetings">
+                                                    Go to meetings
+                                                </Link>
+                                            </Button>
+                                        </div>
+                                    )}
                             </div>
                         </div>
                     </TabsContent>
@@ -576,9 +678,9 @@ function MessageList({
     isObserving,
     onResume,
 }: MessageListProps) {
-    const scrollRef = useRef<HTMLDivElement>(null);
     const contentRef = useRef<HTMLDivElement>(null);
     const stickToBottomRef = useRef(true);
+    const messageCount = meeting.messages?.length ?? 0;
 
     useEffect(() => {
         const viewport = contentRef.current?.closest<HTMLElement>(
@@ -596,14 +698,15 @@ function MessageList({
 
     useEffect(() => {
         if (!stickToBottomRef.current) return;
-        const reducedMotion =
-            typeof window.matchMedia === 'function' &&
-            window.matchMedia('(prefers-reduced-motion: reduce)').matches;
-        scrollRef.current?.scrollIntoView({
-            behavior: scrollBehavior(reducedMotion),
-            block: 'end',
-        });
-    }, [meeting.messages, projection?.text]);
+        const viewport = contentRef.current?.closest<HTMLElement>(
+            '[data-slot="scroll-area-viewport"]'
+        );
+        if (!viewport) return;
+
+        // Scroll only the message viewport, and jump instead of animating.
+        // scrollIntoView used to move the whole demo page while a turn streamed.
+        viewport.scrollTop = viewport.scrollHeight;
+    }, [messageCount, projection]);
 
     return (
         <ScrollArea className="flex-1 min-h-0 p-4">
@@ -635,7 +738,6 @@ function MessageList({
                         <p>No messages yet. Start the conversation!</p>
                     </div>
                 )}
-                <div ref={scrollRef} />
             </div>
         </ScrollArea>
     );
@@ -665,14 +767,40 @@ function RoomControls({ meeting, turns }: RoomControlsProps) {
             <div className="max-w-3xl mx-auto">
                 <p className="text-xs text-zinc-400 mb-3">Who speaks next?</p>
                 <div className="flex flex-wrap gap-2 mb-4">
-                    <Button
-                        variant="outline"
-                        size="sm"
-                        className="border-zinc-700 hover:bg-zinc-800 bg-indigo-600/20 border-indigo-500 text-indigo-400"
-                    >
-                        <User className="w-4 h-4 mr-1" />
-                        You
-                    </Button>
+                    {runtime.replay ? (
+                        <Tooltip>
+                            <TooltipTrigger asChild>
+                                <span
+                                    tabIndex={0}
+                                    data-testid="you-disabled-trigger"
+                                    className="inline-flex rounded-md focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-indigo-500"
+                                >
+                                    <Button
+                                        type="button"
+                                        variant="outline"
+                                        size="sm"
+                                        disabled
+                                        className="border-indigo-500/50 bg-indigo-600/10 text-indigo-400/60"
+                                    >
+                                        <User className="w-4 h-4 mr-1" />
+                                        You
+                                    </Button>
+                                </span>
+                            </TooltipTrigger>
+                            <TooltipContent side="top">
+                                Only available in the live workspace.
+                            </TooltipContent>
+                        </Tooltip>
+                    ) : (
+                        <Button
+                            variant="outline"
+                            size="sm"
+                            className="border-zinc-700 hover:bg-zinc-800 bg-indigo-600/20 border-indigo-500 text-indigo-400"
+                        >
+                            <User className="w-4 h-4 mr-1" />
+                            You
+                        </Button>
+                    )}
                     {(meeting.participants ?? []).map((participant) => {
                         const isActive = turns.activeParticipantId === participant.id;
                         const isQueued = turns.operations.some(

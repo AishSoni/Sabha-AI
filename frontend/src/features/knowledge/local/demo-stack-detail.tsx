@@ -224,7 +224,7 @@ function Content({
             />
 
             <StackEditorView
-                key={stack.id}
+                key={`${stack.id}:${workspace.workspaceResetEpoch}`}
                 editing
                 initialName={stack.name}
                 initialDescription={stack.description ?? ""}

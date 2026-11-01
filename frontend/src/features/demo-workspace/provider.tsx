@@ -38,6 +38,8 @@ import { decodeWorkspaceSeedEnvelope } from "./seed";
 interface DemoWorkspaceContextValue {
     workspaceId: string;
     workspaceEpoch: number;
+    /** Increments only on a full workspace reset, never on recording restart. */
+    workspaceResetEpoch: number;
     status: WorkspaceStatus;
     error: string | null;
     seed: WorkspaceSeed | null;
@@ -102,6 +104,7 @@ export function DemoWorkspaceProvider({
 }) {
     const [workspaceId] = useState(newWorkspaceId);
     const [workspaceEpoch, setWorkspaceEpoch] = useState(1);
+    const [workspaceResetEpoch, setWorkspaceResetEpoch] = useState(1);
     const epochRef = useRef(1);
     const [status, setStatus] = useState<WorkspaceStatus>("loading");
     const [error, setError] = useState<string | null>(null);
@@ -221,6 +224,7 @@ export function DemoWorkspaceProvider({
 
     const resetWorkspace = useCallback(() => {
         bumpEpoch();
+        setWorkspaceResetEpoch((value) => value + 1);
         applySeed(seedRef.current);
         setGuideCollapsed(false);
         setGuideBookmark(null);
@@ -248,6 +252,7 @@ export function DemoWorkspaceProvider({
         () => ({
             workspaceId,
             workspaceEpoch,
+            workspaceResetEpoch,
             status,
             error,
             seed,
@@ -271,6 +276,7 @@ export function DemoWorkspaceProvider({
         [
             workspaceId,
             workspaceEpoch,
+            workspaceResetEpoch,
             status,
             error,
             seed,

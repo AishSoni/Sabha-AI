@@ -388,7 +388,11 @@ describe('recorded replay runtime', () => {
         renderReplay();
 
         expect(
-            await screen.findByText('Recorded replay is not configured on this server.')
+            await screen.findByText(
+                'Recorded replay is not configured on this server.',
+                undefined,
+                { timeout: 5_000 }
+            )
         ).toBeInTheDocument();
         expect(screen.queryByText('Recorded product review')).not.toBeInTheDocument();
     });
