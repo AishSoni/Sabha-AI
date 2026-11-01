@@ -208,7 +208,7 @@ describe('MeetingRoom', () => {
         expect(screen.queryByPlaceholderText('Type your message...')).not.toBeInTheDocument();
     });
 
-    it('does not steal scroll when the reader is away from the bottom', async () => {
+    it('does not move the message viewport when the reader is away from the bottom', async () => {
         installRouter();
         const scrollIntoView = vi
             .spyOn(HTMLElement.prototype, 'scrollIntoView')
@@ -242,17 +242,14 @@ describe('MeetingRoom', () => {
 
         expect(await screen.findByText('Earlier message')).toBeInTheDocument();
         expect(scrollIntoView).not.toHaveBeenCalled();
+        expect(viewport.scrollTop).toBe(0);
     });
 
-    it('scrolls without animation when reduced motion is requested', async () => {
+    it('pins the message viewport without scrolling the page', async () => {
         installRouter();
         const scrollIntoView = vi
             .spyOn(HTMLElement.prototype, 'scrollIntoView')
             .mockImplementation(() => {});
-        vi.stubGlobal(
-            'matchMedia',
-            vi.fn().mockReturnValue({ matches: true })
-        );
         renderRoom();
         await screen.findByText('Product review');
 
@@ -280,12 +277,8 @@ describe('MeetingRoom', () => {
             messages: [messageWire('Earlier message')],
         });
 
-        await waitFor(() =>
-            expect(scrollIntoView).toHaveBeenCalledWith({
-                behavior: 'auto',
-                block: 'end',
-            })
-        );
+        await waitFor(() => expect(viewport.scrollTop).toBe(1000));
+        expect(scrollIntoView).not.toHaveBeenCalled();
     });
 
     it('renders a read-only notice for archived meetings', async () => {

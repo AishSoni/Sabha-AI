@@ -15,7 +15,3 @@ export function isNearScrollBottom(
         threshold
     );
 }
-
-export function scrollBehavior(reducedMotion: boolean): ScrollBehavior {
-    return reducedMotion ? 'auto' : 'smooth';
-}
