@@ -615,9 +615,14 @@ export function GuidedReplay({ children }: { children: ReactNode }) {
                                         and practice edits stay in place.
                                     </p>
                                 ) : null}
-                                {!onTarget ? (
+                                {!atDestination ? (
                                     <Link
                                         href={targetHref}
+                                        onClick={(event) => {
+                                            if (!currentDestination) return;
+                                            event.preventDefault();
+                                            void navigateTo(currentDestination);
+                                        }}
                                         className="mt-2 inline-block text-xs font-medium text-indigo-300 underline underline-offset-2"
                                     >
                                         {journeyRoute
