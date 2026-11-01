@@ -16,6 +16,7 @@ import {
     requestForm,
     requestJson,
     resolveApiBaseUrl,
+    SESSION_REQUEST_RETRY,
 } from "./transport";
 import { createScriptedFetch, type ScriptedFetch } from "../../../tests/fixtures/transport";
 
@@ -100,6 +101,49 @@ describe("requestJson", () => {
             "X-Provider-Key": "sk-live-secret",
             "Content-Type": "application/json",
         });
+    });
+
+    it("retries transient failures with a fixed gap and then succeeds", async () => {
+        fetcher.enqueueFailure(new Error("cold start"));
+        fetcher.enqueueJson(503, { detail: "starting" });
+        fetcher.enqueueJson(200, { status: "ready" });
+
+        const result = await requestJson<{ status: string }>("/replay/session", {
+            retry: { retries: 3, delayMs: 1 },
+        });
+
+        expect(result.status).toBe("ready");
+        expect(fetcher.calls).toHaveLength(3);
+    });
+
+    it("stops after the configured number of retries", async () => {
+        for (let attempt = 0; attempt < 4; attempt += 1) {
+            fetcher.enqueueFailure(new Error("still starting"));
+        }
+
+        const failure = await requestJson("/replay/session", {
+            retry: { retries: 3, delayMs: 1 },
+        }).catch((error: unknown) => error);
+
+        if (!isApiError(failure)) throw failure;
+        expect(failure.kind).toBe("network");
+        expect(fetcher.calls).toHaveLength(4);
+    });
+
+    it("does not retry a definite client failure", async () => {
+        fetcher.enqueueJson(404, { detail: "not found" });
+
+        const failure = await requestJson("/replay/session", {
+            retry: { retries: 3, delayMs: 1 },
+        }).catch((error: unknown) => error);
+
+        if (!isApiError(failure)) throw failure;
+        expect(failure.status).toBe(404);
+        expect(fetcher.calls).toHaveLength(1);
+    });
+
+    it("pins the demo session retry policy to three one-second retries", () => {
+        expect(SESSION_REQUEST_RETRY).toEqual({ retries: 3, delayMs: 1_000 });
     });
 });
 

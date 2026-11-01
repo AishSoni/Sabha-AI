@@ -31,6 +31,13 @@ export function resolveApiBaseUrl(): string {
 
 export type RequestMethod = "GET" | "POST" | "PUT" | "PATCH" | "DELETE";
 
+export interface RequestRetryPolicy {
+    /** Retries after the initial attempt. Defaults to 0 when retry is enabled. */
+    retries?: number;
+    /** Fixed pause between attempts. Defaults to 1000ms when retry is enabled. */
+    delayMs?: number;
+}
+
 export interface JsonRequestInit {
     method?: RequestMethod;
     /** JSON-serializable request body. */
@@ -41,8 +48,45 @@ export interface JsonRequestInit {
     signal?: AbortSignal;
     /** Query parameters; undefined entries are skipped, booleans use "true"/"false". */
     query?: Record<string, string | number | boolean | undefined>;
+    /**
+     * Opt-in transient-failure retry. Network errors, 408, 429, and 5xx
+     * responses are retried; other HTTP failures and aborts are not.
+     */
+    retry?: RequestRetryPolicy;
     /** Test/live seam; defaults to the global fetch. */
     fetchImpl?: typeof fetch;
+}
+
+export const SESSION_REQUEST_RETRY: Required<RequestRetryPolicy> = {
+    retries: 3,
+    delayMs: 1_000,
+};
+
+function isRetryableFailure(error: unknown): boolean {
+    if (!(error instanceof ApiError)) return false;
+    if (error.kind === "network") return true;
+    if (error.kind !== "http" || error.status === null) return false;
+    return error.status === 408 || error.status === 429 || error.status >= 500;
+}
+
+function waitForRetry(delayMs: number, signal?: AbortSignal): Promise<void> {
+    if (!signal) {
+        return new Promise((resolve) => setTimeout(resolve, delayMs));
+    }
+    if (signal.aborted) {
+        return Promise.reject(new ApiError("aborted", null, "Request aborted"));
+    }
+    return new Promise((resolve, reject) => {
+        const timer = setTimeout(() => {
+            signal.removeEventListener("abort", abort);
+            resolve();
+        }, delayMs);
+        const abort = () => {
+            clearTimeout(timer);
+            reject(new ApiError("aborted", null, "Request aborted"));
+        };
+        signal.addEventListener("abort", abort, { once: true });
+    });
 }
 
 /** Absolute URLs pass through; other paths are resolved against the base. */
@@ -161,23 +205,39 @@ export async function requestJson<T>(path: string, init: JsonRequestInit = {}): 
     if (init.body !== undefined) {
         headers["Content-Type"] = "application/json";
     }
+    const retries = Math.max(0, init.retry?.retries ?? 0);
+    const delayMs = Math.max(0, init.retry?.delayMs ?? 1_000);
 
-    let response: Response;
-    try {
-        response = await (init.fetchImpl ?? fetch)(apiUrl(path, init.query), {
-            method: init.method ?? "GET",
-            headers,
-            body: init.body === undefined ? undefined : JSON.stringify(init.body),
-            signal: init.signal,
-        });
-    } catch (cause) {
-        throw transportApiError(cause);
-    }
+    for (let attempt = 0; ; attempt += 1) {
+        try {
+            let response: Response;
+            try {
+                response = await (init.fetchImpl ?? fetch)(apiUrl(path, init.query), {
+                    method: init.method ?? "GET",
+                    headers,
+                    body: init.body === undefined ? undefined : JSON.stringify(init.body),
+                    signal: init.signal,
+                });
+            } catch (cause) {
+                throw transportApiError(cause);
+            }
 
-    if (!response.ok) {
-        throw httpApiError(response.status, await readFailureDetail(response));
+            if (!response.ok) {
+                throw httpApiError(response.status, await readFailureDetail(response));
+            }
+            return await decodeSuccessPayload<T>(response, path);
+        } catch (cause) {
+            if (
+                attempt >= retries ||
+                init.signal?.aborted ||
+                !init.retry ||
+                !isRetryableFailure(cause)
+            ) {
+                throw cause;
+            }
+            await waitForRetry(delayMs, init.signal);
+        }
     }
-    return decodeSuccessPayload<T>(response, path);
 }
 
 /**

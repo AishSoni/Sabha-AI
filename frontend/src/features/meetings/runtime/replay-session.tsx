@@ -19,7 +19,7 @@ import {
 } from "react";
 import { decodeObject } from "@/shared/api/decode";
 import { isApiError } from "@/shared/api/errors";
-import { requestJson } from "@/shared/api/transport";
+import { requestJson, SESSION_REQUEST_RETRY } from "@/shared/api/transport";
 import { decodeReplaySession, type ReplaySession } from "./replay";
 
 export type ReplaySafeConfig = Record<string, unknown>;
@@ -56,6 +56,7 @@ export function ReplaySessionProvider({ children }: { children: ReactNode }) {
         let active = true;
         requestJson<unknown>("/replay/session", {
             signal: controller.signal,
+            retry: SESSION_REQUEST_RETRY,
         })
             .then((payload) => {
                 if (!active) return;
