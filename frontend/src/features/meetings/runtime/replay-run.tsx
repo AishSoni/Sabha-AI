@@ -116,18 +116,25 @@ export function ReplayRunProvider({ children }: { children: ReactNode }) {
     stateRef.current = { epoch, checkpoint: effectiveCheckpoint };
 
     /**
-     * Canonical closing completion is a domain fact: the canonical close
-     * intent was explicitly started or skipped. Playback terminal events only
-     * animate the recorded closing and must not gate the guide.
+     * Ending the recorded vote installs the canonical closing checkpoint.
+     * That checkpoint is terminal evidence that step 7 is over, even when the
+     * visitor reached it through the completed-closing inspection chapter.
+     * Playback terminal events only animate the closing and never gate it.
      */
-    const closingCompleted = useMemo(() => {
-        return session.transitions.some(
+    const canonicalClosing = useMemo(() => {
+        return session.transitions.find(
             (transition) =>
-                transition.kind === "request_closing" &&
-                transition.canonical &&
-                settledIntents.has(transition.intent_id)
+                transition.kind === "request_closing" && transition.canonical
         );
-    }, [session.transitions, settledIntents]);
+    }, [session.transitions]);
+
+    const closingCompleted = useMemo(() => {
+        if (!canonicalClosing) return false;
+        return (
+            settledIntents.has(canonicalClosing.intent_id) ||
+            effectiveCheckpoint === canonicalClosing.completed_checkpoint
+        );
+    }, [canonicalClosing, effectiveCheckpoint, settledIntents]);
 
     const settleIntent = useCallback((intentId: string) => {
         setSettledIntents((previous) => {
@@ -137,6 +144,15 @@ export function ReplayRunProvider({ children }: { children: ReactNode }) {
             return next;
         });
     }, []);
+
+    useEffect(() => {
+        if (
+            canonicalClosing &&
+            effectiveCheckpoint === canonicalClosing.completed_checkpoint
+        ) {
+            settleIntent(canonicalClosing.intent_id);
+        }
+    }, [canonicalClosing, effectiveCheckpoint, settleIntent]);
 
     const clearSettled = useCallback(() => {
         setSettledIntents(new Set());

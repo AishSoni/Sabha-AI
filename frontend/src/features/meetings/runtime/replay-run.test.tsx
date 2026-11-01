@@ -668,7 +668,7 @@ describe("ReplayRunProvider prepared playback", () => {
         expect(result.current.closingCompleted).toBe(false);
     });
 
-    it("does not complete the canonical closing when inspecting a completed snapshot", async () => {
+    it("completes the canonical closing when the ended snapshot is installed", async () => {
         stubReplayReads(closingSessionWire());
 
         const { result } = renderReplayRun();
@@ -679,8 +679,8 @@ describe("ReplayRunProvider prepared playback", () => {
         });
 
         expect(result.current.checkpoint).toBe("checkpoint-closed");
-        expect(result.current.settledIntents.has("close")).toBe(false);
-        expect(result.current.closingCompleted).toBe(false);
+        expect(result.current.settledIntents.has("close")).toBe(true);
+        expect(result.current.closingCompleted).toBe(true);
     });
 
     it("does not complete the canonical closing for an exploration-only close", async () => {
