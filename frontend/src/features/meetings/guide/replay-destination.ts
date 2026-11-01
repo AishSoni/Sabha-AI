@@ -48,6 +48,8 @@ export function resolveGuidedBeatDestination(
     options: {
         pendingStep?: ReplayBeatStep;
         interruptedIntentId?: string | null;
+        /** Exploration Back inspects the state before a completed action. */
+        preferStart?: boolean;
     } = {}
 ): GuidedBeatDestination {
     const pending = options.pendingStep;
@@ -80,7 +82,10 @@ export function resolveGuidedBeatDestination(
 
     return {
         beat,
-        checkpoint,
+        checkpoint:
+            options.preferStart && beat.start_checkpoint
+                ? beat.start_checkpoint
+                : checkpoint,
         href: replayBeatHref(beat, meetingId, tab),
         tab,
     };

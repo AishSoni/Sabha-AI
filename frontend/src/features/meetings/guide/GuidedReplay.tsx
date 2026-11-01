@@ -181,7 +181,10 @@ export function GuidedReplay({ children }: { children: ReactNode }) {
     }, [beats, current, finished, setGuideBookmark]);
 
     const satisfied = current ? beatSatisfied(current) : false;
-    const destinationFor = (beat: ReplayBeat): GuidedBeatDestination => {
+    const destinationFor = (
+        beat: ReplayBeat,
+        options?: { preferStart?: boolean }
+    ): GuidedBeatDestination => {
         const pendingStep = beat.steps.find(
             (step) => !stepSatisfied(step, beat, run, acknowledgedBeats)
         );
@@ -198,7 +201,11 @@ export function GuidedReplay({ children }: { children: ReactNode }) {
             beat,
             run.session.meeting_id,
             run.session.transitions,
-            { pendingStep, interruptedIntentId }
+            {
+                pendingStep,
+                interruptedIntentId,
+                preferStart: options?.preferStart,
+            }
         );
     };
     const firstUnsatisfiedStep = current?.steps.find(
@@ -358,7 +365,7 @@ export function GuidedReplay({ children }: { children: ReactNode }) {
         // Back only moves the exploration cursor. Completed canonical actions
         // stay complete, so the guide never rewinds evidence.
         setExplorationIndex(targetIndex);
-        await navigateTo(destinationFor(target));
+        await navigateTo(destinationFor(target, { preferStart: true }));
     };
 
     const advance = () => {

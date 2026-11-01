@@ -95,7 +95,8 @@ export function ReplayRunProvider({ children }: { children: ReactNode }) {
         new Set()
     );
     const [playbackSpeed, setPlaybackSpeed] = useState<1 | 2>(1);
-    const transitioning = useRef(false);
+    const activeTransition = useRef<number | null>(null);
+    const transitionSequence = useRef(0);
     const startedIntentsRef = useRef<Set<string>>(new Set());
     const generationRef = useRef(0);
 
@@ -178,6 +179,11 @@ export function ReplayRunProvider({ children }: { children: ReactNode }) {
 
     const restart = useCallback(() => {
         generationRef.current += 1;
+        // Invalidate any checkpoint install still in flight. Its generation
+        // fence prevents cache/progress writes, and its token can no longer
+        // clear the lock of a newer transition.
+        transitionSequence.current += 1;
+        activeTransition.current = null;
         setRunGeneration(generationRef.current);
         setCheckpoint(null);
         startedIntentsRef.current = new Set();
@@ -216,10 +222,12 @@ export function ReplayRunProvider({ children }: { children: ReactNode }) {
                 throw new Error("That checkpoint is not part of this recording.");
             }
             if (options?.signal?.aborted) return "aborted";
-            if (transitioning.current) {
+            if (activeTransition.current !== null) {
                 throw new Error("A checkpoint transition is already in progress.");
             }
-            transitioning.current = true;
+            const transitionToken = transitionSequence.current + 1;
+            transitionSequence.current = transitionToken;
+            activeTransition.current = transitionToken;
             const generation = generationRef.current;
             const nextEpoch = stateRef.current.epoch + 1;
             const scopeId = `${current.run_id}:${current.package_version}`;
@@ -329,7 +337,9 @@ export function ReplayRunProvider({ children }: { children: ReactNode }) {
                 return "committed";
             } finally {
                 options?.signal?.removeEventListener("abort", abortPrefetch);
-                transitioning.current = false;
+                if (activeTransition.current === transitionToken) {
+                    activeTransition.current = null;
+                }
             }
         },
         [controller, queryClient, isTurnVisible]

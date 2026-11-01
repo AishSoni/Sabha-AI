@@ -40,6 +40,7 @@ function Probe() {
         <div>
             <span data-testid="status">{workspace.status}</span>
             <span data-testid="epoch">{workspace.workspaceEpoch}</span>
+            <span data-testid="reset-epoch">{workspace.workspaceResetEpoch}</span>
             <span data-testid="expanded">{String(workspace.expanded)}</span>
             <span data-testid="dirty">{String(workspace.hasPracticeEdits)}</span>
             <span data-testid="personas">{workspace.local.personas.length}</span>
@@ -116,6 +117,9 @@ describe("demo workspace provider", () => {
         );
 
         const startingEpoch = Number(screen.getByTestId("epoch").textContent);
+        const startingResetEpoch = Number(
+            screen.getByTestId("reset-epoch").textContent
+        );
         fireEvent.click(screen.getByRole("button", { name: "edit" }));
         fireEvent.click(screen.getByRole("button", { name: "bookmark" }));
         expect(screen.getByTestId("dirty").textContent).toBe("true");
@@ -128,9 +132,14 @@ describe("demo workspace provider", () => {
         expect(screen.getByTestId("bookmark").textContent).toBe("none");
         expect(screen.getByTestId("reset-reason").textContent).toBe("recording");
         expect(screen.getByTestId("reset-nonce").textContent).toBe("1");
+        // Restarting playback is not a practice reset: pending work and drafts
+        // keep their epoch, while a full workspace reset invalidates them.
         expect(Number(screen.getByTestId("epoch").textContent)).toBe(
-            startingEpoch + 1
+            startingEpoch
         );
+        expect(
+            Number(screen.getByTestId("reset-epoch").textContent)
+        ).toBe(startingResetEpoch);
     });
 
     it("reset workspace restores the seed and discards practice edits", async () => {
@@ -141,6 +150,9 @@ describe("demo workspace provider", () => {
         );
 
         fireEvent.click(screen.getByRole("button", { name: "edit" }));
+        const startingResetEpoch = Number(
+            screen.getByTestId("reset-epoch").textContent
+        );
         fireEvent.click(screen.getByRole("button", { name: "reset" }));
 
         expect(screen.getByTestId("dirty").textContent).toBe("false");
@@ -148,6 +160,9 @@ describe("demo workspace provider", () => {
         expect(screen.getByTestId("documents").textContent).toBe("1");
         expect(screen.getByTestId("reset-reason").textContent).toBe("workspace");
         expect(screen.getByTestId("reset-nonce").textContent).toBe("1");
+        expect(
+            Number(screen.getByTestId("reset-epoch").textContent)
+        ).toBe(startingResetEpoch + 1);
     });
 
     it("keeps the original journey available when the package has no seed", async () => {

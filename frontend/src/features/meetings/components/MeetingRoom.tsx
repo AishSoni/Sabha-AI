@@ -504,10 +504,16 @@ function MeetingConversation({
                                         // choice, but it must still settle the
                                         // canonical closing intent so the guide
                                         // reaches Archive.
-                                        if (replayClosing) {
-                                            void runtime.replay?.skipIntent(
-                                                replayClosing.intent_id
-                                            );
+                                        if (replayClosing && runtime.replay) {
+                                            void runtime.replay
+                                                .skipIntent(
+                                                    replayClosing.intent_id
+                                                )
+                                                .catch(() => {
+                                                    // The snapshot text remains
+                                                    // usable even if settlement
+                                                    // could not be recorded.
+                                                });
                                         }
                                     }}
                                     onReplayClosing={

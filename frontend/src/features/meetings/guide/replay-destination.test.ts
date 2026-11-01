@@ -121,4 +121,18 @@ describe("resolveGuidedBeatDestination", () => {
 
         expect(destination.checkpoint).toBe("checkpoint-downside");
     });
+
+    it("exploration Back inspects the start of an already completed beat", () => {
+        const destination = resolveGuidedBeatDestination(
+            beat,
+            "meeting-1",
+            [],
+            { preferStart: true }
+        );
+
+        expect(destination.checkpoint).toBe("checkpoint-downside");
+        expect(destination.href).toBe(
+            "/demo/meetings/meeting-1?tab=chat"
+        );
+    });
 });

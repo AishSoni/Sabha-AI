@@ -235,13 +235,14 @@ export function DemoWorkspaceProvider({
     }, [applySeed, bumpEpoch]);
 
     const restartRecording = useCallback(() => {
-        bumpEpoch();
+        // Restart is a playback/bookmark operation. It must not invalidate
+        // practice drafts, pending practice verification, or staged setups.
         setGuideBookmark(null);
         setPlaybackReset((previous) => ({
             nonce: previous.nonce + 1,
             reason: "recording",
         }));
-    }, [bumpEpoch]);
+    }, []);
 
     const queryKey = useCallback(
         (domain: string) => workspaceQueryKey(workspaceId, domain),

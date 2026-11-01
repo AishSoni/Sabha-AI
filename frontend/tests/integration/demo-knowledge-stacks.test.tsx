@@ -451,6 +451,27 @@ describe("demo practice knowledge stacks", () => {
         ).toBe(false);
     });
 
+    it("discards an unsaved stack name draft when the workspace is fully reset", async () => {
+        installDemoRouter();
+        await renderAt("/demo/knowledge-stacks/shared-fact-sheet");
+
+        const name = (await screen.findByLabelText("Name")) as HTMLInputElement;
+        expect(name.value).toBe("Issuer fact sheet");
+        fireEvent.change(name, { target: { value: "Discarded draft" } });
+        expect(name.value).toBe("Discarded draft");
+
+        fireEvent.click(screen.getByRole("button", { name: "Reset demo" }));
+
+        await waitFor(() =>
+            expect(
+                (screen.getByLabelText("Name") as HTMLInputElement).value
+            ).toBe("Issuer fact sheet")
+        );
+        expect(
+            screen.getByRole("heading", { name: "Issuer fact sheet" })
+        ).toBeInTheDocument();
+    });
+
     it("creates and renames a local stack, then deletes it with its documents", async () => {
         installDemoRouter();
         const confirm = vi.spyOn(window, "confirm").mockReturnValue(true);
