@@ -224,7 +224,7 @@ export default function DemoNewMeetingPage() {
                         </ol>
                         <p className="mt-3 text-xs text-zinc-400">{intake?.note}</p>
                         <Link
-                            href={`/demo/meetings/${run.session.meeting_id}`}
+                            href={`/demo/meetings/${run.session.meeting_id}?tab=chat`}
                             className="mt-4 inline-flex items-center gap-2 rounded-lg bg-indigo-600 px-4 py-2 text-sm font-medium text-white hover:bg-indigo-700"
                         >
                             Open the meeting room

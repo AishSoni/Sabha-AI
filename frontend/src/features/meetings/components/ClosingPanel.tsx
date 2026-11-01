@@ -25,6 +25,10 @@ import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
 import { isApiError } from '@/shared/api/errors';
+import {
+    isActionAllowedByGuide,
+    useGuideActions,
+} from '../guide/guide-actions';
 import { useClosing } from '../api/closing-queries';
 import {
     createClosingRequestKey,
@@ -230,6 +234,7 @@ export function ClosingPanel({
     onReplayClosing,
 }: ClosingPanelProps) {
     const runtime = useMeetingsRuntime();
+    const guide = useGuideActions();
     const [confirmMode, setConfirmMode] = useState<ClosingMode | null>(null);
     const [actionError, setActionError] = useState<string | null>(null);
     const pendingIntent = useRef<PendingIntent | null>(null);
@@ -265,7 +270,9 @@ export function ClosingPanel({
             ?.legalActions()
             .find(
                 (action) =>
-                    action.intent.kind === 'request_closing' && action.available
+                    action.intent.kind === 'request_closing' &&
+                    action.available &&
+                    isActionAllowedByGuide(action, guide)
             ) ?? null;
     const replayClosingIntent = replayClosingAction?.intent ?? null;
     const canStart =
@@ -275,6 +282,15 @@ export function ClosingPanel({
         !isAdvancing(stage) &&
         stage !== 'failed' &&
         (runtime.replay ? Boolean(replayClosingIntent) : true);
+    const replayClosingUnavailable =
+        Boolean(runtime.replay) &&
+        !canStart &&
+        !archived &&
+        !ended &&
+        !isAdvancing(stage) &&
+        stage !== 'failed' &&
+        stage !== 'rejected' &&
+        stage !== 'aborted';
 
     const startClose = async (mode: ClosingMode) => {
         setConfirmMode(null);
@@ -592,6 +608,19 @@ export function ClosingPanel({
                         Reconnect
                     </Button>
                 </div>
+            ) : null}
+
+            {replayClosingUnavailable ? (
+                <StatusCard
+                    tone="muted"
+                    icon={<LogOut className="h-5 w-5 text-zinc-500" />}
+                    title="Closing is not available in this step"
+                >
+                    <p className="text-sm text-zinc-400">
+                        Finish the current guided step to use the recorded
+                        closing.
+                    </p>
+                </StatusCard>
             ) : null}
 
             {canStart ? (

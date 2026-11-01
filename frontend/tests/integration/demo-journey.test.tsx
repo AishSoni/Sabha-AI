@@ -8,7 +8,7 @@
  */
 import { act, fireEvent, render, screen, waitFor } from "@testing-library/react";
 import { usePathname } from "next/navigation";
-import type { ReactNode } from "react";
+import type { MouseEvent, ReactNode } from "react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import DemoLayout from "@/app/demo/layout";
 import DemoBoardPage from "@/app/demo/page";
@@ -104,17 +104,22 @@ vi.mock("next/link", async () => {
         default: function MockLink({
             href,
             children,
+            onClick,
         }: {
             href: string;
             children?: ReactNode;
+            onClick?: (event: MouseEvent<HTMLAnchorElement>) => void;
         }) {
             return React.createElement(
                 "a",
                 {
                     href,
-                    onClick: (event: { preventDefault: () => void }) => {
-                        event.preventDefault();
-                        demoLocation.navigate(href);
+                    onClick: (event: MouseEvent<HTMLAnchorElement>) => {
+                        onClick?.(event);
+                        if (!event.defaultPrevented) {
+                            event.preventDefault();
+                            demoLocation.navigate(href);
+                        }
                     },
                 },
                 children
@@ -220,7 +225,7 @@ describe("canonical guided demo journey", () => {
         expect(screen.getByRole("button", { name: /Back/ })).toBeDisabled();
         expect(screen.getByRole("button", { name: /Continue/ })).toBeEnabled();
 
-        fireEvent.click(screen.getByRole("button", { name: /Continue/ }));
+        fireEvent.click(screen.getByRole("link", { name: "Start the meeting" }));
         await waitFor(() =>
             expect(screen.getByText("Step 2 of 8")).toBeInTheDocument()
         );
@@ -237,7 +242,10 @@ describe("canonical guided demo journey", () => {
         expect(screen.getByText("Establish the facts")).toBeInTheDocument();
         expect(
             screen.getByRole("link", { name: "Open the meeting room" })
-        ).toHaveAttribute("href", `/demo/meetings/${DEMO_MEETING_ID}`);
+        ).toHaveAttribute(
+            "href",
+            `/demo/meetings/${DEMO_MEETING_ID}?tab=chat`
+        );
 
         fireEvent.click(screen.getByRole("link", { name: "Open the meeting room" }));
         expect(
@@ -245,11 +253,8 @@ describe("canonical guided demo journey", () => {
         ).toBeInTheDocument();
         expect(screen.getByText("Step 3 of 8")).toBeInTheDocument();
         expect(
-            screen.getByRole("link", { name: "Open the current step" })
-        ).toHaveAttribute(
-            "href",
-            `/demo/meetings/${DEMO_MEETING_ID}?tab=chat`
-        );
+            screen.getByRole("button", { name: "Continue" })
+        ).toBeDisabled();
 
         expect(calls.length).toBeGreaterThan(0);
         expect(calls.every((call) => call.method === "GET")).toBe(true);

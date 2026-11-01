@@ -3,34 +3,36 @@
 /**
  * Recorded director follow-up (spec-18, expanded by spec-26).
  *
- * The composer offers every prepared follow-up that belongs to this recorded
- * moment. It never posts to the live command graph and never accepts free text.
+ * The composer offers the prepared follow-up for the current guided step. It
+ * never posts to the live command graph and never accepts free text.
  */
 import { useState } from "react";
 import { Send } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
-import { useActiveReplayIntentId } from "./active-intent";
+import {
+    isActionAllowedByGuide,
+    useGuideActions,
+} from "../guide/guide-actions";
 import { useMeetingsRuntime } from "./context";
 
 export function RecordedDirectorAction() {
     const runtime = useMeetingsRuntime();
+    const guide = useGuideActions();
     const replay = runtime.replay;
-    const activeIntentId = useActiveReplayIntentId();
     const [busyIntent, setBusyIntent] = useState<string | null>(null);
 
     if (!replay) return null;
 
-    const legacy = replay.transitions.length === 0;
-    const actions = replay
-        .legalActions()
-        .filter(
-            (action) =>
-                action.intent.kind === "director_follow_up" &&
-                (!legacy ||
-                    activeIntentId === null ||
-                    action.intent.intent_id === activeIntentId)
-        );
+    const actions = replay.legalActions().filter((action) => {
+        if (
+            action.intent.kind !== "director_follow_up" ||
+            replay.settledIntents.has(action.intent.intent_id)
+        ) {
+            return false;
+        }
+        return isActionAllowedByGuide(action, guide);
+    });
 
     if (actions.length === 0) return null;
 

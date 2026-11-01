@@ -11,7 +11,7 @@ async function openRoom(page: Page) {
     await page.getByRole("button", { name: "Create recorded meeting" }).click();
     await expect(page.getByText("Recorded intake ready")).toBeVisible();
     await page.getByRole("button", { name: "Continue" }).click();
-    await expect(page).toHaveURL(/\/demo\/meetings\/[^/]+$/);
+    await expect(page).toHaveURL(/\/demo\/meetings\/[^/]+(?:\?.*)?$/);
 }
 
 test.describe("demo failure recovery", () => {

@@ -356,7 +356,10 @@ describe("demo practice meetings", () => {
         ).toBeInTheDocument();
         expect(
             screen.getByRole("link", { name: /Open the meeting room/ })
-        ).toHaveAttribute("href", `/demo/meetings/${DEMO_MEETING_ID}`);
+        ).toHaveAttribute(
+            "href",
+            `/demo/meetings/${DEMO_MEETING_ID}?tab=chat`
+        );
     });
 
     it("resolves unknown local IDs locally without replay or live lookup", async () => {

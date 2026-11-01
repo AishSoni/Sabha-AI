@@ -5,6 +5,7 @@ import { ArrowRight, BookOpen, Lock, ShieldCheck, Users } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Card } from "@/components/ui/card";
 import { useDemoWorkspace } from "@/features/demo-workspace";
+import { useGuideActions } from "@/features/meetings/guide/guide-actions";
 import { useReplayRun } from "@/features/meetings/runtime/replay-run";
 
 interface BoardStack {
@@ -35,6 +36,7 @@ interface BoardPreview {
 export default function DemoBoardPage() {
     const run = useReplayRun();
     const workspace = useDemoWorkspace();
+    const guide = useGuideActions();
     const config = run.safeConfig as { board?: BoardPreview } | null;
     const board = config?.board;
     const catalogByParticipant = new Map<string, string>();
@@ -82,6 +84,11 @@ export default function DemoBoardPage() {
                 </div>
                 <Link
                     href="/demo/new"
+                    onClick={(event) => {
+                        if (guide?.currentHref !== "/demo") return;
+                        event.preventDefault();
+                        guide.advance();
+                    }}
                     className="inline-flex items-center gap-2 rounded-lg bg-indigo-600 px-4 py-2 text-sm font-medium text-white hover:bg-indigo-700"
                 >
                     Start the meeting

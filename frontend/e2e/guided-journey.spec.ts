@@ -26,7 +26,7 @@ test.describe("guided bond journey", () => {
         for (let index = 0; index < 3; index += 1) {
             await knowledge.nth(index).click();
         }
-        await page.getByRole("button", { name: "Continue" }).click();
+        await page.getByRole("link", { name: "Start the meeting" }).click();
         await expect(page).toHaveURL(/\/demo\/new$/);
         await expect(page.getByText(/Step 2 of 8/)).toBeVisible();
 
@@ -35,12 +35,25 @@ test.describe("guided bond journey", () => {
         ).toBeVisible();
         await page.getByRole("button", { name: "Create recorded meeting" }).click();
         await expect(page.getByText("Recorded intake ready")).toBeVisible();
-        // The checkpoint advances with the real action, while the guide panel
-        // waits on the intake screen until Continue is pressed.
+        // The checkpoint advances with the real action. Opening the room is the
+        // app action for this step, so the visitor does not need the guide
+        // panel's Continue button here.
         await expect(page.getByText(/Step 3 of 8/)).toBeVisible({ timeout: 30_000 });
-        await page.getByRole("button", { name: "Continue" }).click();
-        await expect(page).toHaveURL(/\/demo\/meetings\/[^/]+$/);
+        await page.getByRole("link", { name: "Open the meeting room" }).click();
+        await expect(page).toHaveURL(/\/demo\/meetings\/[^/]+\?tab=chat$/);
         await expect(page.getByText(/Step 3 of 8/)).toBeVisible();
+        await expect(page.getByRole("button", { name: "Continue" })).toBeDisabled();
+
+        const stepDocuments = page.getByTestId("guide-step-documents");
+        await expect(stepDocuments).toContainText("Shared fact sheet");
+        await expect(stepDocuments).toContainText("Credit evidence");
+        await expect(
+            page.getByRole("button", { name: "You" })
+        ).toBeDisabled();
+        await page.getByTestId("you-disabled-trigger").focus();
+        await expect(page.getByRole("tooltip")).toHaveText(
+            "Only available in the live workspace."
+        );
 
         await page.getByRole("button", { name: "Ask the Credit Analyst" }).click();
         await expect(
@@ -59,9 +72,24 @@ test.describe("guided bond journey", () => {
         await expect(
             page.getByRole("tab", { name: /Disagreements 1/ })
         ).toBeVisible({ timeout: 30_000 });
+        // The next Director and participant actions belong to later guided
+        // steps and must not be offered before this review is acknowledged.
+        await expect(
+            page.getByRole("button", { name: "Send the supported follow-up" })
+        ).toHaveCount(0);
+        await expect(
+            page.getByRole("button", { name: "Ask the Portfolio Analyst" })
+        ).toHaveCount(0);
         await page.getByRole("tab", { name: /Disagreements 1/ }).click();
-        await page.getByRole("button", { name: "Continue" }).click();
+        await page
+            .getByTestId("guide-review")
+            .getByRole("button", { name: "Continue" })
+            .click();
         await expect(page.getByText(/Step 5 of 8/)).toBeVisible({ timeout: 30_000 });
+        await expect(page.getByRole("tab", { name: "Chat" })).toHaveAttribute(
+            "aria-selected",
+            "true"
+        );
         await page.getByRole("tab", { name: "Files" }).click();
         await expect(
             page.getByText("hdfc-v007-shared-fact-sheet.md")
@@ -100,7 +128,10 @@ test.describe("guided bond journey", () => {
             page.getByText(/The committee can align on a bounded checklist/).first()
         ).toBeVisible({ timeout: 30_000 });
         await page.getByRole("tab", { name: /Consensus 1/ }).click();
-        await page.getByRole("button", { name: "Continue" }).click();
+        await page
+            .getByTestId("guide-review")
+            .getByRole("button", { name: "Continue" })
+            .click();
         await expect(page.getByText(/Step 7 of 8/)).toBeVisible({ timeout: 30_000 });
 
         await expect(page).toHaveURL(/\/demo\/meetings\/[^/]+\?tab=closing$/);
@@ -112,7 +143,7 @@ test.describe("guided bond journey", () => {
             page.getByText(/The committee voted to conclude/).first()
         ).toBeVisible({ timeout: 30_000 });
         await expect(page.getByText(/Step 8 of 8/)).toBeVisible({ timeout: 30_000 });
-        await page.getByRole("button", { name: "Continue" }).click();
+        await page.getByRole("link", { name: "Go to meetings" }).click();
 
         await expect(page).toHaveURL(/\/demo\/meetings$/);
         await expect(page.getByText(/Step 8 of 8/)).toBeVisible();

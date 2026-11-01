@@ -4,15 +4,19 @@
  * Recorded participant intent (spec-17, expanded by spec-26).
  *
  * The buttons select declared recorded operations and checkpoints; they never
- * post a command or reach the live vault/provider/cooldown graph. Every legal
- * prepared turn is offered, so a participant with more than one recorded turn
- * is resolved by intent identity rather than the first matching intent.
+ * post a command or reach the live vault/provider/cooldown graph. Inside the
+ * guided journey only the current prepared turn is offered, so the room and the
+ * guide cannot advance on different paths. Exploration branches remain
+ * available because their transitions are non-canonical.
  */
 import { useState } from "react";
 import { Play } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import {
+    isActionAllowedByGuide,
+    useGuideActions,
+} from "../guide/guide-actions";
 import { useMeetingsRuntime } from "./context";
-import { useActiveReplayIntentId } from "./active-intent";
 import type { ParticipantActionProps } from "./contract";
 
 export function RecordedParticipantAction({
@@ -21,23 +25,22 @@ export function RecordedParticipantAction({
     isQueued,
 }: ParticipantActionProps) {
     const runtime = useMeetingsRuntime();
+    const guide = useGuideActions();
     const replay = runtime.replay;
-    const activeIntentId = useActiveReplayIntentId();
     const [busyIntent, setBusyIntent] = useState<string | null>(null);
 
     if (!replay) return null;
 
-    const legacy = replay.transitions.length === 0;
-    const actions = replay
-        .legalActions(participant.id)
-        .filter(
-            (action) =>
-                action.intent.kind === "start_participant" &&
-                action.available &&
-                (!legacy ||
-                    activeIntentId === null ||
-                    action.intent.intent_id === activeIntentId)
-        );
+    const actions = replay.legalActions(participant.id).filter((action) => {
+        if (
+            action.intent.kind !== "start_participant" ||
+            !action.available ||
+            replay.settledIntents.has(action.intent.intent_id)
+        ) {
+            return false;
+        }
+        return isActionAllowedByGuide(action, guide);
+    });
 
     if (actions.length === 0) return null;
 

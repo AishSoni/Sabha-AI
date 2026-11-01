@@ -29,8 +29,8 @@ async function enterRoom(page: Page) {
     await expect(page).toHaveURL(/\/demo\/new$/);
     await page.getByRole("button", { name: "Create recorded meeting" }).click();
     await expect(page.getByText("Recorded intake ready")).toBeVisible();
-    await page.getByRole("button", { name: "Continue" }).click();
-    await expect(page).toHaveURL(/\/demo\/meetings\/[^/]+$/);
+    await page.getByRole("link", { name: "Open the meeting room" }).click();
+    await expect(page).toHaveURL(/\/demo\/meetings\/[^/]+\?tab=chat$/);
     await expect(page.getByText(/Step 3 of 8/)).toBeVisible();
 }
 
@@ -54,11 +54,8 @@ test.describe("guided replay resilience", () => {
         await expect(page.getByText("Recorded intake ready")).toBeVisible();
         await expect(page.getByText(/transition is already in progress/)).toHaveCount(0);
 
-        await page.getByRole("button", { name: "Continue" }).click({
-            clickCount: 2,
-            delay: 10,
-        });
-        await expect(page).toHaveURL(/\/demo\/meetings\/[^/]+$/);
+        await page.getByRole("link", { name: "Open the meeting room" }).click();
+        await expect(page).toHaveURL(/\/demo\/meetings\/[^/]+\?tab=chat$/);
         await expect(page.getByText(/Step 3 of 8/)).toBeVisible();
 
         expect(liveRequests).toEqual([]);
@@ -146,8 +143,8 @@ test.describe("guided replay resilience", () => {
         await page.getByRole("button", { name: "Continue" }).click();
         await page.getByRole("button", { name: "Create recorded meeting" }).click();
         await expect(page.getByText("Recorded intake ready")).toBeVisible();
-        await page.getByRole("button", { name: "Continue" }).click();
-        await expect(page).toHaveURL(/\/demo\/meetings\/[^/]+$/);
+        await page.getByRole("link", { name: "Open the meeting room" }).click();
+        await expect(page).toHaveURL(/\/demo\/meetings\/[^/]+\?tab=chat$/);
         await page.reload();
         await expect(page).toHaveURL(/\/demo$/);
         await expect(page.getByText(/Step 1 of 8/)).toBeVisible();

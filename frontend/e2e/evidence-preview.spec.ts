@@ -73,7 +73,7 @@ async function openRecordedRoom(page: Page) {
     await expect(page.getByText("Recorded intake ready")).toBeVisible();
     await expect(page.getByText(/Step 3 of 8/)).toBeVisible({ timeout: 30_000 });
     await page.getByRole("button", { name: "Continue" }).click();
-    await expect(page).toHaveURL(/\/demo\/meetings\/[^/]+$/);
+    await expect(page).toHaveURL(/\/demo\/meetings\/[^/]+(?:\?.*)?$/);
 }
 
 test.describe("recorded evidence previews", () => {

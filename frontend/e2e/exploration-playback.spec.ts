@@ -159,7 +159,7 @@ test.describe("recorded exploration and playback", () => {
         await page.getByRole("button", { name: "Continue" }).click();
         await page.getByRole("button", { name: "Create recorded meeting" }).click();
         await page.getByRole("button", { name: "Continue" }).click();
-        await expect(page).toHaveURL(/\/demo\/meetings\/[^/]+$/);
+        await expect(page).toHaveURL(/\/demo\/meetings\/[^/]+(?:\?.*)?$/);
 
         await page.getByRole("button", { name: "Start from the mandate" }).click();
         await page.getByRole("tab", { name: "Chat" }).click();
