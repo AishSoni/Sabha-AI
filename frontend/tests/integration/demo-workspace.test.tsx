@@ -102,7 +102,7 @@ describe("demo workspace provider", () => {
         expect(screen.getByTestId("personas").textContent).toBe("3");
         expect(screen.getByTestId("stacks").textContent).toBe("4");
         expect(screen.getByTestId("samples").textContent).toBe("4");
-        expect(screen.getByTestId("documents").textContent).toBe("1");
+        expect(screen.getByTestId("documents").textContent).toBe("4");
         expect(screen.getByTestId("dirty").textContent).toBe("false");
         expect(calls).toHaveLength(1);
         expect(calls[0]).toContain("package=hdfc-ine001a07rw5");
@@ -157,7 +157,7 @@ describe("demo workspace provider", () => {
 
         expect(screen.getByTestId("dirty").textContent).toBe("false");
         expect(screen.getByTestId("stacks").textContent).toBe("4");
-        expect(screen.getByTestId("documents").textContent).toBe("1");
+        expect(screen.getByTestId("documents").textContent).toBe("4");
         expect(screen.getByTestId("reset-reason").textContent).toBe("workspace");
         expect(screen.getByTestId("reset-nonce").textContent).toBe("1");
         expect(
@@ -257,8 +257,10 @@ describe("workspace seed decoder", () => {
             "sample-portfolio-mandate",
             "sample-downside-retry",
         ]);
-        expect(decoded.documents).toHaveLength(1);
-        expect(decoded.documents[0]?.chunkCount).toBe(4);
+        expect(decoded.documents).toHaveLength(4);
+        expect(
+            decoded.documents.map((document) => document.chunkCount).sort()
+        ).toEqual([2, 3, 3, 4]);
         expect(decoded.samples[3]?.failureMessage).toContain(
             "Retry reuses this same document and operation"
         );

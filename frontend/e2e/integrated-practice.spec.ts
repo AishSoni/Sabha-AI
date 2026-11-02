@@ -22,7 +22,7 @@ async function openBoard(page: Page) {
         page.goto("/demo"),
     ]);
     const session = (await response.json()) as { package_version: string };
-    expect(session.package_version).toBe("6");
+    expect(session.package_version).toBe("7");
     await expect(page.getByRole("heading", { name: /Prepared board/ })).toBeVisible();
     await expect(page.getByText(/Step 1 of 8/)).toBeVisible();
 }
@@ -87,14 +87,7 @@ test.describe("integrated practice exploration", () => {
             })
         ).toBeVisible();
 
-        await page.getByRole("button", { name: "Add sample" }).click();
-        let picker = page.getByRole("dialog");
-        await expect(picker).toBeVisible();
-        await picker
-            .getByRole("radio", { name: /credit-evidence\.md/ })
-            .check();
-        await picker.getByRole("button", { name: "Add sample" }).click();
-        await expect(picker).toBeHidden();
+        // The credit stack is seeded with the prepared credit evidence.
         await expect(page.getByText("Ready (2 chunks)")).toBeVisible({
             timeout: 30_000,
         });
@@ -118,7 +111,7 @@ test.describe("integrated practice exploration", () => {
 
         // The prepared fail-once sample fails honestly and succeeds on retry.
         await page.getByRole("button", { name: "Add sample" }).click();
-        picker = page.getByRole("dialog");
+        const picker = page.getByRole("dialog");
         await picker
             .getByRole("radio", { name: /downside-worksheet\.md/ })
             .check();

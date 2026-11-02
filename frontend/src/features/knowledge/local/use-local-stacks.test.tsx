@@ -97,9 +97,9 @@ describe("local practice stacks", () => {
 
         const rows = screen.getByTestId("rows").textContent!;
         expect(rows).toContain("Issuer fact sheet:1:1:The Credit Analyst");
-        expect(rows).toContain("Credit evidence:0:0:The Credit Analyst");
-        expect(rows).toContain("Downside worksheet:0:0:The Downside Reviewer");
-        expect(rows).toContain("Portfolio mandate:0:0:The Portfolio Analyst");
+        expect(rows).toContain("Credit evidence:1:1:The Credit Analyst");
+        expect(rows).toContain("Downside worksheet:1:1:The Downside Reviewer");
+        expect(rows).toContain("Portfolio mandate:1:1:The Portfolio Analyst");
     });
 
     it("creates, renames, and deletes stacks through the workspace", async () => {
@@ -122,7 +122,7 @@ describe("local practice stacks", () => {
         fireEvent.click(screen.getByRole("button", { name: "rename" }));
         await waitFor(() =>
             expect(screen.getByTestId("rows").textContent).toContain(
-                "Renamed credit:0:0:The Credit Analyst"
+                "Renamed credit:1:1:The Credit Analyst"
             )
         );
 

@@ -118,6 +118,18 @@ function renderProbe(stackId?: string) {
     );
 }
 
+async function waitForEmptyScope() {
+    await waitFor(() =>
+        expect(screen.getByTestId("status").textContent).toBe("ready")
+    );
+    // Every seeded stack carries one ready document; clear it so each case
+    // starts from an empty scope.
+    fireEvent.click(screen.getByRole("button", { name: "remove" }));
+    await waitFor(() =>
+        expect(screen.getByTestId("counts").textContent).toBe("0/0")
+    );
+}
+
 afterEach(() => {
     vi.unstubAllGlobals();
     verifySample.mockClear();
@@ -131,9 +143,7 @@ describe("local practice documents", () => {
             vi.fn(async () => json(200, demoWorkspaceSeedEnvelope()))
         );
         renderProbe();
-        await waitFor(() =>
-            expect(screen.getByTestId("status").textContent).toBe("ready")
-        );
+        await waitForEmptyScope();
 
         fireEvent.click(screen.getByRole("button", { name: "add credit" }));
 
@@ -157,9 +167,7 @@ describe("local practice documents", () => {
             vi.fn(async () => json(200, demoWorkspaceSeedEnvelope()))
         );
         renderProbe();
-        await waitFor(() =>
-            expect(screen.getByTestId("status").textContent).toBe("ready")
-        );
+        await waitForEmptyScope();
 
         fireEvent.click(screen.getByRole("button", { name: "add credit" }));
         await waitFor(() =>
@@ -182,9 +190,7 @@ describe("local practice documents", () => {
             vi.fn(async () => json(200, demoWorkspaceSeedEnvelope()))
         );
         renderProbe();
-        await waitFor(() =>
-            expect(screen.getByTestId("status").textContent).toBe("ready")
-        );
+        await waitForEmptyScope();
 
         fireEvent.click(screen.getByRole("button", { name: "add downside" }));
         await waitFor(() =>
@@ -215,9 +221,7 @@ describe("local practice documents", () => {
             vi.fn(async () => json(200, demoWorkspaceSeedEnvelope()))
         );
         renderProbe();
-        await waitFor(() =>
-            expect(screen.getByTestId("status").textContent).toBe("ready")
-        );
+        await waitForEmptyScope();
 
         fireEvent.click(screen.getByRole("button", { name: "add downside" }));
         await waitFor(() =>
@@ -242,9 +246,7 @@ describe("local practice documents", () => {
         );
         verifySample.mockRejectedValueOnce(new Error("offline"));
         renderProbe();
-        await waitFor(() =>
-            expect(screen.getByTestId("status").textContent).toBe("ready")
-        );
+        await waitForEmptyScope();
 
         fireEvent.click(screen.getByRole("button", { name: "add credit" }));
         await waitFor(() =>

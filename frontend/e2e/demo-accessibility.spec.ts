@@ -62,19 +62,19 @@ test.describe("demo keyboard and narrow-screen accessibility", () => {
         await page.keyboard.press("Enter");
         const picker = page.getByRole("dialog");
         await expect(picker).toBeVisible();
-        const radio = picker.getByRole("radio", { name: /credit-evidence\.md/ });
+        const radio = picker.getByRole("radio", { name: /portfolio-mandate\.md/ });
         await radio.focus();
         await page.keyboard.press("Space");
         const confirm = picker.getByRole("button", { name: "Add sample" });
         await confirm.focus();
         await page.keyboard.press("Enter");
         await expect(picker).toBeHidden();
-        await expect(page.getByText("Ready (2 chunks)")).toBeVisible({
+        await expect(page.getByText("Ready (3 chunks)")).toBeVisible({
             timeout: 30_000,
         });
 
         const preview = page.getByRole("button", {
-            name: "Preview evidence: credit-evidence.md",
+            name: "Preview evidence: portfolio-mandate.md",
         });
         await preview.focus();
         await page.keyboard.press("Enter");

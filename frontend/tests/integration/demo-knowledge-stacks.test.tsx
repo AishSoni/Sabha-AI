@@ -292,8 +292,8 @@ describe("demo practice knowledge stacks", () => {
             await screen.findByRole("heading", { name: "Knowledge Stacks" })
         ).toBeInTheDocument();
         expect(await screen.findByText("Issuer fact sheet")).toBeInTheDocument();
-        expect(screen.getByText(/1 document/)).toBeInTheDocument();
-        expect(screen.getByText(/1 ready/)).toBeInTheDocument();
+        expect(screen.getAllByText(/1 document/)).toHaveLength(4);
+        expect(screen.getAllByText(/1 ready/)).toHaveLength(4);
         expect(
             screen.getAllByText(/Assigned to The Credit Analyst/).length
         ).toBeGreaterThan(0);
@@ -341,8 +341,25 @@ describe("demo practice knowledge stacks", () => {
 
     it("fails a prepared sample once and retries the same row to ready", async () => {
         installDemoRouter();
+        vi.spyOn(window, "confirm").mockReturnValue(true);
         await renderAt("/demo/knowledge-stacks/downside-worksheet");
         await screen.findByRole("heading", { name: "Downside worksheet" });
+
+        // The downside worksheet is seeded as a ready document. Remove it so the
+        // prepared failure and retry path can run in this stack.
+        await screen.findAllByText("downside-worksheet.md");
+        fireEvent.click(
+            screen.getByRole("button", {
+                name: "Delete downside-worksheet.md",
+            })
+        );
+        await waitFor(() =>
+            expect(
+                screen.queryByRole("button", {
+                    name: "Delete downside-worksheet.md",
+                })
+            ).not.toBeInTheDocument()
+        );
 
         fireEvent.click(screen.getByRole("button", { name: "Add sample" }));
         const dialog = await screen.findByRole("dialog");

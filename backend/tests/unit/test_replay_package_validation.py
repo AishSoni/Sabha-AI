@@ -791,7 +791,7 @@ def test_workspace_seed_size_ceiling_is_enforced(tmp_path: Path) -> None:
 def test_guided_package_carries_the_expanded_workspace_seed() -> None:
     package = load_package(GUIDED_ROOT)
     assert package.manifest.schema_version == 2
-    assert package.manifest.version == "6"
+    assert package.manifest.version == "7"
     assert package.manifest.workspace_seed == "workspace_seed.json"
     assert package.workspace_seed is not None
     seed = package.workspace_seed
@@ -839,12 +839,24 @@ def test_guided_package_publishes_a_validated_upload_sample_library() -> None:
         total += sample.size_bytes
     assert total <= 8 * 1024 * 1024
 
-    assert len(seed.documents) == 1
-    document = seed.documents[0]
-    assert document.scope_kind == "stack"
-    assert document.scope_id == "shared-meeting-documents"
-    assert document.status == "ready"
-    assert document.sample_id == "sample-shared-fact-sheet"
+    assert len(seed.documents) == 4
+    documents = {document.sample_id: document for document in seed.documents}
+    assert set(documents) == {
+        "sample-shared-fact-sheet",
+        "sample-credit-notes",
+        "sample-downside-retry",
+        "sample-portfolio-mandate",
+    }
+    assert {
+        (document.scope_id, document.status, document.chunk_count)
+        for document in seed.documents
+    } == {
+        ("shared-meeting-documents", "ready", 4),
+        ("credit-private", "ready", 2),
+        ("downside-private", "ready", 3),
+        ("portfolio-private", "ready", 3),
+    }
+    assert all(document.scope_kind == "stack" for document in seed.documents)
 
 
 def test_workspace_sample_fields_must_match_the_package_asset(tmp_path: Path) -> None:

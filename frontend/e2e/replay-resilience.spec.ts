@@ -164,6 +164,12 @@ test.describe("guided replay resilience", () => {
             })
         ).toBeVisible();
 
+        page.on("dialog", (dialog) => void dialog.accept());
+        await page
+            .getByRole("button", { name: "Delete credit-evidence.md" })
+            .click();
+        await expect(page.getByText("credit-evidence.md")).toHaveCount(0);
+
         await page.getByRole("button", { name: "Add sample" }).click();
         const picker = page.getByRole("dialog");
         await picker
