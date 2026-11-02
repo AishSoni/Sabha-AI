@@ -157,7 +157,7 @@ def test_expanded_seed_and_paced_streams_stay_on_the_recorded_boundary(
     with httpx.Client(timeout=20) as client:
         session = client.get(f"{base_url}/api/replay/session")
         assert session.status_code == 200
-        assert session.json()["package_version"] == "6"
+        assert session.json()["package_version"] == "7"
 
         seed = client.get(f"{base_url}/api/replay/workspace-seed")
         assert seed.status_code == 200

@@ -588,8 +588,8 @@ Runtime configuration:
 ```text
 REPLAY_DATABASE_URL=postgresql://sabha_replay_login:<password>@<host>:5432/postgres
 REPLAY_PACKAGE_ID=hdfc-ine001a07rw5
-REPLAY_PACKAGE_VERSION=6              # optional; registry default otherwise
-REPLAY_PACKAGE_SHA256=48014296bc2f98c0270c72ecee7c5d527cb35536b6c9c3846ffc9590cb37113d
+REPLAY_PACKAGE_VERSION=7              # optional; registry default otherwise
+REPLAY_PACKAGE_SHA256=1a48a568db5aafb2f521b0a690ad68bc06371baa2efa89c2e0f30f3b4c90f774
 REPLAY_ONLY=true                      # serve no live graph
 REPLAY_STREAM_MAX_PER_CLIENT=2
 REPLAY_STREAM_MAX_GLOBAL=8
@@ -606,16 +606,17 @@ synthetic backend fixture instead. Install the browser once with
 
 ### Guided bond journey (spec 18)
 
-The guided package is `backend/replay_packages/hdfc-ine001a07rw5` version `6`
-with content hash `48014296bc2f98c0270c72ecee7c5d527cb35536b6c9c3846ffc9590cb37113d`.
-Version 6 keeps the original eight-beat journey and adds the approved expanded
+The guided package is `backend/replay_packages/hdfc-ine001a07rw5` version `7`
+with content hash `1a48a568db5aafb2f521b0a690ad68bc06371baa2efa89c2e0f30f3b4c90f774`.
+Version 7 keeps the original eight-beat journey and the approved expanded
 exploration graph: 28 checkpoints, 27 transitions (8 canonical), 14 chapters,
 three prepared choice states, and six recorded closings. The schema-2 package
 uses a schema-3 practice workspace seed with an explicit four-sample upload
-allowlist, one seeded practice document, and a deterministic fail-once retry
-scenario. Evidence-only assets, including the source register and the
-attributed third-party excerpts, stay outside that allowlist. The version-5
-package is retained as a checked-in compatibility fixture at
+allowlist and one ready practice document in each of the four practice stacks.
+The fail-once retry scenario remains available in meeting scope. Evidence-only
+assets, including the source register and the attributed third-party excerpts,
+stay outside that allowlist. The version-5 package is retained as a checked-in
+compatibility fixture at
 `backend/tests/fixtures/replay/hdfc-ine001a07rw5-v5` with its original hash.
 Older published versions remain subject to the documented retention policy;
 they are not replaced for active pinned runs.

@@ -937,7 +937,40 @@ def workspace_seed() -> dict[str, Any]:
                 "revision_id": "practice-revision-shared-fact",
                 "chunk_count": 4,
                 "created_at": SAMPLE_APPROVED_AT,
-            }
+            },
+            {
+                "document_id": "practice-document-credit-notes",
+                "sample_id": "sample-credit-notes",
+                "scope_kind": "stack",
+                "scope_id": "credit-private",
+                "status": "ready",
+                "operation_id": "practice-operation-credit-notes",
+                "revision_id": "practice-revision-credit-notes",
+                "chunk_count": 2,
+                "created_at": SAMPLE_APPROVED_AT,
+            },
+            {
+                "document_id": "practice-document-downside-sheet",
+                "sample_id": "sample-downside-retry",
+                "scope_kind": "stack",
+                "scope_id": "downside-private",
+                "status": "ready",
+                "operation_id": "practice-operation-downside-sheet",
+                "revision_id": "practice-revision-downside-sheet",
+                "chunk_count": 3,
+                "created_at": SAMPLE_APPROVED_AT,
+            },
+            {
+                "document_id": "practice-document-portfolio-mandate",
+                "sample_id": "sample-portfolio-mandate",
+                "scope_kind": "stack",
+                "scope_id": "portfolio-private",
+                "status": "ready",
+                "operation_id": "practice-operation-portfolio-mandate",
+                "revision_id": "practice-revision-portfolio-mandate",
+                "chunk_count": 3,
+                "created_at": SAMPLE_APPROVED_AT,
+            },
         ],
     }
 
@@ -3740,7 +3773,7 @@ def build() -> None:
 
     manifest = {
         "package_id": "hdfc-ine001a07rw5",
-        "version": "6",
+        "version": "7",
         "schema_version": 2,
         "read_version": 1,
         "event_version": 1,

@@ -379,7 +379,7 @@ The guided journey is the HDFC Ltd 7.87% 2022 debenture meeting, pinned as packa
 - 9 checkpoints: initial, created, credit, downside, followup, portfolio, consensus, closed, archived
 - 4 turn tapes plus a closing tape, 4 retrieval sets, and 7 previewable assets
 - One validated browser-memory workspace seed (3 personas, 4 stacks, 1 practice intake preset) with the approved base instructions, a highlighted persona, and links to the prepared board participants
-- A separate upload allowlist of 4 approved Markdown samples, 1 seeded practice document, and a deterministic fail-once retry scenario
+- A separate upload allowlist of 4 approved Markdown samples, 4 seeded practice documents (one per stack), and a deterministic fail-once retry scenario
 
 A second package, `placeholder-analyst`, supports synthetic tests. Assets are stored immutably in the public read-only `replay-assets` bucket under a content-addressed path.
 

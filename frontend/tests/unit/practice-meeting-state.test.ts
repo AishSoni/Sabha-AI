@@ -67,7 +67,7 @@ describe("local practice meeting state", () => {
                     document.scopeId === meeting.meetingId
             )
         ).toBe(true);
-        expect(result.state.documents).toHaveLength(3);
+        expect(result.state.documents).toHaveLength(6);
     });
 
     it("rejects unknown personas, missing participants, and stack-only samples", () => {

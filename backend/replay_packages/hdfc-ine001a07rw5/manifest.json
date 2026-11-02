@@ -1,12 +1,12 @@
 {
   "package_id": "hdfc-ine001a07rw5",
-  "version": "6",
+  "version": "7",
   "schema_version": 2,
   "read_version": 1,
   "event_version": 1,
   "title": "HDFC Ltd 7.87% 2022 debenture - guided replay",
   "as_of": "2020-07-31",
-  "content_sha256": "48014296bc2f98c0270c72ecee7c5d527cb35536b6c9c3846ffc9590cb37113d",
+  "content_sha256": "1a48a568db5aafb2f521b0a690ad68bc06371baa2efa89c2e0f30f3b4c90f774",
   "meeting_id": "a0000000-0000-4000-8000-000000000001",
   "initial_checkpoint": "checkpoint-initial",
   "checkpoints": [
@@ -1389,5 +1389,5 @@
     }
   ],
   "workspace_seed": "workspace_seed.json",
-  "workspace_seed_sha256": "8a7b09b7114a57e0bb30e67773ef092e10fbca56521643002d73debf57048608"
+  "workspace_seed_sha256": "f9d6fed7da8366b1ca99d2a7d0e646f3d5aa01301f0f542e7e1ae55258045cf9"
 }
