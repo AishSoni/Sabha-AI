@@ -9,17 +9,17 @@ already-validated rows.
 
 from __future__ import annotations
 
-from typing import Any, Literal
+from typing import Annotated, Any, Literal
 
 from pydantic import BaseModel, ConfigDict, Field, field_validator, model_validator
 
 from app.replay.constants import TAPE_DELAY_CEILING_MS
 
-SCHEMA_VERSION = 2
+SCHEMA_VERSION = 3
 READ_VERSION = 1
 EVENT_VERSION = 1
 
-SUPPORTED_SCHEMA_VERSIONS = (1, SCHEMA_VERSION)
+SUPPORTED_SCHEMA_VERSIONS = (1, 2, SCHEMA_VERSION)
 SUPPORTED_READ_VERSIONS = (READ_VERSION,)
 SUPPORTED_EVENT_VERSIONS = (EVENT_VERSION,)
 
@@ -203,6 +203,126 @@ class IntentRecord(StrictModel):
     def validate_intent_id(cls, value: str) -> str:
         if not _is_safe_slug(value):
             raise ValueError("intent_id must be a safe identifier")
+        return value
+
+
+PREPARED_REPLY_TURN_COUNT = 4
+PREPARED_FOLLOW_UP_TURN_COUNT = 1
+PREPARED_TURN_KINDS = ("reply", "follow_up")
+
+
+class PreparedReplyTurn(StrictModel):
+    """One approved AI reply in the schema-3 turn deck.
+
+    The record is deliberately self-contained: selecting the turn names the
+    recorded operation and tape to stream, the isolated checkpoint that holds
+    its settled effects, and the stable identities that composition may merge.
+    """
+
+    kind: Literal["reply"] = "reply"
+    turn_id: str
+    participant_id: str
+    label: str
+    intent_id: str
+    operation_id: str
+    tape_id: str
+    result_checkpoint: str
+    reply_message_ids: list[str] = Field(min_length=1)
+    effect_ids: list[str] = Field(default_factory=list)
+    required: bool = True
+
+    @field_validator(
+        "turn_id",
+        "participant_id",
+        "intent_id",
+        "operation_id",
+        "tape_id",
+        "result_checkpoint",
+    )
+    @classmethod
+    def validate_turn_ref(cls, value: str) -> str:
+        if not _is_safe_slug(value):
+            raise ValueError("prepared turn references must be safe identifiers")
+        return value
+
+    @field_validator("label")
+    @classmethod
+    def validate_turn_label(cls, value: str) -> str:
+        if not value.strip():
+            raise ValueError("prepared turn label must not be empty")
+        return value
+
+    @field_validator("reply_message_ids", "effect_ids")
+    @classmethod
+    def validate_turn_ids(cls, value: list[str]) -> list[str]:
+        if len(set(value)) != len(value):
+            raise ValueError("prepared turn identities must be unique")
+        for item in value:
+            if not _is_safe_slug(item):
+                raise ValueError(f"unsafe prepared turn identity: {item!r}")
+        return value
+
+
+class PreparedFollowUpTurn(StrictModel):
+    """The single approved user follow-up in the schema-3 turn deck."""
+
+    kind: Literal["follow_up"] = "follow_up"
+    turn_id: str
+    label: str
+    question: str
+    message_id: str
+    intent_id: str | None = None
+    participant_id: str | None = None
+    required: bool = True
+
+    @field_validator("turn_id", "message_id", "intent_id", "participant_id")
+    @classmethod
+    def validate_follow_up_ref(cls, value: str | None) -> str | None:
+        if value is not None and not _is_safe_slug(value):
+            raise ValueError("prepared follow-up references must be safe identifiers")
+        return value
+
+    @field_validator("label", "question")
+    @classmethod
+    def validate_follow_up_text(cls, value: str) -> str:
+        if not value.strip():
+            raise ValueError("prepared follow-up text must not be empty")
+        return value
+
+
+PreparedTurn = Annotated[
+    PreparedReplyTurn | PreparedFollowUpTurn,
+    Field(discriminator="kind"),
+]
+
+
+class PreparedClosingRecord(StrictModel):
+    """Recorded closing path and the deck turns that unlock it."""
+
+    closing_tape_id: str
+    completed_checkpoint: str
+    archived_checkpoint: str
+    required_turn_ids: list[str]
+
+    @field_validator(
+        "closing_tape_id", "completed_checkpoint", "archived_checkpoint"
+    )
+    @classmethod
+    def validate_closing_ref(cls, value: str) -> str:
+        if not _is_safe_slug(value):
+            raise ValueError("prepared closing references must be safe identifiers")
+        return value
+
+    @field_validator("required_turn_ids")
+    @classmethod
+    def validate_required_turns(cls, value: list[str]) -> list[str]:
+        if not value:
+            raise ValueError("prepared closing must require at least one turn")
+        if len(set(value)) != len(value):
+            raise ValueError("prepared closing turn ids must be unique")
+        for item in value:
+            if not _is_safe_slug(item):
+                raise ValueError(f"unsafe prepared closing turn id: {item!r}")
         return value
 
 
@@ -892,6 +1012,9 @@ class Manifest(StrictModel):
     claims: list[ClaimRecord] = Field(default_factory=list)
     chapters: list[ChapterRecord] = Field(default_factory=list)
     transitions: list[TransitionRecord] = Field(default_factory=list)
+    prepared_base_checkpoint: str | None = None
+    prepared_turns: list[PreparedTurn] = Field(default_factory=list)
+    prepared_closing: PreparedClosingRecord | None = None
     workspace_seed: str | None = None
     workspace_seed_sha256: str | None = None
     # Publication copies the validated seed into the immutable manifest row so
@@ -981,6 +1104,23 @@ class Manifest(StrictModel):
         transition_ids = [transition.transition_id for transition in value]
         if len(set(transition_ids)) != len(transition_ids):
             raise ValueError("transition_ids must be unique")
+        return value
+
+    @field_validator("prepared_base_checkpoint")
+    @classmethod
+    def validate_prepared_base(cls, value: str | None) -> str | None:
+        if value is not None and not _is_safe_slug(value):
+            raise ValueError("prepared_base_checkpoint must be a safe identifier")
+        return value
+
+    @field_validator("prepared_turns")
+    @classmethod
+    def validate_prepared_turn_ids(
+        cls, value: list[PreparedTurn]
+    ) -> list[PreparedTurn]:
+        turn_ids = [turn.turn_id for turn in value]
+        if len(set(turn_ids)) != len(turn_ids):
+            raise ValueError("prepared turn ids must be unique")
         return value
 
     @field_validator("stack_labels")

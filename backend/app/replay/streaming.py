@@ -22,7 +22,11 @@ from app.replay.constants import (
     STREAM_MAX_SECONDS,
 )
 from app.replay.package.model import TERMINAL_EVENT_TYPES
-from app.replay.source import PublishedPackage, ReplaySource
+from app.replay.source import (
+    PublishedPackage,
+    ReplaySource,
+    prepared_operation_ids,
+)
 
 
 class ReplayStreamLimit(RuntimeError):
@@ -92,6 +96,9 @@ class ReplayTurnStream:
     ) -> AsyncGenerator[dict[str, str], None]:
         if speed not in (1, 2):
             raise ValueError("speed must be 1 or 2")
+        allowed = prepared_operation_ids(self._published)
+        if allowed is not None and operation_id not in allowed:
+            return
         tape = await self._source.read_tape(
             self._published.package_id,
             self._published.version,

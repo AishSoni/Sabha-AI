@@ -83,6 +83,9 @@ class ReplaySession:
     claims: tuple[dict[str, Any], ...] = ()
     chapters: tuple[dict[str, Any], ...] = ()
     transitions: tuple[dict[str, Any], ...] = ()
+    prepared_base_checkpoint: str | None = None
+    prepared_turns: tuple[dict[str, Any], ...] = ()
+    prepared_closing: dict[str, Any] | None = None
     preview: ReplayPreview = field(default_factory=ReplayPreview)
     retired: bool = False
 

@@ -2992,9 +2992,195 @@ def exploration_content(
     }
 
 
-def build() -> None:
-    if ROOT.exists():
-        for path in sorted(ROOT.rglob("*"), reverse=True):
+def _effect_ids(message: dict[str, Any], *extra: str) -> list[str]:
+    ids = [message["id"], *extra]
+    for citation in message.get("citations") or []:
+        if citation.get("claim_id"):
+            ids.append(citation["claim_id"])
+    for call in (message.get("tool_artifacts") or {}).get("calls") or []:
+        for key in ("invocation_id", "call_id"):
+            if call.get(key):
+                ids.append(call[key])
+    return list(dict.fromkeys(ids))
+
+
+def prepared_deck_content(
+    root: Path,
+    checkpoints: dict[str, dict[str, Any]],
+    intents: list[dict[str, Any]],
+) -> dict[str, Any]:
+    """Author the schema-3 closed deck, isolated results, and turn tapes."""
+
+    ordinal = max(checkpoint["ordinal"] for checkpoint in checkpoints.values()) + 1
+    base_id = "checkpoint-prepared-base"
+    base_operations = [
+        operation(CREDIT_OP, CREDIT, "turn-credit", "queued", 1, None),
+        operation(DOWNSIDE_OP, DOWNSIDE, "turn-downside", "queued", 2, None),
+        operation(PORTFOLIO_OP, PORTFOLIO, "turn-portfolio", "queued", 3, None),
+        operation(CONSENSUS_OP, CREDIT, "turn-consensus", "queued", 4, None),
+    ]
+    checkpoints[base_id] = checkpoint(
+        base_id,
+        ordinal,
+        "active",
+        checkpoint_reads(
+            meeting_status="active",
+            messages=[OPENING],
+            operations=base_operations,
+            include_meeting=True,
+            include_documents=True,
+            include_disagreement=False,
+            include_consensus=False,
+            closed=False,
+            archived=False,
+        ),
+    )
+    write_json(root / "checkpoints" / f"{base_id}.json", checkpoints[base_id])
+    ordinal += 1
+
+    definitions = [
+        (
+            "credit",
+            CREDIT,
+            CREDIT_OP,
+            "turn-credit",
+            CREDIT_MSG,
+            "Credit Analyst opening facts",
+            None,
+        ),
+        (
+            "downside",
+            DOWNSIDE,
+            DOWNSIDE_OP,
+            "turn-downside",
+            DOWNSIDE_MSG,
+            "Downside challenge",
+            DISAGREEMENT,
+        ),
+        (
+            "portfolio",
+            PORTFOLIO,
+            PORTFOLIO_OP,
+            "turn-portfolio",
+            PORTFOLIO_MSG,
+            "Mandate review",
+            None,
+        ),
+        (
+            "consensus",
+            CREDIT,
+            CONSENSUS_OP,
+            "turn-consensus",
+            CONSENSUS_MSG,
+            "Committee alignment",
+            CONSENSUS,
+        ),
+    ]
+    messages = {
+        CREDIT_MSG: CREDIT_MESSAGE,
+        DOWNSIDE_MSG: DOWNSIDE_MESSAGE,
+        PORTFOLIO_MSG: PORTFOLIO_MESSAGE,
+        CONSENSUS_MSG: CONSENSUS_MESSAGE,
+    }
+    turns: list[dict[str, Any]] = []
+    for slug, participant_id, operation_id, request_key, message_id, label, effect in definitions:
+        message = messages[message_id]
+        checkpoint_id = f"checkpoint-prepared-{slug}"
+        tape_id = f"tape-prepared-{slug}"
+        intent_id = f"prepared-{slug}"
+        operation_row = operation(
+            operation_id, participant_id, request_key, "completed", 1, message_id
+        )
+        result = checkpoint(
+            checkpoint_id,
+            ordinal,
+            "active",
+            checkpoint_reads(
+                meeting_status="active",
+                messages=[OPENING, message],
+                operations=[operation_row],
+                include_meeting=True,
+                include_documents=True,
+                include_disagreement=effect == DISAGREEMENT,
+                include_consensus=effect == CONSENSUS,
+                closed=False,
+                archived=False,
+            ),
+        )
+        checkpoints[checkpoint_id] = result
+        write_json(root / "checkpoints" / f"{checkpoint_id}.json", result)
+        tape = turn_tape(
+            tape_id,
+            operation_id,
+            participant_id,
+            request_key,
+            base_id,
+            checkpoint_id,
+            message,
+        )
+        write_json(root / "tapes" / f"{tape_id}.json", tape)
+        intents.append(
+            {
+                "intent_id": intent_id,
+                "kind": "start_participant",
+                "checkpoint": base_id,
+                "participant_id": participant_id,
+                "operation_id": operation_id,
+                "tape_id": tape_id,
+                "label": label,
+            }
+        )
+        turns.append(
+            {
+                "kind": "reply",
+                "turn_id": intent_id,
+                "participant_id": participant_id,
+                "label": label,
+                "intent_id": intent_id,
+                "operation_id": operation_id,
+                "tape_id": tape_id,
+                "result_checkpoint": checkpoint_id,
+                "reply_message_ids": [message_id],
+                "effect_ids": _effect_ids(message, operation_id, effect)
+                if effect
+                else _effect_ids(message, operation_id),
+                "required": True,
+            }
+        )
+        ordinal += 1
+
+    turns.append(
+        {
+            "kind": "follow_up",
+            "turn_id": "prepared-followup",
+            "label": "You",
+            "question": FOLLOWUP["content"],
+            "message_id": FOLLOWUP_MSG,
+            "intent_id": "director-follow-up",
+            "required": True,
+        }
+    )
+    return {
+        "prepared_base_checkpoint": base_id,
+        "prepared_turns": turns,
+        "prepared_closing": {
+            "closing_tape_id": "tape-closing",
+            "completed_checkpoint": "checkpoint-closed",
+            "archived_checkpoint": "checkpoint-archived",
+            "required_turn_ids": [turn["turn_id"] for turn in turns],
+        },
+    }
+
+
+def build(
+    root: Path | None = None,
+    *,
+    schema_version: int = 2,
+    version: str = "7",
+) -> dict[str, Any]:
+    root = root or ROOT
+    if root.exists():
+        for path in sorted(root.rglob("*"), reverse=True):
             if path.is_file():
                 path.unlink()
             elif path.is_dir():
@@ -3010,7 +3196,7 @@ def build() -> None:
         "private/portfolio-mandate.md": PORTFOLIO_MANDATE,
     }
     for relative, content in assets.items():
-        path = ROOT / "assets" / relative
+        path = root / "assets" / relative
         path.parent.mkdir(parents=True, exist_ok=True)
         path.write_bytes(content.encode("utf-8"))
 
@@ -3118,7 +3304,7 @@ def build() -> None:
             "extraction": "offline markdown",
         },
     ]
-    write_json(ROOT / "assets" / "index.json", {"assets": asset_records})
+    write_json(root / "assets" / "index.json", {"assets": asset_records})
 
     operations_created = [
         operation(CREDIT_OP, CREDIT, "turn-credit", "queued", 1, None),
@@ -3377,7 +3563,7 @@ def build() -> None:
         )
     )
     for checkpoint_id, payload in checkpoints.items():
-        write_json(ROOT / "checkpoints" / f"{checkpoint_id}.json", payload)
+        write_json(root / "checkpoints" / f"{checkpoint_id}.json", payload)
 
     credit_tape = turn_tape(
         "tape-credit",
@@ -3416,12 +3602,12 @@ def build() -> None:
         CONSENSUS_MESSAGE,
     )
     for tape in (credit_tape, downside_tape, portfolio_tape, consensus_tape):
-        write_json(ROOT / "tapes" / f"{tape['tape_id']}.json", tape)
-    write_json(ROOT / "closing_tapes" / "tape-closing.json", closing_tape())
+        write_json(root / "tapes" / f"{tape['tape_id']}.json", tape)
+    write_json(root / "closing_tapes" / "tape-closing.json", closing_tape())
     for tape in exploration["tapes"]:
-        write_json(ROOT / "tapes" / f"{tape['tape_id']}.json", tape)
+        write_json(root / "tapes" / f"{tape['tape_id']}.json", tape)
     for tape in exploration["closing_tapes"]:
-        write_json(ROOT / "closing_tapes" / f"{tape['tape_id']}.json", tape)
+        write_json(root / "closing_tapes" / f"{tape['tape_id']}.json", tape)
 
     retrievals = [
         retrieval(
@@ -3478,7 +3664,7 @@ def build() -> None:
     ]
     retrievals.extend(exploration["retrievals"])
     for record in retrievals:
-        write_json(ROOT / "retrieval" / f"{record['retrieval_key']}.json", record)
+        write_json(root / "retrieval" / f"{record['retrieval_key']}.json", record)
 
     intents = [
         {
@@ -3760,8 +3946,14 @@ def build() -> None:
         },
     ]
 
+    deck = (
+        prepared_deck_content(root, checkpoints, intents)
+        if schema_version >= 3
+        else None
+    )
+
     seed_payload = workspace_seed()
-    write_json(ROOT / "workspace_seed.json", seed_payload)
+    write_json(root / "workspace_seed.json", seed_payload)
     seed_sha256 = hashlib.sha256(
         json.dumps(
             seed_payload,
@@ -3773,8 +3965,8 @@ def build() -> None:
 
     manifest = {
         "package_id": "hdfc-ine001a07rw5",
-        "version": "7",
-        "schema_version": 2,
+        "version": version,
+        "schema_version": schema_version,
         "read_version": 1,
         "event_version": 1,
         "title": "HDFC Ltd 7.87% 2022 debenture - guided replay",
@@ -3784,7 +3976,8 @@ def build() -> None:
         "initial_checkpoint": "checkpoint-initial",
         "checkpoints": list(checkpoints),
         "tapes": ["tape-credit", "tape-downside", "tape-portfolio", "tape-consensus"]
-        + [item["tape_id"] for item in exploration["tapes"]],
+        + [item["tape_id"] for item in exploration["tapes"]]
+        + ([turn["tape_id"] for turn in deck["prepared_turns"] if turn["kind"] == "reply"] if deck else []),
         "closing_tapes": ["tape-closing"]
         + [item["tape_id"] for item in exploration["closing_tapes"]],
         "retrieval": [item["retrieval_key"] for item in retrievals],
@@ -3808,17 +4001,20 @@ def build() -> None:
         "workspace_seed": "workspace_seed.json",
         "workspace_seed_sha256": seed_sha256,
     }
-    write_json(ROOT / "manifest.json", manifest)
+    if deck:
+        manifest.update(deck)
+    write_json(root / "manifest.json", manifest)
 
     files: dict[str, str] = {}
-    for path in sorted(ROOT.rglob("*")):
+    for path in sorted(root.rglob("*")):
         if path.is_file() and path.name != "manifest.json":
-            relative = path.relative_to(ROOT).as_posix()
+            relative = path.relative_to(root).as_posix()
             files[relative] = hashlib.sha256(path.read_bytes()).hexdigest()
     manifest["content_sha256"] = compute_content_sha256(files, manifest)
-    write_json(ROOT / "manifest.json", manifest)
-    print(f"Wrote {ROOT}")
+    write_json(root / "manifest.json", manifest)
+    print(f"Wrote {root}")
     print(f"content_sha256={manifest['content_sha256']}")
+    return manifest
 
 
 if __name__ == "__main__":

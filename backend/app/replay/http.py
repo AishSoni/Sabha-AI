@@ -84,6 +84,9 @@ class ReplaySessionView(BaseModel):
     claims: list[dict] = Field(default_factory=list)
     chapters: list[dict] = Field(default_factory=list)
     transitions: list[dict] = Field(default_factory=list)
+    prepared_base_checkpoint: str | None = None
+    prepared_turns: list[dict] = Field(default_factory=list)
+    prepared_closing: dict | None = None
     preview: ReplayPreviewView = Field(default_factory=ReplayPreviewView)
     retired: bool = False
 
@@ -199,6 +202,9 @@ async def read_session(replay: ReplayContainer = Depends(get_replay)):
         claims=list(session.claims),
         chapters=list(session.chapters),
         transitions=list(session.transitions),
+        prepared_base_checkpoint=session.prepared_base_checkpoint,
+        prepared_turns=list(session.prepared_turns),
+        prepared_closing=session.prepared_closing,
         preview=ReplayPreviewView(
             available=session.preview.available,
             asset_ids=list(session.preview.asset_ids),

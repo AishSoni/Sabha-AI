@@ -1,0 +1,118 @@
+{
+  "tape_id": "tape-downside-covenant",
+  "meeting_id": "a0000000-0000-4000-8000-000000000001",
+  "operation_id": "a0000000-0000-4000-8000-000000000314",
+  "participant_id": "a0000000-0000-4000-8000-000000000102",
+  "request_key": "turn-retrieval-downside-covenant",
+  "initial_checkpoint": "checkpoint-followup-covenant",
+  "completed_checkpoint": "checkpoint-downside-covenant",
+  "events": [
+    {
+      "event_id": "tape-downside-covenant-1",
+      "sequence": 1,
+      "type": "thinking",
+      "delay_ms": 60,
+      "payload": {
+        "content": "State the missing covenant evidence rather than inferring protections."
+      }
+    },
+    {
+      "event_id": "tape-downside-covenant-2",
+      "sequence": 2,
+      "type": "tool_call",
+      "delay_ms": 100,
+      "payload": {
+        "invocation_id": "inv-retrieval-downside-covenant",
+        "call_id": "call-retrieval-downside-covenant",
+        "tool_name": "search_knowledge_base",
+        "arguments": {
+          "query": "retrieval downside covenant"
+        }
+      }
+    },
+    {
+      "event_id": "tape-downside-covenant-3",
+      "sequence": 3,
+      "type": "tool_result",
+      "delay_ms": 120,
+      "payload": {
+        "invocation_id": "inv-retrieval-downside-covenant",
+        "call_id": "call-retrieval-downside-covenant",
+        "result": {
+          "retrieval_key": "retrieval-downside-covenant",
+          "hits": 3
+        },
+        "is_error": false
+      }
+    },
+    {
+      "event_id": "tape-downside-covenant-4",
+      "sequence": 4,
+      "type": "citation",
+      "delay_ms": 60,
+      "payload": {
+        "source": "Committee judgment",
+        "title": "Downside worksheet, Rating test",
+        "url": null,
+        "snippet": "AAA/Stable is a rating opinion dated 31 July 2020, not a guarantee and not a current rating.",
+        "claim_id": "C8",
+        "locator": "Downside worksheet, Rating test"
+      }
+    },
+    {
+      "event_id": "tape-downside-covenant-5",
+      "sequence": 5,
+      "type": "citation",
+      "delay_ms": 60,
+      "payload": {
+        "source": "Record evidence",
+        "title": "Shared fact sheet, What is not established",
+        "url": null,
+        "snippet": "The meeting record contains no executable price, yield, or secondary-market liquidity data for the series.",
+        "claim_id": "C10",
+        "locator": "Shared fact sheet, What is not established"
+      }
+    },
+    {
+      "event_id": "tape-downside-covenant-6",
+      "sequence": 6,
+      "type": "citation",
+      "delay_ms": 60,
+      "payload": {
+        "source": "Prepared for this replay",
+        "title": "Prepared follow-up, covenants",
+        "url": null,
+        "snippet": "The covenant follow-up asks which contractual protections would survive a rating downgrade; the record does not supply the covenant package.",
+        "claim_id": "C17",
+        "locator": "Prepared follow-up, covenants"
+      }
+    },
+    {
+      "event_id": "tape-downside-covenant-7",
+      "sequence": 7,
+      "type": "text",
+      "delay_ms": 60,
+      "payload": {
+        "content": "The retained record does not include the covenant package, so downgrade protections cannot be established. A rating opinion is not a covenant, and "
+      }
+    },
+    {
+      "event_id": "tape-downside-covenant-8",
+      "sequence": 8,
+      "type": "text",
+      "delay_ms": 60,
+      "payload": {
+        "content": "the absence of evidence should be recorded as an unknown rather than filled in."
+      }
+    },
+    {
+      "event_id": "tape-downside-covenant-9",
+      "sequence": 9,
+      "type": "done",
+      "delay_ms": 80,
+      "payload": {
+        "message_id": "a0000000-0000-4000-8000-000000000417"
+      }
+    }
+  ]
+}

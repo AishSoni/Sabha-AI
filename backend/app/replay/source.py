@@ -83,6 +83,29 @@ class PublishedPackage:
     workspace_seed_sha256: str | None = None
 
 
+def prepared_operation_ids(published: PublishedPackage) -> set[str] | None:
+    """Return the operations a schema-3 session may stream, if bounded.
+
+    Legacy packages keep their existing tape behavior. Schema 3 admits the
+    closed deck plus explicitly recorded chapter transitions, so an arbitrary
+    tape cannot be addressed merely because it exists inside the package.
+    """
+
+    if published.manifest.schema_version < 3:
+        return None
+    allowed = {
+        turn.operation_id
+        for turn in published.manifest.prepared_turns
+        if turn.kind == "reply"
+    }
+    allowed.update(
+        transition.operation_id
+        for transition in published.manifest.transitions
+        if transition.operation_id is not None
+    )
+    return allowed
+
+
 @dataclass(frozen=True)
 class TapeRecord:
     tape_id: str

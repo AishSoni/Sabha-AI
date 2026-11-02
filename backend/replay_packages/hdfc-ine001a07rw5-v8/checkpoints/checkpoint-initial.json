@@ -1,0 +1,114 @@
+{
+  "checkpoint_id": "checkpoint-initial",
+  "ordinal": 0,
+  "phase": "initial",
+  "meeting_id": "a0000000-0000-4000-8000-000000000001",
+  "reads": {
+    "safe_config": {
+      "board": {
+        "title": "Prepared board for the recorded meeting",
+        "participants": [
+          {
+            "participant_id": "a0000000-0000-4000-8000-000000000101",
+            "name": "The Credit Analyst",
+            "role": "Credit Analyst",
+            "persona_summary": "You are The Credit Analyst. Test the record: terms, rating, issuer context, and what is missing.",
+            "stack_ids": [
+              "shared-meeting-documents",
+              "credit-private"
+            ],
+            "color": "#6366f1"
+          },
+          {
+            "participant_id": "a0000000-0000-4000-8000-000000000102",
+            "name": "The Downside Reviewer",
+            "role": "Downside Reviewer",
+            "persona_summary": "You are The Downside Reviewer. Stress-test the case: ratings are opinions; rates and liquidity can change.",
+            "stack_ids": [
+              "shared-meeting-documents",
+              "downside-private"
+            ],
+            "color": "#f59e0b"
+          },
+          {
+            "participant_id": "a0000000-0000-4000-8000-000000000103",
+            "name": "The Portfolio Analyst",
+            "role": "Portfolio Analyst",
+            "persona_summary": "You are The Portfolio Analyst. Apply a fictional mandate and distinguish what can be concluded from what cannot.",
+            "stack_ids": [
+              "shared-meeting-documents",
+              "portfolio-private"
+            ],
+            "color": "#10b981"
+          }
+        ],
+        "stacks": {
+          "shared-meeting-documents": {
+            "label": "Meeting documents (shared)",
+            "scope": "shared"
+          },
+          "credit-private": {
+            "label": "Credit evidence (private to The Credit Analyst)",
+            "scope": "private"
+          },
+          "downside-private": {
+            "label": "Downside worksheet (private to The Downside Reviewer)",
+            "scope": "private"
+          },
+          "portfolio-private": {
+            "label": "Portfolio mandate (private to The Portfolio Analyst)",
+            "scope": "private"
+          }
+        },
+        "preset": {
+          "agenda": "Review HDFC Ltd's 7.87% 2022 debenture (ISIN INE001A07RW5) as of 31 July 2020",
+          "context": "Prepared historical committee review. Establish the terms and rating, test the downside, apply a fictional mandate, and close with a research checklist. Not investment advice.",
+          "participant_ids": [
+            "a0000000-0000-4000-8000-000000000101",
+            "a0000000-0000-4000-8000-000000000102",
+            "a0000000-0000-4000-8000-000000000103"
+          ],
+          "document_id": "a0000000-0000-4000-8000-000000000201",
+          "document_label": "HDFC Ltd 7.87% 2022 Debenture - Shared Fact Sheet (as of 31 July 2020)"
+        }
+      },
+      "intake": {
+        "document_id": "a0000000-0000-4000-8000-000000000201",
+        "stages": [
+          {
+            "key": "received",
+            "label": "Received",
+            "at": "2020-07-31T09:00:00Z"
+          },
+          {
+            "key": "validated",
+            "label": "Validated",
+            "at": "2020-07-31T09:00:05Z"
+          },
+          {
+            "key": "parsed",
+            "label": "Parsed",
+            "at": "2020-07-31T09:00:12Z"
+          },
+          {
+            "key": "indexed",
+            "label": "Indexed",
+            "at": "2020-07-31T09:00:20Z"
+          },
+          {
+            "key": "ready",
+            "label": "Ready",
+            "at": "2020-07-31T09:00:24Z"
+          }
+        ],
+        "note": "Recorded intake. No filesystem write or live parser ran during playback."
+      },
+      "disclosure": "Prepared historical educational content. No live research, current pricing, or investment advice. No fresh model charge.",
+      "as_of": "Information as of 31 July 2020 - sources captured 16 October 2026.",
+      "settings": {
+        "runtime": "recorded",
+        "notice": "Guided replay; not live research."
+      }
+    }
+  }
+}

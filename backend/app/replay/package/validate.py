@@ -52,6 +52,8 @@ from .model import (
     MAX_WORKSPACE_STACKS,
     MAX_WORKSPACE_TOTAL_PROMPT_CHARS,
     MAX_WORKSPACE_TOTAL_SAMPLE_BYTES,
+    PREPARED_FOLLOW_UP_TURN_COUNT,
+    PREPARED_REPLY_TURN_COUNT,
     PREVIEWABLE_MEDIA_TYPES,
     SUPPORTED_EVENT_VERSIONS,
     SUPPORTED_READ_VERSIONS,
@@ -1301,7 +1303,14 @@ def _validate_exploration(package: LoadedPackage, issues: _Issues) -> None:
                 "manifest.json#/transitions",
                 f"intent {intent_id!r} has more than one transition",
             )
+    deck_intent_ids = {
+        turn.intent_id
+        for turn in manifest.prepared_turns
+        if turn.kind == "reply"
+    }
     for intent_id in intents:
+        if intent_id in deck_intent_ids:
+            continue
         if intent_id not in by_intent:
             issues.add(
                 "dangling_id",
@@ -2028,6 +2037,376 @@ def _validate_workspace_seed(package: LoadedPackage, issues: _Issues) -> None:
     _scan_secrets(seed.model_dump(mode="json"), path, issues)
 
 
+def _checkpoint_messages(checkpoint) -> list[dict[str, Any]]:
+    meeting = checkpoint.reads.get("meeting")
+    if not isinstance(meeting, dict):
+        return []
+    messages = meeting.get("messages")
+    if not isinstance(messages, list):
+        return []
+    return [message for message in messages if isinstance(message, dict)]
+
+
+def _checkpoint_effect_ids(checkpoint) -> set[str]:
+    """Collect the stable identities a settled checkpoint can expose."""
+
+    known: set[str] = set()
+    for message in _checkpoint_messages(checkpoint):
+        message_id = message.get("id")
+        if isinstance(message_id, str):
+            known.add(message_id)
+        citations = message.get("citations")
+        if isinstance(citations, list):
+            for citation in citations:
+                if isinstance(citation, dict) and isinstance(
+                    citation.get("claim_id"), str
+                ):
+                    known.add(citation["claim_id"])
+        artifacts = message.get("tool_artifacts")
+        if isinstance(artifacts, dict):
+            calls = artifacts.get("calls")
+            if isinstance(calls, list):
+                for call in calls:
+                    if not isinstance(call, dict):
+                        continue
+                    for key in ("invocation_id", "call_id"):
+                        if isinstance(call.get(key), str):
+                            known.add(call[key])
+            tool_calls = artifacts.get("tool_calls")
+            if isinstance(tool_calls, list):
+                for call in tool_calls:
+                    if not isinstance(call, dict):
+                        continue
+                    for key in ("invocation_id", "call_id"):
+                        if isinstance(call.get(key), str):
+                            known.add(call[key])
+    operations = checkpoint.reads.get("operations")
+    if isinstance(operations, list):
+        for operation in operations:
+            if isinstance(operation, dict) and isinstance(
+                operation.get("operation_id"), str
+            ):
+                known.add(operation["operation_id"])
+    for key in ("disagreements", "consensus"):
+        records = checkpoint.reads.get(key)
+        if isinstance(records, list):
+            for record in records:
+                if isinstance(record, dict) and isinstance(record.get("id"), str):
+                    known.add(record["id"])
+    closing = checkpoint.reads.get("closing")
+    if isinstance(closing, dict) and isinstance(closing.get("summary_message_id"), str):
+        known.add(closing["summary_message_id"])
+    return known
+
+
+def _validate_prepared_turn_deck(package: LoadedPackage, issues: _Issues) -> None:
+    manifest = package.manifest
+
+    if manifest.schema_version < 3:
+        if (
+            manifest.prepared_base_checkpoint is not None
+            or manifest.prepared_turns
+            or manifest.prepared_closing is not None
+        ):
+            issues.add(
+                "invalid_prepared_turns",
+                "manifest.json",
+                "prepared turn decks require schema version 3",
+            )
+        return
+
+    base = manifest.prepared_base_checkpoint
+    if base is None:
+        issues.add(
+            "invalid_prepared_turns",
+            "manifest.json",
+            "schema 3 requires prepared_base_checkpoint",
+        )
+    elif base not in package.checkpoints:
+        issues.add(
+            "dangling_id",
+            "manifest.json#/prepared_base_checkpoint",
+            "prepared base checkpoint is missing",
+        )
+    else:
+        base_checkpoint = package.checkpoints[base]
+        if base_checkpoint.phase != "active":
+            issues.add(
+                "invalid_prepared_turns",
+                "manifest.json#/prepared_base_checkpoint",
+                "prepared base must be an active checkpoint",
+            )
+        if "meeting" not in base_checkpoint.reads:
+            issues.add(
+                "invalid_prepared_turns",
+                "manifest.json#/prepared_base_checkpoint",
+                "prepared base must expose the meeting",
+            )
+
+    replies = [turn for turn in manifest.prepared_turns if turn.kind == "reply"]
+    follow_ups = [
+        turn for turn in manifest.prepared_turns if turn.kind == "follow_up"
+    ]
+    if len(replies) != PREPARED_REPLY_TURN_COUNT:
+        issues.add(
+            "invalid_prepared_turns",
+            "manifest.json#/prepared_turns",
+            f"the turn deck requires exactly {PREPARED_REPLY_TURN_COUNT} replies",
+        )
+    if len(follow_ups) != PREPARED_FOLLOW_UP_TURN_COUNT:
+        issues.add(
+            "invalid_prepared_turns",
+            "manifest.json#/prepared_turns",
+            f"the turn deck requires exactly {PREPARED_FOLLOW_UP_TURN_COUNT} follow-up",
+        )
+
+    turn_by_id = {turn.turn_id: turn for turn in manifest.prepared_turns}
+    reply_ids_by_turn = {
+        turn.turn_id: set(turn.reply_message_ids) for turn in replies
+    }
+    all_reply_ids = set().union(*reply_ids_by_turn.values()) if replies else set()
+    operations: dict[str, str] = {}
+    tapes: dict[str, str] = {}
+    checkpoints: dict[str, str] = {}
+    intents = {intent.intent_id: intent for intent in manifest.intents}
+    claims = {claim.claim_id for claim in manifest.claims}
+    assets = {asset.asset_id for asset in package.assets.assets}
+
+    for index, turn in enumerate(manifest.prepared_turns):
+        turn_path = f"manifest.json#/prepared_turns[{index}]"
+        if not turn.required:
+            issues.add(
+                "invalid_prepared_turns",
+                turn_path,
+                "every turn in the closed deck must be required",
+            )
+        if turn.kind == "follow_up":
+            if turn.intent_id is not None:
+                intent = intents.get(turn.intent_id)
+                if intent is None:
+                    issues.add(
+                        "dangling_id",
+                        turn_path,
+                        "follow-up intent is missing",
+                    )
+                elif intent.kind != "director_follow_up":
+                    issues.add(
+                        "invalid_prepared_turns",
+                        turn_path,
+                        "follow-up intent must have kind director_follow_up",
+                    )
+            if turn.message_id in all_reply_ids:
+                issues.add(
+                    "invalid_prepared_turns",
+                    turn_path,
+                    "follow-up message collides with a deck reply",
+                )
+            for reply_turn in replies:
+                result = package.checkpoints.get(reply_turn.result_checkpoint)
+                if result is not None and turn.message_id in {
+                    message.get("id") for message in _checkpoint_messages(result)
+                }:
+                    issues.add(
+                        "invalid_prepared_turns",
+                        turn_path,
+                        "follow-up message is already present in a result checkpoint",
+                    )
+            continue
+
+        if turn.operation_id in operations:
+            issues.add(
+                "invalid_prepared_turns",
+                turn_path,
+                "two deck replies share an operation",
+            )
+        operations[turn.operation_id] = turn.turn_id
+        if turn.tape_id in tapes:
+            issues.add(
+                "invalid_prepared_turns",
+                turn_path,
+                "two deck replies share a tape",
+            )
+        tapes[turn.tape_id] = turn.turn_id
+        if turn.result_checkpoint in checkpoints:
+            issues.add(
+                "invalid_prepared_turns",
+                turn_path,
+                "two deck replies share a result checkpoint",
+            )
+        checkpoints[turn.result_checkpoint] = turn.turn_id
+
+        intent = intents.get(turn.intent_id)
+        if intent is None:
+            issues.add("dangling_id", turn_path, "turn intent is missing")
+        else:
+            if intent.kind != "start_participant":
+                issues.add(
+                    "invalid_prepared_turns",
+                    turn_path,
+                    "reply intent must have kind start_participant",
+                )
+            if intent.operation_id != turn.operation_id:
+                issues.add(
+                    "mismatched_id",
+                    turn_path,
+                    "turn operation disagrees with its intent",
+                )
+            if intent.tape_id != turn.tape_id:
+                issues.add(
+                    "mismatched_id",
+                    turn_path,
+                    "turn tape disagrees with its intent",
+                )
+            if intent.participant_id != turn.participant_id:
+                issues.add(
+                    "mismatched_id",
+                    turn_path,
+                    "turn participant disagrees with its intent",
+                )
+
+        tape = package.tapes.get(turn.tape_id)
+        if tape is None:
+            issues.add("dangling_id", turn_path, "turn tape is missing")
+        else:
+            if tape.operation_id != turn.operation_id:
+                issues.add(
+                    "mismatched_id",
+                    turn_path,
+                    "turn operation disagrees with its tape",
+                )
+            if tape.participant_id != turn.participant_id:
+                issues.add(
+                    "mismatched_id",
+                    turn_path,
+                    "turn participant disagrees with its tape",
+                )
+            if tape.initial_checkpoint != base:
+                issues.add(
+                    "mismatched_id",
+                    turn_path,
+                    "turn tape must start at the prepared base",
+                )
+            if tape.completed_checkpoint != turn.result_checkpoint:
+                issues.add(
+                    "mismatched_id",
+                    turn_path,
+                    "turn tape must complete at its isolated result",
+                )
+
+        result = package.checkpoints.get(turn.result_checkpoint)
+        if result is None:
+            issues.add("dangling_id", turn_path, "turn result checkpoint is missing")
+            continue
+        if result.phase != "active":
+            issues.add(
+                "invalid_prepared_turns",
+                turn_path,
+                "turn result must be an active checkpoint",
+            )
+        messages = _checkpoint_messages(result)
+        message_ids = {message.get("id") for message in messages}
+        for message_id in turn.reply_message_ids:
+            if message_id not in message_ids:
+                issues.add(
+                    "dangling_id",
+                    turn_path,
+                    f"reply message {message_id} is missing from the result",
+                )
+        for message in messages:
+            if message.get("id") in turn.reply_message_ids and message.get(
+                "sender_type"
+            ) != "ai":
+                issues.add(
+                    "invalid_prepared_turns",
+                    turn_path,
+                    "deck replies must be AI messages",
+                )
+        for other in replies:
+            if other.turn_id == turn.turn_id:
+                continue
+            if message_ids & reply_ids_by_turn[other.turn_id]:
+                issues.add(
+                    "invalid_prepared_turns",
+                    turn_path,
+                    f"result contains the reply for {other.turn_id}",
+                )
+        if base is not None:
+            base_ids = {
+                message.get("id")
+                for message in _checkpoint_messages(package.checkpoints[base])
+            }
+            if all_reply_ids & base_ids:
+                issues.add(
+                    "invalid_prepared_turns",
+                    "manifest.json#/prepared_base_checkpoint",
+                    "prepared base already contains a deck reply",
+                )
+
+        known_effects = _checkpoint_effect_ids(result) | claims | assets
+        for effect_id in turn.effect_ids:
+            if effect_id not in known_effects:
+                issues.add(
+                    "dangling_id",
+                    turn_path,
+                    f"effect {effect_id} is not present in the result",
+                )
+        if not turn.effect_ids:
+            issues.add(
+                "invalid_prepared_turns",
+                turn_path,
+                "a deck reply must name at least one settled effect",
+            )
+
+    closing = manifest.prepared_closing
+    if closing is None:
+        issues.add(
+            "invalid_prepared_turns",
+            "manifest.json",
+            "schema 3 requires prepared_closing",
+        )
+        return
+
+    if closing.closing_tape_id not in package.closing_tapes:
+        issues.add("dangling_id", "manifest.json#/prepared_closing", "closing tape is missing")
+    if closing.completed_checkpoint not in package.checkpoints:
+        issues.add(
+            "dangling_id",
+            "manifest.json#/prepared_closing",
+            "closing completion checkpoint is missing",
+        )
+    elif package.checkpoints[closing.completed_checkpoint].phase != "closed":
+        issues.add(
+            "invalid_prepared_turns",
+            "manifest.json#/prepared_closing",
+            "closing completion checkpoint must be closed",
+        )
+    if closing.archived_checkpoint not in package.checkpoints:
+        issues.add(
+            "dangling_id",
+            "manifest.json#/prepared_closing",
+            "archive checkpoint is missing",
+        )
+    elif package.checkpoints[closing.archived_checkpoint].phase != "archived":
+        issues.add(
+            "invalid_prepared_turns",
+            "manifest.json#/prepared_closing",
+            "archive checkpoint must be archived",
+        )
+    required_ids = {turn.turn_id for turn in manifest.prepared_turns if turn.required}
+    if set(closing.required_turn_ids) != required_ids:
+        issues.add(
+            "invalid_prepared_turns",
+            "manifest.json#/prepared_closing",
+            "closing must require every required deck turn",
+        )
+    if set(closing.required_turn_ids) != set(turn_by_id):
+        issues.add(
+            "invalid_prepared_turns",
+            "manifest.json#/prepared_closing",
+            "closing must name the complete closed deck",
+        )
+
+
 def validate_package(package: LoadedPackage) -> list[PackageIssue]:
     issues = _Issues()
     manifest = package.manifest
@@ -2176,6 +2555,7 @@ def validate_package(package: LoadedPackage) -> list[PackageIssue]:
         if beat.intent_id is not None and beat.intent_id not in intent_ids:
             issues.add("dangling_id", beat_path, "beat intent is missing")
 
+    _validate_prepared_turn_deck(package, issues)
     _validate_guided_intents(package, issues)
     _validate_guided_beats(package, issues)
     _validate_exploration(package, issues)

@@ -18,7 +18,12 @@ from app.modules.meetings.presentation.turn_stream import EVENT_PAGE_SIZE
 from app.replay.constants import TURN_LIST_LIMIT
 from app.replay.contracts import ReplayNotFound
 from app.replay.package.model import Checkpoint
-from app.replay.source import PublishedPackage, ReplayPackageUnavailable, ReplaySource
+from app.replay.source import (
+    PublishedPackage,
+    ReplayPackageUnavailable,
+    ReplaySource,
+    prepared_operation_ids,
+)
 
 
 def operation_row(record: dict[str, Any]) -> dict[str, Any]:
@@ -164,6 +169,9 @@ class ReplayObservation:
         self._reads = ReplayReads(source, published, checkpoint_id)
 
     async def status(self, meeting_id: str, operation_id: str) -> dict:
+        allowed = prepared_operation_ids(self._published)
+        if allowed is not None and operation_id not in allowed:
+            raise ReplayNotFound("Recorded turn not found")
         operations = await self._reads.operations(meeting_id)
         for row in operations:
             if str(row["id"]) == operation_id:
@@ -183,6 +191,9 @@ class ReplayObservation:
         after_sequence: int = 0,
         limit: int = EVENT_PAGE_SIZE,
     ) -> list[dict]:
+        allowed = prepared_operation_ids(self._published)
+        if allowed is not None and operation_id not in allowed:
+            raise ReplayNotFound("Recorded turn not found")
         try:
             tape = await self._source.read_tape(
                 self._published.package_id,

@@ -169,6 +169,16 @@ class ReplayRuntime:
                 transition.model_dump(mode="json")
                 for transition in published.manifest.transitions
             ),
+            prepared_base_checkpoint=published.manifest.prepared_base_checkpoint,
+            prepared_turns=tuple(
+                turn.model_dump(mode="json")
+                for turn in published.manifest.prepared_turns
+            ),
+            prepared_closing=(
+                published.manifest.prepared_closing.model_dump(mode="json")
+                if published.manifest.prepared_closing is not None
+                else None
+            ),
             preview=ReplayPreview(
                 available=bool(preview_asset_ids),
                 asset_ids=preview_asset_ids,
