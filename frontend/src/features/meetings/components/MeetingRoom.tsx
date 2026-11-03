@@ -89,9 +89,11 @@ import { ClosingPanel } from './ClosingPanel';
 import { EvidenceCitationTrigger } from '../evidence/trigger';
 import { EvidencePreviewHost } from '../evidence/host';
 import { EvidencePreviewProvider } from '../evidence/provider';
-import { useAnchorRef } from '@/features/demo-tutorial/anchors';
-import { useTutorialStreamingFlag } from '@/features/demo-tutorial/presence';
-import type { TutorialAnchorId } from '@/features/demo-tutorial/contract';
+import {
+    useAnchorRef,
+    useTutorialStreamingFlag,
+    type TutorialAnchorId,
+} from '@/features/demo-tutorial';
 
 export interface MeetingRoomProps {
     meetingId: string;

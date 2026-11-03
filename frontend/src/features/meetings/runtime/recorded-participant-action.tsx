@@ -12,11 +12,11 @@
 import { useState, type ComponentProps } from "react";
 import { Play } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import { useAnchorRef } from "@/features/demo-tutorial/anchors";
 import {
     anchorForIntent,
+    useAnchorRef,
     type TutorialAnchorId,
-} from "@/features/demo-tutorial/contract";
+} from "@/features/demo-tutorial";
 import { useMeetingsRuntime } from "./context";
 import type { ParticipantActionProps } from "./contract";
 

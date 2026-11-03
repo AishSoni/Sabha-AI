@@ -1,8 +1,7 @@
 'use client';
 
 import Link from 'next/link';
-import { useAnchorRef } from '@/features/demo-tutorial/anchors';
-import { markTutorialFact } from '@/features/demo-tutorial/presence';
+import { markTutorialFact, useAnchorRef } from "@/features/demo-tutorial";
 import { useCallback } from 'react';
 import { useDemoWorkspace } from '@/features/demo-workspace';
 import { PersonaEditorScreen } from '../presentation/persona-editor-screen';

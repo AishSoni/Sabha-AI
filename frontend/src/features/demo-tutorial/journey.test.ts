@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import type { ReplayBeat } from "@/features/meetings/runtime/contract";
+import type { ReplayBeat } from "@/features/meetings/presentation";
 import {
     deriveJourney,
     isRoomPath,

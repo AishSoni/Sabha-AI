@@ -16,8 +16,7 @@ import {
 import { createPortal } from "react-dom";
 import Link from "next/link";
 import { ChevronDown, Compass, Sparkles } from "lucide-react";
-import { chapterHref } from "@/features/meetings/runtime/chapters";
-import { useReplayRun } from "@/features/meetings/runtime/replay-run";
+import { chapterHref, useReplayRun } from "@/features/meetings/presentation";
 import { useAnchorCandidates } from "./anchors";
 import type { TutorialAnchorId } from "./contract";
 import { useDemoTutorial } from "./provider";

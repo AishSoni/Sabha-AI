@@ -25,7 +25,7 @@ import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
 import { isApiError } from '@/shared/api/errors';
-import { useAnchorRef } from '@/features/demo-tutorial/anchors';
+import { useAnchorRef } from '@/features/demo-tutorial';
 import { useClosing } from '../api/closing-queries';
 import {
     createClosingRequestKey,

@@ -10,7 +10,7 @@ import { useDemoWorkspace } from "@/features/demo-workspace";
 import { useLocalPracticeMeetings } from "@/features/knowledge/local";
 import { useRuntimeMeetingList } from "@/features/meetings/runtime/hooks";
 import { useReplayRun } from "@/features/meetings/runtime/replay-run";
-import { useAnchorRef } from "@/features/demo-tutorial/anchors";
+import { useAnchorRef } from "@/features/demo-tutorial";
 
 type ListTab = "active" | "archived";
 

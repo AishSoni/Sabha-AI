@@ -10,8 +10,7 @@
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useState } from "react";
-import { useAnchorRef } from "@/features/demo-tutorial/anchors";
-import type { TutorialAnchorId } from "@/features/demo-tutorial/contract";
+import { useAnchorRef, type TutorialAnchorId } from "@/features/demo-tutorial";
 import { useDemoWorkspace } from "../provider";
 
 interface Destination {

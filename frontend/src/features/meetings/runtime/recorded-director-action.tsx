@@ -11,7 +11,7 @@ import { useState } from "react";
 import { Send } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
-import { useAnchorRef } from "@/features/demo-tutorial/anchors";
+import { useAnchorRef } from "@/features/demo-tutorial";
 import { useMeetingsRuntime } from "./context";
 
 export function RecordedDirectorAction() {

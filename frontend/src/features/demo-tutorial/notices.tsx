@@ -17,10 +17,10 @@ import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import { AlertTriangle, CheckCircle2, X } from "lucide-react";
 import { useDemoWorkspace } from "@/features/demo-workspace";
 import {
+    useReplayRun,
     useRuntimeConsensus,
     useRuntimeDisagreements,
-} from "@/features/meetings/runtime/hooks";
-import { useReplayRun } from "@/features/meetings/runtime/replay-run";
+} from "@/features/meetings/presentation";
 import { useDemoTutorial } from "./provider";
 import { useModalOpen } from "./presence";
 

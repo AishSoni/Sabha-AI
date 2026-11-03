@@ -5,7 +5,7 @@
  * stable ids registered by the real controls. Nothing here mutates the
  * recording, the meeting or a practice workspace.
  */
-import type { ReplayBeat, ReplayBeatStep } from "@/features/meetings/runtime/contract";
+import type { ReplayBeat, ReplayBeatStep } from "@/features/meetings/presentation";
 
 /**
  * Every anchor is registered by a mounted control. A missing anchor suspends

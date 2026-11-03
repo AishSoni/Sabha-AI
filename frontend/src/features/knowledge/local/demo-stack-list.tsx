@@ -1,7 +1,7 @@
 "use client";
 
 import { StackListView } from "../presentation/stack-list";
-import { useAnchorRef } from "@/features/demo-tutorial/anchors";
+import { useAnchorRef } from "@/features/demo-tutorial";
 import { DemoKnowledgeGate } from "./demo-knowledge-gate";
 import { useLocalStacks } from "./use-local-stacks";
 

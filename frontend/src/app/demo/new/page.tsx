@@ -8,7 +8,7 @@ import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { useDemoWorkspace } from "@/features/demo-workspace";
 import { useReplayRun } from "@/features/meetings/runtime/replay-run";
-import { useAnchorRef } from "@/features/demo-tutorial/anchors";
+import { useAnchorRef } from "@/features/demo-tutorial";
 import { PracticeSetupRoute } from "./practice-setup-route";
 
 interface Preset {

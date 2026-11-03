@@ -4,7 +4,7 @@
  * Exactly one objective is current. Selection reads tracked outcomes only; it
  * never mutates them, never redirects and never clicks a control.
  */
-import type { ReplayBeat } from "@/features/meetings/runtime/contract";
+import type { ReplayBeat } from "@/features/meetings/presentation";
 import {
     LEGACY_BEAT_ANCHORS,
     LEGACY_BEAT_COPY,

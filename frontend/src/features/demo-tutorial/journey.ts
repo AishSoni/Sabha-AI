@@ -6,7 +6,7 @@
  * result or an archived meeting. Route renders, refetches, timers and mounting
  * never advance anything.
  */
-import type { ReplayBeat } from "@/features/meetings/runtime/contract";
+import type { ReplayBeat } from "@/features/meetings/presentation";
 
 export interface JourneyPreparedTurn {
     turn_id: string;

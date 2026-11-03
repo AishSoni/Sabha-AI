@@ -5,7 +5,7 @@ import { ArrowRight, BookOpen, Lock, ShieldCheck, Users } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Card } from "@/components/ui/card";
 import { useDemoWorkspace } from "@/features/demo-workspace";
-import { useAnchorRef } from "@/features/demo-tutorial/anchors";
+import { useAnchorRef } from "@/features/demo-tutorial";
 import { useReplayRun } from "@/features/meetings/runtime/replay-run";
 
 interface BoardStack {

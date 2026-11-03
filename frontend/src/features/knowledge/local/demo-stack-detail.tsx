@@ -14,7 +14,7 @@ import {
     useDemoWorkspace,
     type WorkspaceSample,
 } from "@/features/demo-workspace";
-import { useAnchorRef } from "@/features/demo-tutorial/anchors";
+import { useAnchorRef } from "@/features/demo-tutorial";
 import { DocumentPanelView } from "../presentation/document-panel";
 import { RecordedExamplesView, type RecordedExampleView } from "../presentation/recorded-examples";
 import { SamplePicker } from "../presentation/sample-picker";

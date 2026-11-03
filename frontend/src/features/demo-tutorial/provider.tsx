@@ -19,8 +19,7 @@ import {
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import { useQuery } from "@tanstack/react-query";
 import { useDemoWorkspace } from "@/features/demo-workspace";
-import { useMeetingsRuntime } from "@/features/meetings/runtime/context";
-import { useReplayRun } from "@/features/meetings/runtime/replay-run";
+import { useMeetingsRuntime, useReplayRun } from "@/features/meetings/presentation";
 import { combineSignals } from "@/shared/runtime/scope";
 import { isRoomPath, deriveJourney, type TutorialJourney } from "./journey";
 import { refineOnRoute, selectPrompt } from "./objectives";
