@@ -19,6 +19,9 @@ import {
     RULE_SHARED_ISOLATION,
     RULE_STORE_IMPORT_IN_UI,
     RULE_TEST_IMPORT_IN_ROUTE,
+    RULE_TUTORIAL_LIVE_IMPORT,
+    RULE_TUTORIAL_PERSISTENCE,
+    RULE_TUTORIAL_SHELL_MOUNT,
     SDK_IMPORT_ALLOWLIST,
     UI_STORE_ALLOWLIST,
     scanSourceTree,
@@ -205,6 +208,21 @@ describe("checker rejects planted violations (sandbox)", () => {
                 (violation) => violation.rule === RULE_ROSTER_SCREEN_LEGACY_IMPORT
             )
         ).toHaveLength(1);
+    });
+
+    it("keeps the tutorial out of live transports, persistence, and non-demo routes", () => {
+        const root = writeSandbox({
+            "src/shared/access/browser-session.ts": `export const auth = {};`,
+            "src/features/demo-tutorial/hud.tsx": `export const TutorialHud = () => null;`,
+            "src/features/demo-tutorial/provider.tsx": `import { auth } from '@/shared/access/browser-session';\nconst saved = localStorage.getItem('demo-progress');\nexport const Provider = () => ({ auth, saved });\n`,
+            "src/app/settings/page.tsx": `import { TutorialHud } from '@/features/demo-tutorial/hud';\nexport const page = TutorialHud;\n`,
+            "src/app/demo/demo-shell.tsx": `import { TutorialHud } from '@/features/demo-tutorial/hud';\nexport const shell = TutorialHud;\n`,
+        });
+
+        const rules = rulesIn(root);
+        expect(rules).toContain(RULE_TUTORIAL_LIVE_IMPORT);
+        expect(rules).toContain(RULE_TUTORIAL_PERSISTENCE);
+        expect(rules).toContain(RULE_TUTORIAL_SHELL_MOUNT);
     });
 
     it("passes a happy sandbox tree where features consume other features via root barrels", () => {

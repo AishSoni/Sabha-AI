@@ -81,6 +81,27 @@ export const RULE_FEATURE_LEGACY_IMPORT = "feature_legacy_import";
 export const RULE_SHARED_ISOLATION = "shared_isolation";
 export const RULE_CROSS_FEATURE_ROOT_IMPORT = "cross_feature_root_import";
 export const RULE_ROSTER_SCREEN_LEGACY_IMPORT = "roster_screen_legacy_import";
+export const RULE_TUTORIAL_LIVE_IMPORT = "tutorial_live_import";
+export const RULE_TUTORIAL_SHELL_MOUNT = "tutorial_shell_mount";
+export const RULE_TUTORIAL_PERSISTENCE = "tutorial_persistence";
+
+/**
+ * The tutorial is a presentation-only journey tracker. It may read the
+ * recorded runtime through the curated presentation entry, but it must never
+ * grow a live transport, an Auth/vault path, or a persistent progress store.
+ */
+const TUTORIAL_FORBIDDEN_TARGETS = [
+    "src/shared/access",
+    "src/shared/credentials",
+    "src/shared/api",
+    "src/features/settings",
+    "src/features/meetings/api",
+    "src/stores",
+    "src/lib/api",
+] as const;
+
+/** Browser persistence and beacon APIs are not allowed in tutorial code. */
+const TUTORIAL_PERSISTENCE = /\b(?:localStorage|sessionStorage|indexedDB|serviceWorker|document\.cookie|sendBeacon)\b/;
 
 /** Root barrels consuming other features use exactly this alias shape. */
 function featureRootSpec(feature: string): string {
@@ -236,8 +257,51 @@ export function scanSourceTree(root: string): { files: string[]; violations: Vio
 
     for (const file of files) {
         const source = ts.createSourceFile(file, fs.readFileSync(file, "utf8"), ts.ScriptTarget.Latest, true);
+        const fileRel = relToRoot(root, file);
+        const tutorialSource = fileRel.startsWith("src/features/demo-tutorial/");
+        if (
+            tutorialSource &&
+            !isTestModule(root, file) &&
+            TUTORIAL_PERSISTENCE.test(source.text)
+        ) {
+            violations.push({
+                file,
+                spec: "<source>",
+                rule: RULE_TUTORIAL_PERSISTENCE,
+                message: `Tutorial module '${fileRel}' must keep progress in memory, not in browser persistence.`,
+            });
+        }
         for (const edge of collectImportEdges(root, file, source)) {
-            const fileRel = relToRoot(root, edge.file);
+            // Rule: the tutorial stays behind the demo shell. Its source may
+            // not reach a live transport, Auth/vault, settings, or legacy store.
+            if (
+                tutorialSource &&
+                edge.resolved &&
+                TUTORIAL_FORBIDDEN_TARGETS.some((prefix) =>
+                    relToRoot(root, edge.resolved!).startsWith(prefix)
+                )
+            ) {
+                violations.push({
+                    file,
+                    spec: edge.spec,
+                    rule: RULE_TUTORIAL_LIVE_IMPORT,
+                    message: `Tutorial module '${fileRel}' must not import live module '${edge.spec}'.`,
+                });
+            }
+            // Rule: only the demo routes mount the tutorial shell.
+            const targetRel = edge.resolved ? relToRoot(root, edge.resolved) : null;
+            if (
+                fileRel.startsWith("src/app/") &&
+                !fileRel.startsWith("src/app/demo/") &&
+                targetRel?.startsWith("src/features/demo-tutorial")
+            ) {
+                violations.push({
+                    file,
+                    spec: edge.spec,
+                    rule: RULE_TUTORIAL_SHELL_MOUNT,
+                    message: `Route '${fileRel}' must mount the tutorial only inside 'src/app/demo/**'.`,
+                });
+            }
             // Rule: the frontend stays free of provider SDKs and of the
             // Supabase browser SDK outside the one curated Auth adapter.
             if (edge.packageName && FORBIDDEN_SDK_PACKAGES.has(edge.packageName)) {
