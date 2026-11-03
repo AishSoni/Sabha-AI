@@ -2,7 +2,7 @@
 
 import { useMemo, useState } from "react";
 import Link from "next/link";
-import { Archive, ArrowRight, Ban, MessageSquare, Users } from "lucide-react";
+import { Archive, ArrowRight, MessageSquare, Users } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
@@ -63,7 +63,7 @@ export default function DemoMeetingListPage() {
                 <div>
                     <div className="mb-2 flex flex-wrap items-center gap-2">
                         <Badge className="bg-indigo-600 text-white hover:bg-indigo-600">
-                            Guided replay
+                            Prepared demo
                         </Badge>
                         <span className="text-xs text-zinc-500">
                             Recorded meeting list
@@ -71,8 +71,7 @@ export default function DemoMeetingListPage() {
                     </div>
                     <h1 className="text-2xl font-semibold text-white">Meetings</h1>
                     <p className="mt-2 text-sm text-zinc-400">
-                        Return to the real meeting list and archive the ended record.
-                        Archiving is an overlay; the meeting remains ended.
+                        Open the recorded meeting or archive the ended record.
                     </p>
                 </div>
                 <Link
@@ -277,12 +276,6 @@ export default function DemoMeetingListPage() {
                                 <p className="mt-3 text-xs text-zinc-500">
                                     {new Date(meeting.created_at).toLocaleDateString()}
                                 </p>
-                                {isArchived ? (
-                                    <p className="mt-3 rounded-lg border border-zinc-800 bg-zinc-950/40 p-2 text-xs text-zinc-400">
-                                        Archived overlay recorded. The underlying meeting
-                                        remains ended; this replay does not reopen it.
-                                    </p>
-                                ) : null}
                                 <div className="mt-4 flex flex-wrap gap-2">
                                     <Link
                                         href={`/demo/meetings/${meeting.id}`}
@@ -308,10 +301,6 @@ export default function DemoMeetingListPage() {
                                             Archive
                                         </Button>
                                     ) : null}
-                                    <span className="inline-flex items-center gap-1 px-2 py-2 text-xs text-zinc-600">
-                                        <Ban className="h-3.5 w-3.5" />
-                                        Unarchive and delete are unavailable in guided replay
-                                    </span>
                                 </div>
                             </Card>
                         );

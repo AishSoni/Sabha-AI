@@ -280,8 +280,8 @@
           "estimated_cost": 0.0,
           "effective_generation": null,
           "sequence": 2,
-          "request_key": "turn-downside",
-          "operation_id": "a0000000-0000-4000-8000-000000000302",
+          "request_key": "prepared-downside",
+          "operation_id": "a0000000-0000-4000-8000-000000000322",
           "created_at": "2020-07-31T09:02:00Z"
         }
       ]
@@ -421,10 +421,10 @@
     },
     "operations": [
       {
-        "operation_id": "a0000000-0000-4000-8000-000000000302",
+        "operation_id": "a0000000-0000-4000-8000-000000000322",
         "meeting_id": "a0000000-0000-4000-8000-000000000001",
         "participant_id": "a0000000-0000-4000-8000-000000000102",
-        "request_key": "turn-downside",
+        "request_key": "prepared-downside",
         "status": "completed",
         "admission": 1,
         "queue_position": null,

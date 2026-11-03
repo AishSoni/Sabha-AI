@@ -49,9 +49,6 @@ export function DemoNav() {
                     <span className="rounded-full border border-amber-400/40 bg-amber-400/10 px-2.5 py-0.5 text-xs font-semibold uppercase tracking-wide text-amber-200">
                         Demo
                     </span>
-                    <span className="text-sm text-zinc-400">
-                        Practice changes are temporary and never reach the operator workspace.
-                    </span>
                 </div>
 
                 <nav

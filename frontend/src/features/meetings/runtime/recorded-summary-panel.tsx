@@ -48,11 +48,6 @@ export function RecordedSummaryPanel({
                             Inspection only
                         </Badge>
                     </div>
-                    <p className="mt-1 text-sm text-zinc-400">
-                        This summary was saved with the recorded package and is
-                        shown as historical evidence. It is not generated now,
-                        and viewing it does not create a new meeting result.
-                    </p>
                     {replay ? (
                         <p className="mt-1 text-xs text-zinc-500">
                             Recorded scope: as of {replay.asOf} · package{" "}

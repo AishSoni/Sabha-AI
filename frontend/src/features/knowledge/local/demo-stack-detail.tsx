@@ -119,12 +119,6 @@ function Content({
                 </p>
             </div>
 
-            <div className="rounded-lg border border-amber-400/30 bg-amber-400/10 px-3 py-2 text-sm text-amber-100">
-                Practice only: documents here never upload to the operator
-                workspace, and removing one does not redact the recorded
-                meeting or its immutable Files view.
-            </div>
-
             <DocumentPanelView
                 scopeLabel="stack"
                 title="Practice documents"
@@ -169,12 +163,6 @@ function Content({
                     </CardTitle>
                 </CardHeader>
                 <CardContent className="space-y-3 text-sm text-zinc-400">
-                    <p>
-                        Eligibility requires a document revision that is ready
-                        and not removed. A practice participant can retrieve it
-                        only when this stack is one of that participant&apos;s
-                        saved stack bindings.
-                    </p>
                     <ParticipantList
                         label="Saved practice participants"
                         names={participants.savedParticipants}
@@ -185,12 +173,6 @@ function Content({
                         names={participants.templateDefaults}
                         empty="No persona template currently defaults to this stack."
                     />
-                    <p className="text-xs leading-5 text-zinc-500">
-                        Template defaults do not rebind participants captured
-                        earlier. Another participant&apos;s unassigned stack,
-                        another meeting&apos;s shared documents, and every
-                        persona-owned document are excluded.
-                    </p>
                     <div>
                         <h3 className="font-medium text-zinc-200">
                             Document-to-participant view

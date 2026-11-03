@@ -17,7 +17,6 @@ import { Button } from "@/components/ui/button";
 import {
     Dialog,
     DialogContent,
-    DialogDescription,
     DialogHeader,
     DialogTitle,
 } from "@/components/ui/dialog";
@@ -204,10 +203,7 @@ export function EvidencePreviewDialog({
                                 {descriptor?.title ?? "Evidence preview"}
                             </span>
                         </DialogTitle>
-                        <DialogDescription>
-                            Read-only evidence preview. No changes can be made
-                            from this dialog.
-                        </DialogDescription>
+
                     </DialogHeader>
 
                     <div className="min-h-0 flex-1 space-y-4 overflow-y-auto px-6 py-4">

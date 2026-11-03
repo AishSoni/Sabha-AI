@@ -265,8 +265,8 @@
           "estimated_cost": 0.0,
           "effective_generation": null,
           "sequence": 1,
-          "request_key": "turn-credit",
-          "operation_id": "a0000000-0000-4000-8000-000000000301",
+          "request_key": "prepared-credit",
+          "operation_id": "a0000000-0000-4000-8000-000000000321",
           "created_at": "2020-07-31T09:01:00Z"
         }
       ]
@@ -394,10 +394,10 @@
     },
     "operations": [
       {
-        "operation_id": "a0000000-0000-4000-8000-000000000301",
+        "operation_id": "a0000000-0000-4000-8000-000000000321",
         "meeting_id": "a0000000-0000-4000-8000-000000000001",
         "participant_id": "a0000000-0000-4000-8000-000000000101",
-        "request_key": "turn-credit",
+        "request_key": "prepared-credit",
         "status": "completed",
         "admission": 1,
         "queue_position": null,

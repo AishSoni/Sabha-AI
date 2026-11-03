@@ -4,9 +4,9 @@
   "schema_version": 3,
   "read_version": 1,
   "event_version": 1,
-  "title": "HDFC Ltd 7.87% 2022 debenture - guided replay",
+  "title": "HDFC Ltd 7.87% 2022 debenture - prepared demo",
   "as_of": "2020-07-31",
-  "content_sha256": "04d3e88f81951cbc8f9a052e3001077175a12cb633a84f609e0d8defb786c15d",
+  "content_sha256": "655be49dc50d221ea595e9882b0203ff7184b1e16f653020978d38e1ed0c1765",
   "meeting_id": "a0000000-0000-4000-8000-000000000001",
   "initial_checkpoint": "checkpoint-initial",
   "checkpoints": [
@@ -89,8 +89,8 @@
     "prepared_date": "2026-10-30",
     "note": "Authored historical educational replay; no live model run or current-market lookup."
   },
-  "label": "Guided replay",
-  "disclosure": "Prepared historical educational content. No live research, current pricing, or investment advice. No fresh model charge.",
+  "label": "Prepared demo",
+  "disclosure": "Prepared demo \u00b7 recorded responses, not live AI generation.",
   "stack_labels": {
     "shared-meeting-documents": "Meeting documents (shared)",
     "credit-private": "Credit evidence (private to The Credit Analyst)",
@@ -305,7 +305,7 @@
       "kind": "start_participant",
       "checkpoint": "checkpoint-prepared-base",
       "participant_id": "a0000000-0000-4000-8000-000000000101",
-      "operation_id": "a0000000-0000-4000-8000-000000000301",
+      "operation_id": "a0000000-0000-4000-8000-000000000321",
       "tape_id": "tape-prepared-credit",
       "label": "Credit Analyst opening facts"
     },
@@ -314,7 +314,7 @@
       "kind": "start_participant",
       "checkpoint": "checkpoint-prepared-base",
       "participant_id": "a0000000-0000-4000-8000-000000000102",
-      "operation_id": "a0000000-0000-4000-8000-000000000302",
+      "operation_id": "a0000000-0000-4000-8000-000000000322",
       "tape_id": "tape-prepared-downside",
       "label": "Downside challenge"
     },
@@ -323,7 +323,7 @@
       "kind": "start_participant",
       "checkpoint": "checkpoint-prepared-base",
       "participant_id": "a0000000-0000-4000-8000-000000000103",
-      "operation_id": "a0000000-0000-4000-8000-000000000303",
+      "operation_id": "a0000000-0000-4000-8000-000000000323",
       "tape_id": "tape-prepared-portfolio",
       "label": "Mandate review"
     },
@@ -332,7 +332,7 @@
       "kind": "start_participant",
       "checkpoint": "checkpoint-prepared-base",
       "participant_id": "a0000000-0000-4000-8000-000000000101",
-      "operation_id": "a0000000-0000-4000-8000-000000000304",
+      "operation_id": "a0000000-0000-4000-8000-000000000324",
       "tape_id": "tape-prepared-consensus",
       "label": "Committee alignment"
     }
@@ -477,7 +477,7 @@
       "steps": [
         {
           "step_id": "send-follow-up",
-          "label": "Send the supported Director follow-up",
+          "label": "Send the supported You follow-up",
           "intent_id": "director-follow-up",
           "completion": "checkpoint",
           "requires_tab": "chat"
@@ -1109,7 +1109,7 @@
     {
       "chapter_id": "chapter-followup",
       "title": "Recorded follow-up",
-      "objective": "Inspect the supported Director follow-up.",
+      "objective": "Inspect the supported You follow-up.",
       "checkpoint": "checkpoint-followup",
       "route": "meeting",
       "tab": "chat",
@@ -1443,7 +1443,7 @@
       "participant_id": "a0000000-0000-4000-8000-000000000101",
       "label": "Credit Analyst opening facts",
       "intent_id": "prepared-credit",
-      "operation_id": "a0000000-0000-4000-8000-000000000301",
+      "operation_id": "a0000000-0000-4000-8000-000000000321",
       "tape_id": "tape-prepared-credit",
       "result_checkpoint": "checkpoint-prepared-credit",
       "reply_message_ids": [
@@ -1451,7 +1451,7 @@
       ],
       "effect_ids": [
         "a0000000-0000-4000-8000-000000000402",
-        "a0000000-0000-4000-8000-000000000301",
+        "a0000000-0000-4000-8000-000000000321",
         "C1",
         "C2",
         "C3",
@@ -1468,7 +1468,7 @@
       "participant_id": "a0000000-0000-4000-8000-000000000102",
       "label": "Downside challenge",
       "intent_id": "prepared-downside",
-      "operation_id": "a0000000-0000-4000-8000-000000000302",
+      "operation_id": "a0000000-0000-4000-8000-000000000322",
       "tape_id": "tape-prepared-downside",
       "result_checkpoint": "checkpoint-prepared-downside",
       "reply_message_ids": [
@@ -1476,7 +1476,7 @@
       ],
       "effect_ids": [
         "a0000000-0000-4000-8000-000000000403",
-        "a0000000-0000-4000-8000-000000000302",
+        "a0000000-0000-4000-8000-000000000322",
         "a0000000-0000-4000-8000-000000000501",
         "C6",
         "C7",
@@ -1496,7 +1496,7 @@
       "participant_id": "a0000000-0000-4000-8000-000000000103",
       "label": "Mandate review",
       "intent_id": "prepared-portfolio",
-      "operation_id": "a0000000-0000-4000-8000-000000000303",
+      "operation_id": "a0000000-0000-4000-8000-000000000323",
       "tape_id": "tape-prepared-portfolio",
       "result_checkpoint": "checkpoint-prepared-portfolio",
       "reply_message_ids": [
@@ -1504,7 +1504,7 @@
       ],
       "effect_ids": [
         "a0000000-0000-4000-8000-000000000405",
-        "a0000000-0000-4000-8000-000000000303",
+        "a0000000-0000-4000-8000-000000000323",
         "C10",
         "C11",
         "C13",
@@ -1519,7 +1519,7 @@
       "participant_id": "a0000000-0000-4000-8000-000000000101",
       "label": "Committee alignment",
       "intent_id": "prepared-consensus",
-      "operation_id": "a0000000-0000-4000-8000-000000000304",
+      "operation_id": "a0000000-0000-4000-8000-000000000324",
       "tape_id": "tape-prepared-consensus",
       "result_checkpoint": "checkpoint-prepared-consensus",
       "reply_message_ids": [
@@ -1527,7 +1527,7 @@
       ],
       "effect_ids": [
         "a0000000-0000-4000-8000-000000000406",
-        "a0000000-0000-4000-8000-000000000304",
+        "a0000000-0000-4000-8000-000000000324",
         "a0000000-0000-4000-8000-000000000601",
         "C1",
         "C2",

@@ -991,10 +991,9 @@ export function createReplayRuntime(
             ],
         },
         presentation: {
-            label: session.label,
+            label: "Recorded",
             homeHref: "/demo",
-            readOnlyNotice:
-                "Recorded session. Playback is read-only; no live action is available.",
+            readOnlyNotice: "Recorded",
             provenance: session.provenance,
         },
         slots: {

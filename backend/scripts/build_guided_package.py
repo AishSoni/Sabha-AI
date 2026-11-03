@@ -41,6 +41,10 @@ CREDIT_OP = "a0000000-0000-4000-8000-000000000301"
 DOWNSIDE_OP = "a0000000-0000-4000-8000-000000000302"
 PORTFOLIO_OP = "a0000000-0000-4000-8000-000000000303"
 CONSENSUS_OP = "a0000000-0000-4000-8000-000000000304"
+DECK_CREDIT_OP = "a0000000-0000-4000-8000-000000000321"
+DECK_DOWNSIDE_OP = "a0000000-0000-4000-8000-000000000322"
+DECK_PORTFOLIO_OP = "a0000000-0000-4000-8000-000000000323"
+DECK_CONSENSUS_OP = "a0000000-0000-4000-8000-000000000324"
 OPENING_MSG = "a0000000-0000-4000-8000-000000000401"
 CREDIT_MSG = "a0000000-0000-4000-8000-000000000402"
 DOWNSIDE_MSG = "a0000000-0000-4000-8000-000000000403"
@@ -3014,10 +3018,16 @@ def prepared_deck_content(
     ordinal = max(checkpoint["ordinal"] for checkpoint in checkpoints.values()) + 1
     base_id = "checkpoint-prepared-base"
     base_operations = [
-        operation(CREDIT_OP, CREDIT, "turn-credit", "queued", 1, None),
-        operation(DOWNSIDE_OP, DOWNSIDE, "turn-downside", "queued", 2, None),
-        operation(PORTFOLIO_OP, PORTFOLIO, "turn-portfolio", "queued", 3, None),
-        operation(CONSENSUS_OP, CREDIT, "turn-consensus", "queued", 4, None),
+        operation(DECK_CREDIT_OP, CREDIT, "prepared-credit", "queued", 1, None),
+        operation(
+            DECK_DOWNSIDE_OP, DOWNSIDE, "prepared-downside", "queued", 2, None
+        ),
+        operation(
+            DECK_PORTFOLIO_OP, PORTFOLIO, "prepared-portfolio", "queued", 3, None
+        ),
+        operation(
+            DECK_CONSENSUS_OP, CREDIT, "prepared-consensus", "queued", 4, None
+        ),
     ]
     checkpoints[base_id] = checkpoint(
         base_id,
@@ -3042,8 +3052,8 @@ def prepared_deck_content(
         (
             "credit",
             CREDIT,
-            CREDIT_OP,
-            "turn-credit",
+            DECK_CREDIT_OP,
+            "prepared-credit",
             CREDIT_MSG,
             "Credit Analyst opening facts",
             None,
@@ -3051,8 +3061,8 @@ def prepared_deck_content(
         (
             "downside",
             DOWNSIDE,
-            DOWNSIDE_OP,
-            "turn-downside",
+            DECK_DOWNSIDE_OP,
+            "prepared-downside",
             DOWNSIDE_MSG,
             "Downside challenge",
             DISAGREEMENT,
@@ -3060,8 +3070,8 @@ def prepared_deck_content(
         (
             "portfolio",
             PORTFOLIO,
-            PORTFOLIO_OP,
-            "turn-portfolio",
+            DECK_PORTFOLIO_OP,
+            "prepared-portfolio",
             PORTFOLIO_MSG,
             "Mandate review",
             None,
@@ -3069,8 +3079,8 @@ def prepared_deck_content(
         (
             "consensus",
             CREDIT,
-            CONSENSUS_OP,
-            "turn-consensus",
+            DECK_CONSENSUS_OP,
+            "prepared-consensus",
             CONSENSUS_MSG,
             "Committee alignment",
             CONSENSUS,
@@ -3084,7 +3094,11 @@ def prepared_deck_content(
     }
     turns: list[dict[str, Any]] = []
     for slug, participant_id, operation_id, request_key, message_id, label, effect in definitions:
-        message = messages[message_id]
+        message = {
+            **messages[message_id],
+            "operation_id": operation_id,
+            "request_key": request_key,
+        }
         checkpoint_id = f"checkpoint-prepared-{slug}"
         tape_id = f"tape-prepared-{slug}"
         intent_id = f"prepared-{slug}"
@@ -3951,6 +3965,27 @@ def build(
         if schema_version >= 3
         else None
     )
+    if schema_version >= 3:
+        def visitor_copy(value: str) -> str:
+            return value.replace("Director", "You")
+
+        for checkpoint_payload in checkpoints.values():
+            safe_config = checkpoint_payload["reads"].get("safe_config") or {}
+            intake = safe_config.get("intake") or {}
+            if intake.get("note"):
+                intake["note"] = "Recorded intake."
+        for beat in beats:
+            for key in ("title", "objective", "disclosure"):
+                if beat.get(key):
+                    beat[key] = visitor_copy(beat[key])
+            for step in beat.get("steps") or []:
+                step["label"] = visitor_copy(step["label"])
+        for chapter in exploration["chapters"]:
+            for key in ("title", "objective", "disclosure"):
+                chapter[key] = visitor_copy(chapter[key])
+        for intent in intents:
+            if intent.get("label"):
+                intent["label"] = visitor_copy(intent["label"])
 
     seed_payload = workspace_seed()
     write_json(root / "workspace_seed.json", seed_payload)
@@ -4003,6 +4038,11 @@ def build(
     }
     if deck:
         manifest.update(deck)
+        manifest["title"] = "HDFC Ltd 7.87% 2022 debenture - prepared demo"
+        manifest["label"] = "Prepared demo"
+        manifest["disclosure"] = (
+            "Prepared demo · recorded responses, not live AI generation."
+        )
     write_json(root / "manifest.json", manifest)
 
     files: dict[str, str] = {}

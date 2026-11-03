@@ -92,14 +92,13 @@ export default function DemoNewMeetingPage() {
             <div className="mb-6">
                 <div className="mb-2 flex flex-wrap items-center gap-2">
                     <Badge className="bg-indigo-600 text-white hover:bg-indigo-600">
-                        Guided replay
+                        Prepared demo
                     </Badge>
-                    <span className="text-xs text-zinc-500">Prepared preset · no writes</span>
+                    <span className="text-xs text-zinc-500">Recorded creation record</span>
                 </div>
                 <h1 className="text-2xl font-semibold text-white">Start the meeting</h1>
                 <p className="mt-2 text-sm text-zinc-400">
-                    Complete the prepared creation form and confirm the supplied
-                    historical document. No bytes are uploaded during replay.
+                    This is the recorded creation record for the prepared meeting.
                 </p>
                 <div className="mt-4 flex flex-wrap items-center gap-2">
                     <Button
@@ -113,8 +112,8 @@ export default function DemoNewMeetingPage() {
                         Try editing this setup
                     </Button>
                     <span className="text-xs text-zinc-500">
-                        Opens an inline practice editor on this same screen. It
-                        never changes the recorded intake.
+                        Practice only · changes stay in this browser and never alter
+                        the recording.
                     </span>
                 </div>
                 {!workspace.expanded ? (
@@ -129,14 +128,9 @@ export default function DemoNewMeetingPage() {
                 <Card className="border-zinc-800 bg-zinc-900/50 p-5">
                     <div className="flex items-center gap-2 text-xs font-medium uppercase tracking-wide text-amber-400">
                         <Lock className="h-4 w-4" />
-                        Prepared preset — editing is disabled for this replay
+                        Recorded setup
                     </div>
-                    <p className="mt-2 text-xs text-zinc-500">
-                        This guided replay uses a prepared meeting preset. Editing is
-                        disabled so the recorded responses stay aligned with the
-                        supplied document.
-                    </p>
-                    <div className="mt-5 grid gap-4">
+                    <div className="mt-3 grid gap-4">
                         <label className="grid gap-1 text-sm">
                             <span className="text-zinc-400">Agenda</span>
                             <input
@@ -186,8 +180,7 @@ export default function DemoNewMeetingPage() {
                                 {preset?.document_label ?? "Prepared historical document"}
                             </p>
                             <p className="mt-1 text-xs text-zinc-500">
-                                Prepared document — offline extraction and retrieval. No
-                                filesystem write or live parser ran during playback.
+                                Prepared document supplied with the recording.
                             </p>
                         </div>
                     </div>
@@ -236,15 +229,11 @@ export default function DemoNewMeetingPage() {
                         onClick={() => void create()}
                         disabled={busy}
                         className="bg-indigo-600 hover:bg-indigo-700"
-                        aria-describedby="locked-preset-note"
                     >
                         {busy ? "Recording creation…" : "Create recorded meeting"}
                     </Button>
                 )}
-                <p id="locked-preset-note" className="text-xs text-zinc-500">
-                    The recorded meeting is prepared; this action selects the recorded
-                    intake checkpoint, not a live filesystem write.
-                </p>
+
             </div>
         </main>
     );

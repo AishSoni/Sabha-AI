@@ -110,14 +110,6 @@ export function DemoSnapshotPanel({
                     </CardTitle>
                 </CardHeader>
                 <CardContent className="space-y-6">
-                    <p className="text-sm leading-6 text-zinc-400">
-                        A new practice participant captures the current active
-                        system prompt and these stack ids once. Later template
-                        edits do not rewrite an existing snapshot, and none of
-                        this changes the prepared participant or any recorded
-                        reply.
-                    </p>
-
                     <p role="status" aria-live="polite" className="text-xs text-emerald-400 min-h-4">
                         {announcement}
                     </p>
@@ -239,11 +231,6 @@ export function DemoSnapshotPanel({
                                         </ul>
                                     </div>
                                 </div>
-                                <p className="mt-3 border-t border-zinc-800 pt-3 text-xs text-zinc-500">
-                                    These snapshots are independent. Editing the
-                                    practice template does not change the prepared
-                                    participant.
-                                </p>
                             </div>
                         ) : (
                             <div className="rounded-xl border border-zinc-800 bg-zinc-950/40 p-4 text-sm text-zinc-400">

@@ -1,9 +1,9 @@
 {
   "tape_id": "tape-prepared-downside",
   "meeting_id": "a0000000-0000-4000-8000-000000000001",
-  "operation_id": "a0000000-0000-4000-8000-000000000302",
+  "operation_id": "a0000000-0000-4000-8000-000000000322",
   "participant_id": "a0000000-0000-4000-8000-000000000102",
-  "request_key": "turn-downside",
+  "request_key": "prepared-downside",
   "initial_checkpoint": "checkpoint-prepared-base",
   "completed_checkpoint": "checkpoint-prepared-downside",
   "events": [

@@ -538,7 +538,7 @@ function MeetingConversation({
                 ) : null
             ) : (
                 <>
-                    {capabilities.closing && (
+                    {capabilities.closing && !ended && (
                         <div className="border-t border-zinc-800 bg-zinc-950 px-4 py-2 shrink-0">
                             <div className="mx-auto flex max-w-3xl items-center justify-end gap-2">
                                 {runtime.replay?.preparedTurns?.length &&

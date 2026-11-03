@@ -320,10 +320,10 @@
     },
     "operations": [
       {
-        "operation_id": "a0000000-0000-4000-8000-000000000301",
+        "operation_id": "a0000000-0000-4000-8000-000000000321",
         "meeting_id": "a0000000-0000-4000-8000-000000000001",
         "participant_id": "a0000000-0000-4000-8000-000000000101",
-        "request_key": "turn-credit",
+        "request_key": "prepared-credit",
         "status": "queued",
         "admission": 1,
         "queue_position": 1,
@@ -336,10 +336,10 @@
         "effective_generation": null
       },
       {
-        "operation_id": "a0000000-0000-4000-8000-000000000302",
+        "operation_id": "a0000000-0000-4000-8000-000000000322",
         "meeting_id": "a0000000-0000-4000-8000-000000000001",
         "participant_id": "a0000000-0000-4000-8000-000000000102",
-        "request_key": "turn-downside",
+        "request_key": "prepared-downside",
         "status": "queued",
         "admission": 2,
         "queue_position": 1,
@@ -352,10 +352,10 @@
         "effective_generation": null
       },
       {
-        "operation_id": "a0000000-0000-4000-8000-000000000303",
+        "operation_id": "a0000000-0000-4000-8000-000000000323",
         "meeting_id": "a0000000-0000-4000-8000-000000000001",
         "participant_id": "a0000000-0000-4000-8000-000000000103",
-        "request_key": "turn-portfolio",
+        "request_key": "prepared-portfolio",
         "status": "queued",
         "admission": 3,
         "queue_position": 1,
@@ -368,10 +368,10 @@
         "effective_generation": null
       },
       {
-        "operation_id": "a0000000-0000-4000-8000-000000000304",
+        "operation_id": "a0000000-0000-4000-8000-000000000324",
         "meeting_id": "a0000000-0000-4000-8000-000000000001",
         "participant_id": "a0000000-0000-4000-8000-000000000101",
-        "request_key": "turn-consensus",
+        "request_key": "prepared-consensus",
         "status": "queued",
         "admission": 4,
         "queue_position": 1,

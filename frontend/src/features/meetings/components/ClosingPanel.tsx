@@ -589,7 +589,7 @@ export function ClosingPanel({
                             variant="outline"
                             onClick={onSkipText}
                         >
-                            Skip to prepared result
+                            Show full response
                         </Button>
                     ) : null}
                     {ended && onReplayClosing ? (
@@ -605,15 +605,21 @@ export function ClosingPanel({
                 </div>
             ) : null}
 
-            {summaryText ? (
+            {summaryText || (deckClosing && closing?.summary) ? (
                 <Card id="closing-final-summary" className="border-zinc-800 bg-zinc-900/50 p-4">
                     <h5 className="mb-2 text-xs font-semibold uppercase tracking-wide text-zinc-500">
                         Final summary
                     </h5>
-                    <ClosingGeneratedText
-                        item={summaryText}
-                        className="whitespace-pre-wrap text-sm text-zinc-300"
-                    />
+                    {summaryText ? (
+                        <ClosingGeneratedText
+                            item={summaryText}
+                            className="whitespace-pre-wrap text-sm text-zinc-300"
+                        />
+                    ) : (
+                        <p className="whitespace-pre-wrap text-sm text-zinc-300">
+                            {closing?.summary}
+                        </p>
+                    )}
                 </Card>
             ) : null}
 
@@ -701,12 +707,6 @@ export function ClosingPanel({
                                 </Button>
                             ) : null}
                         </div>
-                        {runtime.replay ? (
-                            <p className="mt-3 text-xs text-zinc-500">
-                                Guided replay uses the recorded vote. Force end, retry,
-                                and abort are not available.
-                            </p>
-                        ) : null}
                     </Card>
                 ) : (
                     <Card className="border-red-800/50 bg-red-950/30 p-4">

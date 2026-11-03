@@ -119,7 +119,7 @@ export function PracticeMeetingScreen({
                             Practice setup
                         </Badge>
                         <span className="text-xs text-zinc-500">
-                            Browser memory only · no responses generated
+                            Practice only · browser memory
                         </span>
                     </div>
                     <h1 className="text-xl font-bold text-white">
@@ -136,7 +136,7 @@ export function PracticeMeetingScreen({
                     className="text-red-300 hover:text-red-200"
                     onClick={() => {
                         const confirmed = window.confirm(
-                            `Discard "${meeting.name}"? Its local documents and simulated operations will be revoked immediately. The recorded meeting, transcript, citations, and Files view are unchanged.`
+                            `Discard "${meeting.name}"? This practice setup will be removed from this browser.`
                         );
                         if (confirmed) {
                             practice.discardMeeting(meeting.meetingId);
@@ -149,11 +149,8 @@ export function PracticeMeetingScreen({
             </div>
 
             <div className="rounded-lg border border-amber-400/30 bg-amber-400/10 px-3 py-2 text-sm text-amber-100">
-                This setup is a captured practice snapshot. Editing the agenda,
-                personas, or stacks after creation does not generate new
-                responses. The recorded HDFC transcript and citations remain
-                the only historical answers.
-                {" "}
+                Practice only · changes stay in this browser and never alter the
+                recording.{" "}
                 <Link
                     href={originalRecordingHref}
                     className="underline underline-offset-2"
@@ -220,7 +217,7 @@ export function PracticeMeetingScreen({
             <DocumentPanelView
                 scopeLabel="meeting"
                 title="Shared documents in this practice setup"
-                description="Approved samples are shared with every captured participant. They become eligible only after the prepared simulation reports Ready. No bytes are uploaded to the operator workspace."
+                description="Shared with every captured participant once ready."
                 documents={documents.documents}
                 isLoading={documents.isLoading}
                 isError={documents.isError}

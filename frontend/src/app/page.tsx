@@ -1,7 +1,6 @@
 import Link from 'next/link';
 import {
     ArrowRight,
-    BookOpen,
     FileSearch,
     PlayCircle,
     RefreshCw,
@@ -12,7 +11,7 @@ const FEATURES = [
     {
         icon: PlayCircle,
         title: 'A complete recorded meeting',
-        body: 'Follow a prepared HDFC bond advisory session from the director’s opening question to the closing summary.',
+        body: 'Follow a prepared HDFC bond advisory session from the opening question to the closing summary.',
     },
     {
         icon: FileSearch,
@@ -66,13 +65,12 @@ export default function HomePage() {
                         See how an AI advisory board reasons together
                     </h2>
                     <p className="mt-5 text-lg text-zinc-400">
-                        Walk through a recorded bond meeting with multiple AI
-                        participants, live disagreement and consensus, grounded
+                        Walk through a prepared recorded bond meeting with multiple
+                        AI participants, formal disagreement and consensus, grounded
                         evidence, and a closing summary.
                     </p>
                     <p className="mt-4 text-sm text-zinc-500">
-                        Interactive replay of a recorded session. Live demonstration
-                        available during interviews.
+                        Prepared demo · recorded responses, not live AI generation.
                     </p>
                     <div className="mt-8 flex flex-wrap items-center justify-center gap-4">
                         <Link
@@ -106,31 +104,6 @@ export default function HomePage() {
                             </p>
                         </div>
                     ))}
-                </section>
-
-                <section className="mt-16 rounded-2xl border border-zinc-800 bg-zinc-900/30 p-8">
-                    <div className="flex flex-wrap items-start justify-between gap-6">
-                        <div className="max-w-xl">
-                            <div className="mb-3 flex items-center gap-2 text-sm font-medium text-emerald-300">
-                                <BookOpen className="h-4 w-4" />
-                                What the recorded journey covers
-                            </div>
-                            <p className="text-sm leading-relaxed text-zinc-400">
-                                A credit analyst, a skeptical investor, and a
-                                pragmatic CTO examine an HDFC bond opportunity.
-                                The replay preserves their reasoning, the evidence
-                                they cite, and the director’s decisions at each
-                                checkpoint.
-                            </p>
-                        </div>
-                        <Link
-                            href="/demo"
-                            className="inline-flex items-center gap-2 rounded-lg border border-zinc-700 px-4 py-2 text-sm text-zinc-200 transition-colors hover:border-zinc-500"
-                        >
-                            Open the replay
-                            <ArrowRight className="h-4 w-4" />
-                        </Link>
-                    </div>
                 </section>
 
                 <p className="mt-10 text-center text-xs text-zinc-600">

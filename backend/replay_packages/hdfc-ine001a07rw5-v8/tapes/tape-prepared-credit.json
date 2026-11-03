@@ -1,9 +1,9 @@
 {
   "tape_id": "tape-prepared-credit",
   "meeting_id": "a0000000-0000-4000-8000-000000000001",
-  "operation_id": "a0000000-0000-4000-8000-000000000301",
+  "operation_id": "a0000000-0000-4000-8000-000000000321",
   "participant_id": "a0000000-0000-4000-8000-000000000101",
-  "request_key": "turn-credit",
+  "request_key": "prepared-credit",
   "initial_checkpoint": "checkpoint-prepared-base",
   "completed_checkpoint": "checkpoint-prepared-credit",
   "events": [

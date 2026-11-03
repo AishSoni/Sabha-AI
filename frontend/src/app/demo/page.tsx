@@ -68,10 +68,10 @@ export default function DemoBoardPage() {
                 <div>
                     <div className="mb-2 flex flex-wrap items-center gap-2">
                         <Badge className="bg-indigo-600 text-white hover:bg-indigo-600">
-                            Guided replay
+                            Prepared demo
                         </Badge>
                         <span className="text-xs text-zinc-500">
-                            Information as of 31 July 2020 · sources captured 16 October 2026
+                            Recorded responses, not live AI generation · as of 31 July 2020
                         </span>
                     </div>
                     <h1 className="text-2xl font-semibold text-white">
@@ -164,34 +164,6 @@ export default function DemoBoardPage() {
                         );
                     })}
                 </div>
-            </section>
-
-            <section
-                aria-labelledby="snapshot-heading"
-                className="mt-6 rounded-xl border border-zinc-800 bg-zinc-900/40 p-4 text-sm text-zinc-400"
-            >
-                <h2
-                    id="snapshot-heading"
-                    className="font-medium text-zinc-300"
-                >
-                    Prepared participants are frozen snapshots
-                </h2>
-                <p className="mt-1 max-w-3xl">
-                    Each participant above was captured for this recording with
-                    its own system prompt and knowledge assignments. The
-                    practice catalog holds separate temporary templates:
-                    editing a template does not rename this board, rewrite a
-                    recorded reply, or add a speaker to the meeting.
-                </p>
-                {workspace.status === "ready" ? (
-                    <Link
-                        href="/demo/roster"
-                        className="mt-3 inline-flex items-center gap-2 text-xs font-medium text-indigo-300 hover:text-indigo-200"
-                    >
-                        Open the practice persona catalog
-                        <ArrowRight className="h-3.5 w-3.5" />
-                    </Link>
-                ) : null}
             </section>
 
             <div className="mt-6 rounded-xl border border-zinc-800 bg-zinc-900/40 p-4 text-sm text-zinc-400">

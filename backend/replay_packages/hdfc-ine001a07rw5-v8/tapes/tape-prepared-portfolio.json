@@ -1,9 +1,9 @@
 {
   "tape_id": "tape-prepared-portfolio",
   "meeting_id": "a0000000-0000-4000-8000-000000000001",
-  "operation_id": "a0000000-0000-4000-8000-000000000303",
+  "operation_id": "a0000000-0000-4000-8000-000000000323",
   "participant_id": "a0000000-0000-4000-8000-000000000103",
-  "request_key": "turn-portfolio",
+  "request_key": "prepared-portfolio",
   "initial_checkpoint": "checkpoint-prepared-base",
   "completed_checkpoint": "checkpoint-prepared-portfolio",
   "events": [

@@ -122,6 +122,13 @@ export function ReplayRunProvider({ children }: { children: ReactNode }) {
         // eslint-disable-next-line react-hooks/exhaustive-deps
         [epoch, runKey]
     );
+    const deckController = useMemo(
+        () => new AbortController(),
+        // Deck reads survive checkpoint epoch changes; only a restart replaces
+        // the browser-memory composition.
+        // eslint-disable-next-line react-hooks/exhaustive-deps
+        [runKey]
+    );
     const deckEnabled =
         session.prepared_turns.length > 0 && session.prepared_closing !== null;
     const effectiveCheckpoint =
@@ -148,8 +155,11 @@ export function ReplayRunProvider({ children }: { children: ReactNode }) {
                 session,
                 session.meeting_id,
                 baseCheckpoint,
-                controller.signal
-            );
+                deckController.signal
+            ).catch((cause) => {
+                deckBasePromise.current = null;
+                throw cause;
+            });
         }
         const base = await deckBasePromise.current;
         if (!deckRef.current) {
@@ -158,7 +168,7 @@ export function ReplayRunProvider({ children }: { children: ReactNode }) {
             setDeckVersion((value) => value + 1);
         }
         return deckRef.current;
-    }, [controller.signal, session]);
+    }, [deckController.signal, session]);
 
     useEffect(() => {
         if (!deckEnabled) return;
@@ -325,12 +335,12 @@ export function ReplayRunProvider({ children }: { children: ReactNode }) {
                 session,
                 session.meeting_id,
                 turn.result_checkpoint,
-                controller.signal
+                deckController.signal
             );
             mergeDeckResult(turn.turn_id, result);
             return true;
         },
-        [commitDeck, controller.signal, mergeDeckResult, session]
+        [commitDeck, deckController.signal, mergeDeckResult, session]
     );
 
     const startPreparedTurn = useCallback(
@@ -366,11 +376,11 @@ export function ReplayRunProvider({ children }: { children: ReactNode }) {
                 session,
                 session.meeting_id,
                 turn.result_checkpoint,
-                controller.signal
+                deckController.signal
             );
             mergeDeckResult(turnId, result);
         },
-        [controller.signal, ensureDeckBase, mergeDeckResult, session]
+        [deckController.signal, ensureDeckBase, mergeDeckResult, session]
     );
 
     const replayPreparedTurn = useCallback(
@@ -404,10 +414,10 @@ export function ReplayRunProvider({ children }: { children: ReactNode }) {
             session,
             session.meeting_id,
             turn.result_checkpoint,
-            controller.signal
+            deckController.signal
         );
         mergeDeckResult(turnId, result);
-    }, [controller.signal, ensureDeckBase, mergeDeckResult, session]);
+    }, [deckController.signal, ensureDeckBase, mergeDeckResult, session]);
 
     const sendFollowUp = useCallback(async () => {
         const state = await ensureDeckBase();
@@ -444,13 +454,13 @@ export function ReplayRunProvider({ children }: { children: ReactNode }) {
             session,
             session.meeting_id,
             closing.completed_checkpoint,
-            controller.signal
+            deckController.signal
         );
         commitDeck({ ...state, closing: bundle, archived: false });
         invalidateDeckReads();
     }, [
         commitDeck,
-        controller.signal,
+        deckController.signal,
         ensureDeckBase,
         invalidateDeckReads,
         session,
@@ -464,13 +474,13 @@ export function ReplayRunProvider({ children }: { children: ReactNode }) {
             session,
             session.meeting_id,
             closing.archived_checkpoint,
-            controller.signal
+            deckController.signal
         );
         commitDeck({ ...state, closing: bundle, archived: true });
         invalidateDeckReads();
     }, [
         commitDeck,
-        controller.signal,
+        deckController.signal,
         ensureDeckBase,
         invalidateDeckReads,
         session,
@@ -514,7 +524,7 @@ export function ReplayRunProvider({ children }: { children: ReactNode }) {
         restart();
     }, [playbackReset.nonce, restart]);
 
-    useEffect(() => () => controller.abort(), [controller]);
+
 
     const transitionToCheckpoint = useCallback(
         async (
