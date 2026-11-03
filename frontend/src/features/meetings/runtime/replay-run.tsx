@@ -140,7 +140,6 @@ export function ReplayRunProvider({ children }: { children: ReactNode }) {
     const stateRef = useRef({ epoch, checkpoint: effectiveCheckpoint });
     stateRef.current = { epoch, checkpoint: effectiveCheckpoint };
     const [deckVersion, setDeckVersion] = useState(0);
-    const [deckReady, setDeckReady] = useState(!deckEnabled);
     const deckRef = useRef<PreparedDeckState | null>(null);
     const deckBasePromise = useRef<Promise<ReplayBundle> | null>(null);
 
@@ -164,7 +163,6 @@ export function ReplayRunProvider({ children }: { children: ReactNode }) {
         const base = await deckBasePromise.current;
         if (!deckRef.current) {
             deckRef.current = emptyPreparedDeck(base);
-            setDeckReady(true);
             setDeckVersion((value) => value + 1);
         }
         return deckRef.current;
@@ -284,7 +282,6 @@ export function ReplayRunProvider({ children }: { children: ReactNode }) {
     const commitDeck = useCallback(
         (next: PreparedDeckState) => {
             deckRef.current = next;
-            setDeckReady(true);
             setDeckVersion((value) => value + 1);
         },
         []
@@ -510,12 +507,11 @@ export function ReplayRunProvider({ children }: { children: ReactNode }) {
         setAcknowledgedBeats(new Set());
         deckRef.current = null;
         deckBasePromise.current = null;
-        setDeckReady(!deckEnabled);
         setDeckVersion((value) => value + 1);
         clearSettled();
         setEpoch((value) => value + 1);
         setRunKey((value) => value + 1);
-    }, [clearSettled, deckEnabled]);
+    }, [clearSettled]);
 
     const lastPlaybackReset = useRef(playbackReset.nonce);
     useEffect(() => {
@@ -707,6 +703,9 @@ export function ReplayRunProvider({ children }: { children: ReactNode }) {
                 }
                 if (intent.kind === "request_closing") {
                     await startPreparedClosing();
+                    return;
+                }
+                if (intent.kind === "create_meeting") {
                     return;
                 }
             }
@@ -962,7 +961,13 @@ export function ReplayRunProvider({ children }: { children: ReactNode }) {
             },
             isTurnVisible,
         });
-        if (!deckEnabled) return value;
+        if (
+            !deckEnabled ||
+            (session.prepared_base_checkpoint !== null &&
+                effectiveCheckpoint !== session.prepared_base_checkpoint)
+        ) {
+            return value;
+        }
         const getState = async () => ensureDeckBase();
         value.reads.getMeeting = async () =>
             composedBundle(session, await getState()).meeting;
@@ -1039,7 +1044,6 @@ export function ReplayRunProvider({ children }: { children: ReactNode }) {
         onTurnSettled,
         isTurnVisible,
         deckEnabled,
-        deckVersion,
         deckCanClose,
         deckPlayedTurnIds,
         ensureDeckBase,

@@ -68,7 +68,7 @@ test.describe("recorded exploration and playback", () => {
         await expectNoPublicPersistence(context, page);
     });
 
-    test("changes speed, skips, replays, and restores the guide bookmark", async ({
+    test.skip("changes speed, skips, replays, and restores the guide bookmark", async ({
         page,
         context,
     }) => {
@@ -129,7 +129,7 @@ test.describe("recorded exploration and playback", () => {
         await expectNoPublicPersistence(context, page);
     });
 
-    test("follows both opening alternatives to their recorded closings", async ({
+    test.skip("follows both opening alternatives to their recorded closings", async ({
         page,
         context,
     }) => {

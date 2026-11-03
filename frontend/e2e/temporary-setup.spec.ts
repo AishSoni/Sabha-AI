@@ -28,17 +28,15 @@ test.describe("temporary practice setup", () => {
         page.on("dialog", (dialog) => void dialog.accept());
         await serveRecordedAssets(page);
 
-        await page.goto("/demo");
-        await expect(page.getByText(/Step 1 of 8/)).toBeVisible();
-        await page.getByRole("button", { name: "Continue" }).click();
+        await page.goto("/demo/new");
         await expect(page).toHaveURL(/\/demo\/new$/);
         await page.getByRole("button", { name: "Try editing this setup" }).click();
 
         await expect(
-            page.getByRole("heading", { name: "Practice editing this setup" })
+            page.getByRole("heading", { name: "Practice setup" })
         ).toBeVisible();
         await expect(
-            page.getByText(/without changing the recorded HDFC meeting/)
+            page.getByText(/changes stay in this browser/)
         ).toBeVisible();
 
         await page.getByRole("button", { name: "Add approved sample" }).click();
@@ -53,18 +51,10 @@ test.describe("temporary practice setup", () => {
             page.getByText("Selected · starts after setup is created")
         ).toBeVisible();
 
-        await page.getByRole("button", { name: "Create practice meeting" }).click();
+        await page.getByRole("button", { name: "Create practice setup" }).click();
+        await expect(page).toHaveURL(/\/demo\/meetings\/[^/]+$/);
         await expect(
-            page.getByRole("heading", { name: "Practice setup created" })
-        ).toBeVisible();
-        const practiceHref = await page
-            .getByRole("link", { name: "Open practice setup" })
-            .getAttribute("href");
-        expect(practiceHref).toMatch(/^\/demo\/meetings\//);
-
-        await page.getByRole("link", { name: "Open practice setup" }).click();
-        await expect(
-            page.getByText("Browser memory only · no responses generated")
+            page.getByText("Practice only · browser memory")
         ).toBeVisible();
         await expect(page.getByText("Captured participants")).toBeVisible();
         await expect(
@@ -147,19 +137,18 @@ test.describe("temporary practice setup", () => {
         await page
             .getByRole("link", { name: "Open original HDFC recording" })
             .click();
-        await expect(page).toHaveURL(/\/demo$/);
+        await expect(page).toHaveURL(/\/demo\/meetings\//);
         await expect(
-            page.getByRole("heading", { name: /Prepared board/ })
-        ).toBeVisible();
-        await expect(
-            page.getByText(/You are The Credit Analyst\. Test the record/)
+            page.getByRole("heading", {
+                name: /Review HDFC Ltd's 7\.87% 2022 debenture/,
+            })
         ).toBeVisible();
         await expect(
             page.getByText("Practice template changed after setup.")
         ).toHaveCount(0);
         await expect(
-            page.getByRole("button", { name: /Ask the Credit Analyst/ })
-        ).toHaveCount(0);
+            page.getByRole("button", { name: "Credit Analyst opening facts" })
+        ).toBeVisible();
 
         network.assertClean();
         await expectNoPublicPersistence(context, page);

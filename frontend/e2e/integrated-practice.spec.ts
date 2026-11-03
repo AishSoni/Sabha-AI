@@ -22,7 +22,7 @@ async function openBoard(page: Page) {
         page.goto("/demo"),
     ]);
     const session = (await response.json()) as { package_version: string };
-    expect(session.package_version).toBe("7");
+    expect(session.package_version).toBe("8");
     await expect(page.getByRole("heading", { name: /Prepared board/ })).toBeVisible();
     await expect(page.getByText(/Step 1 of 8/)).toBeVisible();
 }
@@ -102,9 +102,7 @@ test.describe("integrated practice exploration", () => {
         const preview = page.getByRole("dialog");
         await expect(preview).toBeVisible();
         await expect(
-            preview.getByText(
-                "Read-only evidence preview. No changes can be made from this dialog."
-            )
+            preview.getByRole("region", { name: "Evidence provenance" })
         ).toBeVisible();
         await page.keyboard.press("Escape");
         await expect(preview).toBeHidden();
@@ -134,18 +132,16 @@ test.describe("integrated practice exploration", () => {
         await expect(page.getByText("credit-evidence.md")).toHaveCount(0);
         await expect(page.getByText("downside-worksheet.md").first()).toBeVisible();
 
-        // Resume the same guided position and request the canonical turn.
-        await page.getByRole("button", { name: "Resume guided journey" }).click();
-        await expect(page).toHaveURL(/\/demo$/);
-        await expect(page.getByText(/Step 1 of 8/)).toBeVisible();
-        await page.getByRole("button", { name: "Continue" }).click();
-        await expect(page).toHaveURL(/\/demo\/new$/);
-        await page.getByRole("button", { name: "Create recorded meeting" }).click();
-        await expect(page.getByText("Recorded intake ready")).toBeVisible();
-        await page.getByRole("button", { name: "Continue" }).click();
-        await expect(page).toHaveURL(/\/demo\/meetings\/[^/]+(?:\?.*)?$/);
-
-        await page.getByRole("button", { name: "Ask the Credit Analyst" }).click();
+        // Return to the recorded deck and request an approved reply.
+        await page.goto(
+            "/demo/meetings/a0000000-0000-4000-8000-000000000001"
+        );
+        await expect(
+            page.getByRole("button", { name: "Credit Analyst opening facts" })
+        ).toBeVisible({ timeout: 30_000 });
+        await page
+            .getByRole("button", { name: "Credit Analyst opening facts" })
+            .click();
         await expect(
             page.getByText(/CRISIL's annexure row for ISIN INE001A07RW5/).first()
         ).toBeVisible({ timeout: 30_000 });
@@ -172,7 +168,7 @@ test.describe("integrated practice exploration", () => {
         await expect(page).toHaveURL(/\/demo\/meetings/);
         await page.getByRole("button", { name: "Archived" }).click();
         await expect(
-            page.getByText(/Archived overlay recorded/)
+            page.getByText("Archived", { exact: true }).first()
         ).toBeVisible({ timeout: 30_000 });
 
         network.assertClean();

@@ -31,13 +31,18 @@ export function RecordedParticipantAction({
 
     if (!replay) return null;
 
+    const deckActive =
+        replay.preparedBaseCheckpoint !== null &&
+        replay.checkpoint === replay.preparedBaseCheckpoint;
     const playedTurnIds = replay.playedTurnIds ?? new Set<string>();
-    const preparedTurns = (replay.preparedTurns ?? []).filter(
-        (turn) =>
-            turn.kind === "reply" &&
-            turn.participant_id === participant.id &&
-            !playedTurnIds.has(turn.turn_id)
-    );
+    const preparedTurns = deckActive
+        ? (replay.preparedTurns ?? []).filter(
+              (turn) =>
+                  turn.kind === "reply" &&
+                  turn.participant_id === participant.id &&
+                  !playedTurnIds.has(turn.turn_id)
+          )
+        : [];
     if (preparedTurns.length > 0) {
         return (
             <div className="flex flex-wrap gap-2">

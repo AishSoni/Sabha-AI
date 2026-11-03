@@ -5,13 +5,12 @@ import {
 } from "./support/guardrails";
 
 async function openRoom(page: Page) {
-    await page.goto("/demo");
-    await expect(page.getByText(/Step 1 of 8/)).toBeVisible();
-    await page.getByRole("button", { name: "Continue" }).click();
-    await page.getByRole("button", { name: "Create recorded meeting" }).click();
-    await expect(page.getByText("Recorded intake ready")).toBeVisible();
-    await page.getByRole("button", { name: "Continue" }).click();
-    await expect(page).toHaveURL(/\/demo\/meetings\/[^/]+(?:\?.*)?$/);
+    await page.goto("/demo/meetings/a0000000-0000-4000-8000-000000000001");
+    await expect(
+        page.getByRole("heading", {
+            name: /Review HDFC Ltd's 7\.87% 2022 debenture/,
+        })
+    ).toBeVisible({ timeout: 30_000 });
 }
 
 test.describe("demo failure recovery", () => {
@@ -51,7 +50,9 @@ test.describe("demo failure recovery", () => {
         await openRoom(page);
         await page.route("**/api/replay/**/events*", (route) => route.abort());
 
-        await page.getByRole("button", { name: "Ask the Credit Analyst" }).click();
+        await page
+            .getByRole("button", { name: "Credit Analyst opening facts" })
+            .click();
         await expect(page.getByText(/Observation paused/).first()).toBeVisible({
             timeout: 30_000,
         });

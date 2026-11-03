@@ -2029,6 +2029,16 @@ export interface components {
             transitions?: {
                 [key: string]: unknown;
             }[];
+            /** Prepared Base Checkpoint */
+            prepared_base_checkpoint?: string | null;
+            /** Prepared Turns */
+            prepared_turns?: {
+                [key: string]: unknown;
+            }[];
+            /** Prepared Closing */
+            prepared_closing?: {
+                [key: string]: unknown;
+            } | null;
             preview?: components["schemas"]["ReplayPreviewView"];
             /**
              * Retired

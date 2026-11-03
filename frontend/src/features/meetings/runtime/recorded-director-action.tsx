@@ -25,9 +25,14 @@ export function RecordedDirectorAction() {
 
     if (!replay) return null;
 
-    const prepared = (replay.preparedTurns ?? []).find(
-        (turn) => turn.kind === "follow_up"
-    );
+    const deckActive =
+        replay.preparedBaseCheckpoint !== null &&
+        replay.checkpoint === replay.preparedBaseCheckpoint;
+    const prepared = deckActive
+        ? (replay.preparedTurns ?? []).find(
+              (turn) => turn.kind === "follow_up"
+          )
+        : undefined;
     if (prepared?.kind === "follow_up") {
         if (replay.playedTurnIds?.has(prepared.turn_id)) return null;
         return (

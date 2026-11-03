@@ -112,7 +112,9 @@ test.describe("demo keyboard and narrow-screen accessibility", () => {
         await expect(
             page.getByRole("heading", { name: "Provider setup is operator-only" })
         ).toBeVisible();
-        await expect(page.getByText(/no key fields, no reveal action/i)).toBeVisible();
+        await expect(
+            page.getByText(/managed only in the authenticated operator workspace/i)
+        ).toBeVisible();
         await expect(page.getByRole("textbox")).toHaveCount(0);
         await expect(page.getByLabel(/api key/i)).toHaveCount(0);
 

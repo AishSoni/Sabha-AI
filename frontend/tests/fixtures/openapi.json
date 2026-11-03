@@ -7667,6 +7667,37 @@
             "type": "array",
             "title": "Transitions"
           },
+          "prepared_base_checkpoint": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Prepared Base Checkpoint"
+          },
+          "prepared_turns": {
+            "items": {
+              "additionalProperties": true,
+              "type": "object"
+            },
+            "type": "array",
+            "title": "Prepared Turns"
+          },
+          "prepared_closing": {
+            "anyOf": [
+              {
+                "additionalProperties": true,
+                "type": "object"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Prepared Closing"
+          },
           "preview": {
             "$ref": "#/components/schemas/ReplayPreviewView"
           },

@@ -4,7 +4,9 @@ import {
     guardNetwork,
 } from "./support/guardrails";
 
-test.describe("guided bond journey", () => {
+// Spec 28 supersedes the ordered eight-beat journey. Spec 29 replaces this
+// panel with the contextual HUD and re-enables the equivalent browser checks.
+test.describe.skip("guided bond journey (superseded by spec-28)", () => {
     test("walks the prepared HDFC replay through archive", async ({
         page,
         context,

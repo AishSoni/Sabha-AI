@@ -26,6 +26,10 @@ test.describe("prepared turn deck", () => {
 
         const close = page.getByRole("button", { name: "Close meeting" });
         await expect(close).toBeDisabled();
+        await expect(page.getByText(/Director/)).toHaveCount(0);
+        await expect(
+            page.getByText(/Play all four replies and send the follow-up/)
+        ).toBeVisible();
 
         await page.getByRole("button", { name: "Send question" }).click();
         await expect(page.getByText(FOLLOW_UP).first()).toBeVisible();
@@ -33,6 +37,12 @@ test.describe("prepared turn deck", () => {
         await page
             .getByRole("button", { name: "Downside challenge" })
             .click();
+        await expect(
+            page.getByRole("button", { name: "Show full response" })
+        ).toBeVisible();
+        await expect(
+            page.getByRole("button", { name: "Skip to prepared result" })
+        ).toHaveCount(0);
         await expect(
             page.getByText(/I disagree with treating AAA\/Stable/).first()
         ).toBeVisible({ timeout: 30_000 });

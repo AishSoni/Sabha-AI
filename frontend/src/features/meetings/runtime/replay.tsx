@@ -769,7 +769,7 @@ export function createReplayRuntime(
     scope: RuntimeScope,
     options: ReplayRuntimeOptions
 ): MeetingsRuntime {
-    const { checkpoint, queryClient } = options;
+    const { checkpoint } = options;
     const prefix = replayKeyPrefix(scope.identity.id, scope.identity.epoch, checkpoint);
     const meetingPath = checkpointQuery(
         `/replay/meetings/${encodeURIComponent(session.meeting_id)}`,

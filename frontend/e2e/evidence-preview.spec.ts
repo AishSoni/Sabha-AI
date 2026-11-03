@@ -57,23 +57,12 @@ async function serveRecordedAssets(page: Page) {
 async function openRecordedRoom(page: Page) {
     await page.goto("/");
     await page.evaluate(() => window.localStorage.clear());
-    await page.goto("/demo");
-
-    const knowledge = page
-        .locator("summary")
-        .filter({ hasText: "Knowledge assignments" });
-    await expect(knowledge).toHaveCount(3);
-    for (let index = 0; index < 3; index += 1) {
-        await knowledge.nth(index).click();
-    }
-    await page.getByRole("button", { name: "Continue" }).click();
-    await expect(page).toHaveURL(/\/demo\/new$/);
-
-    await page.getByRole("button", { name: "Create recorded meeting" }).click();
-    await expect(page.getByText("Recorded intake ready")).toBeVisible();
-    await expect(page.getByText(/Step 3 of 8/)).toBeVisible({ timeout: 30_000 });
-    await page.getByRole("button", { name: "Continue" }).click();
-    await expect(page).toHaveURL(/\/demo\/meetings\/[^/]+(?:\?.*)?$/);
+    await page.goto("/demo/meetings/a0000000-0000-4000-8000-000000000001");
+    await expect(
+        page.getByRole("heading", {
+            name: /Review HDFC Ltd's 7\.87% 2022 debenture/,
+        })
+    ).toBeVisible({ timeout: 30_000 });
 }
 
 test.describe("recorded evidence previews", () => {
@@ -170,13 +159,12 @@ test.describe("recorded evidence previews", () => {
         await serveRecordedAssets(page);
         await openRecordedRoom(page);
 
-        await page.getByRole("button", { name: "Ask the Credit Analyst" }).click();
+        await page
+            .getByRole("button", { name: "Credit Analyst opening facts" })
+            .click();
         await expect(
             page.getByText(/CRISIL's annexure row for ISIN INE001A07RW5/).first()
         ).toBeVisible({ timeout: 30_000 });
-        await expect(page.getByText(/Step 4 of 8/)).toBeVisible({
-            timeout: 30_000,
-        });
         await page.getByRole("button", { name: /5 Sources/ }).first().click();
         await expect(
             page.getByText(/CRISIL Rating Rationale/i).first()
@@ -227,7 +215,7 @@ test.describe("recorded evidence previews", () => {
         const dialog = page.getByRole("dialog");
         await expect(dialog).toBeVisible();
         await expect(
-            dialog.getByText("Read-only evidence preview. No changes can be made from this dialog.")
+            dialog.getByRole("region", { name: "Evidence provenance" })
         ).toBeVisible();
         await page.keyboard.press("Escape");
         await expect(dialog).toBeHidden();
