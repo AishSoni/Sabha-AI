@@ -102,6 +102,7 @@ test.describe("demo keyboard and narrow-screen accessibility", () => {
     }) => {
         test.setTimeout(180_000);
         const network = guardNetwork(page);
+        await page.setViewportSize({ width: 390, height: 844 });
         await page.emulateMedia({ reducedMotion: "reduce" });
         await page.goto("/demo");
 
