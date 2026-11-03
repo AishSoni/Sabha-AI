@@ -128,6 +128,7 @@ export function TutorialHud() {
                                 </p>
                             ) : null}
                         </div>
+                        <ExploreRecordingMenu iconOnly />
                         <button
                             type="button"
                             onClick={tutorial.hide}
@@ -238,17 +239,26 @@ function CompactBar() {
     );
 }
 
-function ExploreRecordingMenu() {
+function ExploreRecordingMenu({ iconOnly = false }: { iconOnly?: boolean }) {
     const tutorial = useDemoTutorial();
     const run = useReplayRun();
     const chapters = run.session.chapters;
 
     return (
-        <details className="relative">
-            <summary className="flex cursor-pointer list-none items-center gap-1 rounded-full px-2 py-1 text-xs font-medium text-zinc-400 hover:bg-zinc-800 hover:text-zinc-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-indigo-400 [&::-webkit-details-marker]:hidden">
+        <details className="relative shrink-0">
+            <summary
+                aria-label="Explore recording"
+                className={`flex cursor-pointer list-none items-center gap-1 rounded-full text-xs font-medium text-zinc-400 hover:bg-zinc-800 hover:text-zinc-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-indigo-400 [&::-webkit-details-marker]:hidden ${
+                    iconOnly ? "p-1" : "px-2 py-1"
+                }`}
+            >
                 <Compass className="h-3.5 w-3.5" aria-hidden="true" />
-                Explore recording
-                <ChevronDown className="h-3 w-3" aria-hidden="true" />
+                {iconOnly ? null : (
+                    <>
+                        Explore recording
+                        <ChevronDown className="h-3 w-3" aria-hidden="true" />
+                    </>
+                )}
             </summary>
             <div className="absolute right-0 top-full z-50 mt-2 w-64 rounded-lg border border-zinc-700 bg-zinc-950 p-2 shadow-xl">
                 {chapters.length > 0 ? (

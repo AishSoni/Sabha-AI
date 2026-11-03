@@ -3,6 +3,7 @@
 import type { ReactNode } from "react";
 import { DemoNav, DemoWorkspaceProvider } from "@/features/demo-workspace";
 import { DemoTutorialProvider } from "@/features/demo-tutorial/provider";
+import { TutorialBoundary } from "@/features/demo-tutorial/error-boundary";
 import { TutorialHud } from "@/features/demo-tutorial/hud";
 import { TutorialNotices } from "@/features/demo-tutorial/notices";
 import {
@@ -35,8 +36,10 @@ function PinnedWorkspace({ children }: { children: ReactNode }) {
                 <ChapterBootstrap>
                     <DemoTutorialProvider>
                         <DemoNav />
-                        <TutorialHud />
-                        <TutorialNotices />
+                        <TutorialBoundary>
+                            <TutorialHud />
+                            <TutorialNotices />
+                        </TutorialBoundary>
                         {children}
                     </DemoTutorialProvider>
                 </ChapterBootstrap>

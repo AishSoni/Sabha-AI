@@ -12,6 +12,7 @@ function journey(overrides: Partial<TutorialJourney> = {}): TutorialJourney {
         canClose: false,
         closingCompleted: false,
         roomVisited: false,
+        boardOpen: true,
         listOpen: false,
         archived: false,
         ended: false,
@@ -293,6 +294,14 @@ describe("selectPrompt on the legacy beat journey", () => {
             instruction: "Meet the board",
             anchor: "board.roster",
         });
+    });
+
+    it("does not show the board prompt off the board", () => {
+        expect(
+            selectPrompt(
+                journey({ deck: false, beats: LEGACY_BEATS, boardOpen: false })
+            )?.instruction
+        ).toBe("Start the meeting");
     });
 
     it("moves on once the recording exists", () => {

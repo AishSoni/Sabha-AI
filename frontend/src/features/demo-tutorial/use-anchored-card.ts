@@ -13,7 +13,6 @@ import {
     autoUpdate,
     computePosition,
     flip,
-    hide,
     offset,
     shift,
     size,
@@ -78,7 +77,6 @@ export function useAnchoredCard(
                     offset(gap),
                     flip({ padding: margin }),
                     shift({ padding: margin, crossAxis: true }),
-                    hide({ padding: 4 }),
                     size({
                         padding: margin,
                         apply({ availableWidth, availableHeight, elements }) {
@@ -96,7 +94,7 @@ export function useAnchoredCard(
                         },
                     }),
                 ],
-            }).then(({ x, y, placement, middlewareData }) => {
+            }).then(({ x, y, placement }) => {
                 if (cancelled) return;
                 // Measure from the computed coordinates, not the element's
                 // current rect: the card has not been positioned yet on the
@@ -108,6 +106,22 @@ export function useAnchoredCard(
                     floating.offsetHeight ||
                     floating.getBoundingClientRect().height;
                 const targetRect = target.getBoundingClientRect();
+                // A zero-size card cannot cover the control; test renderers
+                // and pre-layout frames legitimately report no box yet.
+                const measurable = width > 0 && height > 0;
+                const viewportWidth =
+                    window.innerWidth ||
+                    document.documentElement.clientWidth ||
+                    0;
+                const viewportHeight =
+                    window.innerHeight ||
+                    document.documentElement.clientHeight ||
+                    0;
+                const onScreen =
+                    targetRect.bottom >= 0 &&
+                    targetRect.right >= 0 &&
+                    targetRect.top <= viewportHeight &&
+                    targetRect.left <= viewportWidth;
                 setState({
                     x,
                     y,
@@ -119,26 +133,46 @@ export function useAnchoredCard(
                         height: targetRect.height,
                     },
                     visible:
-                        middlewareData.hide?.referenceHidden !== true &&
-                        !overlaps(
-                            {
-                                left: x,
-                                top: y,
-                                right: x + width,
-                                bottom: y + height,
-                            },
-                            targetRect
-                        ),
+                        onScreen &&
+                        (!measurable ||
+                            !overlaps(
+                                {
+                                    left: x,
+                                    top: y,
+                                    right: x + width,
+                                    bottom: y + height,
+                                },
+                                targetRect
+                            )),
                 });
+            }).catch((error: unknown) => {
+                if (cancelled) return;
+                // A positioning failure must never break the room: keep the
+                // compact bar and report nothing else.
+                console.error("demo tutorial positioning failed", error);
             });
         };
 
-        const cleanup = autoUpdate(target, floating, update, {
-            ancestorScroll: true,
-            ancestorResize: true,
-            elementResize: true,
-            layoutShift: true,
-        });
+        let cleanup: () => void;
+        try {
+            cleanup = autoUpdate(target, floating, update, {
+                ancestorScroll: true,
+                ancestorResize: true,
+                elementResize: true,
+                layoutShift: true,
+            });
+        } catch {
+            // Test renderers and older browsers may not expose
+            // ResizeObserver/IntersectionObserver. Keep measuring on the
+            // window events the HUD actually needs.
+            update();
+            window.addEventListener("scroll", update, true);
+            window.addEventListener("resize", update);
+            cleanup = () => {
+                window.removeEventListener("scroll", update, true);
+                window.removeEventListener("resize", update);
+            };
+        }
 
         return () => {
             cancelled = true;

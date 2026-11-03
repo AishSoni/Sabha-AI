@@ -38,6 +38,7 @@ function beatById(journey: TutorialJourney, beatId: string) {
 /** The board is inspected before the recording exists; it never blocks. */
 function legacyBoardPrompt(journey: TutorialJourney): TutorialPrompt | null {
     if (journey.meetingCreated) return null;
+    if (!journey.boardOpen) return null;
     const entry = beatById(journey, "meet-the-board");
     if (!entry) return null;
     return {

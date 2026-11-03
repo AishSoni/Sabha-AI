@@ -44,6 +44,7 @@ export interface TutorialJourney {
     canClose: boolean;
     closingCompleted: boolean;
     roomVisited: boolean;
+    boardOpen: boolean;
     listOpen: boolean;
     archived: boolean;
     ended: boolean;
@@ -79,6 +80,7 @@ export function deriveJourney(input: JourneyInput): TutorialJourney {
         canClose: input.canClose,
         closingCompleted: input.closingCompleted,
         roomVisited: input.roomVisited || isRoomPath(input.pathname),
+        boardOpen: input.pathname === "/demo",
         listOpen: input.pathname === "/demo/meetings",
         archived: input.meetingStatus === "archived",
         ended: input.meetingStatus === "ended",

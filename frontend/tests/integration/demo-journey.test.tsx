@@ -6,7 +6,7 @@
  * continues to the prepared intake, the recorded creation moves to step three,
  * and an invalid room deep link never falls through to live reads.
  */
-import { act, fireEvent, render, screen, waitFor } from "@testing-library/react";
+import { act, fireEvent, render, screen, waitFor, within } from "@testing-library/react";
 import { usePathname } from "next/navigation";
 import type { MouseEvent, ReactNode } from "react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
@@ -105,15 +105,18 @@ vi.mock("next/link", async () => {
             href,
             children,
             onClick,
+            ref,
         }: {
             href: string;
             children?: ReactNode;
             onClick?: (event: MouseEvent<HTMLAnchorElement>) => void;
+            ref?: React.Ref<HTMLAnchorElement>;
         }) {
             return React.createElement(
                 "a",
                 {
                     href,
+                    ref,
                     onClick: (event: MouseEvent<HTMLAnchorElement>) => {
                         onClick?.(event);
                         if (!event.defaultPrevented) {
@@ -199,6 +202,16 @@ function installDemoRouter() {
 
 beforeEach(() => {
     demoLocation.reset();
+    // The recording routes render a fixed-position HUD; happy-dom reports no
+    // layout viewport unless it is stubbed.
+    Object.defineProperty(document.documentElement, "clientWidth", {
+        configurable: true,
+        value: 1024,
+    });
+    Object.defineProperty(document.documentElement, "clientHeight", {
+        configurable: true,
+        value: 768,
+    });
 });
 
 afterEach(() => {
@@ -220,26 +233,34 @@ describe("canonical guided demo journey", () => {
                 name: "HDFC Ltd 7.87% 2022 debenture",
             })
         ).toBeInTheDocument();
-        expect(screen.getByText("Step 1 of 8")).toBeInTheDocument();
-        expect(screen.getByText("Meet the board")).toBeInTheDocument();
-        expect(screen.getByRole("button", { name: /Back/ })).toBeDisabled();
-        expect(screen.getByRole("button", { name: /Continue/ })).toBeEnabled();
+        expect(
+            within(await screen.findByTestId("tutorial-hud")).getByText(
+                "Meet the board"
+            )
+        ).toBeInTheDocument();
+        expect(
+            screen.queryByRole("button", { name: /Continue/ })
+        ).not.toBeInTheDocument();
 
         fireEvent.click(screen.getByRole("link", { name: "Start the meeting" }));
         await waitFor(() =>
-            expect(screen.getByText("Step 2 of 8")).toBeInTheDocument()
+            expect(demoLocation.getPathname()).toBe("/demo/new")
         );
         expect(
-            screen.getByRole("heading", { name: "Start the meeting" })
+            within(await screen.findByTestId("tutorial-hud")).getByText(
+                "Create the recorded meeting"
+            )
         ).toBeInTheDocument();
-        expect(screen.getByRole("button", { name: /Continue/ })).toBeDisabled();
 
         fireEvent.click(
             screen.getByRole("button", { name: "Create recorded meeting" })
         );
         expect(await screen.findByText("Recorded intake ready")).toBeInTheDocument();
-        expect(screen.getByText("Step 3 of 8")).toBeInTheDocument();
-        expect(screen.getByText("Establish the facts")).toBeInTheDocument();
+        expect(
+            within(await screen.findByTestId("tutorial-hud")).getByText(
+                "Open the meeting room"
+            )
+        ).toBeInTheDocument();
         expect(
             screen.getByRole("link", { name: "Open the meeting room" })
         ).toHaveAttribute(
@@ -251,10 +272,11 @@ describe("canonical guided demo journey", () => {
         expect(
             await screen.findByText(`Room route ${DEMO_MEETING_ID}`)
         ).toBeInTheDocument();
-        expect(screen.getByText("Step 3 of 8")).toBeInTheDocument();
         expect(
-            screen.getByRole("button", { name: "Continue" })
-        ).toBeDisabled();
+            within(await screen.findByTestId("tutorial-hud")).getByText(
+                "Ask the Credit Analyst"
+            )
+        ).toBeInTheDocument();
 
         expect(calls.length).toBeGreaterThan(0);
         expect(calls.every((call) => call.method === "GET")).toBe(true);
@@ -271,7 +293,7 @@ describe("canonical guided demo journey", () => {
             </DemoLayout>
         );
 
-        await screen.findByText("Step 1 of 8");
+        await screen.findByTestId("tutorial-hud");
         act(() => {
             demoLocation.navigate(
                 "/demo/meetings/99999999-9999-4999-8999-999999999999"
@@ -296,10 +318,19 @@ describe("canonical guided demo journey", () => {
             </DemoLayout>
         );
 
-        await screen.findByText("Step 1 of 8");
-        fireEvent.click(screen.getByRole("button", { name: "Restart recording" }));
+        await screen.findByTestId("tutorial-hud");
+        await waitFor(() =>
+            expect(screen.getByTestId("tutorial-hud")).toHaveAttribute(
+                "data-state",
+                "shown"
+            )
+        );
+        fireEvent.click(screen.getByLabelText("Explore recording"));
+        fireEvent.click(
+            screen.getByRole("button", { name: "Restart recording" })
+        );
 
-        await screen.findByText("Step 1 of 8");
+        await screen.findByTestId("tutorial-hud");
         expect(
             calls.filter((call) => call.url.endsWith("/replay/session"))
         ).toHaveLength(1);
@@ -308,7 +339,7 @@ describe("canonical guided demo journey", () => {
         ).toHaveLength(1);
     });
 
-    it("keeps the guided journey paused on the auth-free demo settings page", async () => {
+    it("keeps the tutorial objective while the demo settings page is open", async () => {
         const calls = installDemoRouter();
         render(
             <DemoLayout>
@@ -316,7 +347,7 @@ describe("canonical guided demo journey", () => {
             </DemoLayout>
         );
 
-        await screen.findByText("Step 1 of 8");
+        await screen.findByTestId("tutorial-hud");
         fireEvent.click(screen.getByRole("link", { name: "Demo settings" }));
 
         expect(
@@ -324,10 +355,12 @@ describe("canonical guided demo journey", () => {
                 name: "Settings in the public demo",
             })
         ).toBeInTheDocument();
+        // The board objective has no anchor on this screen, so the HUD
+        // collapses to the compact bar instead of guessing a position.
         expect(
-            screen.getByText(/outside the guided route/i)
+            await screen.findByTestId("tutorial-hud-compact")
         ).toBeInTheDocument();
-        expect(screen.getByText("Step 1 of 8")).toBeInTheDocument();
+        expect(screen.queryByTestId("tutorial-hud")).not.toBeInTheDocument();
         expect(
             screen.getByText(/Provider setup is operator-only/i)
         ).toBeInTheDocument();
@@ -339,7 +372,7 @@ describe("canonical guided demo journey", () => {
         ).toHaveLength(1);
     });
 
-    it("collapses and restores the guide without moving the journey", async () => {
+    it("collapses and restores the card without moving the journey", async () => {
         installDemoRouter();
         render(
             <DemoLayout>
@@ -347,18 +380,20 @@ describe("canonical guided demo journey", () => {
             </DemoLayout>
         );
 
-        await screen.findByText("Step 1 of 8");
-        fireEvent.click(screen.getByRole("button", { name: "Hide guide" }));
+        const card = await screen.findByTestId("tutorial-hud");
+        await waitFor(() => expect(card).toHaveAttribute("data-state", "shown"));
+        expect(within(card).getByText("Meet the board")).toBeInTheDocument();
+        fireEvent.click(within(card).getByRole("button", { name: "Hide" }));
 
+        expect(screen.queryByTestId("tutorial-hud")).not.toBeInTheDocument();
         expect(
-            screen.getByRole("button", { name: "Show guide" })
+            screen.getByRole("button", { name: "Show tips" })
         ).toBeInTheDocument();
-        expect(screen.getByText("Step 1 of 8")).toBeInTheDocument();
-        expect(screen.queryByText("Hide guide")).not.toBeInTheDocument();
 
-        fireEvent.click(screen.getByRole("button", { name: "Show guide" }));
+        fireEvent.click(screen.getByRole("button", { name: "Show tips" }));
         expect(
-            screen.getByRole("button", { name: "Hide guide" })
+            within(await screen.findByTestId("tutorial-hud")).getByText(
+                "Meet the board"
+            )
         ).toBeInTheDocument();
-        expect(screen.getByText("Step 1 of 8")).toBeInTheDocument();
     });

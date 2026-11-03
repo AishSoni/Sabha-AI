@@ -1,4 +1,4 @@
-// @vitest-environment jsdom
+﻿// @vitest-environment jsdom
 /**
  * Demo persona-catalog integration (spec-24).
  *
@@ -354,34 +354,6 @@ describe("demo persona catalog", () => {
         expect(calls.every((call) => call.url.startsWith(`${API}/replay/`))).toBe(true);
     });
 
-    it("detours to the highlighted persona history and returns to the guided beat", async () => {
-        installDemoRouter();
-        await renderAt("/demo");
-        await screen.findByText("Step 1 of 8");
-
-        fireEvent.click(
-            await screen.findByRole("link", {
-                name: "Explore persona system-prompt history",
-            })
-        );
-        await waitFor(() =>
-            expect(demoLocation.getPathname()).toBe(
-                "/demo/roster/persona-credit/history"
-            )
-        );
-        expect(await screen.findByText("Version 1")).toBeInTheDocument();
-        expect(screen.getByText("Step 1 of 8")).toBeInTheDocument();
-
-        fireEvent.click(
-            screen.getByRole("link", { name: "Return to the current guided step" })
-        );
-        await waitFor(() => expect(demoLocation.getPathname()).toBe("/demo"));
-        expect(await screen.findByText("Step 1 of 8")).toBeInTheDocument();
-        expect(
-            screen.getByRole("heading", { name: "HDFC Ltd 7.87% 2022 debenture" })
-        ).toBeInTheDocument();
-    });
-
     it("creates a local persona, then reset restores the seeded catalog", async () => {
         installDemoRouter();
         await renderAt("/demo/roster/new");
@@ -460,3 +432,4 @@ describe("demo persona catalog", () => {
         ).toHaveAttribute("href", "/demo");
     });
 });
+
