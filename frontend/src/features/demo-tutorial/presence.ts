@@ -50,6 +50,39 @@ export function useTutorialStreamingFlag(
     }, [key, active]);
 }
 
+/* ---------------------------------------------------------------------- facts */
+
+const facts = new Set<string>();
+const factListeners = new Set<() => void>();
+
+/** Records a real read outcome (a tab opened, a revision viewed). */
+export function markTutorialFact(fact: string): void {
+    if (facts.has(fact)) return;
+    facts.add(fact);
+    for (const listener of factListeners) listener();
+}
+
+export function clearTutorialFacts(): void {
+    if (facts.size === 0) return;
+    facts.clear();
+    for (const listener of factListeners) listener();
+}
+
+function subscribeFacts(listener: () => void): () => void {
+    factListeners.add(listener);
+    return () => {
+        factListeners.delete(listener);
+    };
+}
+
+export function useTutorialFact(fact: string): boolean {
+    return useSyncExternalStore(
+        subscribeFacts,
+        () => facts.has(fact),
+        () => false
+    );
+}
+
 /* --------------------------------------------------------------------- modals */
 
 const MODAL_SELECTOR =

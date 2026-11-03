@@ -36,6 +36,11 @@ export interface PersonaEditorScreenProps {
     revisionNotes?: Record<string, string>;
     revisionBadges?: Record<string, string>;
     historyNote?: string;
+    /** Optional demo-tutorial hooks; the live screens leave these unset. */
+    onTabChange?: (tab: string) => void;
+    onViewRevision?: () => void;
+    promptTabAnchor?: (node: HTMLButtonElement | null) => void;
+    viewRevisionAnchor?: (node: HTMLButtonElement | null) => void;
 }
 
 export function PersonaEditorScreen({
@@ -48,6 +53,10 @@ export function PersonaEditorScreen({
     revisionNotes,
     revisionBadges,
     historyNote,
+    onTabChange,
+    onViewRevision,
+    promptTabAnchor,
+    viewRevisionAnchor,
 }: PersonaEditorScreenProps) {
     const id = personaId;
 
@@ -398,13 +407,21 @@ export function PersonaEditorScreen({
                     </div>
                 )}
 
-                <Tabs defaultValue={initialTab} className="space-y-6">
+                <Tabs
+                    defaultValue={initialTab}
+                    onValueChange={onTabChange}
+                    className="space-y-6"
+                >
                     <TabsList className="bg-zinc-800/50">
                         <TabsTrigger value="overview" className="data-[state=active]:bg-zinc-700">
                             <Settings2 className="w-4 h-4 mr-2" />
                             Overview
                         </TabsTrigger>
-                        <TabsTrigger value="prompt" className="data-[state=active]:bg-zinc-700">
+                        <TabsTrigger
+                            ref={promptTabAnchor}
+                            value="prompt"
+                            className="data-[state=active]:bg-zinc-700"
+                        >
                             <History className="w-4 h-4 mr-2" />
                             System Prompt
                         </TabsTrigger>
@@ -576,7 +593,7 @@ export function PersonaEditorScreen({
                                     {promptVersions.length === 0 ? (
                                         <p className="text-sm text-zinc-500">No versions yet</p>
                                     ) : (
-                                        promptVersions.map((v) => (
+                                        promptVersions.map((v, index) => (
                                             <div
                                                 key={v.id}
                                                 className={`w-full p-3 rounded-lg transition-colors ${v.is_active
@@ -607,11 +624,15 @@ export function PersonaEditorScreen({
                                                 </span>
                                                 <div className="flex flex-wrap items-center gap-2 mt-2">
                                                     <Button
+                                                        ref={index === 0 ? viewRevisionAnchor : undefined}
                                                         variant="ghost"
                                                         size="sm"
                                                         className="h-7 px-2 text-zinc-300"
                                                         aria-label={`View version ${v.version}`}
-                                                        onClick={() => viewRevision(v.version)}
+                                                        onClick={() => {
+                                                            onViewRevision?.();
+                                                            viewRevision(v.version);
+                                                        }}
                                                     >
                                                         <Eye className="w-3.5 h-3.5 mr-1" />
                                                         View revision

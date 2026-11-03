@@ -11,6 +11,7 @@ import {
     createContext,
     useCallback,
     useContext,
+    useEffect,
     useMemo,
     useState,
     type ReactNode,
@@ -23,18 +24,29 @@ import { useReplayRun } from "@/features/meetings/runtime/replay-run";
 import { combineSignals } from "@/shared/runtime/scope";
 import { isRoomPath, deriveJourney, type TutorialJourney } from "./journey";
 import { refineOnRoute, selectPrompt } from "./objectives";
-import type { TutorialPrompt } from "./contract";
+import {
+    clearTutorialFacts,
+    markTutorialFact,
+    useModalOpen,
+    useTutorialFact,
+} from "./presence";
+import { isStackDetail, selectTourPrompt } from "./tours";
+import type { TutorialPrompt, TutorialTourId } from "./contract";
 
 export interface DemoTutorialValue {
     prompt: TutorialPrompt | null;
     journey: TutorialJourney;
     hidden: boolean;
+    activeTour: TutorialTourId | null;
     chapterId: string | null;
     canResume: boolean;
     resume(): Promise<void>;
     restart(): void;
     hide(): void;
     show(): void;
+    startTour(tour: TutorialTourId): void;
+    endTour(): void;
+    backToDemo(): void;
 }
 
 const DemoTutorialContext = createContext<DemoTutorialValue | null>(null);
@@ -55,6 +67,14 @@ export function DemoTutorialProvider({ children }: { children: ReactNode }) {
     const runtime = useMeetingsRuntime();
     const workspace = useDemoWorkspace();
     const [hidden, setHidden] = useState(false);
+    const [tourState, setTourState] = useState<{
+        id: TutorialTourId;
+        epoch: number;
+    } | null>(null);
+    const modalOpen = useModalOpen();
+    const personaPromptViewed = useTutorialFact("persona.prompt");
+    const personaRevisionViewed = useTutorialFact("persona.revision");
+    const knowledgePreviewed = useTutorialFact("knowledge.preview");
 
     const chapterId = searchParams.get("chapter");
     const tab = searchParams.get("tab");
@@ -95,13 +115,56 @@ export function DemoTutorialProvider({ children }: { children: ReactNode }) {
             (baseInput.playedTurnIds.size ?? 0) > 0 ||
             run.closingCompleted,
     });
-    const prompt = refineOnRoute(selectPrompt(journey), pathname);
+    const activeTour =
+        tourState && tourState.epoch === workspace.workspaceResetEpoch
+            ? tourState.id
+            : null;
+
+    const prompt = activeTour
+        ? selectTourPrompt(
+              activeTour,
+              {
+                  personaPromptViewed,
+                  personaRevisionViewed,
+                  knowledgePreviewed,
+              },
+              pathname
+          )
+        : refineOnRoute(selectPrompt(journey), pathname);
 
     const hide = useCallback(() => setHidden(true), []);
     const show = useCallback(() => setHidden(false), []);
+    const startTour = useCallback(
+        (tour: TutorialTourId) => {
+            setTourState({ id: tour, epoch: workspace.workspaceResetEpoch });
+            setHidden(false);
+        },
+        [workspace.workspaceResetEpoch]
+    );
+    const endTour = useCallback(() => setTourState(null), []);
+    const backToDemo = useCallback(() => {
+        setTourState(null);
+        router.push("/demo");
+    }, [router]);
+
+    /**
+     * A document preview opened on a stack screen is the real outcome for
+     * the knowledge tour. It is never inferred from a route render.
+     */
+    useEffect(() => {
+        if (modalOpen && isStackDetail(pathname)) {
+            markTutorialFact("knowledge.preview");
+        }
+    }, [modalOpen, pathname]);
+
+    useEffect(() => {
+        clearTutorialFacts();
+    }, [workspace.workspaceResetEpoch]);
 
     const restart = useCallback(() => {
         setHidden(false);
+        setTourState(null);
+        clearTutorialFacts();
         workspace.restartRecording();
         router.push("/demo");
     }, [router, workspace]);
@@ -119,14 +182,31 @@ export function DemoTutorialProvider({ children }: { children: ReactNode }) {
             prompt,
             journey,
             hidden,
+            activeTour,
             chapterId,
             canResume: chapterId !== null,
             resume,
             restart,
             hide,
             show,
+            startTour,
+            endTour,
+            backToDemo,
         }),
-        [prompt, journey, hidden, chapterId, resume, restart, hide, show]
+        [
+            prompt,
+            journey,
+            hidden,
+            activeTour,
+            chapterId,
+            resume,
+            restart,
+            hide,
+            show,
+            startTour,
+            endTour,
+            backToDemo,
+        ]
     );
 
     return (

@@ -1,6 +1,7 @@
 "use client";
 
 import { StackListView } from "../presentation/stack-list";
+import { useAnchorRef } from "@/features/demo-tutorial/anchors";
 import { DemoKnowledgeGate } from "./demo-knowledge-gate";
 import { useLocalStacks } from "./use-local-stacks";
 
@@ -14,6 +15,7 @@ export function DemoStackList() {
 
 function Content() {
     const stacks = useLocalStacks();
+    const firstStackRef = useAnchorRef("knowledge.stack");
 
     return (
         <main className="mx-auto max-w-5xl px-4 py-8">
@@ -40,6 +42,7 @@ function Content() {
                     );
                     if (confirmed) stacks.deleteStack(stackId);
                 }}
+                firstLinkRef={firstStackRef}
             />
         </main>
     );

@@ -30,6 +30,8 @@ export interface StackListViewProps {
     removeError?: string | null;
     hrefs: KnowledgeHrefs;
     onDelete: (stackId: string) => void;
+    /** Optional demo-tutorial anchor on the first stack link. */
+    firstLinkRef?: (node: HTMLAnchorElement | null) => void;
 }
 
 export function StackListView({
@@ -40,6 +42,7 @@ export function StackListView({
     removeError,
     hrefs,
     onDelete,
+    firstLinkRef,
 }: StackListViewProps) {
     return (
         <div className="space-y-4">
@@ -86,7 +89,7 @@ export function StackListView({
             )}
 
             <div className="grid gap-4 sm:grid-cols-2">
-                {stacks.map((stack) => (
+                {stacks.map((stack, index) => (
                     <Card key={stack.id} className="border-zinc-800 bg-zinc-900/50">
                         <CardHeader className="flex flex-row items-start justify-between gap-3">
                             <div className="min-w-0">
@@ -129,6 +132,7 @@ export function StackListView({
                                     </div>
                                 )}
                                 <Link
+                                    ref={index === 0 ? firstLinkRef : undefined}
                                     href={hrefs.stack(stack.id)}
                                     className="text-sm text-cyan-400 hover:text-cyan-300"
                                 >

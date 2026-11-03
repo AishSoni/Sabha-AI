@@ -14,6 +14,7 @@ import {
     useDemoWorkspace,
     type WorkspaceSample,
 } from "@/features/demo-workspace";
+import { useAnchorRef } from "@/features/demo-tutorial/anchors";
 import { DocumentPanelView } from "../presentation/document-panel";
 import { RecordedExamplesView, type RecordedExampleView } from "../presentation/recorded-examples";
 import { SamplePicker } from "../presentation/sample-picker";
@@ -55,6 +56,8 @@ function Content({
     renderRecordedPreviewAction,
 }: DemoStackDetailProps) {
     const workspace = useDemoWorkspace();
+    const accessRef = useAnchorRef("stack.access");
+    const documentRef = useAnchorRef("stack.document");
     const stacks = useLocalStacks();
     const [pickerOpen, setPickerOpen] = useState(false);
     const stack = stacks.getStack(stackId);
@@ -119,7 +122,8 @@ function Content({
                 </p>
             </div>
 
-            <DocumentPanelView
+            <div ref={documentRef}>
+                <DocumentPanelView
                 scopeLabel="stack"
                 title="Practice documents"
                 description="Prepared samples move through queued and indexing states before becoming eligible. Stack contents stay current for participants already bound to this stack."
@@ -154,9 +158,10 @@ function Content({
                     </Button>
                 }
                 emptyMessage="No practice documents yet. Add an approved sample to watch eligibility change."
-            />
+                />
+            </div>
 
-            <Card className="border-zinc-800 bg-zinc-900/50">
+            <Card ref={accessRef} className="border-zinc-800 bg-zinc-900/50">
                 <CardHeader>
                     <CardTitle className="text-white">
                         Who can retrieve this?

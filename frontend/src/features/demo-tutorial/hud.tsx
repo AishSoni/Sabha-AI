@@ -138,9 +138,43 @@ export function TutorialHud() {
                     </div>
                     {prompt.complete ? (
                         <p className="mt-2 text-xs text-zinc-400">
-                            The recorded meeting is archived. Practice edits stay
-                            in this browser.
+                            {prompt.id === "main-complete"
+                                ? "The recorded meeting is archived. Practice edits stay in this browser. Both tours are optional."
+                                : "Nothing was saved or activated. The recording is unchanged."}
                         </p>
+                    ) : null}
+                    {prompt.id === "tour-prompt-4" ||
+                    prompt.id === "tour-knowledge-4" ? (
+                        <div className="mt-2 flex flex-wrap gap-1.5">
+                            <TourAction onClick={tutorial.endTour}>
+                                Finish tour
+                            </TourAction>
+                            <TourAction onClick={tutorial.backToDemo}>
+                                Back to demo
+                            </TourAction>
+                        </div>
+                    ) : prompt.id === "main-complete" ? (
+                        <div className="mt-2 flex flex-wrap gap-1.5">
+                            <TourAction
+                                onClick={() => tutorial.startTour("prompt")}
+                            >
+                                Explore prompt versions
+                            </TourAction>
+                            <TourAction
+                                onClick={() => tutorial.startTour("knowledge")}
+                            >
+                                Explore knowledge stacks
+                            </TourAction>
+                            <TourAction onClick={tutorial.hide}>
+                                Finish
+                            </TourAction>
+                        </div>
+                    ) : tutorial.activeTour ? (
+                        <div className="mt-2 flex justify-end">
+                            <TourAction onClick={tutorial.endTour}>
+                                End tour
+                            </TourAction>
+                        </div>
                     ) : null}
                 </div>
             ) : null}
@@ -157,6 +191,24 @@ export function TutorialHud() {
             ) : null}
         </>,
         document.body
+    );
+}
+
+function TourAction({
+    onClick,
+    children,
+}: {
+    onClick: () => void;
+    children: React.ReactNode;
+}) {
+    return (
+        <button
+            type="button"
+            onClick={onClick}
+            className="rounded-full border border-indigo-500/40 px-2.5 py-0.5 text-xs font-medium text-indigo-200 hover:bg-indigo-900/40 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-indigo-400"
+        >
+            {children}
+        </button>
     );
 }
 

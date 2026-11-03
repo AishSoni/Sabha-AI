@@ -1,6 +1,8 @@
 'use client';
 
 import Link from 'next/link';
+import { useAnchorRef } from '@/features/demo-tutorial/anchors';
+import { markTutorialFact } from '@/features/demo-tutorial/presence';
 import { useCallback } from 'react';
 import { useDemoWorkspace } from '@/features/demo-workspace';
 import { PersonaEditorScreen } from '../presentation/persona-editor-screen';
@@ -43,6 +45,8 @@ function Content({
     boardStacks?: Record<string, BoardStackView>;
 }) {
     const { seed } = useDemoWorkspace();
+    const promptTabRef = useAnchorRef('persona.prompt');
+    const revisionRef = useAnchorRef('persona.history');
     const {
         client,
         personas,
@@ -90,6 +94,12 @@ function Content({
                 revisionNotes={revisionNotes}
                 revisionBadges={revisionBadges}
                 historyNote="Seeded dates are authored practice history, not model runs. Revisions captured in this tab are temporary."
+                onTabChange={(tab) => {
+                    if (tab === 'prompt') markTutorialFact('persona.prompt');
+                }}
+                onViewRevision={() => markTutorialFact('persona.revision')}
+                promptTabAnchor={promptTabRef}
+                viewRevisionAnchor={revisionRef}
             />
             {template ? (
                 <DemoSnapshotPanel
