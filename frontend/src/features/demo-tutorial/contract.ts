@@ -101,6 +101,21 @@ export const LEGACY_BEAT_COPY: Record<string, string> = {
     "archive-the-meeting": "Archive the meeting",
 };
 
+/** Recorded intents that own a participant action region. */
+export const INTENT_ANCHORS: Record<string, TutorialAnchorId> = {
+    "credit-analyst": "action.credit-analyst",
+    "downside-reviewer": "action.downside-reviewer",
+    "portfolio-analyst": "action.portfolio-analyst",
+    "concluding-discussion": "action.consensus",
+};
+
+export function anchorForIntent(
+    intentId: string | null | undefined
+): TutorialAnchorId | null {
+    if (!intentId) return null;
+    return INTENT_ANCHORS[intentId] ?? null;
+}
+
 /** Beats that the shared opening / closing stages own instead. */
 export const SHARED_BEAT_IDS: ReadonlySet<string> = new Set([
     "start-the-meeting",

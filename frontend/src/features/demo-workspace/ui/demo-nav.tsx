@@ -10,16 +10,59 @@
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useState } from "react";
+import { useAnchorRef } from "@/features/demo-tutorial/anchors";
+import type { TutorialAnchorId } from "@/features/demo-tutorial/contract";
 import { useDemoWorkspace } from "../provider";
 
-const DESTINATIONS = [
+interface Destination {
+    href: string;
+    label: string;
+    exact: boolean;
+    anchor?: TutorialAnchorId;
+}
+
+const DESTINATIONS: readonly Destination[] = [
     { href: "/demo", label: "Board", exact: true },
     { href: "/demo/new", label: "New meeting", exact: true },
-    { href: "/demo/roster", label: "Personas", exact: false },
-    { href: "/demo/knowledge-stacks", label: "Knowledge", exact: false },
+    {
+        href: "/demo/roster",
+        label: "Personas",
+        exact: false,
+        anchor: "nav.personas",
+    },
+    {
+        href: "/demo/knowledge-stacks",
+        label: "Knowledge",
+        exact: false,
+        anchor: "nav.knowledge",
+    },
     { href: "/demo/meetings", label: "Meetings", exact: false },
     { href: "/demo/settings", label: "Demo settings", exact: true },
-] as const;
+];
+
+function DestinationLink({
+    destination,
+    active,
+}: {
+    destination: Destination;
+    active: boolean;
+}) {
+    const ref = useAnchorRef(destination.anchor ?? null);
+    return (
+        <Link
+            ref={ref}
+            href={destination.href}
+            aria-current={active ? "page" : undefined}
+            className={`rounded-md px-3 py-1.5 transition-colors ${
+                active
+                    ? "bg-zinc-800 text-white"
+                    : "text-zinc-400 hover:bg-zinc-900 hover:text-zinc-100"
+            }`}
+        >
+            {destination.label}
+        </Link>
+    );
+}
 
 export function DemoNav() {
     const pathname = usePathname();
@@ -61,18 +104,11 @@ export function DemoNav() {
                             : pathname === destination.href ||
                               pathname.startsWith(`${destination.href}/`);
                         return (
-                            <Link
+                            <DestinationLink
                                 key={destination.href}
-                                href={destination.href}
-                                aria-current={active ? "page" : undefined}
-                                className={`rounded-md px-3 py-1.5 transition-colors ${
-                                    active
-                                        ? "bg-zinc-800 text-white"
-                                        : "text-zinc-400 hover:bg-zinc-900 hover:text-zinc-100"
-                                }`}
-                            >
-                                {destination.label}
-                            </Link>
+                                destination={destination}
+                                active={active}
+                            />
                         );
                     })}
                 </nav>

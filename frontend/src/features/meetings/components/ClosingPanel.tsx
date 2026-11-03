@@ -25,6 +25,7 @@ import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
 import { isApiError } from '@/shared/api/errors';
+import { useAnchorRef } from '@/features/demo-tutorial/anchors';
 import {
     isActionAllowedByGuide,
     useGuideActions,
@@ -234,6 +235,8 @@ export function ClosingPanel({
     onReplayClosing,
 }: ClosingPanelProps) {
     const runtime = useMeetingsRuntime();
+    const voteRef = useAnchorRef('room.vote');
+    const voteConfirmRef = useAnchorRef('room.vote-confirm');
     const guide = useGuideActions();
     const [confirmMode, setConfirmMode] = useState<ClosingMode | null>(null);
     const [actionError, setActionError] = useState<string | null>(null);
@@ -679,6 +682,7 @@ export function ClosingPanel({
                         </div>
                         <div className={runtime.replay ? 'grid gap-3' : 'grid grid-cols-2 gap-3'}>
                             <Button
+                                ref={voteRef}
                                 id="closing-start-vote"
                                 variant="outline"
                                 onClick={() => setConfirmMode('vote')}
@@ -727,6 +731,7 @@ export function ClosingPanel({
                         </div>
                         <div className="flex gap-2">
                             <Button
+                                ref={voteConfirmRef}
                                 id="closing-confirm"
                                 onClick={() => startClose(confirmMode)}
                                 disabled={busy}

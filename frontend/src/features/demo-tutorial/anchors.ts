@@ -92,10 +92,10 @@ export function useAnchorCandidates(
 }
 
 /** Callback ref for a real control, with React-19 ref cleanup. */
-export function useAnchorRef(id: TutorialAnchorId) {
+export function useAnchorRef(id: TutorialAnchorId | null) {
     return useCallback(
         (node: HTMLElement | null) => {
-            if (!node) return;
+            if (!node || !id) return;
             return registerAnchor(id, node);
         },
         [id]

@@ -11,6 +11,7 @@ import { useState } from "react";
 import { Send } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
+import { useAnchorRef } from "@/features/demo-tutorial/anchors";
 import {
     isActionAllowedByGuide,
     useGuideActions,
@@ -20,6 +21,7 @@ import { useMeetingsRuntime } from "./context";
 export function RecordedDirectorAction() {
     const runtime = useMeetingsRuntime();
     const guide = useGuideActions();
+    const followUpRef = useAnchorRef("room.followup");
     const replay = runtime.replay;
     const [busy, setBusy] = useState(false);
 
@@ -36,7 +38,10 @@ export function RecordedDirectorAction() {
     if (prepared?.kind === "follow_up") {
         if (replay.playedTurnIds?.has(prepared.turn_id)) return null;
         return (
-            <Card className="mb-4 border-zinc-800 bg-zinc-900/60 p-4">
+            <Card
+                ref={followUpRef}
+                className="mb-4 border-zinc-800 bg-zinc-900/60 p-4"
+            >
                 <p className="text-xs font-medium uppercase tracking-wide text-zinc-500">
                     Your turn
                 </p>

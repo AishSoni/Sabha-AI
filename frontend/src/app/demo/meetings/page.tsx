@@ -11,6 +11,7 @@ import { useLocalPracticeMeetings } from "@/features/knowledge/local";
 import { useRuntimeMeetingList } from "@/features/meetings/runtime/hooks";
 import { useActiveReplayIntentId } from "@/features/meetings/runtime/active-intent";
 import { useReplayRun } from "@/features/meetings/runtime/replay-run";
+import { useAnchorRef } from "@/features/demo-tutorial/anchors";
 
 type ListTab = "active" | "archived";
 
@@ -19,6 +20,7 @@ export default function DemoMeetingListPage() {
     const workspace = useDemoWorkspace();
     const practice = useLocalPracticeMeetings();
     const activeIntentId = useActiveReplayIntentId();
+    const archiveRef = useAnchorRef("meetings.archive");
     const meetings = useRuntimeMeetingList();
     const [tab, setTab] = useState<ListTab>("active");
     const [busy, setBusy] = useState(false);
@@ -286,6 +288,7 @@ export default function DemoMeetingListPage() {
                                     </Link>
                                     {isEnded && !isArchived ? (
                                         <Button
+                                            ref={archiveRef}
                                             size="sm"
                                             data-testid="archive-meeting"
                                             className="bg-indigo-600 hover:bg-indigo-700"

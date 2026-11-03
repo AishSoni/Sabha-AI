@@ -8,6 +8,7 @@ import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { useDemoWorkspace } from "@/features/demo-workspace";
 import { useReplayRun } from "@/features/meetings/runtime/replay-run";
+import { useAnchorRef } from "@/features/demo-tutorial/anchors";
 import { PracticeSetupRoute } from "./practice-setup-route";
 
 interface Preset {
@@ -50,6 +51,8 @@ interface SafeConfig {
 
 export default function DemoNewMeetingPage() {
     const run = useReplayRun();
+    const createRef = useAnchorRef("demo.create");
+    const openRoomRef = useAnchorRef("demo.open-room");
     const workspace = useDemoWorkspace();
     const [busy, setBusy] = useState(false);
     const [editing, setEditing] = useState(false);
@@ -217,6 +220,7 @@ export default function DemoNewMeetingPage() {
                         </ol>
                         <p className="mt-3 text-xs text-zinc-400">{intake?.note}</p>
                         <Link
+                            ref={openRoomRef}
                             href={`/demo/meetings/${run.session.meeting_id}?tab=chat`}
                             className="mt-4 inline-flex items-center gap-2 rounded-lg bg-indigo-600 px-4 py-2 text-sm font-medium text-white hover:bg-indigo-700"
                         >
@@ -226,6 +230,7 @@ export default function DemoNewMeetingPage() {
                     </Card>
                 ) : (
                     <Button
+                        ref={createRef}
                         onClick={() => void create()}
                         disabled={busy}
                         className="bg-indigo-600 hover:bg-indigo-700"

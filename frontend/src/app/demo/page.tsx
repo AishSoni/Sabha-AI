@@ -5,6 +5,7 @@ import { ArrowRight, BookOpen, Lock, ShieldCheck, Users } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Card } from "@/components/ui/card";
 import { useDemoWorkspace } from "@/features/demo-workspace";
+import { useAnchorRef } from "@/features/demo-tutorial/anchors";
 import { useGuideActions } from "@/features/meetings/guide/guide-actions";
 import { useReplayRun } from "@/features/meetings/runtime/replay-run";
 
@@ -37,6 +38,8 @@ export default function DemoBoardPage() {
     const run = useReplayRun();
     const workspace = useDemoWorkspace();
     const guide = useGuideActions();
+    const startRef = useAnchorRef("demo.start");
+    const boardRef = useAnchorRef("board.roster");
     const config = run.safeConfig as { board?: BoardPreview } | null;
     const board = config?.board;
     const catalogByParticipant = new Map<string, string>();
@@ -83,6 +86,7 @@ export default function DemoBoardPage() {
                     </p>
                 </div>
                 <Link
+                    ref={startRef}
                     href="/demo/new"
                     onClick={(event) => {
                         if (guide?.currentHref !== "/demo") return;
@@ -96,7 +100,7 @@ export default function DemoBoardPage() {
                 </Link>
             </div>
 
-            <section aria-labelledby="board-heading">
+            <section ref={boardRef} aria-labelledby="board-heading">
                 <div className="mb-3 flex items-center gap-2">
                     <Users className="h-4 w-4 text-indigo-400" />
                     <h2 id="board-heading" className="text-sm font-semibold uppercase tracking-wide text-zinc-400">

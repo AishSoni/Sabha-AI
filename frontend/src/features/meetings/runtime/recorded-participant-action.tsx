@@ -9,15 +9,28 @@
  * guide cannot advance on different paths. Exploration branches remain
  * available because their transitions are non-canonical.
  */
-import { useState } from "react";
+import { useState, type ComponentProps } from "react";
 import { Play } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { useAnchorRef } from "@/features/demo-tutorial/anchors";
+import {
+    anchorForIntent,
+    type TutorialAnchorId,
+} from "@/features/demo-tutorial/contract";
 import {
     isActionAllowedByGuide,
     useGuideActions,
 } from "../guide/guide-actions";
 import { useMeetingsRuntime } from "./context";
 import type { ParticipantActionProps } from "./contract";
+
+function TurnButton({
+    anchor,
+    ...props
+}: { anchor: TutorialAnchorId | null } & ComponentProps<typeof Button>) {
+    const ref = useAnchorRef(anchor);
+    return <Button ref={ref} {...props} />;
+}
 
 export function RecordedParticipantAction({
     participant,
@@ -49,8 +62,9 @@ export function RecordedParticipantAction({
                 {preparedTurns.map((turn) => {
                     const busy = busyIntent === turn.turn_id;
                     return (
-                        <Button
+                        <TurnButton
                             key={turn.turn_id}
+                            anchor={anchorForIntent(turn.intent_id)}
                             variant="outline"
                             size="sm"
                             disabled={
@@ -71,7 +85,7 @@ export function RecordedParticipantAction({
                         >
                             <Play className="w-4 h-4 mr-1" />
                             {busy ? "Preparing…" : turn.label}
-                        </Button>
+                        </TurnButton>
                     );
                 })}
             </div>
@@ -96,8 +110,9 @@ export function RecordedParticipantAction({
             {actions.map((action) => {
                 const busy = busyIntent === action.intent.intent_id;
                 return (
-                    <Button
+                    <TurnButton
                         key={action.transition.transition_id}
+                        anchor={anchorForIntent(action.intent.intent_id)}
                         variant="outline"
                         size="sm"
                         disabled={busy || isActive || isQueued}
@@ -120,7 +135,7 @@ export function RecordedParticipantAction({
                             : action.transition.label ||
                               action.intent.label ||
                               participant.name}
-                    </Button>
+                    </TurnButton>
                 );
             })}
         </div>

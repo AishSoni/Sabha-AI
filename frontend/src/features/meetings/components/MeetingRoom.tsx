@@ -93,6 +93,8 @@ import {
     useGuideActions,
     type GuideReview,
 } from '../guide/guide-actions';
+import { useAnchorRef } from '@/features/demo-tutorial/anchors';
+import type { TutorialAnchorId } from '@/features/demo-tutorial/contract';
 
 export interface MeetingRoomProps {
     meetingId: string;
@@ -329,6 +331,8 @@ function MeetingConversation({
         onTabChange?.(next);
     };
     const guide = useGuideActions();
+    const closeAnchorRef = useAnchorRef('room.close');
+    const returnRef = useAnchorRef('room.return');
     const review = guide?.review?.tab === tab ? guide.review : null;
     const completeGuideReview = () => {
         if (!review) return;
@@ -369,6 +373,7 @@ function MeetingConversation({
                                 label="Disagreements"
                                 count={disagreements.length}
                                 tone="red"
+                                anchor="room.tab.disagreements"
                             />
                         )}
                         {capabilities.consensus && (
@@ -378,6 +383,7 @@ function MeetingConversation({
                                 label="Consensus"
                                 count={consensus.length}
                                 tone="green"
+                                anchor="room.tab.consensus"
                             />
                         )}
                         <RoomTab value="roster" icon={<Users className="w-4 h-4" />} label="Roster" />
@@ -515,17 +521,18 @@ function MeetingConversation({
                                         replayClosing ? replayClosingTurn : undefined
                                     }
                                 />
-                                {runtime.replay &&
-                                    ended &&
-                                    guide?.currentHref === '/demo/meetings' && (
-                                        <div className="mt-4 flex justify-center">
-                                            <Button asChild variant="outline">
-                                                <Link href="/demo/meetings">
-                                                    Go to meetings
-                                                </Link>
-                                            </Button>
-                                        </div>
-                                    )}
+                                {runtime.replay && ended && (
+                                    <div className="mt-4 flex justify-center">
+                                        <Button asChild variant="outline">
+                                            <Link
+                                                ref={returnRef}
+                                                href="/demo/meetings"
+                                            >
+                                                Go to meetings
+                                            </Link>
+                                        </Button>
+                                    </div>
+                                )}
                             </div>
                         </div>
                     </TabsContent>
@@ -548,6 +555,7 @@ function MeetingConversation({
                                     </span>
                                 ) : null}
                                 <Button
+                                    ref={closeAnchorRef}
                                     id="closing-entry"
                                     type="button"
                                     variant="ghost"
@@ -629,6 +637,7 @@ function RoomTab({
     label,
     count,
     tone,
+    anchor,
 }: {
     id?: string;
     value: string;
@@ -636,9 +645,12 @@ function RoomTab({
     label: string;
     count?: number;
     tone?: 'red' | 'green';
+    anchor?: TutorialAnchorId;
 }) {
+    const ref = useAnchorRef(anchor ?? null);
     return (
         <TabsTrigger
+            ref={ref}
             id={id}
             value={value}
             className="data-[state=active]:bg-zinc-800 data-[state=active]:text-white text-zinc-400 px-3"
@@ -749,6 +761,7 @@ interface RoomControlsProps {
 
 function RoomControls({ meeting, turns }: RoomControlsProps) {
     const runtime = useMeetingsRuntime();
+    const speakerRef = useAnchorRef('room.speaker');
     const ParticipantAction = runtime.slots.participantAction;
     const DirectorAction = runtime.slots.directorAction;
 
@@ -765,7 +778,7 @@ function RoomControls({ meeting, turns }: RoomControlsProps) {
         <div className="p-4 border-t border-zinc-800 shrink-0 bg-zinc-950">
             <div className="max-w-3xl mx-auto">
                 <p className="text-xs text-zinc-400 mb-3">Who speaks next?</p>
-                <div className="flex flex-wrap gap-2 mb-4">
+                <div ref={speakerRef} className="flex flex-wrap gap-2 mb-4">
                     {runtime.replay ? (
                         runtime.replay.preparedTurns?.length ? null : (
                             <Tooltip>
