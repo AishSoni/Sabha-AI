@@ -1,0 +1,132 @@
+{
+  "tape_id": "tape-credit-liquidity",
+  "meeting_id": "a0000000-0000-4000-8000-000000000001",
+  "operation_id": "a0000000-0000-4000-8000-000000000313",
+  "participant_id": "a0000000-0000-4000-8000-000000000101",
+  "request_key": "turn-retrieval-credit-liquidity",
+  "initial_checkpoint": "checkpoint-followup-liquidity",
+  "completed_checkpoint": "checkpoint-credit-liquidity",
+  "events": [
+    {
+      "event_id": "tape-credit-liquidity-1",
+      "sequence": 1,
+      "type": "thinking",
+      "delay_ms": 60,
+      "payload": {
+        "content": "Answer the liquidity follow-up without inventing a price or buyer."
+      }
+    },
+    {
+      "event_id": "tape-credit-liquidity-2",
+      "sequence": 2,
+      "type": "tool_call",
+      "delay_ms": 100,
+      "payload": {
+        "invocation_id": "inv-retrieval-credit-liquidity",
+        "call_id": "call-retrieval-credit-liquidity",
+        "tool_name": "search_knowledge_base",
+        "arguments": {
+          "query": "retrieval credit liquidity"
+        }
+      }
+    },
+    {
+      "event_id": "tape-credit-liquidity-3",
+      "sequence": 3,
+      "type": "tool_result",
+      "delay_ms": 120,
+      "payload": {
+        "invocation_id": "inv-retrieval-credit-liquidity",
+        "call_id": "call-retrieval-credit-liquidity",
+        "result": {
+          "retrieval_key": "retrieval-credit-liquidity",
+          "hits": 3
+        },
+        "is_error": false
+      }
+    },
+    {
+      "event_id": "tape-credit-liquidity-4",
+      "sequence": 4,
+      "type": "citation",
+      "delay_ms": 60,
+      "payload": {
+        "source": "HDFC Ltd FY20 MD&A",
+        "title": "HDFC Ltd Annual Report 2019-20, MD&A",
+        "url": "https://homeloans.hdfc.bank.in/digital-annual-report-2019-2020/mda",
+        "snippet": "The FY20 MD&A states the NCDs are listed on the NSE/BSE wholesale debt market.",
+        "claim_id": "C6",
+        "locator": "S4 MD&A, borrowings"
+      }
+    },
+    {
+      "event_id": "tape-credit-liquidity-5",
+      "sequence": 5,
+      "type": "citation",
+      "delay_ms": 60,
+      "payload": {
+        "source": "Committee judgment",
+        "title": "Downside worksheet, Liquidity test",
+        "url": null,
+        "snippet": "Listing is not the same as executable secondary liquidity; the record contains no price, yield, or liquidity data.",
+        "claim_id": "C7",
+        "locator": "Downside worksheet, Liquidity test"
+      }
+    },
+    {
+      "event_id": "tape-credit-liquidity-6",
+      "sequence": 6,
+      "type": "citation",
+      "delay_ms": 60,
+      "payload": {
+        "source": "Record evidence",
+        "title": "Shared fact sheet, What is not established",
+        "url": null,
+        "snippet": "The meeting record contains no executable price, yield, or secondary-market liquidity data for the series.",
+        "claim_id": "C10",
+        "locator": "Shared fact sheet, What is not established"
+      }
+    },
+    {
+      "event_id": "tape-credit-liquidity-7",
+      "sequence": 7,
+      "type": "citation",
+      "delay_ms": 60,
+      "payload": {
+        "source": "Prepared for this replay",
+        "title": "Prepared follow-up, liquidity",
+        "url": null,
+        "snippet": "The liquidity follow-up asks whether the listed debenture can be sold before maturity without assuming a price or a buyer.",
+        "claim_id": "C16",
+        "locator": "Prepared follow-up, liquidity"
+      }
+    },
+    {
+      "event_id": "tape-credit-liquidity-8",
+      "sequence": 8,
+      "type": "text",
+      "delay_ms": 60,
+      "payload": {
+        "content": "Listing on the wholesale debt market is not executable liquidity. Without a price, a yield, or a demonstrated buyer, a sale before maturity cannot be "
+      }
+    },
+    {
+      "event_id": "tape-credit-liquidity-9",
+      "sequence": 9,
+      "type": "text",
+      "delay_ms": 60,
+      "payload": {
+        "content": "assumed. The record supports a liquidity question, not a liquidity conclusion."
+      }
+    },
+    {
+      "event_id": "tape-credit-liquidity-10",
+      "sequence": 10,
+      "type": "done",
+      "delay_ms": 80,
+      "payload": {
+        "message_id": "a0000000-0000-4000-8000-000000000415"
+      }
+    }
+  ]
+}

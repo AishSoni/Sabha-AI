@@ -506,6 +506,16 @@ CONSENSUS_THINKING = (
     "avoid turning alignment into an investment approval. Log consensus at strength 4."
 )
 
+# Version 9 plays the prepared turns in visitor order, so the alignment reasoning
+# cannot refer to who spoke first or what a prior speaker established.
+CONSENSUS_THINKING_V9 = (
+    "Reconcile the positions into shared ground. The record supplies facts, judgments, "
+    "and unknowns; it does not supply an executable price, yield, or secondary-market "
+    "liquidity. Confirm the checklist matches the record, keep the downside scenarios "
+    "labeled illustrative, and avoid turning alignment into an investment approval. "
+    "Log consensus at strength 4."
+)
+
 SUMMARY_TEXT = (
     "The committee voted to conclude. Outcome: a research checklist, not a buy/sell "
     "recommendation or investment approval. Facts: the 2020 terms and CRISIL "
@@ -3012,6 +3022,7 @@ def prepared_deck_content(
     root: Path,
     checkpoints: dict[str, dict[str, Any]],
     intents: list[dict[str, Any]],
+    consensus_message: dict[str, Any] | None = None,
 ) -> dict[str, Any]:
     """Author the schema-3 closed deck, isolated results, and turn tapes."""
 
@@ -3090,7 +3101,7 @@ def prepared_deck_content(
         CREDIT_MSG: CREDIT_MESSAGE,
         DOWNSIDE_MSG: DOWNSIDE_MESSAGE,
         PORTFOLIO_MSG: PORTFOLIO_MESSAGE,
-        CONSENSUS_MSG: CONSENSUS_MESSAGE,
+        CONSENSUS_MSG: consensus_message or CONSENSUS_MESSAGE,
     }
     turns: list[dict[str, Any]] = []
     for slug, participant_id, operation_id, request_key, message_id, label, effect in definitions:
@@ -3191,7 +3202,9 @@ def build(
     *,
     schema_version: int = 2,
     version: str = "7",
+    consensus_thinking: str = CONSENSUS_THINKING,
 ) -> dict[str, Any]:
+    consensus_message = {**CONSENSUS_MESSAGE, "thinking_content": consensus_thinking}
     root = root or ROOT
     if root.exists():
         for path in sorted(root.rglob("*"), reverse=True):
@@ -3441,7 +3454,7 @@ def build(
                 DOWNSIDE_MESSAGE,
                 FOLLOWUP,
                 PORTFOLIO_MESSAGE,
-                CONSENSUS_MESSAGE,
+                consensus_message,
             ],
             operations=operations_consensus,
             include_meeting=True,
@@ -3613,7 +3626,7 @@ def build(
         "turn-consensus",
         "checkpoint-portfolio",
         "checkpoint-consensus",
-        CONSENSUS_MESSAGE,
+        consensus_message,
     )
     for tape in (credit_tape, downside_tape, portfolio_tape, consensus_tape):
         write_json(root / "tapes" / f"{tape['tape_id']}.json", tape)
@@ -3961,7 +3974,7 @@ def build(
     ]
 
     deck = (
-        prepared_deck_content(root, checkpoints, intents)
+        prepared_deck_content(root, checkpoints, intents, consensus_message)
         if schema_version >= 3
         else None
     )

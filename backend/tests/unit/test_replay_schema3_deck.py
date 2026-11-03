@@ -15,7 +15,7 @@ from app.replay.source import prepared_operation_ids
 
 BACKEND = Path(__file__).resolve().parents[2]
 GUIDED_ROOT = BACKEND / "replay_packages" / "hdfc-ine001a07rw5"
-SCHEMA3_ROOT = BACKEND / "replay_packages" / "hdfc-ine001a07rw5-v8"
+SCHEMA3_ROOT = BACKEND / "replay_packages" / "hdfc-ine001a07rw5-v9"
 
 
 def _copy(tmp_path: Path) -> Path:
@@ -50,7 +50,7 @@ def _codes(root: Path) -> set[str]:
 def test_schema_three_deck_is_valid_and_closed() -> None:
     package = load_package(SCHEMA3_ROOT)
     assert package.manifest.schema_version == 3
-    assert package.manifest.version == "8"
+    assert package.manifest.version == "9"
     assert len(package.manifest.prepared_turns) == 5
     replies = [
         turn for turn in package.manifest.prepared_turns if turn.kind == "reply"

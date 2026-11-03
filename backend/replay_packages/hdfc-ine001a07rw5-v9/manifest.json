@@ -1,0 +1,1569 @@
+{
+  "package_id": "hdfc-ine001a07rw5",
+  "version": "9",
+  "schema_version": 3,
+  "read_version": 1,
+  "event_version": 1,
+  "title": "HDFC Ltd 7.87% 2022 debenture - prepared demo",
+  "as_of": "2020-07-31",
+  "content_sha256": "df6cf3757a328050a1491b592008358bdcd177f3561296e0671e85fb81defb47",
+  "meeting_id": "a0000000-0000-4000-8000-000000000001",
+  "initial_checkpoint": "checkpoint-initial",
+  "checkpoints": [
+    "checkpoint-initial",
+    "checkpoint-created",
+    "checkpoint-credit",
+    "checkpoint-downside",
+    "checkpoint-followup",
+    "checkpoint-portfolio",
+    "checkpoint-consensus",
+    "checkpoint-closed",
+    "checkpoint-archived",
+    "checkpoint-downside-first",
+    "checkpoint-followup-first",
+    "checkpoint-portfolio-first-2",
+    "checkpoint-closed-first",
+    "checkpoint-archived-first",
+    "checkpoint-portfolio-first",
+    "checkpoint-closed-portfolio-first",
+    "checkpoint-archived-portfolio-first",
+    "checkpoint-followup-liquidity",
+    "checkpoint-credit-liquidity",
+    "checkpoint-closed-liquidity",
+    "checkpoint-archived-liquidity",
+    "checkpoint-followup-covenant",
+    "checkpoint-downside-covenant",
+    "checkpoint-closed-covenant",
+    "checkpoint-archived-covenant",
+    "checkpoint-red-team",
+    "checkpoint-closed-red-team",
+    "checkpoint-archived-red-team",
+    "checkpoint-prepared-base",
+    "checkpoint-prepared-credit",
+    "checkpoint-prepared-downside",
+    "checkpoint-prepared-portfolio",
+    "checkpoint-prepared-consensus"
+  ],
+  "tapes": [
+    "tape-credit",
+    "tape-downside",
+    "tape-portfolio",
+    "tape-consensus",
+    "tape-downside-first",
+    "tape-portfolio-after-first",
+    "tape-portfolio-first",
+    "tape-credit-liquidity",
+    "tape-downside-covenant",
+    "tape-red-team",
+    "tape-prepared-credit",
+    "tape-prepared-downside",
+    "tape-prepared-portfolio",
+    "tape-prepared-consensus"
+  ],
+  "closing_tapes": [
+    "tape-closing",
+    "tape-closing-first",
+    "tape-closing-portfolio-first",
+    "tape-closing-liquidity",
+    "tape-closing-covenant",
+    "tape-closing-red-team"
+  ],
+  "retrieval": [
+    "retrieval-credit",
+    "retrieval-downside",
+    "retrieval-portfolio",
+    "retrieval-consensus",
+    "retrieval-downside-first",
+    "retrieval-portfolio-after-first",
+    "retrieval-portfolio-first",
+    "retrieval-credit-liquidity",
+    "retrieval-downside-covenant",
+    "retrieval-red-team"
+  ],
+  "provenance": {
+    "kind": "recorded",
+    "authored": true,
+    "synthetic": false,
+    "model_run": "none",
+    "source_capture_date": "2026-10-16",
+    "prepared_date": "2026-10-30",
+    "note": "Authored historical educational replay; no live model run or current-market lookup."
+  },
+  "label": "Prepared demo",
+  "disclosure": "Prepared demo \u00b7 recorded responses, not live AI generation.",
+  "stack_labels": {
+    "shared-meeting-documents": "Meeting documents (shared)",
+    "credit-private": "Credit evidence (private to The Credit Analyst)",
+    "downside-private": "Downside worksheet (private to The Downside Reviewer)",
+    "portfolio-private": "Portfolio mandate (private to The Portfolio Analyst)"
+  },
+  "intents": [
+    {
+      "intent_id": "create-meeting",
+      "kind": "create_meeting",
+      "checkpoint": "checkpoint-created",
+      "label": "Start the meeting"
+    },
+    {
+      "intent_id": "credit-analyst",
+      "kind": "start_participant",
+      "checkpoint": "checkpoint-created",
+      "participant_id": "a0000000-0000-4000-8000-000000000101",
+      "operation_id": "a0000000-0000-4000-8000-000000000301",
+      "tape_id": "tape-credit",
+      "label": "Ask the Credit Analyst"
+    },
+    {
+      "intent_id": "downside-reviewer",
+      "kind": "start_participant",
+      "checkpoint": "checkpoint-credit",
+      "participant_id": "a0000000-0000-4000-8000-000000000102",
+      "operation_id": "a0000000-0000-4000-8000-000000000302",
+      "tape_id": "tape-downside",
+      "label": "Ask the Downside Reviewer"
+    },
+    {
+      "intent_id": "director-follow-up",
+      "kind": "director_follow_up",
+      "checkpoint": "checkpoint-followup",
+      "participant_id": "a0000000-0000-4000-8000-000000000103",
+      "label": "Send the supported follow-up"
+    },
+    {
+      "intent_id": "portfolio-analyst",
+      "kind": "start_participant",
+      "checkpoint": "checkpoint-followup",
+      "participant_id": "a0000000-0000-4000-8000-000000000103",
+      "operation_id": "a0000000-0000-4000-8000-000000000303",
+      "tape_id": "tape-portfolio",
+      "label": "Ask the Portfolio Analyst"
+    },
+    {
+      "intent_id": "concluding-discussion",
+      "kind": "start_participant",
+      "checkpoint": "checkpoint-portfolio",
+      "participant_id": "a0000000-0000-4000-8000-000000000101",
+      "operation_id": "a0000000-0000-4000-8000-000000000304",
+      "tape_id": "tape-consensus",
+      "label": "Ask the committee to align"
+    },
+    {
+      "intent_id": "close-meeting",
+      "kind": "request_closing",
+      "checkpoint": "checkpoint-consensus",
+      "closing_tape_id": "tape-closing",
+      "label": "Close meeting"
+    },
+    {
+      "intent_id": "archive-meeting",
+      "kind": "archive_meeting",
+      "checkpoint": "checkpoint-archived",
+      "label": "Archive meeting"
+    },
+    {
+      "intent_id": "downside-first",
+      "kind": "start_participant",
+      "checkpoint": "checkpoint-created",
+      "participant_id": "a0000000-0000-4000-8000-000000000102",
+      "operation_id": "a0000000-0000-4000-8000-000000000310",
+      "tape_id": "tape-downside-first",
+      "label": "Test the downside first"
+    },
+    {
+      "intent_id": "portfolio-first",
+      "kind": "start_participant",
+      "checkpoint": "checkpoint-created",
+      "participant_id": "a0000000-0000-4000-8000-000000000103",
+      "operation_id": "a0000000-0000-4000-8000-000000000311",
+      "tape_id": "tape-portfolio-first",
+      "label": "Start from the mandate"
+    },
+    {
+      "intent_id": "close-portfolio-first",
+      "kind": "request_closing",
+      "checkpoint": "checkpoint-portfolio-first",
+      "closing_tape_id": "tape-closing-portfolio-first",
+      "label": "Close the mandate-first branch"
+    },
+    {
+      "intent_id": "archive-portfolio-first",
+      "kind": "archive_meeting",
+      "checkpoint": "checkpoint-archived-portfolio-first",
+      "label": "Archive the mandate-first branch"
+    },
+    {
+      "intent_id": "followup-downside-first",
+      "kind": "director_follow_up",
+      "checkpoint": "checkpoint-followup-first",
+      "participant_id": "a0000000-0000-4000-8000-000000000102",
+      "label": "Ask for the instrument record"
+    },
+    {
+      "intent_id": "portfolio-after-first",
+      "kind": "start_participant",
+      "checkpoint": "checkpoint-followup-first",
+      "participant_id": "a0000000-0000-4000-8000-000000000103",
+      "operation_id": "a0000000-0000-4000-8000-000000000312",
+      "tape_id": "tape-portfolio-after-first",
+      "label": "Apply the mandate"
+    },
+    {
+      "intent_id": "close-first",
+      "kind": "request_closing",
+      "checkpoint": "checkpoint-portfolio-first-2",
+      "closing_tape_id": "tape-closing-first",
+      "label": "Close the first branch"
+    },
+    {
+      "intent_id": "archive-first",
+      "kind": "archive_meeting",
+      "checkpoint": "checkpoint-archived-first",
+      "label": "Archive the first branch"
+    },
+    {
+      "intent_id": "liquidity-follow-up",
+      "kind": "director_follow_up",
+      "checkpoint": "checkpoint-followup-liquidity",
+      "participant_id": "a0000000-0000-4000-8000-000000000101",
+      "label": "Ask about liquidity"
+    },
+    {
+      "intent_id": "credit-liquidity",
+      "kind": "start_participant",
+      "checkpoint": "checkpoint-followup-liquidity",
+      "participant_id": "a0000000-0000-4000-8000-000000000101",
+      "operation_id": "a0000000-0000-4000-8000-000000000313",
+      "tape_id": "tape-credit-liquidity",
+      "label": "Answer the liquidity question"
+    },
+    {
+      "intent_id": "close-liquidity",
+      "kind": "request_closing",
+      "checkpoint": "checkpoint-credit-liquidity",
+      "closing_tape_id": "tape-closing-liquidity",
+      "label": "Close the liquidity branch"
+    },
+    {
+      "intent_id": "archive-liquidity",
+      "kind": "archive_meeting",
+      "checkpoint": "checkpoint-archived-liquidity",
+      "label": "Archive the liquidity branch"
+    },
+    {
+      "intent_id": "covenant-follow-up",
+      "kind": "director_follow_up",
+      "checkpoint": "checkpoint-followup-covenant",
+      "participant_id": "a0000000-0000-4000-8000-000000000102",
+      "label": "Ask about covenants"
+    },
+    {
+      "intent_id": "downside-covenant",
+      "kind": "start_participant",
+      "checkpoint": "checkpoint-followup-covenant",
+      "participant_id": "a0000000-0000-4000-8000-000000000102",
+      "operation_id": "a0000000-0000-4000-8000-000000000314",
+      "tape_id": "tape-downside-covenant",
+      "label": "Answer the covenant question"
+    },
+    {
+      "intent_id": "close-covenant",
+      "kind": "request_closing",
+      "checkpoint": "checkpoint-downside-covenant",
+      "closing_tape_id": "tape-closing-covenant",
+      "label": "Close the covenant branch"
+    },
+    {
+      "intent_id": "archive-covenant",
+      "kind": "archive_meeting",
+      "checkpoint": "checkpoint-archived-covenant",
+      "label": "Archive the covenant branch"
+    },
+    {
+      "intent_id": "red-team",
+      "kind": "start_participant",
+      "checkpoint": "checkpoint-portfolio",
+      "participant_id": "a0000000-0000-4000-8000-000000000101",
+      "operation_id": "a0000000-0000-4000-8000-000000000315",
+      "tape_id": "tape-red-team",
+      "label": "Red-team the checklist"
+    },
+    {
+      "intent_id": "close-red-team",
+      "kind": "request_closing",
+      "checkpoint": "checkpoint-red-team",
+      "closing_tape_id": "tape-closing-red-team",
+      "label": "Close the red-team branch"
+    },
+    {
+      "intent_id": "archive-red-team",
+      "kind": "archive_meeting",
+      "checkpoint": "checkpoint-archived-red-team",
+      "label": "Archive the red-team branch"
+    },
+    {
+      "intent_id": "prepared-credit",
+      "kind": "start_participant",
+      "checkpoint": "checkpoint-prepared-base",
+      "participant_id": "a0000000-0000-4000-8000-000000000101",
+      "operation_id": "a0000000-0000-4000-8000-000000000321",
+      "tape_id": "tape-prepared-credit",
+      "label": "Credit Analyst opening facts"
+    },
+    {
+      "intent_id": "prepared-downside",
+      "kind": "start_participant",
+      "checkpoint": "checkpoint-prepared-base",
+      "participant_id": "a0000000-0000-4000-8000-000000000102",
+      "operation_id": "a0000000-0000-4000-8000-000000000322",
+      "tape_id": "tape-prepared-downside",
+      "label": "Downside challenge"
+    },
+    {
+      "intent_id": "prepared-portfolio",
+      "kind": "start_participant",
+      "checkpoint": "checkpoint-prepared-base",
+      "participant_id": "a0000000-0000-4000-8000-000000000103",
+      "operation_id": "a0000000-0000-4000-8000-000000000323",
+      "tape_id": "tape-prepared-portfolio",
+      "label": "Mandate review"
+    },
+    {
+      "intent_id": "prepared-consensus",
+      "kind": "start_participant",
+      "checkpoint": "checkpoint-prepared-base",
+      "participant_id": "a0000000-0000-4000-8000-000000000101",
+      "operation_id": "a0000000-0000-4000-8000-000000000324",
+      "tape_id": "tape-prepared-consensus",
+      "label": "Committee alignment"
+    }
+  ],
+  "beats": [
+    {
+      "beat_id": "meet-the-board",
+      "ordinal": 1,
+      "title": "Meet the board",
+      "objective": "Inspect the three participants and their shared and private knowledge assignments.",
+      "anchor": "board-roster",
+      "route": "board",
+      "tab": "roster",
+      "checkpoint": "checkpoint-initial",
+      "start_checkpoint": "checkpoint-initial",
+      "completed_checkpoint": "checkpoint-initial",
+      "disclosure": "Prepared board for the recorded meeting.",
+      "steps": [
+        {
+          "step_id": "inspect-board",
+          "label": "Inspect the three participants and knowledge assignments",
+          "completion": "acknowledge",
+          "requires_tab": "roster"
+        }
+      ],
+      "claim_ids": [],
+      "input_asset_ids": [
+        "shared-fact-sheet",
+        "credit-evidence",
+        "downside-worksheet",
+        "portfolio-mandate"
+      ]
+    },
+    {
+      "beat_id": "start-the-meeting",
+      "ordinal": 2,
+      "title": "Start the meeting",
+      "objective": "Complete the prepared creation form and confirm the supplied historical document.",
+      "anchor": "creation-form",
+      "route": "new",
+      "checkpoint": "checkpoint-initial",
+      "start_checkpoint": "checkpoint-initial",
+      "completed_checkpoint": "checkpoint-created",
+      "disclosure": "No upload or write occurs; the intake receipt is recorded.",
+      "steps": [
+        {
+          "step_id": "create-meeting",
+          "label": "Confirm the prepared preset and supplied document",
+          "intent_id": "create-meeting",
+          "completion": "checkpoint"
+        }
+      ],
+      "claim_ids": [],
+      "input_asset_ids": [
+        "shared-fact-sheet"
+      ]
+    },
+    {
+      "beat_id": "establish-facts",
+      "ordinal": 3,
+      "title": "Establish the facts",
+      "objective": "Ask the Credit Analyst to separate supported facts from open items.",
+      "anchor": "credit-analyst-action",
+      "route": "meeting",
+      "tab": "chat",
+      "checkpoint": "checkpoint-created",
+      "start_checkpoint": "checkpoint-created",
+      "completed_checkpoint": "checkpoint-credit",
+      "disclosure": "Prepared retrieval; no live search or model call.",
+      "steps": [
+        {
+          "step_id": "ask-credit",
+          "label": "Ask the Credit Analyst",
+          "intent_id": "credit-analyst",
+          "completion": "turn_terminal",
+          "requires_tab": "chat"
+        }
+      ],
+      "claim_ids": [
+        "C1",
+        "C2",
+        "C3",
+        "C10",
+        "C12"
+      ],
+      "input_asset_ids": [
+        "shared-fact-sheet",
+        "credit-evidence"
+      ]
+    },
+    {
+      "beat_id": "challenge-the-case",
+      "ordinal": 4,
+      "title": "Challenge the case",
+      "objective": "Ask the Downside Reviewer to test the rating and liquidity assumptions.",
+      "anchor": "downside-reviewer-action",
+      "route": "meeting",
+      "tab": "chat",
+      "checkpoint": "checkpoint-credit",
+      "start_checkpoint": "checkpoint-credit",
+      "completed_checkpoint": "checkpoint-downside",
+      "disclosure": "The downside worksheet is demo-authored, not issuer research.",
+      "steps": [
+        {
+          "step_id": "ask-downside",
+          "label": "Ask the Downside Reviewer",
+          "intent_id": "downside-reviewer",
+          "completion": "turn_terminal",
+          "requires_tab": "chat"
+        },
+        {
+          "step_id": "review-disagreement",
+          "label": "Review the formal disagreement",
+          "completion": "acknowledge",
+          "requires_tab": "disagreements"
+        }
+      ],
+      "claim_ids": [
+        "C6",
+        "C7",
+        "C8",
+        "C9",
+        "C10"
+      ],
+      "input_asset_ids": [
+        "shared-fact-sheet",
+        "downside-worksheet"
+      ]
+    },
+    {
+      "beat_id": "address-uncertainty",
+      "ordinal": 5,
+      "title": "Address uncertainty",
+      "objective": "Send the supported follow-up and ask the Portfolio Analyst what the mandate can conclude.",
+      "anchor": "portfolio-analyst-action",
+      "route": "meeting",
+      "tab": "chat",
+      "checkpoint": "checkpoint-downside",
+      "start_checkpoint": "checkpoint-downside",
+      "completed_checkpoint": "checkpoint-portfolio",
+      "disclosure": "The mandate is fictional and demo-authored. No current price, yield, or liquidity is available.",
+      "steps": [
+        {
+          "step_id": "send-follow-up",
+          "label": "Send the supported You follow-up",
+          "intent_id": "director-follow-up",
+          "completion": "checkpoint",
+          "requires_tab": "chat"
+        },
+        {
+          "step_id": "ask-portfolio",
+          "label": "Ask the Portfolio Analyst",
+          "intent_id": "portfolio-analyst",
+          "completion": "turn_terminal",
+          "requires_tab": "chat"
+        }
+      ],
+      "claim_ids": [
+        "C10",
+        "C11",
+        "C13"
+      ],
+      "input_asset_ids": [
+        "shared-fact-sheet",
+        "portfolio-mandate"
+      ]
+    },
+    {
+      "beat_id": "align",
+      "ordinal": 6,
+      "title": "Align on the checklist",
+      "objective": "Ask for the concluding discussion and review the formal consensus.",
+      "anchor": "consensus-action",
+      "route": "meeting",
+      "tab": "chat",
+      "checkpoint": "checkpoint-portfolio",
+      "start_checkpoint": "checkpoint-portfolio",
+      "completed_checkpoint": "checkpoint-consensus",
+      "disclosure": "The checklist is bounded by the evidence; it is not an investment approval.",
+      "steps": [
+        {
+          "step_id": "ask-consensus",
+          "label": "Ask the committee to align",
+          "intent_id": "concluding-discussion",
+          "completion": "turn_terminal",
+          "requires_tab": "chat"
+        },
+        {
+          "step_id": "review-consensus",
+          "label": "Review the formal consensus",
+          "completion": "acknowledge",
+          "requires_tab": "consensus"
+        }
+      ],
+      "claim_ids": [
+        "C1",
+        "C2",
+        "C3",
+        "C8",
+        "C9",
+        "C10",
+        "C12",
+        "C13"
+      ],
+      "input_asset_ids": [
+        "shared-fact-sheet"
+      ]
+    },
+    {
+      "beat_id": "close-the-meeting",
+      "ordinal": 7,
+      "title": "Close the meeting",
+      "objective": "Use the real close entry and review the recorded ballots and final brief.",
+      "anchor": "closing-entry",
+      "route": "meeting",
+      "tab": "closing",
+      "checkpoint": "checkpoint-consensus",
+      "start_checkpoint": "checkpoint-consensus",
+      "completed_checkpoint": "checkpoint-closed",
+      "disclosure": "Recorded closing. No live vote or model call occurs.",
+      "steps": [
+        {
+          "step_id": "close-meeting",
+          "label": "Close the meeting",
+          "intent_id": "close-meeting",
+          "completion": "closing_completed",
+          "requires_tab": "closing"
+        }
+      ],
+      "claim_ids": [
+        "C1",
+        "C2",
+        "C10",
+        "C11",
+        "C13"
+      ],
+      "input_asset_ids": [
+        "shared-fact-sheet"
+      ]
+    },
+    {
+      "beat_id": "archive-the-meeting",
+      "ordinal": 8,
+      "title": "Archive the meeting",
+      "objective": "Archive the ended meeting from the real list and confirm the archived overlay.",
+      "anchor": "meeting-list",
+      "route": "list",
+      "checkpoint": "checkpoint-closed",
+      "start_checkpoint": "checkpoint-closed",
+      "completed_checkpoint": "checkpoint-archived",
+      "disclosure": "Archiving is an overlay. The meeting remains ended and cannot be reopened in this replay.",
+      "steps": [
+        {
+          "step_id": "archive-meeting",
+          "label": "Archive the ended meeting",
+          "intent_id": "archive-meeting",
+          "completion": "checkpoint"
+        }
+      ],
+      "claim_ids": [
+        "C13"
+      ],
+      "input_asset_ids": [
+        "shared-fact-sheet"
+      ]
+    }
+  ],
+  "transitions": [
+    {
+      "transition_id": "canonical-create",
+      "source_checkpoint": "checkpoint-initial",
+      "completed_checkpoint": "checkpoint-created",
+      "intent_id": "create-meeting",
+      "kind": "create_meeting",
+      "canonical": true,
+      "prerequisites": [],
+      "label": "Start the meeting",
+      "explanation": "Canonical creation action."
+    },
+    {
+      "transition_id": "canonical-credit",
+      "source_checkpoint": "checkpoint-created",
+      "completed_checkpoint": "checkpoint-credit",
+      "intent_id": "credit-analyst",
+      "kind": "start_participant",
+      "participant_id": "a0000000-0000-4000-8000-000000000101",
+      "operation_id": "a0000000-0000-4000-8000-000000000301",
+      "tape_id": "tape-credit",
+      "canonical": true,
+      "prerequisites": [],
+      "label": "Ask the Credit Analyst",
+      "explanation": "Canonical opening turn."
+    },
+    {
+      "transition_id": "canonical-downside",
+      "source_checkpoint": "checkpoint-credit",
+      "completed_checkpoint": "checkpoint-downside",
+      "intent_id": "downside-reviewer",
+      "kind": "start_participant",
+      "participant_id": "a0000000-0000-4000-8000-000000000102",
+      "operation_id": "a0000000-0000-4000-8000-000000000302",
+      "tape_id": "tape-downside",
+      "canonical": true,
+      "prerequisites": [],
+      "label": "Ask the Downside Reviewer",
+      "explanation": "Canonical challenge turn."
+    },
+    {
+      "transition_id": "canonical-followup",
+      "source_checkpoint": "checkpoint-downside",
+      "completed_checkpoint": "checkpoint-followup",
+      "intent_id": "director-follow-up",
+      "kind": "director_follow_up",
+      "participant_id": "a0000000-0000-4000-8000-000000000103",
+      "canonical": true,
+      "prerequisites": [],
+      "label": "Send the supported follow-up",
+      "explanation": "Canonical You follow-up."
+    },
+    {
+      "transition_id": "canonical-portfolio",
+      "source_checkpoint": "checkpoint-followup",
+      "completed_checkpoint": "checkpoint-portfolio",
+      "intent_id": "portfolio-analyst",
+      "kind": "start_participant",
+      "participant_id": "a0000000-0000-4000-8000-000000000103",
+      "operation_id": "a0000000-0000-4000-8000-000000000303",
+      "tape_id": "tape-portfolio",
+      "canonical": true,
+      "prerequisites": [],
+      "label": "Ask the Portfolio Analyst",
+      "explanation": "Canonical mandate turn."
+    },
+    {
+      "transition_id": "canonical-consensus",
+      "source_checkpoint": "checkpoint-portfolio",
+      "completed_checkpoint": "checkpoint-consensus",
+      "intent_id": "concluding-discussion",
+      "kind": "start_participant",
+      "participant_id": "a0000000-0000-4000-8000-000000000101",
+      "operation_id": "a0000000-0000-4000-8000-000000000304",
+      "tape_id": "tape-consensus",
+      "canonical": true,
+      "prerequisites": [],
+      "label": "Ask the committee to align",
+      "explanation": "Canonical concluding turn."
+    },
+    {
+      "transition_id": "canonical-close",
+      "source_checkpoint": "checkpoint-consensus",
+      "completed_checkpoint": "checkpoint-closed",
+      "intent_id": "close-meeting",
+      "kind": "request_closing",
+      "closing_tape_id": "tape-closing",
+      "canonical": true,
+      "prerequisites": [],
+      "label": "Close meeting",
+      "explanation": "Canonical closing."
+    },
+    {
+      "transition_id": "canonical-archive",
+      "source_checkpoint": "checkpoint-closed",
+      "completed_checkpoint": "checkpoint-archived",
+      "intent_id": "archive-meeting",
+      "kind": "archive_meeting",
+      "canonical": true,
+      "prerequisites": [
+        "canonical-close"
+      ],
+      "label": "Archive meeting",
+      "explanation": "Canonical archive."
+    },
+    {
+      "transition_id": "explore-downside-first",
+      "source_checkpoint": "checkpoint-created",
+      "completed_checkpoint": "checkpoint-downside-first",
+      "intent_id": "downside-first",
+      "kind": "start_participant",
+      "participant_id": "a0000000-0000-4000-8000-000000000102",
+      "operation_id": "a0000000-0000-4000-8000-000000000310",
+      "tape_id": "tape-downside-first",
+      "closing_tape_id": null,
+      "canonical": false,
+      "prerequisites": [],
+      "label": "Test the downside first",
+      "explanation": "Prepared exploration path; validated separately from canonical beats."
+    },
+    {
+      "transition_id": "explore-portfolio-first",
+      "source_checkpoint": "checkpoint-created",
+      "completed_checkpoint": "checkpoint-portfolio-first",
+      "intent_id": "portfolio-first",
+      "kind": "start_participant",
+      "participant_id": "a0000000-0000-4000-8000-000000000103",
+      "operation_id": "a0000000-0000-4000-8000-000000000311",
+      "tape_id": "tape-portfolio-first",
+      "closing_tape_id": null,
+      "canonical": false,
+      "prerequisites": [],
+      "label": "Start from the mandate",
+      "explanation": "Prepared exploration path; validated separately from canonical beats."
+    },
+    {
+      "transition_id": "explore-close-portfolio-first",
+      "source_checkpoint": "checkpoint-portfolio-first",
+      "completed_checkpoint": "checkpoint-closed-portfolio-first",
+      "intent_id": "close-portfolio-first",
+      "kind": "request_closing",
+      "participant_id": null,
+      "operation_id": null,
+      "tape_id": null,
+      "closing_tape_id": "tape-closing-portfolio-first",
+      "canonical": false,
+      "prerequisites": [
+        "explore-portfolio-first"
+      ],
+      "label": "Close the mandate-first branch",
+      "explanation": "Prepared exploration path; validated separately from canonical beats."
+    },
+    {
+      "transition_id": "explore-archive-portfolio-first",
+      "source_checkpoint": "checkpoint-closed-portfolio-first",
+      "completed_checkpoint": "checkpoint-archived-portfolio-first",
+      "intent_id": "archive-portfolio-first",
+      "kind": "archive_meeting",
+      "participant_id": null,
+      "operation_id": null,
+      "tape_id": null,
+      "closing_tape_id": null,
+      "canonical": false,
+      "prerequisites": [
+        "explore-close-portfolio-first"
+      ],
+      "label": "Archive the mandate-first branch",
+      "explanation": "Prepared exploration path; validated separately from canonical beats."
+    },
+    {
+      "transition_id": "explore-followup-first",
+      "source_checkpoint": "checkpoint-downside-first",
+      "completed_checkpoint": "checkpoint-followup-first",
+      "intent_id": "followup-downside-first",
+      "kind": "director_follow_up",
+      "participant_id": "a0000000-0000-4000-8000-000000000102",
+      "operation_id": null,
+      "tape_id": null,
+      "closing_tape_id": null,
+      "canonical": false,
+      "prerequisites": [
+        "explore-downside-first"
+      ],
+      "label": "Ask for the instrument record",
+      "explanation": "Prepared exploration path; validated separately from canonical beats."
+    },
+    {
+      "transition_id": "explore-portfolio-after-first",
+      "source_checkpoint": "checkpoint-followup-first",
+      "completed_checkpoint": "checkpoint-portfolio-first-2",
+      "intent_id": "portfolio-after-first",
+      "kind": "start_participant",
+      "participant_id": "a0000000-0000-4000-8000-000000000103",
+      "operation_id": "a0000000-0000-4000-8000-000000000312",
+      "tape_id": "tape-portfolio-after-first",
+      "closing_tape_id": null,
+      "canonical": false,
+      "prerequisites": [
+        "explore-followup-first"
+      ],
+      "label": "Apply the mandate",
+      "explanation": "Prepared exploration path; validated separately from canonical beats."
+    },
+    {
+      "transition_id": "explore-close-first",
+      "source_checkpoint": "checkpoint-portfolio-first-2",
+      "completed_checkpoint": "checkpoint-closed-first",
+      "intent_id": "close-first",
+      "kind": "request_closing",
+      "participant_id": null,
+      "operation_id": null,
+      "tape_id": null,
+      "closing_tape_id": "tape-closing-first",
+      "canonical": false,
+      "prerequisites": [
+        "explore-portfolio-after-first"
+      ],
+      "label": "Close the first branch",
+      "explanation": "Prepared exploration path; validated separately from canonical beats."
+    },
+    {
+      "transition_id": "explore-archive-first",
+      "source_checkpoint": "checkpoint-closed-first",
+      "completed_checkpoint": "checkpoint-archived-first",
+      "intent_id": "archive-first",
+      "kind": "archive_meeting",
+      "participant_id": null,
+      "operation_id": null,
+      "tape_id": null,
+      "closing_tape_id": null,
+      "canonical": false,
+      "prerequisites": [
+        "explore-close-first"
+      ],
+      "label": "Archive the first branch",
+      "explanation": "Prepared exploration path; validated separately from canonical beats."
+    },
+    {
+      "transition_id": "explore-liquidity-followup",
+      "source_checkpoint": "checkpoint-downside",
+      "completed_checkpoint": "checkpoint-followup-liquidity",
+      "intent_id": "liquidity-follow-up",
+      "kind": "director_follow_up",
+      "participant_id": "a0000000-0000-4000-8000-000000000101",
+      "operation_id": null,
+      "tape_id": null,
+      "closing_tape_id": null,
+      "canonical": false,
+      "prerequisites": [],
+      "label": "Ask about liquidity",
+      "explanation": "Prepared exploration path; validated separately from canonical beats."
+    },
+    {
+      "transition_id": "explore-credit-liquidity",
+      "source_checkpoint": "checkpoint-followup-liquidity",
+      "completed_checkpoint": "checkpoint-credit-liquidity",
+      "intent_id": "credit-liquidity",
+      "kind": "start_participant",
+      "participant_id": "a0000000-0000-4000-8000-000000000101",
+      "operation_id": "a0000000-0000-4000-8000-000000000313",
+      "tape_id": "tape-credit-liquidity",
+      "closing_tape_id": null,
+      "canonical": false,
+      "prerequisites": [
+        "explore-liquidity-followup"
+      ],
+      "label": "Answer the liquidity question",
+      "explanation": "Prepared exploration path; validated separately from canonical beats."
+    },
+    {
+      "transition_id": "explore-close-liquidity",
+      "source_checkpoint": "checkpoint-credit-liquidity",
+      "completed_checkpoint": "checkpoint-closed-liquidity",
+      "intent_id": "close-liquidity",
+      "kind": "request_closing",
+      "participant_id": null,
+      "operation_id": null,
+      "tape_id": null,
+      "closing_tape_id": "tape-closing-liquidity",
+      "canonical": false,
+      "prerequisites": [
+        "explore-credit-liquidity"
+      ],
+      "label": "Close the liquidity branch",
+      "explanation": "Prepared exploration path; validated separately from canonical beats."
+    },
+    {
+      "transition_id": "explore-archive-liquidity",
+      "source_checkpoint": "checkpoint-closed-liquidity",
+      "completed_checkpoint": "checkpoint-archived-liquidity",
+      "intent_id": "archive-liquidity",
+      "kind": "archive_meeting",
+      "participant_id": null,
+      "operation_id": null,
+      "tape_id": null,
+      "closing_tape_id": null,
+      "canonical": false,
+      "prerequisites": [
+        "explore-close-liquidity"
+      ],
+      "label": "Archive the liquidity branch",
+      "explanation": "Prepared exploration path; validated separately from canonical beats."
+    },
+    {
+      "transition_id": "explore-covenant-followup",
+      "source_checkpoint": "checkpoint-downside",
+      "completed_checkpoint": "checkpoint-followup-covenant",
+      "intent_id": "covenant-follow-up",
+      "kind": "director_follow_up",
+      "participant_id": "a0000000-0000-4000-8000-000000000102",
+      "operation_id": null,
+      "tape_id": null,
+      "closing_tape_id": null,
+      "canonical": false,
+      "prerequisites": [],
+      "label": "Ask about covenants",
+      "explanation": "Prepared exploration path; validated separately from canonical beats."
+    },
+    {
+      "transition_id": "explore-downside-covenant",
+      "source_checkpoint": "checkpoint-followup-covenant",
+      "completed_checkpoint": "checkpoint-downside-covenant",
+      "intent_id": "downside-covenant",
+      "kind": "start_participant",
+      "participant_id": "a0000000-0000-4000-8000-000000000102",
+      "operation_id": "a0000000-0000-4000-8000-000000000314",
+      "tape_id": "tape-downside-covenant",
+      "closing_tape_id": null,
+      "canonical": false,
+      "prerequisites": [
+        "explore-covenant-followup"
+      ],
+      "label": "Answer the covenant question",
+      "explanation": "Prepared exploration path; validated separately from canonical beats."
+    },
+    {
+      "transition_id": "explore-close-covenant",
+      "source_checkpoint": "checkpoint-downside-covenant",
+      "completed_checkpoint": "checkpoint-closed-covenant",
+      "intent_id": "close-covenant",
+      "kind": "request_closing",
+      "participant_id": null,
+      "operation_id": null,
+      "tape_id": null,
+      "closing_tape_id": "tape-closing-covenant",
+      "canonical": false,
+      "prerequisites": [
+        "explore-downside-covenant"
+      ],
+      "label": "Close the covenant branch",
+      "explanation": "Prepared exploration path; validated separately from canonical beats."
+    },
+    {
+      "transition_id": "explore-archive-covenant",
+      "source_checkpoint": "checkpoint-closed-covenant",
+      "completed_checkpoint": "checkpoint-archived-covenant",
+      "intent_id": "archive-covenant",
+      "kind": "archive_meeting",
+      "participant_id": null,
+      "operation_id": null,
+      "tape_id": null,
+      "closing_tape_id": null,
+      "canonical": false,
+      "prerequisites": [
+        "explore-close-covenant"
+      ],
+      "label": "Archive the covenant branch",
+      "explanation": "Prepared exploration path; validated separately from canonical beats."
+    },
+    {
+      "transition_id": "explore-red-team-turn",
+      "source_checkpoint": "checkpoint-portfolio",
+      "completed_checkpoint": "checkpoint-red-team",
+      "intent_id": "red-team",
+      "kind": "start_participant",
+      "participant_id": "a0000000-0000-4000-8000-000000000101",
+      "operation_id": "a0000000-0000-4000-8000-000000000315",
+      "tape_id": "tape-red-team",
+      "closing_tape_id": null,
+      "canonical": false,
+      "prerequisites": [],
+      "label": "Red-team the checklist",
+      "explanation": "Prepared exploration path; validated separately from canonical beats."
+    },
+    {
+      "transition_id": "explore-close-red-team",
+      "source_checkpoint": "checkpoint-red-team",
+      "completed_checkpoint": "checkpoint-closed-red-team",
+      "intent_id": "close-red-team",
+      "kind": "request_closing",
+      "participant_id": null,
+      "operation_id": null,
+      "tape_id": null,
+      "closing_tape_id": "tape-closing-red-team",
+      "canonical": false,
+      "prerequisites": [
+        "explore-red-team-turn"
+      ],
+      "label": "Close the red-team branch",
+      "explanation": "Prepared exploration path; validated separately from canonical beats."
+    },
+    {
+      "transition_id": "explore-archive-red-team",
+      "source_checkpoint": "checkpoint-closed-red-team",
+      "completed_checkpoint": "checkpoint-archived-red-team",
+      "intent_id": "archive-red-team",
+      "kind": "archive_meeting",
+      "participant_id": null,
+      "operation_id": null,
+      "tape_id": null,
+      "closing_tape_id": null,
+      "canonical": false,
+      "prerequisites": [
+        "explore-close-red-team"
+      ],
+      "label": "Archive the red-team branch",
+      "explanation": "Prepared exploration path; validated separately from canonical beats."
+    }
+  ],
+  "chapters": [
+    {
+      "chapter_id": "chapter-board",
+      "title": "Prepared board",
+      "objective": "Inspect the three participants and their knowledge assignments.",
+      "checkpoint": "checkpoint-created",
+      "route": "board",
+      "tab": "roster",
+      "mode": "inspection",
+      "disclosure": "Prepared board; inspection does not complete a guide step.",
+      "claim_ids": [],
+      "input_asset_ids": [
+        "shared-fact-sheet"
+      ]
+    },
+    {
+      "chapter_id": "chapter-setup",
+      "title": "Board setup",
+      "objective": "Inspect the prepared setup, roster, and practice-safe configuration.",
+      "checkpoint": "checkpoint-created",
+      "route": "new",
+      "tab": "roster",
+      "mode": "inspection",
+      "disclosure": "Prepared setup; editing practice settings does not change the recording.",
+      "claim_ids": [],
+      "input_asset_ids": []
+    },
+    {
+      "chapter_id": "chapter-files",
+      "title": "Files and sources",
+      "objective": "Inspect the meeting documents and retained source assets.",
+      "checkpoint": "checkpoint-credit",
+      "route": "meeting",
+      "tab": "documents",
+      "mode": "inspection",
+      "disclosure": "Recorded sources; inspection does not add or retrieve live documents.",
+      "claim_ids": [
+        "C1",
+        "C2",
+        "C10"
+      ],
+      "input_asset_ids": [
+        "shared-fact-sheet",
+        "credit-evidence"
+      ]
+    },
+    {
+      "chapter_id": "chapter-facts",
+      "title": "Recorded facts",
+      "objective": "Inspect the Credit Analyst turn and its citations.",
+      "checkpoint": "checkpoint-credit",
+      "route": "meeting",
+      "tab": "chat",
+      "mode": "inspection",
+      "disclosure": "Recorded turn; no new model call.",
+      "claim_ids": [
+        "C1",
+        "C2",
+        "C3",
+        "C10",
+        "C12"
+      ],
+      "input_asset_ids": [
+        "shared-fact-sheet",
+        "credit-evidence"
+      ]
+    },
+    {
+      "chapter_id": "chapter-disagreement",
+      "title": "Recorded disagreement",
+      "objective": "Inspect the Downside Reviewer's logged disagreement.",
+      "checkpoint": "checkpoint-downside",
+      "route": "meeting",
+      "tab": "disagreements",
+      "mode": "inspection",
+      "disclosure": "Recorded disagreement; inspection is not a new action.",
+      "claim_ids": [
+        "C6",
+        "C7",
+        "C8",
+        "C9",
+        "C10"
+      ],
+      "input_asset_ids": [
+        "downside-worksheet"
+      ]
+    },
+    {
+      "chapter_id": "chapter-followup",
+      "title": "Recorded follow-up",
+      "objective": "Inspect the supported You follow-up.",
+      "checkpoint": "checkpoint-followup",
+      "route": "meeting",
+      "tab": "chat",
+      "mode": "inspection",
+      "disclosure": "Recorded follow-up; inspection does not resend it.",
+      "claim_ids": [
+        "C10",
+        "C11",
+        "C13"
+      ],
+      "input_asset_ids": [
+        "shared-fact-sheet"
+      ]
+    },
+    {
+      "chapter_id": "chapter-consensus",
+      "title": "Recorded consensus",
+      "objective": "Inspect the formal consensus and its claims.",
+      "checkpoint": "checkpoint-consensus",
+      "route": "meeting",
+      "tab": "consensus",
+      "mode": "inspection",
+      "disclosure": "Recorded consensus; inspection is not a new vote.",
+      "claim_ids": [
+        "C1",
+        "C2",
+        "C10",
+        "C13"
+      ],
+      "input_asset_ids": [
+        "shared-fact-sheet"
+      ]
+    },
+    {
+      "chapter_id": "chapter-closing",
+      "title": "Completed closing",
+      "objective": "Inspect the recorded ballots and closing brief.",
+      "checkpoint": "checkpoint-closed",
+      "route": "meeting",
+      "tab": "closing",
+      "mode": "inspection",
+      "disclosure": "Recorded closing; no live vote or model call.",
+      "claim_ids": [
+        "C1",
+        "C2",
+        "C10",
+        "C11",
+        "C13"
+      ],
+      "input_asset_ids": [
+        "shared-fact-sheet"
+      ]
+    },
+    {
+      "chapter_id": "chapter-summary",
+      "title": "Recorded summary",
+      "objective": "Inspect the approved recorded system summary in its completed context.",
+      "checkpoint": "checkpoint-archived",
+      "route": "meeting",
+      "tab": "summary",
+      "mode": "inspection",
+      "disclosure": "Recorded summary from the archived meeting; not a fresh generation.",
+      "summary_message_id": "a0000000-0000-4000-8000-000000000407",
+      "claim_ids": [
+        "C1",
+        "C2",
+        "C10",
+        "C11",
+        "C13"
+      ],
+      "input_asset_ids": [
+        "shared-fact-sheet"
+      ]
+    },
+    {
+      "chapter_id": "chapter-archive",
+      "title": "Archived result",
+      "objective": "Inspect the archived meeting overlay.",
+      "checkpoint": "checkpoint-archived",
+      "route": "list",
+      "tab": "chat",
+      "mode": "inspection",
+      "disclosure": "Archived overlay; the recording remains ended.",
+      "claim_ids": [
+        "C13"
+      ],
+      "input_asset_ids": [
+        "shared-fact-sheet"
+      ]
+    },
+    {
+      "chapter_id": "chapter-downside-first",
+      "title": "Downside-first branch",
+      "objective": "Inspect the alternative opening turn.",
+      "checkpoint": "checkpoint-downside-first",
+      "route": "meeting",
+      "tab": "chat",
+      "mode": "inspection",
+      "disclosure": "Prepared branch; inspection does not complete the canonical guide.",
+      "claim_ids": [
+        "C6",
+        "C7",
+        "C8",
+        "C10",
+        "C14"
+      ],
+      "input_asset_ids": [
+        "downside-worksheet"
+      ]
+    },
+    {
+      "chapter_id": "chapter-first-close",
+      "title": "First-branch closing",
+      "objective": "Inspect the completed first-branch closing.",
+      "checkpoint": "checkpoint-closed-first",
+      "route": "meeting",
+      "tab": "closing",
+      "mode": "inspection",
+      "disclosure": "Recorded branch closing; no live vote.",
+      "claim_ids": [
+        "C1",
+        "C2",
+        "C10",
+        "C11",
+        "C13"
+      ],
+      "input_asset_ids": [
+        "shared-fact-sheet"
+      ]
+    },
+    {
+      "chapter_id": "chapter-liquidity-close",
+      "title": "Liquidity-branch closing",
+      "objective": "Inspect the completed liquidity branch.",
+      "checkpoint": "checkpoint-closed-liquidity",
+      "route": "meeting",
+      "tab": "closing",
+      "mode": "inspection",
+      "disclosure": "Recorded branch closing; no live vote.",
+      "claim_ids": [
+        "C6",
+        "C7",
+        "C10",
+        "C16"
+      ],
+      "input_asset_ids": [
+        "downside-worksheet"
+      ]
+    },
+    {
+      "chapter_id": "chapter-red-team",
+      "title": "Red-team branch",
+      "objective": "Inspect the red-team challenge before closing.",
+      "checkpoint": "checkpoint-red-team",
+      "route": "meeting",
+      "tab": "chat",
+      "mode": "inspection",
+      "disclosure": "Prepared branch; inspection does not complete the canonical guide.",
+      "claim_ids": [
+        "C1",
+        "C2",
+        "C10",
+        "C13",
+        "C18"
+      ],
+      "input_asset_ids": [
+        "shared-fact-sheet"
+      ]
+    }
+  ],
+  "claims": [
+    {
+      "claim_id": "C1",
+      "kind": "fact",
+      "text": "CRISIL's annexure row for ISIN INE001A07RW5 lists a 7.87% coupon, allotment on 18 July 2019, scheduled maturity on 18 July 2022, and an issue size of Rs 5,000 crore.",
+      "evidence_asset_id": "crisil-annexure",
+      "locator": "S1 annexure row for ISIN INE001A07RW5",
+      "excerpt": "INE001A07RW5 | 7.87% | 18 July 2019 | 18 July 2022 | Rs 5,000 crore",
+      "source_url": "https://www.crisil.com/mnt/winshare/Ratings/RatingList/RatingDocs/Housing_Development_Finance_Corporation_Limited_July_31_2020_RR.html",
+      "source_title": "CRISIL Rating Rationale, 31 July 2020",
+      "capture_date": "2026-10-16"
+    },
+    {
+      "claim_id": "C2",
+      "kind": "fact",
+      "text": "CRISIL assigned AAA/Stable on 31 July 2020.",
+      "evidence_asset_id": "crisil-annexure",
+      "locator": "S1 rating action",
+      "excerpt": "CRISIL AAA/Stable | 31 July 2020",
+      "source_url": "https://www.crisil.com/mnt/winshare/Ratings/RatingList/RatingDocs/Housing_Development_Finance_Corporation_Limited_July_31_2020_RR.html",
+      "source_title": "CRISIL Rating Rationale, 31 July 2020",
+      "capture_date": "2026-10-16"
+    },
+    {
+      "claim_id": "C3",
+      "kind": "fact",
+      "text": "The FY20 MD&A reports standalone total income of Rs 58,763 crore and profit after tax of Rs 17,770 crore, and Rs 46,437 crore of secured redeemable NCDs raised at issuer level.",
+      "evidence_asset_id": "hdfc-fy20-mda",
+      "locator": "S4 MD&A, FY20 standalone performance and borrowings",
+      "excerpt": "standalone total income of Rs 58,763 crore",
+      "source_url": "https://homeloans.hdfc.bank.in/digital-annual-report-2019-2020/mda",
+      "source_title": "HDFC Ltd Annual Report 2019-20, MD&A",
+      "capture_date": "2026-10-16"
+    },
+    {
+      "claim_id": "C4",
+      "kind": "derived",
+      "text": "The stated tenor is 1,096 days, approximately three calendar years, derived from the 18 July 2019 allotment and 18 July 2022 scheduled maturity.",
+      "evidence_asset_id": "shared-fact-sheet",
+      "locator": "Shared fact sheet, Terms",
+      "excerpt": "1,096 days"
+    },
+    {
+      "claim_id": "C5",
+      "kind": "derived",
+      "text": "Three scheduled annual coupons at 7.87% would sum to 23.61% of principal over the stated tenor; this is not a yield and assumes scheduled payments.",
+      "evidence_asset_id": "shared-fact-sheet",
+      "locator": "Shared fact sheet, Terms",
+      "excerpt": "23.61%"
+    },
+    {
+      "claim_id": "C6",
+      "kind": "fact",
+      "text": "The FY20 MD&A states the NCDs are listed on the NSE/BSE wholesale debt market.",
+      "evidence_asset_id": "hdfc-fy20-mda",
+      "locator": "S4 MD&A, borrowings",
+      "excerpt": "listed on the NSE/BSE",
+      "source_url": "https://homeloans.hdfc.bank.in/digital-annual-report-2019-2020/mda",
+      "source_title": "HDFC Ltd Annual Report 2019-20, MD&A",
+      "capture_date": "2026-10-16"
+    },
+    {
+      "claim_id": "C7",
+      "kind": "judgment",
+      "text": "Listing is not the same as executable secondary liquidity; the record contains no price, yield, or liquidity data.",
+      "evidence_asset_id": "downside-worksheet",
+      "locator": "Downside worksheet, Liquidity test",
+      "excerpt": "Listing is not executable liquidity"
+    },
+    {
+      "claim_id": "C8",
+      "kind": "judgment",
+      "text": "AAA/Stable is a rating opinion dated 31 July 2020, not a guarantee and not a current rating.",
+      "evidence_asset_id": "downside-worksheet",
+      "locator": "Downside worksheet, Rating test",
+      "excerpt": "dated opinion, not a guarantee"
+    },
+    {
+      "claim_id": "C9",
+      "kind": "demo_authored",
+      "text": "The +200bp rate move and risk-off secondary-market scenario is demo-authored for this replay; it is not a forecast or issuer guidance.",
+      "evidence_asset_id": "downside-worksheet",
+      "locator": "Downside worksheet, Scenario",
+      "excerpt": "+200bp rate move and risk-off secondary market"
+    },
+    {
+      "claim_id": "C10",
+      "kind": "unknown",
+      "text": "The meeting record contains no executable price, yield, or secondary-market liquidity data for the series.",
+      "evidence_asset_id": "shared-fact-sheet",
+      "locator": "Shared fact sheet, What is not established",
+      "excerpt": "No executable price, yield, or secondary-market liquidity"
+    },
+    {
+      "claim_id": "C11",
+      "kind": "unknown",
+      "text": "Scheduled maturity is 18 July 2022; the meeting does not assert that payment occurred.",
+      "evidence_asset_id": "shared-fact-sheet",
+      "locator": "Shared fact sheet, What is not established",
+      "excerpt": "Scheduled maturity is 18 July 2022"
+    },
+    {
+      "claim_id": "C12",
+      "kind": "unknown",
+      "text": "The rating annexure describes the instrument as a debenture; the retained excerpt does not establish series-level secured or unsecured status.",
+      "evidence_asset_id": "crisil-annexure",
+      "locator": "S1 instrument column",
+      "excerpt": "Instrument: Debenture"
+    },
+    {
+      "claim_id": "C13",
+      "kind": "judgment",
+      "text": "The outcome is a research checklist, not a buy/sell recommendation or investment approval.",
+      "evidence_asset_id": "shared-fact-sheet",
+      "locator": "Shared fact sheet, Outcome and limitations",
+      "excerpt": "research checklist, not a buy/sell recommendation"
+    },
+    {
+      "claim_id": "C14",
+      "kind": "demo_authored",
+      "text": "A prepared path may open with a downside review before the credit fact pack; the evidence set does not change.",
+      "locator": "Prepared branch note, downside first",
+      "evidence_asset_id": "downside-worksheet"
+    },
+    {
+      "claim_id": "C15",
+      "kind": "demo_authored",
+      "text": "A prepared path may open with the portfolio mandate so the missing market inputs are visible before the credit discussion.",
+      "locator": "Prepared branch note, mandate first",
+      "evidence_asset_id": "portfolio-mandate"
+    },
+    {
+      "claim_id": "C16",
+      "kind": "demo_authored",
+      "text": "The liquidity follow-up asks whether the listed debenture can be sold before maturity without assuming a price or a buyer.",
+      "locator": "Prepared follow-up, liquidity",
+      "evidence_asset_id": "downside-worksheet"
+    },
+    {
+      "claim_id": "C17",
+      "kind": "demo_authored",
+      "text": "The covenant follow-up asks which contractual protections would survive a rating downgrade; the record does not supply the covenant package.",
+      "locator": "Prepared follow-up, covenants",
+      "evidence_asset_id": "shared-fact-sheet"
+    },
+    {
+      "claim_id": "C18",
+      "kind": "demo_authored",
+      "text": "The red-team turn tests whether the research checklist claims more than the retained evidence supports.",
+      "locator": "Prepared branch note, red team",
+      "evidence_asset_id": "shared-fact-sheet"
+    }
+  ],
+  "workspace_seed": "workspace_seed.json",
+  "workspace_seed_sha256": "e9b7112c17db15a07acc0a5b21f630f2219d79588ae4b905236b0dcf99756409",
+  "prepared_base_checkpoint": "checkpoint-prepared-base",
+  "prepared_turns": [
+    {
+      "kind": "reply",
+      "turn_id": "prepared-credit",
+      "participant_id": "a0000000-0000-4000-8000-000000000101",
+      "label": "Credit Analyst opening facts",
+      "intent_id": "prepared-credit",
+      "operation_id": "a0000000-0000-4000-8000-000000000321",
+      "tape_id": "tape-prepared-credit",
+      "result_checkpoint": "checkpoint-prepared-credit",
+      "reply_message_ids": [
+        "a0000000-0000-4000-8000-000000000402"
+      ],
+      "effect_ids": [
+        "a0000000-0000-4000-8000-000000000402",
+        "a0000000-0000-4000-8000-000000000321",
+        "C1",
+        "C2",
+        "C3",
+        "C10",
+        "C12",
+        "inv-credit-1",
+        "call-credit-1"
+      ],
+      "required": true
+    },
+    {
+      "kind": "reply",
+      "turn_id": "prepared-downside",
+      "participant_id": "a0000000-0000-4000-8000-000000000102",
+      "label": "Downside challenge",
+      "intent_id": "prepared-downside",
+      "operation_id": "a0000000-0000-4000-8000-000000000322",
+      "tape_id": "tape-prepared-downside",
+      "result_checkpoint": "checkpoint-prepared-downside",
+      "reply_message_ids": [
+        "a0000000-0000-4000-8000-000000000403"
+      ],
+      "effect_ids": [
+        "a0000000-0000-4000-8000-000000000403",
+        "a0000000-0000-4000-8000-000000000322",
+        "a0000000-0000-4000-8000-000000000501",
+        "C6",
+        "C7",
+        "C8",
+        "C9",
+        "C10",
+        "inv-downside-1",
+        "call-downside-1",
+        "inv-downside-2",
+        "call-downside-2"
+      ],
+      "required": true
+    },
+    {
+      "kind": "reply",
+      "turn_id": "prepared-portfolio",
+      "participant_id": "a0000000-0000-4000-8000-000000000103",
+      "label": "Mandate review",
+      "intent_id": "prepared-portfolio",
+      "operation_id": "a0000000-0000-4000-8000-000000000323",
+      "tape_id": "tape-prepared-portfolio",
+      "result_checkpoint": "checkpoint-prepared-portfolio",
+      "reply_message_ids": [
+        "a0000000-0000-4000-8000-000000000405"
+      ],
+      "effect_ids": [
+        "a0000000-0000-4000-8000-000000000405",
+        "a0000000-0000-4000-8000-000000000323",
+        "C10",
+        "C11",
+        "C13",
+        "inv-portfolio-1",
+        "call-portfolio-1"
+      ],
+      "required": true
+    },
+    {
+      "kind": "reply",
+      "turn_id": "prepared-consensus",
+      "participant_id": "a0000000-0000-4000-8000-000000000101",
+      "label": "Committee alignment",
+      "intent_id": "prepared-consensus",
+      "operation_id": "a0000000-0000-4000-8000-000000000324",
+      "tape_id": "tape-prepared-consensus",
+      "result_checkpoint": "checkpoint-prepared-consensus",
+      "reply_message_ids": [
+        "a0000000-0000-4000-8000-000000000406"
+      ],
+      "effect_ids": [
+        "a0000000-0000-4000-8000-000000000406",
+        "a0000000-0000-4000-8000-000000000324",
+        "a0000000-0000-4000-8000-000000000601",
+        "C1",
+        "C2",
+        "C3",
+        "C8",
+        "C9",
+        "C10",
+        "C12",
+        "C13",
+        "inv-consensus-1",
+        "call-consensus-1",
+        "inv-consensus-2",
+        "call-consensus-2"
+      ],
+      "required": true
+    },
+    {
+      "kind": "follow_up",
+      "turn_id": "prepared-followup",
+      "label": "You",
+      "question": "Portfolio Analyst, assume a fictional three-year mandate that requires an executable price, yield, and liquidity assessment. What can you conclude from this record?",
+      "message_id": "a0000000-0000-4000-8000-000000000404",
+      "intent_id": "director-follow-up",
+      "required": true
+    }
+  ],
+  "prepared_closing": {
+    "closing_tape_id": "tape-closing",
+    "completed_checkpoint": "checkpoint-closed",
+    "archived_checkpoint": "checkpoint-archived",
+    "required_turn_ids": [
+      "prepared-credit",
+      "prepared-downside",
+      "prepared-portfolio",
+      "prepared-consensus",
+      "prepared-followup"
+    ]
+  }
+}

@@ -114,7 +114,7 @@ function turn(id: string, participantId: string): ReplayPreparedTurn {
 function session(): ReplaySession {
     return {
         run_id: "run-1",
-        package_version: "8",
+        package_version: "9",
         meeting_id: MEETING,
         label: "Prepared demo",
         title: "Recorded review",

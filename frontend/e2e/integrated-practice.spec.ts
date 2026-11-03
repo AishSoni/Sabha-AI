@@ -22,7 +22,7 @@ async function openBoard(page: Page) {
         page.goto("/demo"),
     ]);
     const session = (await response.json()) as { package_version: string };
-    expect(session.package_version).toBe("8");
+    expect(session.package_version).toBe("9");
     await expect(page.getByRole("heading", { name: /Prepared board/ })).toBeVisible();
     await expect(page.getByTestId("tutorial-hud")).toBeVisible();
 }
