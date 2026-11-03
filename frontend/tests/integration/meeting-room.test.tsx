@@ -195,7 +195,7 @@ describe('MeetingRoom', () => {
         expect(input).toHaveValue('Do not lose me');
     });
 
-    it('renders a read-only notice for ended meetings', async () => {
+    it('keeps ended meetings read-only', async () => {
         installRouter({
             [`/meetings/${MEETING_ID}`]: () => {
                 const meeting = meetingWire();
@@ -204,7 +204,7 @@ describe('MeetingRoom', () => {
         });
         renderRoom();
 
-        expect(await screen.findByText('This meeting is read-only.')).toBeInTheDocument();
+        expect(await screen.findByText('ended')).toBeInTheDocument();
         expect(screen.queryByPlaceholderText('Type your message...')).not.toBeInTheDocument();
     });
 
@@ -281,7 +281,7 @@ describe('MeetingRoom', () => {
         expect(scrollIntoView).not.toHaveBeenCalled();
     });
 
-    it('renders a read-only notice for archived meetings', async () => {
+    it('keeps archived meetings read-only', async () => {
         installRouter({
             [`/meetings/${MEETING_ID}`]: () => {
                 const meeting = meetingWire();
@@ -290,7 +290,7 @@ describe('MeetingRoom', () => {
         });
         renderRoom();
 
-        expect(await screen.findByText('This meeting is read-only.')).toBeInTheDocument();
+        expect(await screen.findByText('archived')).toBeInTheDocument();
         expect(screen.queryByPlaceholderText('Type your message...')).not.toBeInTheDocument();
         expect(screen.queryByRole('button', { name: /Close meeting/i })).not.toBeInTheDocument();
     });

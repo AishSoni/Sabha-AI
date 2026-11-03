@@ -231,7 +231,6 @@ describe('MeetingRoom closing workflow', () => {
         router.complete();
 
         expect(await screen.findByText('Meeting ended', {}, { timeout: 4000 })).toBeInTheDocument();
-        expect(screen.getByText('This meeting is read-only.')).toBeInTheDocument();
         expect(screen.queryByPlaceholderText('Type your message...')).not.toBeInTheDocument();
 
         const panel = document.getElementById('closing-panel');

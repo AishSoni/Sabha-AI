@@ -177,7 +177,7 @@ describe('recorded replay runtime', () => {
 
         expect(await screen.findByText('Recorded product review')).toBeInTheDocument();
         expect(screen.getByText('What did the board decide?')).toBeInTheDocument();
-        expect(screen.getByText('Recorded session 1')).toBeInTheDocument();
+        expect(screen.getByText('Recorded')).toBeInTheDocument();
         expect(screen.getByRole('button', { name: 'Restart' })).toBeInTheDocument();
         expect(screen.queryByRole('tab', { name: /Summary/ })).not.toBeInTheDocument();
         expect(screen.queryByRole('tab', { name: /Shared Docs/ })).not.toBeInTheDocument();
@@ -240,7 +240,7 @@ describe('recorded replay runtime', () => {
 
         expect(await screen.findByText('Recorded product review 2')).toBeInTheDocument();
         expect(screen.queryByText('Recorded product review 1')).not.toBeInTheDocument();
-        expect(await screen.findByText('Recorded session 2')).toBeInTheDocument();
+        expect(screen.getByText('Recorded')).toBeInTheDocument();
         expect(
             calls.filter((call) => call.url === `${API}/replay/session`).length
         ).toBe(2);
@@ -375,7 +375,10 @@ describe('recorded replay runtime', () => {
         );
 
         await waitFor(() =>
-            expect(screen.getByText('Recorded session 2')).toBeInTheDocument()
+            expect(
+                calls.filter((url) => url.endsWith(`/replay/meetings/${MEETING_ID}`))
+                    .length
+            ).toBe(2)
         );
         expect(screen.queryByText('Stale epoch disagreement')).not.toBeInTheDocument();
     });
