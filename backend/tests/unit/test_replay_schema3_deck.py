@@ -65,6 +65,10 @@ def test_schema_three_deck_is_valid_and_closed() -> None:
     assert set(package.manifest.prepared_closing.required_turn_ids) == {
         turn.turn_id for turn in package.manifest.prepared_turns
     }
+    assert package.manifest.prepared_closing.closing_tape_id == "tape-closing"
+    assert package.manifest.prepared_closing.completed_checkpoint == "checkpoint-closed"
+    assert package.manifest.prepared_closing.archived_checkpoint == "checkpoint-archived"
+    assert (SCHEMA3_ROOT / "closing_tapes" / "tape-closing.json").is_file()
     assert validate_package(package) == []
 
 
@@ -198,3 +202,78 @@ def test_deck_is_part_of_the_content_hash(tmp_path: Path) -> None:
     ]
     assert before != after
     assert _codes(root) == set()
+
+
+ORDER_DEPENDENT_PHRASES = (
+    "previous speaker",
+    "earlier speaker",
+    "prior speaker",
+    "just heard",
+    "as discussed",
+    "building on",
+    "going back",
+    "first speaker",
+    "second speaker",
+    "third speaker",
+    "the credit analyst established",
+    "the downside reviewer separated",
+    "the portfolio analyst showed",
+)
+
+
+def _prepared_reply_messages() -> dict[str, dict]:
+    manifest = json.loads(
+        (SCHEMA3_ROOT / "manifest.json").read_text(encoding="utf-8")
+    )
+    messages: dict[str, dict] = {}
+    for turn in manifest["prepared_turns"]:
+        if turn["kind"] != "reply":
+            continue
+        checkpoint = json.loads(
+            (SCHEMA3_ROOT / "checkpoints" / f"{turn['result_checkpoint']}.json")
+            .read_text(encoding="utf-8")
+        )
+        reply_ids = set(turn["reply_message_ids"])
+        for message in checkpoint["reads"]["meeting"]["messages"]:
+            if message["id"] in reply_ids:
+                messages[turn["turn_id"]] = message
+    return messages
+
+
+def test_prepared_replies_read_in_any_order() -> None:
+    replies = _prepared_reply_messages()
+    assert set(replies) == {
+        "prepared-credit",
+        "prepared-downside",
+        "prepared-portfolio",
+        "prepared-consensus",
+    }
+    for turn_id, message in replies.items():
+        copy = " ".join(
+            filter(None, (message["content"], message.get("thinking_content")))
+        ).lower()
+        for phrase in ORDER_DEPENDENT_PHRASES:
+            assert phrase not in copy, (turn_id, phrase)
+
+
+def test_consensus_reasoning_names_no_other_speaker() -> None:
+    thinking = _prepared_reply_messages()["prepared-consensus"]["thinking_content"]
+    for name in ("Downside Reviewer", "Portfolio Analyst"):
+        assert name.lower() not in thinking.lower()
+
+
+def test_manifest_content_hash_matches_package_files() -> None:
+    manifest = json.loads(
+        (SCHEMA3_ROOT / "manifest.json").read_text(encoding="utf-8")
+    )
+    file_hashes = {
+        path.relative_to(SCHEMA3_ROOT).as_posix(): hashlib.sha256(
+            path.read_bytes()
+        ).hexdigest()
+        for path in SCHEMA3_ROOT.rglob("*")
+        if path.is_file()
+    }
+    assert (
+        compute_content_sha256(file_hashes, manifest)
+        == manifest["content_sha256"]
+    )
