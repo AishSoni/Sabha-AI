@@ -8,6 +8,7 @@
  * journey. A missing or clipped anchor collapses it to the compact bar.
  */
 import {
+    useRef,
     useState,
     useSyncExternalStore,
     type CSSProperties,
@@ -242,9 +243,13 @@ function ExploreRecordingMenu({ iconOnly = false }: { iconOnly?: boolean }) {
     const tutorial = useDemoTutorial();
     const run = useReplayRun();
     const chapters = run.session.chapters;
+    const detailsRef = useRef<HTMLDetailsElement>(null);
+    const close = () => {
+        if (detailsRef.current) detailsRef.current.open = false;
+    };
 
     return (
-        <details className="relative shrink-0">
+        <details ref={detailsRef} className="relative shrink-0">
             <summary
                 aria-label="Explore recording"
                 className={`flex cursor-pointer list-none items-center gap-1 rounded-full text-xs font-medium text-zinc-400 hover:bg-zinc-800 hover:text-zinc-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-indigo-400 [&::-webkit-details-marker]:hidden ${
@@ -259,7 +264,15 @@ function ExploreRecordingMenu({ iconOnly = false }: { iconOnly?: boolean }) {
                     </>
                 )}
             </summary>
-            <div className="absolute right-0 top-full z-50 mt-2 w-64 rounded-lg border border-zinc-700 bg-zinc-950 p-2 shadow-xl">
+            {/*
+             * The card can sit near the bottom of a short viewport, so the menu
+             * is placed against the viewport rather than the summary. A fixed
+             * panel keeps every item reachable at 720px and 390x844.
+             */}
+            <div
+                onClick={close}
+                className="fixed right-4 top-32 z-50 max-h-[70vh] w-64 overflow-y-auto rounded-lg border border-zinc-700 bg-zinc-950 p-2 shadow-xl"
+            >
                 {chapters.length > 0 ? (
                     <ul className="mb-1 space-y-0.5 border-b border-zinc-800 pb-1">
                         {chapters.map((chapter) => (

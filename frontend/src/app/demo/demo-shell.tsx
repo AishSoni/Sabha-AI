@@ -33,16 +33,20 @@ function PinnedWorkspace({ children }: { children: ReactNode }) {
             }))}
         >
             <ReplayRunProvider>
-                <ChapterBootstrap>
-                    <DemoTutorialProvider>
-                        <DemoNav />
-                        <TutorialBoundary>
-                            <TutorialHud />
-                            <TutorialNotices />
-                        </TutorialBoundary>
-                        {children}
-                    </DemoTutorialProvider>
-                </ChapterBootstrap>
+                <DemoTutorialProvider>
+                    <DemoNav />
+                    <TutorialBoundary>
+                        <TutorialHud />
+                        <TutorialNotices />
+                    </TutorialBoundary>
+                    {/*
+                     * The chapter entry remounts the route page when a chapter
+                     * changes. Keeping it inside the tutorial provider means a
+                     * hidden HUD survives chapter inspection instead of
+                     * restarting the visitor's presentation state.
+                     */}
+                    <ChapterBootstrap>{children}</ChapterBootstrap>
+                </DemoTutorialProvider>
             </ReplayRunProvider>
         </DemoWorkspaceProvider>
     );

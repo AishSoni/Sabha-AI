@@ -610,43 +610,52 @@ export function ReplayRunProvider({ children }: { children: ReactNode }) {
 
                 const prefix = replayKeyPrefix(scopeId, nextEpoch, next);
                 const meetingId = current.meeting_id;
-                queryClient.setQueryData(
-                    [...prefix, "meetings", "detail", meetingId],
-                    bundle.meeting
-                );
-                queryClient.setQueryData(
-                    [...prefix, "meetings", "detail", meetingId, "disagreements"],
-                    bundle.disagreements
-                );
-                queryClient.setQueryData(
-                    [...prefix, "meetings", "detail", meetingId, "consensus"],
-                    bundle.consensus
-                );
-                const terminal = new Set([
-                    "completed",
-                    "failed",
-                    "interrupted",
-                    "cancelled",
-                ]);
-                queryClient.setQueryData(
-                    [...prefix, "turns", meetingId],
-                    bundle.turns.filter(
-                        (operation) =>
-                            terminal.has(operation.status) ||
-                            isTurnVisible(operation.operation_id)
-                    )
-                );
-                if (bundle.contextStats) {
+                /**
+                 * The base snapshot is not the meeting the visitor composed.
+                 * Seeding it would win over the deck reads and drop every
+                 * settled reply after returning from a chapter.
+                 */
+                const deckBase =
+                    deckEnabled && next === current.prepared_base_checkpoint;
+                if (!deckBase) {
                     queryClient.setQueryData(
-                        [...prefix, "meetings", "detail", meetingId, "context-stats"],
-                        bundle.contextStats
+                        [...prefix, "meetings", "detail", meetingId],
+                        bundle.meeting
                     );
-                }
-                if (bundle.closing) {
                     queryClient.setQueryData(
-                        [...prefix, "meetings", "detail", meetingId, "closing"],
-                        bundle.closing
+                        [...prefix, "meetings", "detail", meetingId, "disagreements"],
+                        bundle.disagreements
                     );
+                    queryClient.setQueryData(
+                        [...prefix, "meetings", "detail", meetingId, "consensus"],
+                        bundle.consensus
+                    );
+                    const terminal = new Set([
+                        "completed",
+                        "failed",
+                        "interrupted",
+                        "cancelled",
+                    ]);
+                    queryClient.setQueryData(
+                        [...prefix, "turns", meetingId],
+                        bundle.turns.filter(
+                            (operation) =>
+                                terminal.has(operation.status) ||
+                                isTurnVisible(operation.operation_id)
+                        )
+                    );
+                    if (bundle.contextStats) {
+                        queryClient.setQueryData(
+                            [...prefix, "meetings", "detail", meetingId, "context-stats"],
+                            bundle.contextStats
+                        );
+                    }
+                    if (bundle.closing) {
+                        queryClient.setQueryData(
+                            [...prefix, "meetings", "detail", meetingId, "closing"],
+                            bundle.closing
+                        );
+                    }
                 }
 
                 controller.abort();
@@ -661,7 +670,7 @@ export function ReplayRunProvider({ children }: { children: ReactNode }) {
                 }
             }
         },
-        [controller, queryClient, isTurnVisible]
+        [controller, queryClient, isTurnVisible, deckEnabled]
     );
 
     /**
