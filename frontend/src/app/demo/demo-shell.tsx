@@ -4,6 +4,7 @@ import type { ReactNode } from "react";
 import { DemoNav, DemoWorkspaceProvider } from "@/features/demo-workspace";
 import { DemoTutorialProvider } from "@/features/demo-tutorial/provider";
 import { TutorialHud } from "@/features/demo-tutorial/hud";
+import { TutorialNotices } from "@/features/demo-tutorial/notices";
 import {
     ReplaySessionProvider,
     useReplaySession,
@@ -35,6 +36,7 @@ function PinnedWorkspace({ children }: { children: ReactNode }) {
                     <DemoTutorialProvider>
                         <DemoNav />
                         <TutorialHud />
+                        <TutorialNotices />
                         {children}
                     </DemoTutorialProvider>
                 </ChapterBootstrap>

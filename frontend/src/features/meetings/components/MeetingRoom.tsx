@@ -983,6 +983,13 @@ function DisagreementsPanel({ disagreements }: { disagreements: Disagreement[] }
     return (
         <ScrollArea className="h-full p-4">
             <div className="max-w-3xl mx-auto">
+                <h2
+                    id="disagreements-heading"
+                    tabIndex={-1}
+                    className="sr-only"
+                >
+                    Disagreements
+                </h2>
                 {disagreements.length === 0 ? (
                     <EmptyTab
                         icon={<AlertTriangle className="w-12 h-12" />}
@@ -1009,6 +1016,9 @@ function ConsensusPanel({ consensus }: { consensus: Consensus[] }) {
     return (
         <ScrollArea className="h-full p-4">
             <div className="max-w-3xl mx-auto">
+                <h2 id="consensus-heading" tabIndex={-1} className="sr-only">
+                    Consensus
+                </h2>
                 {consensus.length === 0 ? (
                     <EmptyTab
                         icon={<CheckCircle2 className="w-12 h-12" />}
