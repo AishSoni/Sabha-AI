@@ -206,7 +206,7 @@ test.describe("concise recorded journey", () => {
         context,
     }) => {
         test.setTimeout(240_000);
-        const { hud, network } = await startRecording(page);
+        const { network } = await startRecording(page);
 
         const close = page.getByRole("button", { name: "Close meeting" });
         await expect(close).toBeDisabled();

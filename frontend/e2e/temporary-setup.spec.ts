@@ -86,12 +86,12 @@ test.describe("temporary practice setup", () => {
         await expect(page.getByText(/Saved stacks:/).first()).toBeVisible();
 
         // Change the originating template after the setup was captured.
-        await page
-            .getByRole("link", { name: "Explore persona system-prompt history" })
-            .click();
+        await page.getByRole("link", { name: "Personas", exact: true }).click();
+        await page.getByRole("link", { name: "The Credit Analyst" }).click();
         await expect(
             page.getByRole("heading", { name: "The Credit Analyst" })
         ).toBeVisible();
+        await page.getByRole("tab", { name: "System Prompt" }).click();
         const prompt = page.getByPlaceholder(
             "Define this persona's personality, expertise, and behavior..."
         );
