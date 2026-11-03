@@ -234,14 +234,14 @@ When implementation is complete, record:
 
 | Check | Command/environment | Result |
 | --- | --- | --- |
-| Backend suite | `cd backend; venv/Scripts/python.exe -m pytest -q` | pending |
-| Package validation | `python -m scripts.replay_package validate <schema-3-package>` | pending |
-| Frontend unit | `cd frontend; npm test` | pending |
-| Architecture | `npm run test:architecture` | pending |
-| Types/lint/build | `npx tsc --noEmit`; `npm run lint`; `npm run build` | pending |
-| Browser journeys A–F | `npm run test:e2e` / `npm run test:e2e:prod` | pending |
-| Legacy compatibility | `npm run test:e2e:legacy` | pending |
-| Mixed operator isolation | `npm run test:e2e:mixed` | pending |
+| Backend suite | `cd backend; venv/Scripts/python.exe -m pytest -q` | 985 passed, 1 skipped, 21 warnings (932.59s); no failures. |
+| Package validation | `venv/Scripts/python.exe -m scripts.replay_package validate replay_packages/hdfc-ine001a07rw5-v9` | `ok: true`; package `hdfc-ine001a07rw5`, version `9`, content hash `df6cf3757a328050a1491b592008358bdcd177f3561296e0671e85fb81defb47`. |
+| Frontend unit | `cd frontend; npm test` | 105 files, 623 tests passed (24.19s); no failures. |
+| Architecture | `npm run test:architecture` | 4 files, 29 tests passed (2.91s). |
+| Types/lint/build | `npx tsc --noEmit`; `npm run lint`; `npm run build` | TypeScript clean; ESLint 0 errors and 20 pre-existing warnings; production build compiled 20 routes. |
+| Browser journeys A–F | development: `npx playwright test`; production: `npm run test:e2e:prod` | Development 36 passed, 2 skipped; production 36 passed, 2 skipped. The two skips are the conditional legacy and mixed suites, executed separately below. |
+| Legacy compatibility | `npm run test:e2e:legacy` | 1 passed (version-5 package, eight recorded beats on the HUD). |
+| Mixed operator isolation | `npm run test:e2e:mixed` | 1 passed (demo edits and reset never touch the operator session or vault). |
 
 Record separate passed, failed, skipped and unexecuted results. Do not copy the
 historical Spec 27 evidence as a current result. Hosted deployment, grants,
