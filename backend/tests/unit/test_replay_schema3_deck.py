@@ -11,6 +11,7 @@ import pytest
 
 from app.replay.package import PackageLoadError, load_package, validate_package
 from app.replay.package.loader import compute_content_sha256
+from app.replay.source import prepared_operation_ids
 
 BACKEND = Path(__file__).resolve().parents[2]
 GUIDED_ROOT = BACKEND / "replay_packages" / "hdfc-ine001a07rw5"
@@ -73,6 +74,15 @@ def test_schema_two_package_has_no_inferred_deck() -> None:
     assert package.manifest.prepared_turns == []
     assert package.manifest.prepared_closing is None
     assert validate_package(package) == []
+    assert prepared_operation_ids(package) is None
+
+
+def test_schema_three_streams_only_deck_and_chapter_operations() -> None:
+    package = load_package(SCHEMA3_ROOT)
+    allowed = prepared_operation_ids(package)
+    assert allowed is not None
+    assert "a0000000-0000-4000-8000-000000000321" in allowed
+    assert "a0000000-0000-4000-8000-000000000999" not in allowed
 
 
 def test_deck_rejects_duplicate_turn_ids(tmp_path: Path) -> None:
