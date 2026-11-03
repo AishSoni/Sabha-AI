@@ -21,6 +21,7 @@ import { useReplayRun } from "@/features/meetings/runtime/replay-run";
 import { useAnchorCandidates } from "./anchors";
 import type { TutorialAnchorId } from "./contract";
 import { useDemoTutorial } from "./provider";
+import { useModalOpen, useTutorialStreaming } from "./presence";
 import { useAnchoredCard } from "./use-anchored-card";
 
 const emptySubscribe = () => () => {};
@@ -38,6 +39,8 @@ export function TutorialHud() {
     const tutorial = useDemoTutorial();
     const mounted = useMounted();
     const [card, setCard] = useState<HTMLElement | null>(null);
+    const modalOpen = useModalOpen();
+    const streaming = useTutorialStreaming();
 
     const prompt = tutorial.prompt;
     const candidates: TutorialAnchorId[] = prompt
@@ -54,9 +57,11 @@ export function TutorialHud() {
     const hasTarget = Boolean(prompt?.anchor);
     const anchored = !hasTarget || match !== null;
     const placed = !hasTarget || position?.visible === true;
-    const cardVisible = !tutorial.hidden && anchored && placed;
-    const compactVisible = !cardVisible;
-    const cardMounted = !tutorial.hidden && anchored;
+    const suspended = modalOpen || streaming;
+    const cardVisible =
+        !tutorial.hidden && !suspended && anchored && placed;
+    const compactVisible = !cardVisible && !suspended;
+    const cardMounted = !tutorial.hidden && !suspended && anchored;
 
     if (!mounted || !prompt) return null;
 
@@ -140,7 +145,7 @@ export function TutorialHud() {
                 </div>
             ) : null}
             {compactVisible ? <CompactBar /> : null}
-            {cardVisible ? (
+            {!tutorial.hidden ? (
                 <p
                     className="sr-only"
                     aria-live="polite"

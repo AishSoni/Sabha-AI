@@ -90,6 +90,7 @@ import { EvidenceCitationTrigger } from '../evidence/trigger';
 import { EvidencePreviewHost } from '../evidence/host';
 import { EvidencePreviewProvider } from '../evidence/provider';
 import { useAnchorRef } from '@/features/demo-tutorial/anchors';
+import { useTutorialStreamingFlag } from '@/features/demo-tutorial/presence';
 import type { TutorialAnchorId } from '@/features/demo-tutorial/contract';
 
 export interface MeetingRoomProps {
@@ -301,6 +302,10 @@ function MeetingConversation({
     };
     const closeAnchorRef = useAnchorRef('room.close');
     const returnRef = useAnchorRef('room.return');
+    useTutorialStreamingFlag(
+        'recorded-room',
+        Boolean(turns.activeOperation) || turns.isObserving
+    );
     const DocumentsPanel = slots.documentPanel;
     const SummaryPanel = slots.summaryPanel;
 
