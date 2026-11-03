@@ -81,6 +81,28 @@ def test_schema_two_package_has_no_inferred_deck() -> None:
     assert prepared_operation_ids(package) is None
 
 
+def test_schema_one_and_two_packages_keep_checkpoint_semantics() -> None:
+    """Legacy packages stay readable and never advertise turn freedom."""
+    fixtures = BACKEND / "tests" / "fixtures" / "replay"
+    cases = (
+        (fixtures / "fixture-minimal", 1),
+        (fixtures / "fixture-minimal-v2", 1),
+        (GUIDED_ROOT, 2),
+    )
+    for root, schema_version in cases:
+        package = load_package(root)
+        assert package.manifest.schema_version == schema_version, root
+        assert package.manifest.prepared_turns == [], root
+        assert package.manifest.prepared_closing is None, root
+        assert prepared_operation_ids(package) is None, root
+        assert package.manifest.initial_checkpoint in package.checkpoints, root
+        for beat in package.manifest.beats:
+            assert beat.checkpoint in package.checkpoints, (root, beat.beat_id)
+            assert beat.start_checkpoint in package.checkpoints, (root, beat.beat_id)
+            assert beat.completed_checkpoint in package.checkpoints, (root, beat.beat_id)
+        assert validate_package(package) == [], root
+
+
 def test_schema_three_streams_only_deck_and_chapter_operations() -> None:
     package = load_package(SCHEMA3_ROOT)
     allowed = prepared_operation_ids(package)
