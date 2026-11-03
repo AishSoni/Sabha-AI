@@ -1,16 +1,21 @@
 ﻿import { test, expect, type Page } from "@playwright/test";
-import { expectNoPublicPersistence } from "./support/guardrails";
+import { expectNoPublicPersistence, guardNetwork } from "./support/guardrails";
 import { serveRecordedAssets } from "./support/recorded-assets";
 
 /**
- * Two visitors, two browsers (spec-19).
+ * Two visitors, two browsers (spec-19, retained for spec-30).
  *
- * Replay progress is deliberately ephemeral: each browser context fetches its
- * own run id, keeps progress only in client memory, and must never observe or
- * overwrite another visitor's beat. The backend run-id isolation is covered by
- * the package-runtime integration tests; this is the browser-level proof.
+ * Replay progress and the composed turn deck are deliberately ephemeral: each
+ * browser context fetches its own run id, keeps progress only in client
+ * memory, and must never observe or overwrite another visitor's state. The
+ * backend run-id isolation is covered by the package-runtime integration
+ * tests; this is the browser-level proof.
  */
 const BASE = "http://127.0.0.1:3100";
+const CREDIT_MESSAGE = "a0000000-0000-4000-8000-000000000402";
+const DOWNSIDE_MESSAGE = "a0000000-0000-4000-8000-000000000403";
+const PROMPT =
+    "Define this persona's personality, expertise, and behavior...";
 
 async function openBoard(page: Page) {
     const [response] = await Promise.all([
@@ -21,23 +26,53 @@ async function openBoard(page: Page) {
         ),
         page.goto(`${BASE}/demo`),
     ]);
-    await expect(page.getByRole("heading", { name: /Prepared board/ })).toBeVisible();
-    await expect(page.getByText(/Step 1 of 8/)).toBeVisible();
-    return (await response.json()) as { run_id: string; package_version: string };
+    const session = (await response.json()) as {
+        run_id: string;
+        package_version: string;
+    };
+    await expect(page.getByTestId("tutorial-hud")).toBeVisible();
+    await expect(
+        page.getByTestId("tutorial-hud").getByText("Start the meeting")
+    ).toBeVisible();
+    return session;
 }
 
-async function expectStep(page: Page, step: number) {
-    await expect(page.getByText(new RegExp(`Step ${step} of 8`))).toBeVisible();
+async function startRecording(page: Page) {
+    await page.getByRole("link", { name: "Start the meeting" }).click();
+    await expect(page).toHaveURL(/\/demo\/new$/);
+    await page.getByRole("button", { name: "Create recorded meeting" }).click();
+    await expect(page.getByText("Recorded intake ready")).toBeVisible();
+    await page.getByRole("link", { name: "Open the meeting room" }).click();
+    await expect(page).toHaveURL(/\/demo\/meetings\/[^/]+/);
+    await expect(
+        page.getByTestId("tutorial-hud").getByText("Choose who speaks next")
+    ).toBeVisible();
 }
 
-test.describe.skip("guided replay visitor isolation (superseded by the spec-29 HUD)", () => {
-    test.skip("two contexts keep separate runs and do not move each other", async ({
+function message(page: Page, id: string) {
+    return page.locator(`[data-testid="message"][data-message-id="${id}"]`);
+}
+
+async function openExploreMenu(page: Page) {
+    await page.locator('summary[aria-label="Explore recording"]:visible').click();
+}
+
+async function openPromptHistory(page: Page, name: string) {
+    await page.getByRole("link", { name: "Personas" }).click();
+    await page.getByRole("link", { name }).click();
+    await page.getByRole("tab", { name: "System Prompt" }).click();
+}
+
+test.describe("recorded visitor isolation", () => {
+    test("two contexts keep separate runs and do not move each other", async ({
         browser,
     }) => {
         const contextA = await browser.newContext();
         const contextB = await browser.newContext();
         const pageA = await contextA.newPage();
         const pageB = await contextB.newPage();
+        const networkA = guardNetwork(pageA);
+        const networkB = guardNetwork(pageB);
 
         try {
             const [sessionA, sessionB] = await Promise.all([
@@ -48,126 +83,259 @@ test.describe.skip("guided replay visitor isolation (superseded by the spec-29 H
             expect(sessionA.run_id).toBeTruthy();
             expect(sessionB.run_id).toBeTruthy();
             expect(sessionA.run_id).not.toBe(sessionB.run_id);
-            expect(sessionA.package_version).toBe(sessionB.package_version);
+            expect(sessionA.package_version).toBe("9");
+            expect(sessionB.package_version).toBe("9");
 
-            // B moves to the recorded creation beat and stays there.
-            await pageB.getByRole("button", { name: "Continue" }).click();
+            // B moves to the recorded setup and stays there.
+            await pageB.getByRole("link", { name: "Start the meeting" }).click();
             await expect(pageB).toHaveURL(/\/demo\/new$/);
-            await expectStep(pageB, 2);
+            await expect(
+                pageB.getByTestId("tutorial-hud").getByText(
+                    "Create the recorded meeting"
+                )
+            ).toBeVisible();
 
-            // A moves the same distance, then exercises back, restart, and a
-            // full refetch while B is parked on its beat.
-            await pageA.getByRole("button", { name: "Continue" }).click();
+            // A moves the same distance, restarts the recording, and reloads.
+            await pageA.getByRole("link", { name: "Start the meeting" }).click();
             await expect(pageA).toHaveURL(/\/demo\/new$/);
-            await expectStep(pageA, 2);
-
-            await pageA.getByRole("button", { name: "Back" }).click();
+            await openExploreMenu(pageA);
+            await pageA
+                .getByRole("button", { name: "Restart recording" })
+                .click();
             await expect(pageA).toHaveURL(/\/demo$/);
-            // Back moves the inspection cursor; the acknowledged board step
-            // remains complete, so the guide stays on step 2.
-            await expectStep(pageA, 2);
-            await pageA.getByRole("button", { name: "Restart recording" }).click();
-            await expect(pageA).toHaveURL(/\/demo$/);
-            await expectStep(pageA, 1);
+            await expect(
+                pageA.getByTestId("tutorial-hud").getByText("Start the meeting")
+            ).toBeVisible();
             await pageA.reload();
-            await expect(pageA.getByRole("heading", { name: /Prepared board/ })).toBeVisible();
+            await expect(
+                pageA.getByTestId("tutorial-hud").getByText("Start the meeting")
+            ).toBeVisible();
 
             // None of that may move or overwrite B.
             await expect(pageB).toHaveURL(/\/demo\/new$/);
-            await expectStep(pageB, 2);
             await expect(
-                pageB.getByText(/Prepared preset â€” editing is disabled/)
+                pageB.getByTestId("tutorial-hud").getByText(
+                    "Create the recorded meeting"
+                )
             ).toBeVisible();
             await expect(
                 pageB.getByRole("button", { name: "Create recorded meeting" })
             ).toBeVisible();
 
-            // Progress is not persisted in any browser store or cookie.
             await expectNoPublicPersistence(contextA, pageA);
             await expectNoPublicPersistence(contextB, pageB);
+            networkA.assertClean();
+            networkB.assertClean();
         } finally {
             await contextA.close();
             await contextB.close();
         }
     });
 
-    test("restarting playback resets only the visitor's local state", async ({
+    test("hidden tips and chapter inspection stay local to one visitor", async ({
         browser,
     }) => {
+        test.setTimeout(240_000);
         const contextA = await browser.newContext();
         const contextB = await browser.newContext();
         const pageA = await contextA.newPage();
         const pageB = await contextB.newPage();
+        const networkA = guardNetwork(pageA);
+        const networkB = guardNetwork(pageB);
 
         try {
-            const [sessionA, sessionB] = await Promise.all([
-                openBoard(pageA),
-                openBoard(pageB),
-            ]);
+            await serveRecordedAssets(pageA);
+            await Promise.all([openBoard(pageA), openBoard(pageB)]);
+            await Promise.all([startRecording(pageA), startRecording(pageB)]);
 
-            await pageA.getByRole("button", { name: "Restart recording" }).click();
-            await expect(pageA).toHaveURL(/\/demo$/);
-            await expectStep(pageA, 1);
+            await pageA
+                .getByRole("button", { name: "Credit Analyst opening facts" })
+                .click();
+            await expect(message(pageA, CREDIT_MESSAGE)).toBeVisible({
+                timeout: 30_000,
+            });
+            await pageB
+                .getByRole("button", { name: "Downside challenge" })
+                .click();
+            await expect(message(pageB, DOWNSIDE_MESSAGE)).toBeVisible({
+                timeout: 30_000,
+            });
 
-            // The other visitor keeps its own run and its own guide position.
-            expect(sessionA.run_id).not.toBe(sessionB.run_id);
-            await expect(pageB).toHaveURL(/\/demo$/);
-            await expectStep(pageB, 1);
-            await expect(pageB.getByRole("heading", { name: /Prepared board/ })).toBeVisible();
+            // A hides the card, changes route, and inspects a chapter while hidden.
+            await pageA.getByRole("button", { name: "Hide" }).click();
+            await expect(pageA.getByTestId("tutorial-hud")).toHaveCount(0);
+            await expect(
+                pageA.getByTestId("tutorial-hud-compact")
+            ).toBeVisible();
+            await openExploreMenu(pageA);
+            await pageA
+                .getByRole("link", { name: "Downside-first branch" })
+                .click();
+            await expect(
+                pageA.getByText(/Testing the downside first is reasonable/)
+            ).toBeVisible({ timeout: 30_000 });
+            await expect(pageA.getByTestId("tutorial-hud")).toHaveCount(0);
+            await expect(
+                pageA.getByTestId("tutorial-hud-compact")
+            ).toBeVisible();
+
+            // Resuming keeps the hidden state until the visitor shows tips.
+            await openExploreMenu(pageA);
+            await pageA
+                .getByRole("button", { name: "Resume current meeting" })
+                .click();
+            await expect(pageA).toHaveURL(/\/demo\/meetings\/[^/]+\?tab=chat/);
+            await expect(pageA.getByTestId("tutorial-hud")).toHaveCount(0);
+            await pageA.getByRole("button", { name: "Show tips" }).click();
+            await expect(
+                pageA.getByTestId("tutorial-hud").getByText("1 of 4 replies")
+            ).toBeVisible();
+            await expect(message(pageA, CREDIT_MESSAGE)).toBeVisible();
+            await expect(message(pageA, DOWNSIDE_MESSAGE)).toHaveCount(0);
+
+            // B is untouched by A's chapter detour and hidden state.
+            await expect(pageB).toHaveURL(/\/demo\/meetings\/[^/]+/);
+            await expect(
+                pageB.getByTestId("tutorial-hud").getByText("1 of 4 replies")
+            ).toBeVisible();
+            await expect(message(pageB, DOWNSIDE_MESSAGE)).toBeVisible();
+
             await expectNoPublicPersistence(contextA, pageA);
             await expectNoPublicPersistence(contextB, pageB);
+            networkA.assertClean();
+            networkB.assertClean();
         } finally {
             await contextA.close();
             await contextB.close();
         }
     });
 
-    test.skip("practice edits stay isolated and survive only a recording restart", async ({
+    test("recording restart clears only the owning visitor's turn deck", async ({
         browser,
     }) => {
+        test.setTimeout(240_000);
         const contextA = await browser.newContext();
         const contextB = await browser.newContext();
         const pageA = await contextA.newPage();
         const pageB = await contextB.newPage();
+        const networkA = guardNetwork(pageA);
+        const networkB = guardNetwork(pageB);
+
+        try {
+            await Promise.all([openBoard(pageA), openBoard(pageB)]);
+            await Promise.all([startRecording(pageA), startRecording(pageB)]);
+
+            await pageA
+                .getByRole("button", { name: "Credit Analyst opening facts" })
+                .click();
+            await expect(message(pageA, CREDIT_MESSAGE)).toBeVisible({
+                timeout: 30_000,
+            });
+            await pageB
+                .getByRole("button", { name: "Downside challenge" })
+                .click();
+            await expect(message(pageB, DOWNSIDE_MESSAGE)).toBeVisible({
+                timeout: 30_000,
+            });
+
+            await openExploreMenu(pageA);
+            await pageA
+                .getByRole("button", { name: "Restart recording" })
+                .click();
+            await expect(pageA).toHaveURL(/\/demo$/);
+            await expect(
+                pageA.getByTestId("tutorial-hud").getByText("Start the meeting")
+            ).toBeVisible();
+            await pageA.reload();
+            await expect(
+                pageA.getByTestId("tutorial-hud").getByText("Start the meeting")
+            ).toBeVisible();
+
+            // A new deck starts empty; the old reply cannot leak into it.
+            await startRecording(pageA);
+            await expect(
+                pageA.getByTestId("tutorial-hud").getByText("0 of 4 replies")
+            ).toBeVisible();
+            await expect(message(pageA, CREDIT_MESSAGE)).toHaveCount(0);
+
+            // B keeps its run, its reply, and its own progress.
+            await expect(pageB).toHaveURL(/\/demo\/meetings\/[^/]+/);
+            await expect(
+                pageB.getByTestId("tutorial-hud").getByText("1 of 4 replies")
+            ).toBeVisible();
+            await expect(message(pageB, DOWNSIDE_MESSAGE)).toBeVisible();
+            await expect(message(pageB, CREDIT_MESSAGE)).toHaveCount(0);
+
+            await expectNoPublicPersistence(contextA, pageA);
+            await expectNoPublicPersistence(contextB, pageB);
+            networkA.assertClean();
+            networkB.assertClean();
+        } finally {
+            await contextA.close();
+            await contextB.close();
+        }
+    });
+
+    test("practice edits stay isolated and survive only a recording restart", async ({
+        browser,
+    }) => {
+        test.setTimeout(240_000);
+        const contextA = await browser.newContext();
+        const contextB = await browser.newContext();
+        const pageA = await contextA.newPage();
+        const pageB = await contextB.newPage();
+        const networkA = guardNetwork(pageA);
+        const networkB = guardNetwork(pageB);
 
         try {
             await serveRecordedAssets(pageA);
             await Promise.all([openBoard(pageA), openBoard(pageB)]);
 
-            await pageA.goto("/demo/roster/persona-credit/history");
-            const promptA = pageA.getByPlaceholder(
-                "Define this persona's personality, expertise, and behavior..."
-            );
-            await promptA.fill("Visitor A practice marker.");
-            await pageA.getByRole("button", { name: "Save as New Version" }).click();
+            await openPromptHistory(pageA, "The Credit Analyst");
+            await pageA.getByPlaceholder(PROMPT).fill("Visitor A practice marker.");
+            await pageA
+                .getByRole("button", { name: "Save as New Version" })
+                .click();
             await expect(
                 pageA.getByText(/Saved version 4 and made it active\./)
             ).toBeVisible();
 
-            await pageB.goto("/demo/roster/persona-downside/history");
-            const promptB = pageB.getByPlaceholder(
-                "Define this persona's personality, expertise, and behavior..."
-            );
-            await promptB.fill("Visitor B practice marker.");
-            await pageB.getByRole("button", { name: "Save as New Version" }).click();
+            await openPromptHistory(pageB, "The Downside Reviewer");
+            await pageB.getByPlaceholder(PROMPT).fill("Visitor B practice marker.");
+            await pageB
+                .getByRole("button", { name: "Save as New Version" })
+                .click();
             await expect(
                 pageB.getByText(/Saved version 3 and made it active\./)
             ).toBeVisible();
 
             // A starts a practice setup with queued work, then resets.
-            await pageA.getByRole("link", { name: "New meeting", exact: true }).click();
-            await pageA.getByRole("button", { name: "Try editing this setup" }).click();
-            await pageA.getByRole("button", { name: "Add approved sample" }).click();
+            await pageA.getByRole("link", { name: "New meeting" }).click();
+            await pageA
+                .getByRole("button", { name: "Try editing this setup" })
+                .click();
+            await expect(
+                pageA.getByRole("heading", { name: "Practice setup" })
+            ).toBeVisible();
+            await pageA
+                .getByRole("button", { name: "Add approved sample" })
+                .click();
             const picker = pageA.getByRole("dialog");
             await picker
                 .getByRole("radio", { name: /downside-worksheet\.md/ })
                 .check();
             await picker.getByRole("button", { name: "Add sample" }).click();
-            await pageA.getByRole("button", { name: "Create practice setup" }).click();
-            await pageA.getByRole("link", { name: "Open practice setup" }).click();
+            await pageA
+                .getByRole("button", { name: "Create practice setup" })
+                .click();
+            await expect(pageA).toHaveURL(/\/demo\/meetings\/local-/);
+            await expect(pageA.getByText("Captured participants")).toBeVisible();
             await expect(
-                pageA.getByText(/Queued|Indexing|Failed/).first()
+                pageA.getByText(/Queued|Indexing|Failed|Ready/)
             ).toBeVisible({ timeout: 10_000 });
+            await expect(
+                pageA.getByRole("link", { name: "Open practice setup" })
+            ).toHaveCount(0);
 
             await pageA.getByRole("button", { name: "Reset demo" }).click();
             await pageA
@@ -178,58 +346,53 @@ test.describe.skip("guided replay visitor isolation (superseded by the spec-29 H
             ).toBeVisible();
 
             // B is untouched by A's reset.
-            await expect(promptB).toHaveValue("Visitor B practice marker.");
+            await expect(pageB.getByPlaceholder(PROMPT)).toHaveValue(
+                "Visitor B practice marker."
+            );
 
             // A's reset removed its own prompt edit.
-            await pageA.goto("/demo/roster/persona-credit/history");
-            await expect(
-                pageA.getByPlaceholder(
-                    "Define this persona's personality, expertise, and behavior..."
-                )
-            ).not.toHaveValue("Visitor A practice marker.");
+            await openPromptHistory(pageA, "The Credit Analyst");
+            await expect(pageA.getByPlaceholder(PROMPT)).not.toHaveValue(
+                "Visitor A practice marker."
+            );
 
             // A new edit survives a recording-only restart.
-            await pageA.getByRole("link", { name: "Board", exact: true }).click();
-            await pageA.getByRole("link", { name: "Personas" }).click();
-            await pageA.getByRole("link", { name: "The Credit Analyst" }).click();
-            await pageA.getByRole("tab", { name: "System Prompt" }).click();
             await pageA
-                .getByPlaceholder(
-                    "Define this persona's personality, expertise, and behavior..."
-                )
+                .getByPlaceholder(PROMPT)
                 .fill("Visitor A restart marker.");
-            await pageA.getByRole("button", { name: "Save as New Version" }).click();
-            await pageA.getByRole("link", { name: "Board", exact: true }).click();
-            await pageA.getByRole("button", { name: "Restart recording" }).click();
-            await pageA.getByRole("link", { name: "Personas" }).click();
-            await pageA.getByRole("link", { name: "The Credit Analyst" }).click();
-            await pageA.getByRole("tab", { name: "System Prompt" }).click();
+            await pageA
+                .getByRole("button", { name: "Save as New Version" })
+                .click();
             await expect(
-                pageA.getByPlaceholder(
-                    "Define this persona's personality, expertise, and behavior..."
-                )
-            ).toHaveValue("Visitor A restart marker.");
+                pageA.getByText(/Saved version 4 and made it active\./)
+            ).toBeVisible();
+            await openExploreMenu(pageA);
+            await pageA
+                .getByRole("button", { name: "Restart recording" })
+                .click();
+            await expect(pageA).toHaveURL(/\/demo$/);
+            await openPromptHistory(pageA, "The Credit Analyst");
+            await expect(pageA.getByPlaceholder(PROMPT)).toHaveValue(
+                "Visitor A restart marker."
+            );
 
             // A full reset removes the remaining practice edit.
             await pageA.getByRole("button", { name: "Reset demo" }).click();
             await pageA
                 .getByRole("button", { name: "Reset and discard edits" })
                 .click();
-            await pageA.getByRole("link", { name: "Personas" }).click();
-            await pageA.getByRole("link", { name: "The Credit Analyst" }).click();
-            await pageA.getByRole("tab", { name: "System Prompt" }).click();
-            await expect(
-                pageA.getByPlaceholder(
-                    "Define this persona's personality, expertise, and behavior..."
-                )
-            ).not.toHaveValue("Visitor A restart marker.");
+            await openPromptHistory(pageA, "The Credit Analyst");
+            await expect(pageA.getByPlaceholder(PROMPT)).not.toHaveValue(
+                "Visitor A restart marker."
+            );
 
             await expectNoPublicPersistence(contextA, pageA);
             await expectNoPublicPersistence(contextB, pageB);
+            networkA.assertClean();
+            networkB.assertClean();
         } finally {
             await contextA.close();
             await contextB.close();
         }
     });
 });
-

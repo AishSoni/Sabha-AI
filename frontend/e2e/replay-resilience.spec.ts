@@ -1,15 +1,17 @@
 ﻿import { test, expect, type Page } from "@playwright/test";
+import { guardNetwork } from "./support/guardrails";
 import { serveRecordedAssets } from "./support/recorded-assets";
 
 /**
- * Replay races and disconnects (spec-19).
+ * Replay races and disconnects (spec-19, retained for spec-30).
  *
- * These are browser-level failure checks: rapid double actions must not skip
- * or duplicate a beat, refocus/polling must not advance the guide, an aborted
- * recorded stream must pause honestly and resume from the last event, and a
- * restart/refresh must discard stale client state without any live fallback.
+ * These are browser-level failure checks: rapid double dispatch must settle one
+ * turn, an aborted recorded stream must pause honestly and resume from the last
+ * event, and a reset mid-stream must discard stale work without any live
+ * fallback. Recorded recovery never offers a queue Cancel button.
  */
 const BASE = "http://127.0.0.1:3100";
+const CREDIT_MESSAGE = "a0000000-0000-4000-8000-000000000402";
 
 function trackLiveRequests(page: Page) {
     const liveRequests: string[] = [];
@@ -22,72 +24,65 @@ function trackLiveRequests(page: Page) {
     return liveRequests;
 }
 
-async function enterRoom(page: Page) {
+async function startRecording(page: Page) {
     await page.goto(`${BASE}/demo`);
-    await expect(page.getByRole("heading", { name: /Prepared board/ })).toBeVisible();
-    await page.getByRole("button", { name: "Continue" }).click();
+    await page.getByRole("link", { name: "Start the meeting" }).click();
     await expect(page).toHaveURL(/\/demo\/new$/);
     await page.getByRole("button", { name: "Create recorded meeting" }).click();
     await expect(page.getByText("Recorded intake ready")).toBeVisible();
     await page.getByRole("link", { name: "Open the meeting room" }).click();
     await expect(page).toHaveURL(/\/demo\/meetings\/[^/]+\?tab=chat$/);
-    await expect(page.getByText(/Step 3 of 8/)).toBeVisible();
+    await expect(
+        page.getByTestId("tutorial-hud").getByText("Choose who speaks next")
+    ).toBeVisible();
 }
 
-test.describe.skip("guided replay resilience (superseded by the spec-29 HUD)", () => {
-    test.skip("rapid double actions advance exactly one recorded step", async ({ page }) => {
-        const liveRequests = trackLiveRequests(page);
-        await page.goto(`${BASE}/demo`);
-        await expect(page.getByRole("heading", { name: /Prepared board/ })).toBeVisible();
+function message(page: Page, id: string) {
+    return page.locator(`[data-testid="message"][data-message-id="${id}"]`);
+}
 
-        await page.getByRole("button", { name: "Continue" }).click({
-            clickCount: 2,
-            delay: 10,
-        });
-        await expect(page).toHaveURL(/\/demo\/new$/);
-        await expect(page.getByText(/Step 2 of 8/)).toBeVisible();
-
-        await page.getByRole("button", { name: "Create recorded meeting" }).click({
-            clickCount: 2,
-            delay: 10,
-        });
-        await expect(page.getByText("Recorded intake ready")).toBeVisible();
-        await expect(page.getByText(/transition is already in progress/)).toHaveCount(0);
-
-        await page.getByRole("link", { name: "Open the meeting room" }).click();
-        await expect(page).toHaveURL(/\/demo\/meetings\/[^/]+\?tab=chat$/);
-        await expect(page.getByText(/Step 3 of 8/)).toBeVisible();
-
-        expect(liveRequests).toEqual([]);
-    });
-
-    test.skip("refocus and polling leave the guide waiting for the recorded action", async ({
+test.describe("recorded replay resilience", () => {
+    test("rapid double actions settle exactly one prepared turn", async ({
         page,
     }) => {
+        test.setTimeout(240_000);
+        const network = guardNetwork(page);
         const liveRequests = trackLiveRequests(page);
-        await enterRoom(page);
+        await startRecording(page);
 
-        const continueButton = page.getByRole("button", { name: "Continue" });
-        await expect(continueButton).toBeDisabled();
+        await page
+            .getByRole("button", { name: "Credit Analyst opening facts" })
+            .click({ clickCount: 2, delay: 10 });
+        await expect(
+            page.getByRole("button", { name: "Show full response" })
+        ).toBeVisible({ timeout: 30_000 });
+        await expect(
+            page.getByRole("button", { name: "Cancel", exact: true })
+        ).toHaveCount(0);
+        await page.getByRole("button", { name: "Show full response" }).click();
 
-        await page.bringToFront();
-        await page.evaluate(() => {
-            window.dispatchEvent(new Event("focus"));
-            document.dispatchEvent(new Event("visibilitychange"));
+        await expect(message(page, CREDIT_MESSAGE)).toBeVisible({
+            timeout: 30_000,
         });
-        await page.waitForTimeout(1_000);
+        await expect(message(page, CREDIT_MESSAGE)).toHaveCount(1);
+        await expect(
+            page.getByTestId("tutorial-hud").getByText("1 of 4 replies")
+        ).toBeVisible();
+        await expect(
+            page.getByText(/transition is already in progress|not available/)
+        ).toHaveCount(0);
 
-        await expect(page.getByText(/Step 3 of 8/)).toBeVisible();
-        await expect(continueButton).toBeDisabled();
-        await expect(page.getByText(/Thinking|Waiting in the meeting queue/)).toHaveCount(0);
         expect(liveRequests).toEqual([]);
+        network.assertClean();
     });
 
-    test.skip("an aborted recorded stream pauses honestly, resumes, and never goes live", async ({
+    test("an aborted recorded stream pauses honestly, resumes, and never goes live", async ({
         page,
     }) => {
+        test.setTimeout(240_000);
+        const network = guardNetwork(page);
         const liveRequests = trackLiveRequests(page);
-        await enterRoom(page);
+        await startRecording(page);
 
         let aborted = false;
         await page.route("**/api/replay/**/events*", async (route) => {
@@ -99,63 +94,76 @@ test.describe.skip("guided replay resilience (superseded by the spec-29 HUD)", (
             await route.continue();
         });
 
-        await page.getByRole("button", { name: "Ask the Credit Analyst" }).click();
+        await page
+            .getByRole("button", { name: "Credit Analyst opening facts" })
+            .click();
         await expect(page.getByText(/Observation paused/)).toBeVisible({
             timeout: 15_000,
         });
-        await expect(page.getByRole("button", { name: "Continue" })).toBeDisabled();
+        await expect(page.getByTestId("tutorial-hud")).toHaveCount(0);
+        await expect(page.getByTestId("tutorial-hud-compact")).toHaveCount(0);
 
         const resume = page.getByRole("button", { name: /^Resume$/ });
         await expect(resume).toBeVisible();
         await resume.focus();
         await page.keyboard.press("Enter");
+        await expect(message(page, CREDIT_MESSAGE)).toBeVisible({
+            timeout: 30_000,
+        });
         await expect(
-            page.getByText(/CRISIL's annexure row for ISIN INE001A07RW5/).first()
+            page.getByTestId("tutorial-hud").getByText("1 of 4 replies")
         ).toBeVisible({ timeout: 30_000 });
-        // Finishing the resumed turn advances the guide to the next beat on the
-        // same screen, so Continue correctly waits for the next room action.
-        await expect(page.getByText(/Step 4 of 8/)).toBeVisible({ timeout: 30_000 });
+        await expect(
+            page.getByRole("button", { name: "Cancel", exact: true })
+        ).toHaveCount(0);
 
         expect(liveRequests).toEqual([]);
+        network.assertClean();
     });
 
-    test.skip("restarting mid-stream and refreshing a room link discard stale state", async ({
+    test("resetting mid-stream discards pending work and recovers safely", async ({
         page,
     }) => {
+        test.setTimeout(240_000);
+        const network = guardNetwork(page);
         const liveRequests = trackLiveRequests(page);
-        await enterRoom(page);
+        await startRecording(page);
 
-        const streamStarted = page.waitForRequest((request) =>
-            request.url().includes("/api/replay/") && request.url().includes("/events")
+        const streamStarted = page.waitForRequest(
+            (request) =>
+                request.url().includes("/api/replay/") &&
+                request.url().includes("/events")
         );
-        await page.getByRole("button", { name: "Ask the Credit Analyst" }).click();
+        await page
+            .getByRole("button", { name: "Credit Analyst opening facts" })
+            .click();
         await streamStarted;
-        await page.getByRole("button", { name: "Restart" }).click();
-        await expect(page).toHaveURL(/\/demo$/);
-        await expect(page.getByText(/Step 1 of 8/)).toBeVisible();
+        await page.getByRole("button", { name: "Reset demo" }).click();
 
         await page.waitForTimeout(2_000);
-        await expect(page.getByText(/CRISIL's annexure row/)).toHaveCount(0);
-        await expect(page.getByRole("heading", { name: /Prepared board/ })).toBeVisible();
+        await expect(message(page, CREDIT_MESSAGE)).toHaveCount(0);
+        await expect(
+            page.getByTestId("tutorial-hud").getByText("0 of 4 replies")
+        ).toBeVisible();
+        await expect(
+            page.getByText(/Observation paused|Something went wrong/)
+        ).toHaveCount(0);
 
-        // Reach the room again, then refresh the deep link. A fresh provider
-        // starts at the initial checkpoint and the room routes back to /demo.
-        await page.getByRole("button", { name: "Continue" }).click();
-        await page.getByRole("button", { name: "Create recorded meeting" }).click();
-        await expect(page.getByText("Recorded intake ready")).toBeVisible();
-        await page.getByRole("link", { name: "Open the meeting room" }).click();
-        await expect(page).toHaveURL(/\/demo\/meetings\/[^/]+\?tab=chat$/);
+        // A refresh discards the remaining ephemeral deck without a live turn.
         await page.reload();
-        await expect(page).toHaveURL(/\/demo$/);
-        await expect(page.getByText(/Step 1 of 8/)).toBeVisible();
-        await expect(page.getByRole("heading", { name: /Prepared board/ })).toBeVisible();
+        await expect(
+            page.getByTestId("tutorial-hud").getByText("0 of 4 replies")
+        ).toBeVisible();
+        await expect(message(page, CREDIT_MESSAGE)).toHaveCount(0);
 
         expect(liveRequests).toEqual([]);
+        network.assertClean();
     });
 
     test("double adding a prepared sample creates one local document", async ({
         page,
     }) => {
+        const network = guardNetwork(page);
         await serveRecordedAssets(page);
         await page.goto("/demo/knowledge-stacks/credit-private");
         await expect(
@@ -187,6 +195,6 @@ test.describe.skip("guided replay resilience (superseded by the spec-29 HUD)", (
             page.getByRole("button", { name: "Delete credit-evidence.md" })
         ).toHaveCount(1);
         await expect(page.getByText(/already added in this destination/)).toHaveCount(0);
+        network.assertClean();
     });
 });
-

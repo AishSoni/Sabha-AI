@@ -6,12 +6,15 @@ import {
 import { serveRecordedAssets } from "./support/recorded-assets";
 
 /**
- * Integrated practice exploration (spec-27 journey B).
+ * Integrated practice exploration (spec-27 journey B, retained for spec-30).
  *
  * Practice templates and stack documents are local to the tab. The recorded
  * turn, citations, closing, and archive remain pinned to the approved
  * package even after edits, sample ingestion, retry, and removal.
  */
+const PROMPT =
+    "Define this persona's personality, expertise, and behavior...";
+
 async function openBoard(page: Page) {
     const [response] = await Promise.all([
         page.waitForResponse(
@@ -27,11 +30,22 @@ async function openBoard(page: Page) {
     await expect(page.getByTestId("tutorial-hud")).toBeVisible();
 }
 
-test.describe.skip("integrated practice exploration (guide detour superseded by the spec-29 HUD)", () => {
+async function openPromptHistory(page: Page, name: string) {
+    await page.getByRole("link", { name: "Personas" }).click();
+    await page.getByRole("link", { name }).click();
+    await page.getByRole("tab", { name: "System Prompt" }).click();
+}
+
+async function openExploreMenu(page: Page) {
+    await page.locator('summary[aria-label="Explore recording"]:visible').click();
+}
+
+test.describe("integrated practice exploration", () => {
     test("edits, samples, and removal never change the recorded turn", async ({
         page,
         context,
     }) => {
+        test.setTimeout(240_000);
         const network = guardNetwork(page);
         page.on("dialog", (dialog) => void dialog.accept());
         await serveRecordedAssets(page);
@@ -42,22 +56,17 @@ test.describe.skip("integrated practice exploration (guide detour superseded by 
         );
         await expect(recordedSummary.first()).toBeVisible();
 
-        // Detour from the guide into the persona template history.
-        await page
-            .getByRole("link", { name: "Explore persona system-prompt history" })
-            .click();
-        await expect(page).toHaveURL(/\/demo\/roster\/persona-credit\/history$/);
+        // Detour into the persona template history.
+        await openPromptHistory(page, "The Credit Analyst");
         await expect(
             page.getByRole("heading", { name: "The Credit Analyst" })
         ).toBeVisible();
 
         await page.getByRole("button", { name: "View version 1" }).click();
         await expect(page.getByLabel("Version 1 content")).toBeVisible();
-        await expect(page.getByText("Viewing only â€” not active.")).toBeVisible();
+        await expect(page.getByText("Viewing only — not active.")).toBeVisible();
 
-        const prompt = page.getByPlaceholder(
-            "Define this persona's personality, expertise, and behavior..."
-        );
+        const prompt = page.getByPlaceholder(PROMPT);
         await prompt.fill(
             "Practice edit marker: this prompt never reaches the recording."
         );
@@ -70,14 +79,17 @@ test.describe.skip("integrated practice exploration (guide detour superseded by 
         await expect(page.getByText("Version 1 is now active.")).toBeVisible();
 
         // The prepared participant shown beside the template is unchanged.
-        await expect(recordedSummary.first()).toBeVisible();
         await expect(
-            page.getByRole("heading", { name: "Prepared participant vs practice template" })
+            page.getByRole("heading", {
+                name: "Prepared participant vs practice template",
+            })
         ).toBeVisible();
 
         // Open the assigned credit stack and stage a permitted sample.
         await page.getByRole("link", { name: "Knowledge" }).click();
-        await expect(page.getByRole("heading", { name: "Knowledge Stacks" })).toBeVisible();
+        await expect(
+            page.getByRole("heading", { name: "Knowledge Stacks" })
+        ).toBeVisible();
         await page
             .locator('a[href="/demo/knowledge-stacks/credit-private"]')
             .click();
@@ -91,7 +103,6 @@ test.describe.skip("integrated practice exploration (guide detour superseded by 
         await expect(page.getByText("Ready (2 chunks)")).toBeVisible({
             timeout: 30_000,
         });
-
         await expect(page.getByText("Saved practice participants")).toBeVisible();
         await expect(page.getByText("The Credit Analyst").first()).toBeVisible();
 
@@ -154,16 +165,17 @@ test.describe.skip("integrated practice exploration (guide detour superseded by 
         await expect(
             page.getByText(/CRISIL Rating Rationale/i).first()
         ).toBeVisible();
+        await page.keyboard.press("Escape");
 
-        // Jump only to approved recorded chapters, then use the real archive.
-        await page.getByText("Chapters and inspection screens").click();
+        // Jump only to approved recorded chapters, then inspect the real archive.
+        await openExploreMenu(page);
         await page.getByRole("link", { name: "Completed closing" }).click();
-        await expect(page).toHaveURL(/\/demo\/meetings\/[^/]+\?.*tab=closing/);
+        await expect(page).toHaveURL(/chapter=chapter-closing/);
         await expect(
             page.getByText(/The committee voted to conclude/).first()
         ).toBeVisible({ timeout: 30_000 });
 
-        await page.getByText("Chapters and inspection screens").click();
+        await openExploreMenu(page);
         await page.getByRole("link", { name: "Archived result" }).click();
         await expect(page).toHaveURL(/\/demo\/meetings/);
         await page.getByRole("button", { name: "Archived" }).click();
@@ -175,4 +187,3 @@ test.describe.skip("integrated practice exploration (guide detour superseded by 
         await expectNoPublicPersistence(context, page);
     });
 });
-
