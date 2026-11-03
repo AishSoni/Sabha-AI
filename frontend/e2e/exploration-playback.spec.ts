@@ -9,13 +9,12 @@ const MEETING_ID = "a0000000-0000-4000-8000-000000000001";
 
 async function openRoom(page: Page) {
     await page.goto("/demo");
-    await expect(page.getByText(/Step 1 of 8/)).toBeVisible();
-    await page.getByRole("button", { name: "Continue" }).click();
+    await page.getByRole("link", { name: "Start the meeting" }).click();
     await expect(page).toHaveURL(/\/demo\/new$/);
     await page.getByRole("button", { name: "Create recorded meeting" }).click();
     await expect(page.getByText("Recorded intake ready")).toBeVisible();
-    await page.getByRole("button", { name: "Continue" }).click();
-    await expect(page).toHaveURL(/\/demo\/meetings\/[^/]+$/);
+    await page.getByRole("link", { name: "Open the meeting room" }).click();
+    await expect(page).toHaveURL(/\/demo\/meetings\/[^/]+/);
 }
 
 async function openChapter(

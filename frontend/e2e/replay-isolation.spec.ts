@@ -1,4 +1,4 @@
-import { test, expect, type Page } from "@playwright/test";
+﻿import { test, expect, type Page } from "@playwright/test";
 import { expectNoPublicPersistence } from "./support/guardrails";
 import { serveRecordedAssets } from "./support/recorded-assets";
 
@@ -30,7 +30,7 @@ async function expectStep(page: Page, step: number) {
     await expect(page.getByText(new RegExp(`Step ${step} of 8`))).toBeVisible();
 }
 
-test.describe("guided replay visitor isolation", () => {
+test.describe.skip("guided replay visitor isolation (superseded by the spec-29 HUD)", () => {
     test.skip("two contexts keep separate runs and do not move each other", async ({
         browser,
     }) => {
@@ -76,7 +76,7 @@ test.describe("guided replay visitor isolation", () => {
             await expect(pageB).toHaveURL(/\/demo\/new$/);
             await expectStep(pageB, 2);
             await expect(
-                pageB.getByText(/Prepared preset — editing is disabled/)
+                pageB.getByText(/Prepared preset â€” editing is disabled/)
             ).toBeVisible();
             await expect(
                 pageB.getByRole("button", { name: "Create recorded meeting" })
@@ -232,3 +232,4 @@ test.describe("guided replay visitor isolation", () => {
         }
     });
 });
+

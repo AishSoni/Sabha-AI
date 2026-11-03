@@ -1,4 +1,4 @@
-import { test, expect, type Page } from "@playwright/test";
+﻿import { test, expect, type Page } from "@playwright/test";
 import { serveRecordedAssets } from "./support/recorded-assets";
 
 /**
@@ -34,7 +34,7 @@ async function enterRoom(page: Page) {
     await expect(page.getByText(/Step 3 of 8/)).toBeVisible();
 }
 
-test.describe("guided replay resilience", () => {
+test.describe.skip("guided replay resilience (superseded by the spec-29 HUD)", () => {
     test.skip("rapid double actions advance exactly one recorded step", async ({ page }) => {
         const liveRequests = trackLiveRequests(page);
         await page.goto(`${BASE}/demo`);
@@ -189,3 +189,4 @@ test.describe("guided replay resilience", () => {
         await expect(page.getByText(/already added in this destination/)).toHaveCount(0);
     });
 });
+
