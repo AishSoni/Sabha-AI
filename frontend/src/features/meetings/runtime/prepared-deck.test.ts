@@ -183,7 +183,6 @@ describe("prepared deck composition", () => {
             state([FOLLOW_UP_STEP, "turn-b", "turn-a"])
         );
         expect(followFirst.meeting.messages?.map((item) => item.id)).toEqual([
-            "opening",
             "follow-message",
             "turn-b",
             "turn-a",
@@ -192,13 +191,13 @@ describe("prepared deck composition", () => {
             followFirst.meeting.messages?.filter(
                 (item) => item.sender_type === "user"
             )
-        ).toHaveLength(2);
+        ).toHaveLength(1);
         expect(
             followFirst.meeting.messages?.filter(
                 (item) => item.sender_type === "ai"
             )
         ).toHaveLength(2);
-        expect(followFirst.meeting.messages?.[1].sender_name).toBe("You");
+        expect(followFirst.meeting.messages?.[0].sender_name).toBe("You");
         expect(followFirst.turns.map((item) => item.operation_id)).toEqual([
             "op-turn-b",
             "op-turn-a",
@@ -211,13 +210,12 @@ describe("prepared deck composition", () => {
             state(["turn-a", "turn-b", FOLLOW_UP_STEP])
         );
         expect(reverse.meeting.messages?.map((item) => item.id)).toEqual([
-            "opening",
             "turn-a",
             "turn-b",
             "follow-message",
         ]);
         expect(new Set(reverse.meeting.messages?.map((item) => item.id)).size).toBe(
-            4
+            3
         );
     });
 

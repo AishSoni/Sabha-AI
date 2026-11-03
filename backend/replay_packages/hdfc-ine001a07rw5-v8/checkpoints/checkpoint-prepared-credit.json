@@ -101,7 +101,7 @@
             "at": "2020-07-31T09:00:24Z"
           }
         ],
-        "note": "Recorded intake. No filesystem write or live parser ran during playback."
+        "note": "Recorded intake."
       },
       "disclosure": "Prepared historical educational content. No live research, current pricing, or investment advice. No fresh model charge.",
       "as_of": "Information as of 31 July 2020 - sources captured 16 October 2026.",
@@ -184,7 +184,7 @@
           "content": "We are reviewing HDFC Ltd's 7.87% 2022 debenture (ISIN INE001A07RW5) as of 31 July 2020. Credit Analyst, establish the terms and rating, and separate what the record supports from what it does not.",
           "sender_type": "user",
           "sender_id": null,
-          "sender_name": "Director",
+          "sender_name": "You",
           "citations": [],
           "tool_artifacts": null,
           "thinking_content": null,

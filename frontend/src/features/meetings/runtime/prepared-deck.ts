@@ -183,13 +183,13 @@ export function composedBundle(
     state: PreparedDeckState
 ): ReplayBundle {
     const base = state.base;
+    // The opening request belongs to the prepared agenda, not to the visitor's
+    // transcript. The deck therefore composes exactly four AI replies and the
+    // single **You** follow-up.
     const messages: Message[] = [];
     for (const message of base.meeting.messages ?? []) {
-        messages.push(
-            message.sender_type === "user"
-                ? { ...message, sender_name: "You" }
-                : message
-        );
+        if (message.sender_type === "user") continue;
+        messages.push(message);
     }
     const disagreements: Disagreement[] = [...base.disagreements];
     const consensus: Consensus[] = [...base.consensus];

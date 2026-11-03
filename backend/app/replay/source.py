@@ -91,16 +91,17 @@ def prepared_operation_ids(published: PublishedPackage) -> set[str] | None:
     tape cannot be addressed merely because it exists inside the package.
     """
 
-    if published.manifest.schema_version < 3:
+    manifest = getattr(published, "manifest", None)
+    if manifest is None or manifest.schema_version < 3:
         return None
     allowed = {
         turn.operation_id
-        for turn in published.manifest.prepared_turns
+        for turn in manifest.prepared_turns
         if turn.kind == "reply"
     }
     allowed.update(
         transition.operation_id
-        for transition in published.manifest.transitions
+        for transition in manifest.transitions
         if transition.operation_id is not None
     )
     return allowed

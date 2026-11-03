@@ -6,7 +6,7 @@
   "event_version": 1,
   "title": "HDFC Ltd 7.87% 2022 debenture - prepared demo",
   "as_of": "2020-07-31",
-  "content_sha256": "655be49dc50d221ea595e9882b0203ff7184b1e16f653020978d38e1ed0c1765",
+  "content_sha256": "50401ee11bae539559a3e1463ae3ad448b3ad69aad8342ce3f05ddcea172665a",
   "meeting_id": "a0000000-0000-4000-8000-000000000001",
   "initial_checkpoint": "checkpoint-initial",
   "checkpoints": [
@@ -650,7 +650,7 @@
       "canonical": true,
       "prerequisites": [],
       "label": "Send the supported follow-up",
-      "explanation": "Canonical Director follow-up."
+      "explanation": "Canonical You follow-up."
     },
     {
       "transition_id": "canonical-portfolio",
@@ -1434,7 +1434,7 @@
     }
   ],
   "workspace_seed": "workspace_seed.json",
-  "workspace_seed_sha256": "f9d6fed7da8366b1ca99d2a7d0e646f3d5aa01301f0f542e7e1ae55258045cf9",
+  "workspace_seed_sha256": "e9b7112c17db15a07acc0a5b21f630f2219d79588ae4b905236b0dcf99756409",
   "prepared_base_checkpoint": "checkpoint-prepared-base",
   "prepared_turns": [
     {

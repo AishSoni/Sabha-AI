@@ -3974,6 +3974,13 @@ def build(
             intake = safe_config.get("intake") or {}
             if intake.get("note"):
                 intake["note"] = "Recorded intake."
+            meeting_read = checkpoint_payload["reads"].get("meeting") or {}
+            for message in meeting_read.get("messages") or []:
+                if message.get("sender_type") == "user":
+                    message["sender_name"] = "You"
+        for transition in exploration["transitions"]:
+            transition["label"] = visitor_copy(transition["label"])
+            transition["explanation"] = visitor_copy(transition["explanation"])
         for beat in beats:
             for key in ("title", "objective", "disclosure"):
                 if beat.get(key):
@@ -3986,8 +3993,17 @@ def build(
         for intent in intents:
             if intent.get("label"):
                 intent["label"] = visitor_copy(intent["label"])
+        for checkpoint_id, checkpoint_payload in checkpoints.items():
+            write_json(
+                root / "checkpoints" / f"{checkpoint_id}.json",
+                checkpoint_payload,
+            )
 
     seed_payload = workspace_seed()
+    if schema_version >= 3 and seed_payload.get("base_instructions"):
+        seed_payload["base_instructions"] = seed_payload[
+            "base_instructions"
+        ].replace("The Director", "You").replace("Director", "You")
     write_json(root / "workspace_seed.json", seed_payload)
     seed_sha256 = hashlib.sha256(
         json.dumps(
