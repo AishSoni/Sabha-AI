@@ -214,7 +214,7 @@ describe("demo persona catalog", () => {
         ).toBeInTheDocument();
         fireEvent.click(
             await screen.findByRole("link", {
-                name: /Open the practice persona catalog/,
+                name: "Personas",
             })
         );
 

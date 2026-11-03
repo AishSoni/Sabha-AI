@@ -205,7 +205,7 @@ async function openEditor() {
         screen.getByRole("button", { name: "Try editing this setup" })
     );
     await screen.findByRole("heading", {
-        name: "Practice editing this setup",
+        name: "Practice setup",
     });
     expect(document.querySelector("input[type=file]")).toBeNull();
 }
@@ -225,14 +225,13 @@ async function createSetup(options: { sample?: RegExp; buttonName?: string } = {
 
     await screen.findByText("Selected · starts after setup is created");
     const createButton = screen.getByRole("button", {
-        name: options.buttonName ?? "Create practice meeting",
+        name: options.buttonName ?? "Create practice setup",
     });
     // A repeated submit must not clone the setup or its prepared documents.
     fireEvent.click(createButton);
     fireEvent.click(createButton);
-    await screen.findByText("Practice setup created");
-    const link = screen.getByRole("link", { name: /Open practice setup/ });
-    return link.getAttribute("href")!;
+    await screen.findByText("Captured participants");
+    return demoLocation.getPathname();
 }
 
 beforeEach(() => {
@@ -252,10 +251,6 @@ describe("demo practice meetings", () => {
         const href = await createSetup();
         expect(href.startsWith("/demo/meetings/local-")).toBe(true);
         expect(verifySample).toHaveBeenCalledTimes(1);
-
-        fireEvent.click(
-            screen.getByRole("link", { name: /Open practice setup/ })
-        );
 
         expect(
             await screen.findByText("Captured participants")
@@ -292,9 +287,6 @@ describe("demo practice meetings", () => {
         installDemoRouter();
         await createSetup({ sample: /downside-worksheet\.md/ });
 
-        fireEvent.click(
-            screen.getByRole("link", { name: /Open practice setup/ })
-        );
         await screen.findByText(/Failed/, {}, { timeout: 3000 });
         const failedRow = screen.getByText(/Failed/).closest("div");
         expect(failedRow).not.toBeNull();
@@ -316,9 +308,8 @@ describe("demo practice meetings", () => {
         await createSetup();
 
         fireEvent.click(
-            screen.getByRole("button", { name: "Back to recorded intake" })
+            screen.getByRole("link", { name: "Back to meetings" })
         );
-        fireEvent.click(screen.getByRole("link", { name: "Meetings" }));
 
         expect(
             await screen.findByRole("heading", { name: "Practice setups" })
