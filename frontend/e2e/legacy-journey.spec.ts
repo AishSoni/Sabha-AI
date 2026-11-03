@@ -41,7 +41,9 @@ test.describe("version-5 package compatibility", () => {
             page.getByRole("heading", { name: /Prepared board/ })
         ).toBeVisible();
         await expect(
-            page.getByText(/Information as of 31 July 2020/).first()
+            page.getByText(
+                /Recorded responses, not live AI generation · as of 31 July 2020/
+            ).first()
         ).toBeVisible();
         await expect(
             page.getByText("Chapters and inspection screens")
@@ -137,6 +139,7 @@ test.describe("version-5 package compatibility", () => {
 
         await page.getByRole("link", { name: "Go to meetings" }).click();
         await expect(page).toHaveURL(/\/demo\/meetings$/);
+        await page.getByTestId("archive-meeting").scrollIntoViewIfNeeded();
         await expect(hud.getByText("Archive the meeting")).toBeVisible();
         await page.getByTestId("archive-meeting").click();
         await expect(hud.getByText("Demo complete")).toBeVisible({

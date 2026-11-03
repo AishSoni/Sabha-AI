@@ -122,6 +122,47 @@ const LEGACY_BEATS: ReplayBeat[] = [
             },
         ],
     }),
+    beat({
+        beat_id: "close-the-meeting",
+        ordinal: 7,
+        route: "meeting",
+        anchor: "closing-entry",
+        steps: [
+            {
+                step_id: "close",
+                label: "Close the meeting",
+                intent_id: "close-meeting",
+                completion: "closing_completed",
+                requires_tab: null,
+            },
+        ],
+    }),
+];
+
+const LEGACY_BEATS_WITH_UNCERTAINTY: ReplayBeat[] = [
+    ...LEGACY_BEATS,
+    beat({
+        beat_id: "address-uncertainty",
+        ordinal: 5,
+        route: "meeting",
+        anchor: "portfolio-analyst-action",
+        steps: [
+            {
+                step_id: "send-follow-up",
+                label: "Send the supported Director follow-up",
+                intent_id: "director-follow-up",
+                completion: "checkpoint",
+                requires_tab: "chat",
+            },
+            {
+                step_id: "ask-portfolio",
+                label: "Ask the Portfolio Analyst",
+                intent_id: "portfolio-analyst",
+                completion: "turn_terminal",
+                requires_tab: "chat",
+            },
+        ],
+    }),
 ];
 
 describe("selectPrompt", () => {
@@ -382,5 +423,48 @@ describe("selectPrompt on the legacy beat journey", () => {
             })
         );
         expect(prompt).toMatchObject({ id: "main-close", anchor: "room.close" });
+    });
+
+    it("names the second action in a two-step legacy beat", () => {
+        const prompt = selectPrompt(
+            journey({
+                deck: false,
+                beats: LEGACY_BEATS_WITH_UNCERTAINTY,
+                meetingCreated: true,
+                roomVisited: true,
+                settledIntents: new Set([
+                    "credit-analyst",
+                    "downside-reviewer",
+                    "director-follow-up",
+                ]),
+            })
+        );
+        expect(prompt).toMatchObject({
+            id: "main-speaker",
+            instruction: "Ask the Portfolio Analyst",
+            anchor: "action.portfolio-analyst",
+        });
+    });
+
+    it("points at the vote once the legacy closing panel is open", () => {
+        const prompt = selectPrompt(
+            journey({
+                deck: false,
+                beats: LEGACY_BEATS,
+                meetingCreated: true,
+                roomVisited: true,
+                tab: "closing",
+                settledIntents: new Set([
+                    "credit-analyst",
+                    "downside-reviewer",
+                    "concluding-discussion",
+                ]),
+            })
+        );
+        expect(prompt).toMatchObject({
+            id: "main-vote",
+            instruction: "Vote to end the meeting",
+            anchor: "room.vote",
+        });
     });
 });

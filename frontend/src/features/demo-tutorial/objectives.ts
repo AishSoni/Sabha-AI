@@ -8,6 +8,7 @@ import type { ReplayBeat } from "@/features/meetings/presentation";
 import {
     LEGACY_BEAT_ANCHORS,
     LEGACY_BEAT_COPY,
+    LEGACY_STEP_COPY,
     beatStepSatisfied,
     sortBeats,
     type BeatProgressInput,
@@ -75,7 +76,8 @@ function legacyRoomPrompt(journey: TutorialJourney): TutorialPrompt | null {
                 candidate.completion !== "acknowledge" &&
                 !beatStepSatisfied(candidate, beat, input, index)
         );
-        if (step?.intent_id === "director-follow-up") {
+        if (!step) continue;
+        if (step.intent_id === "director-follow-up") {
             return {
                 id: "main-followup",
                 instruction: "Send your follow-up",
@@ -83,9 +85,26 @@ function legacyRoomPrompt(journey: TutorialJourney): TutorialPrompt | null {
                 alternates: ["action.portfolio-analyst"],
             };
         }
+        if (step.intent_id === "close-meeting") {
+            return journey.tab === "closing"
+                ? {
+                      id: "main-vote",
+                      instruction: "Vote to end the meeting",
+                      anchor: "room.vote",
+                      alternates: ["room.vote-confirm"],
+                  }
+                : {
+                      id: "main-close",
+                      instruction: "Close the meeting",
+                      anchor: "room.close",
+                  };
+        }
         return {
             id: "main-speaker",
-            instruction: LEGACY_BEAT_COPY[beat.beat_id] ?? beat.title,
+            instruction:
+                (step.intent_id ? LEGACY_STEP_COPY[step.intent_id] : null) ??
+                LEGACY_BEAT_COPY[beat.beat_id] ??
+                beat.title,
             anchor: fromBeatAnchor(beat.anchor),
         };
     }

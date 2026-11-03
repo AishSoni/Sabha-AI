@@ -206,10 +206,20 @@ export function ReplayRunProvider({ children }: { children: ReactNode }) {
 
     const closingCompleted = useMemo(() => {
         if (deckEnabled) return Boolean(deckRef.current?.closing);
-        if (!canonicalClosing) return false;
-        return (
-            settledIntents.has(canonicalClosing.intent_id) ||
-            effectiveCheckpoint === canonicalClosing.completed_checkpoint
+        if (canonicalClosing) {
+            return (
+                settledIntents.has(canonicalClosing.intent_id) ||
+                effectiveCheckpoint === canonicalClosing.completed_checkpoint
+            );
+        }
+        // Version-1/2 packages predate explicit transitions. Their closing is
+        // still a real recorded intent, so settling it closes the journey. A
+        // package that authors transitions keeps the canonical-only rule.
+        if (session.transitions.length > 0) return false;
+        return session.intents.some(
+            (intent) =>
+                intent.kind === "request_closing" &&
+                settledIntents.has(intent.intent_id)
         );
         // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [
@@ -217,6 +227,7 @@ export function ReplayRunProvider({ children }: { children: ReactNode }) {
         deckEnabled,
         deckVersion,
         effectiveCheckpoint,
+        session.intents,
         settledIntents,
     ]);
 

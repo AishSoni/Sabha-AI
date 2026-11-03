@@ -101,6 +101,21 @@ export const LEGACY_BEAT_COPY: Record<string, string> = {
     "archive-the-meeting": "Archive the meeting",
 };
 
+/**
+ * A beat can contain two recorded actions (for example the follow-up and the
+ * participant who answers it). The outstanding step therefore owns the copy,
+ * with the beat title only as a fallback.
+ */
+export const LEGACY_STEP_COPY: Record<string, string> = {
+    "create-meeting": "Create the recorded meeting",
+    "credit-analyst": "Ask the Credit Analyst",
+    "downside-reviewer": "Ask the Downside Reviewer",
+    "portfolio-analyst": "Ask the Portfolio Analyst",
+    "concluding-discussion": "Ask the committee to align",
+    "close-meeting": "Close the meeting",
+    "archive-meeting": "Archive the meeting",
+};
+
 /** Recorded intents that own a participant action region. */
 export const INTENT_ANCHORS: Record<string, TutorialAnchorId> = {
     "credit-analyst": "action.credit-analyst",
