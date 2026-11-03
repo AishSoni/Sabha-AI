@@ -71,4 +71,73 @@ test.describe("demo failure recovery", () => {
         network.assertClean();
         await expectNoPublicPersistence(context, page);
     });
+
+    test("a corrupt session read fails closed without inventing a meeting", async ({
+        page,
+        context,
+    }) => {
+        const network = guardNetwork(page);
+        await page.route("**/api/replay/session", (route) =>
+            route.fulfill({
+                status: 200,
+                contentType: "application/json",
+                body: "{not-json",
+            })
+        );
+
+        await page.goto("/demo");
+        await expect(
+            page.getByRole("heading", { name: "Recorded demo unavailable" })
+        ).toBeVisible({ timeout: 30_000 });
+        await expect(page.getByTestId("tutorial-hud")).toHaveCount(0);
+        await expect(page.getByTestId("tutorial-hud-compact")).toHaveCount(0);
+        await expect(
+            page.getByRole("button", { name: /Credit Analyst opening facts/ })
+        ).toHaveCount(0);
+        await expect(
+            page.getByRole("button", { name: /Archive meeting/ })
+        ).toHaveCount(0);
+
+        network.assertClean();
+        await expectNoPublicPersistence(context, page);
+    });
+
+    test("a missing recorded tape pauses without composing a reply", async ({
+        page,
+        context,
+    }) => {
+        const network = guardNetwork(page);
+        await openRoom(page);
+        await page.route("**/api/replay/**/events*", (route) =>
+            route.fulfill({
+                status: 404,
+                contentType: "application/json",
+                body: JSON.stringify({ detail: "tape_missing" }),
+            })
+        );
+
+        await page
+            .getByRole("button", { name: "Credit Analyst opening facts" })
+            .click();
+        await expect(page.getByText(/Observation paused/).first()).toBeVisible({
+            timeout: 30_000,
+        });
+        await expect(
+            page.locator(
+                '[data-testid="message"][data-message-id="a0000000-0000-4000-8000-000000000402"]'
+            )
+        ).toHaveCount(0);
+        await expect(
+            page.getByRole("button", { name: "Show full response" })
+        ).toBeVisible();
+        await page.getByRole("button", { name: "Show full response" }).click();
+        await expect(
+            page.locator(
+                '[data-testid="message"][data-message-id="a0000000-0000-4000-8000-000000000402"]'
+            )
+        ).toBeVisible({ timeout: 30_000 });
+
+        network.assertClean();
+        await expectNoPublicPersistence(context, page);
+    });
 });

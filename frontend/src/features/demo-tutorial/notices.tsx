@@ -219,9 +219,9 @@ export function TutorialNotices() {
             data-testid="tutorial-notices"
             role="status"
             aria-label="Recorded updates"
-            className="fixed z-40 flex w-[min(20rem,calc(100vw-2rem))] flex-col gap-2"
+            className="pointer-events-none fixed z-40 flex w-[min(20rem,calc(100vw-2rem))] flex-col gap-2"
             style={{
-                top: "calc(env(safe-area-inset-top, 0px) + 4.5rem)",
+                bottom: "calc(env(safe-area-inset-bottom, 0px) + 1rem)",
                 left: "calc(env(safe-area-inset-left, 0px) + 1rem)",
             }}
             hidden={modalOpen}
@@ -229,7 +229,7 @@ export function TutorialNotices() {
             {notices.map((notice) => (
                 <div
                     key={notice.key}
-                    className="rounded-lg border border-zinc-700 bg-zinc-900/95 p-2.5 shadow-lg"
+                    className="pointer-events-none rounded-lg border border-zinc-700 bg-zinc-900/95 p-2.5 shadow-lg"
                 >
                     <div className="flex items-start gap-2">
                         {notice.kind === "disagreement" ? (
@@ -255,7 +255,7 @@ export function TutorialNotices() {
                             type="button"
                             onClick={() => dismissNotice(notice.key)}
                             aria-label={`Dismiss ${notice.title}`}
-                            className="shrink-0 rounded p-0.5 text-zinc-500 hover:text-zinc-200 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-indigo-400"
+                            className="pointer-events-auto shrink-0 rounded p-0.5 text-zinc-500 hover:text-zinc-200 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-indigo-400"
                         >
                             <X className="h-3.5 w-3.5" aria-hidden="true" />
                         </button>
@@ -264,7 +264,7 @@ export function TutorialNotices() {
                         <button
                             type="button"
                             onClick={() => view(notice)}
-                            className="rounded px-2 py-0.5 text-xs font-medium text-indigo-300 hover:bg-indigo-950/60 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-indigo-400"
+                            className="pointer-events-auto rounded px-2 py-0.5 text-xs font-medium text-indigo-300 hover:bg-indigo-950/60 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-indigo-400"
                         >
                             View
                         </button>

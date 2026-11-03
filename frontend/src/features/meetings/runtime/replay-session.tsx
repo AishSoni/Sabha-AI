@@ -107,7 +107,7 @@ export function ReplaySessionProvider({ children }: { children: ReactNode }) {
                 ? "Recorded replay is not configured on this server."
                 : null;
         return (
-            <ReplayFrame title="Guided replay unavailable">
+            <ReplayFrame title="Recorded demo unavailable">
                 <p className="text-sm text-zinc-400">
                     {notConfigured ?? error.message ?? "The recording is unavailable."}
                 </p>

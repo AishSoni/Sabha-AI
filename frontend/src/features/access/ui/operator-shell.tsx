@@ -50,7 +50,7 @@ export function OperatorShell({
                         href="/demo"
                         className="text-xs text-neutral-400 hover:text-neutral-200"
                     >
-                        Guided replay
+                        Recorded demo
                     </Link>
                     <button
                         type="button"

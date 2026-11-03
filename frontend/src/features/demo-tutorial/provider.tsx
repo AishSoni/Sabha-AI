@@ -132,7 +132,9 @@ export function DemoTutorialProvider({ children }: { children: ReactNode }) {
               },
               pathname
           )
-        : refineOnRoute(selectPrompt(journey), pathname);
+        : isOtherMeetingRoute(pathname, run.session.meeting_id)
+          ? null
+          : refineOnRoute(selectPrompt(journey), pathname);
 
     const hide = useCallback(() => setHidden(true), []);
     const show = useCallback(() => setHidden(false), []);
@@ -221,6 +223,17 @@ export function DemoTutorialProvider({ children }: { children: ReactNode }) {
 interface ResumeDestination {
     href: string;
     checkpoint: string | null;
+}
+
+/**
+ * A local practice meeting shares the room layout but not the recording.
+ * It must never receive recorded-action tips.
+ */
+function isOtherMeetingRoute(pathname: string, recordedMeetingId: string): boolean {
+    return (
+        pathname.startsWith("/demo/meetings/") &&
+        !pathname.startsWith(`/demo/meetings/${recordedMeetingId}`)
+    );
 }
 
 /**

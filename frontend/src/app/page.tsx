@@ -50,7 +50,7 @@ export default function HomePage() {
                             href="/demo"
                             className="rounded-lg border border-indigo-800 px-3 py-1.5 text-indigo-300 transition-colors hover:bg-indigo-950/40"
                         >
-                            Guided replay
+                            Recorded demo
                         </Link>
                     </nav>
                 </div>
@@ -77,7 +77,7 @@ export default function HomePage() {
                             href="/demo"
                             className="inline-flex items-center gap-2 rounded-xl bg-indigo-600 px-6 py-3 text-sm font-semibold text-white transition-colors hover:bg-indigo-500"
                         >
-                            Start guided replay
+                            Start the demo
                             <ArrowRight className="h-4 w-4" />
                         </Link>
                         <Link

@@ -96,6 +96,123 @@ test.describe("demo keyboard and narrow-screen accessibility", () => {
         await expectNoPublicPersistence(context, page);
     });
 
+    test("operates tips, notices, and an optional tour from the keyboard", async ({
+        page,
+        context,
+    }) => {
+        test.setTimeout(180_000);
+        const network = guardNetwork(page);
+        await page.emulateMedia({ reducedMotion: "reduce" });
+        await page.goto("/demo");
+
+        const hud = page.getByTestId("tutorial-hud");
+        await expect(hud).toHaveAccessibleName("Demo tutorial");
+        await expect(hud).toHaveAttribute("role", "region");
+        await expect(page.getByRole("dialog")).toHaveCount(0);
+
+        await hud.getByRole("button", { name: "Hide" }).focus();
+        await page.keyboard.press("Enter");
+        await expect(hud).toHaveCount(0);
+        const show = page.getByRole("button", { name: "Show tips" });
+        await show.focus();
+        await page.keyboard.press("Enter");
+        await expect(hud.getByText("Start the meeting")).toBeVisible();
+
+        await page.getByRole("link", { name: "Start the meeting" }).focus();
+        await page.keyboard.press("Enter");
+        await expect(page).toHaveURL(/\/demo\/new$/);
+        const create = page.getByRole("button", { name: "Create recorded meeting" });
+        await create.focus();
+        await page.keyboard.press("Enter");
+        const open = page.getByRole("link", { name: "Open the meeting room" });
+        await open.focus();
+        await page.keyboard.press("Enter");
+        await expect(page).toHaveURL(/\/demo\/meetings\//);
+
+        await page.getByRole("button", { name: "Downside challenge" }).focus();
+        await page.keyboard.press("Enter");
+        const notices = page.getByTestId("tutorial-notices");
+        await expect(notices.getByText("Disagreement logged")).toBeVisible({
+            timeout: 30_000,
+        });
+        await notices
+            .getByRole("button", { name: "Dismiss Disagreement logged" })
+            .focus();
+        await page.keyboard.press("Enter");
+        await expect(notices).toHaveCount(0);
+        await page.getByRole("tab", { name: "Disagreements" }).click();
+        await expect(
+            page.getByText("Rating alone is insufficient").first()
+        ).toBeVisible();
+        await page.getByRole("tab", { name: "Chat" }).click();
+
+        const expectedProgress = [
+            "2 of 4 replies",
+            "3 of 4 replies",
+            "Send your follow-up",
+        ];
+        for (const [index, name] of [
+            "Credit Analyst opening facts",
+            "Mandate review",
+            "Committee alignment",
+        ].entries()) {
+            const action = page.getByRole("button", { name });
+            await expect(action).toBeEnabled();
+            await action.focus();
+            await page.keyboard.press("Enter");
+            await expect(hud.getByText(expectedProgress[index])).toBeVisible({
+                timeout: 30_000,
+            });
+        }
+        const send = page.getByRole("button", { name: "Send question" });
+        await expect(send).toBeVisible({ timeout: 30_000 });
+        await send.focus();
+        await page.keyboard.press("Enter");
+        await expect(hud.getByText("Close the meeting")).toBeVisible({
+            timeout: 30_000,
+        });
+        await page.getByRole("button", { name: "Close meeting" }).focus();
+        await page.keyboard.press("Enter");
+        await expect(
+            page.getByRole("button", { name: "Vote to End" })
+        ).toBeVisible();
+        await page.getByRole("button", { name: "Vote to End" }).focus();
+        await page.keyboard.press("Enter");
+        await page.getByRole("button", { name: "Start Vote" }).focus();
+        await page.keyboard.press("Enter");
+        await expect(
+            page.getByText(/The committee voted to conclude/).first()
+        ).toBeVisible({ timeout: 30_000 });
+        await page.getByRole("link", { name: "Go to meetings" }).focus();
+        await page.keyboard.press("Enter");
+        await page.getByTestId("archive-meeting").focus();
+        await page.keyboard.press("Enter");
+        await expect(hud.getByText("Demo complete")).toBeVisible({
+            timeout: 30_000,
+        });
+        await page.evaluate(() => window.scrollTo(0, 0));
+
+        await hud
+            .getByRole("button", { name: "Explore prompt versions" })
+            .focus();
+        await page.keyboard.press("Enter");
+        await expect(hud.getByText("Open a persona")).toBeVisible();
+        await hud.getByRole("button", { name: "End tour" }).focus();
+        await page.keyboard.press("Enter");
+        await expect(hud.getByText("Demo complete")).toBeVisible();
+
+        expect(
+            await page.evaluate(
+                () =>
+                    document.documentElement.scrollWidth <=
+                    document.documentElement.clientWidth + 1
+            )
+        ).toBe(true);
+
+        network.assertClean();
+        await expectNoPublicPersistence(context, page);
+    });
+
     test("explains operator-only settings without credential controls", async ({
         page,
         context,
