@@ -1387,7 +1387,13 @@ function MessageBubble({
             ?.tool_calls || [];
 
     return (
-        <div className={cn('flex gap-3', isUser && 'flex-row-reverse')}>
+        <div
+            data-testid="message"
+            data-message-id={message.id}
+            data-sender-type={message.sender_type}
+            data-sender-name={message.sender_name}
+            className={cn('flex gap-3', isUser && 'flex-row-reverse')}
+        >
             <div
                 className={cn(
                     'w-8 h-8 rounded-full flex items-center justify-center shrink-0',

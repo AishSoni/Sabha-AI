@@ -8,7 +8,7 @@ import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { useDemoWorkspace } from "@/features/demo-workspace";
 import { useReplayRun } from "@/features/meetings/runtime/replay-run";
-import { useAnchorRef } from "@/features/demo-tutorial";
+import { markTutorialFact, useAnchorRef } from "@/features/demo-tutorial";
 import { PracticeSetupRoute } from "./practice-setup-route";
 
 interface Preset {
@@ -56,12 +56,18 @@ export default function DemoNewMeetingPage() {
     const workspace = useDemoWorkspace();
     const [busy, setBusy] = useState(false);
     const [editing, setEditing] = useState(false);
+    const [createdLocally, setCreatedLocally] = useState(false);
     const [error, setError] = useState<string | null>(null);
     const config = run.safeConfig as SafeConfig | null;
     const preset = config?.board?.preset;
     const participants = config?.board?.participants ?? [];
     const intake = config?.intake;
-    const created = run.checkpoint !== run.session.initial_checkpoint;
+    const deck = run.session.prepared_turns.length > 0;
+    // A schema-3 deck starts from its prepared base snapshot, so the recorded
+    // setup submission is the local creation outcome, not a checkpoint switch.
+    const created = deck
+        ? createdLocally
+        : run.checkpoint !== run.session.initial_checkpoint;
 
     if (editing) {
         return <PracticeSetupRoute onExit={() => setEditing(false)} />;
@@ -79,6 +85,8 @@ export default function DemoNewMeetingPage() {
         setBusy(true);
         try {
             await run.startIntent(intent.intent_id);
+            markTutorialFact("demo.intake");
+            if (deck) setCreatedLocally(true);
         } catch (cause) {
             setError(
                 cause instanceof Error
@@ -126,6 +134,56 @@ export default function DemoNewMeetingPage() {
                     </p>
                 ) : null}
             </div>
+
+            {error ? (
+                <p className="mb-4 rounded-lg border border-red-800 bg-red-950/30 p-3 text-sm text-red-300">
+                    {error}
+                </p>
+            ) : null}
+
+            {created ? (
+                <Card className="mb-4 border-emerald-900/60 bg-emerald-950/20 p-5">
+                    <div className="flex items-center gap-2 text-emerald-300">
+                        <ShieldCheck className="h-5 w-5" />
+                        <h2 className="font-medium">Recorded intake ready</h2>
+                    </div>
+                    <ol className="mt-4 grid gap-2 sm:grid-cols-5">
+                        {(intake?.stages ?? []).map((stage) => (
+                            <li
+                                key={stage.key}
+                                className="rounded-lg border border-emerald-900/40 bg-zinc-950/40 p-2 text-xs"
+                            >
+                                <p className="font-medium text-emerald-200">{stage.label}</p>
+                                <p className="mt-1 text-zinc-500">
+                                    {new Date(stage.at).toLocaleTimeString([], {
+                                        hour: "2-digit",
+                                        minute: "2-digit",
+                                        second: "2-digit",
+                                    })}
+                                </p>
+                            </li>
+                        ))}
+                    </ol>
+                    <p className="mt-3 text-xs text-zinc-400">{intake?.note}</p>
+                    <Link
+                        ref={openRoomRef}
+                        href={`/demo/meetings/${run.session.meeting_id}?tab=chat`}
+                        className="mt-4 inline-flex items-center gap-2 rounded-lg bg-indigo-600 px-4 py-2 text-sm font-medium text-white hover:bg-indigo-700"
+                    >
+                        Open the meeting room
+                        <ArrowRight className="h-4 w-4" />
+                    </Link>
+                </Card>
+            ) : (
+                <Button
+                    ref={createRef}
+                    onClick={() => void create()}
+                    disabled={busy}
+                    className="mb-4 bg-indigo-600 hover:bg-indigo-700"
+                >
+                    {busy ? "Recording creation…" : "Create recorded meeting"}
+                </Button>
+            )}
 
             <div className="space-y-4">
                 <Card className="border-zinc-800 bg-zinc-900/50 p-5">
@@ -188,56 +246,6 @@ export default function DemoNewMeetingPage() {
                         </div>
                     </div>
                 </Card>
-
-                {error ? (
-                    <p className="rounded-lg border border-red-800 bg-red-950/30 p-3 text-sm text-red-300">
-                        {error}
-                    </p>
-                ) : null}
-
-                {created ? (
-                    <Card className="border-emerald-900/60 bg-emerald-950/20 p-5">
-                        <div className="flex items-center gap-2 text-emerald-300">
-                            <ShieldCheck className="h-5 w-5" />
-                            <h2 className="font-medium">Recorded intake ready</h2>
-                        </div>
-                        <ol className="mt-4 grid gap-2 sm:grid-cols-5">
-                            {(intake?.stages ?? []).map((stage) => (
-                                <li
-                                    key={stage.key}
-                                    className="rounded-lg border border-emerald-900/40 bg-zinc-950/40 p-2 text-xs"
-                                >
-                                    <p className="font-medium text-emerald-200">{stage.label}</p>
-                                    <p className="mt-1 text-zinc-500">
-                                        {new Date(stage.at).toLocaleTimeString([], {
-                                            hour: "2-digit",
-                                            minute: "2-digit",
-                                            second: "2-digit",
-                                        })}
-                                    </p>
-                                </li>
-                            ))}
-                        </ol>
-                        <p className="mt-3 text-xs text-zinc-400">{intake?.note}</p>
-                        <Link
-                            ref={openRoomRef}
-                            href={`/demo/meetings/${run.session.meeting_id}?tab=chat`}
-                            className="mt-4 inline-flex items-center gap-2 rounded-lg bg-indigo-600 px-4 py-2 text-sm font-medium text-white hover:bg-indigo-700"
-                        >
-                            Open the meeting room
-                            <ArrowRight className="h-4 w-4" />
-                        </Link>
-                    </Card>
-                ) : (
-                    <Button
-                        ref={createRef}
-                        onClick={() => void create()}
-                        disabled={busy}
-                        className="bg-indigo-600 hover:bg-indigo-700"
-                    >
-                        {busy ? "Recording creation…" : "Create recorded meeting"}
-                    </Button>
-                )}
 
             </div>
         </main>

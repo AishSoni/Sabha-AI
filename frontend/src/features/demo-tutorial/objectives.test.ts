@@ -12,6 +12,8 @@ function journey(overrides: Partial<TutorialJourney> = {}): TutorialJourney {
         canClose: false,
         closingCompleted: false,
         roomVisited: false,
+        setupOpen: false,
+        intakeReady: false,
         boardOpen: true,
         listOpen: false,
         archived: false,
@@ -144,6 +146,22 @@ describe("selectPrompt", () => {
     it("asks for the room once the recording exists", () => {
         expect(
             selectPrompt(journey({ meetingCreated: true }))
+        ).toMatchObject({
+            id: "main-open-room",
+            anchor: "demo.open-room",
+        });
+    });
+
+    it("creates the recording from the prepared setup route", () => {
+        expect(selectPrompt(journey({ setupOpen: true }))).toMatchObject({
+            id: "main-create",
+            anchor: "demo.create",
+        });
+    });
+
+    it("opens the room from the setup route after the intake receipt", () => {
+        expect(
+            selectPrompt(journey({ setupOpen: true, intakeReady: true }))
         ).toMatchObject({
             id: "main-open-room",
             anchor: "demo.open-room",

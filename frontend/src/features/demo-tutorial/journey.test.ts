@@ -85,17 +85,46 @@ export function journeyInput(overrides: Partial<JourneyInput> = {}): JourneyInpu
         settledIntents: new Set<string>(),
         meetingStatus: "active",
         roomVisited: false,
+        setupOpen: false,
+        intakeReady: false,
         ...overrides,
     };
 }
 
 describe("deriveJourney", () => {
-    it("only marks the meeting created once the recorded checkpoint moves", () => {
+    it("waits for the recorded setup submission on a prepared deck", () => {
         expect(deriveJourney(journeyInput()).meetingCreated).toBe(false);
         expect(
             deriveJourney(
-                journeyInput({ checkpoint: "checkpoint-created" })
+                journeyInput({ checkpoint: "checkpoint-prepared-base" })
             ).meetingCreated
+        ).toBe(false);
+        expect(
+            deriveJourney(journeyInput({ intakeReady: true })).meetingCreated
+        ).toBe(true);
+    });
+
+    it("reads creation from the checkpoint on the legacy journey", () => {
+        const legacy = session({
+            prepared_turns: [],
+            prepared_closing: null,
+        });
+        expect(
+            deriveJourney(journeyInput({ session: legacy })).meetingCreated
+        ).toBe(false);
+        expect(
+            deriveJourney(
+                journeyInput({
+                    session: legacy,
+                    checkpoint: "checkpoint-created",
+                })
+            ).meetingCreated
+        ).toBe(true);
+    });
+
+    it("treats the prepared setup route as open", () => {
+        expect(
+            deriveJourney(journeyInput({ pathname: "/demo/new" })).setupOpen
         ).toBe(true);
     });
 

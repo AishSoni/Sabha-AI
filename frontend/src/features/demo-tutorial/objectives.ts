@@ -156,19 +156,32 @@ export function selectPrompt(journey: TutorialJourney): TutorialPrompt | null {
         const board = legacyBoardPrompt(journey);
         if (board) return board;
     }
-    if (!journey.meetingCreated) {
+    if (!journey.roomVisited) {
+        if (journey.setupOpen) {
+            return journey.intakeReady
+                ? {
+                      id: "main-open-room",
+                      instruction: "Open the meeting room",
+                      anchor: "demo.open-room",
+                  }
+                : {
+                      id: "main-create",
+                      instruction: "Create the recorded meeting",
+                      anchor: "demo.create",
+                  };
+        }
+        if (journey.meetingCreated) {
+            return {
+                id: "main-open-room",
+                instruction: "Open the meeting room",
+                anchor: "demo.open-room",
+            };
+        }
         return {
             id: "main-start",
             instruction: "Start the meeting",
             anchor: "demo.start",
             alternates: ["demo.create"],
-        };
-    }
-    if (!journey.roomVisited) {
-        return {
-            id: "main-open-room",
-            instruction: "Open the meeting room",
-            anchor: "demo.open-room",
         };
     }
     if (!journey.closingCompleted) {

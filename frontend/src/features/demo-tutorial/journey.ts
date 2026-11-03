@@ -34,6 +34,10 @@ export interface JourneyInput {
     meetingStatus: string | null;
     /** Sticky: the visitor has opened the recorded room at least once. */
     roomVisited: boolean;
+    /** The prepared setup route is open. */
+    setupOpen: boolean;
+    /** The visitor submitted the recorded setup and saw the intake receipt. */
+    intakeReady: boolean;
 }
 
 export interface TutorialJourney {
@@ -44,6 +48,8 @@ export interface TutorialJourney {
     canClose: boolean;
     closingCompleted: boolean;
     roomVisited: boolean;
+    setupOpen: boolean;
+    intakeReady: boolean;
     boardOpen: boolean;
     listOpen: boolean;
     archived: boolean;
@@ -70,8 +76,14 @@ export function deriveJourney(input: JourneyInput): TutorialJourney {
     const playedReplies = replies.filter((turn) =>
         input.playedTurnIds.has(turn.turn_id)
     );
+    const deck =
+        replies.length > 0 && input.session.prepared_closing !== null;
     return {
-        meetingCreated: input.checkpoint !== input.session.initial_checkpoint,
+        // A schema-3 deck already exposes the prepared base checkpoint. Creation
+        // is the visitor's recorded setup submission, not the base snapshot.
+        meetingCreated: deck
+            ? input.intakeReady
+            : input.checkpoint !== input.session.initial_checkpoint,
         replyCount: playedReplies.length,
         requiredReplyCount: replies.filter((turn) => turn.required).length,
         followUpSent: followUp
@@ -80,11 +92,13 @@ export function deriveJourney(input: JourneyInput): TutorialJourney {
         canClose: input.canClose,
         closingCompleted: input.closingCompleted,
         roomVisited: input.roomVisited || isRoomPath(input.pathname),
+        setupOpen: input.setupOpen || input.pathname === "/demo/new",
+        intakeReady: input.intakeReady,
         boardOpen: input.pathname === "/demo",
         listOpen: input.pathname === "/demo/meetings",
         archived: input.meetingStatus === "archived",
         ended: input.meetingStatus === "ended",
-        deck: replies.length > 0 && input.session.prepared_closing !== null,
+        deck,
         tab: input.tab,
         settledIntents: input.settledIntents,
         beats: input.session.beats,

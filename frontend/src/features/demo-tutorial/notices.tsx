@@ -171,8 +171,25 @@ export function TutorialNotices() {
         const target = pendingFocus.current;
         if (!target || tab !== target) return;
         pendingFocus.current = null;
-        const heading = document.getElementById(`${target}-heading`);
-        heading?.focus();
+        // Radix mounts the selected panel after this commit; wait for it before
+        // moving focus to its heading.
+        let frame = 0;
+        let cancelled = false;
+        const focus = () => {
+            if (cancelled) return;
+            const heading = document.getElementById(`${target}-heading`);
+            if (heading) {
+                heading.focus();
+                return;
+            }
+            frame += 1;
+            if (frame <= 5) requestAnimationFrame(focus);
+        };
+        frame = requestAnimationFrame(focus);
+        return () => {
+            cancelled = true;
+            cancelAnimationFrame(frame);
+        };
     }, [tab]);
 
     const view = useCallback(

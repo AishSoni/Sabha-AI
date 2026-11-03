@@ -77,6 +77,7 @@ export function DemoTutorialProvider({ children }: { children: ReactNode }) {
 
     const chapterId = searchParams.get("chapter");
     const tab = searchParams.get("tab");
+    const intakeReady = useTutorialFact("demo.intake");
 
     const baseInput = {
         pathname,
@@ -88,6 +89,8 @@ export function DemoTutorialProvider({ children }: { children: ReactNode }) {
         closingCompleted: run.closingCompleted,
         settledIntents: run.settledIntents,
         meetingStatus: null,
+        setupOpen: pathname === "/demo/new",
+        intakeReady,
     } as const;
     const base = deriveJourney({ ...baseInput, roomVisited: false });
     /**
