@@ -4,10 +4,10 @@
  * Recorded participant intent (spec-17, expanded by spec-26).
  *
  * The buttons select declared recorded operations and checkpoints; they never
- * post a command or reach the live vault/provider/cooldown graph. Inside the
- * guided journey only the current prepared turn is offered, so the room and the
- * guide cannot advance on different paths. Exploration branches remain
- * available because their transitions are non-canonical.
+ * post a command or reach the live vault/provider/cooldown graph. The prepared
+ * turn deck offers every outstanding reply for the participant; the tutorial
+ * observes the room's outcome instead of gating the choice. Exploration
+ * branches remain available because their transitions are non-canonical.
  */
 import { useState, type ComponentProps } from "react";
 import { Play } from "lucide-react";
@@ -17,10 +17,6 @@ import {
     anchorForIntent,
     type TutorialAnchorId,
 } from "@/features/demo-tutorial/contract";
-import {
-    isActionAllowedByGuide,
-    useGuideActions,
-} from "../guide/guide-actions";
 import { useMeetingsRuntime } from "./context";
 import type { ParticipantActionProps } from "./contract";
 
@@ -38,7 +34,6 @@ export function RecordedParticipantAction({
     isQueued,
 }: ParticipantActionProps) {
     const runtime = useMeetingsRuntime();
-    const guide = useGuideActions();
     const replay = runtime.replay;
     const [busyIntent, setBusyIntent] = useState<string | null>(null);
 
@@ -100,7 +95,7 @@ export function RecordedParticipantAction({
         ) {
             return false;
         }
-        return isActionAllowedByGuide(action, guide);
+        return true;
     });
 
     if (actions.length === 0) return null;

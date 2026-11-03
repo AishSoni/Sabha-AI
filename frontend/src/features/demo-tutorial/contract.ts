@@ -126,7 +126,6 @@ export const SHARED_BEAT_IDS: ReadonlySet<string> = new Set([
 export interface BeatProgressInput {
     settledIntents: ReadonlySet<string>;
     closingCompleted: boolean;
-    visitedTabs: ReadonlySet<string>;
     beats: readonly ReplayBeat[];
 }
 
@@ -137,9 +136,6 @@ export function beatStepSatisfied(
     beatIndex: number
 ): boolean {
     if (step.completion === "acknowledge") {
-        if (step.requires_tab && input.visitedTabs.has(step.requires_tab)) {
-            return true;
-        }
         // A later canonical action means the review window has passed; an
         // ignored notice must never block the journey.
         return input.beats

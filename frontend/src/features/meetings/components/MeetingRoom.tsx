@@ -89,10 +89,6 @@ import { ClosingPanel } from './ClosingPanel';
 import { EvidenceCitationTrigger } from '../evidence/trigger';
 import { EvidencePreviewHost } from '../evidence/host';
 import { EvidencePreviewProvider } from '../evidence/provider';
-import {
-    useGuideActions,
-    type GuideReview,
-} from '../guide/guide-actions';
 import { useAnchorRef } from '@/features/demo-tutorial/anchors';
 import type { TutorialAnchorId } from '@/features/demo-tutorial/contract';
 
@@ -254,33 +250,6 @@ interface ConversationProps {
     onTabChange?: (tab: string) => void;
 }
 
-function GuideReviewBanner({
-    review,
-    onComplete,
-}: {
-    review: GuideReview;
-    onComplete: () => void;
-}) {
-    return (
-        <div
-            className="shrink-0 border-b border-zinc-800 bg-zinc-900/70 px-4 py-3"
-            data-testid="guide-review"
-        >
-            <div className="mx-auto flex max-w-3xl items-center gap-3">
-                <div className="min-w-0 flex-1">
-                    <p className="text-sm text-zinc-200">{review.label}</p>
-                    <p className="text-xs text-zinc-500">
-                        This review is part of the recorded journey.
-                    </p>
-                </div>
-                <Button type="button" size="sm" onClick={onComplete}>
-                    Continue
-                </Button>
-            </div>
-        </div>
-    );
-}
-
 function MeetingConversation({
     meeting,
     disagreements,
@@ -322,22 +291,16 @@ function MeetingConversation({
     const [localTab, setLocalTab] = useState(initialTab ?? 'chat');
     /**
      * A routable room is controlled by its URL. The URL is the only owner of
-     * the visible tab, so the guide and the room cannot disagree about which
-     * evidence is on screen. The live room keeps its local fallback.
+     * the visible tab, so the tutorial and the room cannot disagree about
+     * which evidence is on screen. The live room keeps its local fallback.
      */
     const tab = activeTab ?? localTab;
     const setTab = (next: string) => {
         if (activeTab === undefined) setLocalTab(next);
         onTabChange?.(next);
     };
-    const guide = useGuideActions();
     const closeAnchorRef = useAnchorRef('room.close');
     const returnRef = useAnchorRef('room.return');
-    const review = guide?.review?.tab === tab ? guide.review : null;
-    const completeGuideReview = () => {
-        if (!review) return;
-        review.complete();
-    };
     const DocumentsPanel = slots.documentPanel;
     const SummaryPanel = slots.summaryPanel;
 
@@ -437,12 +400,6 @@ function MeetingConversation({
                         value="disagreements"
                         className="flex-1 m-0 min-h-0 flex flex-col"
                     >
-                        {review ? (
-                            <GuideReviewBanner
-                                review={review}
-                                onComplete={completeGuideReview}
-                            />
-                        ) : null}
                         <div className="min-h-0 flex-1">
                             <DisagreementsPanel disagreements={disagreements} />
                         </div>
@@ -454,12 +411,6 @@ function MeetingConversation({
                         value="consensus"
                         className="flex-1 m-0 min-h-0 flex flex-col"
                     >
-                        {review ? (
-                            <GuideReviewBanner
-                                review={review}
-                                onComplete={completeGuideReview}
-                            />
-                        ) : null}
                         <div className="min-h-0 flex-1">
                             <ConsensusPanel consensus={consensus} />
                         </div>

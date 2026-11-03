@@ -122,7 +122,7 @@ export default function DemoNewMeetingPage() {
                 {!workspace.expanded ? (
                     <p className="mt-2 text-xs text-zinc-500">
                         Practice editing is unavailable for this recording
-                        version. The original guided journey remains usable.
+                        version. The recorded meeting remains usable.
                     </p>
                 ) : null}
             </div>

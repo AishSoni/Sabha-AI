@@ -34,8 +34,6 @@ export interface JourneyInput {
     meetingStatus: string | null;
     /** Sticky: the visitor has opened the recorded room at least once. */
     roomVisited: boolean;
-    /** Sticky: room tabs the visitor has actually opened. */
-    visitedTabs: ReadonlySet<string>;
 }
 
 export interface TutorialJourney {
@@ -53,7 +51,6 @@ export interface TutorialJourney {
     deck: boolean;
     tab: string | null;
     settledIntents: ReadonlySet<string>;
-    visitedTabs: ReadonlySet<string>;
     beats: readonly ReplayBeat[];
 }
 
@@ -88,7 +85,6 @@ export function deriveJourney(input: JourneyInput): TutorialJourney {
         deck: replies.length > 0 && input.session.prepared_closing !== null,
         tab: input.tab,
         settledIntents: input.settledIntents,
-        visitedTabs: input.visitedTabs,
         beats: input.session.beats,
     };
 }

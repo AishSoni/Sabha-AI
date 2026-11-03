@@ -225,7 +225,11 @@ export function composedBundle(
         ...message,
         sequence: index,
     }));
-    const status = state.closing ? "ended" : base.meeting.status;
+    const status = state.archived
+        ? "archived"
+        : state.closing
+          ? "ended"
+          : base.meeting.status;
 
     const meeting: MeetingWithParticipants = {
         ...base.meeting,

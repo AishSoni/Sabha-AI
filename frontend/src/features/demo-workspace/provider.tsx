@@ -4,8 +4,8 @@
  * One volatile demo workspace (spec-23).
  *
  * This provider sits above the replay run controller and below the pinned
- * replay session. It owns the browser-memory practice catalog, the guide
- * bookmark, and the reset scopes. Replay playback state stays in
+ * replay session. It owns the browser-memory practice catalog and the reset
+ * scopes. Replay playback state stays in
  * `ReplayRunProvider`; this provider only asks it to reset through a nonce.
  */
 import {
@@ -48,10 +48,6 @@ interface DemoWorkspaceContextValue {
     limits: typeof WORKSPACE_LIMITS;
     expanded: boolean;
     hasPracticeEdits: boolean;
-    guideCollapsed: boolean;
-    setGuideCollapsed: (value: boolean) => void;
-    guideBookmark: string | null;
-    setGuideBookmark: (beatId: string | null) => void;
     playbackReset: PlaybackReset;
     resetWorkspace: () => void;
     restartRecording: () => void;
@@ -113,8 +109,6 @@ export function DemoWorkspaceProvider({
     const [local, setLocal] = useState<WorkspaceLocalState>(emptyLocalState);
     const localRef = useRef<WorkspaceLocalState>(local);
     const [hasPracticeEdits, setHasPracticeEdits] = useState(false);
-    const [guideCollapsed, setGuideCollapsed] = useState(false);
-    const [guideBookmark, setGuideBookmark] = useState<string | null>(null);
     const [playbackReset, setPlaybackReset] = useState<PlaybackReset>({
         nonce: 0,
         reason: "workspace",
@@ -166,7 +160,7 @@ export function DemoWorkspaceProvider({
                 if (isApiError(cause) && cause.status === 404) {
                     setStatus("legacy");
                     setError(
-                        "This recording was published before the practice workspace existed. The original guided journey is unchanged; practice features are unavailable."
+                        "This recording was published before the practice workspace existed. The recorded meeting still works; practice features are unavailable."
                     );
                     return;
                 }
@@ -226,8 +220,6 @@ export function DemoWorkspaceProvider({
         bumpEpoch();
         setWorkspaceResetEpoch((value) => value + 1);
         applySeed(seedRef.current);
-        setGuideCollapsed(false);
-        setGuideBookmark(null);
         setPlaybackReset((previous) => ({
             nonce: previous.nonce + 1,
             reason: "workspace",
@@ -235,9 +227,8 @@ export function DemoWorkspaceProvider({
     }, [applySeed, bumpEpoch]);
 
     const restartRecording = useCallback(() => {
-        // Restart is a playback/bookmark operation. It must not invalidate
-        // practice drafts, pending practice verification, or staged setups.
-        setGuideBookmark(null);
+        // Restart is a playback operation. It must not invalidate practice
+        // drafts, pending practice verification, or staged setups.
         setPlaybackReset((previous) => ({
             nonce: previous.nonce + 1,
             reason: "recording",
@@ -262,10 +253,6 @@ export function DemoWorkspaceProvider({
             limits: WORKSPACE_LIMITS,
             expanded: status === "ready",
             hasPracticeEdits,
-            guideCollapsed,
-            setGuideCollapsed,
-            guideBookmark,
-            setGuideBookmark,
             playbackReset,
             resetWorkspace,
             restartRecording,
@@ -284,8 +271,6 @@ export function DemoWorkspaceProvider({
             publishedAssets,
             local,
             hasPracticeEdits,
-            guideCollapsed,
-            guideBookmark,
             playbackReset,
             resetWorkspace,
             restartRecording,

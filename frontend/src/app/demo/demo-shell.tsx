@@ -2,11 +2,12 @@
 
 import type { ReactNode } from "react";
 import { DemoNav, DemoWorkspaceProvider } from "@/features/demo-workspace";
+import { DemoTutorialProvider } from "@/features/demo-tutorial/provider";
+import { TutorialHud } from "@/features/demo-tutorial/hud";
 import {
     ReplaySessionProvider,
     useReplaySession,
 } from "@/features/meetings/runtime/replay-session";
-import { GuidedReplay } from "@/features/meetings/guide/GuidedReplay";
 import { ReplayRunProvider } from "@/features/meetings/runtime/replay-run";
 import { ChapterBootstrap } from "./chapter-bootstrap";
 
@@ -31,8 +32,11 @@ function PinnedWorkspace({ children }: { children: ReactNode }) {
         >
             <ReplayRunProvider>
                 <ChapterBootstrap>
-                    <DemoNav />
-                    <GuidedReplay>{children}</GuidedReplay>
+                    <DemoTutorialProvider>
+                        <DemoNav />
+                        <TutorialHud />
+                        {children}
+                    </DemoTutorialProvider>
                 </ChapterBootstrap>
             </ReplayRunProvider>
         </DemoWorkspaceProvider>

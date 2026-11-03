@@ -1,4 +1,4 @@
-'use client';
+﻿'use client';
 
 import Link from 'next/link';
 import type { ReactNode } from 'react';
@@ -14,7 +14,7 @@ export function DemoCatalogGate({ children }: { children: ReactNode }) {
     if (workspace.status === 'loading') {
         return (
             <main className="mx-auto max-w-4xl px-4 py-16 text-sm text-zinc-400">
-                Loading the practice workspace…
+                Loading the practice workspaceâ€¦
             </main>
         );
     }
@@ -27,7 +27,7 @@ export function DemoCatalogGate({ children }: { children: ReactNode }) {
                 </h1>
                 <p className="mt-3 max-w-2xl text-sm leading-6 text-zinc-400">
                     {workspace.error ??
-                        'This recording has no practice workspace. The prepared board and the guided journey are unchanged.'}
+                        'This recording has no practice workspace. The prepared board and the recorded journey are unchanged.'}
                 </p>
                 <Link
                     href="/demo"
@@ -41,3 +41,4 @@ export function DemoCatalogGate({ children }: { children: ReactNode }) {
 
     return <>{children}</>;
 }
+

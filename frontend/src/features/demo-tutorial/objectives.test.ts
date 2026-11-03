@@ -18,7 +18,6 @@ function journey(overrides: Partial<TutorialJourney> = {}): TutorialJourney {
         deck: true,
         tab: null,
         settledIntents: new Set<string>(),
-        visitedTabs: new Set<string>(),
         beats: [],
         ...overrides,
     };
@@ -296,16 +295,16 @@ describe("selectPrompt on the legacy beat journey", () => {
         });
     });
 
-    it("moves on once the board was inspected", () => {
+    it("moves on once the recording exists", () => {
         expect(
             selectPrompt(
                 journey({
                     deck: false,
                     beats: LEGACY_BEATS,
-                    visitedTabs: new Set(["roster"]),
+                    meetingCreated: true,
                 })
             )?.instruction
-        ).toBe("Start the meeting");
+        ).toBe("Open the meeting room");
     });
 
     it("asks for the named participant action", () => {
@@ -316,7 +315,6 @@ describe("selectPrompt on the legacy beat journey", () => {
                     beats: LEGACY_BEATS,
                     meetingCreated: true,
                     roomVisited: true,
-                    visitedTabs: new Set(["roster"]),
                 })
             )
         ).toMatchObject({
@@ -332,7 +330,6 @@ describe("selectPrompt on the legacy beat journey", () => {
                 beats: LEGACY_BEATS,
                 meetingCreated: true,
                 roomVisited: true,
-                visitedTabs: new Set(["roster"]),
                 settledIntents: new Set(["credit-analyst", "downside-reviewer"]),
             })
         );
@@ -350,7 +347,6 @@ describe("selectPrompt on the legacy beat journey", () => {
                 beats: LEGACY_BEATS,
                 meetingCreated: true,
                 roomVisited: true,
-                visitedTabs: new Set(["roster"]),
                 settledIntents: new Set([
                     "credit-analyst",
                     "downside-reviewer",

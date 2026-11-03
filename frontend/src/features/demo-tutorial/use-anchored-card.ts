@@ -25,6 +25,7 @@ export interface AnchoredCardState {
     y: number;
     placement: Placement;
     visible: boolean;
+    target: { left: number; top: number; width: number; height: number };
 }
 
 export interface AnchoredCardOptions {
@@ -111,6 +112,12 @@ export function useAnchoredCard(
                     x,
                     y,
                     placement,
+                    target: {
+                        left: targetRect.left,
+                        top: targetRect.top,
+                        width: targetRect.width,
+                        height: targetRect.height,
+                    },
                     visible:
                         middlewareData.hide?.referenceHidden !== true &&
                         !overlaps(

@@ -26,10 +26,6 @@ import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
 import { isApiError } from '@/shared/api/errors';
 import { useAnchorRef } from '@/features/demo-tutorial/anchors';
-import {
-    isActionAllowedByGuide,
-    useGuideActions,
-} from '../guide/guide-actions';
 import { useClosing } from '../api/closing-queries';
 import {
     createClosingRequestKey,
@@ -237,7 +233,6 @@ export function ClosingPanel({
     const runtime = useMeetingsRuntime();
     const voteRef = useAnchorRef('room.vote');
     const voteConfirmRef = useAnchorRef('room.vote-confirm');
-    const guide = useGuideActions();
     const [confirmMode, setConfirmMode] = useState<ClosingMode | null>(null);
     const [actionError, setActionError] = useState<string | null>(null);
     const [archiving, setArchiving] = useState(false);
@@ -279,8 +274,7 @@ export function ClosingPanel({
             .find(
                 (action) =>
                     action.intent.kind === 'request_closing' &&
-                    action.available &&
-                    isActionAllowedByGuide(action, guide)
+                    action.available
             ) ?? null;
     const replayClosingIntent = replayClosingAction?.intent ?? null;
     const canStart =

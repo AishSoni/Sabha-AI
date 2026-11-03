@@ -6,7 +6,6 @@ import { Badge } from "@/components/ui/badge";
 import { Card } from "@/components/ui/card";
 import { useDemoWorkspace } from "@/features/demo-workspace";
 import { useAnchorRef } from "@/features/demo-tutorial/anchors";
-import { useGuideActions } from "@/features/meetings/guide/guide-actions";
 import { useReplayRun } from "@/features/meetings/runtime/replay-run";
 
 interface BoardStack {
@@ -37,7 +36,6 @@ interface BoardPreview {
 export default function DemoBoardPage() {
     const run = useReplayRun();
     const workspace = useDemoWorkspace();
-    const guide = useGuideActions();
     const startRef = useAnchorRef("demo.start");
     const boardRef = useAnchorRef("board.roster");
     const config = run.safeConfig as { board?: BoardPreview } | null;
@@ -88,11 +86,6 @@ export default function DemoBoardPage() {
                 <Link
                     ref={startRef}
                     href="/demo/new"
-                    onClick={(event) => {
-                        if (guide?.currentHref !== "/demo") return;
-                        event.preventDefault();
-                        guide.advance();
-                    }}
                     className="inline-flex items-center gap-2 rounded-lg bg-indigo-600 px-4 py-2 text-sm font-medium text-white hover:bg-indigo-700"
                 >
                     Start the meeting

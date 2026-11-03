@@ -8,7 +8,6 @@ import type { ReplayBeat } from "@/features/meetings/runtime/contract";
 import {
     LEGACY_BEAT_ANCHORS,
     LEGACY_BEAT_COPY,
-    beatSatisfied,
     beatStepSatisfied,
     sortBeats,
     type BeatProgressInput,
@@ -26,7 +25,6 @@ export function beatProgress(journey: TutorialJourney): BeatProgressInput {
     return {
         settledIntents: journey.settledIntents,
         closingCompleted: journey.closingCompleted,
-        visitedTabs: journey.visitedTabs,
         beats: sortBeats(journey.beats),
     };
 }
@@ -39,11 +37,9 @@ function beatById(journey: TutorialJourney, beatId: string) {
 
 /** The board is inspected before the recording exists; it never blocks. */
 function legacyBoardPrompt(journey: TutorialJourney): TutorialPrompt | null {
+    if (journey.meetingCreated) return null;
     const entry = beatById(journey, "meet-the-board");
     if (!entry) return null;
-    if (beatSatisfied(entry.beat, beatProgress(journey), entry.index)) {
-        return null;
-    }
     return {
         id: "main-start",
         instruction: "Meet the board",

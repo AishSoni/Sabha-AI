@@ -1,9 +1,5 @@
 import { render, screen } from "@testing-library/react";
 import { describe, expect, it, vi } from "vitest";
-import {
-    GuideActionsProvider,
-    type GuideActions,
-} from "../guide/guide-actions";
 import type {
     MeetingsRuntime,
     ParticipantActionProps,
@@ -38,19 +34,15 @@ function creditTransition(canonical = true) {
         tape_id: "tape-credit",
         closing_tape_id: null,
         canonical,
-        prerequisites: [],
-        label: "Ask the Credit Analyst",
         explanation: "",
+        label: "Ask the Credit Analyst",
     };
 }
 
-function runtime({
-    settled = [],
-    canonical = true,
-}: {
-    settled?: string[];
-    canonical?: boolean;
-} = {}): MeetingsRuntime {
+function runtime(
+    options: { settled?: string[]; canonical?: boolean } = {}
+): MeetingsRuntime {
+    const { settled = [], canonical = true } = options;
     return {
         replay: {
             transitions: [],
@@ -69,56 +61,27 @@ function runtime({
     } as unknown as MeetingsRuntime;
 }
 
-function guide(activeIntentId: string | null): GuideActions {
-    return {
-        review: null,
-        activeIntentId,
-        currentHref: "/demo/meetings/demo-meeting",
-        nextHref: null,
-        nextTab: null,
-        advance: vi.fn(),
-    };
-}
-
-function renderAction(activeIntentId: string | null) {
+function renderAction() {
     return render(
-        <GuideActionsProvider value={guide(activeIntentId)}>
-            <RecordedParticipantAction
-                participant={participant}
-                isActive={false}
-                isQueued={false}
-                disabled={false}
-                onStart={vi.fn()}
-            />
-        </GuideActionsProvider>
+        <RecordedParticipantAction
+            participant={participant}
+            isActive={false}
+            isQueued={false}
+            disabled={false}
+            onStart={vi.fn()}
+        />
     );
 }
 
 describe("RecordedParticipantAction", () => {
-    it("offers the active guided turn", () => {
+    it("offers the recorded turn without any tutorial provider", () => {
         vi.mocked(useMeetingsRuntime).mockReturnValue(runtime());
 
-        renderAction("credit-analyst");
+        renderAction();
 
         expect(
             screen.getByRole("button", { name: /Ask the Credit Analyst/ })
         ).toBeInTheDocument();
-    });
-
-    it("hides a canonical turn when no guided step is active", () => {
-        vi.mocked(useMeetingsRuntime).mockReturnValue(runtime());
-
-        const { container } = renderAction(null);
-
-        expect(container).toBeEmptyDOMElement();
-    });
-
-    it("hides a later canonical turn while an earlier step is active", () => {
-        vi.mocked(useMeetingsRuntime).mockReturnValue(runtime());
-
-        const { container } = renderAction("portfolio-analyst");
-
-        expect(container).toBeEmptyDOMElement();
     });
 
     it("hides a prepared turn once it has settled", () => {
@@ -126,9 +89,21 @@ describe("RecordedParticipantAction", () => {
             runtime({ settled: ["credit-analyst"] })
         );
 
-        const { container } = renderAction("credit-analyst");
+        const { container } = renderAction();
 
         expect(container).toBeEmptyDOMElement();
+    });
+
+    it("keeps every settled-out action hidden regardless of order", () => {
+        vi.mocked(useMeetingsRuntime).mockReturnValue(
+            runtime({ settled: ["credit-analyst"] })
+        );
+
+        renderAction();
+
+        expect(
+            screen.queryByRole("button", { name: /Ask the Credit Analyst/ })
+        ).toBeNull();
     });
 
     it("keeps a non-canonical exploration turn available", () => {
@@ -136,25 +111,7 @@ describe("RecordedParticipantAction", () => {
             runtime({ canonical: false })
         );
 
-        renderAction(null);
-
-        expect(
-            screen.getByRole("button", { name: /Ask the Credit Analyst/ })
-        ).toBeInTheDocument();
-    });
-
-    it("keeps standalone legacy behavior outside the guide", () => {
-        vi.mocked(useMeetingsRuntime).mockReturnValue(runtime());
-
-        render(
-            <RecordedParticipantAction
-                participant={participant}
-                isActive={false}
-                isQueued={false}
-                disabled={false}
-                onStart={vi.fn()}
-            />
-        );
+        renderAction();
 
         expect(
             screen.getByRole("button", { name: /Ask the Credit Analyst/ })

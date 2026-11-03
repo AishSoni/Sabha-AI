@@ -989,6 +989,16 @@ export function ReplayRunProvider({ children }: { children: ReactNode }) {
             }
             return closing;
         };
+        const listMeetings = value.reads.listMeetings;
+        value.reads.listMeetings = async (signal) => {
+            const rows = await listMeetings(signal);
+            const composed = composedBundle(session, await getState()).meeting;
+            return rows.map((row) =>
+                row.id === composed.id
+                    ? { ...row, status: composed.status }
+                    : row
+            );
+        };
         value.turns.list = async () =>
             composedTurns(session, await getState());
         value.turns.get = async (_meetingId, operationId) => {

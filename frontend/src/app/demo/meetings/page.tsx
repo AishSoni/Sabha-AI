@@ -9,7 +9,6 @@ import { Card } from "@/components/ui/card";
 import { useDemoWorkspace } from "@/features/demo-workspace";
 import { useLocalPracticeMeetings } from "@/features/knowledge/local";
 import { useRuntimeMeetingList } from "@/features/meetings/runtime/hooks";
-import { useActiveReplayIntentId } from "@/features/meetings/runtime/active-intent";
 import { useReplayRun } from "@/features/meetings/runtime/replay-run";
 import { useAnchorRef } from "@/features/demo-tutorial/anchors";
 
@@ -19,7 +18,6 @@ export default function DemoMeetingListPage() {
     const run = useReplayRun();
     const workspace = useDemoWorkspace();
     const practice = useLocalPracticeMeetings();
-    const activeIntentId = useActiveReplayIntentId();
     const archiveRef = useAnchorRef("meetings.archive");
     const meetings = useRuntimeMeetingList();
     const [tab, setTab] = useState<ListTab>("active");
@@ -30,15 +28,12 @@ export default function DemoMeetingListPage() {
         () => run.session.intents.find((item) => item.kind === "archive_meeting"),
         [run.session.intents]
     );
-    const canArchive = activeIntentId === archiveIntent?.intent_id;
+    const canArchive = Boolean(archiveIntent);
 
     const list = meetings.data ?? [];
     const active = list.filter((meeting) => meeting.status !== "archived");
     const archived = list.filter((meeting) => meeting.status === "archived");
-    // The guide can restore the pre-archive checkpoint without remounting this
-    // page. While archive is the active intent, the ended meeting must be
-    // visible so the step can be retried.
-    const shownTab: ListTab = canArchive ? "active" : tab;
+    const shownTab: ListTab = tab;
     const shown = shownTab === "active" ? active : archived;
 
     const archive = async () => {

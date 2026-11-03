@@ -47,7 +47,6 @@ function Probe() {
             <span data-testid="stacks">{workspace.local.stacks.length}</span>
             <span data-testid="documents">{workspace.local.documents.length}</span>
             <span data-testid="samples">{workspace.seed?.samples.length ?? 0}</span>
-            <span data-testid="bookmark">{workspace.guideBookmark ?? "none"}</span>
             <span data-testid="reset-reason">{workspace.playbackReset.reason}</span>
             <span data-testid="reset-nonce">{workspace.playbackReset.nonce}</span>
             <span data-testid="error">{workspace.error ?? ""}</span>
@@ -61,12 +60,6 @@ function Probe() {
                 }
             >
                 edit
-            </button>
-            <button
-                type="button"
-                onClick={() => workspace.setGuideBookmark("establish-facts")}
-            >
-                bookmark
             </button>
             <button type="button" onClick={workspace.restartRecording}>
                 restart
@@ -109,7 +102,7 @@ describe("demo workspace provider", () => {
         expect(calls[0]).toContain("version=2");
     });
 
-    it("restart recording keeps practice edits and clears the guide bookmark", async () => {
+    it("restart recording keeps practice edits and resets playback", async () => {
         installSeedFetch(demoWorkspaceSeedEnvelope());
         renderWorkspace();
         await waitFor(() =>
@@ -121,7 +114,6 @@ describe("demo workspace provider", () => {
             screen.getByTestId("reset-epoch").textContent
         );
         fireEvent.click(screen.getByRole("button", { name: "edit" }));
-        fireEvent.click(screen.getByRole("button", { name: "bookmark" }));
         expect(screen.getByTestId("dirty").textContent).toBe("true");
         expect(screen.getByTestId("stacks").textContent).toBe("3");
 
@@ -129,7 +121,6 @@ describe("demo workspace provider", () => {
 
         expect(screen.getByTestId("dirty").textContent).toBe("true");
         expect(screen.getByTestId("stacks").textContent).toBe("3");
-        expect(screen.getByTestId("bookmark").textContent).toBe("none");
         expect(screen.getByTestId("reset-reason").textContent).toBe("recording");
         expect(screen.getByTestId("reset-nonce").textContent).toBe("1");
         // Restarting playback is not a practice reset: pending work and drafts
@@ -177,7 +168,7 @@ describe("demo workspace provider", () => {
         );
         expect(screen.getByTestId("expanded").textContent).toBe("false");
         expect(screen.getByTestId("error").textContent).toContain(
-            "original guided journey is unchanged"
+            "recorded meeting still works"
         );
     });
 

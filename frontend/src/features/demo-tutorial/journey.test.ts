@@ -85,7 +85,6 @@ export function journeyInput(overrides: Partial<JourneyInput> = {}): JourneyInpu
         settledIntents: new Set<string>(),
         meetingStatus: "active",
         roomVisited: false,
-        visitedTabs: new Set<string>(),
         ...overrides,
     };
 }
