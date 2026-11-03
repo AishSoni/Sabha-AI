@@ -93,6 +93,42 @@ export interface ReplayLegalAction {
     reason: string | null;
 }
 
+export interface ReplayPreparedReplyTurn {
+    kind: "reply";
+    turn_id: string;
+    participant_id: string;
+    label: string;
+    intent_id: string;
+    operation_id: string;
+    tape_id: string;
+    result_checkpoint: string;
+    reply_message_ids: string[];
+    effect_ids: string[];
+    required: boolean;
+}
+
+export interface ReplayPreparedFollowUpTurn {
+    kind: "follow_up";
+    turn_id: string;
+    label: string;
+    question: string;
+    message_id: string;
+    intent_id: string | null;
+    participant_id: string | null;
+    required: boolean;
+}
+
+export type ReplayPreparedTurn =
+    | ReplayPreparedReplyTurn
+    | ReplayPreparedFollowUpTurn;
+
+export interface ReplayPreparedClosing {
+    closing_tape_id: string;
+    completed_checkpoint: string;
+    archived_checkpoint: string;
+    required_turn_ids: string[];
+}
+
 export type ReplayPlaybackSpeed = 1 | 2;
 
 export interface ReplayTape {
@@ -179,6 +215,20 @@ export interface ReplayRuntimeInfo {
     tapes: ReplayTape[];
     assets: ReplayAsset[];
     claims: ReplayClaim[];
+    preparedBaseCheckpoint: string | null;
+    preparedTurns: ReplayPreparedTurn[];
+    preparedClosing: ReplayPreparedClosing | null;
+    playedTurnIds: ReadonlySet<string>;
+    activePreparedOperationId: string | null;
+    lastCompletedTurnId: string | null;
+    canClose: boolean;
+    closeReason: string | null;
+    startPreparedTurn(turnId: string): Promise<void>;
+    sendFollowUp(): Promise<void>;
+    replayPreparedTurn(turnId: string): Promise<void>;
+    showFullPreparedResponse(): Promise<void>;
+    startPreparedClosing(): Promise<void>;
+    archivePreparedMeeting(): Promise<void>;
     preview: ReplayPreview;
     retired: boolean;
     playbackSpeed: ReplayPlaybackSpeed;

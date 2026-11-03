@@ -28,9 +28,22 @@ import {
     createReplayRuntime,
     fetchReplayBundle,
     replayKeyPrefix,
+    type ReplayBundle,
     type ReplaySession,
     type ReplayTransitionOutcome,
 } from "./replay";
+import {
+    FOLLOW_UP_STEP,
+    canCloseDeck,
+    composedBundle,
+    composedTurns,
+    emptyPreparedDeck,
+    followUpTurn,
+    replyTurnForOperation,
+    replyTurns,
+    turnById,
+    type PreparedDeckState,
+} from "./prepared-deck";
 import { useReplaySession, type ReplaySafeConfig } from "./replay-session";
 
 export type { ReplaySafeConfig } from "./replay-session";
@@ -109,11 +122,50 @@ export function ReplayRunProvider({ children }: { children: ReactNode }) {
         // eslint-disable-next-line react-hooks/exhaustive-deps
         [epoch, runKey]
     );
-    const effectiveCheckpoint = checkpoint ?? session.initial_checkpoint;
+    const deckEnabled =
+        session.prepared_turns.length > 0 && session.prepared_closing !== null;
+    const effectiveCheckpoint =
+        checkpoint ??
+        session.prepared_base_checkpoint ??
+        session.initial_checkpoint;
     const sessionRef = useRef(session);
     sessionRef.current = session;
     const stateRef = useRef({ epoch, checkpoint: effectiveCheckpoint });
     stateRef.current = { epoch, checkpoint: effectiveCheckpoint };
+    const [deckVersion, setDeckVersion] = useState(0);
+    const [deckReady, setDeckReady] = useState(!deckEnabled);
+    const deckRef = useRef<PreparedDeckState | null>(null);
+    const deckBasePromise = useRef<Promise<ReplayBundle> | null>(null);
+
+    const ensureDeckBase = useCallback(async (): Promise<PreparedDeckState> => {
+        if (deckRef.current) return deckRef.current;
+        const baseCheckpoint = session.prepared_base_checkpoint;
+        if (!baseCheckpoint) {
+            throw new Error("The prepared turn deck has no base checkpoint.");
+        }
+        if (!deckBasePromise.current) {
+            deckBasePromise.current = fetchReplayBundle(
+                session,
+                session.meeting_id,
+                baseCheckpoint,
+                controller.signal
+            );
+        }
+        const base = await deckBasePromise.current;
+        if (!deckRef.current) {
+            deckRef.current = emptyPreparedDeck(base);
+            setDeckReady(true);
+            setDeckVersion((value) => value + 1);
+        }
+        return deckRef.current;
+    }, [controller.signal, session]);
+
+    useEffect(() => {
+        if (!deckEnabled) return;
+        void ensureDeckBase().catch(() => {
+            // The room's normal error boundary surfaces an unavailable package.
+        });
+    }, [deckEnabled, ensureDeckBase]);
 
     /**
      * Ending the recorded vote installs the canonical closing checkpoint.
@@ -128,13 +180,37 @@ export function ReplayRunProvider({ children }: { children: ReactNode }) {
         );
     }, [session.transitions]);
 
+    const deckPlayedTurnIds = useMemo(() => {
+        const state = deckRef.current;
+        if (!state) return new Set<string>();
+        const played = new Set(Object.keys(state.results));
+        const followUp = followUpTurn(session);
+        if (state.followUpSent && followUp) played.add(followUp.turn_id);
+        return played;
+        // deckVersion is the observable fence for the mutable composition.
+        // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [deckVersion, session]);
+
+    const deckCanClose =
+        deckEnabled &&
+        !deckRef.current?.closing &&
+        canCloseDeck(session, deckPlayedTurnIds);
+
     const closingCompleted = useMemo(() => {
+        if (deckEnabled) return Boolean(deckRef.current?.closing);
         if (!canonicalClosing) return false;
         return (
             settledIntents.has(canonicalClosing.intent_id) ||
             effectiveCheckpoint === canonicalClosing.completed_checkpoint
         );
-    }, [canonicalClosing, effectiveCheckpoint, settledIntents]);
+        // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [
+        canonicalClosing,
+        deckEnabled,
+        deckVersion,
+        effectiveCheckpoint,
+        settledIntents,
+    ]);
 
     const settleIntent = useCallback((intentId: string) => {
         setSettledIntents((previous) => {
@@ -175,6 +251,231 @@ export function ReplayRunProvider({ children }: { children: ReactNode }) {
         });
     }, []);
 
+    const deckPrefix = useCallback(
+        () =>
+            replayKeyPrefix(
+                `${session.run_id}:${session.package_version}`,
+                stateRef.current.epoch,
+                stateRef.current.checkpoint
+            ),
+        [session.package_version, session.run_id]
+    );
+
+    const invalidateDeckReads = useCallback(() => {
+        const prefix = deckPrefix();
+        void queryClient.invalidateQueries({
+            queryKey: [...prefix, "turns", session.meeting_id],
+        });
+        void queryClient.invalidateQueries({
+            queryKey: [...prefix, "meetings", "detail", session.meeting_id],
+        });
+    }, [deckPrefix, queryClient, session.meeting_id]);
+
+    const commitDeck = useCallback(
+        (next: PreparedDeckState) => {
+            deckRef.current = next;
+            setDeckReady(true);
+            setDeckVersion((value) => value + 1);
+        },
+        []
+    );
+
+    const mergeDeckResult = useCallback(
+        (turnId: string, result: ReplayBundle) => {
+            const current = deckRef.current;
+            if (!current) return;
+            const turn = turnById(session, turnId);
+            if (!turn || turn.kind !== "reply") return;
+            const already = current.order.includes(turnId);
+            const order = already
+                ? current.order
+                : [...current.order, turnId];
+            commitDeck({
+                ...current,
+                order,
+                results: { ...current.results, [turnId]: result },
+                activeTurnId: null,
+                lastCompletedTurnId: turnId,
+            });
+            settleIntent(turn.intent_id);
+            markStarted(turn.intent_id, false);
+            invalidateDeckReads();
+        },
+        [
+            commitDeck,
+            invalidateDeckReads,
+            markStarted,
+            session,
+            settleIntent,
+        ]
+    );
+
+    const settleDeckOperation = useCallback(
+        async (operationId: string): Promise<boolean> => {
+            const turn = replyTurnForOperation(session, operationId);
+            if (!turn) return false;
+            const current = deckRef.current;
+            if (current?.results[turn.turn_id]) {
+                if (current.activeTurnId === turn.turn_id) {
+                    commitDeck({ ...current, activeTurnId: null });
+                }
+                return true;
+            }
+            const result = await fetchReplayBundle(
+                session,
+                session.meeting_id,
+                turn.result_checkpoint,
+                controller.signal
+            );
+            mergeDeckResult(turn.turn_id, result);
+            return true;
+        },
+        [commitDeck, controller.signal, mergeDeckResult, session]
+    );
+
+    const startPreparedTurn = useCallback(
+        async (turnId: string) => {
+            const state = await ensureDeckBase();
+            const turn = turnById(session, turnId);
+            if (!turn || turn.kind !== "reply") {
+                throw new Error("That prepared turn is not part of this recording.");
+            }
+            if (state.results[turnId] || state.activeTurnId) return;
+            markStarted(turn.intent_id, true);
+            commitDeck({ ...state, activeTurnId: turnId });
+            invalidateDeckReads();
+        },
+        [
+            commitDeck,
+            ensureDeckBase,
+            invalidateDeckReads,
+            markStarted,
+            session,
+        ]
+    );
+
+    const skipPreparedTurn = useCallback(
+        async (turnId: string) => {
+            const state = await ensureDeckBase();
+            if (state.results[turnId]) return;
+            const turn = turnById(session, turnId);
+            if (!turn || turn.kind !== "reply") {
+                throw new Error("That prepared result is not available.");
+            }
+            const result = await fetchReplayBundle(
+                session,
+                session.meeting_id,
+                turn.result_checkpoint,
+                controller.signal
+            );
+            mergeDeckResult(turnId, result);
+        },
+        [controller.signal, ensureDeckBase, mergeDeckResult, session]
+    );
+
+    const replayPreparedTurn = useCallback(
+        async (turnId: string) => {
+            const state = await ensureDeckBase();
+            const turn = turnById(session, turnId);
+            if (!turn || turn.kind !== "reply" || !state.results[turnId]) {
+                throw new Error("That prepared turn cannot be replayed.");
+            }
+            if (state.activeTurnId) return;
+            markStarted(turn.intent_id, true);
+            commitDeck({ ...state, activeTurnId: turnId });
+            invalidateDeckReads();
+        },
+        [
+            commitDeck,
+            ensureDeckBase,
+            invalidateDeckReads,
+            markStarted,
+            session,
+        ]
+    );
+
+    const showFullPreparedResponse = useCallback(async () => {
+        const state = await ensureDeckBase();
+        if (!state.activeTurnId) return;
+        const turnId = state.activeTurnId;
+        const turn = turnById(session, turnId);
+        if (!turn || turn.kind !== "reply") return;
+        const result = await fetchReplayBundle(
+            session,
+            session.meeting_id,
+            turn.result_checkpoint,
+            controller.signal
+        );
+        mergeDeckResult(turnId, result);
+    }, [controller.signal, ensureDeckBase, mergeDeckResult, session]);
+
+    const sendFollowUp = useCallback(async () => {
+        const state = await ensureDeckBase();
+        const turn = followUpTurn(session);
+        if (!turn || state.followUpSent) return;
+        commitDeck({
+            ...state,
+            order: [...state.order, FOLLOW_UP_STEP],
+            followUpSent: true,
+        });
+        if (turn.intent_id) settleIntent(turn.intent_id);
+        invalidateDeckReads();
+    }, [commitDeck, ensureDeckBase, invalidateDeckReads, session, settleIntent]);
+
+    const startPreparedClosing = useCallback(async () => {
+        const state = await ensureDeckBase();
+        if (state.closing) return;
+        const closing = session.prepared_closing;
+        if (!closing) throw new Error("This recording has no prepared closing.");
+        const played = new Set([
+            ...Object.keys(state.results),
+            ...(state.followUpSent
+                ? [followUpTurn(session)?.turn_id].filter(
+                      (value): value is string => Boolean(value)
+                  )
+                : []),
+        ]);
+        if (!canCloseDeck(session, played)) {
+            throw new Error(
+                "Play every prepared reply and send the follow-up before closing."
+            );
+        }
+        const bundle = await fetchReplayBundle(
+            session,
+            session.meeting_id,
+            closing.completed_checkpoint,
+            controller.signal
+        );
+        commitDeck({ ...state, closing: bundle, archived: false });
+        invalidateDeckReads();
+    }, [
+        commitDeck,
+        controller.signal,
+        ensureDeckBase,
+        invalidateDeckReads,
+        session,
+    ]);
+
+    const archivePreparedMeeting = useCallback(async () => {
+        const state = await ensureDeckBase();
+        const closing = session.prepared_closing;
+        if (!closing || !state.closing || state.archived) return;
+        const bundle = await fetchReplayBundle(
+            session,
+            session.meeting_id,
+            closing.archived_checkpoint,
+            controller.signal
+        );
+        commitDeck({ ...state, closing: bundle, archived: true });
+        invalidateDeckReads();
+    }, [
+        commitDeck,
+        controller.signal,
+        ensureDeckBase,
+        invalidateDeckReads,
+        session,
+    ]);
+
     const isTurnVisible = useCallback((operationId: string) => {
         const current = sessionRef.current;
         if (!current) return true;
@@ -197,10 +498,14 @@ export function ReplayRunProvider({ children }: { children: ReactNode }) {
         startedIntentsRef.current = new Set();
         setStartedIntents(new Set());
         setAcknowledgedBeats(new Set());
+        deckRef.current = null;
+        deckBasePromise.current = null;
+        setDeckReady(!deckEnabled);
+        setDeckVersion((value) => value + 1);
         clearSettled();
         setEpoch((value) => value + 1);
         setRunKey((value) => value + 1);
-    }, [clearSettled]);
+    }, [clearSettled, deckEnabled]);
 
     const lastPlaybackReset = useRef(playbackReset.nonce);
     useEffect(() => {
@@ -378,6 +683,23 @@ export function ReplayRunProvider({ children }: { children: ReactNode }) {
                 (item) => item.intent_id === intentId
             );
             if (!intent) throw new Error("That recorded intent is not available.");
+            if (deckEnabled) {
+                const prepared = current.prepared_turns.find(
+                    (turn) => turn.intent_id === intentId
+                );
+                if (prepared?.kind === "reply") {
+                    await startPreparedTurn(prepared.turn_id);
+                    return;
+                }
+                if (prepared?.kind === "follow_up") {
+                    await sendFollowUp();
+                    return;
+                }
+                if (intent.kind === "request_closing") {
+                    await startPreparedClosing();
+                    return;
+                }
+            }
             const transition = current.transitions.find(
                 (item) => item.intent_id === intent.intent_id
             );
@@ -462,7 +784,11 @@ export function ReplayRunProvider({ children }: { children: ReactNode }) {
             }
         },
         [
+            deckEnabled,
             markStarted,
+            sendFollowUp,
+            startPreparedClosing,
+            startPreparedTurn,
             settleIntent,
             transitionToCheckpoint,
             queryClient,
@@ -473,6 +799,15 @@ export function ReplayRunProvider({ children }: { children: ReactNode }) {
         async (intentId: string) => {
             const current = sessionRef.current;
             if (!current) throw new Error("Replay session is not loaded.");
+            if (deckEnabled) {
+                const prepared = current.prepared_turns.find(
+                    (turn) => turn.intent_id === intentId
+                );
+                if (prepared?.kind === "reply") {
+                    await skipPreparedTurn(prepared.turn_id);
+                    return;
+                }
+            }
             const transition = current.transitions.find(
                 (item) => item.intent_id === intentId
             );
@@ -513,13 +848,22 @@ export function ReplayRunProvider({ children }: { children: ReactNode }) {
             // in a separate room-local flag.
             settleIntent(intentId);
         },
-        [settleIntent, transitionToCheckpoint]
+        [deckEnabled, settleIntent, skipPreparedTurn, transitionToCheckpoint]
     );
 
     const replayIntent = useCallback(
         async (intentId: string) => {
             const current = sessionRef.current;
             if (!current) throw new Error("Replay session is not loaded.");
+            if (deckEnabled) {
+                const prepared = current.prepared_turns.find(
+                    (turn) => turn.intent_id === intentId
+                );
+                if (prepared?.kind === "reply") {
+                    await replayPreparedTurn(prepared.turn_id);
+                    return;
+                }
+            }
             const transition = current.transitions.find(
                 (item) => item.intent_id === intentId
             );
@@ -536,7 +880,13 @@ export function ReplayRunProvider({ children }: { children: ReactNode }) {
             markStarted(intentId, false);
             await startIntent(intentId);
         },
-        [markStarted, startIntent, transitionToCheckpoint]
+        [
+            deckEnabled,
+            markStarted,
+            replayPreparedTurn,
+            startIntent,
+            transitionToCheckpoint,
+        ]
     );
 
     const goToChapter = useCallback(
@@ -584,7 +934,7 @@ export function ReplayRunProvider({ children }: { children: ReactNode }) {
 
     const runtime = useMemo(() => {
         const generation = generationRef.current;
-        return createReplayRuntime(session, scope, {
+        const value = createReplayRuntime(session, scope, {
             signal: controller.signal,
             checkpoint: effectiveCheckpoint,
             queryClient,
@@ -602,6 +952,67 @@ export function ReplayRunProvider({ children }: { children: ReactNode }) {
             },
             isTurnVisible,
         });
+        if (!deckEnabled) return value;
+        const getState = async () => ensureDeckBase();
+        value.reads.getMeeting = async () =>
+            composedBundle(session, await getState()).meeting;
+        value.reads.disagreements = async () =>
+            composedBundle(session, await getState()).disagreements;
+        value.reads.consensus = async () =>
+            composedBundle(session, await getState()).consensus;
+        value.reads.contextStats = async () => {
+            const stats = composedBundle(session, await getState()).contextStats;
+            if (!stats) {
+                throw new Error("Context statistics are not part of this recording.");
+            }
+            return stats;
+        };
+        value.reads.closing = async () => {
+            const closing = composedBundle(session, await getState()).closing;
+            if (!closing) {
+                throw new Error("Closing is not part of this recording.");
+            }
+            return closing;
+        };
+        value.turns.list = async () =>
+            composedTurns(session, await getState());
+        value.turns.get = async (_meetingId, operationId) => {
+            const operation = composedTurns(session, await getState()).find(
+                (item) => item.operation_id === operationId
+            );
+            if (!operation) {
+                throw new Error("Recorded turn not found.");
+            }
+            return operation;
+        };
+        value.settlement = {
+            beforeTerminal: async ({ operationId }) => {
+                await settleDeckOperation(operationId);
+            },
+        };
+        const state = deckRef.current;
+        const activeTurn = state?.activeTurnId
+            ? turnById(session, state.activeTurnId)
+            : null;
+        value.replay = {
+            ...value.replay!,
+            playedTurnIds: deckPlayedTurnIds,
+            activePreparedOperationId:
+                activeTurn?.kind === "reply" ? activeTurn.operation_id : null,
+            lastCompletedTurnId: state?.lastCompletedTurnId ?? null,
+            canClose: deckCanClose,
+            closeReason: deckCanClose
+                ? null
+                : "Play all four replies and send the follow-up to close.",
+            startPreparedTurn,
+            sendFollowUp,
+            replayPreparedTurn,
+            showFullPreparedResponse,
+            startPreparedClosing,
+            archivePreparedMeeting,
+        };
+        void replyTurns;
+        return value;
     }, [
         session,
         scope,
@@ -617,6 +1028,18 @@ export function ReplayRunProvider({ children }: { children: ReactNode }) {
         settledIntents,
         onTurnSettled,
         isTurnVisible,
+        deckEnabled,
+        deckVersion,
+        deckCanClose,
+        deckPlayedTurnIds,
+        ensureDeckBase,
+        settleDeckOperation,
+        startPreparedTurn,
+        sendFollowUp,
+        replayPreparedTurn,
+        showFullPreparedResponse,
+        startPreparedClosing,
+        archivePreparedMeeting,
     ]);
 
     const value: ReplayRunContextValue = {

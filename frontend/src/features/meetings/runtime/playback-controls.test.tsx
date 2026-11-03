@@ -58,7 +58,7 @@ describe("prepared playback controls", () => {
 
         await act(async () => {
             fireEvent.click(
-                screen.getByRole("button", { name: "Skip to prepared result" })
+                screen.getByRole("button", { name: "Show full response" })
             );
         });
         await waitFor(() =>

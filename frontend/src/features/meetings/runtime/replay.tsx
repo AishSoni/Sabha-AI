@@ -68,6 +68,9 @@ import type {
     ReplayIntent,
     ReplayLegalAction,
     ReplayPlaybackSpeed,
+    ReplayPreparedClosing,
+    ReplayPreparedReplyTurn,
+    ReplayPreparedTurn,
     ReplayPreview,
     ReplayTape,
     ReplayTransition,
@@ -102,6 +105,9 @@ export interface ReplaySession {
     tapes: ReplayTape[];
     assets: ReplayAsset[];
     claims: ReplayClaim[];
+    prepared_base_checkpoint: string | null;
+    prepared_turns: ReplayPreparedTurn[];
+    prepared_closing: ReplayPreparedClosing | null;
     preview: ReplayPreview;
     retired: boolean;
 }
@@ -267,6 +273,79 @@ function decodeTransition(value: unknown, path: string): ReplayTransition {
         label: optionalString(record.label, `${path}.label`) ?? "",
         explanation:
             optionalString(record.explanation, `${path}.explanation`) ?? "",
+    };
+}
+
+function decodePreparedTurn(value: unknown, path: string): ReplayPreparedTurn {
+    const record = decodeObject(value, path);
+    const kind = requireChoice(record.kind, `${path}.kind`, [
+        "reply",
+        "follow_up",
+    ] as const);
+    if (kind === "follow_up") {
+        return {
+            kind,
+            turn_id: requireString(record.turn_id, `${path}.turn_id`),
+            label: requireString(record.label, `${path}.label`),
+            question: requireString(record.question, `${path}.question`),
+            message_id: requireString(record.message_id, `${path}.message_id`),
+            intent_id:
+                optionalString(record.intent_id, `${path}.intent_id`) ?? null,
+            participant_id:
+                optionalString(record.participant_id, `${path}.participant_id`) ??
+                null,
+            required: requireBoolean(record.required, `${path}.required`),
+        };
+    }
+    return {
+        kind,
+        turn_id: requireString(record.turn_id, `${path}.turn_id`),
+        participant_id: requireString(
+            record.participant_id,
+            `${path}.participant_id`
+        ),
+        label: requireString(record.label, `${path}.label`),
+        intent_id: requireString(record.intent_id, `${path}.intent_id`),
+        operation_id: requireString(record.operation_id, `${path}.operation_id`),
+        tape_id: requireString(record.tape_id, `${path}.tape_id`),
+        result_checkpoint: requireString(
+            record.result_checkpoint,
+            `${path}.result_checkpoint`
+        ),
+        reply_message_ids: requireArray(
+            record.reply_message_ids,
+            `${path}.reply_message_ids`,
+            (item, itemPath) => requireString(item, itemPath)
+        ),
+        effect_ids: requireArray(
+            record.effect_ids ?? [],
+            `${path}.effect_ids`,
+            (item, itemPath) => requireString(item, itemPath)
+        ),
+        required: requireBoolean(record.required, `${path}.required`),
+    } satisfies ReplayPreparedReplyTurn;
+}
+
+function decodePreparedClosing(value: unknown, path: string): ReplayPreparedClosing {
+    const record = decodeObject(value, path);
+    return {
+        closing_tape_id: requireString(
+            record.closing_tape_id,
+            `${path}.closing_tape_id`
+        ),
+        completed_checkpoint: requireString(
+            record.completed_checkpoint,
+            `${path}.completed_checkpoint`
+        ),
+        archived_checkpoint: requireString(
+            record.archived_checkpoint,
+            `${path}.archived_checkpoint`
+        ),
+        required_turn_ids: requireArray(
+            record.required_turn_ids,
+            `${path}.required_turn_ids`,
+            (item, itemPath) => requireString(item, itemPath)
+        ),
     };
 }
 
@@ -450,6 +529,24 @@ export function decodeReplaySession(value: unknown): ReplaySession {
             "GET /replay/session.claims",
             decodeClaim
         ),
+        prepared_base_checkpoint:
+            optionalString(
+                record.prepared_base_checkpoint,
+                "GET /replay/session.prepared_base_checkpoint"
+            ) ?? null,
+        prepared_turns: requireArray(
+            record.prepared_turns ?? [],
+            "GET /replay/session.prepared_turns",
+            decodePreparedTurn
+        ),
+        prepared_closing:
+            record.prepared_closing === null ||
+            record.prepared_closing === undefined
+                ? null
+                : decodePreparedClosing(
+                      record.prepared_closing,
+                      "GET /replay/session.prepared_closing"
+                  ),
         preview: decodePreview(record.preview, "GET /replay/session.preview"),
         retired: requireBoolean(record.retired ?? false, "GET /replay/session.retired"),
     };
@@ -925,6 +1022,32 @@ export function createReplayRuntime(
             tapes: session.tapes,
             assets: session.assets,
             claims: session.claims,
+            preparedBaseCheckpoint: session.prepared_base_checkpoint,
+            preparedTurns: session.prepared_turns,
+            preparedClosing: session.prepared_closing,
+            playedTurnIds: new Set<string>(),
+            activePreparedOperationId: null,
+            lastCompletedTurnId: null,
+            canClose: false,
+            closeReason: null,
+            startPreparedTurn: async () => {
+                throw new Error("This recording has no prepared turn deck.");
+            },
+            sendFollowUp: async () => {
+                throw new Error("This recording has no prepared follow-up.");
+            },
+            replayPreparedTurn: async () => {
+                throw new Error("This recording has no prepared turn deck.");
+            },
+            showFullPreparedResponse: async () => {
+                throw new Error("This recording has no prepared turn deck.");
+            },
+            startPreparedClosing: async () => {
+                throw new Error("This recording has no prepared closing.");
+            },
+            archivePreparedMeeting: async () => {
+                throw new Error("This recording has no prepared archive.");
+            },
             preview: session.preview,
             retired: session.retired,
             playbackSpeed: options.playbackSpeed,

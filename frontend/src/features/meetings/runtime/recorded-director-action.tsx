@@ -1,10 +1,11 @@
 "use client";
 
 /**
- * Recorded director follow-up (spec-18, expanded by spec-26).
+ * Recorded visitor follow-up (spec-18, simplified by spec-28).
  *
- * The composer offers the prepared follow-up for the current guided step. It
- * never posts to the live command graph and never accepts free text.
+ * The prepared question is displayed exactly as approved and is never editable.
+ * Sending it inserts the **You** turn; choosing the next speaker remains a
+ * separate decision, so no participant is selected automatically.
  */
 import { useState } from "react";
 import { Send } from "lucide-react";
@@ -20,9 +21,53 @@ export function RecordedDirectorAction() {
     const runtime = useMeetingsRuntime();
     const guide = useGuideActions();
     const replay = runtime.replay;
-    const [busyIntent, setBusyIntent] = useState<string | null>(null);
+    const [busy, setBusy] = useState(false);
 
     if (!replay) return null;
+
+    const prepared = (replay.preparedTurns ?? []).find(
+        (turn) => turn.kind === "follow_up"
+    );
+    if (prepared?.kind === "follow_up") {
+        if (replay.playedTurnIds?.has(prepared.turn_id)) return null;
+        return (
+            <Card className="mb-4 border-zinc-800 bg-zinc-900/60 p-4">
+                <p className="text-xs font-medium uppercase tracking-wide text-zinc-500">
+                    Your turn
+                </p>
+                <label
+                    className="mt-2 block text-xs font-medium text-zinc-400"
+                    htmlFor="prepared-follow-up-question"
+                >
+                    Prepared question
+                </label>
+                <textarea
+                    id="prepared-follow-up-question"
+                    readOnly
+                    value={prepared.question}
+                    rows={3}
+                    className="mt-1 w-full resize-none rounded-md border border-zinc-700 bg-zinc-950 px-3 py-2 text-sm text-zinc-200"
+                />
+                <div className="mt-3">
+                    <Button
+                        className="bg-indigo-600 hover:bg-indigo-700"
+                        disabled={busy}
+                        onClick={async () => {
+                            setBusy(true);
+                            try {
+                                await replay.sendFollowUp();
+                            } finally {
+                                setBusy(false);
+                            }
+                        }}
+                    >
+                        <Send className="mr-2 h-4 w-4" />
+                        {busy ? "Sending…" : "Send question"}
+                    </Button>
+                </div>
+            </Card>
+        );
+    }
 
     const actions = replay.legalActions().filter((action) => {
         if (
@@ -42,40 +87,36 @@ export function RecordedDirectorAction() {
     return (
         <Card className="mb-4 border-zinc-800 bg-zinc-900/60 p-4">
             <p className="text-xs font-medium uppercase tracking-wide text-zinc-500">
-                Prepared director follow-up
-            </p>
-            <p className="mt-1 text-sm text-zinc-300">
-                {available.length > 1
-                    ? "More than one follow-up is supported for this moment. Choose the question you want the board to answer."
-                    : "A supported follow-up is available for this step. Editing is disabled so the recorded response stays aligned with the supplied record."}
+                Your follow-up
             </p>
             {available.length > 0 ? (
                 <div className="mt-3 flex flex-wrap gap-2">
                     {available.map((action) => {
-                        const busy = busyIntent === action.intent.intent_id;
+                        const actionBusy =
+                            busy && action === available[0];
                         return (
                             <Button
                                 key={action.transition.transition_id}
                                 className="bg-indigo-600 hover:bg-indigo-700"
-                                disabled={busy}
+                                disabled={actionBusy}
                                 title={action.transition.explanation || undefined}
                                 onClick={async () => {
-                                    setBusyIntent(action.intent.intent_id);
+                                    setBusy(true);
                                     try {
                                         await replay.startIntent(
                                             action.intent.intent_id
                                         );
                                     } finally {
-                                        setBusyIntent(null);
+                                        setBusy(false);
                                     }
                                 }}
                             >
                                 <Send className="mr-2 h-4 w-4" />
-                                {busy
-                                    ? "Sending recorded follow-up…"
+                                {actionBusy
+                                    ? "Sending…"
                                     : action.transition.label ||
                                       action.intent.label ||
-                                      "Send prepared follow-up"}
+                                      "Send question"}
                             </Button>
                         );
                     })}

@@ -93,6 +93,9 @@ function session(
         tapes: [],
         assets: [],
         claims: [],
+        prepared_base_checkpoint: null,
+        prepared_turns: [],
+        prepared_closing: null,
         preview: { available: false, asset_ids: [] },
         retired: false,
     } as ReplaySession;

@@ -1,7 +1,7 @@
 'use client';
 
 import { useState } from 'react';
-import { Loader2, Play, RotateCcw, SkipForward } from 'lucide-react';
+import { Loader2, RotateCcw, SkipForward } from 'lucide-react';
 
 import { Button } from '@/components/ui/button';
 import { useMeetingsRuntime } from './context';
@@ -13,7 +13,13 @@ import { useMeetingsRuntime } from './context';
 export function ReplaySpeedControl() {
     const runtime = useMeetingsRuntime();
     const replay = runtime.replay;
-    if (!replay || replay.transitions.length === 0) return null;
+    if (
+        !replay ||
+        (replay.transitions.length === 0 &&
+            (replay.preparedTurns ?? []).length === 0)
+    ) {
+        return null;
+    }
 
     return (
         <div
@@ -51,7 +57,72 @@ export function PreparedTurnControls({
     const replay = runtime.replay;
     const [busy, setBusy] = useState<'skip' | 'replay' | null>(null);
     const [error, setError] = useState<string | null>(null);
-    if (!replay || replay.transitions.length === 0) return null;
+    if (!replay) return null;
+
+    if ((replay.preparedTurns ?? []).length > 0) {
+        const activePrepared = Boolean(replay.activePreparedOperationId);
+        const lastTurnId = replay.lastCompletedTurnId;
+        if (!activePrepared && !lastTurnId) return null;
+        const runDeck = async (kind: 'skip' | 'replay') => {
+            setBusy(kind);
+            setError(null);
+            try {
+                if (kind === 'skip') await replay.showFullPreparedResponse();
+                else if (lastTurnId) await replay.replayPreparedTurn(lastTurnId);
+            } catch (cause) {
+                setError(
+                    cause instanceof Error
+                        ? cause.message
+                        : 'The prepared turn could not be opened.'
+                );
+            } finally {
+                setBusy(null);
+            }
+        };
+        return (
+            <div className="mb-4 flex flex-wrap items-center gap-2">
+                {activePrepared ? (
+                    <Button
+                        type="button"
+                        size="sm"
+                        variant="outline"
+                        disabled={busy !== null}
+                        onClick={() => void runDeck('skip')}
+                    >
+                        {busy === 'skip' ? (
+                            <Loader2 className="mr-1 h-4 w-4 animate-spin" />
+                        ) : (
+                            <SkipForward className="mr-1 h-4 w-4" />
+                        )}
+                        Show full response
+                    </Button>
+                ) : null}
+                {!activePrepared && lastTurnId ? (
+                    <Button
+                        type="button"
+                        size="sm"
+                        variant="ghost"
+                        disabled={busy !== null}
+                        onClick={() => void runDeck('replay')}
+                    >
+                        {busy === 'replay' ? (
+                            <Loader2 className="mr-1 h-4 w-4 animate-spin" />
+                        ) : (
+                            <RotateCcw className="mr-1 h-4 w-4" />
+                        )}
+                        Replay last turn
+                    </Button>
+                ) : null}
+                {error ? (
+                    <p role="alert" className="text-xs text-red-400">
+                        {error}
+                    </p>
+                ) : null}
+            </div>
+        );
+    }
+
+    if (replay.transitions.length === 0) return null;
 
     const active = activeOperationId
         ? replay.transitions.find(
@@ -80,10 +151,11 @@ export function PreparedTurnControls({
         }
     };
 
+    if (!skipTarget && !replayTarget) return null;
+
     return (
         <div className="mb-4 rounded-lg border border-zinc-800 bg-zinc-900/40 px-3 py-2">
             <div className="flex flex-wrap items-center gap-2">
-                <span className="text-xs text-zinc-400">Prepared turn</span>
                 {skipTarget ? (
                     <Button
                         type="button"
@@ -97,7 +169,7 @@ export function PreparedTurnControls({
                         ) : (
                             <SkipForward className="mr-1 h-4 w-4" />
                         )}
-                        Skip to prepared result
+                        Show full response
                     </Button>
                 ) : null}
                 {replayTarget ? (
@@ -116,18 +188,7 @@ export function PreparedTurnControls({
                         Replay this prepared turn
                     </Button>
                 ) : null}
-                {!skipTarget && !replayTarget ? (
-                    <span className="inline-flex items-center gap-1 text-xs text-zinc-500">
-                        <Play className="h-3.5 w-3.5" />
-                        No prepared turn at this state.
-                    </span>
-                ) : null}
             </div>
-            {replayTarget ? (
-                <p className="mt-1 text-[11px] text-zinc-500">
-                    Replay restarts this prepared turn without resetting the guided journey.
-                </p>
-            ) : null}
             {error ? (
                 <p role="alert" className="mt-1 text-xs text-red-400">
                     {error}

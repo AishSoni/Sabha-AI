@@ -31,6 +31,48 @@ export function RecordedParticipantAction({
 
     if (!replay) return null;
 
+    const playedTurnIds = replay.playedTurnIds ?? new Set<string>();
+    const preparedTurns = (replay.preparedTurns ?? []).filter(
+        (turn) =>
+            turn.kind === "reply" &&
+            turn.participant_id === participant.id &&
+            !playedTurnIds.has(turn.turn_id)
+    );
+    if (preparedTurns.length > 0) {
+        return (
+            <div className="flex flex-wrap gap-2">
+                {preparedTurns.map((turn) => {
+                    const busy = busyIntent === turn.turn_id;
+                    return (
+                        <Button
+                            key={turn.turn_id}
+                            variant="outline"
+                            size="sm"
+                            disabled={
+                                busy ||
+                                isActive ||
+                                isQueued ||
+                                Boolean(replay.activePreparedOperationId)
+                            }
+                            className="border-indigo-700 bg-indigo-950/40 text-indigo-300 hover:bg-indigo-900/40"
+                            onClick={async () => {
+                                setBusyIntent(turn.turn_id);
+                                try {
+                                    await replay.startPreparedTurn(turn.turn_id);
+                                } finally {
+                                    setBusyIntent(null);
+                                }
+                            }}
+                        >
+                            <Play className="w-4 h-4 mr-1" />
+                            {busy ? "Preparing…" : turn.label}
+                        </Button>
+                    );
+                })}
+            </div>
+        );
+    }
+
     const actions = replay.legalActions(participant.id).filter((action) => {
         if (
             action.intent.kind !== "start_participant" ||

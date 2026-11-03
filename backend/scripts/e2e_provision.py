@@ -87,7 +87,7 @@ def main(argv: list[str] | None = None) -> int:
         "--package",
         default=os.environ.get(
             "REPLAY_PACKAGE_DIR",
-            str(BACKEND_ROOT / "replay_packages" / "hdfc-ine001a07rw5"),
+            str(BACKEND_ROOT / "replay_packages" / "hdfc-ine001a07rw5-v8"),
         ),
     )
     args = parser.parse_args(argv)

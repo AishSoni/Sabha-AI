@@ -237,6 +237,7 @@ export function ClosingPanel({
     const guide = useGuideActions();
     const [confirmMode, setConfirmMode] = useState<ClosingMode | null>(null);
     const [actionError, setActionError] = useState<string | null>(null);
+    const [archiving, setArchiving] = useState(false);
     const pendingIntent = useRef<PendingIntent | null>(null);
 
     const closingQuery = useClosing(meetingId, true, runtime);
@@ -265,6 +266,10 @@ export function ClosingPanel({
     const ended = status === 'ended' || stage === 'completed';
     const votes = closing?.votes ?? [];
     const busy = request.isPending || retry.isPending || abort.isPending;
+    const deckClosing =
+        runtime.replay && (runtime.replay.preparedTurns ?? []).length > 0
+            ? runtime.replay
+            : null;
     const replayClosingAction =
         runtime.replay
             ?.legalActions()
@@ -281,7 +286,11 @@ export function ClosingPanel({
         (status === 'active' || status === 'voting') &&
         !isAdvancing(stage) &&
         stage !== 'failed' &&
-        (runtime.replay ? Boolean(replayClosingIntent) : true);
+        (deckClosing
+            ? deckClosing.canClose
+            : runtime.replay
+              ? Boolean(replayClosingIntent)
+              : true);
     const replayClosingUnavailable =
         Boolean(runtime.replay) &&
         !canStart &&
@@ -297,12 +306,18 @@ export function ClosingPanel({
         setActionError(null);
 
         if (runtime.replay) {
-            if (!replayClosingIntent) {
-                setActionError('This recording has no supported closing step.');
-                return;
-            }
             try {
-                await runtime.replay.startIntent(replayClosingIntent.intent_id);
+                if (deckClosing) {
+                    await deckClosing.startPreparedClosing();
+                } else if (replayClosingIntent) {
+                    await runtime.replay.startIntent(
+                        replayClosingIntent.intent_id
+                    );
+                } else {
+                    setActionError(
+                        'This recording has no supported closing step.'
+                    );
+                }
             } catch (error) {
                 setActionError(errorMessage(error));
             }
@@ -386,6 +401,29 @@ export function ClosingPanel({
                             : 'The final summary is committed below and in Summary History. The chat is now read-only.'}
                     </p>
                 </StatusCard>
+            ) : null}
+
+            {!archived && ended && deckClosing ? (
+                <Button
+                    type="button"
+                    variant="outline"
+                    size="sm"
+                    disabled={archiving}
+                    onClick={async () => {
+                        setActionError(null);
+                        setArchiving(true);
+                        try {
+                            await deckClosing.archivePreparedMeeting();
+                        } catch (error) {
+                            setActionError(errorMessage(error));
+                        } finally {
+                            setArchiving(false);
+                        }
+                    }}
+                >
+                    <Archive className="mr-2 h-4 w-4" />
+                    {archiving ? 'Archiving…' : 'Archive meeting'}
+                </Button>
             ) : null}
 
             {!archived && !ended && isAdvancing(stage) ? (
@@ -614,11 +652,11 @@ export function ClosingPanel({
                 <StatusCard
                     tone="muted"
                     icon={<LogOut className="h-5 w-5 text-zinc-500" />}
-                    title="Closing is not available in this step"
+                    title="Closing is not available yet"
                 >
                     <p className="text-sm text-zinc-400">
-                        Finish the current guided step to use the recorded
-                        closing.
+                        {deckClosing?.closeReason ??
+                            'Play every prepared reply and send the follow-up before closing.'}
                     </p>
                 </StatusCard>
             ) : null}

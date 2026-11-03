@@ -345,11 +345,6 @@ function MeetingConversation({
         meeting.status === 'ended' ||
         meeting.status === 'archived' ||
         closingCompleted;
-    const hasRecordedIntents = Boolean(
-        runtime.replay?.intents.some((intent) => intent.kind === 'start_participant')
-    );
-    const readOnly = ended || (!capabilities.submitTurn && !hasRecordedIntents);
-
     const openClosing = () => setTab('closing');
     const replayClosing = runtime.replay?.transitions.find(
         (transition) =>
@@ -541,30 +536,28 @@ function MeetingConversation({
                 tab !== 'closing' ? (
                     <ClosingRoomNotice stage={closingStage} onOpen={openClosing} />
                 ) : null
-            ) : readOnly ? (
-                <div className="p-4 border-t border-zinc-800 shrink-0 bg-zinc-950">
-                    <p className="text-center text-sm text-zinc-500">
-                        {runtime.presentation.readOnlyNotice}
-                    </p>
-                </div>
             ) : (
                 <>
-                    {!capabilities.sendMessage && hasRecordedIntents && (
-                        <div className="border-t border-zinc-800 bg-zinc-950 px-4 py-2 shrink-0">
-                            <p className="text-center text-xs text-zinc-500">
-                                {runtime.presentation.readOnlyNotice}
-                            </p>
-                        </div>
-                    )}
                     {capabilities.closing && (
                         <div className="border-t border-zinc-800 bg-zinc-950 px-4 py-2 shrink-0">
-                            <div className="mx-auto flex max-w-3xl justify-end">
+                            <div className="mx-auto flex max-w-3xl items-center justify-end gap-2">
+                                {runtime.replay?.preparedTurns?.length &&
+                                !runtime.replay.canClose ? (
+                                    <span className="text-xs text-zinc-500">
+                                        {runtime.replay.closeReason}
+                                    </span>
+                                ) : null}
                                 <Button
                                     id="closing-entry"
                                     type="button"
                                     variant="ghost"
                                     size="sm"
                                     className="text-zinc-400 hover:text-white"
+                                    disabled={
+                                        runtime.replay?.preparedTurns?.length
+                                            ? !runtime.replay.canClose
+                                            : false
+                                    }
                                     onClick={openClosing}
                                 >
                                     <LogOut className="mr-2 h-4 w-4" />
@@ -573,7 +566,7 @@ function MeetingConversation({
                             </div>
                         </div>
                     )}
-                    <RoomControls meeting={meeting} turns={turns} />
+                    {!ended ? <RoomControls meeting={meeting} turns={turns} /> : null}
                 </>
             )}
         </div>
@@ -774,29 +767,31 @@ function RoomControls({ meeting, turns }: RoomControlsProps) {
                 <p className="text-xs text-zinc-400 mb-3">Who speaks next?</p>
                 <div className="flex flex-wrap gap-2 mb-4">
                     {runtime.replay ? (
-                        <Tooltip>
-                            <TooltipTrigger asChild>
-                                <span
-                                    tabIndex={0}
-                                    data-testid="you-disabled-trigger"
-                                    className="inline-flex rounded-md focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-indigo-500"
-                                >
-                                    <Button
-                                        type="button"
-                                        variant="outline"
-                                        size="sm"
-                                        disabled
-                                        className="border-indigo-500/50 bg-indigo-600/10 text-indigo-400/60"
+                        runtime.replay.preparedTurns?.length ? null : (
+                            <Tooltip>
+                                <TooltipTrigger asChild>
+                                    <span
+                                        tabIndex={0}
+                                        data-testid="you-disabled-trigger"
+                                        className="inline-flex rounded-md focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-indigo-500"
                                     >
-                                        <User className="w-4 h-4 mr-1" />
-                                        You
-                                    </Button>
-                                </span>
-                            </TooltipTrigger>
-                            <TooltipContent side="top">
-                                Only available in the live workspace.
-                            </TooltipContent>
-                        </Tooltip>
+                                        <Button
+                                            type="button"
+                                            variant="outline"
+                                            size="sm"
+                                            disabled
+                                            className="border-indigo-500/50 bg-indigo-600/10 text-indigo-400/60"
+                                        >
+                                            <User className="w-4 h-4 mr-1" />
+                                            You
+                                        </Button>
+                                    </span>
+                                </TooltipTrigger>
+                                <TooltipContent side="top">
+                                    Only available in the live workspace.
+                                </TooltipContent>
+                            </Tooltip>
+                        )
                     ) : (
                         <Button
                             variant="outline"
@@ -869,6 +864,7 @@ function QueueRow({
     meeting: MeetingWithParticipants;
     turns: ReturnType<typeof useMeetingTurnController>;
 }) {
+    const runtime = useMeetingsRuntime();
     const participant = (meeting.participants ?? []).find(
         (item) => item.id === operation.participant_id
     );
@@ -902,17 +898,19 @@ function QueueRow({
                         Resume observation
                     </button>
                 )}
-            <Button
-                variant="ghost"
-                size="sm"
-                className="h-6 px-2 text-zinc-400 hover:text-red-400"
-                disabled={isCanceling}
-                onClick={() => void turns.cancel(operation.operation_id)}
-                aria-label={`Cancel ${participant?.name ?? 'turn'}`}
-            >
-                <XCircle className="w-3.5 h-3.5 mr-1" />
-                {isCanceling ? 'Canceling' : 'Cancel'}
-            </Button>
+            {runtime.capabilities.cancelTurn ? (
+                <Button
+                    variant="ghost"
+                    size="sm"
+                    className="h-6 px-2 text-zinc-400 hover:text-red-400"
+                    disabled={isCanceling}
+                    onClick={() => void turns.cancel(operation.operation_id)}
+                    aria-label={`Cancel ${participant?.name ?? 'turn'}`}
+                >
+                    <XCircle className="w-3.5 h-3.5 mr-1" />
+                    {isCanceling ? 'Canceling' : 'Cancel'}
+                </Button>
+            ) : null}
         </div>
     );
 }
