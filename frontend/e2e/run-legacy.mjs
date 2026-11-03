@@ -24,13 +24,14 @@ const env = {
     ),
 };
 
+const args = process.argv.slice(2);
+const explicitSpecs = args.filter((arg) => !arg.startsWith("-"));
+const flags = args.filter((arg) => arg.startsWith("-"));
+const specs = explicitSpecs.length > 0 ? explicitSpecs : ["e2e/legacy-journey.spec.ts"];
+
 const result = spawnSync(
     process.execPath,
-    [
-        "node_modules/@playwright/test/cli.js",
-        "test",
-        ...process.argv.slice(2),
-    ],
+    ["node_modules/@playwright/test/cli.js", "test", ...specs, ...flags],
     { cwd: root, env, stdio: "inherit" }
 );
 if (result.error) throw result.error;
