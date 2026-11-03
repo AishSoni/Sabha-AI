@@ -28,7 +28,9 @@ export default function DemoMeetingListPage() {
         () => run.session.intents.find((item) => item.kind === "archive_meeting"),
         [run.session.intents]
     );
-    const canArchive = Boolean(archiveIntent);
+    const replay = run.runtime.replay;
+    const deckArchive = Boolean(replay?.preparedTurns?.length);
+    const canArchive = deckArchive || Boolean(archiveIntent);
 
     const list = meetings.data ?? [];
     const active = list.filter((meeting) => meeting.status !== "archived");
@@ -37,11 +39,17 @@ export default function DemoMeetingListPage() {
     const shown = shownTab === "active" ? active : archived;
 
     const archive = async () => {
-        if (!archiveIntent) return;
         setBusy(true);
         setError(null);
         try {
-            await run.startIntent(archiveIntent.intent_id);
+            if (deckArchive && replay) {
+                await replay.archivePreparedMeeting();
+            } else if (archiveIntent) {
+                await run.startIntent(archiveIntent.intent_id);
+            } else {
+                throw new Error("This recording has no archive step.");
+            }
+            await meetings.refetch();
             setTab("archived");
         } catch (cause) {
             setError(
@@ -292,7 +300,7 @@ export default function DemoMeetingListPage() {
                                             title={
                                                 canArchive
                                                     ? "Archive the recorded meeting"
-                                                    : "This action is only available in the archive step"
+                                                    : "This recording has no archive step"
                                             }
                                         >
                                             <Archive className="mr-2 h-4 w-4" />
