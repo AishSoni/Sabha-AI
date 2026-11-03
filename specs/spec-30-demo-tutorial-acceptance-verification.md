@@ -1,9 +1,10 @@
 # Spec 30 — demo journey acceptance record
 
 Status: local implementation and acceptance complete. The development and
-production browser journeys pass, including the legacy and mixed runners. Hosted
-deployment, package publication, grants and content-rights gates remain
-outstanding and are not discharged by this record.
+production browser journeys pass, including the legacy and mixed runners.
+Version 9 is published and active in the hosted replay registry. Hosted
+deployment, grants and content-rights gates remain outstanding and are not
+discharged by this record.
 
 This record covers the combined Spec 28 + Spec 29 behavior required by
 [Spec 30](spec-30-demo-tutorial-acceptance.md). It does not replace the Spec 19
@@ -46,6 +47,18 @@ The content review confirmed:
 - Validation rejects a fifth guided turn, duplicate turn or operation ids,
   duplicate required replies, missing effects, dangling effects and label or
   content tampering.
+
+### Hosted registry publication
+
+Version 9 was published from `backend/replay_packages/hdfc-ine001a07rw5-v9`
+with the offline provisioner credential and activated in the hosted replay
+registry:
+
+- package `hdfc-ine001a07rw5`, version `9`, status `published`;
+- content hash `df6cf3757a328050a1491b592008358bdcd177f3561296e0671e85fb81defb47`;
+- 33 checkpoints and 7 assets staged with verified hashes;
+- registry `active_version` is `9`; versions 1, 2, 3, 6 and 7 remain published
+  and unchanged.
 
 ## Executed gates
 
@@ -219,6 +232,5 @@ The following are not discharged here and remain owned by the earlier release
 specs:
 
 - hosted deployment and smoke checks;
-- immutable package publication and activation in the hosted registry;
 - operator grants and production Auth/vault verification;
 - content-rights and final editorial approval for the published package.

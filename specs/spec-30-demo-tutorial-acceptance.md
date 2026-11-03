@@ -244,9 +244,11 @@ When implementation is complete, record:
 | Mixed operator isolation | `npm run test:e2e:mixed` | 1 passed (demo edits and reset never touch the operator session or vault). |
 
 Record separate passed, failed, skipped and unexecuted results. Do not copy the
-historical Spec 27 evidence as a current result. Hosted deployment, grants,
-immutable-package publication and content-rights checks remain governed by the
-earlier release specs and are not discharged by this local acceptance.
+historical Spec 27 evidence as a current result. Version 9 is published and
+active in the hosted replay registry; the publication evidence is recorded in
+the verification record. Hosted deployment, grants and content-rights checks
+remain governed by the earlier release specs and are not discharged by this
+local acceptance.
 
 ## Exit and rollout
 
