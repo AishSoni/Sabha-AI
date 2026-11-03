@@ -213,6 +213,46 @@ test.describe("demo keyboard and narrow-screen accessibility", () => {
         await expectNoPublicPersistence(context, page);
     });
 
+    test("stays usable at 200 percent zoom without horizontal overflow", async ({
+        page,
+        context,
+    }) => {
+        const network = guardNetwork(page);
+        // 200% zoom on a 1280x720 window lays out in a 640x360 CSS viewport.
+        await page.setViewportSize({ width: 640, height: 360 });
+        await page.goto("/demo");
+
+        const start = page.getByRole("link", { name: "Start the meeting" });
+        await start.scrollIntoViewIfNeeded();
+        const hud = page.getByTestId("tutorial-hud");
+        await expect(hud.getByText("Start the meeting")).toBeVisible();
+        expect(
+            await page.evaluate(
+                () =>
+                    document.documentElement.scrollWidth <=
+                    document.documentElement.clientWidth + 1
+            )
+        ).toBe(true);
+
+        await start.click();
+        await expect(page).toHaveURL(/\/demo\/new$/);
+        const create = page.getByRole("button", {
+            name: "Create recorded meeting",
+        });
+        await create.scrollIntoViewIfNeeded();
+        await expect(hud.getByText("Create the recorded meeting")).toBeVisible();
+        expect(
+            await page.evaluate(
+                () =>
+                    document.documentElement.scrollWidth <=
+                    document.documentElement.clientWidth + 1
+            )
+        ).toBe(true);
+
+        network.assertClean();
+        await expectNoPublicPersistence(context, page);
+    });
+
     test("explains operator-only settings without credential controls", async ({
         page,
         context,
