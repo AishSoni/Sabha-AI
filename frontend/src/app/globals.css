@@ -28,11 +28,18 @@
   --color-separator: var(--border-subtle);
   --color-control: var(--border-control);
   --color-action: var(--accent);
+  --color-action-hover: var(--accent-hover);
   --color-action-foreground: var(--on-accent);
   --color-success: var(--success);
+  --color-success-hover: var(--success-hover);
   --color-warning: var(--warning);
+  --color-warning-hover: var(--warning-hover);
   --color-danger: var(--danger);
+  --color-danger-hover: var(--danger-hover);
   --color-on-danger: var(--on-danger);
+  --color-on-success: var(--on-success);
+  --color-on-warning: var(--on-warning);
+  --color-scrim: var(--scrim);
   --color-accent-soft: var(--accent-soft);
   --color-success-soft: var(--success-soft);
   --color-warning-soft: var(--warning-soft);

@@ -27,11 +27,17 @@
 
   /* Action and status */
   --accent: #294f98;
+  --accent-hover: #1f3f7a;
   --on-accent: #ffffff;
   --success: #216345;
+  --success-hover: #185038;
   --warning: #805d16;
+  --warning-hover: #6a4c10;
   --danger: #963e46;
+  --danger-hover: #7d3239;
   --on-danger: #ffffff;
+  --on-success: #ffffff;
+  --on-warning: #ffffff;
   --accent-soft: #e8effb;
   --success-soft: #e7f6ee;
   --warning-soft: #fdf4e3;
@@ -88,11 +94,17 @@
   --border-control: #667d9b;
 
   --accent: #93b4f5;
+  --accent-hover: #a9c5fb;
   --on-accent: #0b1423;
   --success: #8cd6b2;
+  --success-hover: #a3e2c3;
   --warning: #edc77b;
+  --warning-hover: #f3d695;
   --danger: #f09b9b;
+  --danger-hover: #f5b2b2;
   --on-danger: #0b1423;
+  --on-success: #0b1423;
+  --on-warning: #0b1423;
   --accent-soft: #1e304b;
   --success-soft: #133229;
   --warning-soft: #3a2a12;
@@ -144,11 +156,17 @@
     --border-control: #667d9b;
 
     --accent: #93b4f5;
+    --accent-hover: #a9c5fb;
     --on-accent: #0b1423;
     --success: #8cd6b2;
+    --success-hover: #a3e2c3;
     --warning: #edc77b;
+    --warning-hover: #f3d695;
     --danger: #f09b9b;
+    --danger-hover: #f5b2b2;
     --on-danger: #0b1423;
+    --on-success: #0b1423;
+    --on-warning: #0b1423;
     --accent-soft: #1e304b;
     --success-soft: #133229;
     --warning-soft: #3a2a12;

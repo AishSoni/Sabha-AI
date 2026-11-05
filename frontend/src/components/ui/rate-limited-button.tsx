@@ -73,12 +73,12 @@ export function RateLimitedButton({
         >
             {isLoading ? (
                 <>
-                    <Loader2 className="w-4 h-4 mr-1 animate-spin" />
+                    <Loader2 className="size-4 animate-spin" />
                     {loadingText || children}
                 </>
             ) : isOnCooldown && showCountdown ? (
                 <>
-                    <span className="inline-flex items-center justify-center w-5 h-5 mr-1.5 text-xs font-bold rounded-full bg-white/20">
+                    <span className="type-meta inline-flex size-5 items-center justify-center rounded-full bg-current/20">
                         {secondsRemaining}
                     </span>
                     {children}
