@@ -9,6 +9,7 @@
  */
 import { useEffect } from 'react';
 import { Loader2, Cpu } from 'lucide-react';
+import { Button } from '@/components/ui/button';
 import { ProviderCard } from './ProviderCard';
 import { SystemAiCard } from './SystemAiCard';
 import { useProvidersEnvironment } from '../api';
@@ -45,21 +46,23 @@ export function ApiKeysSection() {
     if (providersQuery.isLoading) {
         return (
             <div className="flex items-center justify-center py-12">
-                <Loader2 className="w-6 h-6 animate-spin text-zinc-500" />
+                <Loader2 className="size-6 animate-spin text-ink-muted motion-reduce:animate-none" />
             </div>
         );
     }
 
     if (providersQuery.error) {
         return (
-            <div className="bg-red-500/10 border border-red-500/30 rounded-lg p-4">
-                <p className="text-red-400">Failed to load providers</p>
-                <button
+            <div role="alert" className="rounded-group border border-danger/40 bg-danger-soft p-4">
+                <p className="type-body text-danger">Failed to load providers</p>
+                <Button
+                    variant="outline"
+                    size="sm"
                     onClick={() => void providersQuery.refetch()}
-                    className="mt-3 px-3 py-1.5 text-sm rounded-md bg-red-500/20 border border-red-500/40 text-red-300 hover:bg-red-500/30 transition-colors"
+                    className="mt-3"
                 >
                     Retry
-                </button>
+                </Button>
             </div>
         );
     }
@@ -67,8 +70,8 @@ export function ApiKeysSection() {
     return (
         <div className="space-y-6">
             <div className="space-y-1">
-                <h2 className="text-lg font-semibold text-white">API Keys & Providers</h2>
-                <p className="text-sm text-zinc-400">
+                <h2 className="type-section-title">API Keys & Providers</h2>
+                <p className="type-body text-ink-secondary">
                     Configure your LLM providers.
                     {isProduction
                         ? ' API keys are configured on the server for security.'
@@ -79,9 +82,9 @@ export function ApiKeysSection() {
             {/* System AI Section */}
             {metadata && (
                 <div className="space-y-3">
-                    <div className="flex items-center gap-2 text-zinc-300">
-                        <Cpu className="w-4 h-4" />
-                        <span className="text-sm font-medium">System AI</span>
+                    <div className="flex items-center gap-2 text-ink">
+                        <Cpu className="size-4" />
+                        <span className="type-control font-medium">System AI</span>
                     </div>
                     <SystemAiCard
                         providers={providers}
@@ -93,7 +96,7 @@ export function ApiKeysSection() {
 
             {/* Provider Cards */}
             <div className="space-y-3">
-                <h3 className="text-sm font-medium text-zinc-300">LLM Providers</h3>
+                <h3 className="type-item-title">LLM Providers</h3>
                 <div className="grid gap-4">
                     {providers.map((provider) => {
                         const providerId = provider.id as keyof typeof providerConfigs;
@@ -118,8 +121,8 @@ export function ApiKeysSection() {
                 </div>
             </div>
 
-            <div className="bg-zinc-800/50 rounded-lg p-4 text-sm text-zinc-400">
-                <p className="font-medium text-zinc-300 mb-1">🔒 Security Note</p>
+            <div className="rounded-group bg-surface-raised p-4 type-body text-ink-secondary">
+                <p className="mb-1 font-medium text-ink">🔒 Security Note</p>
                 <p>
                     {isProduction
                         ? 'API keys are stored securely on the server and never exposed to the browser.'
