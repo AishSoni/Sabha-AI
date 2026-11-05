@@ -101,19 +101,6 @@ export function ProviderCard({
         }
     };
 
-    const getProviderColor = () => {
-        switch (provider.id) {
-            case 'openrouter':
-                return 'from-orange-500/20 to-orange-600/10 border-orange-500/30';
-            case 'gemini':
-                return 'from-blue-500/20 to-blue-600/10 border-blue-500/30';
-            case 'ollama':
-                return 'from-emerald-500/20 to-emerald-600/10 border-emerald-500/30';
-            default:
-                return 'from-zinc-500/20 to-zinc-600/10 border-zinc-500/30';
-        }
-    };
-
     const getProviderIcon = () => {
         switch (provider.id) {
             case 'openrouter':
@@ -138,38 +125,28 @@ export function ProviderCard({
         : (testResult ?? null);
 
     return (
-        <Card
-            className={`bg-gradient-to-br ${getProviderColor()} border transition-all duration-200 ${config.enabled ? 'ring-2 ring-white/20' : ''}`}
-        >
+        <Card className={config.enabled ? 'ring-2 ring-action/30' : undefined}>
             <CardHeader className="pb-3">
                 <div className="flex items-center justify-between">
                     <div className="flex items-center gap-3">
                         <span className="text-2xl">{getProviderIcon()}</span>
                         <div>
-                            <CardTitle className="text-white text-lg">{provider.name}</CardTitle>
-                            <p className="text-xs text-zinc-400">{provider.description}</p>
+                            <CardTitle>{provider.name}</CardTitle>
+                            <p className="text-xs text-ink-secondary">{provider.description}</p>
                         </div>
                     </div>
                     <div className="flex items-center gap-2">
                         {config.serverConfigured && (
-                            <Badge
-                                variant="outline"
-                                className="bg-blue-500/20 border-blue-500/50 text-blue-400"
-                            >
-                                Server
-                            </Badge>
+                            <Badge variant="secondary">Server</Badge>
                         )}
                         {config.enabled && (
-                            <Badge
-                                variant="outline"
-                                className="bg-emerald-500/20 border-emerald-500/50 text-emerald-400"
-                            >
-                                <Check className="w-3 h-3 mr-1" /> Active
+                            <Badge variant="success">
+                                <Check className="mr-1 size-3" /> Active
                             </Badge>
                         )}
                         {isDefault && (
-                            <Badge className="bg-amber-500/20 border-amber-500/50 text-amber-400">
-                                <Zap className="w-3 h-3 mr-1" /> Default
+                            <Badge variant="warning">
+                                <Zap className="mr-1 size-3" /> Default
                             </Badge>
                         )}
                     </div>
@@ -179,11 +156,11 @@ export function ProviderCard({
                 {/* API Key Input (if required) */}
                 {provider.requires_api_key && (
                     <div className="space-y-2">
-                        <Label className="text-zinc-300">API Key</Label>
+                        <Label>API Key</Label>
                         {isProduction && config.serverConfigured ? (
-                            <div className="flex items-center gap-2 py-2 px-3 bg-emerald-500/10 border border-emerald-500/30 rounded-md">
-                                <Check className="w-4 h-4 text-emerald-400" />
-                                <span className="text-sm text-emerald-400">Configured on server</span>
+                            <div className="flex items-center gap-2 rounded-control border border-success/40 bg-success-soft px-3 py-2">
+                                <Check className="size-4 text-success" />
+                                <span className="type-body text-success">Configured on server</span>
                             </div>
                         ) : (
                             <>
@@ -196,41 +173,40 @@ export function ProviderCard({
                                                 onConfigChange({ apiKey: e.target.value })
                                             }
                                             placeholder={`Enter your ${provider.name} API key`}
-                                            className="bg-zinc-900/50 border-zinc-700 text-white pr-10"
+                                            className="pr-10"
                                         />
                                         <button
                                             type="button"
+                                            aria-label={showKey ? 'Hide API key' : 'Show API key'}
                                             onClick={() => setShowKey(!showKey)}
-                                            className="absolute right-3 top-1/2 -translate-y-1/2 text-zinc-500 hover:text-zinc-300"
+                                            className="absolute right-3 top-1/2 -translate-y-1/2 text-ink-muted transition-colors hover:text-ink focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-focus-ring"
                                         >
                                             {showKey ? (
-                                                <EyeOff className="w-4 h-4" />
+                                                <EyeOff className="size-4" />
                                             ) : (
-                                                <Eye className="w-4 h-4" />
+                                                <Eye className="size-4" />
                                             )}
                                         </button>
                                     </div>
                                     <Button
                                         variant="outline"
                                         onClick={handleTestConnection}
-                                        disabled={testing || !config.apiKey}
-                                        className="border-zinc-700 hover:bg-zinc-800"
+                                        busy={testing}
+                                        busyLabel="Testing"
+                                        disabled={!config.apiKey}
                                     >
-                                        {testing ? (
-                                            <Loader2 className="w-4 h-4 animate-spin" />
-                                        ) : (
-                                            'Test'
-                                        )}
+                                        Test
                                     </Button>
                                 </div>
                                 {connectionResult && (
                                     <p
-                                        className={`text-xs flex items-center gap-1 ${connectionResult.valid ? 'text-emerald-400' : 'text-red-400'}`}
+                                        role={connectionResult.valid ? 'status' : 'alert'}
+                                        className={`flex items-center gap-1 type-meta ${connectionResult.valid ? 'text-success' : 'text-danger'}`}
                                     >
                                         {connectionResult.valid ? (
-                                            <Check className="w-3 h-3" />
+                                            <Check className="size-3" />
                                         ) : (
-                                            <X className="w-3 h-3" />
+                                            <X className="size-3" />
                                         )}
                                         {connectionResult.message}
                                     </p>
@@ -243,35 +219,32 @@ export function ProviderCard({
                 {/* Ollama Base URL */}
                 {provider.id === 'ollama' && (
                     <div className="space-y-2">
-                        <Label className="text-zinc-300">Ollama URL</Label>
+                        <Label>Ollama URL</Label>
                         <div className="flex gap-2">
                             <Input
                                 value={config.baseUrl || 'http://localhost:11434'}
                                 onChange={(e) => onConfigChange({ baseUrl: e.target.value })}
                                 placeholder="http://localhost:11434"
-                                className="bg-zinc-900/50 border-zinc-700 text-white flex-1"
+                                className="flex-1"
                             />
                             <Button
                                 variant="outline"
                                 onClick={handleTestConnection}
-                                disabled={testing}
-                                className="border-zinc-700 hover:bg-zinc-800"
+                                busy={testing}
+                                busyLabel="Testing"
                             >
-                                {testing ? (
-                                    <Loader2 className="w-4 h-4 animate-spin" />
-                                ) : (
-                                    'Test'
-                                )}
+                                Test
                             </Button>
                         </div>
                         {connectionResult && (
                             <p
-                                className={`text-xs flex items-center gap-1 ${connectionResult.valid ? 'text-emerald-400' : 'text-red-400'}`}
+                                role={connectionResult.valid ? 'status' : 'alert'}
+                                className={`flex items-center gap-1 type-meta ${connectionResult.valid ? 'text-success' : 'text-danger'}`}
                             >
                                 {connectionResult.valid ? (
-                                    <Check className="w-3 h-3" />
+                                    <Check className="size-3" />
                                 ) : (
-                                    <X className="w-3 h-3" />
+                                    <X className="size-3" />
                                 )}
                                 {connectionResult.message}
                             </p>
@@ -282,31 +255,31 @@ export function ProviderCard({
                 {/* Model Selection — dynamically fetched */}
                 <div className="space-y-2">
                     <div className="flex items-center justify-between">
-                        <Label className="text-zinc-300">Default Model</Label>
+                        <Label>Default Model</Label>
                         <Button
                             variant="ghost"
-                            size="sm"
+                            size="icon-sm"
+                            aria-label="Refresh models"
                             onClick={() => void fetchModels()}
                             disabled={loadingModels}
-                            className="h-6 px-2 text-xs text-zinc-400 hover:text-white"
                         >
                             {loadingModels ? (
-                                <Loader2 className="w-3 h-3 animate-spin" />
+                                <Loader2 className="size-3 animate-spin motion-reduce:animate-none" />
                             ) : (
-                                <RefreshCw className="w-3 h-3" />
+                                <RefreshCw className="size-3" />
                             )}
                         </Button>
                     </div>
 
                     {loadingModels ? (
-                        <div className="flex items-center gap-2 py-2 text-zinc-500 text-sm">
-                            <Loader2 className="w-4 h-4 animate-spin" />
+                        <div className="flex items-center gap-2 py-2 type-meta text-ink-muted">
+                            <Loader2 className="size-4 animate-spin motion-reduce:animate-none" />
                             Fetching models...
                         </div>
                     ) : modelsError ? (
-                        <div className="text-xs text-amber-400">{modelsError}</div>
+                        <div className="type-meta text-warning">{modelsError}</div>
                     ) : models.length === 0 ? (
-                        <div className="text-xs text-zinc-500">
+                        <div className="type-meta text-ink-muted">
                             {provider.requires_api_key && !config.apiKey && !config.serverConfigured
                                 ? 'Enter API key and test to load models'
                                 : 'No models available'}
@@ -318,26 +291,19 @@ export function ProviderCard({
                                 onConfigChange({ model: model === '__default__' ? '' : model })
                             }
                         >
-                            <SelectTrigger className="bg-zinc-900/50 border-zinc-700 text-white">
+                            <SelectTrigger>
                                 <SelectValue placeholder="Select a model" />
                             </SelectTrigger>
-                            <SelectContent className="bg-zinc-900 border-zinc-700 max-h-60">
-                                <SelectItem
-                                    value="__default__"
-                                    className="text-zinc-400 hover:bg-zinc-800"
-                                >
+                            <SelectContent className="max-h-60">
+                                <SelectItem value="__default__">
                                     Use Provider Default
                                 </SelectItem>
                                 {models.map((model) => (
-                                    <SelectItem
-                                        key={model.id}
-                                        value={model.id}
-                                        className="text-white hover:bg-zinc-800"
-                                    >
+                                    <SelectItem key={model.id} value={model.id}>
                                         <span className="flex items-center gap-2">
                                             {model.name}
                                             {model.context_length && (
-                                                <span className="text-xs text-zinc-500">
+                                                <span className="type-meta text-ink-muted">
                                                     {(model.context_length / 1000).toFixed(0)}k ctx
                                                 </span>
                                             )}
@@ -352,8 +318,8 @@ export function ProviderCard({
                 {/* Temperature Slider */}
                 <div className="space-y-2">
                     <div className="flex justify-between">
-                        <Label className="text-zinc-300">Temperature</Label>
-                        <span className="text-xs text-zinc-500">{config.temperature.toFixed(1)}</span>
+                        <Label>Temperature</Label>
+                        <span className="type-meta type-tabular text-ink-muted">{config.temperature.toFixed(1)}</span>
                     </div>
                     <Slider
                         value={[config.temperature]}
@@ -363,7 +329,7 @@ export function ProviderCard({
                         step={0.1}
                         className="py-2"
                     />
-                    <div className="flex justify-between text-xs text-zinc-600">
+                    <div className="flex justify-between type-meta text-ink-muted">
                         <span>Precise</span>
                         <span>Creative</span>
                     </div>
@@ -371,7 +337,7 @@ export function ProviderCard({
 
                 {/* Max Tokens */}
                 <div className="space-y-2">
-                    <Label className="text-zinc-300">Max Tokens</Label>
+                    <Label>Max Tokens</Label>
                     <Input
                         type="number"
                         value={config.maxTokens}
@@ -380,15 +346,15 @@ export function ProviderCard({
                         }
                         min={256}
                         max={32000}
-                        className="bg-zinc-900/50 border-zinc-700 text-white"
+                        className="type-tabular"
                     />
                 </div>
 
                 {/* Set as Default */}
-                <div className="flex items-center justify-between pt-2 border-t border-zinc-700/50">
+                <div className="flex items-center justify-between pt-2 border-t border-separator">
                     <div>
-                        <Label className="text-zinc-300">Set as Default</Label>
-                        <p className="text-xs text-zinc-500">Use this provider for new meetings</p>
+                        <Label>Set as Default</Label>
+                        <p className="type-meta text-ink-muted">Use this provider for new meetings</p>
                     </div>
                     <Switch
                         checked={isDefault}

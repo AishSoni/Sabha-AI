@@ -6,36 +6,36 @@ export const metadata = {
 
 export default function DemoSettingsPage() {
     return (
-        <main className="min-h-screen bg-zinc-950 px-4 py-10 text-zinc-100">
+        <main className="min-h-screen bg-canvas px-4 py-10 text-ink">
             <div className="mx-auto max-w-3xl space-y-8">
                 <header className="space-y-3">
-                    <p className="text-xs font-semibold uppercase tracking-wide text-amber-200">
+                    <p className="type-meta font-semibold uppercase tracking-wide text-warning">
                         Demo workspace
                     </p>
-                    <h1 className="text-3xl font-semibold text-white">
+                    <h1 className="type-page-title">
                         Settings in the public demo
                     </h1>
-                    <p className="text-sm leading-6 text-zinc-400">
+                    <p className="type-body text-ink-secondary">
                         Recorded demo settings, without operator credentials or
                         provider connections.
                     </p>
                 </header>
 
-                <section className="space-y-3 rounded-xl border border-zinc-800 bg-zinc-900/40 p-5">
-                    <h2 className="text-lg font-semibold text-white">
+                <section className="space-y-3 rounded-group border border-separator bg-surface/40 p-5">
+                    <h2 className="type-section-title">
                         Provider setup is operator-only
                     </h2>
-                    <p className="text-sm leading-6 text-zinc-400">
+                    <p className="type-body text-ink-secondary">
                         Model providers and credentials are managed only in the
                         authenticated operator workspace.
                     </p>
                 </section>
 
-                <section className="space-y-3 rounded-xl border border-zinc-800 bg-zinc-900/40 p-5">
-                    <h2 className="text-lg font-semibold text-white">
+                <section className="space-y-3 rounded-group border border-separator bg-surface/40 p-5">
+                    <h2 className="type-section-title">
                         Workspace lifetime
                     </h2>
-                    <ul className="list-disc space-y-2 pl-5 text-sm leading-6 text-zinc-400">
+                    <ul className="list-disc space-y-2 pl-5 type-body text-ink-secondary">
                         <li>
                             Practice edits live in this browser tab and disappear on
                             refresh or <strong>Reset demo</strong>.
@@ -53,13 +53,13 @@ export default function DemoSettingsPage() {
                 <div className="flex flex-wrap gap-3">
                     <Link
                         href="/demo"
-                        className="rounded-lg bg-zinc-100 px-4 py-2 text-sm font-semibold text-zinc-950 hover:bg-white"
+                        className="m-control inline-flex min-h-10 items-center rounded-control bg-action px-4 type-control font-medium text-action-foreground hover:bg-action-hover focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-focus-ring"
                     >
                         Back to the board
                     </Link>
                     <Link
                         href="/demo/new"
-                        className="rounded-lg border border-zinc-700 px-4 py-2 text-sm text-zinc-200 hover:bg-zinc-900"
+                        className="m-control inline-flex min-h-10 items-center rounded-control border border-control bg-surface px-4 type-control text-ink hover:bg-surface-raised focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-focus-ring"
                     >
                         Start the recorded meeting
                     </Link>
