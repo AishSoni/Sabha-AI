@@ -129,53 +129,53 @@ function VoteRow({
                 : null;
     return (
         <div
-            className="flex items-start gap-2 rounded-lg bg-zinc-900/50 p-2"
+            className="flex items-start gap-2 rounded-lg bg-surface/50 p-2"
             data-vote-status={
                 pending ? 'pending' : yes ? 'yes' : no ? 'no' : 'no-vote'
             }
         >
             {yes ? (
-                <CheckCircle2 className="mt-0.5 h-4 w-4 shrink-0 text-green-400" />
+                <CheckCircle2 className="mt-0.5 h-4 w-4 shrink-0 text-success" />
             ) : no ? (
-                <XCircle className="mt-0.5 h-4 w-4 shrink-0 text-red-400" />
+                <XCircle className="mt-0.5 h-4 w-4 shrink-0 text-danger" />
             ) : pending ? (
-                <Loader2 className="mt-0.5 h-4 w-4 shrink-0 motion-safe:animate-spin text-amber-400" />
+                <Loader2 className="mt-0.5 h-4 w-4 shrink-0 motion-safe:animate-spin text-warning" />
             ) : (
-                <AlertTriangle className="mt-0.5 h-4 w-4 shrink-0 text-amber-400" />
+                <AlertTriangle className="mt-0.5 h-4 w-4 shrink-0 text-warning" />
             )}
             <div className="min-w-0 flex-1">
                 <div className="flex flex-wrap items-center gap-2">
-                    <span className="text-sm font-medium text-white">
+                    <span className="text-sm font-medium text-ink">
                         {vote.participant_name}
                     </span>
                     <Badge
                         variant="secondary"
                         className={
                             yes
-                                ? 'bg-green-900/50 text-xs text-green-400'
+                                ? 'bg-success-soft text-xs text-success'
                                 : no
-                                  ? 'bg-red-900/50 text-xs text-red-400'
-                                  : 'bg-amber-900/50 text-xs text-amber-400'
+                                  ? 'bg-danger-soft text-xs text-danger'
+                                  : 'bg-warning-soft text-xs text-warning'
                         }
                     >
                         {voteLabel(vote)}
                     </Badge>
                     {typeof cost === 'number' && cost > 0 ? (
-                        <span className="text-xs text-zinc-500">${cost.toFixed(4)}</span>
+                        <span className="text-xs text-ink-muted">${cost.toFixed(4)}</span>
                     ) : null}
                     {usageNote ? (
-                        <span className="text-xs text-zinc-500">{usageNote}</span>
+                        <span className="text-xs text-ink-muted">{usageNote}</span>
                     ) : null}
                 </div>
                 <ClosingGeneratedText
                     item={textItem}
-                    className="mt-0.5 text-xs text-zinc-500"
+                    className="mt-0.5 text-xs text-ink-muted"
                 />
                 {vote.error_message ? (
-                    <p className="mt-0.5 text-xs text-amber-400">{vote.error_message}</p>
+                    <p className="mt-0.5 text-xs text-warning">{vote.error_message}</p>
                 ) : null}
                 {vote.error_code ? (
-                    <p className="mt-0.5 text-xs text-zinc-500">
+                    <p className="mt-0.5 text-xs text-ink-muted">
                         Error code: {vote.error_code}
                     </p>
                 ) : null}
@@ -198,11 +198,11 @@ function StatusCard({
     children?: React.ReactNode;
 }) {
     const toneClasses = {
-        active: 'border-indigo-800/50 bg-indigo-950/30',
-        success: 'border-green-800/50 bg-green-950/30',
-        warning: 'border-amber-800/50 bg-amber-950/30',
-        error: 'border-red-800/50 bg-red-950/30',
-        muted: 'border-zinc-800 bg-zinc-900/50',
+        active: 'border-action/50 bg-accent-soft',
+        success: 'border-success/50 bg-success-soft',
+        warning: 'border-warning/50 bg-warning-soft',
+        error: 'border-danger/50 bg-danger-soft',
+        muted: 'border-separator bg-surface/50',
     }[tone];
     return (
         <Card
@@ -214,7 +214,7 @@ function StatusCard({
             <div className="flex items-start gap-3">
                 <span className="mt-0.5 shrink-0">{icon}</span>
                 <div className="min-w-0 flex-1">
-                    <h4 className="mb-1 font-medium text-white">{title}</h4>
+                    <h4 className="mb-1 font-medium text-ink">{title}</h4>
                     {children}
                 </div>
             </div>
@@ -366,7 +366,7 @@ export function ClosingPanel({
 
     return (
         <div id="closing-panel" className="space-y-3">
-            <h4 className="flex items-center gap-2 text-sm font-semibold text-zinc-400">
+            <h4 className="flex items-center gap-2 text-sm font-semibold text-ink-secondary">
                 <LogOut className="h-4 w-4" />
                 Close Meeting
             </h4>
@@ -375,10 +375,10 @@ export function ClosingPanel({
                 <StatusCard
                     id="closing-status"
                     tone="muted"
-                    icon={<Archive className="h-5 w-5 text-zinc-400" />}
+                    icon={<Archive className="h-5 w-5 text-ink-secondary" />}
                     title="Meeting archived"
                 >
-                    <p className="text-sm text-zinc-400">
+                    <p className="text-sm text-ink-secondary">
                         Archived meetings are read-only. Unarchiving never reopens an
                         ended meeting.
                     </p>
@@ -389,10 +389,10 @@ export function ClosingPanel({
                 <StatusCard
                     id="closing-status"
                     tone="success"
-                    icon={<CheckCircle2 className="h-5 w-5 text-green-400" />}
+                    icon={<CheckCircle2 className="h-5 w-5 text-success" />}
                     title="Meeting ended"
                 >
-                    <p className="text-sm text-zinc-400">
+                    <p className="text-sm text-ink-secondary">
                         {runtime.replay
                             ? 'The recorded final summary is shown below.'
                             : 'The final summary is committed below and in Summary History. The chat is now read-only.'}
@@ -427,7 +427,7 @@ export function ClosingPanel({
                 <StatusCard
                     id="closing-status"
                     tone="active"
-                    icon={<Loader2 className="h-5 w-5 animate-spin text-indigo-400" />}
+                    icon={<Loader2 className="h-5 w-5 animate-spin text-action" />}
                     title={
                         stage === 'draining'
                             ? 'Finishing queued work'
@@ -436,8 +436,8 @@ export function ClosingPanel({
                               : 'Writing summary'
                     }
                 >
-                    <p className="text-sm text-zinc-400">{stage ? STAGE_COPY[stage] : ''}</p>
-                    <p className="mt-1 text-xs text-zinc-500">
+                    <p className="text-sm text-ink-secondary">{stage ? STAGE_COPY[stage] : ''}</p>
+                    <p className="mt-1 text-xs text-ink-muted">
                         This is safe to leave. Reloading resumes observation, not
                         generation.
                     </p>
@@ -449,7 +449,7 @@ export function ClosingPanel({
                                 variant="outline"
                                 onClick={abortClose}
                                 disabled={busy}
-                                className="border-zinc-700 text-zinc-300"
+                                className="border-control text-ink-secondary"
                             >
                                 {abort.isPending ? (
                                     <Loader2 className="mr-2 h-4 w-4 motion-safe:animate-spin" />
@@ -467,14 +467,14 @@ export function ClosingPanel({
                 <StatusCard
                     id="closing-status"
                     tone="error"
-                    icon={<AlertTriangle className="h-5 w-5 text-red-400" />}
+                    icon={<AlertTriangle className="h-5 w-5 text-danger" />}
                     title="Closing failed"
                 >
-                    <p className="text-sm text-zinc-300">
+                    <p className="text-sm text-ink-secondary">
                         {closing?.error?.message || STAGE_COPY.failed}
                     </p>
                     {closing?.error?.code ? (
-                        <p className="mt-1 text-xs text-zinc-500">
+                        <p className="mt-1 text-xs text-ink-muted">
                             Error code: {closing.error.code}
                         </p>
                     ) : null}
@@ -485,7 +485,7 @@ export function ClosingPanel({
                                 size="sm"
                                 onClick={retryClose}
                                 disabled={busy}
-                                className="bg-indigo-600 hover:bg-indigo-700"
+                                className="bg-action hover:bg-action-hover"
                             >
                                 {retry.isPending ? (
                                     <Loader2 className="mr-2 h-4 w-4 motion-safe:animate-spin" />
@@ -502,7 +502,7 @@ export function ClosingPanel({
                                 variant="outline"
                                 onClick={abortClose}
                                 disabled={busy}
-                                className="border-zinc-700 text-zinc-300"
+                                className="border-control text-ink-secondary"
                             >
                                 {abort.isPending ? (
                                     <Loader2 className="mr-2 h-4 w-4 motion-safe:animate-spin" />
@@ -520,12 +520,12 @@ export function ClosingPanel({
                 <StatusCard
                     id="closing-status"
                     tone="warning"
-                    icon={<XCircle className="h-5 w-5 text-amber-400" />}
+                    icon={<XCircle className="h-5 w-5 text-warning" />}
                     title="Closing rejected"
                 >
-                    <p className="text-sm text-zinc-300">{STAGE_COPY.rejected}</p>
+                    <p className="text-sm text-ink-secondary">{STAGE_COPY.rejected}</p>
                     {canStart ? (
-                        <p className="mt-1 text-xs text-zinc-500">
+                        <p className="mt-1 text-xs text-ink-muted">
                             You can start another close request below.
                         </p>
                     ) : null}
@@ -536,12 +536,12 @@ export function ClosingPanel({
                 <StatusCard
                     id="closing-status"
                     tone="warning"
-                    icon={<Ban className="h-5 w-5 text-amber-400" />}
+                    icon={<Ban className="h-5 w-5 text-warning" />}
                     title="Closing abandoned"
                 >
-                    <p className="text-sm text-zinc-300">{STAGE_COPY.aborted}</p>
+                    <p className="text-sm text-ink-secondary">{STAGE_COPY.aborted}</p>
                     {canStart ? (
-                        <p className="mt-1 text-xs text-zinc-500">
+                        <p className="mt-1 text-xs text-ink-muted">
                             Turn submission is available again. You can start another
                             close request below.
                         </p>
@@ -551,10 +551,10 @@ export function ClosingPanel({
 
             {votes.length > 0 ? (
                 <div id="closing-ballots" className="space-y-2">
-                    <h5 className="text-xs font-semibold uppercase tracking-wide text-zinc-500">
+                    <h5 className="text-xs font-semibold uppercase tracking-wide text-ink-muted">
                         Ballots
                     </h5>
-                    <p className="text-xs text-zinc-500">
+                    <p className="text-xs text-ink-muted">
                         Each ballot answers only whether this meeting should end, not
                         whether any proposal is approved.
                     </p>
@@ -577,8 +577,8 @@ export function ClosingPanel({
             ) : null}
 
             {(onSkipText && textProjection && !textTerminal) || (ended && onReplayClosing) ? (
-                <div className="flex flex-wrap items-center gap-2 rounded-lg border border-zinc-800 bg-zinc-900/40 px-3 py-2">
-                    <span className="text-xs text-zinc-400">Recorded closing</span>
+                <div className="flex flex-wrap items-center gap-2 rounded-lg border border-separator bg-surface/40 px-3 py-2">
+                    <span className="text-xs text-ink-secondary">Recorded closing</span>
                     {onSkipText && textProjection && !textTerminal ? (
                         <Button
                             type="button"
@@ -603,17 +603,17 @@ export function ClosingPanel({
             ) : null}
 
             {summaryText || (deckClosing && closing?.summary) ? (
-                <Card id="closing-final-summary" className="border-zinc-800 bg-zinc-900/50 p-4">
-                    <h5 className="mb-2 text-xs font-semibold uppercase tracking-wide text-zinc-500">
+                <Card id="closing-final-summary" className="border-separator bg-surface/50 p-4">
+                    <h5 className="mb-2 text-xs font-semibold uppercase tracking-wide text-ink-muted">
                         Final summary
                     </h5>
                     {summaryText ? (
                         <ClosingGeneratedText
                             item={summaryText}
-                            className="whitespace-pre-wrap text-sm text-zinc-300"
+                            className="whitespace-pre-wrap text-sm text-ink-secondary"
                         />
                     ) : (
-                        <p className="whitespace-pre-wrap text-sm text-zinc-300">
+                        <p className="whitespace-pre-wrap text-sm text-ink-secondary">
                             {closing?.summary}
                         </p>
                     )}
@@ -621,7 +621,7 @@ export function ClosingPanel({
             ) : null}
 
             {actionError ? (
-                <div className="flex items-center gap-2 rounded-lg border border-red-800 bg-red-900/30 p-3 text-red-400">
+                <div className="flex items-center gap-2 rounded-lg border border-danger/60 bg-danger-soft p-3 text-danger">
                     <AlertTriangle className="h-4 w-4 shrink-0" />
                     <span className="flex-1 text-sm">{actionError}</span>
                     <button
@@ -635,7 +635,7 @@ export function ClosingPanel({
             ) : null}
 
             {closingQuery.error ? (
-                <div className="flex items-center gap-2 rounded-lg border border-amber-800 bg-amber-900/30 p-3 text-amber-300">
+                <div className="flex items-center gap-2 rounded-lg border border-warning/60 bg-warning-soft p-3 text-warning">
                     <AlertTriangle className="h-4 w-4 shrink-0" />
                     <span className="flex-1 text-sm">
                         Closing progress could not be read: {closingQuery.error.message}
@@ -644,7 +644,7 @@ export function ClosingPanel({
                         size="sm"
                         variant="ghost"
                         onClick={() => void closingQuery.refetch()}
-                        className="text-amber-300 hover:text-white"
+                        className="text-warning hover:text-ink"
                     >
                         Reconnect
                     </Button>
@@ -654,10 +654,10 @@ export function ClosingPanel({
             {replayClosingUnavailable ? (
                 <StatusCard
                     tone="muted"
-                    icon={<LogOut className="h-5 w-5 text-zinc-500" />}
+                    icon={<LogOut className="h-5 w-5 text-ink-muted" />}
                     title="Closing is not available yet"
                 >
-                    <p className="text-sm text-zinc-400">
+                    <p className="text-sm text-ink-secondary">
                         {deckClosing?.closeReason ??
                             'Play every prepared reply and send the follow-up before closing.'}
                     </p>
@@ -666,10 +666,10 @@ export function ClosingPanel({
 
             {canStart ? (
                 confirmMode === null ? (
-                    <Card className="border-zinc-800 bg-zinc-900/50 p-4">
+                    <Card className="border-separator bg-surface/50 p-4">
                         <div className="mb-3">
-                            <h4 className="mb-1 font-medium text-white">End this meeting?</h4>
-                            <p className="text-xs text-zinc-500">
+                            <h4 className="mb-1 font-medium text-ink">End this meeting?</h4>
+                            <p className="text-xs text-ink-muted">
                                 Closing waits for queued work, then optionally votes
                                 before writing the final summary.
                             </p>
@@ -681,11 +681,11 @@ export function ClosingPanel({
                                 variant="outline"
                                 onClick={() => setConfirmMode('vote')}
                                 disabled={busy}
-                                className="h-auto flex-col items-center border-zinc-700 py-3 hover:bg-zinc-800"
+                                className="h-auto flex-col items-center border-control py-3 hover:bg-surface-raised"
                             >
-                                <Vote className="mb-1 h-5 w-5 text-amber-400" />
+                                <Vote className="mb-1 h-5 w-5 text-warning" />
                                 <span className="font-medium">Vote to End</span>
-                                <span className="text-xs text-zinc-500">
+                                <span className="text-xs text-ink-muted">
                                     Ask participants
                                 </span>
                             </Button>
@@ -695,11 +695,11 @@ export function ClosingPanel({
                                     variant="outline"
                                     onClick={() => setConfirmMode('force')}
                                     disabled={busy}
-                                    className="h-auto flex-col items-center border-red-800 py-3 text-red-400 hover:bg-red-900/20"
+                                    className="h-auto flex-col items-center border-danger/60 py-3 text-danger hover:bg-danger-soft"
                                 >
                                     <LogOut className="mb-1 h-5 w-5" />
                                     <span className="font-medium">Force End</span>
-                                    <span className="text-xs text-zinc-500">
+                                    <span className="text-xs text-ink-muted">
                                         Skip the vote
                                     </span>
                                 </Button>
@@ -707,16 +707,16 @@ export function ClosingPanel({
                         </div>
                     </Card>
                 ) : (
-                    <Card className="border-red-800/50 bg-red-950/30 p-4">
+                    <Card className="border-danger/50 bg-danger-soft p-4">
                         <div className="mb-4 flex items-start gap-3">
-                            <AlertTriangle className="mt-0.5 h-5 w-5 shrink-0 text-red-400" />
+                            <AlertTriangle className="mt-0.5 h-5 w-5 shrink-0 text-danger" />
                             <div>
-                                <h4 className="mb-1 font-medium text-white">
+                                <h4 className="mb-1 font-medium text-ink">
                                     {confirmMode === 'force'
                                         ? 'Force this meeting to end?'
                                         : 'Ask the board to end this meeting?'}
                                 </h4>
-                                <p className="text-sm text-zinc-400">
+                                <p className="text-sm text-ink-secondary">
                                     {confirmMode === 'force'
                                         ? 'The vote is skipped. Queued work is still allowed to drain before the summary.'
                                         : 'Participants vote first. A rejected vote leaves the meeting active.'}
@@ -731,8 +731,8 @@ export function ClosingPanel({
                                 disabled={busy}
                                 className={
                                     confirmMode === 'force'
-                                        ? 'bg-red-700 hover:bg-red-600'
-                                        : 'bg-indigo-600 hover:bg-indigo-700'
+                                        ? 'bg-danger text-on-danger hover:bg-danger-hover'
+                                        : 'bg-action text-action-foreground hover:bg-action-hover'
                                 }
                             >
                                 {busy ? (
@@ -745,7 +745,7 @@ export function ClosingPanel({
                                 variant="ghost"
                                 onClick={() => setConfirmMode(null)}
                                 disabled={busy}
-                                className="text-zinc-400 hover:text-white"
+                                className="text-ink-secondary hover:text-ink"
                             >
                                 Cancel
                             </Button>

@@ -28,41 +28,42 @@ export function CitationsBlock({ citations, renderPreviewAction }: CitationsBloc
     if (!citations || citations.length === 0) return null;
 
     return (
-        <div className="my-2 rounded-lg bg-blue-950/30 border border-blue-800/50 overflow-hidden">
+        <div className="my-2 overflow-hidden rounded-group border border-action/40 bg-accent-soft">
             <button
+                type="button"
                 onClick={() => setIsExpanded(!isExpanded)}
-                className="w-full flex items-center gap-2 px-3 py-2 text-blue-400 hover:bg-blue-900/20 transition-colors"
+                className="m-control flex w-full items-center gap-2 px-3 py-2 text-action hover:bg-action/10"
             >
-                <BookOpen className="w-4 h-4" />
+                <BookOpen className="h-4 w-4" />
                 <span className="text-sm font-medium">
                     {citations.length} Source{citations.length !== 1 ? 's' : ''}
                 </span>
                 <div className="flex-1" />
                 {isExpanded ? (
-                    <ChevronDown className="w-4 h-4" />
+                    <ChevronDown className="h-4 w-4" />
                 ) : (
-                    <ChevronRight className="w-4 h-4" />
+                    <ChevronRight className="h-4 w-4" />
                 )}
             </button>
 
             {isExpanded && (
-                <div className="px-3 pb-3 pt-1 space-y-2">
+                <div className="space-y-2 px-3 pb-3 pt-1">
                     {citations.map((citation, idx) => (
-                        <div key={idx} className="bg-black/20 rounded p-2">
+                        <div key={idx} className="rounded-control bg-surface/60 p-2">
                             <div className="flex items-center gap-2">
-                                <span className="text-xs text-blue-500 font-mono">[{idx + 1}]</span>
+                                <span className="font-mono text-xs text-action">[{idx + 1}]</span>
                                 {citation.url ? (
                                     <a
                                         href={citation.url}
                                         target="_blank"
                                         rel="noopener noreferrer"
-                                        className="text-sm text-blue-400 hover:underline flex items-center gap-1"
+                                        className="flex items-center gap-1 text-sm text-action hover:underline"
                                     >
                                         {citation.title || citation.source}
-                                        <ExternalLink className="w-3 h-3" />
+                                        <ExternalLink className="h-3 w-3" />
                                     </a>
                                 ) : (
-                                    <span className="text-sm text-blue-300">
+                                    <span className="text-sm text-ink">
                                         {citation.title || citation.source}
                                     </span>
                                 )}
@@ -72,16 +73,16 @@ export function CitationsBlock({ citations, renderPreviewAction }: CitationsBloc
                                     </div>
                                 ) : null}
                             </div>
-                            <p className="mt-1 text-[11px] uppercase tracking-wide text-blue-500/80">
+                            <p className="mt-1 type-meta uppercase tracking-wide text-ink-muted">
                                 {citation.source}
                             </p>
                             {citation.locator ? (
-                                <p className="mt-1 text-xs text-zinc-500">
+                                <p className="mt-1 type-meta text-ink-muted">
                                     Locator: {citation.locator}
                                 </p>
                             ) : null}
                             {citation.snippet ? (
-                                <p className="mt-1 whitespace-pre-wrap text-xs text-zinc-400">
+                                <p className="mt-1 whitespace-pre-wrap type-meta text-ink-secondary">
                                     {citation.snippet}
                                 </p>
                             ) : null}
