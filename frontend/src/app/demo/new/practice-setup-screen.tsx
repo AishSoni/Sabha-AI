@@ -10,7 +10,7 @@
 import { useState, type ReactNode } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { FilePlus2, Loader2 } from "lucide-react";
+import { FilePlus2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { useDemoWorkspace } from "@/features/demo-workspace";
@@ -50,11 +50,11 @@ export function PracticeSetupScreen({
     if (!workspace.expanded) {
         return (
             <main className="mx-auto max-w-3xl px-4 py-12">
-                <Card className="border-zinc-800 bg-zinc-900/50 p-6">
-                    <h1 className="text-lg font-semibold text-white">
+                <Card className="p-6">
+                    <h1 className="type-item-title text-ink">
                         Practice editing is unavailable
                     </h1>
-                    <p className="mt-2 text-sm leading-6 text-zinc-400">
+                    <p className="mt-2 type-body text-ink-secondary">
                         {workspace.error ??
                             "This recording does not include a usable practice workspace seed."}
                     </p>
@@ -138,32 +138,29 @@ export function PracticeSetupScreen({
                     if (sample) practice.unstageSample(sample.sampleId);
                 }}
                 uploadControl={
-                    <div className="rounded-xl border-2 border-dashed border-zinc-700 bg-zinc-900/30 p-6 text-center">
-                        <FilePlus2 className="mx-auto mb-2 h-8 w-8 text-zinc-500" />
-                        <p className="text-sm text-zinc-300">
+                    <div className="rounded-group border-2 border-dashed border-control bg-surface/30 p-6 text-center">
+                        <FilePlus2 className="mx-auto mb-2 h-8 w-8 text-ink-muted" />
+                        <p className="type-body text-ink-secondary">
                             Choose an approved practice sample
                         </p>
-                        <p className="mt-1 text-xs text-zinc-500">
+                        <p className="mt-1 type-meta text-ink-muted">
                             Choose an approved sample from this recording.
                         </p>
                         <Button
                             type="button"
                             variant="outline"
                             size="sm"
-                            className="mt-3 border-zinc-700 text-zinc-200"
-                            disabled={practice.verifyingSample}
+                            busy={practice.verifyingSample}
+                            busyLabel="Verifying sample"
+                            className="mt-3"
                             onClick={() => setPickerOpen(true)}
                         >
-                            {practice.verifyingSample ? (
-                                <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                            ) : (
-                                <FilePlus2 className="mr-2 h-4 w-4" />
-                            )}
+                            <FilePlus2 className="h-4 w-4" />
                             Add approved sample
                         </Button>
                         {practice.stagedError ? (
                             <p
-                                className="mt-3 text-xs text-red-300"
+                                className="mt-3 text-xs text-danger"
                                 role="alert"
                             >
                                 {practice.stagedError}
@@ -203,7 +200,7 @@ export function PracticeSetupScreen({
                 createLabel="Create practice setup"
                 busyLabel="Creating practice setup..."
                 disclosure={
-                    <div className="mb-4 rounded-lg border border-amber-400/30 bg-amber-400/10 px-3 py-2 text-sm text-amber-100">
+                    <div className="mb-4 rounded-group border border-warning/40 bg-warning-soft px-3 py-2 type-body text-warning">
                         Practice only · changes stay in this browser and never
                         alter the recording.{" "}
                         <Link
