@@ -14,30 +14,31 @@ export function ThinkingBlock({ content, isStreaming, provenance }: ThinkingBloc
     // Streaming starts expanded so live thinking is visible immediately.
     const [isExpanded, setIsExpanded] = useState(Boolean(isStreaming));
     return (
-        <div className="my-2 rounded-lg bg-violet-950/30 border border-violet-800/50 overflow-hidden">
+        <div className="my-2 overflow-hidden rounded-group border border-separator bg-surface-raised">
             <button
+                type="button"
                 onClick={() => setIsExpanded(!isExpanded)}
-                className="w-full flex items-center gap-2 px-3 py-2 text-violet-400 hover:bg-violet-900/20 transition-colors"
+                className="m-control flex w-full items-center gap-2 px-3 py-2 text-ink-secondary hover:bg-surface-selected"
             >
-                <Brain className={cn("w-4 h-4", isStreaming && "animate-pulse")} />
+                <Brain className={cn('h-4 w-4 text-action', isStreaming && 'animate-pulse')} />
                 <span className="text-sm font-medium">Thinking</span>
                 {provenance && (
-                    <span className="text-[11px] text-violet-500/80">{provenance}</span>
+                    <span className="type-meta text-ink-muted">{provenance}</span>
                 )}
                 {isStreaming && (
-                    <span className="text-xs text-violet-500 animate-pulse">...</span>
+                    <span className="text-xs text-action animate-pulse">...</span>
                 )}
                 <div className="flex-1" />
                 {isExpanded ? (
-                    <ChevronDown className="w-4 h-4" />
+                    <ChevronDown className="h-4 w-4" />
                 ) : (
-                    <ChevronRight className="w-4 h-4" />
+                    <ChevronRight className="h-4 w-4" />
                 )}
             </button>
 
             {isExpanded && (
                 <div className="px-3 pb-3 pt-1">
-                    <p className="text-sm text-violet-300/80 whitespace-pre-wrap font-mono">
+                    <p className="whitespace-pre-wrap font-mono text-sm text-ink-secondary">
                         {content}
                     </p>
                 </div>
