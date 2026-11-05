@@ -74,17 +74,17 @@ function Content({
 
     if (!stack) {
         return (
-            <main className="mx-auto max-w-3xl px-4 py-16">
-                <h1 className="text-xl font-semibold text-white">
+            <main className="mx-auto max-w-3xl px-4 py-16 text-ink">
+                <h1 className="type-page-title">
                     This practice stack is not available
                 </h1>
-                <p className="mt-3 text-sm leading-6 text-zinc-400">
+                <p className="mt-3 type-body text-ink-secondary">
                     It may have been deleted or replaced by a demo reset. The
                     recorded meeting and its evidence are unchanged.
                 </p>
                 <Link
                     href="/demo/knowledge-stacks"
-                    className="mt-6 inline-flex rounded-lg border border-zinc-700 px-4 py-2 text-sm text-zinc-200 hover:bg-zinc-900"
+                    className="m-control mt-6 inline-flex min-h-10 items-center rounded-control border border-control bg-surface px-4 type-control text-ink hover:bg-surface-raised focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-focus-ring"
                 >
                     Back to practice stacks
                 </Link>
@@ -104,17 +104,17 @@ function Content({
     const audience = audienceLabel(participants);
 
     return (
-        <main className="mx-auto max-w-5xl space-y-5 px-4 py-8">
+        <main className="mx-auto max-w-5xl space-y-5 px-4 py-8 text-ink">
             <Link
                 href="/demo/knowledge-stacks"
-                className="text-sm text-cyan-400 hover:text-cyan-300"
+                className="m-control inline-flex type-body text-action hover:underline"
             >
                 ← Back to practice stacks
             </Link>
 
             <div>
-                <h1 className="text-xl font-bold text-white">{stack.name}</h1>
-                <p className="mt-1 max-w-3xl text-sm text-zinc-400">
+                <h1 className="type-page-title">{stack.name}</h1>
+                <p className="mt-1 max-w-3xl type-body text-ink-secondary">
                     {stack.description || "No description"} ·{" "}
                     {documents.counts.total} document
                     {documents.counts.total === 1 ? "" : "s"} ·{" "}
@@ -153,7 +153,7 @@ function Content({
                         disabled={documents.uploading}
                         onClick={() => setPickerOpen(true)}
                     >
-                        <FilePlus2 className="mr-1 h-4 w-4" />
+                        <FilePlus2 className="mr-1 size-4" />
                         Add sample
                     </Button>
                 }
@@ -161,13 +161,11 @@ function Content({
                 />
             </div>
 
-            <Card ref={accessRef} className="border-zinc-800 bg-zinc-900/50">
+            <Card ref={accessRef}>
                 <CardHeader>
-                    <CardTitle className="text-white">
-                        Who can retrieve this?
-                    </CardTitle>
+                    <CardTitle>Who can retrieve this?</CardTitle>
                 </CardHeader>
-                <CardContent className="space-y-3 text-sm text-zinc-400">
+                <CardContent className="space-y-3 type-body text-ink-secondary">
                     <ParticipantList
                         label="Saved practice participants"
                         names={participants.savedParticipants}
@@ -179,18 +177,18 @@ function Content({
                         empty="No persona template currently defaults to this stack."
                     />
                     <div>
-                        <h3 className="font-medium text-zinc-200">
+                        <h3 className="type-item-title">
                             Document-to-participant view
                         </h3>
                         {documents.documents.length === 0 ? (
-                            <p className="mt-1 text-sm text-zinc-500">
+                            <p className="mt-1 type-body text-ink-muted">
                                 No document is staged in this stack.
                             </p>
                         ) : (
                             <ul className="mt-2 space-y-1.5">
                                 {documents.documents.map((document) => (
                                     <li key={document.id}>
-                                        <span className="break-all text-zinc-300">
+                                        <span className="break-all text-ink-secondary">
                                             {document.file_name}
                                         </span>
                                         {" — "}
@@ -250,8 +248,8 @@ function ParticipantList({
 }) {
     return (
         <div>
-            <h3 className="font-medium text-zinc-200">{label}</h3>
-            <p className="mt-1 text-sm text-zinc-400">
+            <h3 className="type-item-title">{label}</h3>
+            <p className="mt-1 type-body text-ink-secondary">
                 {names.length > 0 ? names.join(", ") : empty}
             </p>
         </div>

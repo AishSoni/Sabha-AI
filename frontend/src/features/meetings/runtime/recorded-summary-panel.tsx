@@ -38,18 +38,11 @@ export function RecordedSummaryPanel({
             <div className="mx-auto max-w-3xl space-y-4">
                 <div>
                     <div className="flex flex-wrap items-center gap-2">
-                        <h3 className="text-lg font-semibold text-white">
-                            Recorded summary
-                        </h3>
-                        <Badge
-                            variant="secondary"
-                            className="bg-indigo-900/40 text-indigo-300"
-                        >
-                            Inspection only
-                        </Badge>
+                        <h3 className="type-section-title">Recorded summary</h3>
+                        <Badge variant="secondary">Inspection only</Badge>
                     </div>
                     {replay ? (
-                        <p className="mt-1 text-xs text-zinc-500">
+                        <p className="mt-1 type-meta text-ink-muted">
                             Recorded scope: as of {replay.asOf} · package{" "}
                             {replay.packageVersion}
                         </p>
@@ -57,26 +50,21 @@ export function RecordedSummaryPanel({
                 </div>
 
                 {summary ? (
-                    <Card className="border-zinc-800 bg-zinc-900/50 p-4">
+                    <Card className="p-4">
                         <div className="mb-2 flex items-center gap-2">
-                            <Badge
-                                variant="secondary"
-                                className="bg-indigo-900/40 text-indigo-300"
-                            >
-                                Recorded system summary
-                            </Badge>
-                            <span className="text-xs text-zinc-500">
+                            <Badge variant="secondary">Recorded system summary</Badge>
+                            <span className="type-meta text-ink-muted">
                                 {summary.created_at}
                             </span>
                         </div>
-                        <div className="prose prose-sm prose-invert max-w-none prose-p:my-1 prose-headings:my-2 prose-ul:my-1 prose-ol:my-1">
+                        <div className="prose prose-sm max-w-none prose-p:my-1 prose-headings:my-2 prose-ul:my-1 prose-ol:my-1 prose-headings:text-ink prose-p:text-ink-secondary prose-li:text-ink-secondary">
                             <ReactMarkdown remarkPlugins={[remarkGfm]}>
                                 {summary.content}
                             </ReactMarkdown>
                         </div>
                     </Card>
                 ) : (
-                    <p className="text-sm text-zinc-500">
+                    <p className="type-body text-ink-muted">
                         This recorded snapshot does not include an approved
                         system summary.
                     </p>

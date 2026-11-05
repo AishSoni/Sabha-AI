@@ -18,17 +18,17 @@ export default function KnowledgeStackDetailsPage() {
 
     if (stack.isLoading) {
         return (
-            <div className="flex min-h-screen items-center justify-center bg-gradient-to-br from-zinc-950 via-zinc-900 to-zinc-950">
-                <Loader2 className="h-8 w-8 animate-spin text-blue-500" />
+            <div className="flex min-h-screen items-center justify-center bg-gradient-to-br from-canvas via-surface to-canvas">
+                <Loader2 className="size-8 animate-spin text-action motion-reduce:animate-none" />
             </div>
         );
     }
 
     if (stack.isError || !stack.data) {
         return (
-            <div className="flex min-h-screen flex-col items-center justify-center bg-gradient-to-br from-zinc-950 via-zinc-900 to-zinc-950 p-6 text-center">
-                <BookOpen className="mb-4 h-12 w-12 text-zinc-600" />
-                <h2 className="mb-2 text-xl font-bold text-white">Stack Not Found</h2>
+            <div className="flex min-h-screen flex-col items-center justify-center bg-gradient-to-br from-canvas via-surface to-canvas p-6 text-center text-ink">
+                <BookOpen className="mb-4 size-12 text-ink-muted" />
+                <h2 className="mb-2 type-page-title">Stack Not Found</h2>
                 <Button variant="outline" onClick={() => router.push('/knowledge-stacks')}>
                     Return to Knowledge Stacks
                 </Button>
@@ -37,19 +37,19 @@ export default function KnowledgeStackDetailsPage() {
     }
 
     return (
-        <div className="min-h-screen bg-gradient-to-br from-zinc-950 via-zinc-900 to-zinc-950">
-            <header className="sticky top-0 z-50 border-b border-zinc-800/50 backdrop-blur-sm">
+        <div className="min-h-screen bg-gradient-to-br from-canvas via-surface to-canvas text-ink">
+            <header className="sticky top-0 z-chrome border-b border-separator bg-canvas/80 backdrop-blur-sm">
                 <div className="mx-auto flex max-w-4xl flex-col justify-between gap-4 px-6 py-4 md:flex-row md:items-center">
                     <div className="flex items-center gap-4">
-                        <Link href="/knowledge-stacks" className="text-zinc-400 transition-colors hover:text-white">
-                            <ArrowLeft className="h-5 w-5" />
+                        <Link href="/knowledge-stacks" aria-label="Back to knowledge stacks" className="m-control text-ink-secondary hover:text-ink">
+                            <ArrowLeft className="size-5" />
                         </Link>
                         <div>
                             <div className="flex items-center gap-2">
-                                <BookOpen className="h-5 w-5 text-blue-500" />
-                                <h1 className="text-xl font-bold text-white">{stack.data.name}</h1>
+                                <BookOpen className="size-5 text-action" />
+                                <h1 className="type-item-title">{stack.data.name}</h1>
                             </div>
-                            <p className="max-w-sm truncate text-xs text-zinc-500">
+                            <p className="max-w-sm truncate type-meta text-ink-muted">
                                 {stack.data.description || 'No description'}
                             </p>
                         </div>

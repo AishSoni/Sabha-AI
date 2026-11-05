@@ -34,19 +34,15 @@ export function LiveParticipantAction({
             disabled={disabled}
             onRateLimitedClick={start}
             isLoading={isActive}
-            className={cn(
-                "border-zinc-700 hover:bg-zinc-800",
-                isActive && "animate-pulse",
-                isQueued && "border-dashed"
-            )}
+            className={cn(isQueued && "border-dashed")}
             style={{
                 borderColor: participant.color + "80",
                 color: participant.color,
             }}
         >
-            <Bot className="w-4 h-4 mr-1" />
+            <Bot className="mr-1 size-4" />
             {participant.name.replace("The ", "")}
-            {isQueued && <Clock className="w-3 h-3 ml-1 opacity-70" />}
+            {isQueued && <Clock className="ml-1 size-3 opacity-70" />}
         </RateLimitedButton>
     );
 }

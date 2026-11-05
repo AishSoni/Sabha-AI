@@ -19,18 +19,16 @@ function Content() {
     const stacks = useLocalStacks();
 
     return (
-        <main className="mx-auto max-w-3xl space-y-4 px-4 py-8">
+        <main className="mx-auto max-w-3xl space-y-4 px-4 py-8 text-ink">
             <Link
                 href="/demo/knowledge-stacks"
-                className="text-sm text-cyan-400 hover:text-cyan-300"
+                className="m-control inline-flex type-body text-action hover:underline"
             >
                 ← Back to practice stacks
             </Link>
             <div>
-                <h1 className="text-xl font-bold text-white">
-                    New practice stack
-                </h1>
-                <p className="mt-1 text-sm text-zinc-400">
+                <h1 className="type-page-title">New practice stack</h1>
+                <p className="mt-1 type-body text-ink-secondary">
                     A temporary document collection for this browser tab. It
                     never creates an operator stack or assigns a recorded
                     participant.

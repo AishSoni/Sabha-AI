@@ -18,8 +18,8 @@ export function StackEditor({ stackId }: StackEditorProps) {
 
     if (stackId && existing.isLoading) {
         return (
-            <div className="flex items-center gap-2 text-sm text-zinc-400">
-                <Loader2 className="h-4 w-4 animate-spin" />
+            <div className="flex items-center gap-2 type-meta text-ink-secondary">
+                <Loader2 className="size-4 animate-spin motion-reduce:animate-none" />
                 Loading stack…
             </div>
         );
@@ -27,8 +27,8 @@ export function StackEditor({ stackId }: StackEditorProps) {
 
     if (stackId && (existing.isError || !existing.data)) {
         return (
-            <div className="flex items-center gap-2 rounded-lg border border-red-900/50 bg-red-950/30 px-3 py-2 text-sm text-red-300">
-                <AlertTriangle className="h-4 w-4" />
+            <div role="alert" className="flex items-center gap-2 rounded-control border border-danger/40 bg-danger-soft px-3 py-2 type-body text-danger">
+                <AlertTriangle className="size-4" />
                 This stack is temporarily unavailable.
             </div>
         );

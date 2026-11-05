@@ -7,7 +7,7 @@
  * adapter, so the live and practice screens use the same form.
  */
 import { useState } from "react";
-import { AlertTriangle, Loader2, Save } from "lucide-react";
+import { AlertTriangle, Save } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import {
     Card,
@@ -77,9 +77,9 @@ export function StackEditorView({
     const busy = saving || submitting;
 
     return (
-        <Card className="border-zinc-800 bg-zinc-900/50">
+        <Card>
             <CardHeader>
-                <CardTitle className="text-white">
+                <CardTitle>
                     {title ?? (editing ? "Edit Stack" : "New Knowledge Stack")}
                 </CardTitle>
                 <CardDescription>
@@ -95,7 +95,7 @@ export function StackEditorView({
                     <div className="space-y-2">
                         <label
                             htmlFor="stack-name"
-                            className="text-sm font-medium text-zinc-200"
+                            className="type-control font-medium text-ink"
                         >
                             Name
                         </label>
@@ -110,7 +110,7 @@ export function StackEditorView({
                     <div className="space-y-2">
                         <label
                             htmlFor="stack-description"
-                            className="text-sm font-medium text-zinc-200"
+                            className="type-control font-medium text-ink"
                         >
                             Description
                         </label>
@@ -125,17 +125,13 @@ export function StackEditorView({
                         />
                     </div>
                     {(submitError || error) && (
-                        <div className="flex items-center gap-2 rounded-lg border border-red-900/50 bg-red-950/30 px-3 py-2 text-sm text-red-300">
-                            <AlertTriangle className="h-4 w-4" />
+                        <div role="alert" className="flex items-center gap-2 rounded-control border border-danger/40 bg-danger-soft px-3 py-2 type-body text-danger">
+                            <AlertTriangle className="size-4" />
                             {submitError ?? error}
                         </div>
                     )}
-                    <Button type="submit" disabled={busy}>
-                        {busy ? (
-                            <Loader2 className="mr-1 h-4 w-4 animate-spin" />
-                        ) : (
-                            <Save className="mr-1 h-4 w-4" />
-                        )}
+                    <Button type="submit" busy={busy} busyLabel="Saving stack">
+                        <Save className="mr-1 size-4" />
                         {submitLabel ??
                             (editing ? "Save changes" : "Create stack")}
                     </Button>

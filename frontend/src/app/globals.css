@@ -4,13 +4,6 @@
 @import "../styles/motion.css";
 @import "../styles/materials.css";
 
-/*
- * Temporary variant so the remaining `dark:` utilities keep working while
- * the hardcoded surfaces are migrated to semantic roles. It is removed with
- * the last `dark:` utility.
- */
-@custom-variant dark (&:is([data-theme="dark"] *));
-
 @theme inline {
   --font-sans: var(--font-satoshi), ui-sans-serif, system-ui, -apple-system,
     "Segoe UI", sans-serif;
