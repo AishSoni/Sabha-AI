@@ -11,6 +11,7 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useState } from "react";
 import { useAnchorRef, type TutorialAnchorId } from "@/features/demo-tutorial";
+import { Button } from "@/components/ui/button";
 import { useDemoWorkspace } from "../provider";
 
 interface Destination {
@@ -52,10 +53,10 @@ function DestinationLink({
             ref={ref}
             href={destination.href}
             aria-current={active ? "page" : undefined}
-            className={`rounded-md px-3 py-1.5 transition-colors ${
+            className={`rounded-control px-3 py-1.5 type-control m-control ${
                 active
-                    ? "bg-zinc-800 text-white"
-                    : "text-zinc-400 hover:bg-zinc-900 hover:text-zinc-100"
+                    ? "bg-surface-selected text-ink"
+                    : "text-ink-secondary hover:bg-surface-raised hover:text-ink"
             }`}
         >
             {destination.label}
@@ -85,17 +86,17 @@ export function DemoNav() {
     };
 
     return (
-        <header className="border-b border-zinc-800 bg-zinc-950 text-zinc-100">
+        <header className="border-b border-separator bg-surface text-ink">
             <div className="mx-auto flex max-w-6xl flex-wrap items-center gap-x-6 gap-y-3 px-4 py-3">
                 <div className="flex items-center gap-2">
-                    <span className="rounded-full border border-amber-400/40 bg-amber-400/10 px-2.5 py-0.5 text-xs font-semibold uppercase tracking-wide text-amber-200">
+                    <span className="rounded-full border border-warning/40 bg-warning-soft px-2.5 py-0.5 type-meta-strong uppercase tracking-wide text-warning">
                         Demo
                     </span>
                 </div>
 
                 <nav
                     aria-label="Demo workspace"
-                    className="flex flex-wrap items-center gap-1 text-sm"
+                    className="flex flex-wrap items-center gap-1 type-control"
                 >
                     {DESTINATIONS.map((destination) => {
                         const active = destination.exact
@@ -113,43 +114,46 @@ export function DemoNav() {
                 </nav>
 
                 <div className="ml-auto flex items-center gap-3">
-                    <button
+                    <Button
                         type="button"
+                        variant="outline"
+                        size="sm"
                         onClick={requestReset}
-                        className="rounded-lg border border-zinc-700 px-3 py-1.5 text-sm text-zinc-200 hover:bg-zinc-900"
                     >
                         Reset demo
-                    </button>
+                    </Button>
                 </div>
             </div>
 
             {confirmingReset ? (
-                <div className="border-t border-amber-400/30 bg-amber-400/10 px-4 py-3">
-                    <div className="mx-auto flex max-w-6xl flex-wrap items-center gap-3 text-sm text-amber-100">
+                <div className="border-t border-warning/40 bg-warning-soft px-4 py-3">
+                    <div className="mx-auto flex max-w-6xl flex-wrap items-center gap-3 type-body text-warning">
                         <p className="flex-1">
                             Reset the demo workspace? Practice edits will be lost
                             and the recording will return to its first step.
                         </p>
-                        <button
+                        <Button
                             type="button"
+                            variant="destructive"
+                            size="sm"
                             onClick={confirmReset}
-                            className="rounded-lg bg-amber-500 px-3 py-1.5 font-semibold text-zinc-950 hover:bg-amber-400"
                         >
                             Reset and discard edits
-                        </button>
-                        <button
+                        </Button>
+                        <Button
                             type="button"
+                            variant="outline"
+                            size="sm"
                             onClick={() => setConfirmingReset(false)}
-                            className="rounded-lg border border-amber-400/40 px-3 py-1.5 text-amber-100 hover:bg-amber-400/10"
                         >
                             Keep editing
-                        </button>
+                        </Button>
                     </div>
                 </div>
             ) : null}
 
             {workspace.error ? (
-                <p className="border-t border-zinc-800 px-4 py-2 text-xs text-zinc-400">
+                <p className="border-t border-separator px-4 py-2 type-meta text-ink-muted">
                     {workspace.error}
                 </p>
             ) : null}
