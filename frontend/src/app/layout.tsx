@@ -1,9 +1,32 @@
 import type { Metadata } from "next";
-import { Inter } from "next/font/google";
+import localFont from "next/font/local";
 import { Providers } from "./providers";
 import "./globals.css";
 
-const inter = Inter({ subsets: ["latin"] });
+const satoshi = localFont({
+  src: [
+    {
+      path: "./fonts/Satoshi-Variable.woff2",
+      weight: "300 900",
+      style: "normal",
+    },
+    {
+      path: "./fonts/Satoshi-VariableItalic.woff2",
+      weight: "300 900",
+      style: "italic",
+    },
+  ],
+  variable: "--font-satoshi",
+  display: "swap",
+  fallback: [
+    "ui-sans-serif",
+    "system-ui",
+    "-apple-system",
+    "Segoe UI",
+    "sans-serif",
+  ],
+  adjustFontFallback: "Arial",
+});
 
 export const metadata: Metadata = {
   title: "Sabha - AI Advisory Board",
@@ -16,8 +39,8 @@ export default function RootLayout({
   children: React.ReactNode;
 }>) {
   return (
-    <html lang="en" className="dark">
-      <body className={`${inter.className} antialiased`}>
+    <html lang="en" data-theme="dark" className={satoshi.variable}>
+      <body className="antialiased">
         <Providers>{children}</Providers>
       </body>
     </html>

@@ -1,0 +1,185 @@
+/*
+ * Sabha semantic design tokens.
+ *
+ * Source of truth for both appearances. The dark block appears twice on
+ * purpose: once for an explicit `data-theme="dark"` choice and once for
+ * the operating-system preference. Keep the two blocks identical; the
+ * contrast guard in tests/architecture/theme-contrast.test.ts enforces it.
+ */
+
+:root {
+  color-scheme: light;
+
+  /* Solid surfaces */
+  --canvas: #f5f7fa;
+  --surface: #ffffff;
+  --surface-raised: #eef2f7;
+  --surface-selected: #e8effb;
+
+  /* Text */
+  --text-primary: #17212f;
+  --text-secondary: #46556a;
+  --text-muted: #596a80;
+
+  /* Borders */
+  --border-subtle: #d8e0eb;
+  --border-control: #6f8198;
+
+  /* Action and status */
+  --accent: #294f98;
+  --on-accent: #ffffff;
+  --success: #216345;
+  --warning: #805d16;
+  --danger: #963e46;
+  --on-danger: #ffffff;
+  --accent-soft: #e8effb;
+  --success-soft: #e7f6ee;
+  --warning-soft: #fdf4e3;
+  --danger-soft: #fbeaec;
+
+  /* Participant identity: colour is supplementary, never the only label. */
+  --identity-1: #3b4fa8;
+  --identity-1-soft: #e9edfb;
+  --identity-1-ink: #263a8c;
+  --identity-2: #a15c07;
+  --identity-2-soft: #fcf0dc;
+  --identity-2-ink: #7a4305;
+  --identity-3: #0f6b4f;
+  --identity-3-soft: #e4f5ed;
+  --identity-3-ink: #0b523d;
+  --identity-4: #6d3bb5;
+  --identity-4-soft: #f0e9fb;
+  --identity-4-ink: #52288c;
+  --identity-5: #0e6f86;
+  --identity-5-soft: #e3f4f8;
+  --identity-5-ink: #0a5568;
+  --identity-6: #4a5b73;
+  --identity-6-soft: #edf1f6;
+  --identity-6-ink: #34445a;
+
+  /* Materials */
+  --glass-surface: rgb(255 255 255 / 0.88);
+  --glass-border: rgb(23 33 47 / 0.12);
+  --glass-highlight: rgb(255 255 255 / 0.92);
+  --scrim: rgb(15 23 42 / 0.45);
+  --shadow-raised: 0 1px 2px rgb(15 23 42 / 0.06), 0 8px 24px rgb(15 23 42 / 0.08);
+  --shadow-overlay: 0 24px 80px rgb(15 23 42 / 0.18), 0 2px 8px rgb(15 23 42 / 0.08);
+
+  /* Geometry */
+  --radius: 8px;
+
+  /* Focus */
+  --focus-ring: var(--accent);
+}
+
+:root[data-theme="dark"] {
+  color-scheme: dark;
+
+  --canvas: #090d14;
+  --surface: #111925;
+  --surface-raised: #182231;
+  --surface-selected: #1e304b;
+
+  --text-primary: #edf2f8;
+  --text-secondary: #a7b3c4;
+  --text-muted: #8d9cb0;
+
+  --border-subtle: #33445c;
+  --border-control: #667d9b;
+
+  --accent: #93b4f5;
+  --on-accent: #0b1423;
+  --success: #8cd6b2;
+  --warning: #edc77b;
+  --danger: #f09b9b;
+  --on-danger: #0b1423;
+  --accent-soft: #1e304b;
+  --success-soft: #133229;
+  --warning-soft: #3a2a12;
+  --danger-soft: #3a1e21;
+
+  --identity-1: #9db4f0;
+  --identity-1-soft: #1d2c4d;
+  --identity-1-ink: #d6e2fb;
+  --identity-2: #ebc77d;
+  --identity-2-soft: #3a2a12;
+  --identity-2-ink: #f7e2b8;
+  --identity-3: #8cd6b2;
+  --identity-3-soft: #133229;
+  --identity-3-ink: #c2ebd8;
+  --identity-4: #c7b0f5;
+  --identity-4-soft: #2b1f45;
+  --identity-4-ink: #e2d6fa;
+  --identity-5: #8ed7e5;
+  --identity-5-soft: #12333a;
+  --identity-5-ink: #c4edf4;
+  --identity-6: #b7c4d6;
+  --identity-6-soft: #24303f;
+  --identity-6-ink: #dce5ee;
+
+  --glass-surface: rgb(17 25 37 / 0.88);
+  --glass-border: rgb(237 242 248 / 0.14);
+  --glass-highlight: rgb(255 255 255 / 0.08);
+  --scrim: rgb(2 6 12 / 0.66);
+  --shadow-raised: 0 1px 2px rgb(0 0 0 / 0.4), 0 12px 32px rgb(0 0 0 / 0.35);
+  --shadow-overlay: 0 24px 96px rgb(0 0 0 / 0.55), 0 2px 8px rgb(0 0 0 / 0.4);
+
+  --focus-ring: var(--accent);
+}
+
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    color-scheme: dark;
+
+    --canvas: #090d14;
+    --surface: #111925;
+    --surface-raised: #182231;
+    --surface-selected: #1e304b;
+
+    --text-primary: #edf2f8;
+    --text-secondary: #a7b3c4;
+    --text-muted: #8d9cb0;
+
+    --border-subtle: #33445c;
+    --border-control: #667d9b;
+
+    --accent: #93b4f5;
+    --on-accent: #0b1423;
+    --success: #8cd6b2;
+    --warning: #edc77b;
+    --danger: #f09b9b;
+    --on-danger: #0b1423;
+    --accent-soft: #1e304b;
+    --success-soft: #133229;
+    --warning-soft: #3a2a12;
+    --danger-soft: #3a1e21;
+
+    --identity-1: #9db4f0;
+    --identity-1-soft: #1d2c4d;
+    --identity-1-ink: #d6e2fb;
+    --identity-2: #ebc77d;
+    --identity-2-soft: #3a2a12;
+    --identity-2-ink: #f7e2b8;
+    --identity-3: #8cd6b2;
+    --identity-3-soft: #133229;
+    --identity-3-ink: #c2ebd8;
+    --identity-4: #c7b0f5;
+    --identity-4-soft: #2b1f45;
+    --identity-4-ink: #e2d6fa;
+    --identity-5: #8ed7e5;
+    --identity-5-soft: #12333a;
+    --identity-5-ink: #c4edf4;
+    --identity-6: #b7c4d6;
+    --identity-6-soft: #24303f;
+    --identity-6-ink: #dce5ee;
+
+    --glass-surface: rgb(17 25 37 / 0.88);
+    --glass-border: rgb(237 242 248 / 0.14);
+    --glass-highlight: rgb(255 255 255 / 0.08);
+    --scrim: rgb(2 6 12 / 0.66);
+    --shadow-raised: 0 1px 2px rgb(0 0 0 / 0.4), 0 12px 32px rgb(0 0 0 / 0.35);
+    --shadow-overlay: 0 24px 96px rgb(0 0 0 / 0.55), 0 2px 8px rgb(0 0 0 / 0.4);
+
+    --focus-ring: var(--accent);
+  }
+}
