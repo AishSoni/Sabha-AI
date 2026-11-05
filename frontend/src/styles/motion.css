@@ -302,9 +302,8 @@
   .m-dialog-content,
   .m-popup,
   .m-disclosure {
-    animation-duration: 0ms !important;
-    animation-iteration-count: 1 !important;
-    transition-duration: 0ms !important;
+    animation: none !important;
+    transition-duration: 0s !important;
   }
 
   .m-press:active {

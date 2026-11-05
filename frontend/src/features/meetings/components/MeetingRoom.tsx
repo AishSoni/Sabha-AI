@@ -735,7 +735,12 @@ function RoomControls({ meeting, turns }: RoomControlsProps) {
 
     return (
         <div className="p-4 border-t border-separator shrink-0 bg-canvas">
-            <div className="max-w-3xl mx-auto">
+            <div
+                className="max-w-3xl mx-auto max-h-[55dvh] overflow-y-auto pr-1 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-focus-ring"
+                role="group"
+                aria-label="Meeting controls"
+                tabIndex={0}
+            >
                 <p className="text-xs text-ink-secondary mb-3">Who speaks next?</p>
                 <div ref={speakerRef} className="flex flex-wrap gap-2 mb-4">
                     {runtime.replay ? (
