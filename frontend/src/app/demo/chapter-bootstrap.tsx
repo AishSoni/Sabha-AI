@@ -134,22 +134,22 @@ function ChapterEntry({
                   : "That chapter is not part of the pinned recording.");
         return (
             <ReplayFrame title="Recorded chapter unavailable">
-                <p className="text-sm text-zinc-400">{reason}</p>
-                <p className="text-xs text-zinc-500">
+                <p className="type-body text-ink-secondary">{reason}</p>
+                <p className="type-meta text-ink-muted">
                     The URL cannot select a live screen, another meeting, or an
                     arbitrary checkpoint. Choose a safe recovery destination.
                 </p>
                 <div className="flex flex-wrap gap-2">
                     <Link
                         href="/demo"
-                        className="rounded-lg bg-indigo-600 px-4 py-2 text-sm font-medium text-white hover:bg-indigo-500"
+                        className="m-control inline-flex min-h-10 items-center rounded-control bg-action px-4 type-control font-medium text-action-foreground hover:bg-action-hover focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-focus-ring"
                     >
                         Open the recorded board
                     </Link>
                     <button
                         type="button"
                         onClick={() => setAttempt((value) => value + 1)}
-                        className="rounded-lg border border-zinc-700 px-4 py-2 text-sm text-zinc-200 hover:bg-zinc-800"
+                        className="m-control inline-flex min-h-10 items-center rounded-control border border-control bg-surface px-4 type-control text-ink hover:bg-surface-raised focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-focus-ring"
                     >
                         Try this chapter again
                     </button>
@@ -161,7 +161,7 @@ function ChapterEntry({
     if (chapterId !== null && !installed) {
         return (
             <ReplayFrame title="Restoring recorded chapter">
-                <p className="text-sm text-zinc-400">
+                <p className="type-body text-ink-secondary">
                     Installing the approved snapshot before opening the room.
                 </p>
             </ReplayFrame>

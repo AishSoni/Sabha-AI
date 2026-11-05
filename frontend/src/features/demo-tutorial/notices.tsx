@@ -219,7 +219,7 @@ export function TutorialNotices() {
             data-testid="tutorial-notices"
             role="status"
             aria-label="Recorded updates"
-            className="pointer-events-none fixed z-40 flex w-[min(20rem,calc(100vw-2rem))] flex-col gap-2"
+            className="pointer-events-none fixed z-notice flex w-[min(20rem,calc(100vw-2rem))] flex-col gap-2"
             style={{
                 bottom: "calc(env(safe-area-inset-bottom, 0px) + 1rem)",
                 left: "calc(env(safe-area-inset-left, 0px) + 1rem)",
@@ -229,25 +229,25 @@ export function TutorialNotices() {
             {notices.map((notice) => (
                 <div
                     key={notice.key}
-                    className="pointer-events-none rounded-lg border border-zinc-700 bg-zinc-900/95 p-2.5 shadow-lg"
+                    className="m-notice pointer-events-none rounded-control border border-control bg-surface p-2.5 shadow-[var(--shadow-overlay)]"
                 >
                     <div className="flex items-start gap-2">
                         {notice.kind === "disagreement" ? (
                             <AlertTriangle
-                                className="mt-0.5 h-4 w-4 shrink-0 text-red-400"
+                                className="mt-0.5 size-4 shrink-0 text-danger"
                                 aria-hidden="true"
                             />
                         ) : (
                             <CheckCircle2
-                                className="mt-0.5 h-4 w-4 shrink-0 text-green-400"
+                                className="mt-0.5 size-4 shrink-0 text-success"
                                 aria-hidden="true"
                             />
                         )}
                         <div className="min-w-0 flex-1">
-                            <p className="text-sm font-medium text-zinc-100">
+                            <p className="type-control font-medium text-ink">
                                 {notice.title}
                             </p>
-                            <p className="mt-0.5 line-clamp-2 text-xs text-zinc-400">
+                            <p className="mt-0.5 line-clamp-2 type-meta text-ink-secondary">
                                 {notice.detail}
                             </p>
                         </div>
@@ -255,16 +255,16 @@ export function TutorialNotices() {
                             type="button"
                             onClick={() => dismissNotice(notice.key)}
                             aria-label={`Dismiss ${notice.title}`}
-                            className="pointer-events-auto shrink-0 rounded p-0.5 text-zinc-500 hover:text-zinc-200 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-indigo-400"
+                            className="pointer-events-auto shrink-0 rounded-control p-1 text-ink-muted hover:text-ink focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-focus-ring"
                         >
-                            <X className="h-3.5 w-3.5" aria-hidden="true" />
+                            <X className="size-3.5" aria-hidden="true" />
                         </button>
                     </div>
                     <div className="mt-1.5 flex justify-end">
                         <button
                             type="button"
                             onClick={() => view(notice)}
-                            className="pointer-events-auto rounded px-2 py-0.5 text-xs font-medium text-indigo-300 hover:bg-indigo-950/60 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-indigo-400"
+                            className="m-control pointer-events-auto rounded-control px-2 py-1 type-meta font-medium text-action hover:bg-accent-soft focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-focus-ring"
                         >
                             View
                         </button>

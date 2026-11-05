@@ -55,7 +55,7 @@ export default function DemoBoardPage() {
     if (!board) {
         return (
             <main className="mx-auto max-w-5xl p-6">
-                <p className="text-sm text-zinc-500">Loading the prepared board…</p>
+                <p className="text-sm text-ink-muted">Loading the prepared board…</p>
             </main>
         );
     }
@@ -64,21 +64,19 @@ export default function DemoBoardPage() {
     const stacks = board.stacks ?? {};
 
     return (
-        <main className="mx-auto max-w-5xl px-4 py-8">
+        <main className="mx-auto max-w-5xl px-4 py-8 text-ink">
             <div className="mb-6 flex flex-wrap items-start justify-between gap-4">
                 <div>
                     <div className="mb-2 flex flex-wrap items-center gap-2">
-                        <Badge className="bg-indigo-600 text-white hover:bg-indigo-600">
-                            Prepared demo
-                        </Badge>
-                        <span className="text-xs text-zinc-500">
+                        <Badge>Prepared demo</Badge>
+                        <span className="type-meta text-ink-muted">
                             Recorded responses, not live AI generation · as of 31 July 2020
                         </span>
                     </div>
-                    <h1 className="text-2xl font-semibold text-white">
+                    <h1 className="type-page-title">
                         {board.title ?? "Prepared board"}
                     </h1>
-                    <p className="mt-2 max-w-3xl text-sm text-zinc-400">
+                    <p className="mt-2 max-w-3xl type-body text-ink-secondary">
                         {board.preset?.context ??
                             "Inspect the prepared participants and their knowledge assignments before starting the recorded meeting."}
                     </p>
@@ -86,17 +84,17 @@ export default function DemoBoardPage() {
                 <Link
                     ref={startRef}
                     href="/demo/new"
-                    className="inline-flex items-center gap-2 rounded-lg bg-indigo-600 px-4 py-2 text-sm font-medium text-white hover:bg-indigo-700"
+                    className="m-control inline-flex min-h-10 items-center gap-2 rounded-control bg-action px-4 type-control font-medium text-action-foreground hover:bg-action-hover focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-focus-ring"
                 >
                     Start the meeting
-                    <ArrowRight className="h-4 w-4" />
+                    <ArrowRight className="size-4" />
                 </Link>
             </div>
 
             <section ref={boardRef} aria-labelledby="board-heading">
                 <div className="mb-3 flex items-center gap-2">
-                    <Users className="h-4 w-4 text-indigo-400" />
-                    <h2 id="board-heading" className="text-sm font-semibold uppercase tracking-wide text-zinc-400">
+                    <Users className="size-4 text-action" />
+                    <h2 id="board-heading" className="type-control font-semibold uppercase tracking-wide text-ink-secondary">
                         Prepared participants
                     </h2>
                 </div>
@@ -109,38 +107,38 @@ export default function DemoBoardPage() {
                             participant.participant_id
                         );
                         return (
-                            <Card key={participant.participant_id} className="border-zinc-800 bg-zinc-900/50 p-5">
+                            <Card key={participant.participant_id} className="p-5">
                                 <div className="flex items-center gap-3">
                                     <span
-                                        className="h-3 w-3 rounded-full"
+                                        className="size-3 rounded-full"
                                         style={{ backgroundColor: participant.color }}
                                         aria-hidden="true"
                                     />
                                     <div>
-                                        <h3 className="font-medium text-white">{participant.name}</h3>
-                                        <p className="text-xs text-zinc-500">{participant.role}</p>
+                                        <h3 className="type-item-title">{participant.name}</h3>
+                                        <p className="type-meta text-ink-muted">{participant.role}</p>
                                     </div>
                                 </div>
-                                <p className="mt-3 text-sm text-zinc-400">{participant.persona_summary}</p>
-                                <details className="group mt-4 rounded-lg border border-zinc-800 bg-zinc-950/40 p-3">
-                                    <summary className="flex cursor-pointer list-none items-center justify-between gap-2 text-xs font-medium text-zinc-300">
+                                <p className="mt-3 type-body text-ink-secondary">{participant.persona_summary}</p>
+                                <details className="group mt-4 rounded-control border border-separator bg-canvas/40 p-3">
+                                    <summary className="flex cursor-pointer list-none items-center justify-between gap-2 type-control text-ink-secondary">
                                         <span className="flex items-center gap-2">
-                                            <BookOpen className="h-4 w-4 text-indigo-400" />
+                                            <BookOpen className="size-4 text-action" />
                                             Knowledge assignments
                                         </span>
-                                        <span className="text-zinc-500 group-open:hidden">Inspect</span>
+                                        <span className="text-ink-muted group-open:hidden">Inspect</span>
                                     </summary>
                                     <ul className="mt-3 space-y-2">
                                         {assigned.map((stack) => (
-                                            <li key={stack.id} className="flex items-start gap-2 text-xs text-zinc-400">
+                                            <li key={stack.id} className="flex items-start gap-2 type-meta text-ink-secondary">
                                                 {stack.scope === "shared" ? (
-                                                    <ShieldCheck className="mt-0.5 h-3.5 w-3.5 shrink-0 text-emerald-400" />
+                                                    <ShieldCheck className="mt-0.5 size-3.5 shrink-0 text-success" />
                                                 ) : (
-                                                    <Lock className="mt-0.5 h-3.5 w-3.5 shrink-0 text-amber-400" />
+                                                    <Lock className="mt-0.5 size-3.5 shrink-0 text-warning" />
                                                 )}
                                                 <span>
                                                     {stack.label}
-                                                    <span className="ml-1 text-zinc-600">
+                                                    <span className="ml-1 text-ink-muted">
                                                         ({stack.scope})
                                                     </span>
                                                 </span>
@@ -151,10 +149,10 @@ export default function DemoBoardPage() {
                                 {catalogPersonaId ? (
                                     <Link
                                         href={`/demo/roster/${catalogPersonaId}`}
-                                        className="mt-4 inline-flex items-center gap-2 text-xs font-medium text-indigo-300 hover:text-indigo-200"
+                                        className="m-control mt-4 inline-flex items-center gap-2 type-meta font-medium text-action hover:underline"
                                     >
                                         Compare with practice template
-                                        <ArrowRight className="h-3.5 w-3.5" />
+                                        <ArrowRight className="size-3.5" />
                                     </Link>
                                 ) : null}
                             </Card>
@@ -163,10 +161,10 @@ export default function DemoBoardPage() {
                 </div>
             </section>
 
-            <div className="mt-6 rounded-xl border border-zinc-800 bg-zinc-900/40 p-4 text-sm text-zinc-400">
-                <p className="font-medium text-zinc-300">Prepared meeting preset</p>
+            <div className="mt-6 rounded-group border border-separator bg-surface p-4 type-body text-ink-secondary">
+                <p className="type-item-title">Prepared meeting preset</p>
                 <p className="mt-1">{board.preset?.agenda}</p>
-                <p className="mt-1 text-xs text-zinc-500">
+                <p className="mt-1 type-meta text-ink-muted">
                     Supplied document: {board.preset?.document_label}
                 </p>
             </div>
