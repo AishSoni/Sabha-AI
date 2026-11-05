@@ -132,7 +132,7 @@ describe('create flow page wiring', () => {
             { file: { name: 'market-scan.pdf' }, status: 'uploaded', error: null },
             { file: { name: 'unit-economics.xlsx' }, status: 'failed', error: 'storage down' },
         ];
-        const { container } = render(<NewMeetingPage />);
+        render(<NewMeetingPage />);
         await screen.findByText('The Investor');
 
         const alerts = screen.getAllByRole('alert');
@@ -142,9 +142,13 @@ describe('create flow page wiring', () => {
         expect(screen.getByText('unit-economics.xlsx').closest('div')?.textContent).toContain('Failed');
 
         // The failed row keeps its remove affordance; the uploaded row does not.
-        const removeButtons = container.querySelectorAll("button[class*='hover:text-red-400']");
-        expect(removeButtons).toHaveLength(1);
-        fireEvent.click(removeButtons[0]!);
+        const failedRemove = screen.getByRole("button", {
+            name: "Remove unit-economics.xlsx",
+        });
+        expect(
+            screen.queryByRole("button", { name: "Remove market-scan.pdf" })
+        ).toBeNull();
+        fireEvent.click(failedRemove);
         expect(mocks.pipeline.removeUpload).toHaveBeenCalledWith(1);
 
         fireEvent.click(screen.getByRole('button', { name: /retry uploads/i }));

@@ -80,16 +80,16 @@ export function PracticeMeetingScreen({
     if (!meeting) {
         return (
             <main className="mx-auto max-w-3xl px-4 py-16">
-                <h1 className="text-xl font-semibold text-white">
+                <h1 className="type-page-title text-ink">
                     This practice setup is not available
                 </h1>
-                <p className="mt-3 text-sm leading-6 text-zinc-400">
+                <p className="mt-3 type-body text-ink-secondary">
                     It may have been discarded or replaced by a demo reset. The
                     recorded meeting and its evidence are unchanged.
                 </p>
                 <Link
                     href="/demo/meetings"
-                    className="mt-6 inline-flex rounded-lg border border-zinc-700 px-4 py-2 text-sm text-zinc-200 hover:bg-zinc-900"
+                    className="m-control mt-6 inline-flex rounded-control border border-control bg-surface px-4 py-2 type-control text-ink hover:bg-surface-raised"
                 >
                     Back to meetings
                 </Link>
@@ -106,7 +106,7 @@ export function PracticeMeetingScreen({
         <main className="mx-auto max-w-5xl space-y-5 px-4 py-8">
             <Link
                 href="/demo/meetings"
-                className="inline-flex items-center gap-1 text-sm text-cyan-400 hover:text-cyan-300"
+                className="m-control inline-flex items-center gap-1 type-control text-action hover:text-action-hover"
             >
                 <ArrowLeft className="h-4 w-4" />
                 Back to meetings
@@ -115,17 +115,20 @@ export function PracticeMeetingScreen({
             <div className="flex flex-wrap items-start justify-between gap-3">
                 <div>
                     <div className="mb-2 flex flex-wrap items-center gap-2">
-                        <Badge className="bg-amber-700 text-white hover:bg-amber-700">
+                        <Badge
+                            variant="outline"
+                            className="border-warning/40 bg-warning-soft text-warning"
+                        >
                             Practice setup
                         </Badge>
-                        <span className="text-xs text-zinc-500">
+                        <span className="text-xs text-ink-muted">
                             Practice only · browser memory
                         </span>
                     </div>
-                    <h1 className="text-xl font-bold text-white">
+                    <h1 className="text-xl font-bold text-ink">
                         {meeting.name}
                     </h1>
-                    <p className="mt-2 max-w-3xl text-sm leading-6 text-zinc-400">
+                    <p className="mt-2 max-w-3xl text-sm leading-6 text-ink-secondary">
                         {meeting.agenda || "No additional context"}
                     </p>
                 </div>
@@ -133,7 +136,7 @@ export function PracticeMeetingScreen({
                     type="button"
                     variant="ghost"
                     size="sm"
-                    className="text-red-300 hover:text-red-200"
+                    className="text-danger hover:text-danger-hover"
                     onClick={() => {
                         const confirmed = window.confirm(
                             `Discard "${meeting.name}"? This practice setup will be removed from this browser.`
@@ -148,7 +151,7 @@ export function PracticeMeetingScreen({
                 </Button>
             </div>
 
-            <div className="rounded-lg border border-amber-400/30 bg-amber-400/10 px-3 py-2 text-sm text-amber-100">
+            <div className="rounded-group border border-warning/40 bg-warning-soft px-3 py-2 type-body text-warning">
                 Practice only · changes stay in this browser and never alter the
                 recording.{" "}
                 <Link
@@ -159,10 +162,10 @@ export function PracticeMeetingScreen({
                 </Link>
             </div>
 
-            <Card className="border-zinc-800 bg-zinc-900/50">
+            <Card>
                 <CardHeader>
-                    <CardTitle className="flex items-center gap-2 text-white">
-                        <Users className="h-4 w-4 text-indigo-400" />
+                    <CardTitle className="flex items-center gap-2 text-ink">
+                        <Users className="h-4 w-4 text-action" />
                         Captured participants
                     </CardTitle>
                 </CardHeader>
@@ -170,7 +173,7 @@ export function PracticeMeetingScreen({
                     {meeting.participants.map((participant) => (
                         <div
                             key={participant.participantId}
-                            className="rounded-lg border border-zinc-800 bg-zinc-950/50 p-3"
+                            className="rounded-control border border-separator bg-surface-raised/40 p-3"
                         >
                             <div className="flex items-center gap-2">
                                 <span
@@ -179,17 +182,17 @@ export function PracticeMeetingScreen({
                                         backgroundColor: participant.color,
                                     }}
                                 />
-                                <span className="text-sm font-medium text-white">
+                                <span className="text-sm font-medium text-ink">
                                     {participant.name}
                                 </span>
                                 <Badge variant="secondary">
                                     Prompt v{participant.sourceRevisionNumber}
                                 </Badge>
                             </div>
-                            <p className="mt-1 text-xs text-zinc-500">
+                            <p className="mt-1 type-meta text-ink-muted">
                                 {participant.role}
                             </p>
-                            <p className="mt-2 text-xs leading-5 text-zinc-400">
+                            <p className="mt-2 type-meta text-ink-secondary">
                                 Saved stacks:{" "}
                                 {participant.stackIds.length > 0
                                     ? participant.stackIds
@@ -202,10 +205,10 @@ export function PracticeMeetingScreen({
                                     : "None"}
                             </p>
                             <details className="mt-2">
-                                <summary className="cursor-pointer text-xs text-cyan-400">
+                                <summary className="cursor-pointer type-meta text-action">
                                     Show captured prompt
                                 </summary>
-                                <pre className="mt-2 max-h-64 overflow-auto whitespace-pre-wrap rounded-md bg-zinc-950 p-2 text-xs text-zinc-400">
+                                <pre className="mt-2 max-h-64 overflow-auto whitespace-pre-wrap rounded-control bg-surface-raised p-2 type-meta text-ink-secondary">
                                     {participant.composedPrompt}
                                 </pre>
                             </details>
@@ -256,14 +259,14 @@ export function PracticeMeetingScreen({
                 renderPreviewAction={renderRecordedPreviewAction}
             />
 
-            <Card className="border-zinc-800 bg-zinc-900/50">
+            <Card>
                 <CardHeader>
-                    <CardTitle className="flex items-center gap-2 text-white">
-                        <ShieldAlert className="h-4 w-4 text-amber-400" />
+                    <CardTitle className="flex items-center gap-2 text-ink">
+                        <ShieldAlert className="h-4 w-4 text-warning" />
                         What this setup does not do
                     </CardTitle>
                 </CardHeader>
-                <CardContent className="space-y-2 text-sm leading-6 text-zinc-400">
+                <CardContent className="space-y-2 type-body text-ink-secondary">
                     <p>
                         It does not send a turn, generate a reply, conduct a
                         vote, start a closing, or produce a summary. Those

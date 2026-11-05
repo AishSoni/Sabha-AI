@@ -58,7 +58,7 @@ function Button({
   const content =
     busy && !asChild ? (
       <>
-        <span className="invisible inline-flex items-center gap-2">
+        <span aria-hidden="true" className="invisible inline-flex items-center gap-2">
           {children}
         </span>
         <span className="absolute inset-0 inline-flex items-center justify-center gap-2">
