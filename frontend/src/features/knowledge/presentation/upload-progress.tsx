@@ -77,36 +77,47 @@ export function UploadProgressView({
     const copy = stateCopy(progress);
 
     return (
-        <div className="flex flex-wrap items-center gap-3 rounded-lg border border-zinc-800 bg-zinc-900/60 px-3 py-2 text-sm">
+        <div className="flex flex-wrap items-center gap-3 rounded-control border border-separator bg-surface-raised px-3 py-2 type-meta">
             {copy.tone === "pending" && (
-                <Loader2 className="h-4 w-4 animate-spin text-amber-400" />
+                <Loader2 className="size-4 animate-spin text-warning motion-reduce:animate-none" />
             )}
             {copy.tone === "ready" && (
-                <CheckCircle2 className="h-4 w-4 text-emerald-400" />
+                <CheckCircle2 className="size-4 text-success" />
             )}
             {copy.tone === "failed" && (
-                <AlertTriangle className="h-4 w-4 text-red-400" />
+                <AlertTriangle className="size-4 text-danger" />
             )}
-            {copy.tone === "revoked" && <XCircle className="h-4 w-4 text-zinc-400" />}
-            <span className="font-medium text-zinc-200">
+            {copy.tone === "revoked" && <XCircle className="size-4 text-ink-secondary" />}
+            <span className="type-control font-medium text-ink">
                 {fileName ?? progress?.fileName ?? "Upload"}
             </span>
-            <Badge variant={copy.tone === "failed" ? "destructive" : "secondary"}>
+            <Badge
+                variant={
+                    copy.tone === "ready"
+                        ? "success"
+                        : copy.tone === "failed"
+                          ? "destructive"
+                          : copy.tone === "pending"
+                            ? "warning"
+                            : "secondary"
+                }
+            >
                 {copy.label}
             </Badge>
-            <span className="min-w-0 flex-1 truncate text-zinc-400">{copy.detail}</span>
+            <span className="min-w-0 flex-1 truncate text-ink-secondary">{copy.detail}</span>
             {isError && (
-                <span className="text-red-400">Progress is temporarily unavailable.</span>
+                <span role="alert" className="text-danger">Progress is temporarily unavailable.</span>
             )}
             {onRetry && (copy.tone === "failed" || isError) && (
                 <Button
                     type="button"
                     size="sm"
                     variant="outline"
-                    disabled={retrying}
+                    busy={retrying}
+                    busyLabel="Retrying"
                     onClick={() => onRetry(operationId)}
                 >
-                    <RotateCcw className="mr-1 h-3.5 w-3.5" />
+                    <RotateCcw className="mr-1 size-3.5" />
                     Retry
                 </Button>
             )}

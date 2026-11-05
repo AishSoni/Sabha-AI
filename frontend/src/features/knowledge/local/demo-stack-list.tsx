@@ -18,8 +18,8 @@ function Content() {
     const firstStackRef = useAnchorRef("knowledge.stack");
 
     return (
-        <main className="mx-auto max-w-5xl px-4 py-8">
-            <div className="mb-4 rounded-lg border border-amber-400/30 bg-amber-400/10 px-3 py-2 text-sm text-amber-100">
+        <main className="mx-auto max-w-5xl px-4 py-8 text-ink">
+            <div className="mb-4 rounded-control border border-warning/40 bg-warning-soft px-3 py-2 type-body text-warning">
                 These stacks and documents live in this browser tab only.
                 Deleting or resetting them does not change the recorded meeting,
                 its Files view, or its citations.

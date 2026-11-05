@@ -146,7 +146,7 @@ describe("practice sample picker", () => {
         fireEvent.click(screen.getByRole("button", { name: "Add sample" }));
         expect(onConfirm).toHaveBeenCalledWith(SHARED);
         expect(
-            (screen.getByRole("button", { name: "Add sample" }) as HTMLButtonElement)
+            (screen.getByRole("button", { name: "Adding sample" }) as HTMLButtonElement)
                 .disabled
         ).toBe(true);
         resolve({ ok: true });

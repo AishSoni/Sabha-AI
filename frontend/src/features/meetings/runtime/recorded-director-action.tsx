@@ -33,15 +33,12 @@ export function RecordedDirectorAction() {
     if (prepared?.kind === "follow_up") {
         if (replay.playedTurnIds?.has(prepared.turn_id)) return null;
         return (
-            <Card
-                ref={followUpRef}
-                className="mb-4 border-zinc-800 bg-zinc-900/60 p-4"
-            >
-                <p className="text-xs font-medium uppercase tracking-wide text-zinc-500">
+            <Card ref={followUpRef} className="mb-4 p-4">
+                <p className="type-control font-medium uppercase tracking-wide text-ink-muted">
                     Your turn
                 </p>
                 <label
-                    className="mt-2 block text-xs font-medium text-zinc-400"
+                    className="mt-2 block type-meta font-medium text-ink-secondary"
                     htmlFor="prepared-follow-up-question"
                 >
                     Prepared question
@@ -51,12 +48,12 @@ export function RecordedDirectorAction() {
                     readOnly
                     value={prepared.question}
                     rows={3}
-                    className="mt-1 w-full resize-none rounded-md border border-zinc-700 bg-zinc-950 px-3 py-2 text-sm text-zinc-200"
+                    className="mt-1 w-full resize-none rounded-control border border-control bg-surface-raised px-3 py-2 type-body text-ink"
                 />
                 <div className="mt-3">
                     <Button
-                        className="bg-indigo-600 hover:bg-indigo-700"
-                        disabled={busy}
+                        busy={busy}
+                        busyLabel="Sending"
                         onClick={async () => {
                             setBusy(true);
                             try {
@@ -66,8 +63,8 @@ export function RecordedDirectorAction() {
                             }
                         }}
                     >
-                        <Send className="mr-2 h-4 w-4" />
-                        {busy ? "Sending…" : "Send question"}
+                        <Send className="mr-2 size-4" />
+                        Send question
                     </Button>
                 </div>
             </Card>
@@ -90,8 +87,8 @@ export function RecordedDirectorAction() {
     const unavailable = actions.filter((action) => !action.available);
 
     return (
-        <Card className="mb-4 border-zinc-800 bg-zinc-900/60 p-4">
-            <p className="text-xs font-medium uppercase tracking-wide text-zinc-500">
+        <Card className="mb-4 p-4">
+            <p className="type-control font-medium uppercase tracking-wide text-ink-muted">
                 Your follow-up
             </p>
             {available.length > 0 ? (
@@ -102,8 +99,8 @@ export function RecordedDirectorAction() {
                         return (
                             <Button
                                 key={action.transition.transition_id}
-                                className="bg-indigo-600 hover:bg-indigo-700"
-                                disabled={actionBusy}
+                                busy={actionBusy}
+                                busyLabel="Sending"
                                 title={action.transition.explanation || undefined}
                                 onClick={async () => {
                                     setBusy(true);
@@ -116,22 +113,20 @@ export function RecordedDirectorAction() {
                                     }
                                 }}
                             >
-                                <Send className="mr-2 h-4 w-4" />
-                                {actionBusy
-                                    ? "Sending…"
-                                    : action.transition.label ||
-                                      action.intent.label ||
-                                      "Send question"}
+                                <Send className="mr-2 size-4" />
+                                {action.transition.label ||
+                                    action.intent.label ||
+                                    "Send question"}
                             </Button>
                         );
                     })}
                 </div>
             ) : null}
             {unavailable.length > 0 ? (
-                <ul className="mt-3 space-y-1 text-xs text-zinc-500">
+                <ul className="mt-3 space-y-1 type-meta text-ink-muted">
                     {unavailable.map((action) => (
                         <li key={action.transition.transition_id}>
-                            <span className="text-zinc-400">
+                            <span className="text-ink-secondary">
                                 {action.transition.label ||
                                     action.intent.label ||
                                     "Prepared follow-up"}

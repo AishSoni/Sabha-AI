@@ -62,13 +62,13 @@ export function RecordedParticipantAction({
                             anchor={anchorForIntent(turn.intent_id)}
                             variant="outline"
                             size="sm"
+                            busy={busy}
+                            busyLabel="Preparing turn"
                             disabled={
-                                busy ||
                                 isActive ||
                                 isQueued ||
                                 Boolean(replay.activePreparedOperationId)
                             }
-                            className="border-indigo-700 bg-indigo-950/40 text-indigo-300 hover:bg-indigo-900/40"
                             onClick={async () => {
                                 setBusyIntent(turn.turn_id);
                                 try {
@@ -78,8 +78,8 @@ export function RecordedParticipantAction({
                                 }
                             }}
                         >
-                            <Play className="w-4 h-4 mr-1" />
-                            {busy ? "Preparing…" : turn.label}
+                            <Play className="mr-1 size-4" />
+                            {turn.label}
                         </TurnButton>
                     );
                 })}
@@ -110,8 +110,9 @@ export function RecordedParticipantAction({
                         anchor={anchorForIntent(action.intent.intent_id)}
                         variant="outline"
                         size="sm"
-                        disabled={busy || isActive || isQueued}
-                        className="border-indigo-700 bg-indigo-950/40 text-indigo-300 hover:bg-indigo-900/40"
+                        busy={busy}
+                        busyLabel="Preparing turn"
+                        disabled={isActive || isQueued}
                         title={action.transition.explanation || undefined}
                         onClick={async () => {
                             setBusyIntent(action.intent.intent_id);
@@ -124,12 +125,10 @@ export function RecordedParticipantAction({
                             }
                         }}
                     >
-                        <Play className="w-4 h-4 mr-1" />
-                        {busy
-                            ? "Preparing…"
-                            : action.transition.label ||
-                              action.intent.label ||
-                              participant.name}
+                        <Play className="mr-1 size-4" />
+                        {action.transition.label ||
+                            action.intent.label ||
+                            participant.name}
                     </TurnButton>
                 );
             })}

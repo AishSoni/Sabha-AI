@@ -24,19 +24,19 @@ function formatSize(bytes: number): string {
 function AssetRow({ asset }: { asset: ReplayAsset }) {
     const descriptor = descriptorForAsset(asset);
     return (
-        <div className="rounded-lg border border-zinc-800 bg-zinc-900/50 px-3 py-3">
+        <div className="rounded-control border border-separator bg-surface/50 px-3 py-3">
             <div className="flex items-start gap-3">
-                <FileText className="mt-0.5 h-4 w-4 shrink-0 text-zinc-500" />
+                <FileText className="mt-0.5 size-4 shrink-0 text-ink-muted" />
                 <div className="min-w-0 flex-1 space-y-1">
-                    <p className="truncate text-sm text-zinc-200">{descriptor.title}</p>
-                    <p className="text-xs text-zinc-500">
+                    <p className="truncate type-control text-ink">{descriptor.title}</p>
+                    <p className="type-meta text-ink-muted">
                         {asset.media_type} · {formatSize(asset.size)}
                         {asset.capture_date ? ` · captured ${asset.capture_date}` : ""}
                     </p>
-                    <p className="text-xs text-zinc-500">{asset.source}</p>
-                    <p className="text-xs text-zinc-600">{asset.rights}</p>
+                    <p className="type-meta text-ink-muted">{asset.source}</p>
+                    <p className="type-meta text-ink-muted">{asset.rights}</p>
                     {asset.extraction ? (
-                        <p className="text-xs text-zinc-600">
+                        <p className="type-meta text-ink-muted">
                             Extraction: {asset.extraction}
                         </p>
                     ) : null}
@@ -44,7 +44,7 @@ function AssetRow({ asset }: { asset: ReplayAsset }) {
                 {descriptor.readiness === "ready" ? (
                     <EvidenceTrigger descriptor={descriptor} />
                 ) : (
-                    <span className="shrink-0 text-xs text-zinc-500">
+                    <span className="shrink-0 type-meta text-ink-muted">
                         Preview unavailable
                     </span>
                 )}
@@ -100,15 +100,15 @@ export function RecordedDocumentsPanel({ meetingId }: { meetingId: string }) {
     return (
         <div className="space-y-6 p-4">
             <div className="space-y-1">
-                <h2 className="text-sm font-medium text-zinc-200">Files</h2>
-                <p className="text-xs text-zinc-500">
+                <h2 className="type-section-title">Files</h2>
+                <p className="type-meta text-ink-muted">
                     Read-only files retained for this replay. No upload or delete
                     actions are available.
                 </p>
             </div>
 
             {empty ? (
-                <p className="text-sm text-zinc-500">
+                <p className="type-body text-ink-muted">
                     No files are available for this replay.
                 </p>
             ) : null}
@@ -116,10 +116,10 @@ export function RecordedDocumentsPanel({ meetingId }: { meetingId: string }) {
             {groups.map((group) => (
                 <section key={group.key} className="space-y-2">
                     <div className="space-y-1">
-                        <h3 className="text-xs font-medium uppercase tracking-wide text-zinc-400">
+                        <h3 className="type-control font-medium uppercase tracking-wide text-ink-secondary">
                             {group.title}
                         </h3>
-                        <p className="text-xs text-zinc-500">{group.description}</p>
+                        <p className="type-meta text-ink-muted">{group.description}</p>
                     </div>
                     <div className="space-y-2">
                         {group.assets.map((asset) => (
@@ -131,21 +131,21 @@ export function RecordedDocumentsPanel({ meetingId }: { meetingId: string }) {
 
             {recordedDocuments.length > 0 ? (
                 <section className="space-y-2">
-                    <h3 className="text-xs font-medium uppercase tracking-wide text-zinc-400">
+                    <h3 className="type-control font-medium uppercase tracking-wide text-ink-secondary">
                         Recorded meeting documents
                     </h3>
                     <div className="space-y-2">
                         {recordedDocuments.map((document) => (
                             <div
                                 key={document.id}
-                                className="flex items-center gap-3 rounded-lg border border-zinc-800 bg-zinc-900/50 px-3 py-2"
+                                className="flex items-center gap-3 rounded-control border border-separator bg-surface/50 px-3 py-2"
                             >
-                                <FileText className="h-4 w-4 text-zinc-500" />
+                                <FileText className="size-4 text-ink-muted" />
                                 <div className="min-w-0 flex-1">
-                                    <p className="truncate text-sm text-zinc-200">
+                                    <p className="truncate type-control text-ink">
                                         {document.file_name}
                                     </p>
-                                    <p className="text-xs text-zinc-500">
+                                    <p className="type-meta text-ink-muted">
                                         {document.status} · recorded
                                     </p>
                                 </div>
@@ -156,7 +156,7 @@ export function RecordedDocumentsPanel({ meetingId }: { meetingId: string }) {
             ) : null}
 
             {documents.isError ? (
-                <p className="text-xs text-zinc-500">
+                <p className="text-xs text-ink-muted">
                     Recorded meeting documents are unavailable at this checkpoint.
                 </p>
             ) : null}

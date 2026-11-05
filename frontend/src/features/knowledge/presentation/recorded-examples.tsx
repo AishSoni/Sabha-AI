@@ -38,15 +38,15 @@ export function RecordedExamplesView({
     if (examples.length === 0) return null;
 
     return (
-        <Card className="border-zinc-800 bg-zinc-900/50">
+        <Card>
             <CardHeader>
-                <CardTitle className="flex items-center gap-2 text-white">
-                    <BookOpenCheck className="h-4 w-4 text-cyan-400" />
+                <CardTitle className="flex items-center gap-2">
+                    <BookOpenCheck className="size-4 text-action" />
                     Recorded example using the prepared input
                 </CardTitle>
             </CardHeader>
             <CardContent className="space-y-3">
-                <p className="text-sm leading-6 text-zinc-400">
+                <p className="type-body text-ink-secondary">
                     These citations come from the recorded HDFC meeting and
                     explicitly reference the same prepared asset. They are not a
                     fresh retrieval against your practice edits or a claim that
@@ -56,23 +56,23 @@ export function RecordedExamplesView({
                     {examples.map((example) => (
                         <li
                             key={`${example.sampleId}:${example.claimId}`}
-                            className="rounded-lg border border-zinc-800 bg-zinc-950/50 p-3"
+                            className="rounded-control border border-separator bg-canvas/50 p-3"
                         >
                             <div className="flex flex-wrap items-center justify-between gap-2">
-                                <span className="text-xs font-medium text-cyan-300">
+                                <span className="type-meta font-medium text-action">
                                     {example.sampleFileName}
                                 </span>
                                 {renderPreviewAction?.(example) ?? null}
                             </div>
-                            <p className="mt-2 text-sm leading-6 text-zinc-300">
+                            <p className="mt-2 type-body text-ink-secondary">
                                 {example.text}
                             </p>
                             {example.excerpt ? (
-                                <p className="mt-1 text-xs leading-5 text-zinc-500">
+                                <p className="mt-1 type-meta text-ink-muted">
                                     Recorded excerpt: “{example.excerpt}”
                                 </p>
                             ) : null}
-                            <p className="mt-1 text-xs text-zinc-500">
+                            <p className="mt-1 type-meta text-ink-muted">
                                 Claim {example.claimId}
                                 {example.locator ? ` · ${example.locator}` : ""}
                                 {example.sourceTitle
