@@ -4,7 +4,7 @@ import { LoginScreen } from '@/features/access';
 
 function LoginFallback() {
     return (
-        <main className="flex min-h-screen items-center justify-center bg-neutral-950 text-sm text-neutral-400">
+        <main className="flex min-h-screen items-center justify-center bg-canvas type-body text-ink-muted">
             Loading operator sign-in…
         </main>
     );
