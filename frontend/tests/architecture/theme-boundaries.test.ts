@@ -37,6 +37,25 @@ describe("appearance boundary", () => {
     expect(layout).not.toMatch(/next\/font\/google/);
     expect(layout).not.toMatch(/\bInter\b/);
     expect(layout).not.toMatch(/className=["']dark["']/);
+    expect(layout).not.toMatch(/data-theme=["']dark["']/);
+    expect(layout).toMatch(/AppearanceProvider/);
+  });
+
+  it("mounts the appearance menu in the public, operator, and demo chrome", () => {
+    const chrome = [
+      path.join(src, "app", "page.tsx"),
+      path.join(src, "features", "access", "ui", "operator-shell.tsx"),
+      path.join(src, "features", "demo-workspace", "ui", "demo-nav.tsx"),
+    ];
+    for (const file of chrome) {
+      expect(fs.readFileSync(file, "utf8")).toMatch(/<AppearanceMenu\b/);
+    }
+  });
+
+  it("does not ship the transition-all or legacy animation layer", () => {
+    expect(styleSources).not.toMatch(/transition:\s*all/);
+    expect(globals).not.toMatch(/tw-animate-css/);
+    expect(globals).not.toMatch(/@custom-variant\s+dark/);
   });
 
   it("uses Satoshi as the single sans source", () => {

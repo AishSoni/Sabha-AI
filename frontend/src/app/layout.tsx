@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import localFont from "next/font/local";
+import { AppearanceProvider } from "@/components/appearance";
 import { Providers } from "./providers";
 import "./globals.css";
 
@@ -39,9 +40,11 @@ export default function RootLayout({
   children: React.ReactNode;
 }>) {
   return (
-    <html lang="en" data-theme="dark" className={satoshi.variable}>
+    <html lang="en" className={satoshi.variable}>
       <body className="antialiased">
-        <Providers>{children}</Providers>
+        <AppearanceProvider>
+          <Providers>{children}</Providers>
+        </AppearanceProvider>
       </body>
     </html>
   );
