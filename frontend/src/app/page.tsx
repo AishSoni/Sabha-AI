@@ -6,6 +6,7 @@ import {
     RefreshCw,
     Sparkles,
 } from 'lucide-react';
+import { AppearanceMenu } from '@/components/appearance';
 
 const FEATURES = [
     {
@@ -39,7 +40,8 @@ export default function HomePage() {
                             <p className="type-meta text-ink-muted">AI Advisory Board</p>
                         </div>
                     </div>
-                    <nav className="flex items-center gap-4 type-control">
+                    <nav className="flex items-center gap-3 type-control">
+                        <AppearanceMenu />
                         <Link
                             href="/login"
                             className="m-control text-ink-muted hover:text-ink"
@@ -61,7 +63,7 @@ export default function HomePage() {
                     <p className="type-meta-strong uppercase tracking-[0.25em] text-action">
                         Account-free replay
                     </p>
-                    <h2 className="mt-4 text-4xl font-bold leading-tight text-ink md:text-5xl">
+                    <h2 className="type-display mt-4">
                         See how an AI advisory board reasons together
                     </h2>
                     <p className="mt-5 type-lead text-ink-secondary">

@@ -3,6 +3,7 @@
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 
+import { AppearanceMenu } from '@/components/appearance';
 import { Button } from '@/components/ui/button';
 
 const LINKS = [
@@ -55,6 +56,7 @@ export function OperatorShell({
                     >
                         Recorded demo
                     </Link>
+                    <AppearanceMenu />
                     <Button type="button" variant="outline" size="sm" onClick={onLogout}>
                         Sign out
                     </Button>

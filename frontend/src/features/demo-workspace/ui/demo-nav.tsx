@@ -11,6 +11,7 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useState } from "react";
 import { useAnchorRef, type TutorialAnchorId } from "@/features/demo-tutorial";
+import { AppearanceMenu } from "@/components/appearance";
 import { Button } from "@/components/ui/button";
 import { useDemoWorkspace } from "../provider";
 
@@ -114,6 +115,7 @@ export function DemoNav() {
                 </nav>
 
                 <div className="ml-auto flex items-center gap-3">
+                    <AppearanceMenu />
                     <Button
                         type="button"
                         variant="outline"
