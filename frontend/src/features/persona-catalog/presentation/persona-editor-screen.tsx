@@ -663,7 +663,7 @@ export function PersonaEditorScreen({
                                 ref={inspectorRef}
                                 tabIndex={-1}
                                 aria-label={`Version ${viewedRevision.version} content`}
-                                className="mt-6 outline-none"
+                                className="m-inspector mt-6 outline-none"
                             >
                                 <Card>
                                     <CardHeader>
