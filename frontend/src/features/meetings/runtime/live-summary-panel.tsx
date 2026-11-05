@@ -4,7 +4,6 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { ScrollArea } from "@/components/ui/scroll-area";
-import { RateLimitedButton } from "@/components/ui/rate-limited-button";
 import { useProvidersEnvironment, useSettingsStore } from "@/features/settings";
 import { formatCost, formatRelativeTime } from "@/lib/utils";
 import { Scroll } from "lucide-react";
