@@ -1,0 +1,71 @@
+/*
+ * Material hierarchy: solid content, solid raised controls, and selective
+ * glass. Glass is never required to understand or operate the product.
+ */
+@layer components {
+  .material-solid {
+    background-color: var(--surface);
+  }
+
+  .material-raised {
+    background-color: var(--surface-raised);
+    border: 1px solid var(--border-subtle);
+    box-shadow: var(--shadow-raised);
+  }
+
+  .material-glass {
+    background-color: var(--glass-surface);
+    border: 1px solid var(--glass-border);
+    box-shadow: inset 0 1px 0 var(--glass-highlight);
+    -webkit-backdrop-filter: blur(12px);
+    backdrop-filter: blur(12px);
+  }
+
+  .material-scrim {
+    background-color: var(--scrim);
+  }
+
+  .material-glass-fallback {
+    background-color: var(--surface);
+    border-color: var(--border-control);
+  }
+
+  @supports not (
+    (backdrop-filter: blur(12px)) or (-webkit-backdrop-filter: blur(12px))
+  ) {
+    .material-glass {
+      background-color: var(--surface);
+      border-color: var(--border-control);
+      -webkit-backdrop-filter: none;
+      backdrop-filter: none;
+    }
+  }
+
+  @media (prefers-reduced-transparency: reduce) {
+    .material-glass {
+      background-color: var(--surface);
+      border-color: var(--border-control);
+      -webkit-backdrop-filter: none;
+      backdrop-filter: none;
+    }
+  }
+
+  [data-transparency="opaque"] .material-glass {
+    background-color: var(--surface);
+    border-color: var(--border-control);
+    -webkit-backdrop-filter: none;
+    backdrop-filter: none;
+  }
+
+  @media (forced-colors: active) {
+    .material-solid,
+    .material-raised,
+    .material-glass {
+      background-color: Canvas;
+      border-color: CanvasText;
+      box-shadow: none;
+      -webkit-backdrop-filter: none;
+      backdrop-filter: none;
+    }
+  }
+}

@@ -1,0 +1,313 @@
+/*
+ * Sabha motion vocabulary. Durations and curves are tuned as one family.
+ * Every spatial motion has a reduced-motion equivalent; colour feedback is
+ * retained because it carries state rather than travel.
+ */
+:root {
+  --m-instant: 0ms;
+  --m-feedback: 120ms;
+  --m-state: 180ms;
+  --m-enter: 240ms;
+  --m-exit: 160ms;
+  --m-layout: 280ms;
+  --m-scene: 650ms;
+
+  --ease-enter: cubic-bezier(0.22, 1, 0.36, 1);
+  --ease-exit: cubic-bezier(0.4, 0, 1, 1);
+  --ease-reciprocal: cubic-bezier(0.2, 0, 0, 1);
+}
+
+@layer components {
+  .m-control,
+  .m-feedback {
+    transition-property: color, background-color, border-color, box-shadow,
+      transform, opacity;
+    transition-duration: var(--m-feedback);
+    transition-timing-function: var(--ease-enter);
+  }
+
+  .m-state,
+  .m-selection {
+    transition-property: color, background-color, border-color, box-shadow,
+      opacity;
+    transition-duration: var(--m-state);
+    transition-timing-function: var(--ease-enter);
+  }
+
+  .m-enter {
+    transition-property: opacity, transform;
+    transition-duration: var(--m-enter);
+    transition-timing-function: var(--ease-enter);
+  }
+
+  .m-exit {
+    transition-property: opacity, transform;
+    transition-duration: var(--m-exit);
+    transition-timing-function: var(--ease-exit);
+  }
+
+  .m-layout {
+    transition-property: height, width, max-height, opacity;
+    transition-duration: var(--m-layout);
+    transition-timing-function: var(--ease-enter);
+  }
+
+  .m-theme-surface {
+    transition-property: background-color, border-color, color;
+    transition-duration: var(--m-feedback);
+    transition-timing-function: var(--ease-enter);
+  }
+
+  .m-press {
+    transition: transform var(--m-feedback) var(--ease-enter);
+  }
+
+  .m-press:active {
+    transform: scale(0.985);
+  }
+
+  .m-page {
+    animation: m-page-in var(--m-state) var(--ease-enter) both;
+  }
+
+  .m-notice {
+    animation: m-notice-in var(--m-state) var(--ease-enter) both;
+  }
+
+  .m-item-enter {
+    animation: m-item-in var(--m-state) var(--ease-enter) both;
+  }
+
+  .m-inspector {
+    animation: m-inspector-in var(--m-enter) var(--ease-enter) both;
+  }
+
+  .m-inspector[data-state="closed"] {
+    animation: m-inspector-out var(--m-exit) var(--ease-exit) both;
+  }
+
+  .m-progress-fill {
+    transition: width var(--m-state) var(--ease-enter);
+  }
+
+  .m-skeleton {
+    background-color: var(--surface-raised);
+  }
+
+  .m-skeleton[data-loading="true"] {
+    animation: m-skeleton-pulse 1.6s ease-in-out infinite;
+  }
+
+  .m-dialog-overlay[data-state="open"] {
+    animation: m-fade-in var(--m-state) var(--ease-enter);
+  }
+
+  .m-dialog-overlay[data-state="closed"] {
+    animation: m-fade-out var(--m-exit) var(--ease-exit);
+  }
+
+  .m-dialog-content[data-state="open"] {
+    animation: m-dialog-in var(--m-enter) var(--ease-enter);
+  }
+
+  .m-dialog-content[data-state="closed"] {
+    animation: m-dialog-out var(--m-exit) var(--ease-exit);
+  }
+
+  .m-popup[data-state="open"] {
+    animation: m-popup-in var(--m-enter) var(--ease-enter);
+  }
+
+  .m-popup[data-state="closed"] {
+    animation: m-popup-out var(--m-exit) var(--ease-exit);
+  }
+
+  .m-disclosure[data-state="open"] {
+    animation: m-disclosure-down var(--m-state) var(--ease-enter);
+    overflow: hidden;
+  }
+
+  .m-disclosure[data-state="closed"] {
+    animation: m-disclosure-up var(--m-exit) var(--ease-exit);
+    overflow: hidden;
+  }
+}
+
+@keyframes m-fade-in {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+
+@keyframes m-fade-out {
+  from {
+    opacity: 1;
+  }
+  to {
+    opacity: 0;
+  }
+}
+
+@keyframes m-page-in {
+  from {
+    opacity: 0;
+    transform: translateY(6px);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+
+@keyframes m-notice-in {
+  from {
+    opacity: 0;
+    transform: translateY(4px);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+
+@keyframes m-item-in {
+  from {
+    opacity: 0;
+    transform: translateY(4px);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+
+@keyframes m-inspector-in {
+  from {
+    opacity: 0;
+    transform: translateX(12px);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+
+@keyframes m-inspector-out {
+  from {
+    opacity: 1;
+    transform: none;
+  }
+  to {
+    opacity: 0;
+    transform: translateX(12px);
+  }
+}
+
+@keyframes m-dialog-in {
+  from {
+    opacity: 0;
+    transform: scale(0.985);
+  }
+  to {
+    opacity: 1;
+    transform: scale(1);
+  }
+}
+
+@keyframes m-dialog-out {
+  from {
+    opacity: 1;
+    transform: scale(1);
+  }
+  to {
+    opacity: 0;
+    transform: scale(0.985);
+  }
+}
+
+@keyframes m-popup-in {
+  from {
+    opacity: 0;
+    transform: translateY(-2px) scale(0.99);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+
+@keyframes m-popup-out {
+  from {
+    opacity: 1;
+    transform: none;
+  }
+  to {
+    opacity: 0;
+    transform: translateY(-2px) scale(0.99);
+  }
+}
+
+@keyframes m-disclosure-down {
+  from {
+    height: 0;
+    opacity: 0;
+  }
+  to {
+    height: var(--radix-collapsible-content-height);
+    opacity: 1;
+  }
+}
+
+@keyframes m-disclosure-up {
+  from {
+    height: var(--radix-collapsible-content-height);
+    opacity: 1;
+  }
+  to {
+    height: 0;
+    opacity: 0;
+  }
+}
+
+@keyframes m-skeleton-pulse {
+  0%,
+  100% {
+    opacity: 1;
+  }
+  50% {
+    opacity: 0.55;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .m-control,
+  .m-feedback,
+  .m-state,
+  .m-selection,
+  .m-enter,
+  .m-exit,
+  .m-layout,
+  .m-theme-surface,
+  .m-press,
+  .m-page,
+  .m-notice,
+  .m-item-enter,
+  .m-inspector,
+  .m-progress-fill,
+  .m-skeleton,
+  .m-dialog-overlay,
+  .m-dialog-content,
+  .m-popup,
+  .m-disclosure {
+    animation-duration: 0ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0ms !important;
+  }
+
+  .m-press:active {
+    transform: none;
+  }
+}
