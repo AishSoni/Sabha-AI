@@ -68,16 +68,16 @@ function Content({
         : null;
 
     return (
-        <div className="min-h-screen bg-zinc-950">
-            <div className="border-b border-zinc-800 bg-zinc-900/40 px-4 py-3">
-                <div className="mx-auto flex max-w-4xl flex-wrap items-center justify-between gap-2 text-xs text-zinc-400">
+        <div className="min-h-screen bg-canvas text-ink">
+            <div className="border-b border-separator bg-surface/40 px-4 py-3">
+                <div className="mx-auto flex max-w-4xl flex-wrap items-center justify-between gap-2 text-xs text-ink-secondary">
                     <p>
                         Practice template from the prepared board. The recorded
                         participants and their replies are unchanged.
                     </p>
                     <Link
                         href="/demo"
-                        className="rounded-md border border-zinc-700 px-3 py-1.5 text-zinc-200 hover:bg-zinc-900"
+                        className="rounded-md border border-control px-3 py-1.5 text-ink hover:bg-surface-raised"
                     >
                         Back to the recorded meeting
                     </Link>
