@@ -18,6 +18,7 @@ import {
     Trash2,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { readableTextOn } from "@/lib/readable-color";
 import {
     Card,
     CardContent,
@@ -71,26 +72,26 @@ export function RosterList({
     onDelete,
 }: RosterListProps) {
     return (
-        <div className="min-h-screen bg-gradient-to-br from-zinc-950 via-zinc-900 to-zinc-950">
-            <header className="border-b border-zinc-800/50 backdrop-blur-sm sticky top-0 z-50">
+        <div className="min-h-screen bg-gradient-to-br from-canvas via-surface to-canvas text-ink">
+            <header className="sticky top-0 z-chrome border-b border-separator bg-canvas/80 backdrop-blur-sm">
                 <div className="max-w-6xl mx-auto px-6 py-4 flex items-center justify-between">
                     <div className="flex items-center gap-4">
                         <Link
                             href={hrefs.home}
-                            className="text-zinc-400 hover:text-white transition-colors"
+                            className="text-ink-secondary hover:text-ink m-control"
                             aria-label="Back"
                         >
                             <ArrowLeft className="w-5 h-5" />
                         </Link>
                         <div>
-                            <h1 className="text-xl font-bold text-white">{heading}</h1>
-                            <p className="text-xs text-zinc-500">{description}</p>
+                            <h1 className="text-xl font-bold text-ink">{heading}</h1>
+                            <p className="text-xs text-ink-muted">{description}</p>
                         </div>
                     </div>
 
                     <Link href={hrefs.create}>
-                        <Button className="bg-emerald-600 hover:bg-emerald-700">
-                            <Plus className="w-4 h-4 mr-2" />
+                        <Button>
+                            <Plus className="mr-2 size-4" />
                             Create Persona
                         </Button>
                     </Link>
@@ -99,34 +100,32 @@ export function RosterList({
 
             <main className="max-w-6xl mx-auto px-6 py-8">
                 {error && (
-                    <div className="bg-red-500/10 border border-red-500/30 rounded-lg p-4 mb-8">
-                        <p className="text-red-400 text-sm">{error}</p>
+                    <div role="alert" className="mb-8 rounded-group border border-danger/40 bg-danger-soft p-4">
+                        <p className="type-body text-danger">{error}</p>
                     </div>
                 )}
 
                 {loading ? (
                     <div className="flex items-center justify-center py-20">
-                        <Loader2 className="w-8 h-8 animate-spin text-zinc-400" />
+                        <Loader2 className="size-8 animate-spin text-ink-muted motion-reduce:animate-none" />
                     </div>
                 ) : personas.length === 0 ? (
                     <div className="text-center py-20">
-                        <Bot className="w-12 h-12 mx-auto text-zinc-600 mb-4" />
-                        <h2 className="text-lg font-semibold text-white mb-2">
-                            No Personas Yet
-                        </h2>
-                        <p className="text-zinc-400 text-sm mb-6">
+                        <Bot className="mx-auto mb-4 size-12 text-ink-muted" />
+                        <h2 className="type-item-title mb-2">No Personas Yet</h2>
+                        <p className="mb-6 type-body text-ink-secondary">
                             Create your first AI persona to get started.
                         </p>
                         <Link href={hrefs.create}>
-                            <Button className="bg-emerald-600 hover:bg-emerald-700">
-                                <Plus className="w-4 h-4 mr-2" />
+                            <Button>
+                                <Plus className="mr-2 size-4" />
                                 Create Persona
                             </Button>
                         </Link>
                     </div>
                 ) : (
                     <>
-                        <h2 className="text-lg font-semibold text-white mb-4">
+                        <h2 className="mb-4 type-section-title">
                             Your Personas ({personas.length})
                         </h2>
 
@@ -134,33 +133,33 @@ export function RosterList({
                             {personas.map((persona) => (
                                 <Card
                                     key={persona.id}
-                                    className="bg-zinc-900/50 border-zinc-800 group"
+                                    className="transition-colors hover:border-action/40"
                                 >
                                     <CardHeader className="pb-2">
                                         <div className="flex items-center justify-between">
                                             <div className="flex items-center gap-3">
                                                 <div
-                                                    className="w-10 h-10 rounded-full flex items-center justify-center"
-                                                    style={{ backgroundColor: persona.color }}
+                                                    className="flex size-10 items-center justify-center rounded-full"
+                                                    style={{
+                                                        backgroundColor: persona.color,
+                                                        color: readableTextOn(persona.color),
+                                                    }}
                                                 >
-                                                    <Bot className="w-5 h-5 text-white" />
+                                                    <Bot className="size-5" />
                                                 </div>
                                                 <div>
                                                     <Link href={hrefs.persona(persona.id)}>
-                                                        <CardTitle className="text-white text-base hover:text-emerald-400 transition-colors cursor-pointer">
+                                                        <CardTitle className="cursor-pointer transition-colors hover:text-action">
                                                             {persona.name}
                                                         </CardTitle>
                                                     </Link>
                                                     {persona.subtitle && (
-                                                        <CardDescription
-                                                            className="text-xs"
-                                                            style={{ color: persona.color }}
-                                                        >
+                                                        <CardDescription>
                                                             {persona.subtitle}
                                                         </CardDescription>
                                                     )}
                                                     {highlightedPersonaId === persona.id && (
-                                                        <span className="mt-1 inline-block rounded-full bg-indigo-500/15 px-2 py-0.5 text-[10px] font-medium text-indigo-300">
+                                                        <span className="mt-1 inline-block rounded-full bg-accent-soft px-2 py-0.5 type-meta font-medium text-action">
                                                             Start here
                                                         </span>
                                                     )}
@@ -171,25 +170,21 @@ export function RosterList({
                                                     <Button
                                                         variant="ghost"
                                                         size="icon"
-                                                        className="opacity-0 group-hover:opacity-100 transition-opacity"
                                                         aria-label={`Actions for ${persona.name}`}
                                                     >
-                                                        <MoreVertical className="w-4 h-4" />
+                                                        <MoreVertical className="size-4" />
                                                     </Button>
                                                 </DropdownMenuTrigger>
-                                                <DropdownMenuContent className="bg-zinc-800 border-zinc-700">
-                                                    <DropdownMenuItem
-                                                        onClick={() => onDuplicate(persona)}
-                                                        className="text-zinc-300 focus:text-white"
-                                                    >
-                                                        <Copy className="w-4 h-4 mr-2" />
+                                                <DropdownMenuContent>
+                                                    <DropdownMenuItem onClick={() => onDuplicate(persona)}>
+                                                        <Copy className="mr-2 size-4" />
                                                         Duplicate
                                                     </DropdownMenuItem>
                                                     <DropdownMenuItem
                                                         onClick={() => onDelete(persona.id)}
-                                                        className="text-red-400 focus:text-red-300"
+                                                        className="text-danger focus:bg-danger-soft focus:text-danger"
                                                     >
-                                                        <Trash2 className="w-4 h-4 mr-2" />
+                                                        <Trash2 className="mr-2 size-4" />
                                                         Delete
                                                     </DropdownMenuItem>
                                                 </DropdownMenuContent>
@@ -197,14 +192,14 @@ export function RosterList({
                                         </div>
                                     </CardHeader>
                                     <CardContent>
-                                        <p className="text-sm text-zinc-500 line-clamp-2">
+                                        <p className="line-clamp-2 type-body text-ink-muted">
                                             {persona.activePrompt
                                                 ? persona.activePrompt.substring(0, 100) +
                                                   (persona.activePrompt.length > 100 ? "..." : "")
                                                 : "No system prompt configured"}
                                         </p>
                                         {persona.activePromptVersion ? (
-                                            <p className="text-xs text-zinc-600 mt-2">
+                                            <p className="mt-2 type-meta text-ink-muted">
                                                 Prompt v{persona.activePromptVersion}
                                             </p>
                                         ) : null}
