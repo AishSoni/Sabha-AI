@@ -92,7 +92,7 @@ export function TutorialHud() {
                 <div
                     aria-hidden="true"
                     data-testid="tutorial-ring"
-                    className="pointer-events-none fixed z-30 rounded-lg ring-2 ring-indigo-400/70"
+                    className="pointer-events-none fixed z-highlight rounded-control ring-2 ring-action/70"
                     style={{
                         left: position.target.left - 4,
                         top: position.target.top - 4,
@@ -109,21 +109,21 @@ export function TutorialHud() {
                     data-testid="tutorial-hud"
                     data-placement={position?.placement ?? "floating"}
                     data-state={cardVisible ? "shown" : "suspended"}
-                    className="fixed z-40 w-[min(20rem,calc(100vw-1.5rem))] rounded-xl border border-indigo-500/40 bg-zinc-900/95 p-3 text-zinc-100 shadow-xl"
+                    className="m-notice fixed z-notice w-[min(20rem,calc(100vw-1.5rem))] rounded-group border border-action/40 bg-surface p-3 text-ink shadow-[var(--shadow-overlay)]"
                     style={cardStyle}
                     onKeyDown={onCardKeyDown}
                 >
                     <div className="flex items-start gap-2">
                         <Sparkles
-                            className="mt-0.5 h-4 w-4 shrink-0 text-indigo-300"
+                            className="mt-0.5 size-4 shrink-0 text-action"
                             aria-hidden="true"
                         />
                         <div className="min-w-0 flex-1">
-                            <p className="text-sm font-medium leading-snug">
+                            <p className="type-body font-medium">
                                 {prompt.instruction}
                             </p>
                             {prompt.progress ? (
-                                <p className="mt-0.5 text-xs text-zinc-400">
+                                <p className="mt-0.5 type-meta text-ink-secondary">
                                     {prompt.progress}
                                 </p>
                             ) : null}
@@ -132,13 +132,13 @@ export function TutorialHud() {
                         <button
                             type="button"
                             onClick={tutorial.hide}
-                            className="shrink-0 rounded-md px-1.5 py-0.5 text-xs text-zinc-400 hover:bg-zinc-800 hover:text-zinc-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-indigo-400"
+                            className="m-control shrink-0 rounded-control px-2 py-1 type-meta text-ink-secondary hover:bg-surface-raised hover:text-ink focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-focus-ring"
                         >
                             Hide
                         </button>
                     </div>
                     {prompt.complete ? (
-                        <p className="mt-2 text-xs text-zinc-400">
+                        <p className="mt-2 type-meta text-ink-secondary">
                             {prompt.id === "main-complete"
                                 ? "The recorded meeting is archived. Practice edits stay in this browser. Both tours are optional."
                                 : "Nothing was saved or activated. The recording is unchanged."}
@@ -206,7 +206,7 @@ function TourAction({
         <button
             type="button"
             onClick={onClick}
-            className="rounded-full border border-indigo-500/40 px-2.5 py-0.5 text-xs font-medium text-indigo-200 hover:bg-indigo-900/40 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-indigo-400"
+            className="m-control rounded-full border border-action/40 px-2.5 py-0.5 type-meta font-medium text-action hover:bg-accent-soft focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-focus-ring"
         >
             {children}
         </button>
@@ -219,7 +219,7 @@ function CompactBar() {
     return (
         <div
             data-testid="tutorial-hud-compact"
-            className="fixed z-40 flex items-center gap-1 rounded-full border border-indigo-500/40 bg-zinc-950/95 p-1 shadow-lg"
+            className="fixed z-notice flex items-center gap-1 rounded-full border border-action/40 bg-surface p-1 shadow-[var(--shadow-raised)]"
             style={{
                 top: "calc(env(safe-area-inset-top, 0px) + 4.5rem)",
                 right: "calc(env(safe-area-inset-right, 0px) + 1rem)",
@@ -229,9 +229,9 @@ function CompactBar() {
                 type="button"
                 onClick={tutorial.show}
                 aria-expanded={!tutorial.hidden}
-                className="inline-flex items-center gap-1.5 rounded-full px-2.5 py-1 text-xs font-medium text-indigo-200 hover:bg-indigo-900/40 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-indigo-400"
+                className="m-control inline-flex items-center gap-1.5 rounded-full px-2.5 py-1 type-meta font-medium text-action hover:bg-accent-soft focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-focus-ring"
             >
-                <Sparkles className="h-3.5 w-3.5" aria-hidden="true" />
+                <Sparkles className="size-3.5" aria-hidden="true" />
                 Show tips
             </button>
             <ExploreRecordingMenu />
@@ -252,15 +252,15 @@ function ExploreRecordingMenu({ iconOnly = false }: { iconOnly?: boolean }) {
         <details ref={detailsRef} className="relative shrink-0">
             <summary
                 aria-label="Explore recording"
-                className={`flex cursor-pointer list-none items-center gap-1 rounded-full text-xs font-medium text-zinc-400 hover:bg-zinc-800 hover:text-zinc-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-indigo-400 [&::-webkit-details-marker]:hidden ${
+                className={`m-control flex cursor-pointer list-none items-center gap-1 rounded-full type-meta font-medium text-ink-secondary hover:bg-surface-raised hover:text-ink focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-focus-ring [&::-webkit-details-marker]:hidden ${
                     iconOnly ? "p-1" : "px-2 py-1"
                 }`}
             >
-                <Compass className="h-3.5 w-3.5" aria-hidden="true" />
+                <Compass className="size-3.5" aria-hidden="true" />
                 {iconOnly ? null : (
                     <>
                         Explore recording
-                        <ChevronDown className="h-3 w-3" aria-hidden="true" />
+                        <ChevronDown className="size-3" aria-hidden="true" />
                     </>
                 )}
             </summary>
@@ -271,10 +271,10 @@ function ExploreRecordingMenu({ iconOnly = false }: { iconOnly?: boolean }) {
              */}
             <div
                 onClick={close}
-                className="fixed right-4 top-32 z-50 max-h-[70vh] w-64 overflow-y-auto rounded-lg border border-zinc-700 bg-zinc-950 p-2 shadow-xl"
+                className="fixed right-4 top-32 z-popup max-h-[70vh] w-64 overflow-y-auto rounded-control border border-control bg-surface p-2 shadow-[var(--shadow-overlay)]"
             >
                 {chapters.length > 0 ? (
-                    <ul className="mb-1 space-y-0.5 border-b border-zinc-800 pb-1">
+                    <ul className="mb-1 space-y-0.5 border-b border-separator pb-1">
                         {chapters.map((chapter) => (
                             <li key={chapter.chapter_id}>
                                 <Link
@@ -288,7 +288,7 @@ function ExploreRecordingMenu({ iconOnly = false }: { iconOnly?: boolean }) {
                                             ? "page"
                                             : undefined
                                     }
-                                    className="block rounded px-2 py-1 text-xs text-zinc-300 hover:bg-zinc-800 aria-[current=page]:text-white"
+                                    className="m-control block rounded px-2 py-1 type-meta text-ink-secondary hover:bg-surface-raised aria-[current=page]:text-ink"
                                 >
                                     {chapter.title}
                                 </Link>
@@ -300,7 +300,7 @@ function ExploreRecordingMenu({ iconOnly = false }: { iconOnly?: boolean }) {
                     <button
                         type="button"
                         onClick={() => void tutorial.resume()}
-                        className="block w-full rounded px-2 py-1 text-left text-xs text-zinc-300 hover:bg-zinc-800"
+                        className="m-control block w-full rounded px-2 py-1 text-left type-meta text-ink-secondary hover:bg-surface-raised"
                     >
                         Resume current meeting
                     </button>
@@ -308,7 +308,7 @@ function ExploreRecordingMenu({ iconOnly = false }: { iconOnly?: boolean }) {
                 <button
                     type="button"
                     onClick={tutorial.restart}
-                    className="block w-full rounded px-2 py-1 text-left text-xs text-zinc-300 hover:bg-zinc-800"
+                    className="m-control block w-full rounded px-2 py-1 text-left type-meta text-ink-secondary hover:bg-surface-raised"
                 >
                     Restart recording
                 </button>
