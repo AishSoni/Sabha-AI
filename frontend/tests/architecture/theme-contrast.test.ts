@@ -120,7 +120,13 @@ describe("semantic palette contrast", () => {
 
     it(`keeps action, control, and status pairings readable in ${name}`, () => {
       expectMinimum(palette, "on-accent", "accent", 4.5);
+      expectMinimum(palette, "on-success", "success", 4.5);
+      expectMinimum(palette, "on-warning", "warning", 4.5);
       expectMinimum(palette, "on-danger", "danger", 4.5);
+
+      for (const role of ["accent", "success", "warning", "danger"] as const) {
+        expectMinimum(palette, `on-${role === "accent" ? "accent" : role}`, `${role}-hover`, 4.5);
+      }
 
       for (const background of backgrounds) {
         expectMinimum(palette, "border-control", background, 3);
