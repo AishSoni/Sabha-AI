@@ -14,7 +14,7 @@ import {
 import { cn } from "@/lib/utils";
 
 import {
-  useAppearance,
+  useAppearanceOptional,
   type AppearancePreference,
 } from "./provider";
 
@@ -29,7 +29,9 @@ const OPTIONS = [
 }>;
 
 export function AppearanceMenu({ className }: { className?: string }) {
-  const { preference, resolved, setPreference } = useAppearance();
+  const appearance = useAppearanceOptional();
+  if (!appearance) return null;
+  const { preference, resolved, setPreference } = appearance;
   const current = OPTIONS.find((option) => option.value === preference);
   const CurrentIcon = current?.icon ?? Monitor;
   const label = current?.label ?? "System";
