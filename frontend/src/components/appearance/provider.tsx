@@ -94,3 +94,12 @@ export function useAppearance(): AppearanceContextValue {
   }
   return value;
 }
+
+/**
+ * Presentational chrome may be rendered outside the root owner in a test or
+ * isolated composition. In that case the menu simply does not render rather
+ * than creating a second appearance owner.
+ */
+export function useAppearanceOptional(): AppearanceContextValue | null {
+  return React.useContext(AppearanceContext);
+}

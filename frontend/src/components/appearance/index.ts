@@ -1,4 +1,8 @@
-export { AppearanceProvider, useAppearance } from "./provider";
+export {
+  AppearanceProvider,
+  useAppearance,
+  useAppearanceOptional,
+} from "./provider";
 export type {
   AppearancePreference,
   ResolvedAppearance,
