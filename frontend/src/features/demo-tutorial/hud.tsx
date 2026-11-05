@@ -244,12 +244,18 @@ function ExploreRecordingMenu({ iconOnly = false }: { iconOnly?: boolean }) {
     const run = useReplayRun();
     const chapters = run.session.chapters;
     const detailsRef = useRef<HTMLDetailsElement>(null);
+    const [open, setOpen] = useState(false);
     const close = () => {
         if (detailsRef.current) detailsRef.current.open = false;
+        setOpen(false);
     };
 
     return (
-        <details ref={detailsRef} className="relative shrink-0">
+        <details
+            ref={detailsRef}
+            className="relative shrink-0"
+            onToggle={(event) => setOpen(event.currentTarget.open)}
+        >
             <summary
                 aria-label="Explore recording"
                 className={`m-control flex cursor-pointer list-none items-center gap-1 rounded-full type-meta font-medium text-ink-secondary hover:bg-surface-raised hover:text-ink focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-focus-ring [&::-webkit-details-marker]:hidden ${
@@ -265,54 +271,61 @@ function ExploreRecordingMenu({ iconOnly = false }: { iconOnly?: boolean }) {
                 )}
             </summary>
             {/*
-             * The card can sit near the bottom of a short viewport, so the menu
-             * is placed against the viewport rather than the summary. A fixed
-             * panel keeps every item reachable at 720px and 390x844.
+             * The card can sit near the bottom of a short viewport and its
+             * floating position uses a transform, which would make a fixed
+             * child relative to the card. Portal the panel so it is measured
+             * against the viewport and every item stays reachable at 720px
+             * and 390x844.
              */}
-            <div
-                onClick={close}
-                className="fixed right-4 top-32 z-popup max-h-[70vh] w-64 overflow-y-auto rounded-control border border-control bg-surface p-2 shadow-[var(--shadow-overlay)]"
-            >
-                {chapters.length > 0 ? (
-                    <ul className="mb-1 space-y-0.5 border-b border-separator pb-1">
-                        {chapters.map((chapter) => (
-                            <li key={chapter.chapter_id}>
-                                <Link
-                                    href={chapterHref(
-                                        chapter,
-                                        run.session.meeting_id
-                                    )}
-                                    aria-current={
-                                        tutorial.chapterId ===
-                                        chapter.chapter_id
-                                            ? "page"
-                                            : undefined
-                                    }
-                                    className="m-control block rounded px-2 py-1 type-meta text-ink-secondary hover:bg-surface-raised aria-[current=page]:text-ink"
-                                >
-                                    {chapter.title}
-                                </Link>
-                            </li>
-                        ))}
-                    </ul>
-                ) : null}
-                {tutorial.canResume ? (
-                    <button
-                        type="button"
-                        onClick={() => void tutorial.resume()}
-                        className="m-control block w-full rounded px-2 py-1 text-left type-meta text-ink-secondary hover:bg-surface-raised"
-                    >
-                        Resume current meeting
-                    </button>
-                ) : null}
-                <button
-                    type="button"
-                    onClick={tutorial.restart}
-                    className="m-control block w-full rounded px-2 py-1 text-left type-meta text-ink-secondary hover:bg-surface-raised"
-                >
-                    Restart recording
-                </button>
-            </div>
+            {open
+                ? createPortal(
+                      <div
+                          onClick={close}
+                          className="fixed right-4 top-32 z-popup max-h-[70vh] w-64 overflow-y-auto rounded-control border border-control bg-surface p-2 shadow-[var(--shadow-overlay)]"
+                      >
+                          {chapters.length > 0 ? (
+                              <ul className="mb-1 space-y-0.5 border-b border-separator pb-1">
+                                  {chapters.map((chapter) => (
+                                      <li key={chapter.chapter_id}>
+                                          <Link
+                                              href={chapterHref(
+                                                  chapter,
+                                                  run.session.meeting_id
+                                              )}
+                                              aria-current={
+                                                  tutorial.chapterId ===
+                                                  chapter.chapter_id
+                                                      ? "page"
+                                                      : undefined
+                                              }
+                                              className="m-control block rounded px-2 py-1 type-meta text-ink-secondary hover:bg-surface-raised aria-[current=page]:text-ink"
+                                          >
+                                              {chapter.title}
+                                          </Link>
+                                      </li>
+                                  ))}
+                              </ul>
+                          ) : null}
+                          {tutorial.canResume ? (
+                              <button
+                                  type="button"
+                                  onClick={() => void tutorial.resume()}
+                                  className="m-control block w-full rounded px-2 py-1 text-left type-meta text-ink-secondary hover:bg-surface-raised"
+                              >
+                                  Resume current meeting
+                              </button>
+                          ) : null}
+                          <button
+                              type="button"
+                              onClick={tutorial.restart}
+                              className="m-control block w-full rounded px-2 py-1 text-left type-meta text-ink-secondary hover:bg-surface-raised"
+                          >
+                              Restart recording
+                          </button>
+                      </div>,
+                      document.body
+                  )
+                : null}
         </details>
     );
 }
