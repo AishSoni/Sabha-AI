@@ -11,9 +11,9 @@ const SIZE_CLASS: Record<MarkSize, string> = {
 };
 
 const GLYPH_CLASS: Record<MarkSize, string> = {
-  sm: "h-6 w-6",
-  md: "h-7 w-7",
-  lg: "h-8 w-8",
+  sm: "h-7 w-7",
+  md: "h-8 w-8",
+  lg: "h-9 w-9",
 };
 
 /**

@@ -48,9 +48,9 @@ describe("dddynamite participant identity", () => {
 
   it("keeps marks legible at every container and glyph size", () => {
     const sizes = [
-      ["sm", "h-9 w-9", "h-6 w-6"],
-      ["md", "h-10 w-10", "h-7 w-7"],
-      ["lg", "h-12 w-12", "h-8 w-8"],
+      ["sm", "h-9 w-9", "h-7 w-7"],
+      ["md", "h-10 w-10", "h-8 w-8"],
+      ["lg", "h-12 w-12", "h-9 w-9"],
     ] as const;
 
     for (const [size, containerClass, glyphClass] of sizes) {

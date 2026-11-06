@@ -4,6 +4,7 @@ import Link from "next/link";
 import { ArrowRight, BookOpen, Lock, ShieldCheck, Users } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Card } from "@/components/ui/card";
+import { ParticipantMark } from "@/components/identity/participant-mark";
 import { useDemoWorkspace } from "@/features/demo-workspace";
 import { useAnchorRef } from "@/features/demo-tutorial";
 import { useReplayRun } from "@/features/meetings/runtime/replay-run";
@@ -109,10 +110,13 @@ export default function DemoBoardPage() {
                         return (
                             <Card key={participant.participant_id} className="p-5">
                                 <div className="flex items-center gap-3">
-                                    <span
-                                        className="size-3 rounded-full"
-                                        style={{ backgroundColor: participant.color }}
-                                        aria-hidden="true"
+                                    <ParticipantMark
+                                        participant={{
+                                            id: participant.participant_id,
+                                            name: participant.name,
+                                            color: participant.color,
+                                        }}
+                                        size="sm"
                                     />
                                     <div>
                                         <h3 className="type-item-title">{participant.name}</h3>

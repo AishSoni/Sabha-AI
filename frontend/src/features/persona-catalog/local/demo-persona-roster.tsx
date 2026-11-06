@@ -28,6 +28,11 @@ function Content() {
             }}
             heading="Practice personas"
             description="Temporary templates for this browser tab. They never rename, replace, or rerun the prepared participants."
+            markIdFor={(persona) =>
+                seed?.personas.find(
+                    (template) => template.personaId === persona.id
+                )?.recordedParticipantId ?? undefined
+            }
             confirmDelete={(persona) =>
                 window.confirm(
                     `Delete ${persona.name} and its practice prompt history? Captured practice snapshots and the recorded participants are not affected.`

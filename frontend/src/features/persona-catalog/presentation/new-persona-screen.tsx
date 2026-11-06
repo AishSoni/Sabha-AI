@@ -9,7 +9,7 @@
  */
 import { useEffect, useRef, useState } from 'react';
 import Link from 'next/link';
-import { ArrowLeft, Bot, Sparkles, Wand2, BookOpen } from 'lucide-react';
+import { ArrowLeft, Sparkles, Wand2, BookOpen } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -17,7 +17,7 @@ import { Textarea } from '@/components/ui/textarea';
 import { Card, CardContent } from '@/components/ui/card';
 import type { PersonaCatalogClient } from '../model/client';
 import type { PersonaCreateInput, PersonaStackOption } from '../model/types';
-import { readableTextOn } from '@/lib/readable-color';
+import { ParticipantMark } from '@/components/identity/participant-mark';
 import { normalizeStackIds, validatePersonaTemplate } from './validation';
 
 const COLORS = [
@@ -145,15 +145,14 @@ export function NewPersonaScreen({ client, loadStacks, routes, stacksHint }: New
                             <div className="h-2" style={{ backgroundColor: persona.color }} />
                             <CardContent className="p-6">
                                 <div className="flex items-center gap-4">
-                                    <div
-                                        className="flex h-16 w-16 items-center justify-center rounded-full"
-                                        style={{
-                                            backgroundColor: persona.color ?? '#6366f1',
-                                            color: readableTextOn(persona.color ?? '#6366f1'),
+                                    <ParticipantMark
+                                        participant={{
+                                            id: persona.name || 'preview-persona',
+                                            name: persona.name || 'Persona Name',
+                                            color: persona.color ?? '#6366f1',
                                         }}
-                                    >
-                                        <Bot className="h-8 w-8" />
-                                    </div>
+                                        size="lg"
+                                    />
                                     <div className="flex-1">
                                         <h2 className="type-item-title text-ink">
                                             {persona.name || 'Persona Name'}
@@ -329,15 +328,14 @@ export function NewPersonaScreen({ client, loadStacks, routes, stacksHint }: New
                                             onClick={() => applyTemplate(template)}
                                             className="m-control flex w-full items-center gap-3 rounded-control border border-separator bg-surface/50 p-3 text-left hover:border-control hover:bg-surface-raised"
                                         >
-                                            <div
-                                                className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full"
-                                                style={{
-                                                    backgroundColor: template.color,
-                                                    color: readableTextOn(template.color),
+                                            <ParticipantMark
+                                                participant={{
+                                                    id: template.name,
+                                                    name: template.name,
+                                                    color: template.color,
                                                 }}
-                                            >
-                                                <Bot className="h-4 w-4" />
-                                            </div>
+                                                size="sm"
+                                            />
                                             <div className="flex-1 min-w-0">
                                                 <p className="text-sm font-medium text-ink truncate">
                                                     {template.name}
