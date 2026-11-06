@@ -7,7 +7,6 @@ import { DemoTutorialProvider } from "@/features/demo-tutorial/provider";
 import { TutorialBoundary } from "@/features/demo-tutorial/error-boundary";
 import { TutorialHud } from "@/features/demo-tutorial/hud";
 import { TutorialNotices } from "@/features/demo-tutorial/notices";
-import { TutorialRail } from "@/features/demo-tutorial/rail";
 import {
     ReplaySessionProvider,
     useReplaySession,
@@ -40,7 +39,6 @@ function PinnedWorkspace({ children }: { children: ReactNode }) {
                         <Starfield />
                         <DemoNav />
                         <TutorialBoundary>
-                            <TutorialRail />
                             <TutorialHud />
                             <TutorialNotices />
                         </TutorialBoundary>
