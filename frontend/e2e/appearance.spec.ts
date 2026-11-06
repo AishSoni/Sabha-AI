@@ -131,6 +131,32 @@ test.describe("appearance lifecycle", () => {
         expect(await noOverflow()).toBe(true);
     });
 
+    test("keeps chrome translucent over the dense atmosphere", async ({ page }) => {
+        await page.goto("/demo");
+        const field = page.getByTestId("atmosphere-field");
+        await expect(field).toBeVisible();
+        await expect(field.locator("circle")).toHaveCount(200);
+
+        const chrome = await page.getByRole("banner").evaluate((element) => {
+            const styles = getComputedStyle(element);
+            return {
+                background: styles.backgroundColor,
+                backdrop: styles.backdropFilter,
+                shadow: styles.boxShadow,
+            };
+        });
+        expect(chrome.background).toMatch(
+            /rgba\((255, 255, 255|17, 25, 37), 0\.66\)/
+        );
+        expect(chrome.backdrop).toContain("blur(12px)");
+        expect(chrome.backdrop).toContain("saturate(1.15)");
+        expect(chrome.shadow).toContain("inset");
+
+        await page.goto("/demo/roster");
+        await expect(field).toBeVisible();
+        await expect(field.locator("circle")).toHaveCount(200);
+    });
+
     test("pauses and resumes the shared starfield without persistent state", async ({
         page,
         context,
