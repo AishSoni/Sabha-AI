@@ -76,8 +76,6 @@ interface ReplayRunContextValue {
         options?: { force?: boolean; signal?: AbortSignal }
     ) => Promise<void>;
     acknowledgeBeat: (beatId: string) => void;
-    playbackSpeed: 1 | 2;
-    setPlaybackSpeed: (speed: 1 | 2) => void;
     restart: () => void;
     clearSettled: () => void;
 }
@@ -104,7 +102,6 @@ export function ReplayRunProvider({ children }: { children: ReactNode }) {
     const [acknowledgedBeats, setAcknowledgedBeats] = useState<Set<string>>(
         new Set()
     );
-    const [playbackSpeed, setPlaybackSpeed] = useState<1 | 2>(1);
     const activeTransition = useRef<number | null>(null);
     const transitionSequence = useRef(0);
     const startedIntentsRef = useRef<Set<string>>(new Set());
@@ -972,8 +969,6 @@ export function ReplayRunProvider({ children }: { children: ReactNode }) {
             skipIntent,
             replayIntent,
             goToChapter,
-            playbackSpeed,
-            setPlaybackSpeed,
             settledIntents,
             onTurnSettled: (intentId) => {
                 if (generationRef.current !== generation) return;
@@ -1069,7 +1064,6 @@ export function ReplayRunProvider({ children }: { children: ReactNode }) {
         skipIntent,
         replayIntent,
         goToChapter,
-        playbackSpeed,
         settledIntents,
         onTurnSettled,
         isTurnVisible,
@@ -1103,8 +1097,6 @@ export function ReplayRunProvider({ children }: { children: ReactNode }) {
         replayIntent,
         goToChapter,
         acknowledgeBeat,
-        playbackSpeed,
-        setPlaybackSpeed,
         restart,
         clearSettled,
     };

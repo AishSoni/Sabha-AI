@@ -537,11 +537,6 @@ describe("ReplayRunProvider prepared playback", () => {
         expect(result.current.checkpoint).toBe("checkpoint-created");
         expect(result.current.startedIntents.has("credit")).toBe(true);
         expect(result.current.settledIntents.has("credit")).toBe(true);
-
-        act(() => {
-            result.current.setPlaybackSpeed(2);
-        });
-        expect(result.current.playbackSpeed).toBe(2);
     });
 
     it("installs the completed snapshot for a creation intent without a tape", async () => {

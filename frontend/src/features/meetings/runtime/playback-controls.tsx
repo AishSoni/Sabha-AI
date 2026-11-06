@@ -7,44 +7,6 @@ import { Button } from '@/components/ui/button';
 import { useMeetingsRuntime } from './context';
 
 /**
- * Replay-only pacing control. Live meetings pace their own tokens, so this
- * renders nothing outside a recorded session that carries exploration data.
- */
-export function ReplaySpeedControl() {
-    const runtime = useMeetingsRuntime();
-    const replay = runtime.replay;
-    if (
-        !replay ||
-        (replay.transitions.length === 0 &&
-            (replay.preparedTurns ?? []).length === 0)
-    ) {
-        return null;
-    }
-
-    return (
-        <div
-            className="flex items-center gap-1.5"
-            role="group"
-            aria-label="Recorded playback speed"
-        >
-            <span className="type-meta text-ink-muted">Speed</span>
-            {([1, 2] as const).map((speed) => (
-                <Button
-                    key={speed}
-                    type="button"
-                    size="sm"
-                    variant={replay.playbackSpeed === speed ? 'secondary' : 'ghost'}
-                    aria-pressed={replay.playbackSpeed === speed}
-                    onClick={() => replay.setPlaybackSpeed(speed)}
-                >
-                    {speed}x
-                </Button>
-            ))}
-        </div>
-    );
-}
-
-/**
  * Controls for the prepared turn that owns the current state. They only
  * install validated checkpoints; the recording decides what the result is.
  */
