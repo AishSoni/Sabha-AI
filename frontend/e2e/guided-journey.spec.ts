@@ -52,7 +52,7 @@ async function startRecording(page: Page) {
 
     await page.getByRole("link", { name: "Open the meeting room" }).click();
     await expect(page).toHaveURL(/\/demo\/meetings\/[^/]+/);
-    await expect(hud.getByText("Choose who speaks next")).toBeVisible();
+    await expect(hud.getByText("Choose a recorded reply")).toBeVisible();
     return { hud, network };
 }
 

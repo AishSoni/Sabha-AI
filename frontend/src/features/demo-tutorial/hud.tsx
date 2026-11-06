@@ -96,10 +96,34 @@ export function TutorialHud() {
     const anchored = !hasTarget || match !== null;
     const placed = !hasTarget || position?.visible === true;
     const suspended = modalOpen || streaming;
+    const inlineRoom =
+        (prompt?.id === "main-speaker" || prompt?.id === "main-followup") &&
+        match !== null;
     const cardVisible =
-        !tutorial.hidden && !suspended && anchored && placed;
-    const compactVisible = !cardVisible && !suspended;
-    const cardMounted = !tutorial.hidden && !suspended && anchored;
+        !inlineRoom && !tutorial.hidden && !suspended && anchored && placed;
+    const compactVisible =
+        !suspended && (tutorial.hidden || (!inlineRoom && !cardVisible));
+    const cardMounted = !inlineRoom && !tutorial.hidden && !suspended && anchored;
+    const inlineTarget =
+        inlineRoom && match
+            ? (() => {
+                  const rect = match.element.getBoundingClientRect();
+                  return {
+                      left: rect.left,
+                      top: rect.top,
+                      width: rect.width,
+                      height: rect.height,
+                  };
+              })()
+            : null;
+    const ringTarget = position?.target ?? inlineTarget;
+    const ringVisible =
+        !tutorial.hidden &&
+        !suspended &&
+        anchored &&
+        hasTarget &&
+        Boolean(ringTarget) &&
+        (cardVisible || inlineRoom);
 
     if (!mounted || !prompt) return null;
 
@@ -128,16 +152,16 @@ export function TutorialHud() {
 
     return createPortal(
         <>
-            {cardVisible && position && hasTarget ? (
+            {ringVisible && ringTarget ? (
                 <div
                     aria-hidden="true"
                     data-testid="tutorial-ring"
                     className="pointer-events-none fixed z-highlight rounded-control ring-2 ring-action/70"
                     style={{
-                        left: position.target.left - 4,
-                        top: position.target.top - 4,
-                        width: position.target.width + 8,
-                        height: position.target.height + 8,
+                        left: ringTarget.left - 4,
+                        top: ringTarget.top - 4,
+                        width: ringTarget.width + 8,
+                        height: ringTarget.height + 8,
                     }}
                 />
             ) : null}
@@ -298,7 +322,7 @@ function CompactBar() {
     );
 }
 
-function ExploreRecordingMenu({ iconOnly = false }: { iconOnly?: boolean }) {
+export function ExploreRecordingMenu({ iconOnly = false }: { iconOnly?: boolean }) {
     const tutorial = useDemoTutorial();
     const run = useReplayRun();
     const chapters = run.session.chapters;

@@ -28,3 +28,4 @@ export {
     useTutorialStreaming,
     useTutorialStreamingFlag,
 } from "./presence";
+export { RoomTutorialInline } from "./inline";

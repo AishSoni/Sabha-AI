@@ -81,7 +81,7 @@ test.describe("contextual demo tutorial", () => {
         test.setTimeout(180_000);
         const { hud, network } = await startRecording(page);
 
-        await expect(hud.getByText("Choose who speaks next")).toBeVisible();
+        await expect(hud.getByText("Choose a recorded reply")).toBeVisible();
         await expect(hud.getByText("0 of 4 replies")).toBeVisible();
         const progress = hud.getByRole("progressbar", {
             name: "Demo progress",
@@ -98,13 +98,13 @@ test.describe("contextual demo tutorial", () => {
         await expect(hud.getByText("1 of 4 replies")).toBeVisible({
             timeout: 30_000,
         });
-        await expect(hud.getByText("Choose who speaks next")).toBeVisible();
+        await expect(hud.getByText("Choose a recorded reply")).toBeVisible();
         await expect(progress).toHaveAttribute("aria-valuenow", "43");
 
         await hud.getByRole("button", { name: "Hide" }).click();
         await expect(page.getByTestId("tutorial-hud")).toHaveCount(0);
         await page.getByRole("button", { name: "Show tips" }).click();
-        await expect(hud.getByText("Choose who speaks next")).toBeVisible();
+        await expect(hud.getByText("Choose a recorded reply")).toBeVisible();
         await expect(hud.getByText("1 of 4 replies")).toBeVisible();
 
         await page.getByRole("button", { name: "Downside challenge" }).click();
@@ -296,7 +296,7 @@ test.describe("contextual demo tutorial", () => {
         await expect(page.getByTestId("tutorial-hud")).toHaveCount(0);
 
         await page.getByRole("button", { name: "Show tips" }).click();
-        await expect(hud.getByText("Choose who speaks next")).toBeVisible();
+        await expect(hud.getByText("Choose a recorded reply")).toBeVisible();
         await expect(hud.getByText("1 of 4 replies")).toBeVisible();
 
         await page.getByRole("button", { name: "Downside challenge" }).click();
@@ -349,7 +349,7 @@ test.describe("contextual demo tutorial", () => {
 
         await page.keyboard.press("Escape");
         await expect(dialog).toBeHidden();
-        await expect(hud.getByText("Choose who speaks next")).toBeVisible();
+        await expect(hud.getByText("Choose a recorded reply")).toBeVisible();
         await expect(hud.getByText("1 of 4 replies")).toBeVisible();
 
         network.assertClean();

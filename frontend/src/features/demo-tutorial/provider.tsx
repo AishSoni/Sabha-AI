@@ -58,6 +58,11 @@ export function useDemoTutorial(): DemoTutorialValue {
     return value;
 }
 
+/** Room composition may be rendered without the demo tutorial shell. */
+export function useDemoTutorialOptional(): DemoTutorialValue | null {
+    return useContext(DemoTutorialContext);
+}
+
 export function DemoTutorialProvider({ children }: { children: ReactNode }) {
     const pathname = usePathname() ?? "/demo";
     const searchParams = useSearchParams();

@@ -34,53 +34,54 @@ export function RecordedDirectorAction() {
     if (prepared?.kind === "follow_up") {
         if (replay.playedTurnIds?.has(prepared.turn_id)) return null;
         return (
-            <div ref={followUpRef} className="space-y-2">
-                <div className="flex items-center justify-between gap-2">
-                    <p className="type-meta text-ink-secondary">
-                        Your turn <span aria-hidden="true">·</span> Prepared question
-                    </p>
-                    <Button
-                        type="button"
-                        variant="ghost"
-                        size="xs"
-                        aria-expanded={questionExpanded}
-                        aria-controls="prepared-follow-up-question"
-                        onClick={() => setQuestionExpanded((open) => !open)}
-                    >
-                        {questionExpanded ? (
-                            <ChevronUp className="mr-1 h-3.5 w-3.5" />
-                        ) : (
-                            <ChevronDown className="mr-1 h-3.5 w-3.5" />
-                        )}
-                        {questionExpanded ? 'Collapse' : 'Expand'}
-                    </Button>
-                </div>
-                <div className="flex flex-wrap items-start gap-2">
-                    <p
-                        id="prepared-follow-up-question"
-                        className={cn(
-                            'min-w-0 flex-1 type-control whitespace-pre-wrap text-ink',
-                            !questionExpanded && 'line-clamp-2'
-                        )}
-                    >
-                        {prepared.question}
-                    </p>
-                    <Button
-                        className="shrink-0"
-                        busy={busy}
-                        busyLabel="Sending"
-                        onClick={async () => {
-                            setBusy(true);
-                            try {
-                                await replay.sendFollowUp();
-                            } finally {
-                                setBusy(false);
-                            }
-                        }}
-                    >
-                        <Send className="mr-2 size-4" />
-                        Send question
-                    </Button>
+            <div ref={followUpRef}>
+                <div className="flex flex-col gap-2 sm:flex-row sm:items-start">
+                    <div className="min-w-0 flex-1">
+                        <p className="type-meta text-ink-secondary">
+                            Your turn <span aria-hidden="true">·</span> Prepared question
+                        </p>
+                        <p
+                            id="prepared-follow-up-question"
+                            className={cn(
+                                'type-control whitespace-pre-wrap text-ink',
+                                !questionExpanded && 'line-clamp-2'
+                            )}
+                        >
+                            {prepared.question}
+                        </p>
+                    </div>
+                    <div className="flex shrink-0 flex-wrap items-center gap-2">
+                        <Button
+                            type="button"
+                            variant="ghost"
+                            size="sm"
+                            aria-expanded={questionExpanded}
+                            aria-controls="prepared-follow-up-question"
+                            onClick={() => setQuestionExpanded((open) => !open)}
+                        >
+                            {questionExpanded ? (
+                                <ChevronUp className="mr-1 h-3.5 w-3.5" />
+                            ) : (
+                                <ChevronDown className="mr-1 h-3.5 w-3.5" />
+                            )}
+                            {questionExpanded ? 'Collapse' : 'Expand'}
+                        </Button>
+                        <Button
+                            busy={busy}
+                            busyLabel="Sending"
+                            onClick={async () => {
+                                setBusy(true);
+                                try {
+                                    await replay.sendFollowUp();
+                                } finally {
+                                    setBusy(false);
+                                }
+                            }}
+                        >
+                            <Send className="mr-2 size-4" />
+                            Send question
+                        </Button>
+                    </div>
                 </div>
             </div>
         );
