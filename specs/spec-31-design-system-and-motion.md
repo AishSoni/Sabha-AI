@@ -463,3 +463,239 @@ then proceeds through Specs 32 and 33 on the same token foundation. Rollback
 reverts the visual and appearance commits without changing runtime data, event
 contracts, credentials, or replay evidence; the appearance preference is memory
 only and disappears on reload.
+
+## Addendum A: Room-first corrective pass
+
+### A.1 Priority, scope, and status
+
+**Required next implementation slice: correct the meeting room before proceeding
+with the homepage or a broad application redesign. This addendum is specified,
+not implemented or visually accepted.**
+
+The review of the populated, 1920x917 dark demo-room screenshot and current source
+found a foundation migration, not a convincing room redesign. The new Satoshi,
+semantic palette, appearance owner, and shared primitives are useful work to keep.
+They do not compensate for a compressed discussion, oversized control stack,
+telemetry-heavy rail, weak type hierarchy, or a tutorial covering its own task.
+Screenshot proportions are observations, not browser measurements or a contrast
+audit. Measure the corrected implementation as required below.
+
+This is a bounded correction to Spec 31's actual role adoption and acceptance,
+bringing forward the necessary room-layout requirements from
+[Spec 33](spec-33-application-experience.md). It is not a fourth design spec or
+permission to implement every Spec 33 screen. For this room, the requirements
+below take precedence over earlier permissive composition language. Runtime,
+permission, evidence, accessibility, and recording contracts remain controlling.
+The execution record above remains historical evidence; its test passes do not
+constitute acceptance of this corrective pass.
+
+### A.2 Required composition: discussion first, controls second
+
+The room must be recognizably recomposed, not the existing seven-tab chat layout
+with another palette or radius adjustment. Use this hierarchy in both themes:
+
+```text
+Quiet global navigation                                     Appearance
+Back   Meeting title                         Recorded   Details   Close
+Agenda / as-of context, with access to the complete text
+Named participant perspectives; compact, distinct identities
+-----------------------------------------------------------------------
+Discussion                                  | Meeting record [hide]
+                                            | Disagreements / Consensus
+Speaker, role, readable contribution         | Actual topics and reasons,
+                                            | or an honest empty state
+Sources attached to the contribution         | Selected record detail
+                                            |
+-----------------------------------------------------------------------
+Who speaks next?  [Actual available participant actions]     |
+Prepared question preview [Expand] [Existing send action]    |
+Playback / speed / relevant status, as quiet utilities       |
+```
+
+The wireframe expresses placement, not invented data or additional commands.
+The director dock belongs below the discussion, not beneath an unrelated rail.
+Its live variant uses the real composer instead of a prepared-question preview.
+The record is collapsible; at narrower widths, use a labelled secondary view or
+overlay with a clear return to discussion. Files, roster, summary, and closing
+remain reachable under their actual capabilities. Give primary discussion,
+record inspection, secondary views, and meeting actions distinct hierarchy;
+do not retain seven equally prominent destinations as the visual centerpiece.
+Opening the Close workflow is not the act of ending a meeting.
+
+### A.3 P0: Correct height ownership and recover reading space
+
+- One layout owner allocates the dynamic viewport between actual global chrome
+  and the room. Remove the nested `h-screen` assumption in `MeetingRoom` beneath
+  `DemoNav`; account for wrapped navigation, operator chrome, and changing text
+  size rather than subtracting an assumed header height everywhere.
+- Make the room's flex/grid ancestry shrink correctly. At normal desktop text
+  size, the room must not create an outer page scrollbar merely because a
+  full-viewport child was placed below the header. Discussion scrolls within
+  its own viewport; a long inspector can scroll independently.
+- At 1440x900 and 1920x917, with the question collapsed, no expanded operation
+  details, and no blocking error, target **at least two-thirds of the conversation
+  work area's height for the scrollable discussion**. The work area is measured
+  below the local heading/view controls/participant strip to the bottom of the
+  room; the director dock uses the remainder. Record the actual pixel heights
+  and ratio. Shrinking text or clipping controls to meet the ratio is a failure.
+- Replace the current controls region that can consume `55dvh` with a compact
+  resting dock. Do not impose another large viewport-height allowance as its
+  normal composition. Keep required errors, queued operations, and recovery
+  actions accessible through bounded disclosure where appropriate.
+- The ratio is a baseline desktop gate, not a fixed-height rule for enlarged
+  text, short viewports, expanded questions, or the on-screen keyboard. Those
+  states must reflow or use an explicitly labelled scroll region without hiding
+  content, actions, focus, or source links. Do not create three competing nested
+  scroll regions in the ordinary resting conversation column.
+- Preserve existing near-tail behavior: follow new content only while the user
+  is already at the tail. Never substitute page-level `scrollIntoView`, forced
+  scrolling after every token, or a reset to the latest message on panel changes.
+
+### A.4 P0: Consolidate the director and playback controls
+
+- Keep speaker actions, the director action, operation feedback, and playback
+  utilities in one coherent dock rather than separate full-width bands and cards.
+  Present the real next action prominently; replay speed and replay-last-turn
+  are secondary utilities, not additional major sections.
+- The recorded question rests as a concise, read-only preview, normally no more
+  than two visual lines, with an explicit labelled Expand/Collapse disclosure.
+  Expanding exposes the complete, exact prepared text and works by keyboard.
+  Do not represent a fixed question as an editable, permanently three-row form.
+  Collapsing must not make the full text unobtainable to assistive technology.
+- Keep the existing send action and its actual busy/unavailable semantics. A
+  disclosure does not submit, select a participant, advance playback, or become
+  a new prerequisite for sending. Do not defer the question's availability until
+  all prepared replies are complete if the runtime already permits it earlier.
+- Selection and immediate action must remain distinguishable. Do not add a new
+  select-then-confirm stage to controls that currently start an admitted turn.
+- Move closing eligibility guidance into the closing action/workflow or a
+  concise contextual status. Remove the permanent separate closing-guidance
+  band from the resting discussion, without hiding the actual reason when the
+  user needs it or removing the route to the Close view.
+- Preserve Show full response, Replay last turn, 1x/2x, legal prepared actions,
+  live operation observation/recovery, and all capability gates. Observation
+  cancellation is not operation cancellation. No autoplay, auto-next speaker,
+  synthetic progress, or newly invented Cancel/Skip command.
+
+### A.5 P0: Apply typography and surface hierarchy to the actual content
+
+The presence of font files and CSS roles is not sufficient. Apply the roles to
+the rendered room and record computed styles in both appearances:
+
+| Role | Required room treatment at ordinary desktop size |
+| --- | --- |
+| Meeting heading | Satoshi 600 or 700, 24-28px with suitable line height; distinct from navigation, without forcing the full instrument name onto one toolbar line |
+| Discussion | Satoshi 400, 17px/28px; compact baseline 16px/26px; actual Markdown paragraphs and lists inherit the role, not `prose-sm` overrides |
+| Speaker attribution and controls | Satoshi 500, normally 14px/20px; role/name remain readable and distinguishable |
+| Time, as-of, secondary technical data | Satoshi 400/500, normally 13px/18px; not the primary reading style |
+
+Keep the complete title and agenda accessible through wrapping or an explicit
+disclosure, not hover-only access to a permanently truncated string. The room
+heading is a context-specific use of the scale, not a requirement to put a 36px
+general page title into an already constrained toolbar.
+
+Remove the repeated `max-w-[80%]` restriction inside the already constrained
+discussion column, including the active projection. Use a readable contribution
+measure around 60-74ch, available width at compact sizes, and consistent alignment
+between historical and streaming content. Wide screens must not produce a thin
+message column floating in unused space. Code and tables retain local overflow.
+
+Use `canvas` for the environment and a stable opaque reading surface for the
+discussion. Separate contributions primarily through spacing, attribution, and
+typography, not another rounded rectangle around every AI response. The dock is
+part of that work surface, not an additional glass card. Use a quiet divider for
+the record and clear selected/primary states. Borders must communicate grouping,
+not outline every nested region. Retain measured semantic tokens; more blur,
+brighter outlines, moving background stars, and decorative gradients are not
+acceptable fixes for blandness.
+
+### A.6 P1: Replace the telemetry rail with a useful meeting record
+
+- The ordinary wide room uses the record position for actual disagreement topics,
+  reasons, targets/status, consensus topics, participants, and recorded strength.
+  It must support inspecting substantive items, not merely repeat counts.
+- If no events exist, say so plainly. Do not generate an extra AI summary, invent
+  source associations, imply that agreement verifies truth, or fill the rail
+  with fabricated example content. Existing files remain reachable separately.
+- Move cost, token utilization, message counts, and other operational telemetry
+  into Meeting details. Remove the permanently exposed context meter and the
+  repeated stack of participant cards from the main record position.
+- Preserve current record selection, evidence identity, contribution scroll
+  anchor, drafts, focus, and active operation while opening or closing the rail.
+  Keep the shared evidence dialog by default; this pass does not require a new
+  evidence renderer or a second simultaneously mounted viewer.
+
+### A.7 P1: Give participants distinct, restrained Sabha identity
+
+Use a compact strip of named participant perspectives with readable mandates,
+and carry the same identity into contribution attribution and actual record
+participants. Repeating the first character of each name is not sufficient when
+all three participants become `T`.
+
+Until artwork is separately approved, use existing identity slots plus distinct
+role marks/shapes and full names. Do not generate new assets or invent human
+portraits as part of this addendum. Color alone cannot encode identity. Any
+active-speaker emphasis must reflect actual runtime state, not a decorative
+orbit, simulated agent activity, or an implication that the system chooses turns.
+This participant system is the room's constellation signature; stars need not
+move behind paragraphs for the room to feel like Sabha.
+
+### A.8 P1: Make the tutorial coexist with the task
+
+The tutorial must not cover the next-speaker actions, question disclosure/send
+action, or source control it is teaching. Use a collision-safe adjacent position
+when space exists; otherwise reduce to the existing compact hint/fallback or
+hide it until the anchor is usable. Do not reserve a large empty region that
+recreates the reading-space problem. Keep Hide available.
+
+Preserve one real instance of each tutorial anchor, including
+`room.tab.disagreements` and `room.tab.consensus`, on the actual applicable
+control. Regrouping views must update anchor placement rather than create hidden
+duplicate controls. Missing/clipped anchors and modal/streaming states retain
+their existing suspension behavior. Do not auto-open panels, scroll the page,
+steal focus, or advance the tutorial on an animation timer to stage a screenshot.
+
+### A.9 Motion must explain this new structure
+
+Apply the existing vocabulary to real interactions: M03 for actual selection,
+M04 for question/details disclosure, M05 for the record, M06 for the existing
+evidence dialog, and M08/M09 for genuine operation feedback and new errors.
+Keep the viewport and resting dock stable; preserve the contribution anchor
+during a bounded inspector resize. No entrance cascade for retained history,
+per-token fades, historical toast replay, or theme-triggered remounts.
+
+Test interruption midway through expand/collapse and record open/close. Actions
+remain immediately operable; reduced motion changes placement immediately while
+retaining state, focus, feedback, and all functions. Motion is required polish
+around a corrected hierarchy, not a substitute for the hierarchy.
+
+### A.10 Room-first verification and release gate
+
+Implement and review this slice before extending the visual rollout. Use actual
+public recorded content and a permitted synthetic/live fixture where necessary;
+never place private operator data in review artifacts. Capture matching light
+and dark views with the same meeting and checkpoint so composition is comparable.
+
+| Gate | Required evidence; all are initially open |
+| --- | --- |
+| RF01 Height and reading space | 1440x900 and 1920x917 resting-room screenshots plus measured work-area/discussion heights and ratio; no accidental outer page scroll; compact dock and accessible utilities |
+| RF02 Real type adoption | Browser-computed heading, historical Markdown, streaming projection, attribution, and metadata styles; full title/agenda access; readable measure without nested 80% restriction |
+| RF03 Recomposition | Before/after populated screenshots show the discussion-first hierarchy, distinct surfaces, compact participants, secondary telemetry, and substantive or honestly empty record; a token-only reskin fails |
+| RF04 Director behavior | Collapsed and expanded exact question, actual send/busy/unavailable states, speaker actions, playback utilities, and closing guidance; availability and command counts unchanged; live draft/queue/recovery retained |
+| RF05 Tutorial and evidence | Tutorial visible beside each applicable task without collision; compact fallback; selected citation and record states; evidence error/retry and close/focus return; no duplicate anchors/viewers |
+| RF06 Responsive accessibility | 320px, 390x844, 768px, 1024x768, and wide layouts; 200% text and 400% zoom/reflow; keyboard traversal, long text, on-screen keyboard, solid/forced-colors fallback; no clipped actions or horizontal page overflow |
+| RF07 Motion and continuity | Normal/reduced motion, interrupted transitions, stream in progress, scrolled-up transcript, theme change, and inspector resize preserve focus, selection, draft, operation, and reading anchor; no page jump |
+| RF08 Runtime and truth | Existing replay, practice, operator/vault, durable turn, evidence identity, closing, and tutorial suites remain passing; no new Auth/provider/storage calls from public replay; record relationships remain grounded |
+
+Review the resting room, expanded question, long contribution, actual pending/
+error state, record open and closed, tutorial visible, and evidence open in both
+themes. Incompatible states can be separate captures; do not fabricate a single
+impossible fixture to show all states at once. Include a short interaction trace
+for disclosure, inspector, and streaming continuity, not screenshots alone.
+
+Passing tests is necessary but does not establish that the page was redesigned.
+The room-first gate also requires a recorded visual review against A.2-A.8.
+Document measured results and remaining failures in this spec; do not mark RF
+gates complete based on the earlier foundation execution record. Retain the
+existing foundation work, fix and validate this room first, then resume Specs
+32-33 without using their broader scope to defer these corrections.
