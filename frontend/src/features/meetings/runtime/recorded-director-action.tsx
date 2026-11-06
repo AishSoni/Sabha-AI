@@ -8,9 +8,8 @@
  * separate decision, so no participant is selected automatically.
  */
 import { useState } from "react";
-import { ChevronDown, ChevronUp, Send } from "lucide-react";
+import { Send } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import { cn } from "@/lib/utils";
 import { useAnchorRef } from "@/features/demo-tutorial";
 import { useMeetingsRuntime } from "./context";
 
@@ -19,7 +18,6 @@ export function RecordedDirectorAction() {
     const followUpRef = useAnchorRef("room.followup");
     const replay = runtime.replay;
     const [busy, setBusy] = useState(false);
-    const [questionExpanded, setQuestionExpanded] = useState(false);
 
     if (!replay) return null;
 
@@ -42,30 +40,12 @@ export function RecordedDirectorAction() {
                         </p>
                         <p
                             id="prepared-follow-up-question"
-                            className={cn(
-                                'type-control whitespace-pre-wrap text-ink',
-                                !questionExpanded && 'line-clamp-2'
-                            )}
+                            className="type-control whitespace-pre-wrap text-ink"
                         >
                             {prepared.question}
                         </p>
                     </div>
                     <div className="flex shrink-0 flex-wrap items-center gap-2">
-                        <Button
-                            type="button"
-                            variant="ghost"
-                            size="sm"
-                            aria-expanded={questionExpanded}
-                            aria-controls="prepared-follow-up-question"
-                            onClick={() => setQuestionExpanded((open) => !open)}
-                        >
-                            {questionExpanded ? (
-                                <ChevronUp className="mr-1 h-3.5 w-3.5" />
-                            ) : (
-                                <ChevronDown className="mr-1 h-3.5 w-3.5" />
-                            )}
-                            {questionExpanded ? 'Collapse' : 'Expand'}
-                        </Button>
                         <Button
                             busy={busy}
                             busyLabel="Sending"
