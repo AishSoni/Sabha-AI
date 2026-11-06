@@ -164,8 +164,8 @@ function Plane({
               "--star-opacity": star.opacity,
               animationDelay: `${(index % 19) * 0.31}s`,
               animationDuration: star.hero
-                ? `${12 + (index % 4) * 2}s`
-                : `${6 + (index % 5)}s`,
+                ? `${10 + (index % 3) * 2}s`
+                : `${5 + (index % 4)}s`,
             } as CSSProperties
           }
         />
@@ -202,8 +202,8 @@ function usePointerParallax(
     };
     const onMove = (event: PointerEvent) => {
       if (event.pointerType === "touch") return;
-      targetX = ((event.clientX / window.innerWidth) - 0.5) * 16;
-      targetY = ((event.clientY / window.innerHeight) - 0.5) * 16;
+      targetX = ((event.clientX / window.innerWidth) - 0.5) * 36;
+      targetY = ((event.clientY / window.innerHeight) - 0.5) * 36;
       schedule();
     };
     const reset = () => {
@@ -232,7 +232,7 @@ function usePointerParallax(
  * The Appearance owner can pause every layer without touching room state.
  */
 export function Starfield({
-  density = "subtle",
+  density = "standard",
   parallax = true,
   meteors = true,
   className,
@@ -254,22 +254,23 @@ export function Starfield({
       data-parallax={parallax ? "on" : "off"}
       aria-hidden="true"
     >
+      <div className="atmosphere-aurora" />
       <div className="atmosphere-galaxy" />
       <div
         className="atmosphere-parallax atmosphere-parallax--far"
-        style={{ "--parallax-depth": 0.25 } as CSSProperties}
+        style={{ "--parallax-depth": 0.3 } as CSSProperties}
       >
         <Plane stars={far} className="atmosphere-drift-c" />
       </div>
       <div
         className="atmosphere-parallax atmosphere-parallax--mid"
-        style={{ "--parallax-depth": 0.55 } as CSSProperties}
+        style={{ "--parallax-depth": 0.6 } as CSSProperties}
       >
         <Plane stars={mid} className="atmosphere-drift-b" />
       </div>
       <div
         className="atmosphere-parallax atmosphere-parallax--near"
-        style={{ "--parallax-depth": 1 } as CSSProperties}
+        style={{ "--parallax-depth": 1.15 } as CSSProperties}
       >
         <Plane stars={near} className="atmosphere-drift-a" />
       </div>

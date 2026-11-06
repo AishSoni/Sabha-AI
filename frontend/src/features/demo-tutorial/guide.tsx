@@ -32,7 +32,7 @@ export function TutorialGuide({
             data-state="shown"
             className={`m-notice relative overflow-hidden text-ink ${
                 card
-                    ? "rounded-group border border-action/40 bg-surface shadow-[var(--shadow-overlay)]"
+                    ? "material-panel rounded-group border border-action/40"
                     : "rounded-control border border-action/30 bg-accent-soft/70"
             }`}
         >

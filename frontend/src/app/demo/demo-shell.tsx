@@ -1,8 +1,10 @@
 "use client";
 
 import type { ReactNode } from "react";
+import { usePathname } from "next/navigation";
 import { Starfield } from "@/components/atmosphere";
 import { DemoNav, DemoWorkspaceProvider } from "@/features/demo-workspace";
+import { isRoomPath } from "@/features/demo-tutorial";
 import { DemoTutorialProvider } from "@/features/demo-tutorial/provider";
 import { TutorialBoundary } from "@/features/demo-tutorial/error-boundary";
 import { TutorialHud } from "@/features/demo-tutorial/hud";
@@ -15,6 +17,8 @@ import { ReplayRunProvider } from "@/features/meetings/runtime/replay-run";
 import { ChapterBootstrap } from "./chapter-bootstrap";
 
 function PinnedWorkspace({ children }: { children: ReactNode }) {
+    const pathname = usePathname();
+    const room = isRoomPath(pathname);
     const { session } = useReplaySession();
     const identity = {
         packageId: session.package_id,
@@ -37,7 +41,7 @@ function PinnedWorkspace({ children }: { children: ReactNode }) {
                 <DemoTutorialProvider>
                     <div className="relative isolate flex h-dvh min-h-0 flex-col">
                         <Starfield />
-                        <DemoNav />
+                        {room ? <DemoNav /> : null}
                         <TutorialBoundary>
                             <TutorialHud />
                             <TutorialNotices />
@@ -54,6 +58,11 @@ function PinnedWorkspace({ children }: { children: ReactNode }) {
                          * same space without creating a second page scrollbar.
                          */}
                         <div className="relative z-10 min-h-0 flex-1 overflow-y-auto">
+                            {room ? null : (
+                                <div className="sticky top-0 z-chrome">
+                                    <DemoNav />
+                                </div>
+                            )}
                             <ChapterBootstrap>{children}</ChapterBootstrap>
                         </div>
                     </div>

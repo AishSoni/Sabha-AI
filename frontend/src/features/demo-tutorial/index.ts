@@ -29,3 +29,4 @@ export {
     useTutorialStreamingFlag,
 } from "./presence";
 export { RoomTutorialInline } from "./inline";
+export { isRoomPath } from "./journey";

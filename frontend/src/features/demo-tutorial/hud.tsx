@@ -201,7 +201,7 @@ function CompactBar() {
     return (
         <div
             data-testid="tutorial-hud-compact"
-            className="fixed z-notice flex items-center gap-1 rounded-full border border-action/40 bg-surface p-1 shadow-[var(--shadow-raised)]"
+            className="material-panel fixed z-notice flex items-center gap-1 rounded-full border border-action/40 p-1"
             style={{
                 top: "calc(env(safe-area-inset-top, 0px) + 4.5rem)",
                 left: "calc(env(safe-area-inset-left, 0px) + 1rem)",

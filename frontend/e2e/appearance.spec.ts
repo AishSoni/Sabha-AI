@@ -135,7 +135,8 @@ test.describe("appearance lifecycle", () => {
         await page.goto("/demo");
         const field = page.getByTestId("atmosphere-field");
         await expect(field).toBeVisible();
-        await expect(field.locator("circle")).toHaveCount(265);
+        await expect(field.locator("circle")).toHaveCount(387);
+        await expect(field.locator(".atmosphere-aurora")).toHaveCount(1);
 
         const chrome = await page.getByRole("banner").evaluate((element) => {
             const styles = getComputedStyle(element);
@@ -147,21 +148,36 @@ test.describe("appearance lifecycle", () => {
             };
         });
         expect(chrome.background).toMatch(
-            /rgba\((255, 255, 255|17, 25, 37), 0\.5\)/
+            /rgba\((255, 255, 255|17, 25, 37), 0\.(38|5)\)/
         );
-        expect(chrome.backdrop).toContain("blur(18px)");
+        expect(chrome.backdrop).toContain("blur(10px)");
         expect(chrome.backdrop).toContain("saturate(1.35)");
         expect(chrome.image).toContain("linear-gradient");
         expect(chrome.shadow).toContain("inset");
 
+        const tutorial = page.getByTestId("tutorial-hud");
+        await expect(tutorial).toBeVisible();
+        const panel = await tutorial.evaluate((element) => {
+            const styles = getComputedStyle(element);
+            const ring = getComputedStyle(element, "::after");
+            return {
+                background: styles.backgroundColor,
+                backdrop: styles.backdropFilter,
+                ring: ring.backgroundImage,
+            };
+        });
+        expect(panel.background).toMatch(
+            /rgba\((255, 255, 255|17, 25, 37), 0\.82\)/
+        );
+        expect(panel.backdrop).toContain("blur(10px)");
+        expect(panel.ring).toContain("linear-gradient");
+
         await page.goto("/demo/roster");
         await expect(field).toBeVisible();
-        await expect(field.locator("circle")).toHaveCount(265);
+        await expect(field.locator("circle")).toHaveCount(387);
     });
 
-    test("nudges the starfield with a subtle pointer parallax", async ({
-        page,
-    }) => {
+    test("moves the starfield with pointer parallax", async ({ page }) => {
         await page.goto("/demo");
         const field = page.getByTestId("atmosphere-field");
         await expect(field).toBeVisible();
@@ -175,13 +191,13 @@ test.describe("appearance lifecycle", () => {
                     )
                 )
             )
-            .toBeGreaterThan(1);
+            .toBeGreaterThan(8);
 
         const parallax = await field.evaluate((element) => ({
             x: parseFloat(element.style.getPropertyValue("--parallax-x") || "0"),
             y: parseFloat(element.style.getPropertyValue("--parallax-y") || "0"),
         }));
-        expect(Math.abs(parallax.x)).toBeGreaterThan(1);
+        expect(Math.abs(parallax.x)).toBeGreaterThan(8);
         expect(Math.abs(parallax.y)).toBeGreaterThan(1);
 
         await page.getByRole("button", { name: /^Appearance:/ }).click();
@@ -219,7 +235,7 @@ test.describe("appearance lifecycle", () => {
                 };
             });
         expect(drift.name).toContain("atmosphere-drift-a");
-        expect(drift.duration).toBe("60s");
+        expect(drift.duration).toBe("36s");
         expect(drift.state).toBe("running");
 
         const twinkle = await field

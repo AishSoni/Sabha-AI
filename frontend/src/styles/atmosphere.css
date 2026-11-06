@@ -29,6 +29,34 @@
     );
 }
 
+.atmosphere-aurora {
+  position: absolute;
+  inset: -12% -10% auto;
+  height: 68%;
+  pointer-events: none;
+  background:
+    radial-gradient(
+      ellipse 44% 40% at 16% 6%,
+      var(--atmosphere-aurora-violet),
+      transparent 70%
+    ),
+    radial-gradient(
+      ellipse 40% 44% at 82% 2%,
+      var(--atmosphere-aurora-blue),
+      transparent 72%
+    ),
+    radial-gradient(
+      ellipse 32% 32% at 54% 16%,
+      var(--atmosphere-aurora-rose),
+      transparent 70%
+    );
+  filter: blur(30px);
+  opacity: 0.95;
+  transform: translate3d(0, 0, 0) scale(1.04);
+  animation: atmosphere-aurora 96s ease-in-out infinite alternate;
+  will-change: transform;
+}
+
 .atmosphere-galaxy {
   position: absolute;
   inset: -20%;
@@ -67,15 +95,15 @@
 
 .atmosphere-parallax {
   position: absolute;
-  inset: -50%;
-  width: 200%;
-  height: 200%;
+  inset: -70%;
+  width: 240%;
+  height: 240%;
   transform: translate3d(
     calc(var(--parallax-x, 0px) * var(--parallax-depth, 1)),
     calc(var(--parallax-y, 0px) * var(--parallax-depth, 1)),
     0
   );
-  transition: transform 700ms cubic-bezier(0.22, 0.61, 0.36, 1);
+  transition: transform 500ms cubic-bezier(0.22, 0.61, 0.36, 1);
   will-change: transform;
 }
 
@@ -98,15 +126,15 @@
 }
 
 .atmosphere-drift-a {
-  animation: atmosphere-drift-a 60s linear infinite alternate;
+  animation: atmosphere-drift-a 36s linear infinite alternate;
 }
 
 .atmosphere-drift-b {
-  animation: atmosphere-drift-b 90s linear infinite alternate;
+  animation: atmosphere-drift-b 65s linear infinite alternate;
 }
 
 .atmosphere-drift-c {
-  animation: atmosphere-drift-c 140s linear infinite alternate;
+  animation: atmosphere-drift-c 100s linear infinite alternate;
 }
 
 .atmosphere-meteor {
@@ -143,28 +171,37 @@
  */
 @keyframes atmosphere-drift-a {
   0% {
-    transform: translate3d(-150px, 100px, 0);
+    transform: translate3d(-180px, 120px, 0);
   }
   100% {
-    transform: translate3d(150px, -100px, 0);
+    transform: translate3d(180px, -120px, 0);
   }
 }
 
 @keyframes atmosphere-drift-b {
   0% {
-    transform: translate3d(-100px, 70px, 0);
+    transform: translate3d(-120px, 85px, 0);
   }
   100% {
-    transform: translate3d(100px, -70px, 0);
+    transform: translate3d(120px, -85px, 0);
   }
 }
 
 @keyframes atmosphere-drift-c {
   0% {
-    transform: translate3d(-80px, 55px, 0);
+    transform: translate3d(-95px, 65px, 0);
   }
   100% {
-    transform: translate3d(80px, -55px, 0);
+    transform: translate3d(95px, -65px, 0);
+  }
+}
+
+@keyframes atmosphere-aurora {
+  0% {
+    transform: translate3d(-2%, 0, 0) scale(1.04);
+  }
+  100% {
+    transform: translate3d(2%, 1.5%, 0) scale(1.1);
   }
 }
 
@@ -196,6 +233,7 @@
   }
 }
 
+[data-background="paused"] .atmosphere-aurora,
 [data-background="paused"] .atmosphere-drift-a,
 [data-background="paused"] .atmosphere-drift-b,
 [data-background="paused"] .atmosphere-drift-c,
@@ -214,6 +252,7 @@
 }
 
 @media (prefers-reduced-motion: reduce) {
+  .atmosphere-aurora,
   .atmosphere-drift-a,
   .atmosphere-drift-b,
   .atmosphere-drift-c,
