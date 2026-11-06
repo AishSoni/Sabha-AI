@@ -21,6 +21,9 @@ async function startRecording(page: Page) {
     await page.goto("/demo");
     const hud = page.getByTestId("tutorial-hud");
     await expect(hud).toBeVisible();
+    await hud.evaluate((element) =>
+        Promise.all(element.getAnimations().map((animation) => animation.finished))
+    );
     await expect(hud.getByText("Start the meeting")).toBeVisible();
     const progress = hud.getByRole("progressbar", {
         name: "Demo progress",
@@ -95,6 +98,11 @@ test.describe("contextual demo tutorial", () => {
             hud.getByRole("button", { name: "Hide", exact: true })
         ).toHaveCount(0);
         await expect(hud.getByLabel("Explore recording")).toBeVisible();
+        await hud.evaluate((element) =>
+            Promise.all(
+                element.getAnimations().map((animation) => animation.finished)
+            )
+        );
         const inlineBounds = await hud.boundingBox();
         const inlineProgressBounds = await progress.boundingBox();
         expect(inlineBounds).not.toBeNull();

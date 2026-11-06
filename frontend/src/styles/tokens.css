@@ -81,6 +81,7 @@
   --glass-border: rgb(23 33 47 / 0.12);
   --glass-highlight: rgb(255 255 255 / 0.92);
   --panel-surface: rgb(255 255 255 / 0.82);
+  --card-glass-surface: rgb(255 255 255 / 0.64);
   --panel-rim-strong: rgb(255 255 255 / 0.92);
   --panel-rim-dim: rgb(23 33 47 / 0.08);
   --chrome-surface: rgb(255 255 255 / 0.38);
@@ -166,6 +167,7 @@
   --glass-border: rgb(237 242 248 / 0.14);
   --glass-highlight: rgb(255 255 255 / 0.08);
   --panel-surface: rgb(17 25 37 / 0.82);
+  --card-glass-surface: rgb(17 25 37 / 0.62);
   --panel-rim-strong: rgb(255 255 255 / 0.36);
   --panel-rim-dim: rgb(255 255 255 / 0.05);
   --chrome-surface: rgb(17 25 37 / 0.5);
@@ -248,6 +250,7 @@
     --glass-border: rgb(237 242 248 / 0.14);
     --glass-highlight: rgb(255 255 255 / 0.08);
     --panel-surface: rgb(17 25 37 / 0.82);
+    --card-glass-surface: rgb(17 25 37 / 0.62);
     --panel-rim-strong: rgb(255 255 255 / 0.36);
     --panel-rim-dim: rgb(255 255 255 / 0.05);
     --chrome-surface: rgb(17 25 37 / 0.5);

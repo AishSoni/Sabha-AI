@@ -26,7 +26,7 @@ export function RoomTutorialInline() {
     <TutorialGuide
       prompt={prompt}
       progress={tutorialProgress(prompt, tutorial.journey)}
-      variant="inline"
+      placement="inline"
     />
   );
 }

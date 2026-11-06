@@ -8,33 +8,28 @@ import { useDemoTutorial } from "./provider";
 
 /**
  * One tutorial surface for every screen. The floating card and the room strip
- * share the progress rail, instruction and guide menu; only their container
- * and typography differ.
+ * share the same container, progress rail, instruction and guide menu; only
+ * their placement and width differ.
  */
 export function TutorialGuide({
     prompt,
     progress,
-    variant,
+    placement,
 }: {
     prompt: TutorialPrompt;
     progress: TutorialProgress | null;
-    variant: "card" | "inline";
+    placement: "card" | "inline";
 }) {
     const tutorial = useDemoTutorial();
-    const card = variant === "card";
 
     return (
         <div
             role="region"
             aria-label="Demo tutorial"
             data-testid="tutorial-hud"
-            data-placement={variant}
+            data-placement={placement}
             data-state="shown"
-            className={`m-notice relative overflow-hidden text-ink ${
-                card
-                    ? "material-panel rounded-group border border-action/40"
-                    : "rounded-control border border-action/30 bg-accent-soft/70"
-            }`}
+            className="m-notice material-glass-card relative overflow-hidden rounded-group border border-action/40 text-ink"
         >
             {progress ? (
                 <div
@@ -53,33 +48,19 @@ export function TutorialGuide({
                     />
                 </div>
             ) : null}
-            <div className={card ? "p-3" : "px-3 py-2"}>
-                <div
-                    className={`flex gap-2 ${
-                        card ? "items-start" : "items-center"
-                    }`}
-                >
+            <div className="px-3 py-2">
+                <div className="flex items-center gap-2">
                     <Sparkles
-                        className={`size-4 shrink-0 text-action ${
-                            card ? "mt-0.5" : ""
-                        }`}
+                        className="size-4 shrink-0 text-action"
                         aria-hidden="true"
                     />
-                    <p
-                        className={`min-w-0 flex-1 font-medium ${
-                            card ? "type-body" : "type-meta"
-                        }`}
-                    >
+                    <p className="min-w-0 flex-1 type-meta font-medium">
                         {prompt.instruction}
                     </p>
                     <ExploreRecordingMenu iconOnly />
                 </div>
                 {prompt.complete ? (
-                    <p
-                        className={`type-meta text-ink-secondary ${
-                            card ? "mt-2" : "mt-1"
-                        }`}
-                    >
+                    <p className="mt-1 type-meta text-ink-secondary">
                         {prompt.id === "main-complete"
                             ? "The recorded meeting is archived. Practice edits stay in this browser. Both tours are optional."
                             : "Nothing was saved or activated. The recording is unchanged."}

@@ -163,18 +163,61 @@ test.describe("appearance lifecycle", () => {
             return {
                 background: styles.backgroundColor,
                 backdrop: styles.backdropFilter,
+                image: styles.backgroundImage,
+                shadow: styles.boxShadow,
                 ring: ring.backgroundImage,
             };
         });
         expect(panel.background).toMatch(
-            /rgba\((255, 255, 255|17, 25, 37), 0\.82\)/
+            /rgba\((255, 255, 255|17, 25, 37), 0\.(64|62)\)/
         );
         expect(panel.backdrop).toContain("blur(10px)");
+        expect(panel.backdrop).toContain("saturate(1.3)");
+        expect(panel.image).toContain("linear-gradient");
+        expect(panel.shadow).toContain("inset");
         expect(panel.ring).toContain("linear-gradient");
 
         await page.goto("/demo/roster");
         await expect(field).toBeVisible();
         await expect(field.locator("circle")).toHaveCount(387);
+    });
+
+    test("uses the same tutorial surface in the card and the room", async ({
+        page,
+    }) => {
+        const readSurface = (element: Element) => {
+            const styles = getComputedStyle(element);
+            return {
+                background: styles.backgroundColor,
+                image: styles.backgroundImage,
+                backdrop: styles.backdropFilter,
+                shadow: styles.boxShadow,
+                radius: styles.borderRadius,
+                border: styles.borderColor,
+            };
+        };
+
+        await page.goto("/demo");
+        const card = page.getByTestId("tutorial-hud");
+        await expect(card).toBeVisible();
+        await expect(card).toHaveAttribute("data-placement", "card");
+        const cardSurface = await card.evaluate(readSurface);
+
+        await page.goto(
+            "/demo/meetings/a0000000-0000-4000-8000-000000000001"
+        );
+        await expect(
+            page.getByRole("heading", {
+                name: /Review HDFC Ltd's 7\.87% 2022 debenture/,
+            })
+        ).toBeVisible({ timeout: 30_000 });
+
+        const inline = page.getByTestId("tutorial-hud");
+        await expect(inline).toBeVisible();
+        await expect(inline).toHaveAttribute("data-placement", "inline");
+        const inlineSurface = await inline.evaluate(readSurface);
+
+        expect(inlineSurface).toEqual(cardSurface);
     });
 
     test("moves the starfield with pointer parallax", async ({ page }) => {
