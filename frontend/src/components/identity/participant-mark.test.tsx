@@ -46,6 +46,24 @@ describe("dddynamite participant identity", () => {
     expect(mark?.getAttribute("aria-hidden")).toBe("true");
   });
 
+  it("keeps marks legible at every container and glyph size", () => {
+    const sizes = [
+      ["sm", "h-8 w-8", "h-[22px] w-[22px]"],
+      ["md", "h-9 w-9", "h-6 w-6"],
+      ["lg", "h-11 w-11", "h-[30px] w-[30px]"],
+    ] as const;
+
+    for (const [size, containerClass, glyphClass] of sizes) {
+      const { container, unmount } = render(<DirectorMark size={size} />);
+      const mark = container.querySelector("[data-participant-mark]");
+      expect(mark?.className).toContain(containerClass);
+      expect(mark?.querySelector("svg")?.getAttribute("class")).toContain(
+        glyphClass,
+      );
+      unmount();
+    }
+  });
+
   it("gives the director the same family without a letter avatar", () => {
     const { container } = render(<DirectorMark />);
     const mark = container.querySelector("[data-participant-mark]");

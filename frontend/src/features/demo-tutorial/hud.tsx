@@ -214,7 +214,7 @@ export function TutorialHud() {
                         <button
                             type="button"
                             onClick={tutorial.hide}
-                            className="m-control shrink-0 rounded-control px-2 py-1 type-meta text-ink-secondary hover:bg-surface-raised hover:text-ink focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-focus-ring"
+                            className="m-control inline-flex min-h-8 shrink-0 items-center rounded-control px-2 py-1 type-meta text-ink-secondary hover:bg-surface-raised hover:text-ink focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-focus-ring"
                         >
                             Hide
                         </button>
@@ -312,9 +312,9 @@ function CompactBar() {
                 type="button"
                 onClick={tutorial.show}
                 aria-expanded={!tutorial.hidden}
-                className="m-control inline-flex items-center gap-1.5 rounded-full px-2.5 py-1 type-meta font-medium text-action hover:bg-accent-soft focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-focus-ring"
+                className="m-control inline-flex min-h-8 items-center gap-1.5 rounded-full px-2.5 py-1 type-meta font-medium text-action hover:bg-accent-soft focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-focus-ring"
             >
-                <Sparkles className="size-3.5" aria-hidden="true" />
+                <Sparkles className="size-4" aria-hidden="true" />
                 Show tips
             </button>
             <ExploreRecordingMenu />
@@ -341,15 +341,15 @@ export function ExploreRecordingMenu({ iconOnly = false }: { iconOnly?: boolean 
         >
             <summary
                 aria-label="Explore recording"
-                className={`m-control flex cursor-pointer list-none items-center gap-1 rounded-full type-meta font-medium text-ink-secondary hover:bg-surface-raised hover:text-ink focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-focus-ring [&::-webkit-details-marker]:hidden ${
-                    iconOnly ? "p-1" : "px-2 py-1"
+                className={`m-control flex min-h-8 cursor-pointer list-none items-center gap-1 rounded-full type-meta font-medium text-ink-secondary hover:bg-surface-raised hover:text-ink focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-focus-ring [&::-webkit-details-marker]:hidden ${
+                    iconOnly ? "min-w-8 justify-center p-1" : "px-2 py-1"
                 }`}
             >
-                <Compass className="size-3.5" aria-hidden="true" />
+                <Compass className="size-4" aria-hidden="true" />
                 {iconOnly ? null : (
                     <>
                         Explore recording
-                        <ChevronDown className="size-3" aria-hidden="true" />
+                        <ChevronDown className="size-3.5" aria-hidden="true" />
                     </>
                 )}
             </summary>
