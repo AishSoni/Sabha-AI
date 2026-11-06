@@ -29,9 +29,17 @@
    */
   .material-chrome {
     background-color: var(--chrome-surface);
-    box-shadow: inset 0 1px 0 var(--chrome-highlight);
-    -webkit-backdrop-filter: blur(12px) saturate(1.15);
-    backdrop-filter: blur(12px) saturate(1.15);
+    background-image: linear-gradient(
+      180deg,
+      var(--chrome-sheen),
+      transparent 68%
+    );
+    border-color: var(--chrome-border);
+    box-shadow:
+      inset 0 1px 0 var(--chrome-highlight),
+      0 1px 2px rgb(0 0 0 / 0.06);
+    -webkit-backdrop-filter: blur(18px) saturate(1.35);
+    backdrop-filter: blur(18px) saturate(1.35);
   }
 
   .material-scrim {
@@ -49,6 +57,7 @@
     .material-glass,
     .material-chrome {
       background-color: var(--surface);
+      background-image: none;
       border-color: var(--border-control);
       -webkit-backdrop-filter: none;
       backdrop-filter: none;
@@ -59,6 +68,7 @@
     .material-glass,
     .material-chrome {
       background-color: var(--surface);
+      background-image: none;
       border-color: var(--border-control);
       -webkit-backdrop-filter: none;
       backdrop-filter: none;
@@ -68,6 +78,7 @@
   [data-transparency="opaque"] .material-glass,
   [data-transparency="opaque"] .material-chrome {
     background-color: var(--surface);
+    background-image: none;
     border-color: var(--border-control);
     -webkit-backdrop-filter: none;
     backdrop-filter: none;
@@ -79,10 +90,21 @@
     .material-glass,
     .material-chrome {
       background-color: Canvas;
+      background-image: none;
       border-color: CanvasText;
       box-shadow: none;
       -webkit-backdrop-filter: none;
       backdrop-filter: none;
     }
   }
+}
+
+/*
+ * Chrome sits directly over the atmosphere, so its secondary labels use a
+ * dedicated colour that still clears AA over the brightest permitted star.
+ * This rule is intentionally unlayered so it wins over the utility classes
+ * that components already use for hierarchy.
+ */
+.material-chrome :is(.text-ink-secondary, .text-ink-muted) {
+  color: var(--chrome-text-secondary);
 }
