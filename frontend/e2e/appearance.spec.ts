@@ -131,6 +131,41 @@ test.describe("appearance lifecycle", () => {
         expect(await noOverflow()).toBe(true);
     });
 
+    test("loads the self-hosted variable family at every UI weight", async ({
+        page,
+    }) => {
+        await page.goto("/");
+
+        const family = await page.evaluate(() => {
+            const value = getComputedStyle(document.body).fontFamily;
+            return value
+                .split(",")[0]
+                .trim()
+                .replace(/^["']|["']$/g, "");
+        });
+        expect(family.toLowerCase()).not.toContain("inter");
+
+        const loaded = await page.evaluate(async (fontFamily) => {
+            const weights = ["400", "500", "600", "700"];
+            const counts: Record<string, number> = {};
+            for (const weight of weights) {
+                const faces = await document.fonts.load(
+                    `${weight} 16px "${fontFamily}"`
+                );
+                counts[weight] = faces.length;
+            }
+            const italic = await document.fonts.load(
+                `italic 400 16px "${fontFamily}"`
+            );
+            counts.italic = italic.length;
+            return counts;
+        }, family);
+
+        for (const [weight, count] of Object.entries(loaded)) {
+            expect(count, `${weight} font faces`).toBeGreaterThan(0);
+        }
+    });
+
     test("reduced motion still switches the palette immediately", async ({
         page,
     }) => {
