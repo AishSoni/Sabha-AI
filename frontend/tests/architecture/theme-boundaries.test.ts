@@ -43,7 +43,7 @@ describe("appearance boundary", () => {
 
   it("mounts the appearance menu in the public, operator, and demo chrome", () => {
     const chrome = [
-      path.join(src, "app", "page.tsx"),
+      path.join(src, "features", "homepage", "ui", "home-header.tsx"),
       path.join(src, "features", "access", "ui", "operator-shell.tsx"),
       path.join(src, "features", "demo-workspace", "ui", "demo-nav.tsx"),
     ];

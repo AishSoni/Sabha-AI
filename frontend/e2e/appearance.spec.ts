@@ -42,7 +42,7 @@ test.describe("appearance lifecycle", () => {
             )
         ).toBe("light");
 
-        await page.getByRole("link", { name: "Recorded demo" }).click();
+        await page.getByRole("link", { name: "Explore the recorded demo" }).click();
         await expect(page).toHaveURL(/\/demo$/);
         await expect(page.locator("html")).toHaveAttribute("data-theme", "light");
         await expectBody(page, LIGHT_CANVAS);
@@ -402,7 +402,7 @@ test.describe("appearance lifecycle", () => {
         await chooseAppearance(page, "Dark");
         await expectBody(page, DARK_CANVAS);
         await expect(
-            page.getByRole("link", { name: "Start the demo" })
+            page.getByRole("link", { name: "Explore the recorded demo" })
         ).toBeVisible();
     });
 
