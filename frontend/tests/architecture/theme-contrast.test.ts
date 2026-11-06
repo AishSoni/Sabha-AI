@@ -172,9 +172,9 @@ describe("semantic palette contrast", () => {
         alpha: 1,
       });
 
-      // Chrome uses primary and secondary labels only; muted copy belongs on
-      // solid content surfaces.
-      for (const role of ["text-primary", "text-secondary"] as const) {
+      // Chrome labels are promoted to primary or the dedicated chrome
+      // secondary; muted copy belongs on solid content surfaces.
+      for (const role of ["text-primary", "chrome-text-secondary"] as const) {
         const value = contrastRgb(rgba(palette[role]).rgb, chromeOverStar);
         expect(
           value,

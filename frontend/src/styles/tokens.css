@@ -72,9 +72,11 @@
   --glass-surface: rgb(255 255 255 / 0.88);
   --glass-border: rgb(23 33 47 / 0.12);
   --glass-highlight: rgb(255 255 255 / 0.92);
-  --chrome-surface: rgb(255 255 255 / 0.66);
+  --chrome-surface: rgb(255 255 255 / 0.5);
   --chrome-border: rgb(23 33 47 / 0.16);
   --chrome-highlight: rgb(255 255 255 / 0.92);
+  --chrome-sheen: rgb(255 255 255 / 0.18);
+  --chrome-text-secondary: #2f3d50;
   --scrim: rgb(15 23 42 / 0.45);
   --shadow-raised: 0 1px 2px rgb(15 23 42 / 0.06), 0 8px 24px rgb(15 23 42 / 0.08);
   --shadow-overlay: 0 24px 80px rgb(15 23 42 / 0.18), 0 2px 8px rgb(15 23 42 / 0.08);
@@ -144,9 +146,11 @@
   --glass-surface: rgb(17 25 37 / 0.88);
   --glass-border: rgb(237 242 248 / 0.14);
   --glass-highlight: rgb(255 255 255 / 0.08);
-  --chrome-surface: rgb(17 25 37 / 0.66);
+  --chrome-surface: rgb(17 25 37 / 0.5);
   --chrome-border: rgb(237 242 248 / 0.14);
   --chrome-highlight: rgb(255 255 255 / 0.08);
+  --chrome-sheen: rgb(255 255 255 / 0.06);
+  --chrome-text-secondary: #dbe3ee;
   --scrim: rgb(2 6 12 / 0.66);
   --shadow-raised: 0 1px 2px rgb(0 0 0 / 0.4), 0 12px 32px rgb(0 0 0 / 0.35);
   --shadow-overlay: 0 24px 96px rgb(0 0 0 / 0.55), 0 2px 8px rgb(0 0 0 / 0.4);
@@ -213,9 +217,11 @@
     --glass-surface: rgb(17 25 37 / 0.88);
     --glass-border: rgb(237 242 248 / 0.14);
     --glass-highlight: rgb(255 255 255 / 0.08);
-    --chrome-surface: rgb(17 25 37 / 0.66);
+    --chrome-surface: rgb(17 25 37 / 0.5);
     --chrome-border: rgb(237 242 248 / 0.14);
     --chrome-highlight: rgb(255 255 255 / 0.08);
+    --chrome-sheen: rgb(255 255 255 / 0.06);
+    --chrome-text-secondary: #dbe3ee;
     --scrim: rgb(2 6 12 / 0.66);
     --shadow-raised: 0 1px 2px rgb(0 0 0 / 0.4), 0 12px 32px rgb(0 0 0 / 0.35);
     --shadow-overlay: 0 24px 96px rgb(0 0 0 / 0.55), 0 2px 8px rgb(0 0 0 / 0.4);

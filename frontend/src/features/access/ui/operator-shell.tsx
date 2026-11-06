@@ -28,7 +28,7 @@ export function OperatorShell({
             <Starfield />
             <header className="material-chrome relative z-chrome shrink-0 border-b border-separator">
                 <div className="mx-auto flex max-w-6xl flex-wrap items-center gap-4 px-4 py-3">
-                    <span className="type-meta-strong uppercase tracking-[0.2em] text-action">
+                    <span className="type-meta-strong uppercase tracking-[0.2em] text-ink">
                         Operator
                     </span>
                     <nav className="flex flex-1 flex-wrap items-center gap-1 type-control">

@@ -142,14 +142,16 @@ test.describe("appearance lifecycle", () => {
             return {
                 background: styles.backgroundColor,
                 backdrop: styles.backdropFilter,
+                image: styles.backgroundImage,
                 shadow: styles.boxShadow,
             };
         });
         expect(chrome.background).toMatch(
-            /rgba\((255, 255, 255|17, 25, 37), 0\.66\)/
+            /rgba\((255, 255, 255|17, 25, 37), 0\.5\)/
         );
-        expect(chrome.backdrop).toContain("blur(12px)");
-        expect(chrome.backdrop).toContain("saturate(1.15)");
+        expect(chrome.backdrop).toContain("blur(18px)");
+        expect(chrome.backdrop).toContain("saturate(1.35)");
+        expect(chrome.image).toContain("linear-gradient");
         expect(chrome.shadow).toContain("inset");
 
         await page.goto("/demo/roster");
