@@ -9,22 +9,21 @@
  */
 import {
     useMemo,
-    useRef,
     useState,
     useSyncExternalStore,
     type CSSProperties,
     type KeyboardEvent,
 } from "react";
 import { createPortal } from "react-dom";
-import Link from "next/link";
-import { ChevronDown, Compass, Sparkles } from "lucide-react";
-import { chapterHref, useReplayRun } from "@/features/meetings/presentation";
+import { Sparkles } from "lucide-react";
 import {
     getAnchor,
     useAnchorCandidates,
     useAnchorVersion,
 } from "./anchors";
 import type { TutorialAnchorId } from "./contract";
+import { ExploreRecordingMenu } from "./explore-menu";
+import { TutorialGuide } from "./guide";
 import { useDemoTutorial } from "./provider";
 import { useModalOpen, useTutorialStreaming } from "./presence";
 import { tutorialProgress } from "./progress";
@@ -168,98 +167,16 @@ export function TutorialHud() {
             {cardMounted ? (
                 <div
                     ref={setCard}
-                    role="region"
-                    aria-label="Demo tutorial"
-                    data-testid="tutorial-hud"
-                    data-placement={position?.placement ?? "floating"}
                     data-state={cardVisible ? "shown" : "suspended"}
-                    className="m-notice fixed z-notice w-[min(20rem,calc(100vw-1.5rem))] overflow-hidden rounded-group border border-action/40 bg-surface text-ink shadow-[var(--shadow-overlay)]"
+                    className="fixed z-notice w-[min(20rem,calc(100vw-1.5rem))]"
                     style={cardStyle}
                     onKeyDown={onCardKeyDown}
                 >
-                    {progress ? (
-                        <div
-                            role="progressbar"
-                            aria-label="Demo progress"
-                            aria-valuemin={0}
-                            aria-valuemax={100}
-                            aria-valuenow={progress.percent}
-                            aria-valuetext={progress.label}
-                            data-testid="tutorial-progress"
-                            className="h-1.5 w-full overflow-hidden bg-surface-raised"
-                        >
-                            <div
-                                className="m-progress-fill h-full bg-action"
-                                style={{ width: `${progress.percent}%` }}
-                            />
-                        </div>
-                    ) : null}
-                    <div className="p-3">
-                    <div className="flex items-start gap-2">
-                        <Sparkles
-                            className="mt-0.5 size-4 shrink-0 text-action"
-                            aria-hidden="true"
-                        />
-                        <div className="min-w-0 flex-1">
-                            <p className="type-body font-medium">
-                                {prompt.instruction}
-                            </p>
-                            {prompt.progress ? (
-                                <p className="mt-0.5 type-meta text-ink-secondary">
-                                    {prompt.progress}
-                                </p>
-                            ) : null}
-                        </div>
-                        <ExploreRecordingMenu iconOnly />
-                        <button
-                            type="button"
-                            onClick={tutorial.hide}
-                            className="m-control inline-flex min-h-8 shrink-0 items-center rounded-control px-2 py-1 type-meta text-ink-secondary hover:bg-surface-raised hover:text-ink focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-focus-ring"
-                        >
-                            Hide
-                        </button>
-                    </div>
-                    {prompt.complete ? (
-                        <p className="mt-2 type-meta text-ink-secondary">
-                            {prompt.id === "main-complete"
-                                ? "The recorded meeting is archived. Practice edits stay in this browser. Both tours are optional."
-                                : "Nothing was saved or activated. The recording is unchanged."}
-                        </p>
-                    ) : null}
-                    {prompt.id === "tour-prompt-4" ||
-                    prompt.id === "tour-knowledge-4" ? (
-                        <div className="mt-2 flex flex-wrap gap-1.5">
-                            <TourAction onClick={tutorial.endTour}>
-                                Finish tour
-                            </TourAction>
-                            <TourAction onClick={tutorial.backToDemo}>
-                                Back to demo
-                            </TourAction>
-                        </div>
-                    ) : prompt.id === "main-complete" ? (
-                        <div className="mt-2 flex flex-wrap gap-1.5">
-                            <TourAction
-                                onClick={() => tutorial.startTour("prompt")}
-                            >
-                                Explore prompt versions
-                            </TourAction>
-                            <TourAction
-                                onClick={() => tutorial.startTour("knowledge")}
-                            >
-                                Explore knowledge stacks
-                            </TourAction>
-                            <TourAction onClick={tutorial.hide}>
-                                Finish
-                            </TourAction>
-                        </div>
-                    ) : tutorial.activeTour ? (
-                        <div className="mt-2 flex justify-end">
-                            <TourAction onClick={tutorial.endTour}>
-                                End tour
-                            </TourAction>
-                        </div>
-                    ) : null}
-                    </div>
+                    <TutorialGuide
+                        prompt={prompt}
+                        progress={progress}
+                        variant="card"
+                    />
                 </div>
             ) : null}
             {compactVisible ? <CompactBar /> : null}
@@ -275,24 +192,6 @@ export function TutorialHud() {
             ) : null}
         </>,
         document.body
-    );
-}
-
-function TourAction({
-    onClick,
-    children,
-}: {
-    onClick: () => void;
-    children: React.ReactNode;
-}) {
-    return (
-        <button
-            type="button"
-            onClick={onClick}
-            className="m-control rounded-full border border-action/40 px-2.5 py-0.5 type-meta font-medium text-action hover:bg-accent-soft focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-focus-ring"
-        >
-            {children}
-        </button>
     );
 }
 
@@ -322,93 +221,4 @@ function CompactBar() {
     );
 }
 
-export function ExploreRecordingMenu({ iconOnly = false }: { iconOnly?: boolean }) {
-    const tutorial = useDemoTutorial();
-    const run = useReplayRun();
-    const chapters = run.session.chapters;
-    const detailsRef = useRef<HTMLDetailsElement>(null);
-    const [open, setOpen] = useState(false);
-    const close = () => {
-        if (detailsRef.current) detailsRef.current.open = false;
-        setOpen(false);
-    };
 
-    return (
-        <details
-            ref={detailsRef}
-            className="relative shrink-0"
-            onToggle={(event) => setOpen(event.currentTarget.open)}
-        >
-            <summary
-                aria-label="Explore recording"
-                className={`m-control flex min-h-8 cursor-pointer list-none items-center gap-1 rounded-full type-meta font-medium text-ink-secondary hover:bg-surface-raised hover:text-ink focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-focus-ring [&::-webkit-details-marker]:hidden ${
-                    iconOnly ? "min-w-8 justify-center p-1" : "px-2 py-1"
-                }`}
-            >
-                <Compass className="size-4" aria-hidden="true" />
-                {iconOnly ? null : (
-                    <>
-                        Explore recording
-                        <ChevronDown className="size-3.5" aria-hidden="true" />
-                    </>
-                )}
-            </summary>
-            {/*
-             * The card can sit near the bottom of a short viewport and its
-             * floating position uses a transform, which would make a fixed
-             * child relative to the card. Portal the panel so it is measured
-             * against the viewport and every item stays reachable at 720px
-             * and 390x844.
-             */}
-            {open
-                ? createPortal(
-                      <div
-                          onClick={close}
-                          className="fixed right-4 top-32 z-popup max-h-[70vh] w-64 overflow-y-auto rounded-control border border-control bg-surface p-2 shadow-[var(--shadow-overlay)]"
-                      >
-                          {chapters.length > 0 ? (
-                              <ul className="mb-1 space-y-0.5 border-b border-separator pb-1">
-                                  {chapters.map((chapter) => (
-                                      <li key={chapter.chapter_id}>
-                                          <Link
-                                              href={chapterHref(
-                                                  chapter,
-                                                  run.session.meeting_id
-                                              )}
-                                              aria-current={
-                                                  tutorial.chapterId ===
-                                                  chapter.chapter_id
-                                                      ? "page"
-                                                      : undefined
-                                              }
-                                              className="m-control block rounded px-2 py-1 type-meta text-ink-secondary hover:bg-surface-raised aria-[current=page]:text-ink"
-                                          >
-                                              {chapter.title}
-                                          </Link>
-                                      </li>
-                                  ))}
-                              </ul>
-                          ) : null}
-                          {tutorial.canResume ? (
-                              <button
-                                  type="button"
-                                  onClick={() => void tutorial.resume()}
-                                  className="m-control block w-full rounded px-2 py-1 text-left type-meta text-ink-secondary hover:bg-surface-raised"
-                              >
-                                  Resume current meeting
-                              </button>
-                          ) : null}
-                          <button
-                              type="button"
-                              onClick={tutorial.restart}
-                              className="m-control block w-full rounded px-2 py-1 text-left type-meta text-ink-secondary hover:bg-surface-raised"
-                          >
-                              Restart recording
-                          </button>
-                      </div>,
-                      document.body
-                  )
-                : null}
-        </details>
-    );
-}

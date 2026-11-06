@@ -162,7 +162,10 @@ test.describe("recorded visitor isolation", () => {
             });
 
             // A hides the card, changes route, and inspects a chapter while hidden.
-            await pageA.getByRole("button", { name: "Hide" }).click();
+            await openExploreMenu(pageA);
+            await pageA
+                .getByRole("button", { name: "Hide", exact: true })
+                .click();
             await expect(pageA.getByTestId("tutorial-hud")).toHaveCount(0);
             await expect(
                 pageA.getByTestId("tutorial-hud-compact")
@@ -188,16 +191,16 @@ test.describe("recorded visitor isolation", () => {
             await expect(pageA.getByTestId("tutorial-hud")).toHaveCount(0);
             await pageA.getByRole("button", { name: "Show tips" }).click();
             await expect(
-                pageA.getByTestId("tutorial-hud").getByText("1 of 4 replies")
-            ).toBeVisible();
+                pageA.getByTestId("tutorial-announcement")
+            ).toContainText("1 of 4 replies");
             await expect(message(pageA, CREDIT_MESSAGE)).toBeVisible();
             await expect(message(pageA, DOWNSIDE_MESSAGE)).toHaveCount(0);
 
             // B is untouched by A's chapter detour and hidden state.
             await expect(pageB).toHaveURL(/\/demo\/meetings\/[^/]+/);
             await expect(
-                pageB.getByTestId("tutorial-hud").getByText("1 of 4 replies")
-            ).toBeVisible();
+                pageB.getByTestId("tutorial-announcement")
+            ).toContainText("1 of 4 replies");
             await expect(message(pageB, DOWNSIDE_MESSAGE)).toBeVisible();
 
             await expectNoPublicPersistence(contextA, pageA);
@@ -254,15 +257,15 @@ test.describe("recorded visitor isolation", () => {
             // A new deck starts empty; the old reply cannot leak into it.
             await startRecording(pageA);
             await expect(
-                pageA.getByTestId("tutorial-hud").getByText("0 of 4 replies")
-            ).toBeVisible();
+                pageA.getByTestId("tutorial-announcement")
+            ).toContainText("0 of 4 replies");
             await expect(message(pageA, CREDIT_MESSAGE)).toHaveCount(0);
 
             // B keeps its run, its reply, and its own progress.
             await expect(pageB).toHaveURL(/\/demo\/meetings\/[^/]+/);
             await expect(
-                pageB.getByTestId("tutorial-hud").getByText("1 of 4 replies")
-            ).toBeVisible();
+                pageB.getByTestId("tutorial-announcement")
+            ).toContainText("1 of 4 replies");
             await expect(message(pageB, DOWNSIDE_MESSAGE)).toBeVisible();
             await expect(message(pageB, CREDIT_MESSAGE)).toHaveCount(0);
 
