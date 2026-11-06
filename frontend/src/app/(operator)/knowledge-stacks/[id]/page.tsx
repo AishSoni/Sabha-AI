@@ -18,7 +18,7 @@ export default function KnowledgeStackDetailsPage() {
 
     if (stack.isLoading) {
         return (
-            <div className="flex min-h-screen items-center justify-center bg-gradient-to-br from-canvas via-surface to-canvas">
+            <div className="flex min-h-full items-center justify-center">
                 <Loader2 className="size-8 animate-spin text-action motion-reduce:animate-none" />
             </div>
         );
@@ -26,7 +26,7 @@ export default function KnowledgeStackDetailsPage() {
 
     if (stack.isError || !stack.data) {
         return (
-            <div className="flex min-h-screen flex-col items-center justify-center bg-gradient-to-br from-canvas via-surface to-canvas p-6 text-center text-ink">
+            <div className="flex min-h-full flex-col items-center justify-center p-6 text-center text-ink">
                 <BookOpen className="mb-4 size-12 text-ink-muted" />
                 <h2 className="mb-2 type-page-title">Stack Not Found</h2>
                 <Button variant="outline" onClick={() => router.push('/knowledge-stacks')}>
@@ -37,8 +37,8 @@ export default function KnowledgeStackDetailsPage() {
     }
 
     return (
-        <div className="min-h-screen bg-gradient-to-br from-canvas via-surface to-canvas text-ink">
-            <header className="sticky top-0 z-chrome border-b border-separator bg-canvas/80 backdrop-blur-sm">
+        <div className="min-h-full text-ink">
+            <header className="material-chrome sticky top-0 z-chrome border-b border-separator">
                 <div className="mx-auto flex max-w-4xl flex-col justify-between gap-4 px-6 py-4 md:flex-row md:items-center">
                     <div className="flex items-center gap-4">
                         <Link href="/knowledge-stacks" aria-label="Back to knowledge stacks" className="m-control text-ink-secondary hover:text-ink">

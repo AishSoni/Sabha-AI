@@ -68,6 +68,56 @@ function contrast(foreground: string, background: string): number {
   return (lighter + 0.05) / (darker + 0.05);
 }
 
+type Rgba = { rgb: [number, number, number]; alpha: number };
+
+function rgba(value: string): Rgba {
+  const hex = value.trim().match(/^#([0-9a-f]{3}|[0-9a-f]{6})$/i);
+  if (hex) {
+    return { rgb: hexToRgb(value), alpha: 1 };
+  }
+  const match = value
+    .trim()
+    .match(/^rgb\(\s*(\d+)\s+(\d+)\s+(\d+)(?:\s*\/\s*([\d.]+))?\s*\)$/i);
+  if (!match) {
+    throw new Error(`Expected a hex or rgb colour, got ${value}`);
+  }
+  return {
+    rgb: [Number(match[1]), Number(match[2]), Number(match[3])],
+    alpha: match[4] === undefined ? 1 : Number(match[4]),
+  };
+}
+
+function blend(top: Rgba, bottom: Rgba): [number, number, number] {
+  const alpha = top.alpha + bottom.alpha * (1 - top.alpha);
+  return top.rgb.map((channel, index) => {
+    const mixed =
+      channel * top.alpha +
+      bottom.rgb[index] * bottom.alpha * (1 - top.alpha);
+    return Math.round(mixed / alpha);
+  }) as [number, number, number];
+}
+
+function luminanceRgb([r, g, b]: [number, number, number]): number {
+  const [red, green, blue] = [r, g, b].map((channel) => {
+    const normalized = channel / 255;
+    return normalized <= 0.04045
+      ? normalized / 12.92
+      : ((normalized + 0.055) / 1.055) ** 2.4;
+  });
+  return 0.2126 * red + 0.7152 * green + 0.0722 * blue;
+}
+
+function contrastRgb(
+  foreground: [number, number, number],
+  background: [number, number, number],
+): number {
+  const a = luminanceRgb(foreground);
+  const b = luminanceRgb(background);
+  const lighter = Math.max(a, b);
+  const darker = Math.min(a, b);
+  return (lighter + 0.05) / (darker + 0.05);
+}
+
 const appearances = [
   ["light", light],
   ["dark (explicit)", dark],
@@ -110,6 +160,29 @@ describe("semantic palette contrast", () => {
   });
 
   for (const [name, palette] of appearances) {
+    it(`keeps chrome labels readable over the brightest star in ${name}`, () => {
+      // The starfield caps opacity at 0.8. Blur softens the result, so this is
+      // deliberately stricter than the rendered average.
+      const starOverCanvas = blend(
+        { rgb: rgba(palette["atmosphere-star"]).rgb, alpha: 0.8 },
+        { rgb: rgba(palette["canvas"]).rgb, alpha: 1 },
+      );
+      const chromeOverStar = blend(rgba(palette["chrome-surface"]), {
+        rgb: starOverCanvas,
+        alpha: 1,
+      });
+
+      // Chrome uses primary and secondary labels only; muted copy belongs on
+      // solid content surfaces.
+      for (const role of ["text-primary", "text-secondary"] as const) {
+        const value = contrastRgb(rgba(palette[role]).rgb, chromeOverStar);
+        expect(
+          value,
+          `${role} on composited chrome over star`,
+        ).toBeGreaterThanOrEqual(4.5);
+      }
+    });
+
     it(`keeps every text role readable in ${name}`, () => {
       for (const role of textRoles) {
         for (const background of backgrounds) {

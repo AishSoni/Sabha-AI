@@ -49,9 +49,9 @@ export function SettingsScreen() {
     const [activeSection, setActiveSection] = useState<SettingsSection>('api-keys');
 
     return (
-        <div className="min-h-screen bg-gradient-to-br from-canvas via-surface to-canvas text-ink">
+        <div className="min-h-full text-ink">
             {/* Header */}
-            <header className="sticky top-0 z-chrome border-b border-separator bg-canvas/80 backdrop-blur-sm">
+            <header className="material-chrome sticky top-0 z-chrome border-b border-separator">
                 <div className="mx-auto flex max-w-6xl items-center gap-4 px-6 py-4">
                     <Link href="/" aria-label="Back to home" className="m-control text-ink-secondary hover:text-ink">
                         <ArrowLeft className="w-5 h-5" />

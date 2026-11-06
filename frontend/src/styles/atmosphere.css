@@ -31,18 +31,18 @@
 
 .atmosphere-stars {
   position: absolute;
-  inset: -6%;
-  width: 112%;
-  height: 112%;
+  inset: -20%;
+  width: 140%;
+  height: 140%;
   color: var(--atmosphere-star);
 }
 
 .atmosphere-drift-a {
-  animation: atmosphere-drift-a 240s ease-in-out infinite;
+  animation: atmosphere-drift-a 180s ease-in-out infinite;
 }
 
 .atmosphere-drift-b {
-  animation: atmosphere-drift-b 320s ease-in-out infinite;
+  animation: atmosphere-drift-b 240s ease-in-out infinite;
 }
 
 @keyframes atmosphere-drift-a {
@@ -51,7 +51,7 @@
     transform: translate3d(0, 0, 0);
   }
   50% {
-    transform: translate3d(-18px, 12px, 0);
+    transform: translate3d(-72px, 48px, 0);
   }
 }
 
@@ -61,7 +61,7 @@
     transform: translate3d(0, 0, 0);
   }
   50% {
-    transform: translate3d(14px, -10px, 0);
+    transform: translate3d(64px, -44px, 0);
   }
 }
 

@@ -64,14 +64,17 @@
   --identity-6-ink: #34445a;
 
   /* Environmental atmosphere. Decorative only; never information. */
-  --atmosphere-wash: rgb(109 59 181 / 0.1);
-  --atmosphere-wash-soft: rgb(109 59 181 / 0.05);
+  --atmosphere-wash: rgb(109 59 181 / 0.14);
+  --atmosphere-wash-soft: rgb(109 59 181 / 0.07);
   --atmosphere-star: #6d3bb5;
 
   /* Materials */
   --glass-surface: rgb(255 255 255 / 0.88);
   --glass-border: rgb(23 33 47 / 0.12);
   --glass-highlight: rgb(255 255 255 / 0.92);
+  --chrome-surface: rgb(255 255 255 / 0.66);
+  --chrome-border: rgb(23 33 47 / 0.16);
+  --chrome-highlight: rgb(255 255 255 / 0.92);
   --scrim: rgb(15 23 42 / 0.45);
   --shadow-raised: 0 1px 2px rgb(15 23 42 / 0.06), 0 8px 24px rgb(15 23 42 / 0.08);
   --shadow-overlay: 0 24px 80px rgb(15 23 42 / 0.18), 0 2px 8px rgb(15 23 42 / 0.08);
@@ -134,13 +137,16 @@
   --identity-6-soft: #24303f;
   --identity-6-ink: #dce5ee;
 
-  --atmosphere-wash: rgb(109 59 181 / 0.16);
-  --atmosphere-wash-soft: rgb(109 59 181 / 0.08);
+  --atmosphere-wash: rgb(109 59 181 / 0.2);
+  --atmosphere-wash-soft: rgb(109 59 181 / 0.1);
   --atmosphere-star: #c7b0f5;
 
   --glass-surface: rgb(17 25 37 / 0.88);
   --glass-border: rgb(237 242 248 / 0.14);
   --glass-highlight: rgb(255 255 255 / 0.08);
+  --chrome-surface: rgb(17 25 37 / 0.66);
+  --chrome-border: rgb(237 242 248 / 0.14);
+  --chrome-highlight: rgb(255 255 255 / 0.08);
   --scrim: rgb(2 6 12 / 0.66);
   --shadow-raised: 0 1px 2px rgb(0 0 0 / 0.4), 0 12px 32px rgb(0 0 0 / 0.35);
   --shadow-overlay: 0 24px 96px rgb(0 0 0 / 0.55), 0 2px 8px rgb(0 0 0 / 0.4);
@@ -200,13 +206,16 @@
     --identity-6-soft: #24303f;
     --identity-6-ink: #dce5ee;
 
-    --atmosphere-wash: rgb(109 59 181 / 0.16);
-    --atmosphere-wash-soft: rgb(109 59 181 / 0.08);
+    --atmosphere-wash: rgb(109 59 181 / 0.2);
+    --atmosphere-wash-soft: rgb(109 59 181 / 0.1);
     --atmosphere-star: #c7b0f5;
 
     --glass-surface: rgb(17 25 37 / 0.88);
     --glass-border: rgb(237 242 248 / 0.14);
     --glass-highlight: rgb(255 255 255 / 0.08);
+    --chrome-surface: rgb(17 25 37 / 0.66);
+    --chrome-border: rgb(237 242 248 / 0.14);
+    --chrome-highlight: rgb(255 255 255 / 0.08);
     --scrim: rgb(2 6 12 / 0.66);
     --shadow-raised: 0 1px 2px rgb(0 0 0 / 0.4), 0 12px 32px rgb(0 0 0 / 0.35);
     --shadow-overlay: 0 24px 96px rgb(0 0 0 / 0.55), 0 2px 8px rgb(0 0 0 / 0.4);

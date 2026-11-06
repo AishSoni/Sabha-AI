@@ -118,8 +118,8 @@ export function MeetingCreationScreen({
             selectedCount > 0);
 
     return (
-        <div className="min-h-screen bg-gradient-to-br from-canvas via-surface to-canvas">
-            <header className="sticky top-0 z-chrome border-b border-separator bg-canvas/80 backdrop-blur-sm">
+        <div className="min-h-full">
+            <header className="material-chrome sticky top-0 z-chrome border-b border-separator">
                 <div className="max-w-4xl mx-auto px-6 py-4 flex items-center justify-between">
                     <div className="flex items-center gap-4">
                         <Link href={backHref} className="text-ink-secondary hover:text-ink transition-colors">

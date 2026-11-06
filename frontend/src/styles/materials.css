@@ -21,6 +21,19 @@
     backdrop-filter: blur(12px);
   }
 
+  /*
+   * Navigation and room chrome use a lighter tint than content glass so the
+   * atmosphere remains perceptible while labels keep AA contrast over the
+   * brightest permitted star. The inset highlight gives the pane a visible
+   * top edge even when the backdrop is nearly uniform.
+   */
+  .material-chrome {
+    background-color: var(--chrome-surface);
+    box-shadow: inset 0 1px 0 var(--chrome-highlight);
+    -webkit-backdrop-filter: blur(12px) saturate(1.15);
+    backdrop-filter: blur(12px) saturate(1.15);
+  }
+
   .material-scrim {
     background-color: var(--scrim);
   }
@@ -33,7 +46,8 @@
   @supports not (
     (backdrop-filter: blur(12px)) or (-webkit-backdrop-filter: blur(12px))
   ) {
-    .material-glass {
+    .material-glass,
+    .material-chrome {
       background-color: var(--surface);
       border-color: var(--border-control);
       -webkit-backdrop-filter: none;
@@ -42,7 +56,8 @@
   }
 
   @media (prefers-reduced-transparency: reduce) {
-    .material-glass {
+    .material-glass,
+    .material-chrome {
       background-color: var(--surface);
       border-color: var(--border-control);
       -webkit-backdrop-filter: none;
@@ -50,7 +65,8 @@
     }
   }
 
-  [data-transparency="opaque"] .material-glass {
+  [data-transparency="opaque"] .material-glass,
+  [data-transparency="opaque"] .material-chrome {
     background-color: var(--surface);
     border-color: var(--border-control);
     -webkit-backdrop-filter: none;
@@ -60,7 +76,8 @@
   @media (forced-colors: active) {
     .material-solid,
     .material-raised,
-    .material-glass {
+    .material-glass,
+    .material-chrome {
       background-color: Canvas;
       border-color: CanvasText;
       box-shadow: none;

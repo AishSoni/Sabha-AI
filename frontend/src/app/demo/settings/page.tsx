@@ -6,7 +6,7 @@ export const metadata = {
 
 export default function DemoSettingsPage() {
     return (
-        <main id="main-content" className="min-h-screen bg-canvas px-4 py-10 text-ink" tabIndex={-1}>
+        <main id="main-content" className="min-h-full px-4 py-10 text-ink" tabIndex={-1}>
             <div className="mx-auto max-w-3xl space-y-8">
                 <header className="space-y-3">
                     <p className="type-meta font-semibold uppercase tracking-wide text-warning">

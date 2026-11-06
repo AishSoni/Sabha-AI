@@ -68,7 +68,7 @@ function Content({
         : null;
 
     return (
-        <div className="min-h-screen bg-canvas text-ink">
+        <div className="min-h-full text-ink">
             <div className="border-b border-separator bg-surface/40 px-4 py-3">
                 <div className="mx-auto flex max-w-4xl flex-wrap items-center justify-between gap-2 text-xs text-ink-secondary">
                     <p>

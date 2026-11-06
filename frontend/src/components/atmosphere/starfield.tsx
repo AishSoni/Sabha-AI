@@ -18,13 +18,13 @@ function field(seed: number, count: number, maxRadius: number): Star[] {
       x: next() * 1600,
       y: next() * 1000,
       r: 0.55 + depth * maxRadius,
-      opacity: 0.2 + next() * 0.65,
+      opacity: 0.22 + next() * 0.58,
     };
   });
 }
 
-const NEAR_STARS = field(0x5a6b71, 34, 1.4);
-const FAR_STARS = field(0x1d2f43, 72, 0.75);
+const NEAR_STARS = field(0x5a6b71, 60, 1.5);
+const FAR_STARS = field(0x1d2f43, 140, 0.8);
 
 function Plane({
   stars,

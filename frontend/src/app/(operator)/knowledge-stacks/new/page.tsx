@@ -10,8 +10,8 @@ import { StackEditor } from '@/features/knowledge';
 
 export default function NewKnowledgeStackPage() {
     return (
-        <div className="min-h-screen bg-gradient-to-br from-canvas via-surface to-canvas text-ink">
-            <header className="sticky top-0 z-chrome border-b border-separator bg-canvas/80 backdrop-blur-sm">
+        <div className="min-h-full text-ink">
+            <header className="material-chrome sticky top-0 z-chrome border-b border-separator">
                 <div className="mx-auto flex max-w-4xl items-center gap-4 px-6 py-4">
                     <Link href="/knowledge-stacks" aria-label="Back to knowledge stacks" className="m-control text-ink-secondary hover:text-ink">
                         <ArrowLeft className="size-5" />

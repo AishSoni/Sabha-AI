@@ -113,9 +113,9 @@ export function NewPersonaScreen({ client, loadStacks, routes, stacksHint }: New
     };
 
     return (
-        <div className="min-h-screen bg-gradient-to-br from-canvas via-surface to-canvas text-ink">
+        <div className="min-h-full text-ink">
             {/* Header */}
-            <header className="sticky top-0 z-chrome border-b border-separator bg-canvas/80 backdrop-blur-sm">
+            <header className="material-chrome sticky top-0 z-chrome border-b border-separator">
                 <div className="max-w-4xl mx-auto px-6 py-4 flex items-center justify-between">
                     <div className="flex items-center gap-4">
                         <Link href={routes.roster} className="text-ink-secondary hover:text-ink m-control">
