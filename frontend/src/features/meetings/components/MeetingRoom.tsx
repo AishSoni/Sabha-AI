@@ -89,12 +89,12 @@ import { EvidenceCitationTrigger } from '../evidence/trigger';
 import { EvidencePreviewHost } from '../evidence/host';
 import { EvidencePreviewProvider } from '../evidence/provider';
 import {
+    RoomExploreMenu,
     RoomTutorialInline,
     useAnchorRef,
     useTutorialStreamingFlag,
     type TutorialAnchorId,
 } from '@/features/demo-tutorial';
-import { RoomExploreMenu } from '@/features/demo-tutorial/room-explore-menu';
 
 export interface MeetingRoomProps {
     meetingId: string;
