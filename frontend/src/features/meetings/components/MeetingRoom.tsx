@@ -550,7 +550,8 @@ function MeetingConversation({
 
                     <TabsContent
                         value="chat"
-                        className="m-0 flex min-h-0 flex-1 flex-col bg-surface"
+                        data-testid="room-chat-surface"
+                        className="m-0 flex min-h-0 flex-1 flex-col bg-surface/70"
                     >
                         <MessageList
                             meeting={meeting}

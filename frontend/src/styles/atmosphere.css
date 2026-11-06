@@ -31,18 +31,23 @@
 
 .atmosphere-stars {
   position: absolute;
-  inset: -20%;
-  width: 140%;
-  height: 140%;
+  inset: -30%;
+  width: 160%;
+  height: 160%;
   color: var(--atmosphere-star);
 }
 
+.atmosphere-star {
+  opacity: var(--star-opacity);
+  animation: atmosphere-twinkle 7s ease-in-out infinite;
+}
+
 .atmosphere-drift-a {
-  animation: atmosphere-drift-a 180s ease-in-out infinite;
+  animation: atmosphere-drift-a 100s ease-in-out infinite;
 }
 
 .atmosphere-drift-b {
-  animation: atmosphere-drift-b 240s ease-in-out infinite;
+  animation: atmosphere-drift-b 140s ease-in-out infinite;
 }
 
 @keyframes atmosphere-drift-a {
@@ -51,7 +56,7 @@
     transform: translate3d(0, 0, 0);
   }
   50% {
-    transform: translate3d(-72px, 48px, 0);
+    transform: translate3d(-96px, 64px, 0);
   }
 }
 
@@ -61,18 +66,30 @@
     transform: translate3d(0, 0, 0);
   }
   50% {
-    transform: translate3d(64px, -44px, 0);
+    transform: translate3d(88px, -56px, 0);
+  }
+}
+
+@keyframes atmosphere-twinkle {
+  0%,
+  100% {
+    opacity: var(--star-opacity);
+  }
+  50% {
+    opacity: calc(var(--star-opacity) * 0.45);
   }
 }
 
 [data-background="paused"] .atmosphere-drift-a,
-[data-background="paused"] .atmosphere-drift-b {
+[data-background="paused"] .atmosphere-drift-b,
+[data-background="paused"] .atmosphere-star {
   animation-play-state: paused;
 }
 
 @media (prefers-reduced-motion: reduce) {
   .atmosphere-drift-a,
-  .atmosphere-drift-b {
+  .atmosphere-drift-b,
+  .atmosphere-star {
     animation: none !important;
   }
 }
