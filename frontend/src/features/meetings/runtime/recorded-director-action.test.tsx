@@ -89,7 +89,7 @@ describe("RecordedDirectorAction", () => {
         ).toBeInTheDocument();
     });
 
-    it("previews the exact prepared question behind a disclosure", async () => {
+    it("shows the exact prepared question in full", async () => {
         const question =
             "Portfolio Analyst, assume a fictional three-year mandate that requires an executable price, yield, and liquidity assessment. What can you conclude from this record?";
         const sendFollowUp = vi.fn().mockResolvedValue(undefined);
@@ -119,18 +119,11 @@ describe("RecordedDirectorAction", () => {
         render(<RecordedDirectorAction />);
 
         const preview = screen.getByText(question);
-        expect(preview).toHaveClass("line-clamp-2");
-
-        const expand = screen.getByRole("button", { name: "Expand" });
-        expect(expand).toHaveAttribute("aria-expanded", "false");
-        fireEvent.click(expand);
-
-        expect(screen.getByRole("button", { name: "Collapse" })).toHaveAttribute(
-            "aria-expanded",
-            "true"
-        );
         expect(preview).toHaveTextContent(question);
         expect(preview).not.toHaveClass("line-clamp-2");
+        expect(
+            screen.queryByRole("button", { name: /Expand|Collapse/ })
+        ).not.toBeInTheDocument();
 
         fireEvent.click(screen.getByRole("button", { name: "Send question" }));
         await waitFor(() => expect(sendFollowUp).toHaveBeenCalledTimes(1));
