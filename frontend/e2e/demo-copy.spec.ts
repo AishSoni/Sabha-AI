@@ -49,7 +49,9 @@ test.describe("concise demo copy", () => {
         await serveRecordedAssets(page);
 
         await page.goto("/");
-        await expect(page.getByRole("link", { name: "Recorded demo" })).toBeVisible();
+        await expect(
+            page.getByRole("link", { name: "Explore the recorded demo" }),
+        ).toBeVisible();
         await expectNoBannedCopy(page);
 
         await page.goto("/demo");

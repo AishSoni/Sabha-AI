@@ -4,6 +4,7 @@
 @import "../styles/motion.css";
 @import "../styles/materials.css";
 @import "../styles/atmosphere.css";
+@import "../styles/homepage.css";
 
 @theme inline {
   --font-sans: var(--font-satoshi), ui-sans-serif, system-ui, -apple-system,
