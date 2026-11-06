@@ -383,7 +383,8 @@ describe("canonical guided demo journey", () => {
         const card = await screen.findByTestId("tutorial-hud");
         await waitFor(() => expect(card).toHaveAttribute("data-state", "shown"));
         expect(within(card).getByText("Meet the board")).toBeInTheDocument();
-        fireEvent.click(within(card).getByRole("button", { name: "Hide" }));
+        fireEvent.click(within(card).getByLabelText("Explore recording"));
+        fireEvent.click(screen.getByRole("button", { name: "Hide" }));
 
         expect(screen.queryByTestId("tutorial-hud")).not.toBeInTheDocument();
         expect(

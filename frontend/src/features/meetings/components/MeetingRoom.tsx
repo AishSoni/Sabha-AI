@@ -89,7 +89,6 @@ import { EvidenceCitationTrigger } from '../evidence/trigger';
 import { EvidencePreviewHost } from '../evidence/host';
 import { EvidencePreviewProvider } from '../evidence/provider';
 import {
-    RoomExploreMenu,
     RoomTutorialInline,
     useAnchorRef,
     useTutorialStreamingFlag,
@@ -408,7 +407,6 @@ function MeetingConversation({
                     )}
                 </div>
                 <div className="flex flex-wrap items-center justify-end gap-2">
-                    {runtime.replay ? <RoomExploreMenu /> : null}
                     {runtime.restart && (
                         <Button
                             variant="ghost"

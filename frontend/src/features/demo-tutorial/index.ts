@@ -29,4 +29,3 @@ export {
     useTutorialStreamingFlag,
 } from "./presence";
 export { RoomTutorialInline } from "./inline";
-export { RoomExploreMenu } from "./room-explore-menu";

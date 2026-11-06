@@ -107,11 +107,17 @@ test.describe("demo keyboard and narrow-screen accessibility", () => {
         await page.goto("/demo");
 
         const hud = page.getByTestId("tutorial-hud");
+        const progress = hud.getByRole("progressbar", {
+            name: "Demo progress",
+        });
         await expect(hud).toHaveAccessibleName("Demo tutorial");
         await expect(hud).toHaveAttribute("role", "region");
         await expect(page.getByRole("dialog")).toHaveCount(0);
 
-        await hud.getByRole("button", { name: "Hide" }).focus();
+        await hud.getByLabel("Explore recording").click();
+        await page
+            .getByRole("button", { name: "Hide", exact: true })
+            .focus();
         await page.keyboard.press("Enter");
         await expect(hud).toHaveCount(0);
         const show = page.getByRole("button", { name: "Show tips" });
@@ -152,9 +158,9 @@ test.describe("demo keyboard and narrow-screen accessibility", () => {
         await page.getByRole("tab", { name: "Chat" }).click();
 
         const expectedProgress = [
-            "2 of 4 replies",
-            "3 of 4 replies",
-            "Send your follow-up",
+            { value: "45", instruction: "Choose a recorded reply" },
+            { value: "48", instruction: "Choose a recorded reply" },
+            { value: "50", instruction: "Send your follow-up" },
         ];
         for (const [index, name] of [
             "Credit Analyst opening facts",
@@ -165,9 +171,14 @@ test.describe("demo keyboard and narrow-screen accessibility", () => {
             await expect(action).toBeEnabled();
             await action.focus();
             await page.keyboard.press("Enter");
-            await expect(hud.getByText(expectedProgress[index])).toBeVisible({
-                timeout: 30_000,
-            });
+            await expect(progress).toHaveAttribute(
+                "aria-valuenow",
+                expectedProgress[index].value,
+                { timeout: 30_000 }
+            );
+            await expect(
+                hud.getByText(expectedProgress[index].instruction)
+            ).toBeVisible({ timeout: 30_000 });
         }
         const send = page.getByRole("button", { name: "Send question" });
         await expect(send).toBeVisible({ timeout: 30_000 });

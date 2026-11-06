@@ -11,6 +11,11 @@ import { serveRecordedAssets } from "./support/recorded-assets";
  * These checks never press a generic Continue/Next button: progress comes from
  * the recorded outcomes the room accepts.
  */
+async function hideTutorial(page: Page, hud: ReturnType<Page["getByTestId"]>) {
+    await hud.getByLabel("Explore recording").click();
+    await page.getByRole("button", { name: "Hide", exact: true }).click();
+}
+
 async function startRecording(page: Page) {
     const network = guardNetwork(page);
     await page.goto("/demo");
@@ -82,10 +87,36 @@ test.describe("contextual demo tutorial", () => {
         const { hud, network } = await startRecording(page);
 
         await expect(hud.getByText("Choose a recorded reply")).toBeVisible();
-        await expect(hud.getByText("0 of 4 replies")).toBeVisible();
         const progress = hud.getByRole("progressbar", {
             name: "Demo progress",
         });
+        await expect(hud.getByText("0 of 4 replies")).toHaveCount(0);
+        await expect(
+            hud.getByRole("button", { name: "Hide", exact: true })
+        ).toHaveCount(0);
+        await expect(hud.getByLabel("Explore recording")).toBeVisible();
+        const inlineBounds = await hud.boundingBox();
+        const inlineProgressBounds = await progress.boundingBox();
+        expect(inlineBounds).not.toBeNull();
+        expect(inlineProgressBounds).not.toBeNull();
+        expect(inlineProgressBounds!.x).toBeGreaterThanOrEqual(
+            inlineBounds!.x + 0.5
+        );
+        expect(inlineProgressBounds!.x).toBeLessThanOrEqual(
+            inlineBounds!.x + 1.5
+        );
+        expect(inlineProgressBounds!.y).toBeGreaterThanOrEqual(
+            inlineBounds!.y + 0.5
+        );
+        expect(inlineProgressBounds!.y).toBeLessThanOrEqual(
+            inlineBounds!.y + 1.5
+        );
+        expect(inlineProgressBounds!.width).toBeGreaterThanOrEqual(
+            inlineBounds!.width - 2.5
+        );
+        expect(inlineProgressBounds!.width).toBeLessThanOrEqual(
+            inlineBounds!.width - 1.5
+        );
         await expect(progress).toHaveAttribute("aria-valuenow", "40");
         await expect(progress).toHaveAttribute("aria-valuetext", "Step 4 of 10");
         const ring = page.getByTestId("tutorial-ring");
@@ -95,17 +126,18 @@ test.describe("contextual demo tutorial", () => {
         await page
             .getByRole("button", { name: "Credit Analyst opening facts" })
             .click();
-        await expect(hud.getByText("1 of 4 replies")).toBeVisible({
+        await expect(progress).toHaveAttribute("aria-valuenow", "43", {
             timeout: 30_000,
         });
         await expect(hud.getByText("Choose a recorded reply")).toBeVisible();
-        await expect(progress).toHaveAttribute("aria-valuenow", "43");
 
-        await hud.getByRole("button", { name: "Hide" }).click();
+        await hideTutorial(page, hud);
         await expect(page.getByTestId("tutorial-hud")).toHaveCount(0);
         await page.getByRole("button", { name: "Show tips" }).click();
         await expect(hud.getByText("Choose a recorded reply")).toBeVisible();
-        await expect(hud.getByText("1 of 4 replies")).toBeVisible();
+        await expect(
+            hud.getByRole("progressbar", { name: "Demo progress" })
+        ).toHaveAttribute("aria-valuenow", "43");
 
         await page.getByRole("button", { name: "Downside challenge" }).click();
         await page.getByRole("button", { name: "Mandate review" }).click();
@@ -195,7 +227,10 @@ test.describe("contextual demo tutorial", () => {
         await expect(hud).toHaveCSS("animation-name", "none");
         await expect(hud).toHaveCSS("transition-duration", "0s");
 
-        await hud.getByRole("button", { name: "Hide" }).focus();
+        await hud.getByLabel("Explore recording").click();
+        await page
+            .getByRole("button", { name: "Hide", exact: true })
+            .focus();
         await page.keyboard.press("Enter");
         await expect(page.getByTestId("tutorial-hud")).toHaveCount(0);
         await page.getByRole("button", { name: "Show tips" }).press("Enter");
@@ -271,7 +306,7 @@ test.describe("contextual demo tutorial", () => {
         const { hud, network } = await startRecording(page);
         const compact = page.getByTestId("tutorial-hud-compact");
 
-        await hud.getByRole("button", { name: "Hide" }).click();
+        await hideTutorial(page, hud);
         await expect(page.getByTestId("tutorial-hud")).toHaveCount(0);
         await expect(compact).toBeVisible();
 
@@ -297,12 +332,16 @@ test.describe("contextual demo tutorial", () => {
 
         await page.getByRole("button", { name: "Show tips" }).click();
         await expect(hud.getByText("Choose a recorded reply")).toBeVisible();
-        await expect(hud.getByText("1 of 4 replies")).toBeVisible();
+        await expect(
+            hud.getByRole("progressbar", { name: "Demo progress" })
+        ).toHaveAttribute("aria-valuenow", "43");
 
         await page.getByRole("button", { name: "Downside challenge" }).click();
-        await expect(hud.getByText("2 of 4 replies")).toBeVisible({
-            timeout: 30_000,
-        });
+        await expect(
+            page
+                .getByTestId("tutorial-hud")
+                .getByRole("progressbar", { name: "Demo progress" })
+        ).toHaveAttribute("aria-valuenow", "45", { timeout: 30_000 });
 
         network.assertClean();
         await expectNoPublicPersistence(context, page);
@@ -318,9 +357,9 @@ test.describe("contextual demo tutorial", () => {
         await page
             .getByRole("button", { name: "Credit Analyst opening facts" })
             .click();
-        await expect(hud.getByText("1 of 4 replies")).toBeVisible({
-            timeout: 30_000,
-        });
+        await expect(
+            hud.getByRole("progressbar", { name: "Demo progress" })
+        ).toHaveAttribute("aria-valuenow", "43", { timeout: 30_000 });
 
         await page.getByRole("button", { name: /5 Sources/ }).first().click();
         await expect(
@@ -350,7 +389,9 @@ test.describe("contextual demo tutorial", () => {
         await page.keyboard.press("Escape");
         await expect(dialog).toBeHidden();
         await expect(hud.getByText("Choose a recorded reply")).toBeVisible();
-        await expect(hud.getByText("1 of 4 replies")).toBeVisible();
+        await expect(
+            hud.getByRole("progressbar", { name: "Demo progress" })
+        ).toHaveAttribute("aria-valuenow", "43");
 
         network.assertClean();
         await expectNoPublicPersistence(context, page);
