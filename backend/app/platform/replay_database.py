@@ -25,7 +25,7 @@ from __future__ import annotations
 
 import logging
 import threading
-from urllib.parse import urlsplit
+from urllib.parse import parse_qs, urlsplit
 
 import psycopg
 from psycopg_pool import ConnectionPool, PoolClosed, PoolTimeout
@@ -78,7 +78,13 @@ def get_replay_database_url() -> str:
             "the runtime never falls back to DATABASE_URL or SUPABASE_SERVICE_KEY"
         )
     parts = urlsplit(url)
-    if parts.scheme not in ("postgresql", "postgres") or not parts.hostname:
+    # TCP URLs carry the host in the netloc. Unix-socket URLs (used by the
+    # disposable test server on Linux) leave the netloc empty and pass the
+    # socket directory as ``?host=/path``.
+    socket_host = any(value.strip() for value in parse_qs(parts.query).get("host", []))
+    if parts.scheme not in ("postgresql", "postgres") or not (
+        parts.hostname or socket_host
+    ):
         raise ReplayReaderNotConfigured(
             "REPLAY_DATABASE_URL must be a PostgreSQL connection URL"
         )
