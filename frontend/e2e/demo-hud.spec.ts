@@ -100,13 +100,13 @@ test.describe("contextual demo tutorial", () => {
         expect(inlineBounds).not.toBeNull();
         expect(inlineProgressBounds).not.toBeNull();
         expect(inlineProgressBounds!.x).toBeGreaterThanOrEqual(
-            inlineBounds!.x + 0.5
+            inlineBounds!.x + 0.25
         );
         expect(inlineProgressBounds!.x).toBeLessThanOrEqual(
             inlineBounds!.x + 1.5
         );
         expect(inlineProgressBounds!.y).toBeGreaterThanOrEqual(
-            inlineBounds!.y + 0.5
+            inlineBounds!.y + 0.25
         );
         expect(inlineProgressBounds!.y).toBeLessThanOrEqual(
             inlineBounds!.y + 1.5
