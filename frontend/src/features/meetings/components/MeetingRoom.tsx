@@ -94,6 +94,7 @@ import {
     useTutorialStreamingFlag,
     type TutorialAnchorId,
 } from '@/features/demo-tutorial';
+import { RoomExploreMenu } from '@/features/demo-tutorial/room-explore-menu';
 
 export interface MeetingRoomProps {
     meetingId: string;
@@ -407,6 +408,7 @@ function MeetingConversation({
                     )}
                 </div>
                 <div className="flex flex-wrap items-center justify-end gap-2">
+                    {runtime.replay ? <RoomExploreMenu /> : null}
                     {runtime.restart && (
                         <Button
                             variant="ghost"
