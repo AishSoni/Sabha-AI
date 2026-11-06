@@ -4,5 +4,6 @@
 pytest==9.1.1
 pytest-asyncio==1.4.0
 pytest-cov==7.1.0
+pytest-xdist==3.8.0         # parallel test execution; workers get isolated Postgres clusters
 pgserver==0.1.4            # embedded disposable PostgreSQL for schema/integration tests
 psycopg[binary]==3.3.6     # direct SQL inside test fixtures (schema application, probes)
