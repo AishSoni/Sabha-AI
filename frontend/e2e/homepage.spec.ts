@@ -1,0 +1,322 @@
+import { expect, test } from "@playwright/test";
+
+import { guardNetwork, storageSnapshot } from "./support/guardrails";
+
+test.describe("homepage composition", () => {
+  test("renders the four approved regions and exact invitation", async ({
+    page,
+  }) => {
+    const network = guardNetwork(page);
+    await page.goto("/");
+
+    await expect(page.locator(".home-page > header")).toHaveCount(1);
+    await expect(page.locator(".home-page > main > section")).toHaveCount(2);
+    await expect(page.locator(".home-page > footer")).toHaveCount(1);
+
+    await expect(
+      page.getByRole("heading", {
+        level: 1,
+        name: "Bring more minds to your next decision.",
+      }),
+    ).toBeVisible();
+    await expect(
+      page.getByText(
+        "Distinct AI perspectives, grounded in sources you can inspect, with you setting the direction.",
+      ),
+    ).toBeVisible();
+    await expect(
+      page.getByText(
+        "Prepared demo · recorded responses, not live generation.",
+      ),
+    ).toBeVisible();
+
+    const demo = page
+      .locator(".home-hero")
+      .getByRole("link", { name: "Explore the recorded demo" });
+    await expect(demo).toHaveAttribute("href", "/demo");
+    await expect(
+      page
+        .locator(".home-hero")
+        .getByRole("link", { name: "Operator sign-in" }),
+    ).toHaveAttribute("href", "/login");
+    await expect(
+      page.getByRole("link", { name: "Explore the evidence constellation" }),
+    ).toHaveAttribute("href", "#evidence");
+
+    await expect(
+      page.getByRole("heading", {
+        name: "Different perspectives. Traceable sources.",
+      }),
+    ).toBeVisible();
+    await expect(
+      page.getByText(
+        "Illustrative view of the prepared demo · not a live retrieval record",
+      ),
+    ).toBeVisible();
+    await expect(
+      page.getByRole("link", { name: "Inspect evidence in the demo" }),
+    ).toHaveAttribute("href", "/demo");
+    await expect(page.getByText("Director")).toHaveCount(0);
+    await expect(
+      page.getByRole("link", { name: "Explore the recorded demo" }).last(),
+    ).toHaveAttribute("href", "/demo");
+
+    network.assertClean();
+  });
+
+  test("appearance follows the system and can be changed in memory", async ({
+    page,
+  }) => {
+    await page.emulateMedia({ colorScheme: "dark" });
+    await page.goto("/");
+
+    await expect(page.locator("html")).not.toHaveAttribute("data-theme");
+    await expect
+      .poll(() => page.locator("body").evaluate((el) => getComputedStyle(el).backgroundColor))
+      .toBe("rgb(9, 13, 20)");
+
+    await page.getByRole("button", { name: /^Appearance:/ }).click();
+    await page.getByRole("menuitemradio", { name: "Light" }).click();
+
+    await expect(page.locator("html")).toHaveAttribute("data-theme", "light");
+    await expect
+      .poll(() => page.locator("body").evaluate((el) => getComputedStyle(el).backgroundColor))
+      .toBe("rgb(245, 247, 250)");
+    await expect(
+      page.getByRole("button", { name: "Appearance: Light" }),
+    ).toBeVisible();
+    await expect(page.getByRole("heading", { level: 1 })).toBeVisible();
+  });
+
+  test("the motion control pauses the ambient field without navigating", async ({
+    page,
+  }) => {
+    await page.goto("/");
+    const toggle = page.getByTestId("home-motion-toggle");
+    await expect(toggle).toHaveAttribute("aria-label", "Pause animation");
+    await expect(page.locator("html")).toHaveAttribute(
+      "data-background",
+      "on",
+    );
+
+    await toggle.click();
+    await expect(toggle).toHaveAttribute("aria-label", "Resume animation");
+    await expect(page.locator("html")).toHaveAttribute(
+      "data-background",
+      "paused",
+    );
+    await expect(page).toHaveURL(/\/$/);
+
+    await toggle.click();
+    await expect(toggle).toHaveAttribute("aria-label", "Pause animation");
+    await expect(page.locator("html")).toHaveAttribute(
+      "data-background",
+      "on",
+    );
+  });
+
+  test("keeps the hero invitation visible at compact and wide sizes", async ({
+    page,
+  }) => {
+    await page.goto("/");
+
+    for (const viewport of [
+      { width: 320, height: 800 },
+      { width: 390, height: 844 },
+      { width: 768, height: 900 },
+      { width: 1024, height: 768 },
+      { width: 1440, height: 900 },
+    ]) {
+      await page.setViewportSize(viewport);
+      const geometry = await page.evaluate(() => {
+        const disclosure = document
+          .querySelector(".home-hero__disclosure")
+          ?.getBoundingClientRect();
+        const cta = document
+          .querySelector(".home-demo-cta")
+          ?.getBoundingClientRect();
+        const slots = document.querySelectorAll(
+          ".home-persona-field__static .home-slot",
+        );
+        const visibleSlots = Array.from(slots).filter(
+          (slot) => getComputedStyle(slot).display !== "none",
+        ).length;
+        return {
+          viewportWidth: window.innerWidth,
+          viewportHeight: window.innerHeight,
+          scrollWidth: document.documentElement.scrollWidth,
+          disclosureBottom: disclosure?.bottom ?? Infinity,
+          ctaWidth: cta?.width ?? 0,
+          visibleSlots,
+        };
+      });
+
+      expect(geometry.scrollWidth, `${viewport.width}px overflow`).toBeLessThanOrEqual(
+        geometry.viewportWidth,
+      );
+      expect(geometry.disclosureBottom, `${viewport.width}px disclosure`).toBeLessThanOrEqual(
+        geometry.viewportHeight,
+      );
+      expect(geometry.ctaWidth, `${viewport.width}px CTA`).toBeGreaterThanOrEqual(280);
+      expect(geometry.visibleSlots, `${viewport.width}px slots`).toBe(
+        viewport.width < 768 ? 7 : viewport.width < 1200 ? 14 : 18,
+      );
+    }
+  });
+
+  test("does not introduce public persistence or third-party requests", async ({
+    page,
+    context,
+  }) => {
+    const network = guardNetwork(page);
+    await page.goto("/");
+    const before = await storageSnapshot(context, page);
+
+    await page.getByRole("button", { name: /^Appearance:/ }).click();
+    await page.getByRole("menuitemradio", { name: "Dark" }).click();
+    await page.getByTestId("home-motion-toggle").click();
+    await page
+      .getByRole("link", { name: "Explore the evidence constellation" })
+      .click();
+    await expect(page).toHaveURL(/#evidence$/);
+
+    const after = await storageSnapshot(context, page);
+    expect(after.localStorage).toEqual(before.localStorage);
+    expect(after.sessionStorage).toEqual(before.sessionStorage);
+    expect(after.indexedDb).toEqual(before.indexedDb);
+    expect(after.caches).toEqual(before.caches);
+    expect(after.serviceWorkers).toEqual(before.serviceWorkers);
+    network.assertClean();
+  });
+
+});
+
+test.describe("homepage evidence graph", () => {
+  test("selects a node without moving the authored graph", async ({ page }) => {
+    await page.setViewportSize({ width: 1440, height: 900 });
+    await page.goto("/#evidence");
+
+    const credit = page
+      .locator(".home-graph__visual .home-graph__node")
+      .filter({ hasText: "The Credit Analyst" });
+    const crisil = page
+      .locator(".home-graph__visual .home-graph__node")
+      .filter({ hasText: "Crisil annexure" });
+    const before = await credit.boundingBox();
+
+    await crisil.focus();
+    await crisil.press("Enter");
+
+    await expect(
+      page.locator(".home-graph__detail h3"),
+    ).toHaveText("Crisil annexure");
+    await expect(
+      page.locator(".home-graph__detail").getByText("Cited source"),
+    ).toBeVisible();
+    await expect(
+      page.locator(".home-graph__visual .home-graph__edge[data-active='true']"),
+    ).toHaveCount(1);
+    await expect(crisil).toHaveAttribute("aria-pressed", "true");
+    await expect(
+      page.locator(".home-graph__visual .home-graph__node[aria-pressed='true']"),
+    ).toHaveCount(1);
+
+    const after = await credit.boundingBox();
+    expect(after?.x).toBe(before?.x);
+    expect(after?.y).toBe(before?.y);
+  });
+
+  test("offers a complete relationship list on request", async ({ page }) => {
+    await page.setViewportSize({ width: 1440, height: 900 });
+    await page.goto("/#evidence");
+
+    const reading = page.locator(".home-graph__reading--desktop");
+    await reading.locator("summary").click();
+    await expect(reading).toHaveAttribute("open", "");
+    await expect(
+      reading.getByText("The Credit Analyst → Crisil annexure"),
+    ).toBeVisible();
+    await expect(reading.getByText("Assigned / available").first()).toBeVisible();
+    await expect(reading.getByText("Example citation").first()).toBeVisible();
+  });
+
+  test("uses the structured list on compact screens", async ({ page }) => {
+    await page.setViewportSize({ width: 390, height: 844 });
+    await page.goto("/#evidence");
+
+    await expect(page.locator(".home-graph__visual")).toBeHidden();
+    const mobile = page.locator(".home-graph__mobile");
+    await expect(mobile).toBeVisible();
+    await mobile
+      .locator(".home-graph__node-list-button")
+      .filter({ hasText: "Portfolio mandate" })
+      .click();
+    await expect(
+      page.locator(".home-graph__detail h3"),
+    ).toHaveText("Portfolio mandate");
+  });
+});
+
+test.describe("homepage reduced motion", () => {
+  test.use({ reducedMotion: "reduce" });
+
+  test("keeps a static, readable composition and explains the paused control", async ({
+    page,
+  }) => {
+    await page.goto("/");
+
+    const field = page.getByTestId("home-persona-field");
+    await expect(field).toHaveAttribute("data-motion", "reduced");
+    await expect(field).toHaveAttribute("data-webgl", "static");
+    await expect(page.getByTestId("home-persona-canvas")).toHaveCSS(
+      "opacity",
+      "0",
+    );
+
+    const toggle = page.getByTestId("home-motion-toggle");
+    await expect(toggle).toBeDisabled();
+    await expect(toggle).toHaveAttribute(
+      "aria-label",
+      "Animation paused by your reduced-motion setting",
+    );
+    await expect(page.getByRole("heading", { level: 1 })).toBeVisible();
+    await expect(
+      page
+        .locator(".home-hero")
+        .getByRole("link", { name: "Explore the recorded demo" }),
+    ).toBeVisible();
+    await expect(
+      page.getByText(
+        "Prepared demo · recorded responses, not live generation.",
+      ),
+    ).toBeVisible();
+  });
+});
+
+test.describe("homepage without JavaScript", () => {
+  test.use({ javaScriptEnabled: false });
+
+  test("serves a usable static invitation and real links", async ({ page }) => {
+    await page.goto("/");
+
+    await expect(
+      page.getByRole("heading", {
+        level: 1,
+        name: "Bring more minds to your next decision.",
+      }),
+    ).toBeVisible();
+    await expect(
+      page
+        .locator(".home-hero")
+        .getByRole("link", { name: "Explore the recorded demo" }),
+    ).toHaveAttribute("href", "/demo");
+    await expect(
+      page.getByText(
+        "Prepared demo · recorded responses, not live generation.",
+      ),
+    ).toBeVisible();
+    await expect(page.getByTestId("home-persona-static")).toBeVisible();
+    await expect(page.locator(".home-header__appearance")).toBeHidden();
+    await expect(page.locator(".home-header__pause")).toBeHidden();
+  });
+});
