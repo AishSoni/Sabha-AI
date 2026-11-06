@@ -87,7 +87,7 @@ export function DemoNav() {
     };
 
     return (
-        <header className="relative z-chrome border-b border-separator bg-surface/80 text-ink backdrop-blur-md">
+        <header className="material-chrome relative z-chrome border-b border-separator text-ink">
             <div className="mx-auto flex max-w-6xl flex-wrap items-center gap-x-6 gap-y-3 px-4 py-3">
                 <div className="flex items-center gap-2">
                     <span className="rounded-full border border-warning/40 bg-warning-soft px-2.5 py-0.5 type-meta-strong uppercase tracking-wide text-warning">

@@ -283,7 +283,7 @@ export function PersonaEditorScreen({
 
     if (loading) {
         return (
-            <div className="flex min-h-screen items-center justify-center bg-gradient-to-br from-canvas via-surface to-canvas">
+            <div className="flex min-h-full items-center justify-center">
                 <Loader2 className="size-8 animate-spin text-ink-muted motion-reduce:animate-none" />
             </div>
         );
@@ -291,7 +291,7 @@ export function PersonaEditorScreen({
 
     if (!persona) {
         return (
-            <div className="flex min-h-screen items-center justify-center bg-gradient-to-br from-canvas via-surface to-canvas text-ink">
+            <div className="flex min-h-full items-center justify-center text-ink">
                 <div className="text-center">
                     <h2 className="type-item-title mb-2">Persona Not Found</h2>
                     <Link href={routes.roster} className="text-action hover:underline">
@@ -303,9 +303,9 @@ export function PersonaEditorScreen({
     }
 
     return (
-        <div className="min-h-screen bg-gradient-to-br from-canvas via-surface to-canvas text-ink">
+        <div className="min-h-full text-ink">
             {/* Header */}
-            <header className="sticky top-0 z-chrome border-b border-separator bg-canvas/80 backdrop-blur-sm">
+            <header className="material-chrome sticky top-0 z-chrome border-b border-separator">
                 <div className="max-w-4xl mx-auto px-6 py-4 flex items-center justify-between">
                     <div className="flex items-center gap-4">
                         <Link

@@ -161,7 +161,7 @@ export function MeetingRoom({
     const room = (
         <main
             id="main-content"
-            className="flex h-full min-h-0 flex-col overflow-hidden bg-canvas"
+            className="flex h-full min-h-0 flex-col overflow-hidden"
             tabIndex={-1}
         >
             <MeetingConversation
@@ -334,7 +334,7 @@ function MeetingConversation({
 
     return (
         <div className="flex min-h-0 flex-1 flex-col overflow-hidden bg-transparent">
-            <header className="relative z-chrome flex shrink-0 flex-wrap items-start gap-3 border-b border-separator bg-surface/80 px-4 py-3 backdrop-blur-md">
+            <header className="material-chrome relative z-chrome flex shrink-0 flex-wrap items-start gap-3 border-b border-separator px-4 py-3">
                 <Link
                     href={runtime.presentation.homeHref}
                     className="mt-0.5 rounded-control p-1 text-ink-secondary hover:bg-surface-raised hover:text-ink"
@@ -447,9 +447,9 @@ function MeetingConversation({
                 <Tabs
                     value={mainTab}
                     onValueChange={setTab}
-                    className="flex min-w-0 flex-1 flex-col bg-surface"
+                    className="flex min-w-0 flex-1 flex-col"
                 >
-                    <div className="relative z-10 flex shrink-0 items-center gap-2 border-b border-separator px-3 py-1.5">
+                    <div className="material-chrome relative z-10 flex shrink-0 items-center gap-2 border-b border-separator px-3 py-1.5">
                         <TabsList className="h-auto min-w-0 flex-none justify-start gap-1 bg-transparent p-0">
                             <RoomTab
                                 value="chat"
@@ -520,7 +520,7 @@ function MeetingConversation({
 
                     <TabsContent
                         value="chat"
-                        className="m-0 flex min-h-0 flex-1 flex-col"
+                        className="m-0 flex min-h-0 flex-1 flex-col bg-surface"
                     >
                         <MessageList
                             meeting={meeting}
@@ -531,27 +531,27 @@ function MeetingConversation({
                         />
                     </TabsContent>
 
-                    <TabsContent value="roster" className="m-0 min-h-0 flex-1">
+                    <TabsContent value="roster" className="m-0 min-h-0 flex-1 bg-surface">
                         <ParticipantRoster participants={meeting.participants ?? []} />
                     </TabsContent>
 
                     {capabilities.documents && DocumentsPanel && (
                         <TabsContent
                             value="documents"
-                            className="m-0 min-h-0 flex-1 overflow-y-auto"
+                            className="m-0 min-h-0 flex-1 overflow-y-auto bg-surface"
                         >
                             <DocumentsPanel meetingId={meeting.id} />
                         </TabsContent>
                     )}
 
                     {capabilities.summary && SummaryPanel && (
-                        <TabsContent value="summary" className="m-0 min-h-0 flex-1">
+                        <TabsContent value="summary" className="m-0 min-h-0 flex-1 bg-surface">
                             <SummaryPanel meeting={meeting} />
                         </TabsContent>
                     )}
 
                     {capabilities.closing && (
-                        <TabsContent value="closing" className="m-0 min-h-0 flex-1">
+                        <TabsContent value="closing" className="m-0 min-h-0 flex-1 bg-surface">
                             <div className="h-full overflow-y-auto p-4">
                                 <div className="mx-auto max-w-3xl">
                                     <ClosingPanel

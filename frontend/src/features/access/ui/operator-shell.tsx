@@ -24,9 +24,9 @@ export function OperatorShell({
     const pathname = usePathname();
 
     return (
-        <div className="relative isolate flex h-dvh min-h-0 flex-col bg-canvas text-ink">
+        <div className="relative isolate flex h-dvh min-h-0 flex-col text-ink">
             <Starfield />
-            <header className="relative z-chrome shrink-0 border-b border-separator bg-surface/80 backdrop-blur-md">
+            <header className="material-chrome relative z-chrome shrink-0 border-b border-separator">
                 <div className="mx-auto flex max-w-6xl flex-wrap items-center gap-4 px-4 py-3">
                     <span className="type-meta-strong uppercase tracking-[0.2em] text-action">
                         Operator
@@ -54,7 +54,7 @@ export function OperatorShell({
                     </nav>
                     <Link
                         href="/demo"
-                        className="type-meta text-ink-muted m-control hover:text-ink-secondary"
+                        className="type-meta text-ink-secondary m-control hover:text-ink"
                     >
                         Recorded demo
                     </Link>

@@ -64,9 +64,9 @@ export default function MeetingSpacePage() {
     const archivedMeetings = list.filter(m => m.status === 'archived');
 
     return (
-        <div className="min-h-screen bg-canvas text-ink">
+        <div className="min-h-full text-ink">
             {/* Header */}
-            <header className="sticky top-0 z-chrome border-b border-separator bg-canvas/80 backdrop-blur-sm">
+            <header className="material-chrome sticky top-0 z-chrome border-b border-separator">
                 <div className="mx-auto flex max-w-6xl items-center justify-between px-6 py-4">
                     <div className="flex items-center gap-4">
                         <Link
