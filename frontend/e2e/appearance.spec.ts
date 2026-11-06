@@ -131,6 +131,48 @@ test.describe("appearance lifecycle", () => {
         expect(await noOverflow()).toBe(true);
     });
 
+    test("pauses and resumes the shared starfield without persistent state", async ({
+        page,
+        context,
+    }) => {
+        await page.goto("/demo");
+        const field = page.getByTestId("atmosphere-field");
+        await expect(field).toBeVisible();
+        await expect(field).toHaveCSS("pointer-events", "none");
+        await expect(field).toHaveAttribute("aria-hidden", "true");
+        await expect(page.locator("html")).toHaveAttribute(
+            "data-background",
+            "on"
+        );
+
+        const before = await storageSnapshot(context, page);
+        await page.getByRole("button", { name: /^Appearance:/ }).click();
+        await page.getByRole("menuitemradio", { name: "Paused" }).click();
+        await expect(page.locator("html")).toHaveAttribute(
+            "data-background",
+            "paused"
+        );
+        await expect
+            .poll(() =>
+                field
+                    .locator("svg")
+                    .first()
+                    .evaluate(
+                        (element) =>
+                            getComputedStyle(element).animationPlayState
+                    )
+            )
+            .toBe("paused");
+
+        await page.getByRole("button", { name: /^Appearance:/ }).click();
+        await page.getByRole("menuitemradio", { name: "On" }).click();
+        await expect(page.locator("html")).toHaveAttribute(
+            "data-background",
+            "on"
+        );
+        expect(await storageSnapshot(context, page)).toEqual(before);
+    });
+
     test("keyboard users can skip straight to main content", async ({ page }) => {
         await page.goto("/");
         await page.keyboard.press("Tab");

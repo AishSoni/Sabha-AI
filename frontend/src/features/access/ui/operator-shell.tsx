@@ -4,6 +4,7 @@ import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 
 import { AppearanceMenu } from '@/components/appearance';
+import { Starfield } from '@/components/atmosphere';
 import { Button } from '@/components/ui/button';
 
 const LINKS = [
@@ -23,8 +24,9 @@ export function OperatorShell({
     const pathname = usePathname();
 
     return (
-        <div className="flex h-dvh min-h-0 flex-col bg-canvas text-ink">
-            <header className="shrink-0 border-b border-separator bg-surface/80">
+        <div className="relative isolate flex h-dvh min-h-0 flex-col bg-canvas text-ink">
+            <Starfield />
+            <header className="relative z-chrome shrink-0 border-b border-separator bg-surface/80 backdrop-blur-md">
                 <div className="mx-auto flex max-w-6xl flex-wrap items-center gap-4 px-4 py-3">
                     <span className="type-meta-strong uppercase tracking-[0.2em] text-action">
                         Operator
@@ -62,7 +64,7 @@ export function OperatorShell({
                     </Button>
                 </div>
             </header>
-            <div className="min-h-0 flex-1 overflow-y-auto">{children}</div>
+            <div className="relative z-10 min-h-0 flex-1 overflow-y-auto">{children}</div>
         </div>
     );
 }

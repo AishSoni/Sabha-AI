@@ -1,6 +1,7 @@
 "use client";
 
 import type { ReactNode } from "react";
+import { Starfield } from "@/components/atmosphere";
 import { DemoNav, DemoWorkspaceProvider } from "@/features/demo-workspace";
 import { DemoTutorialProvider } from "@/features/demo-tutorial/provider";
 import { TutorialBoundary } from "@/features/demo-tutorial/error-boundary";
@@ -34,7 +35,8 @@ function PinnedWorkspace({ children }: { children: ReactNode }) {
         >
             <ReplayRunProvider>
                 <DemoTutorialProvider>
-                    <div className="flex h-dvh min-h-0 flex-col">
+                    <div className="relative isolate flex h-dvh min-h-0 flex-col">
+                        <Starfield />
                         <DemoNav />
                         <TutorialBoundary>
                             <TutorialHud />
@@ -51,7 +53,7 @@ function PinnedWorkspace({ children }: { children: ReactNode }) {
                          * ordinary pages scroll here, while the room fills the
                          * same space without creating a second page scrollbar.
                          */}
-                        <div className="min-h-0 flex-1 overflow-y-auto">
+                        <div className="relative z-10 min-h-0 flex-1 overflow-y-auto">
                             <ChapterBootstrap>{children}</ChapterBootstrap>
                         </div>
                     </div>

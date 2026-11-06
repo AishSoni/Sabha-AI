@@ -63,6 +63,11 @@
   --identity-6-soft: #edf1f6;
   --identity-6-ink: #34445a;
 
+  /* Environmental atmosphere. Decorative only; never information. */
+  --atmosphere-wash: rgb(109 59 181 / 0.1);
+  --atmosphere-wash-soft: rgb(109 59 181 / 0.05);
+  --atmosphere-star: #6d3bb5;
+
   /* Materials */
   --glass-surface: rgb(255 255 255 / 0.88);
   --glass-border: rgb(23 33 47 / 0.12);
@@ -129,6 +134,10 @@
   --identity-6-soft: #24303f;
   --identity-6-ink: #dce5ee;
 
+  --atmosphere-wash: rgb(109 59 181 / 0.16);
+  --atmosphere-wash-soft: rgb(109 59 181 / 0.08);
+  --atmosphere-star: #c7b0f5;
+
   --glass-surface: rgb(17 25 37 / 0.88);
   --glass-border: rgb(237 242 248 / 0.14);
   --glass-highlight: rgb(255 255 255 / 0.08);
@@ -190,6 +199,10 @@
     --identity-6: #b7c4d6;
     --identity-6-soft: #24303f;
     --identity-6-ink: #dce5ee;
+
+    --atmosphere-wash: rgb(109 59 181 / 0.16);
+    --atmosphere-wash-soft: rgb(109 59 181 / 0.08);
+    --atmosphere-star: #c7b0f5;
 
     --glass-surface: rgb(17 25 37 / 0.88);
     --glass-border: rgb(237 242 248 / 0.14);

@@ -1,0 +1,84 @@
+/*
+ * Shared non-homepage environment. The field is decorative: it never enters
+ * the accessibility tree, never handles pointer input, and never carries state.
+ */
+
+.atmosphere-field {
+  position: fixed;
+  inset: 0;
+  z-index: 0;
+  overflow: hidden;
+  pointer-events: none;
+  background-color: var(--canvas);
+}
+
+.atmosphere-field::before {
+  position: absolute;
+  inset: -20%;
+  content: "";
+  background:
+    radial-gradient(
+      ellipse 48% 38% at 18% 16%,
+      var(--atmosphere-wash),
+      transparent 70%
+    ),
+    radial-gradient(
+      ellipse 42% 34% at 82% 68%,
+      var(--atmosphere-wash-soft),
+      transparent 72%
+    );
+}
+
+.atmosphere-stars {
+  position: absolute;
+  inset: -6%;
+  width: 112%;
+  height: 112%;
+  color: var(--atmosphere-star);
+}
+
+.atmosphere-drift-a {
+  animation: atmosphere-drift-a 240s ease-in-out infinite;
+}
+
+.atmosphere-drift-b {
+  animation: atmosphere-drift-b 320s ease-in-out infinite;
+}
+
+@keyframes atmosphere-drift-a {
+  0%,
+  100% {
+    transform: translate3d(0, 0, 0);
+  }
+  50% {
+    transform: translate3d(-18px, 12px, 0);
+  }
+}
+
+@keyframes atmosphere-drift-b {
+  0%,
+  100% {
+    transform: translate3d(0, 0, 0);
+  }
+  50% {
+    transform: translate3d(14px, -10px, 0);
+  }
+}
+
+[data-background="paused"] .atmosphere-drift-a,
+[data-background="paused"] .atmosphere-drift-b {
+  animation-play-state: paused;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .atmosphere-drift-a,
+  .atmosphere-drift-b {
+    animation: none !important;
+  }
+}
+
+@media (forced-colors: active) {
+  .atmosphere-field {
+    display: none;
+  }
+}
