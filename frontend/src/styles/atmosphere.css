@@ -31,10 +31,11 @@
 
 .atmosphere-stars {
   position: absolute;
-  inset: -30%;
-  width: 160%;
-  height: 160%;
+  inset: -50%;
+  width: 200%;
+  height: 200%;
   color: var(--atmosphere-star);
+  will-change: transform;
 }
 
 .atmosphere-star {
@@ -43,30 +44,33 @@
 }
 
 .atmosphere-drift-a {
-  animation: atmosphere-drift-a 100s ease-in-out infinite;
+  animation: atmosphere-drift-a 60s linear infinite alternate;
 }
 
 .atmosphere-drift-b {
-  animation: atmosphere-drift-b 140s ease-in-out infinite;
+  animation: atmosphere-drift-b 90s linear infinite alternate;
 }
 
+/*
+ * Both planes travel along the same up-right diagonal so the field reads as
+ * one current rather than a churn. The near plane covers more ground; the far
+ * plane trails it for depth. `alternate` keeps the loop seamless.
+ */
 @keyframes atmosphere-drift-a {
-  0%,
-  100% {
-    transform: translate3d(0, 0, 0);
+  0% {
+    transform: translate3d(-150px, 100px, 0);
   }
-  50% {
-    transform: translate3d(-96px, 64px, 0);
+  100% {
+    transform: translate3d(150px, -100px, 0);
   }
 }
 
 @keyframes atmosphere-drift-b {
-  0%,
-  100% {
-    transform: translate3d(0, 0, 0);
+  0% {
+    transform: translate3d(-100px, 70px, 0);
   }
-  50% {
-    transform: translate3d(88px, -56px, 0);
+  100% {
+    transform: translate3d(100px, -70px, 0);
   }
 }
 

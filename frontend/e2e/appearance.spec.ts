@@ -186,7 +186,7 @@ test.describe("appearance lifecycle", () => {
                 };
             });
         expect(drift.name).toContain("atmosphere-drift-a");
-        expect(drift.duration).toBe("100s");
+        expect(drift.duration).toBe("60s");
         expect(drift.state).toBe("running");
 
         const twinkle = await field
