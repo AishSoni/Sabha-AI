@@ -9,14 +9,14 @@
  */
 import { useEffect, useRef, useState } from 'react';
 import Link from 'next/link';
-import { ArrowLeft, Bot, Eye, Loader2, Save, History, Settings2, BookOpen } from 'lucide-react';
+import { ArrowLeft, Eye, Loader2, Save, History, Settings2, BookOpen } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { readableTextOn } from '@/lib/readable-color';
+import { ParticipantMark } from '@/components/identity/participant-mark';
 import type { PersonaCatalogClient } from '../model/client';
 import type { Persona, PersonaStackOption, PersonaUpdateInput, PromptRevision } from '../model/types';
 import { normalizeStackIds, validatePersonaTemplate } from './validation';
@@ -29,6 +29,8 @@ export interface PersonaEditorRoutes {
 
 export interface PersonaEditorScreenProps {
     personaId: string;
+    /** Stable identity used for the participant mark; falls back to the persona id. */
+    markId?: string;
     client: PersonaCatalogClient;
     loadStacks: () => Promise<PersonaStackOption[]>;
     routes: PersonaEditorRoutes;
@@ -46,6 +48,7 @@ export interface PersonaEditorScreenProps {
 
 export function PersonaEditorScreen({
     personaId,
+    markId,
     client,
     loadStacks,
     routes,
@@ -321,15 +324,14 @@ export function PersonaEditorScreen({
                             <ArrowLeft className="w-5 h-5" />
                         </Link>
                         <div className="flex items-center gap-3">
-                            <div
-                                className="flex size-10 items-center justify-center rounded-full"
-                                style={{
-                                    backgroundColor: persona.color,
-                                    color: readableTextOn(persona.color),
+                            <ParticipantMark
+                                participant={{
+                                    id: markId ?? persona.id,
+                                    name: persona.name,
+                                    color: persona.color,
                                 }}
-                            >
-                                <Bot className="size-5" />
-                            </div>
+                                size="md"
+                            />
                             <div>
                                 <h1 className="text-xl font-bold text-ink">{persona.name}</h1>
                                 {persona.subtitle && (

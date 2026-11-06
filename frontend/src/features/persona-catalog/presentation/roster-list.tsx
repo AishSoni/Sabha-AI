@@ -18,7 +18,7 @@ import {
     Trash2,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import { readableTextOn } from "@/lib/readable-color";
+import { ParticipantMark } from "@/components/identity/participant-mark";
 import {
     Card,
     CardContent,
@@ -35,6 +35,8 @@ import {
 
 export interface RosterPersonaView {
     id: string;
+    /** Stable identity used for the participant mark; falls back to id. */
+    markId?: string;
     name: string;
     subtitle?: string | null;
     color: string;
@@ -138,15 +140,14 @@ export function RosterList({
                                     <CardHeader className="pb-2">
                                         <div className="flex items-center justify-between">
                                             <div className="flex items-center gap-3">
-                                                <div
-                                                    className="flex size-10 items-center justify-center rounded-full"
-                                                    style={{
-                                                        backgroundColor: persona.color,
-                                                        color: readableTextOn(persona.color),
+                                                <ParticipantMark
+                                                    participant={{
+                                                        id: persona.markId ?? persona.id,
+                                                        name: persona.name,
+                                                        color: persona.color,
                                                     }}
-                                                >
-                                                    <Bot className="size-5" />
-                                                </div>
+                                                    size="md"
+                                                />
                                                 <div>
                                                     <Link href={hrefs.persona(persona.id)}>
                                                         <CardTitle className="cursor-pointer transition-colors hover:text-action">

@@ -2,6 +2,7 @@
 
 import { useState } from 'react';
 import { Camera, CheckCircle2, History, Lock, ShieldCheck } from 'lucide-react';
+import { ParticipantMark } from '@/components/identity/participant-mark';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import type {
@@ -130,10 +131,15 @@ export function DemoSnapshotPanel({
                                 </span>
                             </div>
                             <div className="mt-3 flex items-center gap-3">
-                                <span
-                                    className="h-3 w-3 rounded-full"
-                                    style={{ backgroundColor: persona.color }}
-                                    aria-hidden="true"
+                                <ParticipantMark
+                                    participant={{
+                                        id:
+                                            persona.recordedParticipantId ??
+                                            persona.personaId,
+                                        name: persona.name,
+                                        color: persona.color,
+                                    }}
+                                    size="sm"
                                 />
                                 <div>
                                     <p className="text-sm text-ink">{persona.name}</p>

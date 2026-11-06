@@ -13,6 +13,7 @@ import { useRouter } from "next/navigation";
 import { ArrowLeft, FilePlus2, ShieldAlert, Users } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
+import { ParticipantMark } from "@/components/identity/participant-mark";
 import {
     Card,
     CardContent,
@@ -176,11 +177,13 @@ export function PracticeMeetingScreen({
                             className="rounded-control border border-separator bg-surface-raised/40 p-3"
                         >
                             <div className="flex items-center gap-2">
-                                <span
-                                    className="h-2.5 w-2.5 rounded-full"
-                                    style={{
-                                        backgroundColor: participant.color,
+                                <ParticipantMark
+                                    participant={{
+                                        id: participant.participantId,
+                                        name: participant.name,
+                                        color: participant.color,
                                     }}
+                                    size="sm"
                                 />
                                 <span className="text-sm font-medium text-ink">
                                     {participant.name}

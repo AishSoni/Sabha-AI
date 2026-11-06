@@ -25,7 +25,7 @@ import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { Checkbox } from '@/components/ui/checkbox';
 import { Card, CardContent } from '@/components/ui/card';
-import { readableTextOn } from '@/lib/readable-color';
+import { ParticipantMark } from '@/components/identity/participant-mark';
 
 export interface MeetingCreationRosterItem {
     id: string;
@@ -338,15 +338,14 @@ export function MeetingCreationScreen({
                                                     onClick={(event) => event.stopPropagation()}
                                                     onCheckedChange={() => onToggleRoster(persona.id)}
                                                 />
-                                                <div
-                                                    className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full"
-                                                    style={{
-                                                        backgroundColor: persona.color,
-                                                        color: readableTextOn(persona.color),
+                                                <ParticipantMark
+                                                    participant={{
+                                                        id: persona.id,
+                                                        name: persona.name,
+                                                        color: persona.color,
                                                     }}
-                                                >
-                                                    <Bot className="h-4 w-4" />
-                                                </div>
+                                                    size="sm"
+                                                />
                                                 <div className="flex-1 min-w-0">
                                                     <p className="text-sm font-medium text-ink truncate">{persona.name}</p>
                                                     {persona.subtitle && (

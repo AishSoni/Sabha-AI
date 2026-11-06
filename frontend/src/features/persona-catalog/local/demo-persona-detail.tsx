@@ -85,6 +85,7 @@ function Content({
             </div>
             <PersonaEditorScreen
                 personaId={personaId}
+                markId={template?.recordedParticipantId ?? undefined}
                 client={client}
                 loadStacks={loadStacks}
                 routes={{ roster: '/demo/roster' }}

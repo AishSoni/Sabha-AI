@@ -405,4 +405,32 @@ test.describe("appearance lifecycle", () => {
             page.getByRole("link", { name: "Start the demo" })
         ).toBeVisible();
     });
+
+    test("uses the same participant marks on the roster and in the room", async ({
+        page,
+    }) => {
+        await page.goto("/demo/roster");
+        const rosterMarks = page.locator("[data-participant-mark]");
+        await expect(rosterMarks).toHaveCount(3);
+        const roster = await rosterMarks.evaluateAll((marks) =>
+            marks.map((mark) => mark.getAttribute("data-participant-mark"))
+        );
+
+        await page.goto(
+            "/demo/meetings/a0000000-0000-4000-8000-000000000001"
+        );
+        await expect(
+            page.getByRole("heading", {
+                name: /Review HDFC Ltd's 7\.87% 2022 debenture/,
+            })
+        ).toBeVisible();
+        const roomMarks = page.locator("[data-participant-mark]");
+        await expect(roomMarks).toHaveCount(4);
+        const room = await roomMarks.evaluateAll((marks) =>
+            marks.map((mark) => mark.getAttribute("data-participant-mark"))
+        );
+
+        expect(roster).toEqual(["burst", "nova", "orbit"]);
+        expect(room.slice(0, roster.length)).toEqual(roster);
+    });
 });
