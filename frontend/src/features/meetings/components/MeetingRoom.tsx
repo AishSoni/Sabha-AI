@@ -723,6 +723,7 @@ function MeetingConversation({
                     className="max-h-[35dvh] shrink-0 overflow-y-auto border-t border-separator bg-surface px-4 py-1 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-focus-ring lg:max-h-none lg:overflow-visible"
                 >
                     <div className="mx-auto w-full max-w-[1120px]">
+                        <RoomTutorialInline />
                         {closingOpen ? (
                             tab !== 'closing' ? (
                                 <ClosingRoomNotice stage={closingStage} onOpen={openClosing} />
@@ -950,7 +951,6 @@ function RoomControls({ meeting, turns }: RoomControlsProps) {
             <div className="min-w-0">
                     <div className="mb-2 flex flex-wrap items-center gap-2">
                         <p className="type-meta text-ink-secondary">Who speaks next?</p>
-                        <RoomTutorialInline />
                     </div>
                     <div
                         ref={speakerRef}

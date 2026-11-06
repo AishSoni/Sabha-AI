@@ -16,6 +16,7 @@ import DemoNewMeetingPage from "@/app/demo/new/page";
 import DemoMeetingListPage from "@/app/demo/meetings/page";
 import DemoMeetingPage from "@/app/demo/meetings/[id]/page";
 import DemoSettingsPage from "@/app/demo/settings/page";
+import { RoomTutorialInline } from "@/features/demo-tutorial/inline";
 import { useReplayRun } from "@/features/meetings/runtime/replay-run";
 import {
     DEMO_MEETING_ID,
@@ -139,7 +140,12 @@ function RoomRoute({ id }: { id: string }) {
     ) {
         return <DemoMeetingPage />;
     }
-    return <p>{`Room route ${id}`}</p>;
+    return (
+        <div>
+            <p>{`Room route ${id}`}</p>
+            <RoomTutorialInline />
+        </div>
+    );
 }
 
 function DemoRoute() {
@@ -355,12 +361,16 @@ describe("canonical guided demo journey", () => {
                 name: "Settings in the public demo",
             })
         ).toBeInTheDocument();
-        // The board objective has no anchor on this screen, so the HUD
-        // collapses to the compact bar instead of guessing a position.
+        // The shell rail reserves its own space and keeps the objective
+        // readable even when the board anchor is not mounted on this screen.
         expect(
-            await screen.findByTestId("tutorial-hud-compact")
+            within(await screen.findByTestId("tutorial-hud")).getByText(
+                "Start the meeting"
+            )
         ).toBeInTheDocument();
-        expect(screen.queryByTestId("tutorial-hud")).not.toBeInTheDocument();
+        expect(
+            screen.queryByTestId("tutorial-hud-compact")
+        ).not.toBeInTheDocument();
         expect(
             screen.getByText(/Provider setup is operator-only/i)
         ).toBeInTheDocument();
