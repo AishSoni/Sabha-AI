@@ -1155,3 +1155,83 @@ by its presence. Retain exactly three numbered redesign specs.
 - [dddynamite](https://www.fffuel.co/dddynamite/) and
   [fffuel license](https://www.fffuel.co/license/): selected asset source and
   notice verification, not a new pack search or evidence of completed vendoring.
+
+## Addendum A execution record
+
+Status: **implemented locally, not accepted**. This record covers Addendum A only.
+Addendum B, Specs 32 and 33, the full RF01-RF08 visual evidence set, browser-
+composited material evidence, and performance traces remain outstanding. The
+earlier Spec 31 execution record above is historical and does not accept either
+addendum.
+
+### Implemented slice
+
+- Single viewport ownership in the demo and operator shells; the room fills the
+  remaining height instead of nesting `h-screen`. Ordinary pages still scroll in
+  the shell content region, and the room has no page-level scrollbar.
+- Room recomposition: full title and agenda, Recorded status, Details and Close in
+  the room header; a compact named-perspective strip; a discussion-first surface
+  with a collapsible substantive meeting-record rail; a quiet Chat/Roster/Files/
+  Summary strip; queue and operation detail in bounded disclosure; telemetry moved
+  to Meeting details.
+- Director dock: speaker actions, director action, prepared question, playback
+  utilities, queues and errors in one surface. The prepared question is an exact
+  read-only two-line preview with labelled Expand/Collapse and an unchanged Send
+  action. Closing guidance is contextual in the dock/Close state rather than a
+  permanent full-width band.
+- Room type roles and Markdown: separate room title, body, attribution and metadata
+  roles; contributions use a 74ch measure without a nested 80% cap or a rounded
+  bubble around every AI response.
+- Six-shape participant mark derived from stable identity, alongside full names and
+  roles. Color remains supplementary and active emphasis only reflects the runtime
+  participant.
+- Tutorial collision handling: the card avoids speaker, prepared-question and
+  source controls plus the dock, with compact/hidden fallback and existing
+  modal/streaming suspension. Record-tab anchors remain real controls.
+
+Commits on `ui-redesign`:
+
+| Commit | Scope |
+| --- | --- |
+| `280cd34` | `feat(meetings): make the room discussion-first` |
+| `6aedbf4` | `fix(demo): keep tutorial tips clear of the room dock` |
+
+### Verification
+
+| Check | Command/environment | Result |
+| --- | --- | --- |
+| Types | `cd frontend; npx tsc --noEmit` | clean |
+| Unit/integration | `cd frontend; npm test` | 111 files / 659 tests passed |
+| Architecture | `cd frontend; npm run test:architecture` | 6 files / 42 tests passed |
+| Lint | `cd frontend; npm run lint` | 0 errors, 19 pre-existing warnings |
+| Build | `cd frontend; npm run build` | 20 routes compiled |
+| Production browser journeys | `cd frontend; npm run test:e2e:prod` | 47 tests: 45 passed, 2 conditionally skipped |
+| Room reading space | `frontend/e2e/room-reading-space.spec.ts` | 1440x900: work 669px, discussion 463px, ratio 0.6921; 1920x917: work 720px, discussion 514px, ratio 0.7139; no outer scroll; 320/390/768/1024 mobile checks passed |
+
+Skipped journeys are the conditional legacy-journey and mixed-operator suites.
+No failure was observed in the final production run.
+
+### Gate status
+
+| Gate | Status | Evidence / remaining work |
+| --- | --- | --- |
+| RF01 height/reading space | Partial | Measured desktop ratios and no outer scroll pass; compact dock present. Resting screenshots and manual state review not captured. |
+| RF02 real type adoption | Partial | Room type roles and Markdown implemented; computed type and visual review of historical/streaming content not captured. |
+| RF03 recomposition | Partial | Discussion-first composition, record rail, compact perspectives and secondary telemetry implemented; populated before/after captures not produced. |
+| RF04 director behavior | Partial | Exact prepared text, disclosure, send/busy/unavailable semantics and command paths covered by tests; full interaction capture not produced. |
+| RF05 tutorial/evidence | Partial | Collision-safe placement, compact fallback, anchors and existing evidence dialog pass browser tests; capture set and all evidence error/retry states not recorded. |
+| RF06 responsive accessibility | Partial | 320/390/768/1024 browser checks and keyboard journeys pass; 200% text, 400% zoom/reflow and forced colors not separately reviewed. |
+| RF07 motion/continuity | Partial | M03/M04/M05/M06/M08/M09 classes applied; reduced-motion suites pass; interruption traces and reading-anchor captures not recorded. |
+| RF08 runtime/truth | Local pass | Replay, practice, evidence, closing, tutorial and production journeys pass locally. Hosted gates remain unexecuted. |
+
+### Exit and rollout
+
+Addendum A exits only when the RF01-RF08 evidence above is completed against the
+actual recomposed room and the result is reviewed. Passing automated suites alone
+does not establish the redesign. Addendum B and Specs 32-33 remain separate work
+items; no starfield, glass chrome, dddynamite asset, background-animation control,
+Solid-surfaces preference or full non-homepage environment sweep is implemented
+or accepted here.
+
+Rollback is the two Addendum A commits; it does not require runtime, credential,
+replay-evidence or stored-data changes. Appearance remains memory-only.
