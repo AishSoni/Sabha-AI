@@ -1,9 +1,8 @@
 """Smoke tests for the disposable-database fixture machinery itself.
 
-Proves that the embedded Postgres cluster builds, applies Sabha's auth stub +
-full schema chain (supabase_schema.sql, migrations 002, 003), and is dropped
-again afterwards. Real schema behavior is exercised in the dedicated
-integration tests per finding.
+Proves that the embedded Postgres cluster builds, clones the full Sabha
+schema for each test, and is removed when the session ends. Real schema
+behavior is exercised in the dedicated integration tests per finding.
 """
 
 import psycopg

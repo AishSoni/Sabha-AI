@@ -12,6 +12,7 @@ rebuilt-from-source suite.
 """
 
 import os
+import uuid
 from pathlib import Path
 from urllib.parse import urlsplit, urlunsplit
 
@@ -150,12 +151,26 @@ GRANT USAGE ON SCHEMA public TO anon, authenticated, service_role;
 
 
 def _pg_home() -> str:
-    """Workspace dir for the embedded Postgres cluster (outside the repo).
+    """Parent directory for embedded Postgres clusters (outside the repo).
 
     Defaults under C:/conda_tmp per the environment guidance; override with
-    SABHA_TEST_PG_HOME when needed.
+    SABHA_TEST_PG_HOME when needed. Each session/worker gets its own ephemeral
+    cluster beneath this directory so parallel workers never share a server.
     """
     return os.environ.get("SABHA_TEST_PG_HOME", r"C:\conda_tmp\opencode\sabha-test-pg")
+
+
+def _pg_run_dir() -> str:
+    """Return a fresh pgdata directory for this process.
+
+    ``pytest-xdist`` workers run in separate processes, so deriving the path
+    from ``PYTEST_XDIST_WORKER`` keeps their clusters isolated. A random suffix
+    also prevents a stale directory from a crashed run from being reused.
+    """
+    base = Path(_pg_home())
+    base.mkdir(parents=True, exist_ok=True)
+    worker = os.environ.get("PYTEST_XDIST_WORKER", "main")
+    return str(base / f"run-{worker}-{os.getpid()}-{uuid.uuid4().hex[:6]}")
 
 
 def _default_pg_dir() -> str:
@@ -233,8 +248,22 @@ def _uri_for_database(base_uri: str, name: str) -> str:
 
 @pytest.fixture(scope="session")
 def pg_server():
-    server = pgserver.get_server(_pg_home())
-    yield server
+    server = pgserver.get_server(_pg_run_dir(), cleanup_mode="delete")
+    # This cluster is disposable. Durability settings only slow Windows down
+    # (a shutdown checkpoint can otherwise take tens of seconds), so relax them
+    # for the lifetime of the test session. These are cluster-wide settings and
+    # do not alter application behavior.
+    with psycopg.connect(server.get_uri(), autocommit=True) as conn:
+        conn.execute("ALTER SYSTEM SET fsync = off")
+        conn.execute("ALTER SYSTEM SET synchronous_commit = off")
+        conn.execute("ALTER SYSTEM SET full_page_writes = off")
+        conn.execute("SELECT pg_reload_conf()")
+    try:
+        yield server
+    finally:
+        # Stopping and deleting the ephemeral cluster also removes every test
+        # database at once, avoiding hundreds of individual DROP DATABASE calls.
+        server.cleanup()
 
 
 def _provision_replay_roles(conn) -> None:
@@ -256,85 +285,95 @@ def _apply_schema(conn, schema_files) -> None:
 
 
 @pytest.fixture()
-def disposable_db(pg_server):
-    """Create a throwaway database, apply auth stub + full current schema, drop it after."""
-    name = "sabha_t_" + __import__("uuid").uuid4().hex[:10]
-    base_uri = pg_server.get_uri()  # postgresql://postgres:@host:port/postgres
-    admin = psycopg.connect(base_uri, autocommit=True)
-    admin.execute(f'CREATE DATABASE "{name}"')
-    admin.close()
+def disposable_db(pg_server, pg_templates):
+    """Create a throwaway database by cloning the full-schema template."""
+    return _clone_schema_db(pg_server, pg_templates, "full")
 
-    db = DisposableDb(_uri_for_database(base_uri, name), name)
-    with db.connect() as conn:
-        _apply_schema(conn, SCHEMA_FILES)
 
+_TEMPLATE_SCHEMA = {
+    "full": SCHEMA_FILES,
+    "empty": [],
+    "pre_isolation": PRE_ISOLATION_SCHEMA_FILES,
+    "phase_one": PHASE_ONE_SCHEMA_FILES,
+    "legacy": LEGACY_SCHEMA_FILES,
+}
+
+
+class _TemplateDatabases:
+    """Lazily build one database per schema variant for this session."""
+
+    def __init__(self, pg_server):
+        self.pg_server = pg_server
+        self.base_uri = pg_server.get_uri()
+        self.admin = psycopg.connect(self.base_uri, autocommit=True)
+        self.names: dict[str, str] = {}
+
+    def get(self, key: str) -> str:
+        if key not in self.names:
+            name = f"sabha_tpl_{key}"
+            self.admin.execute(f'DROP DATABASE IF EXISTS "{name}" WITH (FORCE)')
+            self.admin.execute(f'CREATE DATABASE "{name}"')
+            with DisposableDb(
+                _uri_for_database(self.base_uri, name), name
+            ).connect() as conn:
+                _apply_schema(conn, _TEMPLATE_SCHEMA[key])
+            self.names[key] = name
+        return self.names[key]
+
+    def close(self) -> None:
+        for name in self.names.values():
+            self.admin.execute(f'DROP DATABASE IF EXISTS "{name}" WITH (FORCE)')
+        self.admin.close()
+
+
+@pytest.fixture(scope="session")
+def pg_templates(pg_server):
+    """Provide schema templates, built on first use.
+
+    Replaying the migration chain for every database is the dominant cost of
+    the database suite. PostgreSQL can copy a prepared database with
+    ``CREATE DATABASE ... TEMPLATE`` in a fraction of that time.
+    """
+    templates = _TemplateDatabases(pg_server)
     try:
-        yield db
+        yield templates
     finally:
-        cleanup = psycopg.connect(base_uri, autocommit=True)
-        cleanup.execute(f'DROP DATABASE IF EXISTS "{name}" WITH (FORCE)')
-        cleanup.close()
+        templates.close()
 
 
-def _make_schema_db(pg_server, schema_files):
-    """Create a throwaway database from an explicit schema file list."""
-    import uuid
-
+def _clone_schema_db(pg_server, pg_templates, template_key: str) -> DisposableDb:
+    """Create a test database as a copy of a session-scoped template."""
     name = "sabha_t_" + uuid.uuid4().hex[:10]
     base_uri = pg_server.get_uri()
     admin = psycopg.connect(base_uri, autocommit=True)
-    admin.execute(f'CREATE DATABASE "{name}"')
-    admin.close()
-
-    db = DisposableDb(_uri_for_database(base_uri, name), name)
-    with db.connect() as conn:
-        _apply_schema(conn, schema_files)
-    return db, base_uri
+    try:
+        admin.execute(
+            f'CREATE DATABASE "{name}" TEMPLATE "{pg_templates.get(template_key)}"'
+        )
+    finally:
+        admin.close()
+    return DisposableDb(_uri_for_database(base_uri, name), name)
 
 
 @pytest.fixture()
-def empty_db(pg_server):
+def empty_db(pg_server, pg_templates):
     """Disposable database with only the Supabase auth stub (no Sabha schema)."""
-    db, base_uri = _make_schema_db(pg_server, [])
-    try:
-        yield db
-    finally:
-        cleanup = psycopg.connect(base_uri, autocommit=True)
-        cleanup.execute(f'DROP DATABASE IF EXISTS "{db.name}" WITH (FORCE)')
-        cleanup.close()
+    return _clone_schema_db(pg_server, pg_templates, "empty")
 
 
 @pytest.fixture()
-def pre_isolation_db(pg_server):
+def pre_isolation_db(pg_server, pg_templates):
     """Disposable database holding the history just before read isolation."""
-    db, base_uri = _make_schema_db(pg_server, PRE_ISOLATION_SCHEMA_FILES)
-    try:
-        yield db
-    finally:
-        cleanup = psycopg.connect(base_uri, autocommit=True)
-        cleanup.execute(f'DROP DATABASE IF EXISTS "{db.name}" WITH (FORCE)')
-        cleanup.close()
+    return _clone_schema_db(pg_server, pg_templates, "pre_isolation")
 
 
 @pytest.fixture()
-def phase_one_db(pg_server):
+def phase_one_db(pg_server, pg_templates):
     """Disposable database holding the complete untracked Phase 1 schema."""
-    db, base_uri = _make_schema_db(pg_server, PHASE_ONE_SCHEMA_FILES)
-    try:
-        yield db
-    finally:
-        cleanup = psycopg.connect(base_uri, autocommit=True)
-        cleanup.execute(f'DROP DATABASE IF EXISTS "{db.name}" WITH (FORCE)')
-        cleanup.close()
+    return _clone_schema_db(pg_server, pg_templates, "phase_one")
 
 
 @pytest.fixture()
-def legacy_db(pg_server):
+def legacy_db(pg_server, pg_templates):
     """Disposable database holding the pre-fix (legacy) schema chain."""
-    db, base_uri = _make_schema_db(pg_server, LEGACY_SCHEMA_FILES)
-    try:
-        yield db
-    finally:
-        cleanup = psycopg.connect(base_uri, autocommit=True)
-        cleanup.execute(f'DROP DATABASE IF EXISTS "{db.name}" WITH (FORCE)')
-        cleanup.close()
+    return _clone_schema_db(pg_server, pg_templates, "legacy")

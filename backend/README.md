@@ -272,13 +272,21 @@ cd ../frontend && npm run sync:openapi
 ## Tests
 
 ```bash
+# Full suite, parallel (recommended locally)
+python -m pytest -q -n 4
+
+# Serial run, useful when debugging fixture failures
 python -m pytest -q
+
 python -m scripts.export_openapi --check
 python -m scripts.rehearse_clean_checkout
 ```
 
-- The required suite uses disposable PostgreSQL through `pgserver`.
-- Set `SABHA_TEST_PG_HOME` to a writable directory to reuse a test cluster.
+- Each `pytest-xdist` worker gets its own disposable PostgreSQL cluster under `SABHA_TEST_PG_HOME`; it is deleted when the session ends.
+- Schema variants are built once per worker and cloned with `CREATE DATABASE ... TEMPLATE`, so the migration chain is not replayed for every test.
+- Set `SABHA_TEST_PG_HOME` to a writable directory when the default temporary location is unsuitable.
+- Run coverage in CI rather than on every local iteration.
+- On Windows, local runs are still slower than Linux. WSL2 or excluding the test Postgres directory from antivirus scanning helps; CI runs with `-n 2`.
 - Inference is a scripted provider and storage is a controlled HTTP double.
 - Required tests never call paid providers.
 - `rehearse_clean_checkout` archives the tree, installs from a clean checkout, tests, builds, and starts the app.
