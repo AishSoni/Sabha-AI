@@ -1236,10 +1236,105 @@ speed-control part of A.4; the rest of Addendum A is unchanged.
 
 Addendum A exits only when the RF01-RF08 evidence above is completed against the
 actual recomposed room and the result is reviewed. Passing automated suites alone
-does not establish the redesign. Addendum B and Specs 32-33 remain separate work
-items; no starfield, glass chrome, dddynamite asset, background-animation control,
-Solid-surfaces preference or full non-homepage environment sweep is implemented
-or accepted here.
+does not establish the redesign. At the time of the Addendum A record, no
+starfield, glass chrome, dddynamite asset, background-animation control,
+Solid-surfaces preference or full non-homepage environment sweep was part of the
+accepted scope. The later room refinement record below supersedes that visual
+scope; Addendum B and Specs 32-33 remain separate work items.
 
 Rollback is the two Addendum A commits; it does not require runtime, credential,
 replay-evidence or stored-data changes. Appearance remains memory-only.
+
+## Room refinement execution record
+
+Status: **implemented locally, not accepted**. This record covers the requested
+room layout refinement and a bounded first slice of Addendum B (shared atmosphere,
+background-animation pause, and dddynamite participant marks). It does not claim
+the full Addendum B route sweep or ST01-ST10 completion, and it does not accept
+Addendum A or Spec 31.
+
+Commits on `ui-redesign`:
+
+| Commit | Scope |
+| --- | --- |
+| `a28d216` | `feat(design): add the shared stellar atmosphere and a pause control` |
+| `629cb2d` | `feat(identity): add curated dddynamite participant marks` |
+| `9348684` | `feat(meetings): tighten the room layout and inline guidance` |
+
+### Implemented slice
+
+- Shared atmosphere: deterministic purple-tinted star planes and broad wash in
+  `components/atmosphere`, mounted behind the demo and operator shells. The field
+  is fixed, decorative, `aria-hidden`, and pointer-events-none. Navigation chrome
+  is selectively translucent; discussion, dock, and record surfaces stay opaque.
+- Appearance now owns a memory-only `Background animation: On / Paused` choice,
+  independent of replay. `prefers-reduced-motion` forces the resolved state to
+  paused and disables manual On. No storage, cookie, network, Auth, provider, or
+  query access is added.
+- Ten local dddynamite star/spark/burst silhouettes, assigned deterministically
+  from participant identity. Names and roles remain visible; color is
+  supplementary; no initials or generic letter shapes are used. The director uses
+  a mark from the same family. Source, generator MIT claim, and the general
+  fffuel redistribution restriction are recorded in `dynamite-marks.ts`; the user
+  accepted the asset terms. This is not a claim of general redistribution
+  permission.
+- Room header consolidates title, agenda, status, actions, and named perspectives.
+  Chat/Roster/Files/Summary stay grouped at the left; Meeting record is the
+  trailing toggle. Close keeps its existing workflow and eligibility.
+- Contributions share one structure: mark, name, timestamp, then text. AI and
+  director contributions are left-aligned without repeated rounded message
+  containers or a large blue director bubble. Prepared reasoning and source
+  disclosures are quiet inline rows.
+- The dock is independently constrained rather than inheriting the 74ch
+  transcript measure. Reply actions wrap without a horizontal speaker scrollbar;
+  the prepared question uses an exact read-only preview with full-width expansion
+  and a separated Send action; utility feedback remains, with no speed controls.
+- Room guidance is an inline strip beside the reply controls. Help expands only on
+  request, Hide remains available, and the trailing recording menu stays
+  reachable. The floating card is suppressed for room reply prompts when the
+  inline anchor is present; compact/missing-anchor fallbacks remain.
+
+### Verification
+
+| Check | Command | Result |
+| --- | --- | --- |
+| Types | `cd frontend; npx tsc --noEmit` | clean |
+| Unit/integration | `cd frontend; npm test` | 112 files / 662 tests passed |
+| Architecture | `cd frontend; npm run test:architecture` | 6 files / 42 tests passed |
+| Lint | `cd frontend; npm run lint` | 0 errors, 19 pre-existing warnings |
+| Build | `cd frontend; npm run build` | 20 routes compiled |
+| Production browser journeys | `cd frontend; npm run test:e2e:prod` | 48 tests: 46 passed, 2 conditionally skipped |
+| Identity contract | `npx vitest run src/components/identity/participant-mark.test.tsx` | 4 tests passed |
+| Appearance/starfield pause | `e2e/appearance.spec.ts` | 8 tests passed |
+
+Room reading space at 1440x900 remains above the two-thirds threshold: work area
+674px, discussion 450px, ratio **0.66766**, with no outer page scroll. The
+320x844, 390x844, 768x1024, and 1024x768 operability checks pass. The desktop
+measure is tight; any added header or dock row must be re-measured rather than
+assumed.
+
+### Gate status
+
+| Gate | Status | Evidence / remaining work |
+| --- | --- | --- |
+| ST01 coverage/composition | Partial | Demo/operator shells and room populated states are covered by browser journeys; no full non-homepage route inventory or capture set. |
+| ST02 atmosphere calibration | Partial | Shared field, drift, wash, pause, and reduced-motion behavior implemented; no sustained-reading or seam/alias capture series. |
+| ST03 material calibration/contrast | Partial | Chrome uses translucent surface with opaque working surfaces; no 65/75/88% tint comparison or browser-composited contrast table. |
+| ST04 avatar catalog | Partial | Ten local marks, stable assignment, silhouette/no-initial contract, and 24/32/40px component test exist; no both-theme contact sheet, forced-colors review, or complete provenance package. |
+| ST05 preferences/accessibility | Partial | Keyboard/AT menu, memory-only pause, reduced-motion override, and no-persistence e2e pass; explicit Solid-surfaces preference remains unimplemented. |
+| ST06 responsive/input | Partial | 320/390/768/1024 and room reading-space checks pass; 200% text, 400% zoom/reflow, forced colors, and virtual-keyboard states not separately reviewed. |
+| ST07 continuity/interruption | Partial | Theme toggles, practice draft retention, soft navigation, and tutorial state pass; no interruption trace for streaming, scroller, and inline help. |
+| ST08 cross-browser/failure | Open | Chromium production run only; Firefox/WebKit, real-device, and renderer-failure tests absent. |
+| ST09 combined performance | Open | No four-configuration traces, asset budget, paint/composite report, or memory/layer growth measurement. |
+| ST10 runtime isolation/room-first completion | Partial | Full local runtime suites pass and no persistence/network was added; hosted gates and visual review remain open. |
+
+### Exit and rollout
+
+This refinement is ready for review, not acceptance. Review must include populated
+room states in both themes with the question collapsed and expanded, record open
+and closed, inline guidance visible, and an operation pending. Browser-composited
+material evidence, cross-browser/failure checks, performance traces, and the full
+Addendum B route sweep remain outstanding.
+
+Rollback is the three refinement commits. It does not change runtime data, event
+contracts, credentials, replay evidence, or the memory-only appearance model.
