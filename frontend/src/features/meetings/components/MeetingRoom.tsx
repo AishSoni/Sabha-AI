@@ -459,13 +459,13 @@ function MeetingConversation({
                             <span
                                 key={participant.id}
                                 className={cn(
-                                    'inline-flex shrink-0 items-center gap-2 whitespace-nowrap rounded-full border px-2 py-1',
+                                    'inline-flex shrink-0 items-center gap-2 whitespace-nowrap rounded-full border px-2 py-0',
                                     active
                                         ? 'border-action bg-accent-soft text-ink'
                                         : 'border-separator bg-surface-raised/60 text-ink'
                                 )}
                             >
-                                <ParticipantMark participant={participant} size="sm" />
+                                <ParticipantMark participant={participant} size="md" />
                                 <span className="type-meta font-medium">
                                     {participant.name}
                                 </span>
@@ -475,8 +475,8 @@ function MeetingConversation({
                             </span>
                         );
                     })}
-                    <span className="inline-flex shrink-0 items-center gap-2 whitespace-nowrap rounded-full border border-separator bg-surface-raised/60 px-2 py-1 text-ink">
-                        <DirectorMark size="sm" />
+                    <span className="inline-flex shrink-0 items-center gap-2 whitespace-nowrap rounded-full border border-separator bg-surface-raised/60 px-2 py-0 text-ink">
+                        <DirectorMark size="md" />
                         <span className="type-meta font-medium">You</span>
                     </span>
                 </div>

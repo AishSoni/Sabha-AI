@@ -5,15 +5,15 @@ import { dynamiteMarkFor } from "./dynamite-marks";
 type MarkSize = "sm" | "md" | "lg";
 
 const SIZE_CLASS: Record<MarkSize, string> = {
-  sm: "h-8 w-8",
-  md: "h-9 w-9",
-  lg: "h-11 w-11",
+  sm: "h-9 w-9",
+  md: "h-10 w-10",
+  lg: "h-12 w-12",
 };
 
 const GLYPH_CLASS: Record<MarkSize, string> = {
-  sm: "h-[22px] w-[22px]",
-  md: "h-6 w-6",
-  lg: "h-[30px] w-[30px]",
+  sm: "h-6 w-6",
+  md: "h-7 w-7",
+  lg: "h-8 w-8",
 };
 
 /**
