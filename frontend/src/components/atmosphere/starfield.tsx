@@ -1,3 +1,5 @@
+import type { CSSProperties } from "react";
+
 type Star = {
   x: number;
   y: number;
@@ -49,6 +51,14 @@ function Plane({
           r={star.r}
           fill="currentColor"
           opacity={star.opacity}
+          className="atmosphere-star"
+          style={
+            {
+              "--star-opacity": star.opacity,
+              animationDelay: `${(index % 19) * 0.31}s`,
+              animationDuration: `${6 + (index % 5)}s`,
+            } as CSSProperties
+          }
         />
       ))}
     </svg>

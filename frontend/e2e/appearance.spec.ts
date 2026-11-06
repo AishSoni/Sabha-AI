@@ -159,6 +159,56 @@ test.describe("appearance lifecycle", () => {
         await expect(field.locator("circle")).toHaveCount(200);
     });
 
+    test("keeps the starfield visible and moving in the meeting room", async ({
+        page,
+    }) => {
+        await page.goto(
+            "/demo/meetings/a0000000-0000-4000-8000-000000000001"
+        );
+        await expect(
+            page.getByRole("heading", {
+                name: /Review HDFC Ltd's 7\.87% 2022 debenture/,
+            })
+        ).toBeVisible({ timeout: 30_000 });
+
+        const field = page.getByTestId("atmosphere-field");
+        await expect(field).toBeVisible();
+        await expect(field).toHaveCount(1);
+
+        const drift = await field
+            .locator(".atmosphere-drift-a")
+            .evaluate((element) => {
+                const styles = getComputedStyle(element);
+                return {
+                    name: styles.animationName,
+                    duration: styles.animationDuration,
+                    state: styles.animationPlayState,
+                };
+            });
+        expect(drift.name).toContain("atmosphere-drift-a");
+        expect(drift.duration).toBe("100s");
+        expect(drift.state).toBe("running");
+
+        const twinkle = await field
+            .locator(".atmosphere-star")
+            .first()
+            .evaluate((element) => {
+                const styles = getComputedStyle(element);
+                return {
+                    name: styles.animationName,
+                    state: styles.animationPlayState,
+                };
+            });
+        expect(twinkle.name).toContain("atmosphere-twinkle");
+        expect(twinkle.state).toBe("running");
+
+        const chatBackground = await page
+            .getByTestId("room-chat-surface")
+            .evaluate((element) => getComputedStyle(element).backgroundColor);
+        expect(chatBackground).not.toBe("rgba(0, 0, 0, 0)");
+        expect(chatBackground).not.toBe("rgb(17, 25, 37)");
+    });
+
     test("pauses and resumes the shared starfield without persistent state", async ({
         page,
         context,
