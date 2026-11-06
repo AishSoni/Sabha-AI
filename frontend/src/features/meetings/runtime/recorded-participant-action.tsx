@@ -53,7 +53,7 @@ export function RecordedParticipantAction({
         : [];
     if (preparedTurns.length > 0) {
         return (
-            <div className="flex flex-wrap gap-2">
+            <div className="flex flex-nowrap gap-2">
                 {preparedTurns.map((turn) => {
                     const busy = busyIntent === turn.turn_id;
                     return (
@@ -101,7 +101,7 @@ export function RecordedParticipantAction({
     if (actions.length === 0) return null;
 
     return (
-        <div className="flex flex-wrap gap-2">
+        <div className="flex flex-nowrap gap-2">
             {actions.map((action) => {
                 const busy = busyIntent === action.intent.intent_id;
                 return (

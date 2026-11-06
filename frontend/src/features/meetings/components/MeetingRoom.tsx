@@ -26,6 +26,7 @@ import {
     Lock,
     LogOut,
     MessageSquare,
+    PanelRight,
     Scroll,
     Send,
     User,
@@ -36,6 +37,7 @@ import {
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
+import { Dialog, DialogContent, DialogDescription, DialogTitle } from '@/components/ui/dialog';
 import { Input } from '@/components/ui/input';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
@@ -129,7 +131,7 @@ export function MeetingRoom({
         return (
             <main
                 id="main-content"
-                className="min-h-screen bg-canvas flex items-center justify-center"
+                className="h-full min-h-0 bg-canvas flex items-center justify-center"
              tabIndex={-1}>
                 <Loader2 className="w-8 h-8 animate-spin text-ink-muted" />
             </main>
@@ -139,7 +141,7 @@ export function MeetingRoom({
         return (
             <main
                 id="main-content"
-                className="min-h-screen bg-canvas flex flex-col items-center justify-center gap-3 text-ink-secondary"
+                className="h-full min-h-0 bg-canvas flex flex-col items-center justify-center gap-3 text-ink-secondary"
              tabIndex={-1}>
                 <AlertTriangle className="w-8 h-8 text-warning" />
                 <p>This meeting could not be loaded.</p>
@@ -162,61 +164,18 @@ export function MeetingRoom({
     const room = (
         <main
             id="main-content"
-            className="h-screen bg-canvas flex flex-col overflow-hidden"
-         tabIndex={-1}>
-            <header className="border-b border-separator px-4 py-3 flex items-center gap-4 shrink-0">
-                <Link
-                    href={runtime.presentation.homeHref}
-                    className="text-ink-secondary hover:text-ink transition-colors p-1 rounded hover:bg-surface-raised"
-                    aria-label="Back to meetings"
-                >
-                    <ArrowLeft className="w-5 h-5" />
-                </Link>
-                <div className="flex-1 min-w-0">
-                    <h1 className="text-lg font-semibold text-ink truncate">{meeting.name}</h1>
-                    {meeting.agenda && (
-                        <p className="text-xs text-ink-muted truncate max-w-md">{meeting.agenda}</p>
-                    )}
-                </div>
-                <Badge
-                    variant="secondary"
-                    className={cn(
-                        runtime.scope.identity.kind === 'replay'
-                            ? 'bg-accent-soft text-action'
-                            : 'bg-surface-raised text-ink-secondary'
-                    )}
-                >
-                    {runtime.presentation.label}
-                </Badge>
-                {runtime.restart && (
-                    <Button
-                        variant="outline"
-                        size="sm"
-                        className="border-control text-ink-secondary"
-                        onClick={runtime.restart}
-                    >
-                        Restart
-                    </Button>
-                )}
-                <RoomStatus status={meeting.status} />
-            </header>
-
-            <div className="flex-1 flex min-h-0 overflow-hidden">
-                <MeetingConversation
-                    meeting={meeting}
-                    disagreements={disagreementsQuery.data ?? []}
-                    consensus={consensusQuery.data ?? []}
-                    initialTab={initialTab}
-                    activeTab={activeTab}
-                    onTabChange={onTabChange}
-                />
-                <RoomDetailsPanel
-                    meeting={meeting}
-                    disagreements={disagreementsQuery.data ?? []}
-                    consensus={consensusQuery.data ?? []}
-                    contextStats={contextStatsQuery.data}
-                />
-            </div>
+            className="flex h-full min-h-0 flex-col overflow-hidden bg-canvas"
+            tabIndex={-1}
+        >
+            <MeetingConversation
+                meeting={meeting}
+                disagreements={disagreementsQuery.data ?? []}
+                consensus={consensusQuery.data ?? []}
+                contextStats={contextStatsQuery.data}
+                initialTab={initialTab}
+                activeTab={activeTab}
+                onTabChange={onTabChange}
+            />
         </main>
     );
     if (!evidence) {
@@ -258,6 +217,7 @@ interface ConversationProps {
     meeting: MeetingWithParticipants;
     disagreements: Disagreement[];
     consensus: Consensus[];
+    contextStats?: ContextStats;
     initialTab?: string;
     activeTab?: string;
     onTabChange?: (tab: string) => void;
@@ -267,6 +227,7 @@ function MeetingConversation({
     meeting,
     disagreements,
     consensus,
+    contextStats,
     initialTab,
     activeTab,
     onTabChange,
@@ -302,15 +263,43 @@ function MeetingConversation({
         enabled: capabilities.closing && !skipClosingText,
     });
     const [localTab, setLocalTab] = useState(initialTab ?? 'chat');
+    const [detailsOpen, setDetailsOpen] = useState(false);
+    const [recordOpen, setRecordOpen] = useState(true);
+    const [recordOverlayOpen, setRecordOverlayOpen] = useState(false);
+    const [recordTabState, setRecordTabState] = useState<'disagreements' | 'consensus'>(
+        'disagreements'
+    );
     /**
      * A routable room is controlled by its URL. The URL is the only owner of
      * the visible tab, so the tutorial and the room cannot disagree about
      * which evidence is on screen. The live room keeps its local fallback.
      */
     const tab = activeTab ?? localTab;
+    const mainTab = tab === 'disagreements' || tab === 'consensus' ? 'chat' : tab;
+    const recordTab =
+        tab === 'disagreements' || tab === 'consensus' ? tab : recordTabState;
     const setTab = (next: string) => {
         if (activeTab === undefined) setLocalTab(next);
         onTabChange?.(next);
+    };
+    const setRecordTab = (next: string) => {
+        if (next === 'disagreements' || next === 'consensus') {
+            setRecordTabState(next);
+            setRecordOpen(true);
+            setRecordOverlayOpen(true);
+            setTab(next);
+        }
+    };
+    const openRecord = () => {
+        setRecordOpen(true);
+        if (tab !== 'disagreements' && tab !== 'consensus') {
+            setRecordOverlayOpen(true);
+        }
+    };
+    const closeRecord = () => {
+        setRecordOpen(false);
+        setRecordOverlayOpen(false);
+        if (tab === 'disagreements' || tab === 'consensus') setTab('chat');
     };
     const closeAnchorRef = useAnchorRef('room.close');
     const returnRef = useAnchorRef('room.return');
@@ -330,6 +319,12 @@ function MeetingConversation({
         meeting.status === 'archived' ||
         closingCompleted;
     const openClosing = () => setTab('closing');
+    const closeReason =
+        runtime.replay?.preparedTurns?.length && !runtime.replay.canClose
+            ? runtime.replay.closeReason
+            : null;
+    const recordOverlayVisible =
+        recordOverlayOpen || tab === 'disagreements' || tab === 'consensus';
     const replayClosing = runtime.replay?.transitions.find(
         (transition) =>
             transition.kind === 'request_closing' &&
@@ -341,210 +336,383 @@ function MeetingConversation({
     };
 
     return (
-        <div className="flex-1 flex flex-col bg-canvas min-h-0 overflow-hidden">
-            <Tabs value={tab} onValueChange={setTab} className="flex-1 flex flex-col min-h-0">
-                <div className="border-b border-separator px-4 shrink-0 overflow-x-auto overflow-y-hidden">
-                    <TabsList className="bg-transparent h-12 gap-1">
-                        <RoomTab value="chat" icon={<MessageSquare className="w-4 h-4" />} label="Chat" />
-                        {capabilities.disagreements && (
-                            <RoomTab
-                                value="disagreements"
-                                icon={<AlertTriangle className="w-4 h-4" />}
-                                label="Disagreements"
-                                count={disagreements.length}
-                                tone="red"
-                                anchor="room.tab.disagreements"
-                            />
-                        )}
-                        {capabilities.consensus && (
-                            <RoomTab
-                                value="consensus"
-                                icon={<CheckCircle2 className="w-4 h-4" />}
-                                label="Consensus"
-                                count={consensus.length}
-                                tone="green"
-                                anchor="room.tab.consensus"
-                            />
-                        )}
-                        <RoomTab value="roster" icon={<Users className="w-4 h-4" />} label="Roster" />
-                        {capabilities.documents && DocumentsPanel && (
-                            <RoomTab
-                                value="documents"
-                                icon={<FileText className="w-4 h-4" />}
-                                label={runtime.replay ? "Files" : "Shared Docs"}
-                            />
-                        )}
-                        {capabilities.summary && SummaryPanel && (
-                            <RoomTab
-                                value="summary"
-                                icon={<Scroll className="w-4 h-4" />}
-                                label="Summary"
-                            />
-                        )}
-                        {capabilities.closing && (
-                            <RoomTab
-                                id="closing-tab"
-                                value="closing"
-                                icon={<LogOut className="w-4 h-4" />}
-                                label="Close"
-                            />
-                        )}
-                    </TabsList>
+        <div className="flex min-h-0 flex-1 flex-col overflow-hidden bg-canvas">
+            <header className="flex shrink-0 flex-wrap items-start gap-3 border-b border-separator bg-surface px-4 py-3">
+                <Link
+                    href={runtime.presentation.homeHref}
+                    className="mt-0.5 rounded-control p-1 text-ink-secondary hover:bg-surface-raised hover:text-ink"
+                    aria-label="Back to meetings"
+                >
+                    <ArrowLeft className="h-5 w-5" />
+                </Link>
+                <div className="min-w-0 flex-1">
+                    <h1 className="line-clamp-2 type-room-title text-balance text-ink sm:line-clamp-none">
+                        {meeting.name}
+                    </h1>
+                    {meeting.agenda && (
+                        <p className="mt-1 line-clamp-1 type-meta text-ink-secondary sm:line-clamp-2">
+                            {meeting.agenda}
+                        </p>
+                    )}
                 </div>
-
-                {turns.actionError && (
-                    <div className="mx-4 mt-4 p-3 bg-warning-soft border border-warning/60 rounded-lg flex items-center gap-2 text-warning shrink-0">
-                        <AlertTriangle className="w-4 h-4" />
-                        <span className="text-sm flex-1">{turns.actionError}</span>
-                        <button onClick={turns.clearActionError} className="text-xs hover:underline">
-                            Dismiss
-                        </button>
-                    </div>
-                )}
-
-                <TabsContent value="chat" className="flex-1 flex flex-col m-0 min-h-0">
-                    <MessageList
-                        meeting={meeting}
-                        activeOperation={turns.activeOperation}
-                        projection={turns.projection}
-                        isObserving={turns.isObserving}
-                        onResume={turns.resumeObservation}
-                    />
-                </TabsContent>
-
-                {capabilities.disagreements && (
-                    <TabsContent
-                        value="disagreements"
-                        className="flex-1 m-0 min-h-0 flex flex-col"
+                <div className="flex flex-wrap items-center justify-end gap-2">
+                    <Badge
+                        variant="secondary"
+                        className={cn(
+                            runtime.scope.identity.kind === 'replay'
+                                ? 'bg-accent-soft text-action'
+                                : 'bg-surface-raised text-ink-secondary'
+                        )}
                     >
-                        <div className="min-h-0 flex-1">
-                            <DisagreementsPanel disagreements={disagreements} />
-                        </div>
-                    </TabsContent>
-                )}
-
-                {capabilities.consensus && (
-                    <TabsContent
-                        value="consensus"
-                        className="flex-1 m-0 min-h-0 flex flex-col"
+                        {runtime.presentation.label}
+                    </Badge>
+                    <RoomStatus status={meeting.status} />
+                    {runtime.restart && (
+                        <Button
+                            variant="ghost"
+                            size="sm"
+                            className="text-ink-secondary"
+                            onClick={runtime.restart}
+                        >
+                            Restart
+                        </Button>
+                    )}
+                    <Button
+                        type="button"
+                        variant="outline"
+                        size="sm"
+                        onClick={() => setDetailsOpen(true)}
                     >
-                        <div className="min-h-0 flex-1">
-                            <ConsensusPanel consensus={consensus} />
-                        </div>
-                    </TabsContent>
-                )}
-
-                <TabsContent value="roster" className="flex-1 m-0 min-h-0">
-                    <ParticipantRoster participants={meeting.participants ?? []} />
-                </TabsContent>
-
-                {capabilities.documents && DocumentsPanel && (
-                    <TabsContent
-                        value="documents"
-                        className="flex-1 m-0 min-h-0 overflow-y-auto"
-                    >
-                        <DocumentsPanel meetingId={meeting.id} />
-                    </TabsContent>
-                )}
-
-                {capabilities.summary && SummaryPanel && (
-                    <TabsContent value="summary" className="flex-1 m-0 min-h-0">
-                        <SummaryPanel meeting={meeting} />
-                    </TabsContent>
-                )}
-
-                {capabilities.closing && (
-                    <TabsContent value="closing" className="flex-1 m-0 min-h-0">
-                        <div className="h-full overflow-y-auto p-4">
-                            <div className="mx-auto max-w-3xl">
-                                <ClosingPanel
-                                    meetingId={meeting.id}
-                                    meetingStatus={meeting.status}
-                                    textProjection={
-                                        runtime.closingStream && !skipClosingText
-                                            ? recordedClosingText
-                                            : undefined
-                                    }
-                                    onSkipText={() => {
-                                        setSkippedClosingCheckpoint(
-                                            replayCheckpoint ?? null
-                                        );
-                                        // Skipping the text is a playback
-                                        // choice, but it must still settle the
-                                        // canonical closing intent so the guide
-                                        // reaches Archive.
-                                        if (replayClosing && runtime.replay) {
-                                            void runtime.replay
-                                                .skipIntent(
-                                                    replayClosing.intent_id
-                                                )
-                                                .catch(() => {
-                                                    // The snapshot text remains
-                                                    // usable even if settlement
-                                                    // could not be recorded.
-                                                });
-                                        }
-                                    }}
-                                    onReplayClosing={
-                                        replayClosing ? replayClosingTurn : undefined
-                                    }
-                                />
-                                {runtime.replay && ended && (
-                                    <div className="mt-4 flex justify-center">
-                                        <Button asChild variant="outline">
-                                            <Link
-                                                ref={returnRef}
-                                                href="/demo/meetings"
-                                            >
-                                                Go to meetings
-                                            </Link>
-                                        </Button>
-                                    </div>
-                                )}
-                            </div>
-                        </div>
-                    </TabsContent>
-                )}
-            </Tabs>
-
-            {closingOpen ? (
-                tab !== 'closing' ? (
-                    <ClosingRoomNotice stage={closingStage} onOpen={openClosing} />
-                ) : null
-            ) : (
-                <>
+                        Details
+                    </Button>
                     {capabilities.closing && !ended && (
-                        <div className="border-t border-separator bg-canvas px-4 py-2 shrink-0">
-                            <div className="mx-auto flex max-w-3xl items-center justify-end gap-2">
-                                {runtime.replay?.preparedTurns?.length &&
-                                !runtime.replay.canClose ? (
-                                    <span className="text-xs text-ink-muted">
-                                        {runtime.replay.closeReason}
-                                    </span>
-                                ) : null}
-                                <Button
-                                    ref={closeAnchorRef}
-                                    id="closing-entry"
-                                    type="button"
-                                    variant="ghost"
-                                    size="sm"
-                                    className="text-ink-secondary hover:text-ink"
-                                    disabled={
-                                        runtime.replay?.preparedTurns?.length
-                                            ? !runtime.replay.canClose
-                                            : false
-                                    }
-                                    onClick={openClosing}
-                                >
-                                    <LogOut className="mr-2 h-4 w-4" />
-                                    Close meeting
-                                </Button>
-                            </div>
+                        <Button
+                            ref={closeAnchorRef}
+                            id="closing-tab"
+                            data-testid="closing-entry"
+                            type="button"
+                            variant="outline"
+                            size="sm"
+                            onClick={openClosing}
+                            disabled={Boolean(closeReason)}
+                            aria-label={
+                                closeReason
+                                    ? `Close meeting. ${closeReason}`
+                                    : 'Close meeting'
+                            }
+                            title={closeReason ?? undefined}
+                        >
+                            <LogOut className="mr-2 h-4 w-4" />
+                            Close
+                        </Button>
+                    )}
+                </div>
+            </header>
+
+            <div
+                className="flex shrink-0 items-center gap-2 overflow-x-auto border-b border-separator bg-surface px-4 py-2"
+                aria-label="Meeting perspectives"
+                role="group"
+            >
+                <span className="shrink-0 type-meta text-ink-muted">Perspectives</span>
+                {(meeting.participants ?? []).map((participant) => {
+                    const active = turns.activeParticipantId === participant.id;
+                    return (
+                        <span
+                            key={participant.id}
+                            className={cn(
+                                'inline-flex shrink-0 items-center gap-2 whitespace-nowrap rounded-full border px-2 py-1',
+                                active
+                                    ? 'border-action bg-accent-soft text-ink'
+                                    : 'border-separator bg-surface-raised/60 text-ink'
+                            )}
+                        >
+                            <ParticipantMark participant={participant} size="sm" />
+                            <span className="type-meta">{participant.name}</span>
+                            <span className="type-meta capitalize text-ink-muted">
+                                {participant.role}
+                            </span>
+                        </span>
+                    );
+                })}
+                <span className="inline-flex shrink-0 items-center gap-2 whitespace-nowrap rounded-full border border-separator bg-surface-raised/60 px-2 py-1 text-ink">
+                    <span className="flex h-7 w-7 items-center justify-center rounded-full bg-action">
+                        <User className="h-3.5 w-3.5 text-action-foreground" />
+                    </span>
+                    <span className="type-meta">You</span>
+                </span>
+            </div>
+
+            <div
+                data-testid="room-work-area"
+                className="flex min-h-0 flex-1 flex-col"
+            >
+                <div className="relative flex min-h-0 flex-1 overflow-hidden">
+                <Tabs
+                    value={mainTab}
+                    onValueChange={setTab}
+                    className="flex min-w-0 flex-1 flex-col"
+                >
+                    <div className="flex shrink-0 items-center gap-2 border-b border-separator px-3 py-2">
+                        <TabsList className="h-auto flex-1 justify-start gap-1 bg-transparent p-0">
+                            <RoomTab
+                                value="chat"
+                                icon={<MessageSquare className="h-4 w-4" />}
+                                label="Chat"
+                            />
+                            <RoomTab
+                                value="roster"
+                                icon={<Users className="h-4 w-4" />}
+                                label="Roster"
+                            />
+                            {capabilities.documents && DocumentsPanel && (
+                                <RoomTab
+                                    value="documents"
+                                    icon={<FileText className="h-4 w-4" />}
+                                    label={runtime.replay ? 'Files' : 'Shared Docs'}
+                                />
+                            )}
+                            {capabilities.summary && SummaryPanel && (
+                                <RoomTab
+                                    value="summary"
+                                    icon={<Scroll className="h-4 w-4" />}
+                                    label="Summary"
+                                />
+                            )}
+                        </TabsList>
+                        <Button
+                            type="button"
+                            variant="ghost"
+                            size="sm"
+                            className="hidden text-ink-secondary lg:inline-flex"
+                            onClick={() => setRecordOpen((open) => !open)}
+                            aria-expanded={recordOpen}
+                            aria-controls="room-record"
+                        >
+                            <PanelRight className="mr-2 h-4 w-4" />
+                            {recordOpen ? 'Close record' : 'Open record'}
+                        </Button>
+                        <Button
+                            type="button"
+                            variant="ghost"
+                            size="sm"
+                            className="text-ink-secondary lg:hidden"
+                            onClick={openRecord}
+                            aria-expanded={recordOverlayOpen}
+                            aria-controls="room-record"
+                        >
+                            <PanelRight className="mr-2 h-4 w-4" />
+                            Record
+                        </Button>
+                    </div>
+
+                    {turns.actionError && (
+                        <div
+                            role="alert"
+                            className="mx-3 mt-3 flex shrink-0 items-center gap-2 rounded-control border border-warning/60 bg-warning-soft p-3 type-meta text-warning"
+                        >
+                            <AlertTriangle className="h-4 w-4 shrink-0" />
+                            <span className="flex-1">{turns.actionError}</span>
+                            <button
+                                onClick={turns.clearActionError}
+                                className="underline underline-offset-2"
+                            >
+                                Dismiss
+                            </button>
                         </div>
                     )}
-                    {!ended ? <RoomControls meeting={meeting} turns={turns} /> : null}
-                </>
-            )}
+
+                    <TabsContent
+                        value="chat"
+                        className="m-0 flex min-h-0 flex-1 flex-col"
+                    >
+                        <MessageList
+                            meeting={meeting}
+                            activeOperation={turns.activeOperation}
+                            projection={turns.projection}
+                            isObserving={turns.isObserving}
+                            onResume={turns.resumeObservation}
+                        />
+                    </TabsContent>
+
+                    <TabsContent value="roster" className="m-0 min-h-0 flex-1">
+                        <ParticipantRoster participants={meeting.participants ?? []} />
+                    </TabsContent>
+
+                    {capabilities.documents && DocumentsPanel && (
+                        <TabsContent
+                            value="documents"
+                            className="m-0 min-h-0 flex-1 overflow-y-auto"
+                        >
+                            <DocumentsPanel meetingId={meeting.id} />
+                        </TabsContent>
+                    )}
+
+                    {capabilities.summary && SummaryPanel && (
+                        <TabsContent value="summary" className="m-0 min-h-0 flex-1">
+                            <SummaryPanel meeting={meeting} />
+                        </TabsContent>
+                    )}
+
+                    {capabilities.closing && (
+                        <TabsContent value="closing" className="m-0 min-h-0 flex-1">
+                            <div className="h-full overflow-y-auto p-4">
+                                <div className="mx-auto max-w-3xl">
+                                    <ClosingPanel
+                                        meetingId={meeting.id}
+                                        meetingStatus={meeting.status}
+                                        textProjection={
+                                            runtime.closingStream && !skipClosingText
+                                                ? recordedClosingText
+                                                : undefined
+                                        }
+                                        onSkipText={() => {
+                                            setSkippedClosingCheckpoint(
+                                                replayCheckpoint ?? null
+                                            );
+                                            // Skipping the text is a playback
+                                            // choice, but it must still settle the
+                                            // canonical closing intent so the guide
+                                            // reaches Archive.
+                                            if (replayClosing && runtime.replay) {
+                                                void runtime.replay
+                                                    .skipIntent(
+                                                        replayClosing.intent_id
+                                                    )
+                                                    .catch(() => {
+                                                        // The snapshot text remains
+                                                        // usable even if settlement
+                                                        // could not be recorded.
+                                                    });
+                                            }
+                                        }}
+                                        onReplayClosing={
+                                            replayClosing ? replayClosingTurn : undefined
+                                        }
+                                    />
+                                    {runtime.replay && ended && (
+                                        <div className="mt-4 flex justify-center">
+                                            <Button asChild variant="outline">
+                                                <Link
+                                                    ref={returnRef}
+                                                    href="/demo/meetings"
+                                                >
+                                                    Go to meetings
+                                                </Link>
+                                            </Button>
+                                        </div>
+                                    )}
+                                </div>
+                            </div>
+                        </TabsContent>
+                    )}
+                </Tabs>
+
+                {recordOpen && (
+                    <aside
+                        id="room-record"
+                        className={cn(
+                            'm-inspector flex min-h-0 flex-col border-separator bg-surface',
+                            recordOverlayVisible
+                                ? 'absolute inset-0 z-chrome flex lg:static lg:z-auto lg:w-80 lg:shrink-0 lg:border-l'
+                                : 'hidden lg:flex lg:w-80 lg:shrink-0 lg:border-l'
+                        )}
+                    >
+                        <div className="flex shrink-0 items-center justify-between gap-2 border-b border-separator px-3 py-2">
+                            <h2 className="type-item-title text-ink">Meeting record</h2>
+                            <Button
+                                type="button"
+                                variant="ghost"
+                                size="sm"
+                                className="lg:hidden"
+                                onClick={closeRecord}
+                                aria-label="Back to discussion"
+                            >
+                                <ArrowLeft className="h-4 w-4" />
+                            </Button>
+                            <Button
+                                type="button"
+                                variant="ghost"
+                                size="sm"
+                                className="hidden text-ink-secondary lg:inline-flex"
+                                onClick={closeRecord}
+                                aria-label="Close record rail"
+                            >
+                                <PanelRight className="h-4 w-4" />
+                            </Button>
+                        </div>
+                        <Tabs
+                            value={recordTab}
+                            onValueChange={setRecordTab}
+                            className="flex min-h-0 flex-1 flex-col"
+                        >
+                            <TabsList className="h-auto shrink-0 justify-start gap-1 border-b border-separator bg-transparent px-2 py-1">
+                                {capabilities.disagreements && (
+                                    <RoomTab
+                                        value="disagreements"
+                                        icon={<AlertTriangle className="h-4 w-4" />}
+                                        label="Disagreements"
+                                        count={disagreements.length}
+                                        tone="red"
+                                        anchor="room.tab.disagreements"
+                                    />
+                                )}
+                                {capabilities.consensus && (
+                                    <RoomTab
+                                        value="consensus"
+                                        icon={<CheckCircle2 className="h-4 w-4" />}
+                                        label="Consensus"
+                                        count={consensus.length}
+                                        tone="green"
+                                        anchor="room.tab.consensus"
+                                    />
+                                )}
+                            </TabsList>
+                            {capabilities.disagreements && (
+                                <TabsContent
+                                    value="disagreements"
+                                    className="m-0 flex min-h-0 flex-1 flex-col"
+                                >
+                                    <DisagreementsPanel disagreements={disagreements} compact />
+                                </TabsContent>
+                            )}
+                            {capabilities.consensus && (
+                                <TabsContent
+                                    value="consensus"
+                                    className="m-0 flex min-h-0 flex-1 flex-col"
+                                >
+                                    <ConsensusPanel consensus={consensus} compact />
+                                </TabsContent>
+                            )}
+                        </Tabs>
+                    </aside>
+                )}
+                </div>
+
+                <div
+                    data-testid="room-dock"
+                    className="shrink-0 border-t border-separator bg-surface px-4 py-2"
+                >
+                    <div className="mx-auto w-full max-w-[74ch]">
+                        {closingOpen ? (
+                            tab !== 'closing' ? (
+                                <ClosingRoomNotice stage={closingStage} onOpen={openClosing} />
+                            ) : null
+                        ) : !ended ? (
+                            <RoomControls meeting={meeting} turns={turns} />
+                        ) : null}
+                    </div>
+                </div>
+            </div>
+
+            <MeetingDetailsDialog
+                open={detailsOpen}
+                onOpenChange={setDetailsOpen}
+                meeting={meeting}
+                disagreements={disagreements}
+                consensus={consensus}
+                contextStats={contextStats}
+            />
         </div>
     );
 }
@@ -576,24 +744,27 @@ function ClosingRoomNotice({
             id="closing-room-status"
             role="status"
             aria-live="polite"
-            className="border-t border-separator bg-canvas px-4 py-3 shrink-0"
+            className={cn(
+                'flex flex-wrap items-center gap-3 rounded-control border px-3 py-2',
+                stage === 'failed'
+                    ? 'border-danger/50 bg-danger-soft'
+                    : 'border-warning/50 bg-warning-soft'
+            )}
         >
-            <div className="mx-auto flex max-w-3xl flex-wrap items-center gap-3">
-                <div className="min-w-0 flex-1">
-                    <p className="text-sm font-medium text-ink">{title}</p>
-                    <p className="text-xs text-ink-muted">{detail}</p>
-                </div>
-                <Button
-                    id="closing-room-view"
-                    type="button"
-                    variant="outline"
-                    size="sm"
-                    className="border-control text-ink-secondary"
-                    onClick={onOpen}
-                >
-                    View closing
-                </Button>
+            <div className="min-w-0 flex-1">
+                <p className="type-control font-medium text-ink">{title}</p>
+                <p className="type-meta text-ink-secondary">{detail}</p>
             </div>
+            <Button
+                id="closing-room-view"
+                type="button"
+                variant="outline"
+                size="sm"
+                className="border-control text-ink-secondary"
+                onClick={onOpen}
+            >
+                View closing
+            </Button>
         </div>
     );
 }
@@ -621,15 +792,15 @@ function RoomTab({
             ref={ref}
             id={id}
             value={value}
-            className="data-[state=active]:bg-surface-raised data-[state=active]:text-ink text-ink-secondary px-3"
+            className="m-state h-8 gap-1.5 rounded-control px-2.5 type-meta text-ink-secondary data-[state=active]:bg-surface-selected data-[state=active]:text-ink"
         >
             {icon}
-            <span className="ml-2">{label}</span>
+            <span>{label}</span>
             {count !== undefined && count > 0 && (
                 <Badge
                     variant="secondary"
                     className={cn(
-                        'ml-2 h-5 px-1.5 text-xs',
+                        'h-5 px-1.5 text-xs',
                         tone === 'red'
                             ? 'bg-danger-soft text-danger'
                             : 'bg-success-soft text-success'
@@ -688,8 +859,11 @@ function MessageList({
     }, [messageCount, projection]);
 
     return (
-        <ScrollArea className="flex-1 min-h-0 p-4">
-            <div ref={contentRef} className="space-y-4 max-w-3xl mx-auto">
+        <ScrollArea data-testid="room-discussion" className="min-h-0 flex-1">
+            <div
+                ref={contentRef}
+                className="mx-auto max-w-[74ch] space-y-6 px-4 py-5"
+            >
                 {(meeting.messages ?? []).map((message) => (
                     <MessageBubble
                         key={message.id}
@@ -743,85 +917,94 @@ function RoomControls({ meeting, turns }: RoomControlsProps) {
     const nonTerminal = turns.operations.filter((operation) => !isTerminal(operation.status));
 
     return (
-        <div className="p-4 border-t border-separator shrink-0 bg-canvas">
-            <div
-                className="max-w-3xl mx-auto max-h-[55dvh] overflow-y-auto pr-1 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-focus-ring"
-                role="group"
-                aria-label="Meeting controls"
-                tabIndex={0}
-            >
-                <p className="text-xs text-ink-secondary mb-3">Who speaks next?</p>
-                <div ref={speakerRef} className="flex flex-wrap gap-2 mb-4">
-                    {runtime.replay ? (
-                        runtime.replay.preparedTurns?.length ? null : (
-                            <Tooltip>
-                                <TooltipTrigger asChild>
-                                    <span
-                                        tabIndex={0}
-                                        data-testid="you-disabled-trigger"
-                                        className="inline-flex rounded-md focus-visible:outline-none focus-visible:ring-2 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-focus-ring"
-                                    >
-                                        <Button
-                                            type="button"
-                                            variant="outline"
-                                            size="sm"
-                                            disabled
-                                            className="border-action/50 bg-accent-soft text-ink-muted"
+        <div className="space-y-3" role="group" aria-label="Meeting controls">
+            <div className="grid gap-3 lg:grid-cols-2">
+                <div className="min-w-0">
+                    <p className="mb-2 type-meta text-ink-secondary">Who speaks next?</p>
+                    <div
+                        ref={speakerRef}
+                        className="flex flex-nowrap gap-2 overflow-x-auto pb-1"
+                    >
+                        {runtime.replay ? (
+                            runtime.replay.preparedTurns?.length ? null : (
+                                <Tooltip>
+                                    <TooltipTrigger asChild>
+                                        <span
+                                            tabIndex={0}
+                                            data-testid="you-disabled-trigger"
+                                            className="inline-flex rounded-control focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-focus-ring"
                                         >
-                                            <User className="w-4 h-4 mr-1" />
-                                            You
-                                        </Button>
-                                    </span>
-                                </TooltipTrigger>
-                                <TooltipContent side="top">
-                                    Only available in the live workspace.
-                                </TooltipContent>
-                            </Tooltip>
-                        )
-                    ) : (
-                        <Button
-                            variant="outline"
-                            size="sm"
-                            className="border-control hover:bg-surface-raised bg-accent-soft border-action text-action"
-                        >
-                            <User className="w-4 h-4 mr-1" />
-                            You
-                        </Button>
-                    )}
-                    {(meeting.participants ?? []).map((participant) => {
-                        const isActive = turns.activeParticipantId === participant.id;
-                        const isQueued = turns.operations.some(
-                            (operation) =>
-                                operation.participant_id === participant.id &&
-                                operation.status === 'queued'
-                        );
-                        if (!ParticipantAction) return null;
-                        return (
-                            <ParticipantAction
-                                key={participant.id}
-                                participant={participant}
-                                isActive={isActive}
-                                isQueued={isQueued}
-                                disabled={turns.isSubmitting}
-                                onStart={(settings) =>
-                                    handleStartTurn(participant.id, settings)
-                                }
-                            />
-                        );
-                    })}
+                                            <Button
+                                                type="button"
+                                                variant="outline"
+                                                size="sm"
+                                                disabled
+                                                className="border-action/50 bg-accent-soft text-ink-muted"
+                                            >
+                                                <User className="mr-1 h-4 w-4" />
+                                                You
+                                            </Button>
+                                        </span>
+                                    </TooltipTrigger>
+                                    <TooltipContent side="top">
+                                        Only available in the live workspace.
+                                    </TooltipContent>
+                                </Tooltip>
+                            )
+                        ) : (
+                            <Button
+                                variant="outline"
+                                size="sm"
+                                className="border-action bg-accent-soft text-action hover:bg-surface-raised"
+                            >
+                                <User className="mr-1 h-4 w-4" />
+                                You
+                            </Button>
+                        )}
+                        {(meeting.participants ?? []).map((participant) => {
+                            const isActive = turns.activeParticipantId === participant.id;
+                            const isQueued = turns.operations.some(
+                                (operation) =>
+                                    operation.participant_id === participant.id &&
+                                    operation.status === 'queued'
+                            );
+                            if (!ParticipantAction) return null;
+                            return (
+                                <ParticipantAction
+                                    key={participant.id}
+                                    participant={participant}
+                                    isActive={isActive}
+                                    isQueued={isQueued}
+                                    disabled={turns.isSubmitting}
+                                    onStart={(settings) =>
+                                        handleStartTurn(participant.id, settings)
+                                    }
+                                />
+                            );
+                        })}
+                    </div>
                 </div>
+                {DirectorAction ? (
+                    <div className="min-w-0">
+                        <DirectorAction />
+                    </div>
+                ) : null}
+            </div>
 
-                {DirectorAction ? <DirectorAction /> : null}
-
+            <div className="flex flex-wrap items-center justify-between gap-2 empty:hidden">
                 <PreparedTurnControls
                     activeOperationId={turns.activeOperation?.operation_id}
                 />
-                <div className="mb-3 flex justify-end">
-                    <ReplaySpeedControl />
-                </div>
+                <ReplaySpeedControl />
+            </div>
 
-                {nonTerminal.length > 0 && (
-                    <div className="mb-4 rounded-lg border border-separator bg-surface/60 divide-y divide-separator">
+            {nonTerminal.length > 0 && (
+                <details className="rounded-control border border-separator bg-surface-raised/60">
+                    <summary className="cursor-pointer px-3 py-2 type-meta text-ink-secondary">
+                        {nonTerminal.length} operation
+                        {nonTerminal.length === 1 ? '' : 's'} in progress
+                    </summary>
+                    <div className="divide-y divide-separator">
                         {nonTerminal.map((operation) => (
                             <QueueRow
                                 key={operation.operation_id}
@@ -831,12 +1014,12 @@ function RoomControls({ meeting, turns }: RoomControlsProps) {
                             />
                         ))}
                     </div>
-                )}
+                </details>
+            )}
 
-                {runtime.capabilities.sendMessage && (
-                    <MessageComposer meetingId={meeting.id} />
-                )}
-            </div>
+            {runtime.capabilities.sendMessage && (
+                <MessageComposer meetingId={meeting.id} />
+            )}
         </div>
     );
 }
@@ -1001,10 +1184,16 @@ function MessageComposer({ meetingId }: { meetingId: string }) {
     );
 }
 
-function DisagreementsPanel({ disagreements }: { disagreements: Disagreement[] }) {
+function DisagreementsPanel({
+    disagreements,
+    compact = false,
+}: {
+    disagreements: Disagreement[];
+    compact?: boolean;
+}) {
     return (
-        <ScrollArea className="h-full p-4">
-            <div className="max-w-3xl mx-auto">
+        <ScrollArea className={cn('h-full', compact ? 'p-3' : 'p-4')}>
+            <div className={cn('mx-auto', compact ? 'max-w-none' : 'max-w-3xl')}>
                 <h2
                     id="disagreements-heading"
                     tabIndex={-1}
@@ -1014,18 +1203,23 @@ function DisagreementsPanel({ disagreements }: { disagreements: Disagreement[] }
                 </h2>
                 {disagreements.length === 0 ? (
                     <EmptyTab
-                        icon={<AlertTriangle className="w-12 h-12" />}
-                        title="No Disagreements Yet"
+                        compact={compact}
+                        icon={<AlertTriangle className="h-8 w-8" />}
+                        title="No disagreements yet"
                         text="When AI participants disagree, their debates will appear here."
                     />
                 ) : (
-                    <div className="space-y-4">
-                        <p className="text-sm text-ink-secondary mb-4">
+                    <div className={compact ? 'space-y-2' : 'space-y-4'}>
+                        <p className="mb-2 type-meta text-ink-secondary">
                             {disagreements.length} disagreement
                             {disagreements.length !== 1 ? 's' : ''} logged
                         </p>
                         {disagreements.map((disagreement) => (
-                            <DisagreementCard key={disagreement.id} disagreement={disagreement} />
+                            <DisagreementCard
+                                key={disagreement.id}
+                                disagreement={disagreement}
+                                compact={compact}
+                            />
                         ))}
                     </div>
                 )}
@@ -1034,27 +1228,34 @@ function DisagreementsPanel({ disagreements }: { disagreements: Disagreement[] }
     );
 }
 
-function ConsensusPanel({ consensus }: { consensus: Consensus[] }) {
+function ConsensusPanel({
+    consensus,
+    compact = false,
+}: {
+    consensus: Consensus[];
+    compact?: boolean;
+}) {
     return (
-        <ScrollArea className="h-full p-4">
-            <div className="max-w-3xl mx-auto">
+        <ScrollArea className={cn('h-full', compact ? 'p-3' : 'p-4')}>
+            <div className={cn('mx-auto', compact ? 'max-w-none' : 'max-w-3xl')}>
                 <h2 id="consensus-heading" tabIndex={-1} className="sr-only">
                     Consensus
                 </h2>
                 {consensus.length === 0 ? (
                     <EmptyTab
-                        icon={<CheckCircle2 className="w-12 h-12" />}
-                        title="No Consensus Yet"
+                        compact={compact}
+                        icon={<CheckCircle2 className="h-8 w-8" />}
+                        title="No consensus yet"
                         text="When AI participants reach agreement, it will appear here."
                     />
                 ) : (
-                    <div className="space-y-4">
-                        <p className="text-sm text-ink-secondary mb-4">
+                    <div className={compact ? 'space-y-2' : 'space-y-4'}>
+                        <p className="mb-2 type-meta text-ink-secondary">
                             {consensus.length} consensus point
                             {consensus.length !== 1 ? 's' : ''} reached
                         </p>
                         {consensus.map((item) => (
-                            <ConsensusCard key={item.id} consensus={item} />
+                            <ConsensusCard key={item.id} consensus={item} compact={compact} />
                         ))}
                     </div>
                 )}
@@ -1067,21 +1268,34 @@ function EmptyTab({
     icon,
     title,
     text,
+    compact = false,
 }: {
     icon: React.ReactNode;
     title: string;
     text: string;
+    compact?: boolean;
 }) {
     return (
-        <div className="text-center py-16 text-ink-muted">
-            <div className="mx-auto mb-3 opacity-50 w-12 h-12">{icon}</div>
-            <h3 className="text-lg font-medium text-ink-secondary mb-1">{title}</h3>
-            <p className="text-sm">{text}</p>
+        <div
+            className={cn(
+                'text-center text-ink-muted',
+                compact ? 'py-8' : 'py-16'
+            )}
+        >
+            <div className="mx-auto mb-3 h-8 w-8 opacity-50">{icon}</div>
+            <h3 className="mb-1 type-control font-medium text-ink-secondary">{title}</h3>
+            <p className="type-meta">{text}</p>
         </div>
     );
 }
 
-function DisagreementCard({ disagreement }: { disagreement: Disagreement }) {
+function DisagreementCard({
+    disagreement,
+    compact = false,
+}: {
+    disagreement: Disagreement;
+    compact?: boolean;
+}) {
     const severityColors: Record<number, string> = {
         1: 'border-warning/50 bg-warning-soft',
         2: 'border-warning/50 bg-warning-soft',
@@ -1091,14 +1305,16 @@ function DisagreementCard({ disagreement }: { disagreement: Disagreement }) {
     };
     const severity = (disagreement.severity || 3) as keyof typeof severityColors;
     return (
-        <Card className={cn('p-4 border', severityColors[severity])}>
-            <div className="space-y-3">
+        <Card className={cn('border', compact ? 'p-3' : 'p-4', severityColors[severity])}>
+            <div className="space-y-2">
                 <div className="flex items-start justify-between gap-3">
-                    <h4 className="font-medium text-ink">{disagreement.topic}</h4>
+                    <h4 className="type-control font-semibold text-ink">
+                        {disagreement.topic}
+                    </h4>
                     <Badge
                         variant="secondary"
                         className={cn(
-                            'shrink-0 text-xs',
+                            'shrink-0 text-xs capitalize',
                             disagreement.status === 'open'
                                 ? 'bg-danger-soft text-danger'
                                 : 'bg-surface-selected text-ink-secondary'
@@ -1107,23 +1323,29 @@ function DisagreementCard({ disagreement }: { disagreement: Disagreement }) {
                         {disagreement.status}
                     </Badge>
                 </div>
-                <p className="text-sm text-ink-secondary">{disagreement.reasoning}</p>
-                <div className="flex items-center gap-3 text-xs text-ink-muted">
+                <p className="type-control text-ink-secondary">{disagreement.reasoning}</p>
+                <div className="flex flex-wrap items-center gap-x-2 gap-y-1 type-meta text-ink-muted">
                     <span>
-                        Challenging:{' '}
+                        Challenging{' '}
                         <span className="text-ink-secondary">{disagreement.target_name}</span>
                     </span>
-                    <span>•</span>
+                    <span aria-hidden="true">·</span>
                     <span>{formatRelativeTime(disagreement.created_at)}</span>
-                    <span>•</span>
-                    <span>Severity: {severity}/5</span>
+                    <span aria-hidden="true">·</span>
+                    <span>Severity {severity}/5</span>
                 </div>
             </div>
         </Card>
     );
 }
 
-function ConsensusCard({ consensus }: { consensus: Consensus }) {
+function ConsensusCard({
+    consensus,
+    compact = false,
+}: {
+    consensus: Consensus;
+    compact?: boolean;
+}) {
     const strengthColors: Record<number, string> = {
         1: 'border-success/40 bg-success-soft',
         2: 'border-success/40 bg-success-soft',
@@ -1133,23 +1355,23 @@ function ConsensusCard({ consensus }: { consensus: Consensus }) {
     };
     const strength = (consensus.strength || 3) as keyof typeof strengthColors;
     return (
-        <Card className={cn('p-4 border', strengthColors[strength])}>
-            <div className="space-y-3">
-                <h4 className="font-medium text-ink">{consensus.topic}</h4>
-                <div className="flex flex-wrap gap-2">
+        <Card className={cn('border', compact ? 'p-3' : 'p-4', strengthColors[strength])}>
+            <div className="space-y-2">
+                <h4 className="type-control font-semibold text-ink">{consensus.topic}</h4>
+                <div className="flex flex-wrap gap-1.5">
                     {(consensus.participants as string[]).map((name, index) => (
                         <Badge
                             key={`${name}-${index}`}
                             variant="secondary"
-                            className="text-xs bg-success-soft text-success"
+                            className="bg-success-soft text-xs text-success"
                         >
                             {name}
                         </Badge>
                     ))}
                 </div>
-                <div className="flex items-center gap-3 text-xs text-ink-muted">
-                    <span>Strength: {strength}/5</span>
-                    <span>•</span>
+                <div className="flex items-center gap-2 type-meta text-ink-muted">
+                    <span>Strength {strength}/5</span>
+                    <span aria-hidden="true">·</span>
                     <span>{formatRelativeTime(consensus.created_at)}</span>
                 </div>
             </div>
@@ -1299,98 +1521,175 @@ function ParticipantDetailCard({ participant }: { participant: AIParticipant }) 
 
 
 
-function RoomDetailsPanel({
+const IDENTITY_SHAPES = [
+    { className: 'rounded-full', inner: '' },
+    { className: 'rounded-md', inner: '' },
+    { className: 'rotate-45', inner: '-rotate-45' },
+    {
+        className: '[clip-path:polygon(50%_0,100%_50%,50%_100%,0_50%)]',
+        inner: '',
+    },
+    {
+        className: '[clip-path:polygon(25%_5%,75%_5%,100%_50%,75%_95%,25%_95%,0_50%)]',
+        inner: '',
+    },
+    { className: 'rounded-[30%]', inner: '' },
+] as const;
+
+function identityShape(id: string) {
+    let hash = 0;
+    for (let index = 0; index < id.length; index += 1) {
+        hash = (hash * 31 + id.charCodeAt(index)) >>> 0;
+    }
+    return IDENTITY_SHAPES[hash % IDENTITY_SHAPES.length];
+}
+
+function ParticipantMark({
+    participant,
+    size = 'md',
+}: {
+    participant: Pick<AIParticipant, 'id' | 'name' | 'color'>;
+    size?: 'sm' | 'md' | 'lg';
+}) {
+    const shape = identityShape(participant.id);
+    const sizeClass =
+        size === 'sm' ? 'h-7 w-7 text-xs' : size === 'lg' ? 'h-11 w-11 text-base' : 'h-8 w-8 text-sm';
+    return (
+        <span
+            aria-hidden="true"
+            className={cn(
+                'inline-flex shrink-0 items-center justify-center font-bold',
+                sizeClass,
+                shape.className
+            )}
+            style={{
+                backgroundColor: participant.color,
+                color: readableTextOn(participant.color),
+            }}
+        >
+            <span className={shape.inner}>{participant.name.charAt(0)}</span>
+        </span>
+    );
+}
+
+function MeetingDetailsDialog({
+    open,
+    onOpenChange,
     meeting,
     disagreements,
     consensus,
     contextStats,
 }: {
+    open: boolean;
+    onOpenChange: (open: boolean) => void;
     meeting: MeetingWithParticipants;
     disagreements: Disagreement[];
     consensus: Consensus[];
     contextStats: ContextStats | undefined;
 }) {
     return (
-        <aside className="w-72 border-l border-separator bg-canvas p-4 overflow-y-auto shrink-0 hidden lg:block">
-            <h3 className="text-sm font-semibold text-ink mb-3">Meeting Info</h3>
-            <div className="space-y-2 text-xs text-ink-secondary mb-6">
-                <div className="flex justify-between">
-                    <span>Participants</span>
-                    <span className="text-ink">{meeting.participants?.length ?? 0}</span>
-                </div>
-                <div className="flex justify-between">
-                    <span>Messages</span>
-                    <span className="text-ink">{meeting.messages?.length ?? 0}</span>
-                </div>
-                <div className="flex justify-between">
-                    <span>Disagreements</span>
-                    <span className="text-ink">{disagreements.length}</span>
-                </div>
-                <div className="flex justify-between">
-                    <span>Consensus</span>
-                    <span className="text-ink">{consensus.length}</span>
-                </div>
-                {meeting.total_cost > 0 && (
-                    <div className="flex justify-between">
-                        <span>Cost</span>
-                        <span className="text-ink">{formatCost(meeting.total_cost)}</span>
-                    </div>
+        <Dialog open={open} onOpenChange={onOpenChange}>
+            <DialogContent className="sm:max-w-2xl">
+                <DialogTitle>Meeting details</DialogTitle>
+                <DialogDescription>
+                    Context, counts, and participants for this room. Closing and playback stay
+                    in the room itself.
+                </DialogDescription>
+
+                <section className="mt-4">
+                    <h3 className="type-meta-strong text-ink-secondary">Meeting</h3>
+                    <p className="mt-1 type-body text-ink">{meeting.name}</p>
+                </section>
+
+                {meeting.agenda && (
+                    <section className="mt-4">
+                        <h3 className="type-meta-strong text-ink-secondary">Agenda</h3>
+                        <p className="mt-1 whitespace-pre-wrap type-body text-ink">
+                            {meeting.agenda}
+                        </p>
+                    </section>
                 )}
-            </div>
 
-            {contextStats && (
-                <div className="mb-6">
-                    <h4 className="text-xs font-medium text-ink-secondary mb-2">Context Usage</h4>
-                    <div className="h-2 rounded-full bg-surface-raised overflow-hidden">
-                        <div
-                            className={cn(
-                                'h-full rounded-full',
-                                contextStats.usage_percent > 80
-                                    ? 'bg-danger'
-                                    : contextStats.usage_percent > 60
-                                      ? 'bg-warning'
-                                      : 'bg-success'
-                            )}
-                            style={{
-                                width: `${Math.min(contextStats.usage_percent, 100)}%`,
-                            }}
-                        />
-                    </div>
-                    <p className="text-xs text-ink-muted mt-1">
-                        {contextStats.current_tokens.toLocaleString()} /{' '}
-                        {contextStats.max_tokens.toLocaleString()} tokens
-                    </p>
-                </div>
-            )}
+                <section className="mt-5">
+                    <h3 className="type-meta-strong text-ink-secondary">Meeting record</h3>
+                    <dl className="mt-2 grid grid-cols-2 gap-x-6 gap-y-2 type-meta">
+                        <div className="flex justify-between gap-3">
+                            <dt className="text-ink-secondary">Participants</dt>
+                            <dd className="type-tabular text-ink">
+                                {meeting.participants?.length ?? 0}
+                            </dd>
+                        </div>
+                        <div className="flex justify-between gap-3">
+                            <dt className="text-ink-secondary">Messages</dt>
+                            <dd className="type-tabular text-ink">
+                                {meeting.messages?.length ?? 0}
+                            </dd>
+                        </div>
+                        <div className="flex justify-between gap-3">
+                            <dt className="text-ink-secondary">Disagreements</dt>
+                            <dd className="type-tabular text-ink">{disagreements.length}</dd>
+                        </div>
+                        <div className="flex justify-between gap-3">
+                            <dt className="text-ink-secondary">Consensus</dt>
+                            <dd className="type-tabular text-ink">{consensus.length}</dd>
+                        </div>
+                        {meeting.total_cost > 0 && (
+                            <div className="flex justify-between gap-3">
+                                <dt className="text-ink-secondary">Cost</dt>
+                                <dd className="type-tabular text-ink">
+                                    {formatCost(meeting.total_cost)}
+                                </dd>
+                            </div>
+                        )}
+                    </dl>
+                </section>
 
-            <h4 className="text-xs font-medium text-ink-secondary mb-2">Participants</h4>
-            <div className="space-y-2">
-                {(meeting.participants ?? []).map((participant) => (
-                    <div
-                        key={participant.id}
-                        className="flex items-center gap-2 rounded-lg border border-separator bg-surface/50 p-2"
-                    >
-                        <div
-                            className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full text-xs font-bold"
-                            style={{
-                                backgroundColor: participant.color,
-                                color: readableTextOn(participant.color),
-                            }}
-                        >
-                            {participant.name.charAt(0)}
+                {contextStats && (
+                    <section className="mt-5">
+                        <h3 className="type-meta-strong text-ink-secondary">Context usage</h3>
+                        <div className="mt-2 h-2 overflow-hidden rounded-full bg-surface-raised">
+                            <div
+                                className={cn(
+                                    'h-full rounded-full',
+                                    contextStats.usage_percent > 80
+                                        ? 'bg-danger'
+                                        : contextStats.usage_percent > 60
+                                          ? 'bg-warning'
+                                          : 'bg-success'
+                                )}
+                                style={{
+                                    width: `${Math.min(contextStats.usage_percent, 100)}%`,
+                                }}
+                            />
                         </div>
-                        <div className="min-w-0">
-                            <p className="truncate type-meta text-ink">
-                                {participant.name}
-                            </p>
-                            <p className="truncate type-meta capitalize text-ink-muted">
-                                {participant.role}
-                            </p>
-                        </div>
+                        <p className="mt-1 type-meta text-ink-muted">
+                            {contextStats.current_tokens.toLocaleString()} /{' '}
+                            {contextStats.max_tokens.toLocaleString()} tokens
+                        </p>
+                    </section>
+                )}
+
+                <section className="mt-5">
+                    <h3 className="type-meta-strong text-ink-secondary">Participants</h3>
+                    <div className="mt-2 space-y-2">
+                        {(meeting.participants ?? []).map((participant) => (
+                            <div
+                                key={participant.id}
+                                className="flex items-center gap-3 rounded-control border border-separator bg-surface-raised/50 p-2"
+                            >
+                                <ParticipantMark participant={participant} size="sm" />
+                                <div className="min-w-0">
+                                    <p className="type-control text-ink">{participant.name}</p>
+                                    <p className="type-meta capitalize text-ink-muted">
+                                        {participant.role}
+                                    </p>
+                                </div>
+                            </div>
+                        ))}
                     </div>
-                ))}
-            </div>
-        </aside>
+                </section>
+            </DialogContent>
+        </Dialog>
     );
 }
 
@@ -1420,53 +1719,36 @@ function MessageBubble({
             data-sender-name={message.sender_name}
             className={cn('flex gap-3', isUser && 'flex-row-reverse')}
         >
-            <div
-                className={cn(
-                    'w-8 h-8 rounded-full flex items-center justify-center shrink-0',
-                    isUser && 'bg-action',
-                    isSystem && 'bg-surface-selected'
-                )}
-                style={
-                    participant
-                        ? {
-                              backgroundColor: participant.color,
-                              color: readableTextOn(participant.color),
-                          }
-                        : undefined
-                }
-            >
-                {isUser ? (
+            {isUser ? (
+                <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-action">
                     <User className="h-4 w-4 text-action-foreground" />
-                ) : isSystem ? (
+                </span>
+            ) : isSystem ? (
+                <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-surface-selected">
                     <Bot className="h-4 w-4 text-ink-secondary" />
-                ) : (
-                    <span className="text-sm font-bold">
-                        {message.sender_name.charAt(0)}
-                    </span>
-                )}
-            </div>
-            <div className={cn('flex-1 max-w-[80%]', isUser && 'flex flex-col items-end')}>
-                <div className="flex items-center gap-2 mb-1">
+                </span>
+            ) : participant ? (
+                <ParticipantMark participant={participant} />
+            ) : (
+                <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-surface-raised">
+                    <Bot className="h-4 w-4 text-ink-secondary" />
+                </span>
+            )}
+            <div className={cn('min-w-0 flex-1', isUser && 'flex flex-col items-end')}>
+                <div className="mb-1 flex flex-wrap items-center gap-2">
                     <span
                         className={cn(
-                            'inline-flex items-center gap-1.5 text-sm font-medium',
+                            'type-room-attribution',
                             isUser ? 'text-action' : 'text-ink'
                         )}
                     >
-                        {!isUser && !isSystem && participant ? (
-                            <span
-                                aria-hidden="true"
-                                className="h-2 w-2 shrink-0 rounded-full"
-                                style={{ backgroundColor: participant.color }}
-                            />
-                        ) : null}
                         {message.sender_name}
                     </span>
-                    <span className="text-xs text-ink-muted">
+                    <span className="type-meta text-ink-muted">
                         {formatRelativeTime(message.created_at)}
                     </span>
                     {message.estimated_cost > 0 && (
-                        <Badge variant="secondary" className="text-xs bg-surface-raised text-ink-secondary">
+                        <Badge variant="secondary" className="bg-surface-raised type-meta text-ink-secondary">
                             {formatCost(message.estimated_cost)}
                         </Badge>
                     )}
@@ -1491,17 +1773,18 @@ function MessageBubble({
                 )}
                 <div
                     className={cn(
-                        'rounded-2xl px-4 py-2.5',
-                        isUser
-                            ? 'bg-action text-action-foreground rounded-br-md'
-                            : 'bg-surface-raised text-ink rounded-bl-md',
-                        isSystem && 'bg-surface-raised/50 text-ink-secondary italic'
+                        isUser && 'rounded-group bg-action px-4 py-3 text-action-foreground',
+                        isSystem &&
+                            'rounded-control bg-surface-raised/60 px-4 py-3 type-room-body italic text-ink-secondary',
+                        !isUser && !isSystem && 'text-ink'
                     )}
                 >
-                    {isUser || isSystem ? (
-                        <p className="text-sm whitespace-pre-wrap">{message.content}</p>
+                    {isUser ? (
+                        <p className="type-room-body whitespace-pre-wrap">{message.content}</p>
+                    ) : isSystem ? (
+                        <p className="whitespace-pre-wrap">{message.content}</p>
                     ) : (
-                        <div className="prose prose-sm max-w-none prose-p:my-1 prose-headings:my-2 prose-ul:my-1 prose-ol:my-1 prose-li:my-0.5 prose-pre:my-2 prose-pre:bg-surface-raised prose-pre:text-ink-secondary prose-code:bg-surface-raised prose-code:px-1.5 prose-code:py-0.5 prose-code:rounded prose-code:text-action prose-code:before:content-none prose-code:after:content-none">
+                        <div className="room-markdown">
                             <ReactMarkdown remarkPlugins={[remarkGfm]}>
                                 {message.content}
                             </ReactMarkdown>
@@ -1555,34 +1838,28 @@ function TurnProjectionBubble({
 
     return (
         <div className="flex gap-3">
-            <div
-                className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full"
-                style={{ backgroundColor: color, color: readableTextOn(color) }}
-            >
-                <span className="text-sm font-bold">{name.charAt(0)}</span>
-            </div>
-            <div className="flex-1 max-w-[80%]">
-                <div className="flex items-center gap-2 mb-1">
-                    <span className="inline-flex items-center gap-1.5 text-sm font-medium text-ink">
-                        <span
-                            aria-hidden="true"
-                            className="h-2 w-2 shrink-0 rounded-full"
-                            style={{ backgroundColor: color }}
-                        />
-                        {name}
-                    </span>
+            <ParticipantMark
+                participant={{
+                    id: operation.participant_id ?? name,
+                    name,
+                    color,
+                }}
+            />
+            <div className="min-w-0 flex-1">
+                <div className="mb-1 flex flex-wrap items-center gap-2">
+                    <span className="type-room-attribution text-ink">{name}</span>
                     {isQueued ? (
-                        <Badge variant="secondary" className="text-xs bg-surface-raised text-ink-secondary">
-                            <Clock className="w-3 h-3 mr-1" />
+                        <Badge variant="secondary" className="bg-surface-raised type-meta text-ink-secondary">
+                            <Clock className="mr-1 h-3 w-3" />
                             Queued
                             {operation.queue_position ? ` #${operation.queue_position}` : ''}
                         </Badge>
                     ) : (
-                        <Loader2 className="w-3 h-3 animate-spin text-ink-muted" />
+                        <Loader2 className="h-3 w-3 animate-spin text-ink-muted" />
                     )}
                     {!isQueued && isObserving && (
-                        <span className="text-xs text-ink-muted">
-                            {runtime.replay ? "recording" : "live"}
+                        <span className="type-meta text-ink-muted">
+                            {runtime.replay ? 'recording' : 'live'}
                         </span>
                     )}
                 </div>
@@ -1610,13 +1887,13 @@ function TurnProjectionBubble({
                 ))}
 
                 {projection?.text && (
-                    <div className="rounded-2xl px-4 py-2.5 bg-surface-raised text-ink rounded-bl-md">
-                        <div className="prose prose-sm max-w-none prose-p:my-1 prose-headings:my-2 prose-ul:my-1 prose-ol:my-1 prose-li:my-0.5 prose-pre:my-2 prose-pre:bg-surface-raised prose-pre:text-ink-secondary prose-code:bg-surface-raised prose-code:px-1.5 prose-code:py-0.5 prose-code:rounded prose-code:text-action prose-code:before:content-none prose-code:after:content-none">
+                    <div className="text-ink">
+                        <div className="room-markdown">
                             <ReactMarkdown remarkPlugins={[remarkGfm]}>
                                 {projection.text}
                             </ReactMarkdown>
                             {!projection.terminal && !projection.observationInterrupted && (
-                                <span className="inline-block w-2 h-4 ml-1 bg-ink-muted animate-pulse" />
+                                <span className="ml-1 inline-block h-4 w-2 animate-pulse bg-ink-muted motion-reduce:animate-none" />
                             )}
                         </div>
                     </div>
@@ -1642,28 +1919,28 @@ function TurnProjectionBubble({
                 )}
 
                 {projection?.error && (
-                    <div className="mt-2 rounded-lg border border-danger/60 bg-danger-soft px-3 py-2 text-sm text-danger">
+                    <div className="mt-2 rounded-control border border-danger/60 bg-danger-soft px-3 py-2 type-control text-danger">
                         {projection.error.message}
                     </div>
                 )}
 
                 {projection?.observationInterrupted && (
-                    <div className="mt-2 flex items-center gap-2 rounded-lg border border-warning/60 bg-warning-soft px-3 py-2 text-xs text-warning">
-                        <AlertTriangle className="w-3.5 h-3.5" />
+                    <div className="mt-2 flex items-center gap-2 rounded-control border border-warning/60 bg-warning-soft px-3 py-2 type-meta text-warning">
+                        <AlertTriangle className="h-3.5 w-3.5 shrink-0" />
                         <span className="flex-1">
                             Observation paused. The turn continues on the server; this is not a
                             failure.
                         </span>
-                        <button onClick={onResume} className="hover:underline">
+                        <button onClick={onResume} className="underline underline-offset-2">
                             Resume
                         </button>
                     </div>
                 )}
 
                 {!hasContent && !projection?.error && !projection?.observationInterrupted && (
-                    <div className="rounded-2xl px-4 py-2.5 bg-surface-raised text-ink-muted rounded-bl-md">
-                        <div className="flex items-center gap-2 text-sm">
-                            <Loader2 className="w-4 h-4 animate-spin" />
+                    <div className="rounded-control bg-surface-raised px-4 py-2.5 type-control text-ink-muted">
+                        <div className="flex items-center gap-2">
+                            <Loader2 className="h-4 w-4 animate-spin motion-reduce:animate-none" />
                             {isQueued ? 'Waiting in the meeting queue…' : 'Thinking…'}
                         </div>
                     </div>

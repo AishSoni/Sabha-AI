@@ -141,10 +141,14 @@ test.describe("demo keyboard and narrow-screen accessibility", () => {
             .focus();
         await page.keyboard.press("Enter");
         await expect(notices).toHaveCount(0);
+        await page
+            .getByRole("button", { name: "Record", exact: true })
+            .click();
         await page.getByRole("tab", { name: "Disagreements" }).click();
         await expect(
             page.getByText("Rating alone is insufficient").first()
         ).toBeVisible();
+        await page.getByRole("button", { name: "Back to discussion" }).click();
         await page.getByRole("tab", { name: "Chat" }).click();
 
         const expectedProgress = [

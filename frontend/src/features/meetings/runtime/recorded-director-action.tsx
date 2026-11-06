@@ -8,9 +8,9 @@
  * separate decision, so no participant is selected automatically.
  */
 import { useState } from "react";
-import { Send } from "lucide-react";
+import { ChevronDown, ChevronUp, Send } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import { Card } from "@/components/ui/card";
+import { cn } from "@/lib/utils";
 import { useAnchorRef } from "@/features/demo-tutorial";
 import { useMeetingsRuntime } from "./context";
 
@@ -19,6 +19,7 @@ export function RecordedDirectorAction() {
     const followUpRef = useAnchorRef("room.followup");
     const replay = runtime.replay;
     const [busy, setBusy] = useState(false);
+    const [questionExpanded, setQuestionExpanded] = useState(false);
 
     if (!replay) return null;
 
@@ -33,25 +34,39 @@ export function RecordedDirectorAction() {
     if (prepared?.kind === "follow_up") {
         if (replay.playedTurnIds?.has(prepared.turn_id)) return null;
         return (
-            <Card ref={followUpRef} className="mb-4 p-4">
-                <p className="type-control font-medium uppercase tracking-wide text-ink-muted">
-                    Your turn
-                </p>
-                <label
-                    className="mt-2 block type-meta font-medium text-ink-secondary"
-                    htmlFor="prepared-follow-up-question"
-                >
-                    Prepared question
-                </label>
-                <textarea
-                    id="prepared-follow-up-question"
-                    readOnly
-                    value={prepared.question}
-                    rows={3}
-                    className="mt-1 w-full resize-none rounded-control border border-control bg-surface-raised px-3 py-2 type-body text-ink"
-                />
-                <div className="mt-3">
+            <div ref={followUpRef} className="space-y-2">
+                <div className="flex items-center justify-between gap-2">
+                    <p className="type-meta text-ink-secondary">
+                        Your turn <span aria-hidden="true">·</span> Prepared question
+                    </p>
                     <Button
+                        type="button"
+                        variant="ghost"
+                        size="xs"
+                        aria-expanded={questionExpanded}
+                        aria-controls="prepared-follow-up-question"
+                        onClick={() => setQuestionExpanded((open) => !open)}
+                    >
+                        {questionExpanded ? (
+                            <ChevronUp className="mr-1 h-3.5 w-3.5" />
+                        ) : (
+                            <ChevronDown className="mr-1 h-3.5 w-3.5" />
+                        )}
+                        {questionExpanded ? 'Collapse' : 'Expand'}
+                    </Button>
+                </div>
+                <div className="flex flex-wrap items-start gap-2">
+                    <p
+                        id="prepared-follow-up-question"
+                        className={cn(
+                            'min-w-0 flex-1 type-control whitespace-pre-wrap text-ink',
+                            !questionExpanded && 'line-clamp-2'
+                        )}
+                    >
+                        {prepared.question}
+                    </p>
+                    <Button
+                        className="shrink-0"
                         busy={busy}
                         busyLabel="Sending"
                         onClick={async () => {
@@ -67,7 +82,7 @@ export function RecordedDirectorAction() {
                         Send question
                     </Button>
                 </div>
-            </Card>
+            </div>
         );
     }
 
@@ -87,12 +102,10 @@ export function RecordedDirectorAction() {
     const unavailable = actions.filter((action) => !action.available);
 
     return (
-        <Card className="mb-4 p-4">
-            <p className="type-control font-medium uppercase tracking-wide text-ink-muted">
-                Your follow-up
-            </p>
+        <div className="space-y-2">
+            <p className="type-meta text-ink-secondary">Your follow-up</p>
             {available.length > 0 ? (
-                <div className="mt-3 flex flex-wrap gap-2">
+                <div className="flex flex-wrap gap-2">
                     {available.map((action) => {
                         const actionBusy =
                             busy && action === available[0];
@@ -123,7 +136,7 @@ export function RecordedDirectorAction() {
                 </div>
             ) : null}
             {unavailable.length > 0 ? (
-                <ul className="mt-3 space-y-1 type-meta text-ink-muted">
+                <ul className="space-y-1 type-meta text-ink-muted">
                     {unavailable.map((action) => (
                         <li key={action.transition.transition_id}>
                             <span className="text-ink-secondary">
@@ -136,6 +149,6 @@ export function RecordedDirectorAction() {
                     ))}
                 </ul>
             ) : null}
-        </Card>
+        </div>
     );
 }

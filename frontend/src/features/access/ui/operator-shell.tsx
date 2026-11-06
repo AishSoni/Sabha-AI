@@ -23,8 +23,8 @@ export function OperatorShell({
     const pathname = usePathname();
 
     return (
-        <div className="min-h-screen bg-canvas text-ink">
-            <header className="border-b border-separator bg-surface/80">
+        <div className="flex h-dvh min-h-0 flex-col bg-canvas text-ink">
+            <header className="shrink-0 border-b border-separator bg-surface/80">
                 <div className="mx-auto flex max-w-6xl flex-wrap items-center gap-4 px-4 py-3">
                     <span className="type-meta-strong uppercase tracking-[0.2em] text-action">
                         Operator
@@ -62,7 +62,7 @@ export function OperatorShell({
                     </Button>
                 </div>
             </header>
-            {children}
+            <div className="min-h-0 flex-1 overflow-y-auto">{children}</div>
         </div>
     );
 }

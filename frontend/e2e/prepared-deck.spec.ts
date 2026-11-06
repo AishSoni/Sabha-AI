@@ -27,9 +27,10 @@ test.describe("prepared turn deck", () => {
         const close = page.getByRole("button", { name: "Close meeting" });
         await expect(close).toBeDisabled();
         await expect(page.getByText(/Director/)).toHaveCount(0);
-        await expect(
-            page.getByText(/Play all four replies and send the follow-up/)
-        ).toBeVisible();
+        await expect(close).toHaveAttribute(
+            "aria-label",
+            /Play all four replies and send the follow-up/
+        );
 
         await page.getByRole("button", { name: "Send question" }).click();
         await expect(page.getByText(FOLLOW_UP).first()).toBeVisible();
