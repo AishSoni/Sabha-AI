@@ -399,3 +399,67 @@ appearance and primitives; prove one animated form/list/dialog/inspector pair
 in both themes; integrate the shared motion hooks; then apply Specs 32–33.
 Do not ship component changes that temporarily erase replay disclosures, actual
 error states, or focus behavior to obtain a cleaner screenshot.
+
+## Execution record
+
+Implementation status: **implemented locally, not accepted.** Specs 32 and 33
+remain. The entries below are actual results for the `ui-redesign` branch. No
+hosted deployment, route-by-route visual review, font redistribution permission,
+or performance trace is claimed.
+
+The implemented slice includes the semantic light/dark palette and six identity
+slots, self-hosted Satoshi, the memory-only System/Light/Dark owner and menu,
+shared primitive/state/motion contracts, skip link and named main landmarks, and
+the migration of every existing screen off its hardcoded palette. The only
+intentional hardcoded brand mark is the homepage logo gradient and Sparkles.
+
+| Check | Command/environment | Result |
+| --- | --- | --- |
+| Frontend unit/integration | `cd frontend; npm test` | 110 files, 652 tests passed (24.80s); no failures. Existing error-path console warnings only. |
+| Architecture | `cd frontend; npm run test:architecture` | 6 files, 42 tests passed (5.62s), including 7 contrast and 6 theme-boundary checks. |
+| Types/lint/build | `npx tsc --noEmit`; `npm run lint`; `npm run build` | TypeScript clean; ESLint 0 errors and 19 pre-existing warnings; production build compiled 20 routes in 5.2s. |
+| Appearance journeys | `cd frontend; npx playwright test e2e/appearance.spec.ts` | 7 passed (27.5s): first-paint System, explicit Light, soft-navigation retention, reload return to System, no storage/network/URL/tutorial mutation, practice draft retention, 320px, skip link, Satoshi 400/500/600/700 plus italic, reduced motion. |
+| Production browser journeys | `cd frontend; npm run test:e2e:prod` | 45 tests: 43 passed, 2 skipped (1.2m). The skips are the conditional legacy and mixed suites, run separately below. One earlier full run hit a citation click timeout under parallel load; the same test passed isolated (2.9s) and in the repeat full run (2.1s). |
+| Legacy compatibility | `npm run test:e2e:legacy` | 1 passed (24.1s). |
+| Mixed operator isolation | `npm run test:e2e:mixed` | 1 passed (17.2s). |
+| Contrast arithmetic | `theme-contrast.test.ts` | Dark minima: muted 4.76, border-control 3.15, on-accent 8.86. Light minima: muted 4.78, border-control 3.45, on-accent 7.88. Status and identity soft pairs pass. |
+
+| Gate | Status | Evidence and remaining work |
+| --- | --- | --- |
+| DS01 Theme completeness | Partial | Every existing route was migrated to semantic roles and both appearances. No route-by-route manual state review was captured; Spec 33 routes do not exist yet. |
+| DS02 Theme isolation | Partial | E2E proves no storage/network/URL/tutorial change, reload return to System, soft-navigation retention, and practice-draft retention. Streaming, an open evidence preview, and a locked vault were not separately toggled. |
+| DS03 Typography | Partial | Satoshi variable and italic are self-hosted; 400/500/600/700 plus italic load in the browser. Fontshare FFL forbids repository redistribution, so the woff2 files are gitignored and fetched by `npm run fonts:fetch`; fallback/font-failure rendering was not measured. |
+| DS04 Contrast/material | Open | Arithmetic contrast tests pass. No browser-composited glass, worst-case asset, or forced-colors table was captured. |
+| DS05 Components | Partial | Busy states, form-field wiring, accessible names, keyboard journeys, dialog focus/return, and 40/44px targets are covered. The full pointer/keyboard state matrix is not documented. |
+| DS06 Motion coverage | Partial | M01–M12 vocabulary and reduced motion exist. M01, M03, M05, M06, M09, M11, and M12 are applied; M02, M04, M07, M08, and M10 are vocabulary-only or deferred to Specs 32–33. |
+| DS07 Responsiveness | Partial | 320×844, 390×844, 1280×720, and 200% zoom are covered. 768, 1024×768, 1440×900, and wide layouts were not separately reviewed. |
+| DS08 Runtime preservation | Local pass | Unit, integration, production browser, legacy, and mixed-operator suites pass, including no-Auth replay, no persistent demo writes, vault separation, evidence identity, durable turn, and tutorial gates. Hosted gates were not run. |
+| DS09 Performance | Open | No interaction trace or asset/bundle report was captured, and no frame-loop or cleanup profile was recorded. |
+
+No gate above is recorded as complete where its required evidence is still
+missing.
+
+## Exit and rollout
+
+Exit when:
+
+- every route, overlay, and native control has been reviewed in Light, Dark, and
+  System, including the Specs 32–33 screens;
+- theme toggles during a stream, an open preview, and a locked vault leave
+  storage, network, drafts, playback, credentials, and focus unchanged;
+- the font license permits the chosen distribution and fallback/failure
+  rendering is verified;
+- browser-composited contrast, glass over worst-case assets, forced-colors, and
+  opaque fallbacks are recorded;
+- the component keyboard/pointer matrix and M01–M12 choreography are exercised
+  on the actual application screens;
+- 320px, 390px, 768px, 1024px, 1440px, wide, 200% zoom, and 400% reflow pass;
+- local and hosted runtime-preservation gates remain green; and
+- interaction traces show no animation-attributable frame loop or unbounded
+  main-thread task.
+
+Rollout is gated on the manual visual review and font-license confirmation above,
+then proceeds through Specs 32 and 33 on the same token foundation. Rollback
+reverts the visual and appearance commits without changing runtime data, event
+contracts, credentials, or replay evidence; the appearance preference is memory
+only and disappears on reload.
