@@ -45,7 +45,7 @@ test.describe("recorded log notices", () => {
         // The two decisions stay independent: the notice does not unlock the
         // close action and does not replace the current tip.
         await expect(close).toBeDisabled();
-        await expect(hud.getByText("Choose who speaks next")).toBeVisible();
+        await expect(hud.getByText("Choose a recorded reply")).toBeVisible();
         await expect(page.getByRole("button", { name: /Continue/ })).toHaveCount(0);
 
         await page.getByRole("button", { name: "Credit Analyst opening facts" }).click();

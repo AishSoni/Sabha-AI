@@ -216,7 +216,7 @@ describe("selectPrompt", () => {
             )
         ).toMatchObject({
             id: "main-speaker",
-            instruction: "Choose who speaks next",
+            instruction: "Choose a recorded reply",
             anchor: "room.speaker",
             progress: "2 of 4 replies",
         });

@@ -29,7 +29,6 @@ import {
     PanelRight,
     Scroll,
     Send,
-    User,
     Users,
     XCircle,
 } from 'lucide-react';
@@ -47,7 +46,7 @@ import {
     CollapsibleContent,
     CollapsibleTrigger,
 } from '@/components/ui/collapsible';
-import { readableTextOn } from '@/lib/readable-color';
+import { ParticipantMark, DirectorMark } from '@/components/identity/participant-mark';
 import { cn, formatCost, formatRelativeTime } from '@/lib/utils';
 import type {
     AIParticipant,
@@ -90,6 +89,7 @@ import { EvidenceCitationTrigger } from '../evidence/trigger';
 import { EvidencePreviewHost } from '../evidence/host';
 import { EvidencePreviewProvider } from '../evidence/provider';
 import {
+    RoomTutorialInline,
     useAnchorRef,
     useTutorialStreamingFlag,
     type TutorialAnchorId,
@@ -333,8 +333,8 @@ function MeetingConversation({
     };
 
     return (
-        <div className="flex min-h-0 flex-1 flex-col overflow-hidden bg-canvas">
-            <header className="flex shrink-0 flex-wrap items-start gap-3 border-b border-separator bg-surface px-4 py-3">
+        <div className="flex min-h-0 flex-1 flex-col overflow-hidden bg-transparent">
+            <header className="relative z-chrome flex shrink-0 flex-wrap items-start gap-3 border-b border-separator bg-surface/80 px-4 py-3 backdrop-blur-md">
                 <Link
                     href={runtime.presentation.homeHref}
                     className="mt-0.5 rounded-control p-1 text-ink-secondary hover:bg-surface-raised hover:text-ink"
@@ -404,41 +404,40 @@ function MeetingConversation({
                         </Button>
                     )}
                 </div>
-            </header>
-
-            <div
-                className="flex shrink-0 items-center gap-2 overflow-x-auto border-b border-separator bg-surface px-4 py-2"
-                aria-label="Meeting perspectives"
-                role="group"
-            >
-                <span className="shrink-0 type-meta text-ink-muted">Perspectives</span>
-                {(meeting.participants ?? []).map((participant) => {
-                    const active = turns.activeParticipantId === participant.id;
-                    return (
-                        <span
-                            key={participant.id}
-                            className={cn(
-                                'inline-flex shrink-0 items-center gap-2 whitespace-nowrap rounded-full border px-2 py-1',
-                                active
-                                    ? 'border-action bg-accent-soft text-ink'
-                                    : 'border-separator bg-surface-raised/60 text-ink'
-                            )}
-                        >
-                            <ParticipantMark participant={participant} size="sm" />
-                            <span className="type-meta">{participant.name}</span>
-                            <span className="type-meta capitalize text-ink-muted">
-                                {participant.role}
+                <div
+                    className="flex w-full flex-nowrap items-center gap-2 overflow-x-auto pb-0.5 pl-8"
+                    aria-label="Meeting perspectives"
+                    role="group"
+                >
+                    <span className="shrink-0 type-meta text-ink-muted">Perspectives</span>
+                    {(meeting.participants ?? []).map((participant) => {
+                        const active = turns.activeParticipantId === participant.id;
+                        return (
+                            <span
+                                key={participant.id}
+                                className={cn(
+                                    'inline-flex shrink-0 items-center gap-2 whitespace-nowrap rounded-full border px-2 py-1',
+                                    active
+                                        ? 'border-action bg-accent-soft text-ink'
+                                        : 'border-separator bg-surface-raised/60 text-ink'
+                                )}
+                            >
+                                <ParticipantMark participant={participant} size="sm" />
+                                <span className="type-meta font-medium">
+                                    {participant.name}
+                                </span>
+                                <span className="type-meta capitalize text-ink-muted">
+                                    {participant.role}
+                                </span>
                             </span>
-                        </span>
-                    );
-                })}
-                <span className="inline-flex shrink-0 items-center gap-2 whitespace-nowrap rounded-full border border-separator bg-surface-raised/60 px-2 py-1 text-ink">
-                    <span className="flex h-7 w-7 items-center justify-center rounded-full bg-action">
-                        <User className="h-3.5 w-3.5 text-action-foreground" />
+                        );
+                    })}
+                    <span className="inline-flex shrink-0 items-center gap-2 whitespace-nowrap rounded-full border border-separator bg-surface-raised/60 px-2 py-1 text-ink">
+                        <DirectorMark size="sm" />
+                        <span className="type-meta font-medium">You</span>
                     </span>
-                    <span className="type-meta">You</span>
-                </span>
-            </div>
+                </div>
+            </header>
 
             <div
                 data-testid="room-work-area"
@@ -448,10 +447,10 @@ function MeetingConversation({
                 <Tabs
                     value={mainTab}
                     onValueChange={setTab}
-                    className="flex min-w-0 flex-1 flex-col"
+                    className="flex min-w-0 flex-1 flex-col bg-surface"
                 >
-                    <div className="flex shrink-0 items-center gap-2 border-b border-separator px-3 py-2">
-                        <TabsList className="h-auto flex-1 justify-start gap-1 bg-transparent p-0">
+                    <div className="relative z-10 flex shrink-0 items-center gap-2 border-b border-separator px-3 py-1.5">
+                        <TabsList className="h-auto min-w-0 flex-none justify-start gap-1 bg-transparent p-0">
                             <RoomTab
                                 value="chat"
                                 icon={<MessageSquare className="h-4 w-4" />}
@@ -487,7 +486,7 @@ function MeetingConversation({
                             aria-controls="room-record"
                         >
                             <PanelRight className="mr-2 h-4 w-4" />
-                            {recordOpen ? 'Close record' : 'Open record'}
+                            Meeting record
                         </Button>
                         <Button
                             type="button"
@@ -688,9 +687,12 @@ function MeetingConversation({
 
                 <div
                     data-testid="room-dock"
-                    className="shrink-0 border-t border-separator bg-surface px-4 py-2"
+                    role="region"
+                    aria-label="Meeting controls dock"
+                    tabIndex={0}
+                    className="max-h-[35dvh] shrink-0 overflow-y-auto border-t border-separator bg-surface px-4 py-1 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-focus-ring lg:max-h-none lg:overflow-visible"
                 >
-                    <div className="mx-auto w-full max-w-[74ch]">
+                    <div className="mx-auto w-full max-w-[1120px]">
                         {closingOpen ? (
                             tab !== 'closing' ? (
                                 <ClosingRoomNotice stage={closingStage} onOpen={openClosing} />
@@ -789,7 +791,7 @@ function RoomTab({
             ref={ref}
             id={id}
             value={value}
-            className="m-state h-8 gap-1.5 rounded-control px-2.5 type-meta text-ink-secondary data-[state=active]:bg-surface-selected data-[state=active]:text-ink"
+            className="m-state h-7 gap-1.5 rounded-control px-2.5 type-meta text-ink-secondary data-[state=active]:bg-surface-selected data-[state=active]:text-ink pointer-coarse:h-9"
         >
             {icon}
             <span>{label}</span>
@@ -914,13 +916,15 @@ function RoomControls({ meeting, turns }: RoomControlsProps) {
     const nonTerminal = turns.operations.filter((operation) => !isTerminal(operation.status));
 
     return (
-        <div className="space-y-3" role="group" aria-label="Meeting controls">
-            <div className="grid gap-3 lg:grid-cols-2">
-                <div className="min-w-0">
-                    <p className="mb-2 type-meta text-ink-secondary">Who speaks next?</p>
+        <div className="space-y-1.5" role="group" aria-label="Meeting controls">
+            <div className="min-w-0">
+                    <div className="mb-2 flex flex-wrap items-center gap-2">
+                        <p className="type-meta text-ink-secondary">Who speaks next?</p>
+                        <RoomTutorialInline />
+                    </div>
                     <div
                         ref={speakerRef}
-                        className="flex flex-nowrap gap-2 overflow-x-auto pb-1"
+                        className="flex flex-wrap gap-2"
                     >
                         {runtime.replay ? (
                             runtime.replay.preparedTurns?.length ? null : (
@@ -938,8 +942,8 @@ function RoomControls({ meeting, turns }: RoomControlsProps) {
                                                 disabled
                                                 className="border-action/50 bg-accent-soft text-ink-muted"
                                             >
-                                                <User className="mr-1 h-4 w-4" />
-                                                You
+                                                <DirectorMark size="sm" />
+                                                <span className="ml-1">You</span>
                                             </Button>
                                         </span>
                                     </TooltipTrigger>
@@ -954,8 +958,8 @@ function RoomControls({ meeting, turns }: RoomControlsProps) {
                                 size="sm"
                                 className="border-action bg-accent-soft text-action hover:bg-surface-raised"
                             >
-                                <User className="mr-1 h-4 w-4" />
-                                You
+                                <DirectorMark size="sm" />
+                                <span className="ml-1">You</span>
                             </Button>
                         )}
                         {(meeting.participants ?? []).map((participant) => {
@@ -980,13 +984,12 @@ function RoomControls({ meeting, turns }: RoomControlsProps) {
                             );
                         })}
                     </div>
-                </div>
-                {DirectorAction ? (
-                    <div className="min-w-0">
-                        <DirectorAction />
-                    </div>
-                ) : null}
             </div>
+            {DirectorAction ? (
+                <div className="min-w-0">
+                    <DirectorAction />
+                </div>
+            ) : null}
 
             <div className="empty:hidden">
                 <PreparedTurnControls
@@ -1417,15 +1420,7 @@ function ParticipantDetailCard({ participant }: { participant: AIParticipant }) 
     return (
         <Card className="bg-surface/50 border-separator overflow-hidden">
             <div className="p-4 flex items-start gap-4">
-                <div
-                    className="flex h-12 w-12 shrink-0 items-center justify-center rounded-full text-lg font-bold"
-                    style={{
-                        backgroundColor: participant.color,
-                        color: readableTextOn(participant.color),
-                    }}
-                >
-                    {participant.name.charAt(0)}
-                </div>
+                <ParticipantMark participant={participant} size="lg" />
                 <div className="flex-1 min-w-0">
                     <div className="flex items-center gap-2 mb-1">
                         <h4 className="font-semibold text-ink">{participant.name}</h4>
@@ -1516,57 +1511,6 @@ function ParticipantDetailCard({ participant }: { participant: AIParticipant }) 
 }
 
 
-
-const IDENTITY_SHAPES = [
-    { className: 'rounded-full', inner: '' },
-    { className: 'rounded-md', inner: '' },
-    { className: 'rotate-45', inner: '-rotate-45' },
-    {
-        className: '[clip-path:polygon(50%_0,100%_50%,50%_100%,0_50%)]',
-        inner: '',
-    },
-    {
-        className: '[clip-path:polygon(25%_5%,75%_5%,100%_50%,75%_95%,25%_95%,0_50%)]',
-        inner: '',
-    },
-    { className: 'rounded-[30%]', inner: '' },
-] as const;
-
-function identityShape(id: string) {
-    let hash = 0;
-    for (let index = 0; index < id.length; index += 1) {
-        hash = (hash * 31 + id.charCodeAt(index)) >>> 0;
-    }
-    return IDENTITY_SHAPES[hash % IDENTITY_SHAPES.length];
-}
-
-function ParticipantMark({
-    participant,
-    size = 'md',
-}: {
-    participant: Pick<AIParticipant, 'id' | 'name' | 'color'>;
-    size?: 'sm' | 'md' | 'lg';
-}) {
-    const shape = identityShape(participant.id);
-    const sizeClass =
-        size === 'sm' ? 'h-7 w-7 text-xs' : size === 'lg' ? 'h-11 w-11 text-base' : 'h-8 w-8 text-sm';
-    return (
-        <span
-            aria-hidden="true"
-            className={cn(
-                'inline-flex shrink-0 items-center justify-center font-bold',
-                sizeClass,
-                shape.className
-            )}
-            style={{
-                backgroundColor: participant.color,
-                color: readableTextOn(participant.color),
-            }}
-        >
-            <span className={shape.inner}>{participant.name.charAt(0)}</span>
-        </span>
-    );
-}
 
 function MeetingDetailsDialog({
     open,
@@ -1713,12 +1657,10 @@ function MessageBubble({
             data-message-id={message.id}
             data-sender-type={message.sender_type}
             data-sender-name={message.sender_name}
-            className={cn('flex gap-3', isUser && 'flex-row-reverse')}
+            className="flex gap-3"
         >
             {isUser ? (
-                <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-action">
-                    <User className="h-4 w-4 text-action-foreground" />
-                </span>
+                <DirectorMark />
             ) : isSystem ? (
                 <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-surface-selected">
                     <Bot className="h-4 w-4 text-ink-secondary" />
@@ -1730,14 +1672,9 @@ function MessageBubble({
                     <Bot className="h-4 w-4 text-ink-secondary" />
                 </span>
             )}
-            <div className={cn('min-w-0 flex-1', isUser && 'flex flex-col items-end')}>
+            <div className="min-w-0 flex-1">
                 <div className="mb-1 flex flex-wrap items-center gap-2">
-                    <span
-                        className={cn(
-                            'type-room-attribution',
-                            isUser ? 'text-action' : 'text-ink'
-                        )}
-                    >
+                    <span className="type-room-attribution text-ink">
                         {message.sender_name}
                     </span>
                     <span className="type-meta text-ink-muted">
@@ -1769,10 +1706,9 @@ function MessageBubble({
                 )}
                 <div
                     className={cn(
-                        isUser && 'rounded-group bg-action px-4 py-3 text-action-foreground',
                         isSystem &&
                             'rounded-control bg-surface-raised/60 px-4 py-3 type-room-body italic text-ink-secondary',
-                        !isUser && !isSystem && 'text-ink'
+                        !isSystem && 'text-ink'
                     )}
                 >
                     {isUser ? (

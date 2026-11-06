@@ -115,7 +115,7 @@ function deckMiddlePrompt(journey: TutorialJourney): TutorialPrompt | null {
     if (journey.replyCount < journey.requiredReplyCount) {
         return {
             id: "main-speaker",
-            instruction: "Choose who speaks next",
+            instruction: "Choose a recorded reply",
             anchor: "room.speaker",
             progress: `${journey.replyCount} of ${journey.requiredReplyCount} replies`,
         };

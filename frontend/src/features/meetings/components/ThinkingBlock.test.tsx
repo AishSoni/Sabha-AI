@@ -25,7 +25,7 @@ describe('ThinkingBlock', () => {
         render(<ThinkingBlock content="Hidden until opened" isStreaming={false} />);
 
         expect(screen.queryByText('Hidden until opened')).not.toBeInTheDocument();
-        fireEvent.click(screen.getByRole('button', { name: /thinking/i }));
+        fireEvent.click(screen.getByRole('button', { name: /reasoning/i }));
         expect(screen.getByText('Hidden until opened')).toBeInTheDocument();
     });
 });

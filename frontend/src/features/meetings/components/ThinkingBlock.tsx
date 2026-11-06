@@ -1,7 +1,7 @@
 'use client';
 
 import { useState } from 'react';
-import { ChevronDown, ChevronRight, Brain } from 'lucide-react';
+import { ChevronDown, ChevronRight, Sparkles } from 'lucide-react';
 import { cn } from '@/lib/utils';
 
 interface ThinkingBlockProps {
@@ -10,39 +10,48 @@ interface ThinkingBlockProps {
     provenance?: string;
 }
 
+/**
+ * A quiet transcript disclosure. Recorded reasoning is a prepared artifact, so
+ * the caller labels it "Prepared reasoning"; live reasoning never borrows that
+ * label.
+ */
 export function ThinkingBlock({ content, isStreaming, provenance }: ThinkingBlockProps) {
-    // Streaming starts expanded so live thinking is visible immediately.
+    // Streaming starts expanded so live reasoning is visible immediately.
     const [isExpanded, setIsExpanded] = useState(Boolean(isStreaming));
+    const label = provenance ?? 'Reasoning';
+
     return (
-        <div className="my-2 overflow-hidden rounded-group border border-separator bg-surface-raised">
+        <div className="my-2">
             <button
                 type="button"
                 onClick={() => setIsExpanded(!isExpanded)}
-                className="m-control flex w-full items-center gap-2 px-3 py-2 text-ink-secondary hover:bg-surface-selected"
+                aria-expanded={isExpanded}
+                className="m-control inline-flex items-center gap-1.5 rounded-control py-0.5 type-meta font-medium text-ink-secondary hover:text-ink focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-focus-ring"
             >
-                <Brain className={cn('h-4 w-4 text-action', isStreaming && 'animate-pulse')} />
-                <span className="text-sm font-medium">Thinking</span>
-                {provenance && (
-                    <span className="type-meta text-ink-muted">{provenance}</span>
-                )}
-                {isStreaming && (
-                    <span className="text-xs text-action animate-pulse">...</span>
-                )}
-                <div className="flex-1" />
+                <Sparkles
+                    className={cn('size-3.5 text-action', isStreaming && 'animate-pulse motion-reduce:animate-none')}
+                    aria-hidden="true"
+                />
+                <span>{label}</span>
+                {isStreaming ? (
+                    <span className="text-action" aria-hidden="true">
+                        ...
+                    </span>
+                ) : null}
                 {isExpanded ? (
-                    <ChevronDown className="h-4 w-4" />
+                    <ChevronDown className="size-3.5" aria-hidden="true" />
                 ) : (
-                    <ChevronRight className="h-4 w-4" />
+                    <ChevronRight className="size-3.5" aria-hidden="true" />
                 )}
             </button>
 
-            {isExpanded && (
-                <div className="px-3 pb-3 pt-1">
-                    <p className="whitespace-pre-wrap font-mono text-sm text-ink-secondary">
+            {isExpanded ? (
+                <div className="mt-2 border-l border-separator pl-3">
+                    <p className="whitespace-pre-wrap type-meta text-ink-secondary">
                         {content}
                     </p>
                 </div>
-            )}
+            ) : null}
         </div>
     );
 }
