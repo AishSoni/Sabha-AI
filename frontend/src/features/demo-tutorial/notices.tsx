@@ -229,7 +229,7 @@ export function TutorialNotices() {
             {notices.map((notice) => (
                 <div
                     key={notice.key}
-                    className="m-notice pointer-events-none rounded-control border border-control bg-surface p-2.5 shadow-[var(--shadow-overlay)]"
+                    className="material-panel m-notice pointer-events-none rounded-control border-control p-2.5"
                 >
                     <div className="flex items-start gap-2">
                         {notice.kind === "disagreement" ? (

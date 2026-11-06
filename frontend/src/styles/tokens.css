@@ -72,12 +72,18 @@
   --atmosphere-galaxy-band: rgb(109 59 181 / 0.08);
   --atmosphere-galaxy-core: rgb(109 59 181 / 0.13);
   --atmosphere-dust: rgb(245 247 250 / 0.55);
+  --atmosphere-aurora-violet: rgb(109 59 181 / 0.3);
+  --atmosphere-aurora-blue: rgb(44 86 140 / 0.2);
+  --atmosphere-aurora-rose: rgb(154 64 118 / 0.12);
 
   /* Materials */
   --glass-surface: rgb(255 255 255 / 0.88);
   --glass-border: rgb(23 33 47 / 0.12);
   --glass-highlight: rgb(255 255 255 / 0.92);
-  --chrome-surface: rgb(255 255 255 / 0.5);
+  --panel-surface: rgb(255 255 255 / 0.82);
+  --panel-rim-strong: rgb(255 255 255 / 0.92);
+  --panel-rim-dim: rgb(23 33 47 / 0.08);
+  --chrome-surface: rgb(255 255 255 / 0.38);
   --chrome-border: rgb(23 33 47 / 0.16);
   --chrome-highlight: rgb(255 255 255 / 0.92);
   --chrome-sheen: rgb(255 255 255 / 0.18);
@@ -152,10 +158,16 @@
   --atmosphere-galaxy-band: rgb(199 176 245 / 0.09);
   --atmosphere-galaxy-core: rgb(199 176 245 / 0.16);
   --atmosphere-dust: rgb(9 13 20 / 0.6);
+  --atmosphere-aurora-violet: rgb(151 112 255 / 0.26);
+  --atmosphere-aurora-blue: rgb(80 150 255 / 0.18);
+  --atmosphere-aurora-rose: rgb(255 130 190 / 0.12);
 
   --glass-surface: rgb(17 25 37 / 0.88);
   --glass-border: rgb(237 242 248 / 0.14);
   --glass-highlight: rgb(255 255 255 / 0.08);
+  --panel-surface: rgb(17 25 37 / 0.82);
+  --panel-rim-strong: rgb(255 255 255 / 0.36);
+  --panel-rim-dim: rgb(255 255 255 / 0.05);
   --chrome-surface: rgb(17 25 37 / 0.5);
   --chrome-border: rgb(237 242 248 / 0.14);
   --chrome-highlight: rgb(255 255 255 / 0.08);
@@ -228,10 +240,16 @@
     --atmosphere-galaxy-band: rgb(199 176 245 / 0.09);
     --atmosphere-galaxy-core: rgb(199 176 245 / 0.16);
     --atmosphere-dust: rgb(9 13 20 / 0.6);
+    --atmosphere-aurora-violet: rgb(151 112 255 / 0.26);
+    --atmosphere-aurora-blue: rgb(80 150 255 / 0.18);
+    --atmosphere-aurora-rose: rgb(255 130 190 / 0.12);
 
     --glass-surface: rgb(17 25 37 / 0.88);
     --glass-border: rgb(237 242 248 / 0.14);
     --glass-highlight: rgb(255 255 255 / 0.08);
+    --panel-surface: rgb(17 25 37 / 0.82);
+    --panel-rim-strong: rgb(255 255 255 / 0.36);
+    --panel-rim-dim: rgb(255 255 255 / 0.05);
     --chrome-surface: rgb(17 25 37 / 0.5);
     --chrome-border: rgb(237 242 248 / 0.14);
     --chrome-highlight: rgb(255 255 255 / 0.08);

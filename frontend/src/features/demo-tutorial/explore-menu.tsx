@@ -58,7 +58,7 @@ export function ExploreRecordingMenu({
                 ? createPortal(
                       <div
                           onClick={close}
-                          className="fixed right-4 top-32 z-popup max-h-[70vh] w-64 overflow-y-auto rounded-control border border-control bg-surface p-2 shadow-[var(--shadow-overlay)]"
+                          className="material-panel fixed right-4 top-32 z-popup max-h-[70vh] w-64 overflow-y-auto rounded-control border-control p-2"
                       >
                           {chapters.length > 0 ? (
                               <ul className="mb-1 space-y-0.5 border-b border-separator pb-1">
