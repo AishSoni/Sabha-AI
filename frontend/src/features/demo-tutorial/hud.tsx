@@ -112,37 +112,28 @@ export function TutorialHud() {
                     data-testid="tutorial-hud"
                     data-placement={position?.placement ?? "floating"}
                     data-state={cardVisible ? "shown" : "suspended"}
-                    className="m-notice fixed z-notice w-[min(20rem,calc(100vw-1.5rem))] rounded-group border border-action/40 bg-surface p-3 text-ink shadow-[var(--shadow-overlay)]"
+                    className="m-notice fixed z-notice w-[min(20rem,calc(100vw-1.5rem))] overflow-hidden rounded-group border border-action/40 bg-surface text-ink shadow-[var(--shadow-overlay)]"
                     style={cardStyle}
                     onKeyDown={onCardKeyDown}
                 >
                     {progress ? (
                         <div
-                            className="mb-2 flex items-center gap-2"
+                            role="progressbar"
+                            aria-label="Demo progress"
+                            aria-valuemin={0}
+                            aria-valuemax={100}
+                            aria-valuenow={progress.percent}
+                            aria-valuetext={progress.label}
                             data-testid="tutorial-progress"
+                            className="h-1.5 w-full overflow-hidden bg-surface-raised"
                         >
                             <div
-                                role="progressbar"
-                                aria-label="Demo progress"
-                                aria-valuemin={0}
-                                aria-valuemax={100}
-                                aria-valuenow={progress.percent}
-                                aria-valuetext={progress.label}
-                                className="h-1.5 min-w-0 flex-1 overflow-hidden rounded-full bg-surface-raised"
-                            >
-                                <div
-                                    className="m-progress-fill h-full rounded-full bg-action"
-                                    style={{ width: `${progress.percent}%` }}
-                                />
-                            </div>
-                            <span
-                                aria-hidden="true"
-                                className="type-meta type-tabular shrink-0 text-ink-muted"
-                            >
-                                {progress.step} of {progress.total}
-                            </span>
+                                className="m-progress-fill h-full bg-action"
+                                style={{ width: `${progress.percent}%` }}
+                            />
                         </div>
                     ) : null}
+                    <div className="p-3">
                     <div className="flex items-start gap-2">
                         <Sparkles
                             className="mt-0.5 size-4 shrink-0 text-action"
@@ -207,6 +198,7 @@ export function TutorialHud() {
                             </TourAction>
                         </div>
                     ) : null}
+                    </div>
                 </div>
             ) : null}
             {compactVisible ? <CompactBar /> : null}
