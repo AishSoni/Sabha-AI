@@ -699,3 +699,459 @@ Document measured results and remaining failures in this spec; do not mark RF
 gates complete based on the earlier foundation execution record. Retain the
 existing foundation work, fix and validate this room first, then resume Specs
 32-33 without using their broader scope to defer these corrections.
+
+## Addendum B: Stellar environment, visible materials, and participant identity
+
+### B.1 Direction, precedence, and implementation status
+
+**Required visual direction, not implemented or accepted by this addendum.** The
+foundation-only result was too plain, and the application did not visibly use
+the glass material it defined. Addendum A repairs the room's composition; this
+addendum supplies the shared visual language that must accompany that repair.
+Neither atmosphere alone nor a usability-only rearrangement completes the
+redesign. Retain the implemented Satoshi, semantic roles, appearance ownership,
+and useful primitives rather than starting another foundation migration.
+
+The following decisions are settled:
+
+- Every non-homepage page has a **subtle animated purple-ish starfield**. The
+  homepage retains its separately specified, more expressive constellation hero.
+- Light and dark are first-class appearances, including atmosphere, materials,
+  controls, participant marks, loading/error states, and accessibility fallbacks.
+- **dddynamite by fffuel** is the selected source for geometric persona profile
+  marks. Curate a coherent star/spark/burst family; do not reopen a general avatar
+  pack comparison or replace the application's ordinary Lucide control icons.
+- Glass remains selective, but its use must be perceptible in the intended
+  composition. A declared CSS class with no actual component usage is not delivery.
+- The foreground needs its own hierarchy, identity, and deliberate motion. A
+  starfield placed behind the old layout is not an acceptable redesign.
+
+This is the latest visual direction within the existing three-spec set:
+
+| Earlier wording | Controlling clarification |
+| --- | --- |
+| Spec 31, section 4.2: stars primarily on the homepage and sparingly in shell margins | All non-homepage pages use the shared stellar environment; stable opaque reading surfaces determine where it is visible |
+| Addendum A.5: moving stars/gradients are not acceptable fixes for blandness | Atmosphere is now required, but cannot substitute for A's composition, typography, director-dock, and record corrections |
+| Addendum A.7: generic shapes until artwork is separately approved | dddynamite is selected; the exact curated subset and its normalization still require review, not new image generation |
+| Spec 33, section 3.3: no moving starfield behind content | No moving stars are visible through text-bearing working surfaces; a shared animated environment outside them is required |
+| Spec 33, section 12.2: solid sign-in form, not a glass card over moving stars | Keep the form solid and readable, but include the surrounding sign-in page in the shared environment |
+
+These clarifications do not weaken runtime, credential, evidence, accessibility,
+recording, or no-persistence contracts. Addendum A's room-first order and RF01-RF08
+remain required. This append-only record does not rewrite earlier execution
+results or mark any old or new acceptance gate complete. Other documents remain
+unchanged by this edit; this precedence table resolves their visual conflicts.
+
+Exact star density, color/opacity, final glass tint, avatar subset, geometry,
+renderer, and resource budgets need measured review. Numerical candidates below
+are **prototype comparisons**, not user-approved tokens or measured results.
+
+### B.2 Research baseline and limits
+
+The source inspection preceding this addendum found:
+
+- `frontend/src/styles/materials.css` defines `.material-glass`, including a
+  12px backdrop blur and solid fallbacks, but the inspected TSX components did
+  not consume that class. The operator header's translucent background alone
+  does not establish the intended filtered material.
+- Existing glass fills are 88% opaque in both themes. Even when applied, that
+  treatment over a uniform backdrop may be barely distinguishable from solid.
+- Full-page opaque `bg-canvas` wrappers occur across shells, sign-in, feature
+  pages, and replay loading/error screens. Adding a root background without
+  resolving these owners can leave it entirely hidden.
+- Satoshi and the semantic palette are already implemented. The room's old
+  nested viewport height, narrow bubble widths, control stack, and telemetry
+  rail still require Addendum A's corrections in the inspected source.
+- Existing violet identity roles offer a starting family: dark identity
+  `#C7B0F5` / soft `#2B1F45` / ink `#E2D6FA`, and light `#6D3BB5` / soft
+  `#F0E9FB` / ink `#52288C`. These are not automatically approved for every new
+  avatar or translucent background pairing.
+
+These are source findings, not fresh browser verification. Research did not
+produce a rendered prototype, performance benchmark, finalized avatar assets,
+or acceptance evidence. Recheck implementation details before coding; preserve
+any subsequent work rather than assuming these observations remain unchanged.
+
+### B.3 Required composition: environment, chrome, workspace, identity
+
+Use four coordinated layers, not four independently decorated component kits:
+
+| Layer | Job and treatment |
+| --- | --- |
+| Environment | Cool neutral canvas, faint purple atmospheric color, sparse stellar points; visible in deliberate margins, gaps, and through selected chrome |
+| Navigation/chrome | One coherent, selectively translucent functional layer; quiet edge, controlled depth, readable controls |
+| Workspace | Opaque reading/forms/lists/reports with confident Satoshi hierarchy, useful width, alignment, and spacing |
+| Identity and activity | Stable dddynamite participant marks, visible names/mandates, honest selection and real operation feedback |
+
+Environment ownership and foreground boundaries must be designed together.
+Do not make every descendant transparent to expose the stars. Equally, do not
+cover the complete page with an unintentional opaque wrapper and claim the
+environment exists because its component is mounted. Provide meaningful exposed
+areas in ordinary populated views without adding empty gutters that recreate
+the room's reading-space problem. Compact layouts may expose less atmosphere;
+do not sacrifice controls or reading width to match a desktop screenshot.
+
+Use a stable reading surface, not a rounded box around every contribution.
+Distinguish canvas, workspace, selected state, and primary action. Prefer
+attribution, typography, spacing, and alignment over nested outlines. Glass,
+purple tint, oversized radii, or stronger shadows do not replace that hierarchy.
+
+### B.4 Shared non-homepage environment
+
+#### Coverage and ownership
+
+Cover all existing non-homepage routes: sign-in, demo board, meeting lists,
+intake/creation, recorded and live rooms, personas and history, knowledge,
+settings, and their application-owned loading, empty, error, and access states.
+Application-owned not-found/error boundaries use the same static fallback where
+the normal owner cannot mount. Do not promise animation during a fatal failure.
+No new destination or route is required. Spec 32 owns the homepage environment;
+do not stack the application field underneath its separate hero renderer.
+
+Use a shared presentation owner whose lifecycle survives ordinary application
+navigation. It must not become an owner of Auth, vault, replay, tutorial,
+workspace, evidence, provider settings, or live-query state. In particular,
+preserve the existing demo provider keys, package/version/content identity,
+chapter bootstrap, and operation ownership. Switching theme or a background
+preference cannot remount those owners, clear a draft, change a checkpoint,
+close evidence, refetch content, or unlock credentials.
+
+Audit each full-page background deliberately. Separate environmental wrappers
+from opaque task surfaces rather than globally deleting `bg-canvas`. Keep
+access-denied/private loading states non-revealing. A decorative environment
+may be shared publicly; private chrome, text, or data must not flash during
+access checks or linger in an exit animation after access loss.
+
+#### Visual recipe and calibration
+
+Prototype two complementary ingredients:
+
+1. A broad, faint, asymmetric purple color wash, mostly static. It provides a
+   perceptible but quiet backdrop for glass; tiny stars alone blur away.
+2. Sparse points with restrained variation in size, brightness, and depth.
+   They establish the stellar identity without reading as a particle demo.
+
+Starting comparison ranges, not final tokens:
+
+| Variable | Prototype candidate |
+| --- | --- |
+| Point sizes | Mostly about 1 CSS px, with occasional 1.5-2px points; test device-pixel rendering |
+| Distribution | Irregular and sparse, no obvious grid or conspicuously repeated tile |
+| Ambient travel | Approximately 0.15-0.3 CSS px/second; evaluate during actual reading, not only a still image |
+| Depth | At most two gentle motion planes initially; depth through restrained scale/brightness, not dramatic parallax |
+| Color wash | Faint, broad, mostly stationary violet/lavender; no moving luminous blob or saturated purple page flood |
+
+Dark uses lavender/violet against cool ink; light uses restrained violet against
+cool porcelain. Calibrate independently: do not invert artwork or reuse dark
+opacities blindly. Purple is environmental color, not a requirement to recolor
+the action accent, focus, success, warning, and disagreement roles to purple.
+Do not introduce rainbow accents or turn every participant into a status color.
+
+Initially exclude twinkling, shooting stars, flashing, animated connecting
+lines, cursor attraction, cursor-following glow, hero-like spirals, and
+individual avatar motion. No simulation of agents thinking or choosing turns.
+The page should feel composed before the viewer notices that the field moves.
+Stars are not meaningful information, a loading indicator, or an interactive
+control, and must be absent from the accessibility tree and pointer handling.
+
+#### Motion lifecycle and preferences
+
+- Offer a reachable, labelled **Background animation: On / Paused** control in
+  the shared Appearance UI. It is separate from meeting playback, 1x/2x,
+  Show full response, and genuine operation feedback. Pausing leaves a composed
+  static environment and does not pause a turn or recording.
+- The choice is memory-only in the public presentation owner and survives soft
+  navigation, consistent with section 3. No cookies, browser storage, account
+  setting, analytics, cross-tab sync, or Auth/provider initialization.
+- With `prefers-reduced-motion: reduce`, render a static field from the outset
+  and stop an existing decorative loop immediately. A manual On choice cannot
+  override the active accessibility preference. Explain a disabled Resume/On
+  control; retain the user's manual pause if the OS preference later changes.
+- Hover/focus-only suspension is not the pause mechanism. People must be able
+  to stop the environment and continue working elsewhere on the page.
+- Suspend work while the document is hidden or the field is inactive. Resume
+  from a stable position without a catch-up burst. Do not restart, reseed,
+  flash, or replay an entrance on every route change, theme switch, or refetch.
+- Preserve the application-field state when visiting/leaving the homepage but
+  do not run a hidden application renderer there. Do not conflate its control
+  with the homepage hero's separate scene choreography or playback controls.
+- With JavaScript, asset, or renderer failure, a theme-correct static canvas
+  remains. All text, links, forms, dialogs, and runtime controls still work.
+
+### B.5 Make selective glass perceptible and trustworthy
+
+Use one coherent application navigation/chrome treatment. Where global navigation
+and room toolbar are visually related, design a joined treatment, not a stack of
+independently blurred cards. Chrome may adapt to the page; the requirement is
+material coherence, not a new fixed-height enclosure around every toolbar.
+
+Discussion, composer/director dock, documents, forms, lists, meeting record,
+menus, and dialogs remain solid/raised by default. A non-homepage route such as
+sign-in does not need a fabricated glass header merely to meet a coverage count.
+Its shared environment and solid form are enough; glass has to serve navigation
+or layering, not be a quota applied to every screen.
+
+Calibrate the actual material, not just its CSS declaration:
+
+- Compare **65%, 75%, and 88% tint opacity** with the same backdrop and blur in
+  both themes. These are experimental samples, not three shipping variants or
+  permission to globally lower all surface opacity.
+- Begin with the existing roughly 12px blur budget, theme-aware tint, restrained
+  upper-edge highlight, and soft depth shadow. Decide the final fill by readable
+  compositing and visual review, not by choosing the most transparent sample.
+- Use alpha in the background fill, not `opacity` on the whole control/container;
+  text, icons, focus indicators, and necessary control boundaries stay opaque.
+- Retain subtle background color transmission without making moving points or
+  content sharply visible behind labels. Test the brightest permitted backdrop
+  beneath each label and control, including hover, selected, and focus states.
+- Inspect backdrop-root/stacking ancestry. Ancestor opacity, filters, masks,
+  clipping, blending, or an already filtered surface can prevent the intended
+  sampling. Do not solve a hidden backdrop by nesting more filters.
+- Test top/side edges, sticky positioning, corner clipping, scroll sampling,
+  seams between chrome regions, and portal/dropdown layering. If an extended
+  masked sampling layer is genuinely needed, keep it bounded, decorative, and
+  `pointer-events: none`; it must not cover nearby click or scroll targets.
+- No nested glass, full-page blur, refractive SVG displacement, chromatic fringes,
+  animated highlights, bright dashboard outlines, or default doubled filters.
+
+Keep the existing unsupported-filter, reduced-transparency, explicit opaque,
+and forced-colors fallbacks. Because `prefers-reduced-transparency` is not
+universally supported, expose **Solid surfaces** as a memory-only Appearance
+choice as well. Standard mode respects the OS preference where supported;
+Solid surfaces always wins over the decorative material. Replace the fill and
+edge treatment appropriately, not just the blur. This choice is independent of
+background animation and must leave actions, spacing, selection, and focus intact.
+
+### B.6 dddynamite participant marks
+
+#### Curation and provenance
+
+Use one curated dddynamite star/spark/burst family, not a collage of its entire
+decorative collection. A candidate set of approximately 12-16 distinct marks is
+a review starting point, not an approved quantity or finalized catalog. Favor
+clear silhouettes that remain distinguishable at compact sizes. Exclude overly
+intricate hatching, unrelated doodles, and offset sticker effects if they break
+the shared optical language. No fake human portraits or generated artwork.
+
+The [dddynamite page](https://www.fffuel.co/dddynamite/) explicitly declares MIT
+licensing for these shapes. The [general fffuel license](https://www.fffuel.co/license/)
+has an "unless otherwise noted" condition and separate redistribution restrictions;
+retain the pack-specific declaration and recover/preserve the proper applicable
+copyright and MIT permission notice when incorporating the selected assets.
+The linked MIT destination was not a usable notice in the earlier research.
+Do not treat public availability, the general license alone, or an unrelated
+GitHub mirror as proof that public-repository redistribution is already cleared.
+Pack selection is settled; asset-level notice verification is an incorporation
+gate, not a reason to restart pack discovery.
+
+Self-host only the selected trusted SVGs. Do not call a remote avatar generator,
+send persona IDs to an external service, or ship the complete source collection
+unnecessarily. Record source, selected shape identifier, notice/provenance,
+catalog version, normalization, and fallback mapping alongside the assets.
+
+#### Normalize for actual profile sizes
+
+The inspected generator uses a 200x200 viewBox with configurable fills/strokes
+and offsets. Its default 2.5-unit stroke becomes only **0.4 CSS px at 32px**;
+the default 10-unit offset becomes 1.6px. These are scale calculations, not a
+claim of a rendered visual test. Do not simply shrink the default illustrations.
+
+- Prefer a filled silhouette, optionally with a deliberately legible outline.
+  Begin with zero decorative offset for compact marks; normalize stroke weight,
+  visual bounds, optical centering, and padding across the curated set.
+- Review at **24px, 32px, and 40px**, on light and dark surfaces, selected states,
+  monochrome, and solid/forced-color fallbacks. Mathematical centering alone is
+  insufficient. Avoid star points clipping the frame or appearing much smaller
+  than a neighboring rounded mark.
+- Use the same geometry and assigned identity across themes. Recolor through
+  semantic avatar foreground/detail/background roles, starting from the existing
+  violet family where appropriate; do not invert with CSS filters or adopt the
+  generator's default pink/blue palette as a new application theme.
+- Inline trusted SVGs or a controlled local component may consume `currentColor`
+  and explicit theme-role fills. An SVG loaded through an external `<img>` does
+  not inherit the parent's `currentColor`; choose an explicit recoloring method.
+  Do not inject unreviewed SVG markup, scripts, remote resources, or event handlers.
+
+#### Identity behavior and reuse
+
+An apparently random assignment is made once and remains stable; it is not
+randomized on render, route change, refetch, theme switch, or roster reorder.
+Use a versioned catalog and immutable persona/meeting-snapshot identity, not the
+display name. Preserve existing assignments when adding participants; allocate
+unused distinguishable marks where possible rather than reshuffling the roster.
+If the set is exhausted, names/roles remain definitive; do not silently mutate
+previous identities to manufacture uniqueness.
+
+Recorded attribution follows the immutable meeting snapshot, not a later edit
+to the practice template. Use presentation derivation or existing memory owners;
+do not add persistent browser storage, rewrite a recording, or require a replay
+schema migration merely to save avatar choices. Document the mapping/version and
+test reload/restart consistency and collisions before accepting the catalog.
+
+Carry the same mark/name into persona profiles, participant selection, the room
+perspective strip, contributions, and actual recorded-agreement participants.
+Full names and readable roles accompany marks where identity matters. A mark is
+not a claim about expertise or a new status indicator. Adjacent decorative SVGs
+are hidden from assistive technology; standalone identity controls have a real
+accessible name. Shapes, not color alone, distinguish people. No per-avatar
+animation, glow, or miniature starfield; ambient motion belongs to the environment.
+
+### B.7 Foreground composition and application-wide motion
+
+Implement Addendum A's room together with this language: large opaque discussion,
+actual type-role adoption in historical and active Markdown, compact named
+perspectives, integrated director dock, contextual evidence, and a collapsible
+substantive meeting record. Preserve the two-thirds resting discussion target,
+real prepared-question behavior, tutorial collision handling, and all RF gates.
+Do not present a starfield/glass-only change as closing the room-first pass.
+
+The same vocabulary supports different tasks, not one universal card dashboard:
+
+| Screen family | Foreground structure |
+| --- | --- |
+| Meeting index/board | Readable meeting rows or a concise actual prepared-meeting introduction, accurate runtime labels and real next actions |
+| Personas | Identity-led profiles with marks, names, mandates, versions, and actual scope; preserve prompt inspection versus activation |
+| Knowledge | Source-library structure with processing/access states and the shared evidence viewer; no invented relationship graph or citation |
+| Settings/access | Focused solid groups/forms and real controls; no disabled product scaffold, fake account flow, or credentials in public practice |
+| Meeting/closing/report | Discussion, actual decision record, and readable saved results, not operational telemetry or fabricated executive summaries |
+
+Spend visual emphasis on headings, participant identity, primary actions, and
+selection; keep utility metadata secondary but readable. The signature comes
+from the relationship of environment, selective material, perspectives, and
+content, not extra pills, hairline boxes, giant gaps, or a logo repeated everywhere.
+
+Use M01-M12 throughout real interactions: navigation/press, selected state,
+disclosure, record inspector, evidence dialog, accepted mutations, real progress,
+and errors. Keep retained shell state and reading position. No per-token effects,
+historical message cascades, replayed historical toasts, magnetic controls,
+cursor-chasing, or animation-driven domain completion. Transitions are brief,
+interruptible, and never make the user wait to act. Reduced motion retains the
+same information and functions without spatial choreography.
+
+### B.8 Rendering, resource use, and failure strategy
+
+Prototype a small number of precomposed SVG/CSS planes before choosing Canvas or
+WebGL. Internal pages do not automatically inherit Cosmos's hero renderer,
+scene scheduler, dependencies, or asset count. Keep decorative work outside
+per-frame React state and outside feature runtime controllers. Use the existing
+stack and motion vocabulary; a new animation library requires a demonstrated
+need and review, not a simultaneous GSAP/Motion installation.
+
+Keep the field viewport-bounded rather than allocating full-document-height
+textures. Avoid large continuously animated blurred gradients. Use compositor-
+friendly transforms where appropriate, but **moving content beneath a backdrop
+filter can still be expensive**. Profile the combined effect, not just each part
+in isolation. Do not apply `will-change` or forced layer promotion everywhere.
+If a bitmap/canvas is selected, document resolution/DPR limits, resize behavior,
+context-loss handling, memory use, and cleanup; do not silently use uncapped DPR.
+
+Compare four controlled configurations on the same populated screens:
+
+1. Static environment plus solid chrome: baseline.
+2. Moving environment plus solid chrome: field cost.
+3. Static environment plus glass chrome: material cost.
+4. Moving environment plus glass chrome: actual combined shipping candidate.
+
+Use representative desktop and constrained/mobile hardware, not only headless
+screenshots. Record browser/version, device, viewport/DPR, asset/code bytes,
+main-thread tasks, paint/composite behavior, frame-time distribution, and memory
+or layer growth. Keep section 7.4's performance targets; do not import Spec 32's
+homepage asset budget as an already measured application budget. Establish and
+record an application-specific budget before accepting the chosen renderer.
+
+Inspect scroll and stream performance, sticky chrome, inspector resize,
+route/theme changes, and repeated mount/unmount. Hidden documents and inactive
+environments do no decorative frame work. No accumulated animation callbacks,
+listeners, nodes, or leaked textures after navigation. Prefer fewer points,
+fewer/lower-resolution planes, smaller filtered areas, then static/solid fallback
+over reducing text legibility or blocking interaction. A complete shutdown path
+must clean up work; failure cannot invoke a remote service or live-data fallback.
+
+### B.9 Required tests and visual acceptance
+
+All gates below start **OPEN**. Existing unit/build/architecture passes and
+opaque token contrast calculations do not establish composited contrast,
+perceptible glass, subtle movement, usable avatars, or a completed redesign.
+
+Use the same real public meeting/checkpoint and rights-cleared content for
+matching light/dark comparisons. Use permitted synthetic fixtures for live
+draft/operation/credential states; never capture private operator data, keys,
+or unapproved source material. Capture incompatible states separately rather
+than inventing an impossible fixture.
+
+| Gate | Required checks and evidence |
+| --- | --- |
+| ST01 Coverage and composition | Inventory every existing non-homepage route plus owned loading/error/empty/access states. Capture board, populated index, persona, knowledge, settings, solid sign-in, and the corrected room in both themes. Show deliberate exposed environment, selective chrome, and opaque working surfaces; no accidental full-page cover or transparent paragraph backdrop. Homepage is not double-rendered. |
+| ST02 Atmosphere calibration | Compare static/animated captures and a sustained reading interaction. Record final density, point size, drift, wash, and theme-specific values. Inspect irregularity, repeat seams, flicker/aliasing, foreground distraction, and bright patches. Test light independently, not by inversion. A pleasant still is insufficient evidence that motion is subtle. |
+| ST03 Material calibration and contrast | Compare 65%/75%/88% tint samples at a controlled backdrop/blur in both themes. Record chosen values and actual text/control/focus contrast over the brightest permitted moving background, selected/hover states, and portal menus. Verify visible transmission without sharp stars behind labels; no label opacity, clipping seams, or nested filters. Retain WCAG AA thresholds from section 8. |
+| ST04 Avatar catalog | Provide a provenance/notice record and visual contact sheet at 24/32/40px, both themes, monochrome and solid fallback. Inspect optical size, centering, distinguishable silhouettes, clipping, legible outlines and focus. Verify local safe assets, theme-role recoloring, names/roles, stable mapping through reorder/add/remove/theme/navigation/reload/restart, collision handling, and immutable recorded identity. |
+| ST05 Preferences and accessibility | Keyboard/assistive-technology checks for Appearance, Background animation and Solid surfaces. Pause persists while interacting elsewhere; OS reduced motion produces static first paint and halts loops; reduced transparency, explicit opaque, unsupported blur and forced colors produce coherent solid surfaces. Choices stay memory-only and independent from playback speed, real feedback and feature state. |
+| ST06 Responsive/input | Exercise 320px, 390x844, 768px, 1024x768, 1440x900, 1920x917 and wide, plus 200% text and 400% zoom/reflow. Test long names/agenda, wrapped chrome, keyboard focus, touch, virtual keyboard, menus/dialogs, short viewports, and no horizontal page overflow or decorative hit interception. Reading width and operable controls take priority over matching exposed desktop margins. |
+| ST07 Continuity and interruption | Trace soft navigation, theme/System changes, manual pause, Solid surfaces, tab hiding/resuming, and homepage entry/return. No field reseed/entrance burst, catch-up, flash, duplicate renderer, feature remount, refetch, draft loss, focus loss, checkpoint change, or evidence reset. Interrupt disclosure/inspector transitions and stream while scrolled up; retain the contribution anchor and Addendum A's behavior. |
+| ST08 Cross-browser/failure | Exercise supported Chromium, Firefox and WebKit targets, with actual browser versions recorded and real-device follow-up for relevant mobile behavior. Inspect sticky/backdrop sampling, corner/ancestor overflow, top-edge flicker, stacking/portal seams, click/scroll hit testing, and responsive fallback. Test JS/asset/renderer/context failure where applicable; content and real actions remain usable without the effect. |
+| ST09 Combined performance | Record the four B.8 configurations on reference desktop and constrained hardware, including sustained reading/scrolling/streaming, inspector interaction and repeated routes. Compare frame/paint/composite cost, tasks, resolution, bytes and memory/layers; verify hidden/paused states stop work and cleanup is bounded. Document degradation choices and final application budget; an assumed GPU acceleration claim does not pass. |
+| ST10 Runtime isolation and room-first completion | Keep RF01-RF08 and existing replay/practice/live/vault/evidence/closing/tutorial tests passing. Verify no new provider/Auth/settings/bootstrap/network calls or persistent writes caused by decoration/preferences/avatars; no command-count or prepared-action availability changes. Actual record relationships and access-loss behavior remain truthful. Visual completion requires Addendum A plus this material/identity review, not only passing tests. |
+
+At minimum, room evidence includes resting and expanded question, long historical
+and active contributions, record open/closed, tutorial visible/fallback, evidence
+open/error/retry, and real pending/error controls in both themes. Include the
+computed type and measured discussion-height evidence from A.10. Do not stage
+these by auto-advancing the tutorial, faking events, or making unavailable actions
+look available. The shared evidence viewer remains singular and revision-safe.
+
+Include interaction recordings/traces, not just stills: ordinary background
+movement while reading, pause/resume, material scroll edges, question expansion,
+record open/close, theme switch during streaming, reduced/opaque fallbacks, and
+avatar identity continuity. Record a visual decision for each gate with failures
+and open questions. Mark a gate complete only against new evidence for this pass.
+
+### B.10 Delivery order and evidence record
+
+1. Recheck current source and preserve subsequent user work. Establish explicit
+   environment/workspace ownership and a local comparison of background, material,
+   and normalized participant marks in both themes. Do not change domain flows.
+2. Apply the shared treatment to the **Addendum A room-first slice** and validate
+   its actual populated states, height, type, dock, record, and tutorial. Do not
+   defer its composition while polishing the environment or homepage.
+3. Use that accepted vocabulary for Spec 33's remaining task-specific screens,
+   covering every non-homepage page rather than only the room. Spec 32 retains
+   the separately studied homepage composition and motion system.
+4. Complete the route/state, accessibility, combined-performance, asset-notice,
+   and regression evidence above before declaring the redesign accepted.
+
+Record final values, selected catalog/version and notices, implementation choices,
+comparison artifacts, computed contrast, traces, test commands/results, unresolved
+failures, and visual review **in this spec's execution evidence**, keeping earlier
+records intact. The current addendum only specifies that work. No application
+implementation, SVG incorporation, benchmark, or new gate completion is implied
+by its presence. Retain exactly three numbered redesign specs.
+
+### B.11 Research references and how to use them
+
+- [Linear: How we redesigned the Linear UI](https://linear.app/now/how-we-redesigned-the-linear-ui):
+  use the method of reviewing environment, appearance, hierarchy and populated
+  view types together, not its branding, navigation layout, or font as a template.
+- [Apple HIG: Materials](https://developer.apple.com/design/human-interface-guidelines/materials)
+  and [Motion](https://developer.apple.com/design/human-interface-guidelines/motion):
+  content-first material placement and purposeful optional motion. Native Liquid
+  Glass adaptation is not an automatic capability of CSS on the web.
+- [MDN: backdrop-filter](https://developer.mozilla.org/en-US/docs/Web/CSS/backdrop-filter)
+  and [Josh W. Comeau: Backdrop Filter](https://www.joshwcomeau.com/css/backdrop-filter/):
+  backdrop sampling, boundaries, readability and edge pitfalls. Demonstration
+  techniques do not mandate extra filters or constitute a measured performance
+  guarantee in Sabha.
+- [WCAG 2.2: Pause, Stop, Hide](https://www.w3.org/WAI/WCAG22/Understanding/pause-stop-hide.html)
+  and [web.dev: Motion accessibility](https://web.dev/learn/accessibility/motion):
+  persistent automatic decorative movement needs an operable pause/stop/hide
+  answer; reduced motion or hover-only suspension is not the whole solution.
+- [MDN: prefers-reduced-transparency](https://developer.mozilla.org/en-US/docs/Web/CSS/@media/prefers-reduced-transparency):
+  support is limited; retain explicit and unsupported-browser solid fallbacks.
+- [web.dev: Animations guide](https://web.dev/articles/animations-guide): profile
+  layout/paint/compositing and use transforms/promotion judiciously; do not infer
+  cheap combined blur from a transform-only background animation.
+- [IBM: UI icon usage](https://www.ibm.com/design/language/iconography/ui-icons/usage/):
+  optical alignment and small-size legibility principles, not a requirement to
+  adopt Carbon icons, its font, or native size conventions.
+- [dddynamite](https://www.fffuel.co/dddynamite/) and
+  [fffuel license](https://www.fffuel.co/license/): selected asset source and
+  notice verification, not a new pack search or evidence of completed vendoring.
