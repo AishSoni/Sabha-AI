@@ -3,7 +3,7 @@ import { describe, expect, it, vi } from "vitest";
 
 import type { MeetingsRuntime, ReplayTransition } from "./contract";
 import { MeetingsRuntimeProvider } from "./context";
-import { PreparedTurnControls, ReplaySpeedControl } from "./playback-controls";
+import { PreparedTurnControls } from "./playback-controls";
 
 function transition(overrides: Partial<ReplayTransition> = {}): ReplayTransition {
     return {
@@ -32,7 +32,6 @@ function runtime(
         replay: {
             checkpoint,
             transitions,
-            setPlaybackSpeed: vi.fn(),
             skipIntent: vi.fn(async () => {}),
             replayIntent: vi.fn(async () => {}),
         },
@@ -46,7 +45,6 @@ function renderControls(
     return render(
         <MeetingsRuntimeProvider runtime={value}>
             <PreparedTurnControls activeOperationId={activeOperationId} />
-            <ReplaySpeedControl />
         </MeetingsRuntimeProvider>
     );
 }
@@ -90,13 +88,5 @@ describe("prepared playback controls", () => {
         await waitFor(() =>
             expect(value.replay?.replayIntent).toHaveBeenCalledWith("credit")
         );
-    });
-
-    it("changes the bounded playback speed", () => {
-        const value = runtime("checkpoint-initial", [transition()]);
-        renderControls(value, "operation-1");
-
-        fireEvent.click(screen.getByRole("button", { name: "2x" }));
-        expect(value.replay?.setPlaybackSpeed).toHaveBeenCalledWith(2);
     });
 });

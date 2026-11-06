@@ -35,7 +35,6 @@ export function useRecordedClosingText({
     const streamRef = useRef(stream);
     streamRef.current = stream;
     const runtimeSignal = runtime?.signal;
-    const speed = runtime?.replay?.playbackSpeed ?? 1;
     const runtimeKey = runtime
         ? `${runtime.scope.identity.id}:${runtime.scope.identity.epoch}`
         : 'live';
@@ -64,7 +63,7 @@ export function useRecordedClosingText({
             };
             projectionRef.current = entry;
         }
-        // A speed change reconnects at the last accepted sequence. It never
+        // A runtime change reconnects at the last accepted sequence. It never
         // clears text the visitor has already seen or restarts at zero.
         setView(entry.view);
         if (
@@ -84,7 +83,6 @@ export function useRecordedClosingText({
             try {
                 for await (const event of source.observe(meetingId, closingId, {
                     after: current.after,
-                    speed,
                     signal: combineSignals(runtimeSignal, controller.signal),
                 })) {
                     if (cancelled) return;
@@ -128,7 +126,7 @@ export function useRecordedClosingText({
             cancelled = true;
             controller?.abort();
         };
-    }, [closingId, enabled, meetingId, runtimeKey, runtimeSignal, speed]);
+    }, [closingId, enabled, meetingId, runtimeKey, runtimeSignal]);
 
     return view;
 }

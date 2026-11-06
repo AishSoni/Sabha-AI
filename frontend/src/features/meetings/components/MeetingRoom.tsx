@@ -66,10 +66,7 @@ import { useRecordedClosingText } from '../hooks/use-recorded-closing-text';
 import { isNearScrollBottom } from '../model/scroll';
 import { useMeetingTurnController } from '../hooks/use-meeting-turn-controller';
 import { useMeetingsRuntime } from '../runtime/context';
-import {
-    PreparedTurnControls,
-    ReplaySpeedControl,
-} from '../runtime/playback-controls';
+import { PreparedTurnControls } from '../runtime/playback-controls';
 import {
     useRuntimeConsensus,
     useRuntimeContextStats,
@@ -991,11 +988,10 @@ function RoomControls({ meeting, turns }: RoomControlsProps) {
                 ) : null}
             </div>
 
-            <div className="flex flex-wrap items-center justify-between gap-2 empty:hidden">
+            <div className="empty:hidden">
                 <PreparedTurnControls
                     activeOperationId={turns.activeOperation?.operation_id}
                 />
-                <ReplaySpeedControl />
             </div>
 
             {nonTerminal.length > 0 && (

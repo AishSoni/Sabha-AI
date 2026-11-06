@@ -1211,6 +1211,14 @@ Commits on `ui-redesign`:
 Skipped journeys are the conditional legacy-journey and mixed-operator suites.
 No failure was observed in the final production run.
 
+Follow-up (user request): the recorded 1x/2x speed control and the frontend
+playback-speed state were removed entirely. Recorded observation now always uses
+the default 1x pacing; backend speed query support is untouched. The room retains
+Show full response and Replay last turn. After this removal the frontend
+unit/integration suite is 111 files / 657 tests, and the exploration journey is
+named "expands a reply and resumes the composed meeting". This supersedes only the
+speed-control part of A.4; the rest of Addendum A is unchanged.
+
 ### Gate status
 
 | Gate | Status | Evidence / remaining work |

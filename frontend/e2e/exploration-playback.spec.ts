@@ -92,7 +92,7 @@ test.describe("recorded exploration and playback", () => {
         await expectNoPublicPersistence(context, page);
     });
 
-    test("changes speed, expands a reply, and resumes the composed meeting", async ({
+    test("expands a reply and resumes the composed meeting", async ({
         page,
         context,
     }) => {
@@ -100,16 +100,6 @@ test.describe("recorded exploration and playback", () => {
         const network = guardNetwork(page);
         await serveRecordedAssets(page);
         await startRecording(page);
-
-        const speed = page.getByRole("group", {
-            name: "Recorded playback speed",
-        });
-        await expect(speed).toBeVisible();
-        await speed.getByRole("button", { name: "2x" }).click();
-        await expect(speed.getByRole("button", { name: "2x" })).toHaveAttribute(
-            "aria-pressed",
-            "true"
-        );
 
         await page
             .getByRole("button", { name: "Credit Analyst opening facts" })

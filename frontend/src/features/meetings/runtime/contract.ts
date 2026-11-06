@@ -231,8 +231,6 @@ export interface ReplayRuntimeInfo {
     archivePreparedMeeting(): Promise<void>;
     preview: ReplayPreview;
     retired: boolean;
-    playbackSpeed: ReplayPlaybackSpeed;
-    setPlaybackSpeed(speed: ReplayPlaybackSpeed): void;
     settledIntents: ReadonlySet<string>;
     legalActions(participantId?: string | null): ReplayLegalAction[];
     startIntent(intentId: string): Promise<void>;

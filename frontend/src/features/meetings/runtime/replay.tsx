@@ -67,7 +67,6 @@ import type {
     ReplayClaim,
     ReplayIntent,
     ReplayLegalAction,
-    ReplayPlaybackSpeed,
     ReplayPreparedClosing,
     ReplayPreparedReplyTurn,
     ReplayPreparedTurn,
@@ -683,8 +682,6 @@ interface ReplayRuntimeOptions {
     skipIntent: (intentId: string) => Promise<void>;
     replayIntent: (intentId: string) => Promise<void>;
     goToChapter: (chapterId: string) => Promise<void>;
-    setPlaybackSpeed: (speed: ReplayPlaybackSpeed) => void;
-    playbackSpeed: ReplayPlaybackSpeed;
     settledIntents: ReadonlySet<string>;
     onTurnSettled?: (intentId: string) => void;
     isTurnVisible?: (operationId: string) => boolean;
@@ -926,7 +923,7 @@ export function createReplayRuntime(
                         operationId,
                         checkpoint,
                         observeOptions.after ?? 0,
-                        observeOptions.speed ?? options.playbackSpeed
+                        observeOptions.speed ?? 1
                     ),
                     {
                         headers: { Accept: "text/event-stream" },
@@ -1049,8 +1046,6 @@ export function createReplayRuntime(
             },
             preview: session.preview,
             retired: session.retired,
-            playbackSpeed: options.playbackSpeed,
-            setPlaybackSpeed: options.setPlaybackSpeed,
             settledIntents: options.settledIntents,
             legalActions: (participantId?: string | null) =>
                 replayLegalActions(
@@ -1101,7 +1096,7 @@ export function createReplayRuntime(
                         meetingId,
                         checkpoint,
                         observeOptions.after ?? 0,
-                        observeOptions.speed ?? options.playbackSpeed
+                        observeOptions.speed ?? 1
                     ),
                     {
                         headers: { Accept: "text/event-stream" },
@@ -1121,7 +1116,6 @@ export function ReplayMeetingRoom({ meetingId }: { meetingId: string }) {
     const [runKey, setRunKey] = useState(1);
     const [checkpoint, setCheckpoint] = useState<string | null>(null);
     const [session, setSession] = useState<ReplaySession | null>(null);
-    const [playbackSpeed, setPlaybackSpeed] = useState<1 | 2>(1);
     const [settledIntents, setSettledIntents] = useState<Set<string>>(new Set());
     const [error, setError] = useState<Error | null>(null);
     const [loading, setLoading] = useState(true);
@@ -1375,8 +1369,6 @@ export function ReplayMeetingRoom({ meetingId }: { meetingId: string }) {
         skipIntent,
         replayIntent,
         goToChapter,
-        playbackSpeed,
-        setPlaybackSpeed,
         settledIntents,
     });
 
