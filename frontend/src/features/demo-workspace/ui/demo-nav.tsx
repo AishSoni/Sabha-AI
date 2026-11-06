@@ -90,7 +90,7 @@ export function DemoNav() {
         <header className="material-chrome relative z-chrome border-b border-separator text-ink">
             <div className="mx-auto flex max-w-6xl flex-wrap items-center gap-x-6 gap-y-3 px-4 py-3">
                 <div className="flex items-center gap-2">
-                    <span className="rounded-full border border-warning/40 bg-warning-soft px-2.5 py-0.5 type-meta-strong uppercase tracking-wide text-warning">
+                    <span className="inline-flex min-h-8 items-center rounded-full border border-warning/40 bg-warning-soft px-3 py-1 type-control font-semibold uppercase tracking-wide text-warning">
                         Demo
                     </span>
                 </div>

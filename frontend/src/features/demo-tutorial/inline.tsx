@@ -56,7 +56,7 @@ export function RoomTutorialInline() {
           className="sr-only"
         />
       ) : null}
-      <Sparkles className="size-3.5 shrink-0 text-action" aria-hidden="true" />
+      <Sparkles className="size-4 shrink-0 text-action" aria-hidden="true" />
       <p className="type-meta font-medium">{prompt.instruction}</p>
       {prompt.progress ? (
         <>
@@ -72,15 +72,15 @@ export function RoomTutorialInline() {
           type="button"
           onClick={() => setHelpOpen((open) => !open)}
           aria-expanded={helpOpen}
-          className="m-control inline-flex items-center gap-1 rounded-control px-1.5 py-0.5 type-meta text-ink-secondary hover:bg-surface-raised hover:text-ink focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-focus-ring"
+          className="m-control inline-flex min-h-8 min-w-8 items-center justify-center gap-1 rounded-control px-2 py-1 type-meta text-ink-secondary hover:bg-surface-raised hover:text-ink focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-focus-ring"
         >
-          <HelpCircle className="size-3.5" aria-hidden="true" />
+          <HelpCircle className="size-4" aria-hidden="true" />
           Help
         </button>
         <button
           type="button"
           onClick={tutorial.hide}
-          className="m-control rounded-control px-1.5 py-0.5 type-meta text-ink-secondary hover:bg-surface-raised hover:text-ink focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-focus-ring"
+          className="m-control inline-flex min-h-8 items-center rounded-control px-2 py-1 type-meta text-ink-secondary hover:bg-surface-raised hover:text-ink focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-focus-ring"
         >
           Hide
         </button>

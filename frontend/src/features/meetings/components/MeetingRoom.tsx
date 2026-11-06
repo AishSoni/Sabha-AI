@@ -453,25 +453,25 @@ function MeetingConversation({
                         <TabsList className="h-auto min-w-0 flex-none justify-start gap-1 bg-transparent p-0">
                             <RoomTab
                                 value="chat"
-                                icon={<MessageSquare className="h-4 w-4" />}
+                                icon={<MessageSquare className="h-[18px] w-[18px]" />}
                                 label="Chat"
                             />
                             <RoomTab
                                 value="roster"
-                                icon={<Users className="h-4 w-4" />}
+                                icon={<Users className="h-[18px] w-[18px]" />}
                                 label="Roster"
                             />
                             {capabilities.documents && DocumentsPanel && (
                                 <RoomTab
                                     value="documents"
-                                    icon={<FileText className="h-4 w-4" />}
+                                    icon={<FileText className="h-[18px] w-[18px]" />}
                                     label={runtime.replay ? 'Files' : 'Shared Docs'}
                                 />
                             )}
                             {capabilities.summary && SummaryPanel && (
                                 <RoomTab
                                     value="summary"
-                                    icon={<Scroll className="h-4 w-4" />}
+                                    icon={<Scroll className="h-[18px] w-[18px]" />}
                                     label="Summary"
                                 />
                             )}
@@ -646,7 +646,7 @@ function MeetingConversation({
                                 {capabilities.disagreements && (
                                     <RoomTab
                                         value="disagreements"
-                                        icon={<AlertTriangle className="h-4 w-4" />}
+                                        icon={<AlertTriangle className="h-[18px] w-[18px]" />}
                                         label="Disagreements"
                                         count={disagreements.length}
                                         tone="red"
@@ -656,7 +656,7 @@ function MeetingConversation({
                                 {capabilities.consensus && (
                                     <RoomTab
                                         value="consensus"
-                                        icon={<CheckCircle2 className="h-4 w-4" />}
+                                        icon={<CheckCircle2 className="h-[18px] w-[18px]" />}
                                         label="Consensus"
                                         count={consensus.length}
                                         tone="green"
