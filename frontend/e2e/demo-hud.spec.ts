@@ -22,6 +22,17 @@ async function startRecording(page: Page) {
     });
     await expect(progress).toHaveAttribute("aria-valuenow", "10");
     await expect(progress).toHaveAttribute("aria-valuetext", "Step 1 of 10");
+    await expect(hud.getByText(/Step \d+ of \d+/)).toHaveCount(0);
+    const cardBounds = await hud.boundingBox();
+    const progressBounds = await progress.boundingBox();
+    expect(cardBounds).not.toBeNull();
+    expect(progressBounds).not.toBeNull();
+    expect(progressBounds!.x).toBeGreaterThanOrEqual(cardBounds!.x + 0.5);
+    expect(progressBounds!.x).toBeLessThanOrEqual(cardBounds!.x + 1.5);
+    expect(progressBounds!.y).toBeGreaterThanOrEqual(cardBounds!.y + 0.5);
+    expect(progressBounds!.y).toBeLessThanOrEqual(cardBounds!.y + 1.5);
+    expect(progressBounds!.width).toBeGreaterThanOrEqual(cardBounds!.width - 2.5);
+    expect(progressBounds!.width).toBeLessThanOrEqual(cardBounds!.width - 1.5);
     await expect(page.getByRole("button", { name: /Continue/ })).toHaveCount(0);
 
     await page.getByRole("link", { name: "Start the meeting" }).click();
