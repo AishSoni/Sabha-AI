@@ -338,15 +338,15 @@ describe('MeetingRoom closing workflow', () => {
         });
     }, 10_000);
 
-    it('keeps the close entry in the main tab bar with stable control anchors', async () => {
+    it('keeps the close entry in the room header with stable control anchors', async () => {
         installClosingRouter();
         renderRoom();
 
-        const tab = await screen.findByRole('tab', { name: /Close/ });
-        expect(tab).toHaveAttribute('id', 'closing-tab');
-        expect(tab.tagName).toBe('BUTTON');
+        const closeEntry = await screen.findByRole('button', { name: /Close meeting/ });
+        expect(closeEntry).toHaveAttribute('id', 'closing-tab');
+        expect(closeEntry.tagName).toBe('BUTTON');
 
-        fireEvent.mouseDown(tab);
+        fireEvent.click(closeEntry);
 
         await waitFor(() =>
             expect(document.getElementById('closing-panel')).not.toBeNull()

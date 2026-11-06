@@ -80,7 +80,7 @@ export function PreparedTurnControls({
             }
         };
         return (
-            <div className="mb-4 flex flex-wrap items-center gap-2">
+            <div className="flex flex-wrap items-center gap-2">
                 {activePrepared ? (
                     <Button
                         type="button"
@@ -150,7 +150,7 @@ export function PreparedTurnControls({
     if (!skipTarget && !replayTarget) return null;
 
     return (
-        <div className="mb-4 rounded-control border border-separator bg-surface-raised px-3 py-2">
+        <div className="rounded-control border border-separator bg-surface-raised px-3 py-2">
             <div className="flex flex-wrap items-center gap-2">
                 {skipTarget ? (
                     <Button

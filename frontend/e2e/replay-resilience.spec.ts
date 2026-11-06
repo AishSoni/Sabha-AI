@@ -53,15 +53,22 @@ test.describe("recorded replay resilience", () => {
         await page
             .getByRole("button", { name: "Credit Analyst opening facts" })
             .click({ clickCount: 2, delay: 10 });
-        await expect(
-            page.getByRole("button", { name: "Show full response" })
-        ).toBeVisible({ timeout: 30_000 });
+        const showFull = page.getByRole("button", {
+            name: "Show full response",
+        });
+        const credit = message(page, CREDIT_MESSAGE);
+        // A rapid second click can land on the reveal control once the first
+        // click readies the turn. Either outcome is valid as long as the
+        // transcript still settles exactly one prepared reply.
+        await expect(showFull.or(credit)).toBeVisible({ timeout: 30_000 });
+        if (await showFull.isVisible()) {
+            await showFull.click();
+        }
         await expect(
             page.getByRole("button", { name: "Cancel", exact: true })
         ).toHaveCount(0);
-        await page.getByRole("button", { name: "Show full response" }).click();
 
-        await expect(message(page, CREDIT_MESSAGE)).toBeVisible({
+        await expect(credit).toBeVisible({
             timeout: 30_000,
         });
         await expect(message(page, CREDIT_MESSAGE)).toHaveCount(1);

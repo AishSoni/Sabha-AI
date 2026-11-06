@@ -34,18 +34,27 @@ function PinnedWorkspace({ children }: { children: ReactNode }) {
         >
             <ReplayRunProvider>
                 <DemoTutorialProvider>
-                    <DemoNav />
-                    <TutorialBoundary>
-                        <TutorialHud />
-                        <TutorialNotices />
-                    </TutorialBoundary>
-                    {/*
-                     * The chapter entry remounts the route page when a chapter
-                     * changes. Keeping it inside the tutorial provider means a
-                     * hidden HUD survives chapter inspection instead of
-                     * restarting the visitor's presentation state.
-                     */}
-                    <ChapterBootstrap>{children}</ChapterBootstrap>
+                    <div className="flex h-dvh min-h-0 flex-col">
+                        <DemoNav />
+                        <TutorialBoundary>
+                            <TutorialHud />
+                            <TutorialNotices />
+                        </TutorialBoundary>
+                        {/*
+                         * The chapter entry remounts the route page when a
+                         * chapter changes. Keeping it inside the tutorial
+                         * provider means a hidden HUD survives chapter
+                         * inspection instead of restarting the visitor's
+                         * presentation state.
+                         *
+                         * This is the single viewport owner for demo routes:
+                         * ordinary pages scroll here, while the room fills the
+                         * same space without creating a second page scrollbar.
+                         */}
+                        <div className="min-h-0 flex-1 overflow-y-auto">
+                            <ChapterBootstrap>{children}</ChapterBootstrap>
+                        </div>
+                    </div>
                 </DemoTutorialProvider>
             </ReplayRunProvider>
         </DemoWorkspaceProvider>
