@@ -342,7 +342,7 @@ export function PersonaEditorScreen({
             </header>
 
             {/* Main Content */}
-            <main className="max-w-4xl mx-auto px-6 py-8">
+            <main id="main-content" className="max-w-4xl mx-auto px-6 py-8" tabIndex={-1}>
                 {description && (
                     <p className="text-sm text-ink-secondary mb-6 max-w-3xl">{description}</p>
                 )}

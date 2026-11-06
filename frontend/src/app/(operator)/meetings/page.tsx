@@ -91,7 +91,7 @@ export default function MeetingSpacePage() {
             </header>
 
             {/* Main Content */}
-            <main className="max-w-6xl mx-auto px-6 py-8">
+            <main id="main-content" className="max-w-6xl mx-auto px-6 py-8" tabIndex={-1}>
                 <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
                     <TabsList className="mb-6">
                         <TabsTrigger value="active">

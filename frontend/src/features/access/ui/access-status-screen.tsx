@@ -22,7 +22,7 @@ export function AccessStatusScreen({
 
     if (state === "checking") {
         return (
-            <main className={shell}>
+            <main id="main-content" className={shell} tabIndex={-1}>
                 <p className="type-body text-ink-secondary">Checking operator access…</p>
             </main>
         );
@@ -30,7 +30,7 @@ export function AccessStatusScreen({
 
     if (state === "unconfigured") {
         return (
-            <main className={shell}>
+            <main id="main-content" className={shell} tabIndex={-1}>
                 <div className="max-w-md space-y-3 text-center">
                     <h1 className="type-item-title">Live workspace unavailable</h1>
                     <p className="type-body text-ink-secondary">
@@ -50,7 +50,7 @@ export function AccessStatusScreen({
 
     if (state === "unavailable") {
         return (
-            <main className={shell}>
+            <main id="main-content" className={shell} tabIndex={-1}>
                 <div className="max-w-md space-y-3 text-center">
                     <h1 className="type-item-title">
                         Operator access is temporarily unavailable
@@ -73,7 +73,7 @@ export function AccessStatusScreen({
 
     if (state === "forbidden") {
         return (
-            <main className={shell}>
+            <main id="main-content" className={shell} tabIndex={-1}>
                 <div className="max-w-md space-y-3 text-center">
                     <h1 className="type-item-title">Operator access denied</h1>
                     <p className="type-body text-ink-secondary">
@@ -93,7 +93,7 @@ export function AccessStatusScreen({
     }
 
     return (
-        <main className={shell}>
+        <main id="main-content" className={shell} tabIndex={-1}>
             <div className="max-w-md space-y-3 text-center">
                 <h1 className="type-item-title">Sign in required</h1>
                 <p className="type-body text-ink-secondary">

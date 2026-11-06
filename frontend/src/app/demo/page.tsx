@@ -54,7 +54,7 @@ export default function DemoBoardPage() {
 
     if (!board) {
         return (
-            <main className="mx-auto max-w-5xl p-6">
+            <main id="main-content" className="mx-auto max-w-5xl p-6" tabIndex={-1}>
                 <p className="text-sm text-ink-muted">Loading the prepared board…</p>
             </main>
         );
@@ -64,7 +64,7 @@ export default function DemoBoardPage() {
     const stacks = board.stacks ?? {};
 
     return (
-        <main className="mx-auto max-w-5xl px-4 py-8 text-ink">
+        <main id="main-content" className="mx-auto max-w-5xl px-4 py-8 text-ink" tabIndex={-1}>
             <div className="mb-6 flex flex-wrap items-start justify-between gap-4">
                 <div>
                     <div className="mb-2 flex flex-wrap items-center gap-2">

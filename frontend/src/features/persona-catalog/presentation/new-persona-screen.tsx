@@ -130,7 +130,7 @@ export function NewPersonaScreen({ client, loadStacks, routes, stacksHint }: New
             </header>
 
             {/* Main Content */}
-            <main className="max-w-4xl mx-auto px-6 py-8">
+            <main id="main-content" className="max-w-4xl mx-auto px-6 py-8" tabIndex={-1}>
                 {error && (
                     <div role="alert" className="mb-8 rounded-group border border-danger/40 bg-danger-soft p-4">
                         <p className="type-body text-danger">{error}</p>

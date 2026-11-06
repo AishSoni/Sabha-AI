@@ -79,7 +79,7 @@ export function PracticeMeetingScreen({
 
     if (!meeting) {
         return (
-            <main className="mx-auto max-w-3xl px-4 py-16">
+            <main id="main-content" className="mx-auto max-w-3xl px-4 py-16" tabIndex={-1}>
                 <h1 className="type-page-title text-ink">
                     This practice setup is not available
                 </h1>
@@ -103,7 +103,7 @@ export function PracticeMeetingScreen({
         ) ?? [];
 
     return (
-        <main className="mx-auto max-w-5xl space-y-5 px-4 py-8">
+        <main id="main-content" className="mx-auto max-w-5xl space-y-5 px-4 py-8" tabIndex={-1}>
             <Link
                 href="/demo/meetings"
                 className="m-control inline-flex items-center gap-1 type-control text-action hover:text-action-hover"

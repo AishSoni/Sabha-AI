@@ -22,7 +22,7 @@ export default function NewKnowledgeStackPage() {
                     </div>
                 </div>
             </header>
-            <main className="mx-auto max-w-4xl px-6 py-8">
+            <main id="main-content" className="mx-auto max-w-4xl px-6 py-8" tabIndex={-1}>
                 <StackEditor />
             </main>
         </div>
