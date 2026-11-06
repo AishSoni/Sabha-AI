@@ -268,10 +268,14 @@ test.describe("demo keyboard and narrow-screen accessibility", () => {
         await expect(
             page.getByRole("heading", { name: "Settings in the public demo" })
         ).toBeVisible();
-        // The tutorial objective has no anchor on this screen, so the card
-        // stays collapsed instead of guessing a position.
-        await expect(page.getByTestId("tutorial-hud-compact")).toBeVisible();
-        await expect(page.getByTestId("tutorial-hud")).toHaveCount(0);
+        // The reserved shell rail keeps the objective visible even when this
+        // screen has no anchor for the ring.
+        const rail = page.getByTestId("tutorial-hud");
+        await expect(rail).toBeVisible();
+        await expect(
+            rail.getByText("Start the meeting", { exact: true })
+        ).toBeVisible();
+        await expect(page.getByTestId("tutorial-hud-compact")).toHaveCount(0);
         await expect(
             page.getByRole("heading", { name: "Provider setup is operator-only" })
         ).toBeVisible();

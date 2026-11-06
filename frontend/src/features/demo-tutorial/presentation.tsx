@@ -56,10 +56,10 @@ export function TutorialPresentation({
       data-placement={variant}
       data-state="shown"
       className={cn(
-        "m-notice relative flex w-full shrink-0 flex-wrap items-center overflow-hidden border border-action/30 text-ink",
+        "m-notice relative flex flex-wrap items-center overflow-hidden border border-action/30 text-ink",
         variant === "rail"
-          ? "gap-x-3 gap-y-1 bg-surface px-4 py-2"
-          : "gap-x-2 gap-y-1 rounded-control bg-accent-soft/70 px-3 py-2"
+          ? "w-full shrink-0 gap-x-3 gap-y-1 bg-surface px-4 py-2"
+          : "min-w-0 gap-x-2 gap-y-1 rounded-control bg-accent-soft/70 px-3 py-2"
       )}
     >
       {progress ? (
