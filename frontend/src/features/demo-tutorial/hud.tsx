@@ -175,7 +175,7 @@ export function TutorialHud() {
                     <TutorialGuide
                         prompt={prompt}
                         progress={progress}
-                        variant="card"
+                        placement="card"
                     />
                 </div>
             ) : null}
