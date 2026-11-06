@@ -50,7 +50,9 @@ test.describe("concise demo copy", () => {
 
         await page.goto("/");
         await expect(
-            page.getByRole("link", { name: "Explore the recorded demo" }),
+            page
+                .locator(".home-hero")
+                .getByRole("link", { name: "Explore the recorded demo" }),
         ).toBeVisible();
         await expectNoBannedCopy(page);
 
