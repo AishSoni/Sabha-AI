@@ -31,6 +31,7 @@ export function CitationsBlock({ citations, renderPreviewAction }: CitationsBloc
         <div className="my-2 overflow-hidden rounded-group border border-action/40 bg-accent-soft">
             <button
                 type="button"
+                data-tutorial-avoid
                 onClick={() => setIsExpanded(!isExpanded)}
                 className="m-control flex w-full items-center gap-2 px-3 py-2 text-action hover:bg-action/10"
             >
