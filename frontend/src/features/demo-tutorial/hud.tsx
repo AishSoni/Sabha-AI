@@ -1,34 +1,26 @@
 "use client";
 
 /**
- * The single tutorial HUD (spec-29).
+ * The tutorial ring and live announcement (spec-29).
  *
- * One instruction, anchored to the real control. The card never intercepts
- * pointer events outside itself, never moves focus and never advances the
- * journey. A missing or clipped anchor collapses it to the compact bar.
+ * Instructions themselves render in flow: the reserved shell rail on ordinary
+ * demo routes and the room dock on a meeting. This layer only highlights the
+ * real control and announces objective changes; it never covers the page.
  */
 import {
-    useMemo,
+    useCallback,
     useRef,
     useState,
     useSyncExternalStore,
-    type CSSProperties,
-    type KeyboardEvent,
 } from "react";
 import { createPortal } from "react-dom";
 import Link from "next/link";
-import { ChevronDown, Compass, Sparkles } from "lucide-react";
+import { ChevronDown, Compass } from "lucide-react";
 import { chapterHref, useReplayRun } from "@/features/meetings/presentation";
-import {
-    getAnchor,
-    useAnchorCandidates,
-    useAnchorVersion,
-} from "./anchors";
+import { useAnchorCandidates } from "./anchors";
 import type { TutorialAnchorId } from "./contract";
 import { useDemoTutorial } from "./provider";
 import { useModalOpen, useTutorialStreaming } from "./presence";
-import { tutorialProgress } from "./progress";
-import { useAnchoredCard } from "./use-anchored-card";
 
 const emptySubscribe = () => () => {};
 
@@ -41,10 +33,48 @@ function useMounted(): boolean {
     );
 }
 
+interface AnchorRect {
+    left: number;
+    top: number;
+    width: number;
+    height: number;
+}
+
+function useAnchorRect(element: HTMLElement | null): AnchorRect | null {
+    const subscribe = useCallback(
+        (onChange: () => void) => {
+            if (!element) return () => {};
+            const measure = () => onChange();
+            window.addEventListener("scroll", measure, true);
+            window.addEventListener("resize", measure);
+            const observer =
+                typeof ResizeObserver === "undefined"
+                    ? null
+                    : new ResizeObserver(measure);
+            observer?.observe(element);
+            return () => {
+                window.removeEventListener("scroll", measure, true);
+                window.removeEventListener("resize", measure);
+                observer?.disconnect();
+            };
+        },
+        [element]
+    );
+    const getSnapshot = useCallback(() => {
+        if (!element) return null;
+        const rect = element.getBoundingClientRect();
+        return `${rect.left}:${rect.top}:${rect.width}:${rect.height}`;
+    }, [element]);
+    const snapshot = useSyncExternalStore(subscribe, getSnapshot, () => null);
+
+    if (!snapshot) return null;
+    const [left, top, width, height] = snapshot.split(":").map(Number);
+    return { left, top, width, height };
+}
+
 export function TutorialHud() {
     const tutorial = useDemoTutorial();
     const mounted = useMounted();
-    const [card, setCard] = useState<HTMLElement | null>(null);
     const modalOpen = useModalOpen();
     const streaming = useTutorialStreaming();
 
@@ -55,214 +85,32 @@ export function TutorialHud() {
           ) as TutorialAnchorId[])
         : [];
     const match = useAnchorCandidates(candidates);
-    const anchorVersion = useAnchorVersion();
-    const avoid = useMemo(() => {
-        // The version is read so a newly mounted control invalidates the
-        // obstacle list even when the prompt id stays the same.
-        void anchorVersion;
-        // Only the controls the current instruction could sit on top of are
-        // hard obstacles. Avoiding every registered anchor makes the card
-        // impossible to place in the populated room.
-        const critical: TutorialAnchorId[] = [
-            "room.speaker",
-            "room.followup",
-        ];
-        const anchors = critical
-            .filter((id) => id !== match?.id)
-            .map((id) => getAnchor(id))
-            .filter((element): element is HTMLElement => Boolean(element));
-        if (typeof document === "undefined") return anchors;
-
-        const room = document.querySelector('[data-testid="room-work-area"]');
-        const dock = document.querySelector('[data-testid="room-dock"]');
-        const flagged = room
-            ? Array.from(
-                  room.querySelectorAll<HTMLElement>("[data-tutorial-avoid]")
-              )
-            : [];
-        return [
-            ...anchors,
-            ...flagged,
-            ...(dock instanceof HTMLElement ? [dock] : []),
-        ];
-    }, [match?.id, anchorVersion]);
-    const position = useAnchoredCard(
-        prompt?.anchor ? (match?.element ?? null) : null,
-        card,
-        { avoid }
-    );
-
-    const hasTarget = Boolean(prompt?.anchor);
-    const anchored = !hasTarget || match !== null;
-    const placed = !hasTarget || position?.visible === true;
-    const suspended = modalOpen || streaming;
-    const inlineRoom =
-        (prompt?.id === "main-speaker" || prompt?.id === "main-followup") &&
-        match !== null;
-    const cardVisible =
-        !inlineRoom && !tutorial.hidden && !suspended && anchored && placed;
-    const compactVisible =
-        !suspended && (tutorial.hidden || (!inlineRoom && !cardVisible));
-    const cardMounted = !inlineRoom && !tutorial.hidden && !suspended && anchored;
-    const inlineTarget =
-        inlineRoom && match
-            ? (() => {
-                  const rect = match.element.getBoundingClientRect();
-                  return {
-                      left: rect.left,
-                      top: rect.top,
-                      width: rect.width,
-                      height: rect.height,
-                  };
-              })()
-            : null;
-    const ringTarget = position?.target ?? inlineTarget;
-    const ringVisible =
-        !tutorial.hidden &&
-        !suspended &&
-        anchored &&
-        hasTarget &&
-        Boolean(ringTarget) &&
-        (cardVisible || inlineRoom);
+    const rect = useAnchorRect(prompt?.anchor ? (match?.element ?? null) : null);
 
     if (!mounted || !prompt) return null;
 
-    const progress = tutorialProgress(prompt, tutorial.journey);
-
-    const onCardKeyDown = (event: KeyboardEvent<HTMLDivElement>) => {
-        if (event.key === "Escape") {
-            event.stopPropagation();
-            tutorial.hide();
-        }
-    };
-
-    const cardStyle: CSSProperties =
-        position && hasTarget
-            ? {
-                  left: position.x,
-                  top: position.y,
-                  visibility: cardVisible ? "visible" : "hidden",
-              }
-            : {
-                  left: "50%",
-                  bottom: "calc(env(safe-area-inset-bottom, 0px) + 1.5rem)",
-                  transform: "translateX(-50%)",
-                  visibility: cardVisible ? "visible" : "hidden",
-              };
+    const ringVisible =
+        !tutorial.hidden &&
+        !modalOpen &&
+        !streaming &&
+        Boolean(prompt.anchor) &&
+        rect !== null;
 
     return createPortal(
         <>
-            {ringVisible && ringTarget ? (
+            {ringVisible && rect ? (
                 <div
                     aria-hidden="true"
                     data-testid="tutorial-ring"
                     className="pointer-events-none fixed z-highlight rounded-control ring-2 ring-action/70"
                     style={{
-                        left: ringTarget.left - 4,
-                        top: ringTarget.top - 4,
-                        width: ringTarget.width + 8,
-                        height: ringTarget.height + 8,
+                        left: rect.left - 4,
+                        top: rect.top - 4,
+                        width: rect.width + 8,
+                        height: rect.height + 8,
                     }}
                 />
             ) : null}
-            {cardMounted ? (
-                <div
-                    ref={setCard}
-                    role="region"
-                    aria-label="Demo tutorial"
-                    data-testid="tutorial-hud"
-                    data-placement={position?.placement ?? "floating"}
-                    data-state={cardVisible ? "shown" : "suspended"}
-                    className="m-notice fixed z-notice w-[min(20rem,calc(100vw-1.5rem))] overflow-hidden rounded-group border border-action/40 bg-surface text-ink shadow-[var(--shadow-overlay)]"
-                    style={cardStyle}
-                    onKeyDown={onCardKeyDown}
-                >
-                    {progress ? (
-                        <div
-                            role="progressbar"
-                            aria-label="Demo progress"
-                            aria-valuemin={0}
-                            aria-valuemax={100}
-                            aria-valuenow={progress.percent}
-                            aria-valuetext={progress.label}
-                            data-testid="tutorial-progress"
-                            className="h-1.5 w-full overflow-hidden bg-surface-raised"
-                        >
-                            <div
-                                className="m-progress-fill h-full bg-action"
-                                style={{ width: `${progress.percent}%` }}
-                            />
-                        </div>
-                    ) : null}
-                    <div className="p-3">
-                    <div className="flex items-start gap-2">
-                        <Sparkles
-                            className="mt-0.5 size-4 shrink-0 text-action"
-                            aria-hidden="true"
-                        />
-                        <div className="min-w-0 flex-1">
-                            <p className="type-body font-medium">
-                                {prompt.instruction}
-                            </p>
-                            {prompt.progress ? (
-                                <p className="mt-0.5 type-meta text-ink-secondary">
-                                    {prompt.progress}
-                                </p>
-                            ) : null}
-                        </div>
-                        <ExploreRecordingMenu iconOnly />
-                        <button
-                            type="button"
-                            onClick={tutorial.hide}
-                            className="m-control inline-flex min-h-8 shrink-0 items-center rounded-control px-2 py-1 type-meta text-ink-secondary hover:bg-surface-raised hover:text-ink focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-focus-ring"
-                        >
-                            Hide
-                        </button>
-                    </div>
-                    {prompt.complete ? (
-                        <p className="mt-2 type-meta text-ink-secondary">
-                            {prompt.id === "main-complete"
-                                ? "The recorded meeting is archived. Practice edits stay in this browser. Both tours are optional."
-                                : "Nothing was saved or activated. The recording is unchanged."}
-                        </p>
-                    ) : null}
-                    {prompt.id === "tour-prompt-4" ||
-                    prompt.id === "tour-knowledge-4" ? (
-                        <div className="mt-2 flex flex-wrap gap-1.5">
-                            <TourAction onClick={tutorial.endTour}>
-                                Finish tour
-                            </TourAction>
-                            <TourAction onClick={tutorial.backToDemo}>
-                                Back to demo
-                            </TourAction>
-                        </div>
-                    ) : prompt.id === "main-complete" ? (
-                        <div className="mt-2 flex flex-wrap gap-1.5">
-                            <TourAction
-                                onClick={() => tutorial.startTour("prompt")}
-                            >
-                                Explore prompt versions
-                            </TourAction>
-                            <TourAction
-                                onClick={() => tutorial.startTour("knowledge")}
-                            >
-                                Explore knowledge stacks
-                            </TourAction>
-                            <TourAction onClick={tutorial.hide}>
-                                Finish
-                            </TourAction>
-                        </div>
-                    ) : tutorial.activeTour ? (
-                        <div className="mt-2 flex justify-end">
-                            <TourAction onClick={tutorial.endTour}>
-                                End tour
-                            </TourAction>
-                        </div>
-                    ) : null}
-                    </div>
-                </div>
-            ) : null}
-            {compactVisible ? <CompactBar /> : null}
             {!tutorial.hidden ? (
                 <p
                     className="sr-only"
@@ -275,50 +123,6 @@ export function TutorialHud() {
             ) : null}
         </>,
         document.body
-    );
-}
-
-function TourAction({
-    onClick,
-    children,
-}: {
-    onClick: () => void;
-    children: React.ReactNode;
-}) {
-    return (
-        <button
-            type="button"
-            onClick={onClick}
-            className="m-control rounded-full border border-action/40 px-2.5 py-0.5 type-meta font-medium text-action hover:bg-accent-soft focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-focus-ring"
-        >
-            {children}
-        </button>
-    );
-}
-
-function CompactBar() {
-    const tutorial = useDemoTutorial();
-
-    return (
-        <div
-            data-testid="tutorial-hud-compact"
-            className="fixed z-notice flex items-center gap-1 rounded-full border border-action/40 bg-surface p-1 shadow-[var(--shadow-raised)]"
-            style={{
-                top: "calc(env(safe-area-inset-top, 0px) + 4.5rem)",
-                left: "calc(env(safe-area-inset-left, 0px) + 1rem)",
-            }}
-        >
-            <button
-                type="button"
-                onClick={tutorial.show}
-                aria-expanded={!tutorial.hidden}
-                className="m-control inline-flex min-h-8 items-center gap-1.5 rounded-full px-2.5 py-1 type-meta font-medium text-action hover:bg-accent-soft focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-focus-ring"
-            >
-                <Sparkles className="size-4" aria-hidden="true" />
-                Show tips
-            </button>
-            <ExploreRecordingMenu />
-        </div>
     );
 }
 
@@ -353,13 +157,6 @@ export function ExploreRecordingMenu({ iconOnly = false }: { iconOnly?: boolean 
                     </>
                 )}
             </summary>
-            {/*
-             * The card can sit near the bottom of a short viewport and its
-             * floating position uses a transform, which would make a fixed
-             * child relative to the card. Portal the panel so it is measured
-             * against the viewport and every item stays reachable at 720px
-             * and 390x844.
-             */}
             {open
                 ? createPortal(
                       <div
