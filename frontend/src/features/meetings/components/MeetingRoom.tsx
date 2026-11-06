@@ -120,6 +120,19 @@ export function MeetingRoom({
     const disagreementsQuery = useRuntimeDisagreements(meetingId);
     const consensusQuery = useRuntimeConsensus(meetingId);
     const contextStatsQuery = useRuntimeContextStats(meetingId);
+    const recordAvailable =
+        (disagreementsQuery.data?.length ?? 0) > 0 ||
+        (consensusQuery.data?.length ?? 0) > 0;
+    const recordSettled =
+        !disagreementsQuery.isLoading && !consensusQuery.isLoading;
+
+    useEffect(() => {
+        if (recordSettled && !recordAvailable) {
+            if (activeTab === 'disagreements' || activeTab === 'consensus') {
+                onTabChange?.('chat');
+            }
+        }
+    }, [activeTab, onTabChange, recordAvailable, recordSettled]);
 
     if (!meetingId) {
         return <RoomNotice text="No meeting selected." />;
@@ -169,6 +182,7 @@ export function MeetingRoom({
                 disagreements={disagreementsQuery.data ?? []}
                 consensus={consensusQuery.data ?? []}
                 contextStats={contextStatsQuery.data}
+                recordAvailable={recordAvailable}
                 initialTab={initialTab}
                 activeTab={activeTab}
                 onTabChange={onTabChange}
@@ -186,22 +200,6 @@ export function MeetingRoom({
     );
 }
 
-function RoomStatus({ status }: { status: string }) {
-    const color =
-        status === 'active'
-            ? 'bg-success-soft text-success'
-            : status === 'ended'
-              ? 'bg-surface-raised text-ink-secondary'
-              : status === 'archived'
-                ? 'bg-warning-soft text-warning'
-                : 'bg-accent-soft text-action';
-    return (
-        <Badge variant="secondary" className={cn('capitalize', color)}>
-            {status}
-        </Badge>
-    );
-}
-
 function RoomNotice({ text }: { text: string }) {
     return (
         <div className="flex-1 flex items-center justify-center bg-canvas">
@@ -215,9 +213,61 @@ interface ConversationProps {
     disagreements: Disagreement[];
     consensus: Consensus[];
     contextStats?: ContextStats;
+    recordAvailable: boolean;
     initialTab?: string;
     activeTab?: string;
     onTabChange?: (tab: string) => void;
+}
+
+function RecordToggle({
+    available,
+    expanded,
+    onToggle,
+    mobile = false,
+}: {
+    available: boolean;
+    expanded: boolean;
+    onToggle: () => void;
+    mobile?: boolean;
+}) {
+    const button = (
+        <Button
+            type="button"
+            variant="ghost"
+            size="sm"
+            className={cn('text-ink-secondary', mobile ? 'lg:hidden' : 'hidden lg:inline-flex')}
+            disabled={!available}
+            onClick={onToggle}
+            aria-expanded={available ? expanded : undefined}
+            aria-controls={available ? 'room-record' : undefined}
+        >
+            <PanelRight className="mr-2 h-4 w-4" />
+            {mobile ? 'Record' : 'Meeting record'}
+        </Button>
+    );
+
+    if (available) return button;
+
+    return (
+        <Tooltip>
+            <TooltipTrigger asChild>
+                <span
+                    tabIndex={0}
+                    data-testid={mobile ? 'record-disabled-trigger-mobile' : 'record-disabled-trigger'}
+                    className={cn(
+                        'rounded-control focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-focus-ring',
+                        mobile ? 'inline-flex lg:hidden' : 'hidden lg:inline-flex'
+                    )}
+                >
+                    {button}
+                </span>
+            </TooltipTrigger>
+            <TooltipContent side="top">
+                No meeting record yet. Disagreements and consensus appear here as the
+                meeting unfolds.
+            </TooltipContent>
+        </Tooltip>
+    );
 }
 
 function MeetingConversation({
@@ -225,6 +275,7 @@ function MeetingConversation({
     disagreements,
     consensus,
     contextStats,
+    recordAvailable,
     initialTab,
     activeTab,
     onTabChange,
@@ -261,7 +312,7 @@ function MeetingConversation({
     });
     const [localTab, setLocalTab] = useState(initialTab ?? 'chat');
     const [detailsOpen, setDetailsOpen] = useState(false);
-    const [recordOpen, setRecordOpen] = useState(true);
+    const [recordOpen, setRecordOpen] = useState(false);
     const [recordOverlayOpen, setRecordOverlayOpen] = useState(false);
     const [recordTabState, setRecordTabState] = useState<'disagreements' | 'consensus'>(
         'disagreements'
@@ -320,6 +371,9 @@ function MeetingConversation({
         runtime.replay?.preparedTurns?.length && !runtime.replay.canClose
             ? runtime.replay.closeReason
             : null;
+    const recordVisible =
+        recordAvailable &&
+        (recordOpen || tab === 'disagreements' || tab === 'consensus');
     const recordOverlayVisible =
         recordOverlayOpen || tab === 'disagreements' || tab === 'consensus';
     const replayClosing = runtime.replay?.transitions.find(
@@ -353,17 +407,6 @@ function MeetingConversation({
                     )}
                 </div>
                 <div className="flex flex-wrap items-center justify-end gap-2">
-                    <Badge
-                        variant="secondary"
-                        className={cn(
-                            runtime.scope.identity.kind === 'replay'
-                                ? 'bg-accent-soft text-action'
-                                : 'bg-surface-raised text-ink-secondary'
-                        )}
-                    >
-                        {runtime.presentation.label}
-                    </Badge>
-                    <RoomStatus status={meeting.status} />
                     {runtime.restart && (
                         <Button
                             variant="ghost"
@@ -459,7 +502,7 @@ function MeetingConversation({
                             <RoomTab
                                 value="roster"
                                 icon={<Users className="h-[18px] w-[18px]" />}
-                                label="Roster"
+                                label="Personas"
                             />
                             {capabilities.documents && DocumentsPanel && (
                                 <RoomTab
@@ -476,30 +519,17 @@ function MeetingConversation({
                                 />
                             )}
                         </TabsList>
-                        <Button
-                            type="button"
-                            variant="ghost"
-                            size="sm"
-                            className="hidden text-ink-secondary lg:inline-flex"
-                            onClick={() => setRecordOpen((open) => !open)}
-                            aria-expanded={recordOpen}
-                            aria-controls="room-record"
-                        >
-                            <PanelRight className="mr-2 h-4 w-4" />
-                            Meeting record
-                        </Button>
-                        <Button
-                            type="button"
-                            variant="ghost"
-                            size="sm"
-                            className="text-ink-secondary lg:hidden"
-                            onClick={openRecord}
-                            aria-expanded={recordOverlayOpen}
-                            aria-controls="room-record"
-                        >
-                            <PanelRight className="mr-2 h-4 w-4" />
-                            Record
-                        </Button>
+                        <RecordToggle
+                            available={recordAvailable}
+                            expanded={recordVisible}
+                            onToggle={recordVisible ? closeRecord : openRecord}
+                        />
+                        <RecordToggle
+                            available={recordAvailable}
+                            expanded={recordOverlayOpen}
+                            onToggle={openRecord}
+                            mobile
+                        />
                     </div>
 
                     {turns.actionError && (
@@ -604,7 +634,7 @@ function MeetingConversation({
                     )}
                 </Tabs>
 
-                {recordOpen && (
+                {recordVisible && (
                     <aside
                         id="room-record"
                         className={cn(
@@ -1527,6 +1557,7 @@ function MeetingDetailsDialog({
     consensus: Consensus[];
     contextStats: ContextStats | undefined;
 }) {
+    const runtime = useMeetingsRuntime();
     return (
         <Dialog open={open} onOpenChange={onOpenChange}>
             <DialogContent className="sm:max-w-2xl">
@@ -1539,6 +1570,16 @@ function MeetingDetailsDialog({
                 <section className="mt-4">
                     <h3 className="type-meta-strong text-ink-secondary">Meeting</h3>
                     <p className="mt-1 type-body text-ink">{meeting.name}</p>
+                    <dl className="mt-2 flex flex-wrap gap-x-6 gap-y-1 type-meta">
+                        <div className="flex gap-2">
+                            <dt className="text-ink-secondary">Status</dt>
+                            <dd className="capitalize text-ink">{meeting.status}</dd>
+                        </div>
+                        <div className="flex gap-2">
+                            <dt className="text-ink-secondary">Session</dt>
+                            <dd className="text-ink">{runtime.presentation.label}</dd>
+                        </div>
+                    </dl>
                 </section>
 
                 {meeting.agenda && (
