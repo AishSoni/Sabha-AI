@@ -8,6 +8,7 @@
  * journey. A missing or clipped anchor collapses it to the compact bar.
  */
 import {
+    useMemo,
     useRef,
     useState,
     useSyncExternalStore,
@@ -18,7 +19,11 @@ import { createPortal } from "react-dom";
 import Link from "next/link";
 import { ChevronDown, Compass, Sparkles } from "lucide-react";
 import { chapterHref, useReplayRun } from "@/features/meetings/presentation";
-import { useAnchorCandidates } from "./anchors";
+import {
+    getAnchor,
+    useAnchorCandidates,
+    useAnchorVersion,
+} from "./anchors";
 import type { TutorialAnchorId } from "./contract";
 import { useDemoTutorial } from "./provider";
 import { useModalOpen, useTutorialStreaming } from "./presence";
@@ -50,9 +55,41 @@ export function TutorialHud() {
           ) as TutorialAnchorId[])
         : [];
     const match = useAnchorCandidates(candidates);
+    const anchorVersion = useAnchorVersion();
+    const avoid = useMemo(() => {
+        // The version is read so a newly mounted control invalidates the
+        // obstacle list even when the prompt id stays the same.
+        void anchorVersion;
+        // Only the controls the current instruction could sit on top of are
+        // hard obstacles. Avoiding every registered anchor makes the card
+        // impossible to place in the populated room.
+        const critical: TutorialAnchorId[] = [
+            "room.speaker",
+            "room.followup",
+        ];
+        const anchors = critical
+            .filter((id) => id !== match?.id)
+            .map((id) => getAnchor(id))
+            .filter((element): element is HTMLElement => Boolean(element));
+        if (typeof document === "undefined") return anchors;
+
+        const room = document.querySelector('[data-testid="room-work-area"]');
+        const dock = document.querySelector('[data-testid="room-dock"]');
+        const flagged = room
+            ? Array.from(
+                  room.querySelectorAll<HTMLElement>("[data-tutorial-avoid]")
+              )
+            : [];
+        return [
+            ...anchors,
+            ...flagged,
+            ...(dock instanceof HTMLElement ? [dock] : []),
+        ];
+    }, [match?.id, anchorVersion]);
     const position = useAnchoredCard(
         prompt?.anchor ? (match?.element ?? null) : null,
-        card
+        card,
+        { avoid }
     );
 
     const hasTarget = Boolean(prompt?.anchor);
@@ -244,7 +281,7 @@ function CompactBar() {
             className="fixed z-notice flex items-center gap-1 rounded-full border border-action/40 bg-surface p-1 shadow-[var(--shadow-raised)]"
             style={{
                 top: "calc(env(safe-area-inset-top, 0px) + 4.5rem)",
-                right: "calc(env(safe-area-inset-right, 0px) + 1rem)",
+                left: "calc(env(safe-area-inset-left, 0px) + 1rem)",
             }}
         >
             <button
