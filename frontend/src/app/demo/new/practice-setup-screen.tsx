@@ -49,7 +49,7 @@ export function PracticeSetupScreen({
 
     if (!workspace.expanded) {
         return (
-            <main className="mx-auto max-w-3xl px-4 py-12">
+            <main id="main-content" className="mx-auto max-w-3xl px-4 py-12" tabIndex={-1}>
                 <Card className="p-6">
                     <h1 className="type-item-title text-ink">
                         Practice editing is unavailable

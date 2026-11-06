@@ -57,7 +57,7 @@ export default function KnowledgeStackDetailsPage() {
                 </div>
             </header>
 
-            <main className="mx-auto max-w-4xl space-y-6 px-6 py-8">
+            <main id="main-content" className="mx-auto max-w-4xl space-y-6 px-6 py-8" tabIndex={-1}>
                 <DocumentPanel
                     scope={{ stackId }}
                     title="Documents"

@@ -127,20 +127,26 @@ export function MeetingRoom({
     }
     if (meetingQuery.isPending) {
         return (
-            <div className="min-h-screen bg-canvas flex items-center justify-center">
+            <main
+                id="main-content"
+                className="min-h-screen bg-canvas flex items-center justify-center"
+             tabIndex={-1}>
                 <Loader2 className="w-8 h-8 animate-spin text-ink-muted" />
-            </div>
+            </main>
         );
     }
     if (meetingQuery.isError || !meetingQuery.data) {
         return (
-            <div className="min-h-screen bg-canvas flex flex-col items-center justify-center gap-3 text-ink-secondary">
+            <main
+                id="main-content"
+                className="min-h-screen bg-canvas flex flex-col items-center justify-center gap-3 text-ink-secondary"
+             tabIndex={-1}>
                 <AlertTriangle className="w-8 h-8 text-warning" />
                 <p>This meeting could not be loaded.</p>
                 <Button variant="outline" onClick={() => void meetingQuery.refetch()}>
                     Try again
                 </Button>
-            </div>
+            </main>
         );
     }
 
@@ -154,7 +160,10 @@ export function MeetingRoom({
         runtime.replay?.checkpoint ?? 'live',
     ].join(':');
     const room = (
-        <div className="h-screen bg-canvas flex flex-col overflow-hidden">
+        <main
+            id="main-content"
+            className="h-screen bg-canvas flex flex-col overflow-hidden"
+         tabIndex={-1}>
             <header className="border-b border-separator px-4 py-3 flex items-center gap-4 shrink-0">
                 <Link
                     href={runtime.presentation.homeHref}
@@ -208,7 +217,7 @@ export function MeetingRoom({
                     contextStats={contextStatsQuery.data}
                 />
             </div>
-        </div>
+        </main>
     );
     if (!evidence) {
         return room;

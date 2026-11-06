@@ -74,7 +74,7 @@ function Content({
 
     if (!stack) {
         return (
-            <main className="mx-auto max-w-3xl px-4 py-16 text-ink">
+            <main id="main-content" className="mx-auto max-w-3xl px-4 py-16 text-ink" tabIndex={-1}>
                 <h1 className="type-page-title">
                     This practice stack is not available
                 </h1>
@@ -104,7 +104,7 @@ function Content({
     const audience = audienceLabel(participants);
 
     return (
-        <main className="mx-auto max-w-5xl space-y-5 px-4 py-8 text-ink">
+        <main id="main-content" className="mx-auto max-w-5xl space-y-5 px-4 py-8 text-ink" tabIndex={-1}>
             <Link
                 href="/demo/knowledge-stacks"
                 className="m-control inline-flex type-body text-action hover:underline"

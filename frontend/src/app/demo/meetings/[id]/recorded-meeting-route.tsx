@@ -58,7 +58,7 @@ export function RecordedMeetingRoute({ meetingId }: { meetingId: string }) {
 
     if (notCreated) {
         return (
-            <main className="mx-auto max-w-3xl px-4 py-12 text-ink">
+            <main id="main-content" className="mx-auto max-w-3xl px-4 py-12 text-ink" tabIndex={-1}>
                 <p className="type-body text-ink-secondary">
                     This replay has not reached the meeting room yet. Returning to the
                     prepared board…

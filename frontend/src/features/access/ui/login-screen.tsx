@@ -166,7 +166,7 @@ export function LoginScreen() {
     }
 
     return (
-        <main className="flex min-h-screen items-center justify-center bg-canvas px-4 text-ink">
+        <main id="main-content" className="flex min-h-screen items-center justify-center bg-canvas px-4 text-ink" tabIndex={-1}>
             <div className="w-full max-w-sm space-y-6">
                 <div className="space-y-2 text-center">
                     <p className="type-meta-strong uppercase tracking-[0.25em] text-action">

@@ -19,7 +19,7 @@ export default function KnowledgeStacksPage() {
                     <h1 className="type-item-title">Knowledge</h1>
                 </div>
             </header>
-            <main className="mx-auto max-w-6xl px-6 py-8">
+            <main id="main-content" className="mx-auto max-w-6xl px-6 py-8" tabIndex={-1}>
                 <StackList />
             </main>
         </div>

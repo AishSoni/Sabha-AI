@@ -13,7 +13,7 @@ export function DemoCatalogGate({ children }: { children: ReactNode }) {
 
     if (workspace.status === 'loading') {
         return (
-            <main className="mx-auto max-w-4xl px-4 py-16 text-sm text-ink-secondary">
+            <main id="main-content" className="mx-auto max-w-4xl px-4 py-16 text-sm text-ink-secondary" tabIndex={-1}>
                 Loading the practice workspaceâ€¦
             </main>
         );
@@ -21,7 +21,7 @@ export function DemoCatalogGate({ children }: { children: ReactNode }) {
 
     if (workspace.status !== 'ready') {
         return (
-            <main className="mx-auto max-w-4xl px-4 py-16">
+            <main id="main-content" className="mx-auto max-w-4xl px-4 py-16" tabIndex={-1}>
                 <h1 className="text-xl font-semibold text-ink">
                     Practice personas are unavailable
                 </h1>

@@ -131,6 +131,19 @@ test.describe("appearance lifecycle", () => {
         expect(await noOverflow()).toBe(true);
     });
 
+    test("keyboard users can skip straight to main content", async ({ page }) => {
+        await page.goto("/");
+        await page.keyboard.press("Tab");
+
+        const skip = page.getByRole("link", { name: "Skip to main content" });
+        await expect(skip).toBeFocused();
+        await expect(skip).toBeVisible();
+        await skip.press("Enter");
+
+        await expect(page).toHaveURL(/#main-content$/);
+        await expect(page.locator("#main-content")).toBeFocused();
+    });
+
     test("loads the self-hosted variable family at every UI weight", async ({
         page,
     }) => {

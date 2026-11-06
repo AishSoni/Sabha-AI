@@ -19,7 +19,7 @@ function Content() {
     const stacks = useLocalStacks();
 
     return (
-        <main className="mx-auto max-w-3xl space-y-4 px-4 py-8 text-ink">
+        <main id="main-content" className="mx-auto max-w-3xl space-y-4 px-4 py-8 text-ink" tabIndex={-1}>
             <Link
                 href="/demo/knowledge-stacks"
                 className="m-control inline-flex type-body text-action hover:underline"

@@ -13,7 +13,7 @@ export function DemoKnowledgeGate({ children }: { children: ReactNode }) {
 
     if (workspace.status === "loading") {
         return (
-            <main className="mx-auto max-w-5xl px-4 py-16 type-body text-ink-secondary">
+            <main id="main-content" className="mx-auto max-w-5xl px-4 py-16 type-body text-ink-secondary" tabIndex={-1}>
                 Loading the practice knowledge workspace…
             </main>
         );
@@ -21,7 +21,7 @@ export function DemoKnowledgeGate({ children }: { children: ReactNode }) {
 
     if (workspace.status !== "ready") {
         return (
-            <main className="mx-auto max-w-5xl px-4 py-16 text-ink">
+            <main id="main-content" className="mx-auto max-w-5xl px-4 py-16 text-ink" tabIndex={-1}>
                 <h1 className="type-page-title">
                     Practice knowledge is unavailable
                 </h1>

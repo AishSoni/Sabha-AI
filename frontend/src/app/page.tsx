@@ -58,7 +58,7 @@ export default function HomePage() {
                 </div>
             </header>
 
-            <main className="mx-auto max-w-6xl px-6 py-16">
+            <main id="main-content" className="mx-auto max-w-6xl px-6 py-16" tabIndex={-1}>
                 <section className="mx-auto max-w-3xl text-center">
                     <p className="type-meta-strong uppercase tracking-[0.25em] text-action">
                         Account-free replay

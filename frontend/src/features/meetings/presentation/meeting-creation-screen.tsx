@@ -133,7 +133,7 @@ export function MeetingCreationScreen({
                 </div>
             </header>
 
-            <main className="max-w-4xl mx-auto px-6 py-8">
+            <main id="main-content" className="max-w-4xl mx-auto px-6 py-8" tabIndex={-1}>
                 {disclosure}
 
                 <div className="grid lg:grid-cols-[1fr,320px] gap-8">

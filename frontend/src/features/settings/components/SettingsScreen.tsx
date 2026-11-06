@@ -64,7 +64,7 @@ export function SettingsScreen() {
             </header>
 
             {/* Main Content */}
-            <main className="max-w-6xl mx-auto px-6 py-8">
+            <main id="main-content" className="max-w-6xl mx-auto px-6 py-8" tabIndex={-1}>
                 <div className="flex flex-col gap-8 md:flex-row">
                     {/* Sidebar Navigation */}
                     <div className="w-full shrink-0 md:w-64">

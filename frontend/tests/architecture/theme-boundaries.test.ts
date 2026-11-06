@@ -65,6 +65,27 @@ describe("appearance boundary", () => {
     expect(styleSources).not.toMatch(/fonts\.googleapis|fonts\.gstatic/);
   });
 
+  it("provides a skip link and a named main landmark on every route", () => {
+    expect(layout).toMatch(/href="#main-content"/);
+    expect(layout).toMatch(/focus:not-sr-only/);
+    expect(layout).toMatch(/Skip to main content/);
+
+    const routeSources = filesUnder(src)
+      .filter((file) => /\.tsx$/.test(file) && !/\.test\./.test(file))
+      .map((file) => ({
+        file: path.relative(src, file).replaceAll("\\", "/"),
+        source: fs.readFileSync(file, "utf8"),
+      }))
+      .filter(({ source }) => source.includes("<main"));
+
+    expect(routeSources.length).toBeGreaterThan(0);
+    for (const { file, source } of routeSources) {
+      expect(source, `${file} must name its main landmark`).not.toMatch(
+        /<main\b(?![^>]*id="main-content")/,
+      );
+    }
+  });
+
   it("keeps appearance state out of storage, Auth, and data queries", () => {
     const forbidden = [
       /localStorage/,

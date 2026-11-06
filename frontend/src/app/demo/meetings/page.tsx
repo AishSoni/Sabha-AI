@@ -64,7 +64,7 @@ export default function DemoMeetingListPage() {
     };
 
     return (
-        <main className="mx-auto max-w-5xl px-4 py-8">
+        <main id="main-content" className="mx-auto max-w-5xl px-4 py-8" tabIndex={-1}>
             <div className="mb-6 flex flex-wrap items-start justify-between gap-3">
                 <div>
                     <div className="mb-2 flex flex-wrap items-center gap-2">
