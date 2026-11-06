@@ -22,6 +22,7 @@ import { useAnchorCandidates } from "./anchors";
 import type { TutorialAnchorId } from "./contract";
 import { useDemoTutorial } from "./provider";
 import { useModalOpen, useTutorialStreaming } from "./presence";
+import { tutorialProgress } from "./progress";
 import { useAnchoredCard } from "./use-anchored-card";
 
 const emptySubscribe = () => () => {};
@@ -64,6 +65,8 @@ export function TutorialHud() {
     const cardMounted = !tutorial.hidden && !suspended && anchored;
 
     if (!mounted || !prompt) return null;
+
+    const progress = tutorialProgress(prompt, tutorial.journey);
 
     const onCardKeyDown = (event: KeyboardEvent<HTMLDivElement>) => {
         if (event.key === "Escape") {
@@ -113,6 +116,33 @@ export function TutorialHud() {
                     style={cardStyle}
                     onKeyDown={onCardKeyDown}
                 >
+                    {progress ? (
+                        <div
+                            className="mb-2 flex items-center gap-2"
+                            data-testid="tutorial-progress"
+                        >
+                            <div
+                                role="progressbar"
+                                aria-label="Demo progress"
+                                aria-valuemin={0}
+                                aria-valuemax={100}
+                                aria-valuenow={progress.percent}
+                                aria-valuetext={progress.label}
+                                className="h-1.5 min-w-0 flex-1 overflow-hidden rounded-full bg-surface-raised"
+                            >
+                                <div
+                                    className="m-progress-fill h-full rounded-full bg-action"
+                                    style={{ width: `${progress.percent}%` }}
+                                />
+                            </div>
+                            <span
+                                aria-hidden="true"
+                                className="type-meta type-tabular shrink-0 text-ink-muted"
+                            >
+                                {progress.step} of {progress.total}
+                            </span>
+                        </div>
+                    ) : null}
                     <div className="flex items-start gap-2">
                         <Sparkles
                             className="mt-0.5 size-4 shrink-0 text-action"
