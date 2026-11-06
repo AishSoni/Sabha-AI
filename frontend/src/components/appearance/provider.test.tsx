@@ -50,7 +50,13 @@ function installMatchMedia(initialDark: boolean) {
 }
 
 function Probe() {
-  const { preference, resolved, setPreference } = useAppearance();
+  const {
+    preference,
+    resolved,
+    setPreference,
+    resolvedBackgroundAnimation,
+    setBackgroundAnimation,
+  } = useAppearance();
 
   React.useEffect(() => {
     mountCount += 1;
@@ -60,6 +66,7 @@ function Probe() {
     <div>
       <span data-testid="preference">{preference}</span>
       <span data-testid="resolved">{resolved}</span>
+      <span data-testid="background">{resolvedBackgroundAnimation}</span>
       <button type="button" onClick={() => setPreference("dark")}>
         dark
       </button>
@@ -68,6 +75,12 @@ function Probe() {
       </button>
       <button type="button" onClick={() => setPreference("system")}>
         system
+      </button>
+      <button type="button" onClick={() => setBackgroundAnimation("paused")}>
+        pause background
+      </button>
+      <button type="button" onClick={() => setBackgroundAnimation("on")}>
+        resume background
       </button>
     </div>
   );
@@ -90,9 +103,30 @@ afterEach(() => {
     });
   }
   document.documentElement.removeAttribute("data-theme");
+  document.documentElement.removeAttribute("data-background");
 });
 
 describe("AppearanceProvider", () => {
+  it("pauses background motion without remounting or storing the choice", () => {
+    installMatchMedia(false);
+    const localSet = vi.spyOn(window.localStorage, "setItem");
+    render(
+      <AppearanceProvider>
+        <Probe />
+      </AppearanceProvider>,
+    );
+
+    expect(document.documentElement).toHaveAttribute("data-background", "on");
+    fireEvent.click(screen.getByRole("button", { name: "pause background" }));
+    expect(screen.getByTestId("background")).toHaveTextContent("paused");
+    expect(document.documentElement).toHaveAttribute(
+      "data-background",
+      "paused",
+    );
+    expect(mountCount).toBe(1);
+    expect(localSet).not.toHaveBeenCalled();
+  });
+
   it("defaults to System and resolves from the operating system", () => {
     installMatchMedia(true);
     render(
@@ -134,7 +168,7 @@ describe("AppearanceProvider", () => {
     expect(document.documentElement).not.toHaveAttribute("data-theme");
     expect(screen.getByTestId("resolved")).toHaveTextContent("light");
 
-    expect(media.listenerCount()).toBe(1);
+    expect(media.listenerCount()).toBe(2);
     expect(localSet).not.toHaveBeenCalled();
     expect(sessionSet).not.toHaveBeenCalled();
     expect(fetchSpy).not.toHaveBeenCalled();

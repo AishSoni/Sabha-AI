@@ -1,6 +1,6 @@
 "use client";
 
-import { Monitor, Moon, Sun } from "lucide-react";
+import { Monitor, Moon, Pause, Play, Sparkles, Sun } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
 import {
@@ -16,6 +16,7 @@ import { cn } from "@/lib/utils";
 import {
   useAppearanceOptional,
   type AppearancePreference,
+  type BackgroundAnimation,
 } from "./provider";
 
 const OPTIONS = [
@@ -28,10 +29,26 @@ const OPTIONS = [
   icon: typeof Monitor;
 }>;
 
+const BACKGROUND_OPTIONS = [
+  { value: "on", label: "On", icon: Play },
+  { value: "paused", label: "Paused", icon: Pause },
+] as const satisfies ReadonlyArray<{
+  value: BackgroundAnimation;
+  label: string;
+  icon: typeof Play;
+}>;
+
 export function AppearanceMenu({ className }: { className?: string }) {
   const appearance = useAppearanceOptional();
   if (!appearance) return null;
-  const { preference, resolved, setPreference } = appearance;
+  const {
+    preference,
+    resolved,
+    setPreference,
+    resolvedBackgroundAnimation,
+    reducedMotion,
+    setBackgroundAnimation,
+  } = appearance;
   const current = OPTIONS.find((option) => option.value === preference);
   const CurrentIcon = current?.icon ?? Monitor;
   const label = current?.label ?? "System";
@@ -51,7 +68,7 @@ export function AppearanceMenu({ className }: { className?: string }) {
           <span className="hidden sm:inline">Appearance</span>
         </Button>
       </DropdownMenuTrigger>
-      <DropdownMenuContent align="end" className="w-52">
+      <DropdownMenuContent align="end" className="w-56">
         <DropdownMenuLabel>Appearance</DropdownMenuLabel>
         <DropdownMenuRadioGroup
           value={preference}
@@ -74,6 +91,37 @@ export function AppearanceMenu({ className }: { className?: string }) {
             </DropdownMenuRadioItem>
           ))}
         </DropdownMenuRadioGroup>
+
+        <div className="my-1 h-px bg-separator" role="separator" />
+        <DropdownMenuLabel className="flex items-center gap-1.5">
+          <Sparkles className="size-3.5" aria-hidden="true" />
+          Background animation
+        </DropdownMenuLabel>
+        <DropdownMenuRadioGroup
+          value={resolvedBackgroundAnimation}
+          onValueChange={(value) =>
+            setBackgroundAnimation(value as BackgroundAnimation)
+          }
+        >
+          {BACKGROUND_OPTIONS.map(({ value, label: optionLabel, icon: Icon }) => (
+            <DropdownMenuRadioItem
+              key={value}
+              value={value}
+              disabled={value === "on" && reducedMotion}
+            >
+              <span>{optionLabel}</span>
+              <Icon
+                aria-hidden="true"
+                className="text-ink-muted ml-auto size-4"
+              />
+            </DropdownMenuRadioItem>
+          ))}
+        </DropdownMenuRadioGroup>
+        {reducedMotion ? (
+          <p className="px-2 pb-1.5 type-meta text-ink-muted">
+            Paused by your reduced-motion setting.
+          </p>
+        ) : null}
       </DropdownMenuContent>
     </DropdownMenu>
   );
