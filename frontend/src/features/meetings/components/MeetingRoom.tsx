@@ -723,7 +723,6 @@ function MeetingConversation({
                     className="max-h-[35dvh] shrink-0 overflow-y-auto border-t border-separator bg-surface px-4 py-1 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-focus-ring lg:max-h-none lg:overflow-visible"
                 >
                     <div className="mx-auto w-full max-w-[1120px]">
-                        {ended || closingOpen ? <RoomTutorialInline /> : null}
                         {closingOpen ? (
                             tab !== 'closing' ? (
                                 <ClosingRoomNotice stage={closingStage} onOpen={openClosing} />
