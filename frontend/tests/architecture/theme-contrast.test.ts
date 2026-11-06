@@ -162,24 +162,36 @@ describe("semantic palette contrast", () => {
   for (const [name, palette] of appearances) {
     it(`keeps chrome labels readable over the brightest star in ${name}`, () => {
       // The starfield caps opacity at 0.8. Blur softens the result, so this is
-      // deliberately stricter than the rendered average.
-      const starOverCanvas = blend(
-        { rgb: rgba(palette["atmosphere-star"]).rgb, alpha: 0.8 },
-        { rgb: rgba(palette["canvas"]).rgb, alpha: 1 },
-      );
-      const chromeOverStar = blend(rgba(palette["chrome-surface"]), {
-        rgb: starOverCanvas,
-        alpha: 1,
-      });
+      // deliberately stricter than the rendered average. Test every star tone:
+      // a warm or cool hero star must not break chrome legibility.
+      const starTones = [
+        "atmosphere-star",
+        "atmosphere-star-warm",
+        "atmosphere-star-cool",
+      ] as const;
 
-      // Chrome labels are promoted to primary or the dedicated chrome
-      // secondary; muted copy belongs on solid content surfaces.
-      for (const role of ["text-primary", "chrome-text-secondary"] as const) {
-        const value = contrastRgb(rgba(palette[role]).rgb, chromeOverStar);
-        expect(
-          value,
-          `${role} on composited chrome over star`,
-        ).toBeGreaterThanOrEqual(4.5);
+      for (const starTone of starTones) {
+        const starOverCanvas = blend(
+          { rgb: rgba(palette[starTone]).rgb, alpha: 0.8 },
+          { rgb: rgba(palette["canvas"]).rgb, alpha: 1 },
+        );
+        const chromeOverStar = blend(rgba(palette["chrome-surface"]), {
+          rgb: starOverCanvas,
+          alpha: 1,
+        });
+
+        // Chrome labels are promoted to primary or the dedicated chrome
+        // secondary; muted copy belongs on solid content surfaces.
+        for (const role of [
+          "text-primary",
+          "chrome-text-secondary",
+        ] as const) {
+          const value = contrastRgb(rgba(palette[role]).rgb, chromeOverStar);
+          expect(
+            value,
+            `${role} on composited chrome over ${starTone}`,
+          ).toBeGreaterThanOrEqual(4.5);
+        }
       }
     });
 

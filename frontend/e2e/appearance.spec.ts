@@ -135,7 +135,7 @@ test.describe("appearance lifecycle", () => {
         await page.goto("/demo");
         const field = page.getByTestId("atmosphere-field");
         await expect(field).toBeVisible();
-        await expect(field.locator("circle")).toHaveCount(200);
+        await expect(field.locator("circle")).toHaveCount(265);
 
         const chrome = await page.getByRole("banner").evaluate((element) => {
             const styles = getComputedStyle(element);
@@ -156,7 +156,40 @@ test.describe("appearance lifecycle", () => {
 
         await page.goto("/demo/roster");
         await expect(field).toBeVisible();
-        await expect(field.locator("circle")).toHaveCount(200);
+        await expect(field.locator("circle")).toHaveCount(265);
+    });
+
+    test("nudges the starfield with a subtle pointer parallax", async ({
+        page,
+    }) => {
+        await page.goto("/demo");
+        const field = page.getByTestId("atmosphere-field");
+        await expect(field).toBeVisible();
+
+        await page.mouse.move(1100, 260);
+        await expect
+            .poll(() =>
+                field.evaluate((element) =>
+                    parseFloat(
+                        element.style.getPropertyValue("--parallax-x") || "0"
+                    )
+                )
+            )
+            .toBeGreaterThan(1);
+
+        const parallax = await field.evaluate((element) => ({
+            x: parseFloat(element.style.getPropertyValue("--parallax-x") || "0"),
+            y: parseFloat(element.style.getPropertyValue("--parallax-y") || "0"),
+        }));
+        expect(Math.abs(parallax.x)).toBeGreaterThan(1);
+        expect(Math.abs(parallax.y)).toBeGreaterThan(1);
+
+        await page.getByRole("button", { name: /^Appearance:/ }).click();
+        await page.getByRole("menuitemradio", { name: "Paused" }).click();
+        await expect(page.locator(".atmosphere-parallax").first()).toHaveCSS(
+            "transform",
+            "none"
+        );
     });
 
     test("keeps the starfield visible and moving in the meeting room", async ({
