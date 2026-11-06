@@ -10,7 +10,6 @@
 import { useState } from "react";
 import { Send } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import { Card } from "@/components/ui/card";
 import { useAnchorRef } from "@/features/demo-tutorial";
 import { useMeetingsRuntime } from "./context";
 
@@ -33,44 +32,38 @@ export function RecordedDirectorAction() {
     if (prepared?.kind === "follow_up") {
         if (replay.playedTurnIds?.has(prepared.turn_id)) return null;
         return (
-            <Card
-                ref={followUpRef}
-                className="mb-4 border-zinc-800 bg-zinc-900/60 p-4"
-            >
-                <p className="text-xs font-medium uppercase tracking-wide text-zinc-500">
-                    Your turn
-                </p>
-                <label
-                    className="mt-2 block text-xs font-medium text-zinc-400"
-                    htmlFor="prepared-follow-up-question"
-                >
-                    Prepared question
-                </label>
-                <textarea
-                    id="prepared-follow-up-question"
-                    readOnly
-                    value={prepared.question}
-                    rows={3}
-                    className="mt-1 w-full resize-none rounded-md border border-zinc-700 bg-zinc-950 px-3 py-2 text-sm text-zinc-200"
-                />
-                <div className="mt-3">
-                    <Button
-                        className="bg-indigo-600 hover:bg-indigo-700"
-                        disabled={busy}
-                        onClick={async () => {
-                            setBusy(true);
-                            try {
-                                await replay.sendFollowUp();
-                            } finally {
-                                setBusy(false);
-                            }
-                        }}
-                    >
-                        <Send className="mr-2 h-4 w-4" />
-                        {busy ? "Sending…" : "Send question"}
-                    </Button>
+            <div ref={followUpRef}>
+                <div className="flex flex-col gap-2 sm:flex-row sm:items-start">
+                    <div className="min-w-0 flex-1">
+                        <p className="type-meta text-ink-secondary">
+                            Your turn <span aria-hidden="true">·</span> Prepared question
+                        </p>
+                        <p
+                            id="prepared-follow-up-question"
+                            className="type-control whitespace-pre-wrap text-ink"
+                        >
+                            {prepared.question}
+                        </p>
+                    </div>
+                    <div className="flex shrink-0 flex-wrap items-center gap-2">
+                        <Button
+                            busy={busy}
+                            busyLabel="Sending"
+                            onClick={async () => {
+                                setBusy(true);
+                                try {
+                                    await replay.sendFollowUp();
+                                } finally {
+                                    setBusy(false);
+                                }
+                            }}
+                        >
+                            <Send className="mr-2 size-4" />
+                            Send question
+                        </Button>
+                    </div>
                 </div>
-            </Card>
+            </div>
         );
     }
 
@@ -90,20 +83,18 @@ export function RecordedDirectorAction() {
     const unavailable = actions.filter((action) => !action.available);
 
     return (
-        <Card className="mb-4 border-zinc-800 bg-zinc-900/60 p-4">
-            <p className="text-xs font-medium uppercase tracking-wide text-zinc-500">
-                Your follow-up
-            </p>
+        <div className="space-y-2">
+            <p className="type-meta text-ink-secondary">Your follow-up</p>
             {available.length > 0 ? (
-                <div className="mt-3 flex flex-wrap gap-2">
+                <div className="flex flex-wrap gap-2">
                     {available.map((action) => {
                         const actionBusy =
                             busy && action === available[0];
                         return (
                             <Button
                                 key={action.transition.transition_id}
-                                className="bg-indigo-600 hover:bg-indigo-700"
-                                disabled={actionBusy}
+                                busy={actionBusy}
+                                busyLabel="Sending"
                                 title={action.transition.explanation || undefined}
                                 onClick={async () => {
                                     setBusy(true);
@@ -116,22 +107,20 @@ export function RecordedDirectorAction() {
                                     }
                                 }}
                             >
-                                <Send className="mr-2 h-4 w-4" />
-                                {actionBusy
-                                    ? "Sending…"
-                                    : action.transition.label ||
-                                      action.intent.label ||
-                                      "Send question"}
+                                <Send className="mr-2 size-4" />
+                                {action.transition.label ||
+                                    action.intent.label ||
+                                    "Send question"}
                             </Button>
                         );
                     })}
                 </div>
             ) : null}
             {unavailable.length > 0 ? (
-                <ul className="mt-3 space-y-1 text-xs text-zinc-500">
+                <ul className="space-y-1 type-meta text-ink-muted">
                     {unavailable.map((action) => (
                         <li key={action.transition.transition_id}>
-                            <span className="text-zinc-400">
+                            <span className="text-ink-secondary">
                                 {action.transition.label ||
                                     action.intent.label ||
                                     "Prepared follow-up"}
@@ -141,6 +130,6 @@ export function RecordedDirectorAction() {
                     ))}
                 </ul>
             ) : null}
-        </Card>
+        </div>
     );
 }

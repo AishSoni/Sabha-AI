@@ -18,7 +18,7 @@ async function startRecording(page: Page) {
     await page.getByRole("link", { name: "Open the meeting room" }).click();
     await expect(page).toHaveURL(/\/demo\/meetings\/[^/]+/);
     await expect(
-        page.getByTestId("tutorial-hud").getByText("Choose who speaks next")
+        page.getByTestId("tutorial-hud").getByText("Choose a recorded reply")
     ).toBeVisible();
 }
 
@@ -92,7 +92,7 @@ test.describe("recorded exploration and playback", () => {
         await expectNoPublicPersistence(context, page);
     });
 
-    test("changes speed, expands a reply, and resumes the composed meeting", async ({
+    test("expands a reply and resumes the composed meeting", async ({
         page,
         context,
     }) => {
@@ -100,16 +100,6 @@ test.describe("recorded exploration and playback", () => {
         const network = guardNetwork(page);
         await serveRecordedAssets(page);
         await startRecording(page);
-
-        const speed = page.getByRole("group", {
-            name: "Recorded playback speed",
-        });
-        await expect(speed).toBeVisible();
-        await speed.getByRole("button", { name: "2x" }).click();
-        await expect(speed.getByRole("button", { name: "2x" })).toHaveAttribute(
-            "aria-pressed",
-            "true"
-        );
 
         await page
             .getByRole("button", { name: "Credit Analyst opening facts" })
@@ -125,16 +115,16 @@ test.describe("recorded exploration and playback", () => {
             timeout: 30_000,
         });
         await expect(
-            page.getByTestId("tutorial-hud").getByText("1 of 4 replies")
-        ).toBeVisible();
+            page.getByTestId("tutorial-announcement")
+        ).toContainText("1 of 4 replies");
 
         await page.getByRole("button", { name: "Replay last turn" }).click();
         await expect(message(page, CREDIT_MESSAGE)).toBeVisible({
             timeout: 30_000,
         });
         await expect(
-            page.getByTestId("tutorial-hud").getByText("1 of 4 replies")
-        ).toBeVisible();
+            page.getByTestId("tutorial-announcement")
+        ).toContainText("1 of 4 replies");
 
         // Inspect a recorded branch without adding it to the composed deck.
         await openExploreMenu(page);
@@ -150,8 +140,8 @@ test.describe("recorded exploration and playback", () => {
             .click();
         await expect(page).toHaveURL(/\/demo\/meetings\/[^/]+\?tab=chat/);
         await expect(
-            page.getByTestId("tutorial-hud").getByText("1 of 4 replies")
-        ).toBeVisible();
+            page.getByTestId("tutorial-announcement")
+        ).toContainText("1 of 4 replies");
         await expect(message(page, CREDIT_MESSAGE)).toBeVisible();
         await expect(message(page, DOWNSIDE_MESSAGE)).toHaveCount(0);
 
@@ -161,8 +151,8 @@ test.describe("recorded exploration and playback", () => {
             timeout: 30_000,
         });
         await expect(
-            page.getByTestId("tutorial-hud").getByText("2 of 4 replies")
-        ).toBeVisible();
+            page.getByTestId("tutorial-announcement")
+        ).toContainText("2 of 4 replies");
 
         network.assertClean();
         await expectNoPublicPersistence(context, page);

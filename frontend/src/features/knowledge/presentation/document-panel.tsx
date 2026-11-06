@@ -17,8 +17,8 @@ import {
     Trash2,
     Upload,
 } from "lucide-react";
-import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
+import { StatusBadge } from "@/components/ui/status-badge";
 import {
     Card,
     CardContent,
@@ -57,33 +57,29 @@ export interface DocumentPanelViewProps {
 function statusBadge(document: KnowledgeDocumentView) {
     if (document.status === "ready") {
         return (
-            <Badge variant="secondary" className="gap-1 text-emerald-300">
-                <CheckCircle2 className="h-3 w-3" />
+            <StatusBadge tone="success" icon={<CheckCircle2 className="h-3 w-3" />}>
                 Ready ({document.chunk_count} chunks)
-            </Badge>
+            </StatusBadge>
         );
     }
     if (document.status === "failed") {
         return (
-            <Badge variant="destructive" className="gap-1">
-                <AlertTriangle className="h-3 w-3" />
+            <StatusBadge tone="danger" icon={<AlertTriangle className="h-3 w-3" />}>
                 Failed
-            </Badge>
+            </StatusBadge>
         );
     }
     if (document.status === "revoked" || document.status === "unavailable") {
         return (
-            <Badge variant="outline" className="gap-1 text-zinc-400">
-                <AlertTriangle className="h-3 w-3" />
+            <StatusBadge tone="neutral" icon={<AlertTriangle className="h-3 w-3" />}>
                 {document.status === "revoked" ? "Revoked" : "Unavailable — re-upload"}
-            </Badge>
+            </StatusBadge>
         );
     }
     return (
-        <Badge variant="secondary" className="gap-1 text-amber-300">
-            <Loader2 className="h-3 w-3 animate-spin" />
+        <StatusBadge tone="pending">
             {document.status === "pending" ? "Queued" : "Indexing"}
-        </Badge>
+        </StatusBadge>
     );
 }
 
@@ -110,11 +106,11 @@ export function DocumentPanelView({
     const inputRef = useRef<HTMLInputElement>(null);
 
     return (
-        <Card className="border-zinc-800 bg-zinc-900/50">
+        <Card>
             <CardHeader className="flex flex-row items-start justify-between gap-4">
                 <div>
-                    <CardTitle className="flex items-center gap-2 text-white">
-                        <FileText className="h-5 w-5 text-zinc-400" />
+                    <CardTitle className="flex items-center gap-2">
+                        <FileText className="h-5 w-5 text-ink-muted" />
                         {title ?? "Documents"}
                     </CardTitle>
                     <CardDescription>
@@ -137,14 +133,11 @@ export function DocumentPanelView({
                             <Button
                                 type="button"
                                 size="sm"
-                                disabled={uploading}
+                                busy={uploading}
+                                busyLabel="Uploading"
                                 onClick={() => inputRef.current?.click()}
                             >
-                                {uploading ? (
-                                    <Loader2 className="mr-1 h-4 w-4 animate-spin" />
-                                ) : (
-                                    <Upload className="mr-1 h-4 w-4" />
-                                )}
+                                <Upload className="h-4 w-4" />
                                 Upload
                             </Button>
                         </>
@@ -161,32 +154,38 @@ export function DocumentPanelView({
                     />
                 )}
                 {receipt?.state === "ready" && (
-                    <div className="flex items-center gap-2 rounded-lg border border-emerald-900/50 bg-emerald-950/30 px-3 py-2 text-sm text-emerald-300">
+                    <div
+                        role="status"
+                        className="flex items-center gap-2 rounded-group border border-success/40 bg-success-soft px-3 py-2 type-body text-success"
+                    >
                         <CheckCircle2 className="h-4 w-4" />
                         {receipt.fileName} is ready for retrieval.
                     </div>
                 )}
                 {(localError || uploadError) && (
-                    <div className="flex items-center gap-2 rounded-lg border border-red-900/50 bg-red-950/30 px-3 py-2 text-sm text-red-300">
+                    <div
+                        role="alert"
+                        className="flex items-center gap-2 rounded-group border border-danger/40 bg-danger-soft px-3 py-2 type-body text-danger"
+                    >
                         <AlertTriangle className="h-4 w-4" />
                         {localError ?? uploadError}
                     </div>
                 )}
 
                 {isLoading && (
-                    <div className="flex items-center gap-2 text-sm text-zinc-400">
-                        <Loader2 className="h-4 w-4 animate-spin" />
+                    <div role="status" className="flex items-center gap-2 type-body text-ink-muted">
+                        <Loader2 className="h-4 w-4 animate-spin motion-reduce:animate-none" />
                         Loading documents…
                     </div>
                 )}
                 {isError && (
-                    <div className="flex items-center gap-2 text-sm text-red-400">
+                    <div role="alert" className="flex items-center gap-2 type-body text-danger">
                         <AlertTriangle className="h-4 w-4" />
                         Documents are temporarily unavailable.
                     </div>
                 )}
                 {!isLoading && !isError && (documents?.length ?? 0) === 0 && (
-                    <p className="rounded-lg border border-dashed border-zinc-800 px-3 py-6 text-center text-sm text-zinc-500">
+                    <p className="rounded-group border border-dashed border-separator px-3 py-6 text-center type-body text-ink-muted">
                         {emptyMessage ??
                             "No documents yet. Upload a PDF, DOCX, XLSX, CSV, TXT, or Markdown file."}
                     </p>
@@ -195,14 +194,14 @@ export function DocumentPanelView({
                 {(documents ?? []).map((document) => (
                     <div
                         key={document.id}
-                        className="flex flex-wrap items-center gap-3 rounded-lg border border-zinc-800 bg-zinc-950/40 px-3 py-2"
+                        className="flex flex-wrap items-center gap-3 rounded-group border border-separator bg-surface-raised/40 px-3 py-2"
                     >
-                        <FileText className="h-4 w-4 shrink-0 text-zinc-500" />
+                        <FileText className="h-4 w-4 shrink-0 text-ink-muted" />
                         <div className="min-w-0 flex-1">
-                            <p className="truncate text-sm font-medium text-zinc-200">
+                            <p className="truncate type-body font-medium text-ink">
                                 {document.file_name}
                             </p>
-                            <p className="text-xs text-zinc-500">
+                            <p className="type-meta text-ink-muted">
                                 {document.file_type.toUpperCase()} ·{" "}
                                 {(document.file_size_bytes / 1024).toFixed(0)} KB
                                 {document.error_message
@@ -230,13 +229,14 @@ export function DocumentPanelView({
                             type="button"
                             size="sm"
                             variant="ghost"
-                            className="text-red-400 hover:text-red-300"
+                            className="text-danger hover:text-danger-hover"
                             disabled={deletingId === document.id}
+                            aria-busy={deletingId === document.id}
                             onClick={() => onDelete(document)}
                             aria-label={`Delete ${document.file_name}`}
                         >
                             {deletingId === document.id ? (
-                                <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                                <Loader2 className="h-3.5 w-3.5 animate-spin motion-reduce:animate-none" />
                             ) : (
                                 <Trash2 className="h-3.5 w-3.5" />
                             )}

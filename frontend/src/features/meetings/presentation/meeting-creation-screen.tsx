@@ -25,6 +25,7 @@ import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { Checkbox } from '@/components/ui/checkbox';
 import { Card, CardContent } from '@/components/ui/card';
+import { ParticipantMark } from '@/components/identity/participant-mark';
 
 export interface MeetingCreationRosterItem {
     id: string;
@@ -117,32 +118,32 @@ export function MeetingCreationScreen({
             selectedCount > 0);
 
     return (
-        <div className="min-h-screen bg-gradient-to-br from-zinc-950 via-zinc-900 to-zinc-950">
-            <header className="border-b border-zinc-800/50 backdrop-blur-sm sticky top-0 z-50">
+        <div className="min-h-full">
+            <header className="material-chrome sticky top-0 z-chrome border-b border-separator">
                 <div className="max-w-4xl mx-auto px-6 py-4 flex items-center justify-between">
                     <div className="flex items-center gap-4">
-                        <Link href={backHref} className="text-zinc-400 hover:text-white transition-colors">
+                        <Link href={backHref} className="text-ink-secondary hover:text-ink transition-colors">
                             <ArrowLeft className="w-5 h-5" />
                         </Link>
                         <div>
-                            <h1 className="text-xl font-bold text-white">{title}</h1>
-                            <p className="text-xs text-zinc-500">{description}</p>
+                            <h1 className="text-xl font-bold text-ink">{title}</h1>
+                            <p className="text-xs text-ink-muted">{description}</p>
                         </div>
                     </div>
                 </div>
             </header>
 
-            <main className="max-w-4xl mx-auto px-6 py-8">
+            <main id="main-content" className="max-w-4xl mx-auto px-6 py-8" tabIndex={-1}>
                 {disclosure}
 
                 <div className="grid lg:grid-cols-[1fr,320px] gap-8">
                     <div className="space-y-8">
                         <section className="space-y-4">
                             <div>
-                                <Label htmlFor="agenda" className="text-lg font-semibold text-white">
-                                    Meeting Agenda <span className="text-red-400">*</span>
+                                <Label htmlFor="agenda" className="text-lg font-semibold text-ink">
+                                    Meeting Agenda <span className="text-danger">*</span>
                                 </Label>
-                                <p className="text-sm text-zinc-500 mt-1">
+                                <p className="text-sm text-ink-muted mt-1">
                                     A concise title describing what this meeting is about
                                 </p>
                             </div>
@@ -151,16 +152,16 @@ export function MeetingCreationScreen({
                                 placeholder="e.g., Product launch strategy for Q2"
                                 value={agenda}
                                 onChange={(event) => onAgendaChange(event.target.value)}
-                                className="bg-zinc-900 border-zinc-700 text-white text-lg h-12"
+                                className="h-12 text-lg"
                             />
                         </section>
 
                         <section className="space-y-4">
                             <div>
-                                <Label htmlFor="context" className="text-lg font-semibold text-white">
+                                <Label htmlFor="context" className="text-lg font-semibold text-ink">
                                     Meeting Context
                                 </Label>
-                                <p className="text-sm text-zinc-500 mt-1">
+                                <p className="text-sm text-ink-muted mt-1">
                                     Extra details to help the AI advisors understand the situation
                                 </p>
                             </div>
@@ -169,21 +170,21 @@ export function MeetingCreationScreen({
                                 placeholder="Provide additional context, background information, constraints, or specific questions you want addressed..."
                                 value={context}
                                 onChange={(event) => onContextChange(event.target.value)}
-                                className="bg-zinc-900 border-zinc-700 text-white min-h-[150px]"
+                                className="min-h-[150px]"
                             />
                         </section>
 
                         <section className="space-y-4">
                             <div>
-                                <Label className="text-lg font-semibold text-white">
+                                <Label className="text-lg font-semibold text-ink">
                                     Shared Documents
                                 </Label>
-                                <p className="text-sm text-zinc-500 mt-1">
+                                <p className="text-sm text-ink-muted mt-1">
                                     Documents will be available for RAG search by all AI advisors
                                 </p>
                             </div>
                             {uploadControl ?? (
-                                <div className="border-2 border-dashed border-zinc-700 rounded-xl p-8 text-center hover:border-zinc-600 transition-colors bg-zinc-900/30">
+                                <div className="m-control rounded-group border-2 border-dashed border-control bg-surface/30 p-8 text-center hover:border-action">
                                     <input
                                         type="file"
                                         multiple
@@ -197,11 +198,11 @@ export function MeetingCreationScreen({
                                         accept=".pdf,.docx,.xlsx,.csv,.txt,.md"
                                     />
                                     <label htmlFor="file-upload" className="cursor-pointer">
-                                        <Upload className="w-10 h-10 text-zinc-500 mx-auto mb-3" />
-                                        <p className="text-sm text-zinc-400">
+                                        <Upload className="w-10 h-10 text-ink-muted mx-auto mb-3" />
+                                        <p className="text-sm text-ink-secondary">
                                             Click to upload documents
                                         </p>
-                                        <p className="text-xs text-zinc-600 mt-2">
+                                        <p className="text-xs text-ink-muted mt-2">
                                             PDF, DOCX, XLSX, CSV, TXT, MD
                                         </p>
                                     </label>
@@ -213,15 +214,15 @@ export function MeetingCreationScreen({
                                     {stagedItems.map((item, index) => (
                                         <div
                                             key={item.key}
-                                            className="flex items-center gap-3 p-3 bg-zinc-800 rounded-lg"
+                                            className="flex items-center gap-3 p-3 bg-surface-raised rounded-lg"
                                         >
-                                            <FileText className="w-5 h-5 text-zinc-500 shrink-0" />
-                                            <span className="text-sm text-zinc-300 flex-1 truncate">
+                                            <FileText className="w-5 h-5 text-ink-muted shrink-0" />
+                                            <span className="text-sm text-ink-secondary flex-1 truncate">
                                                 {item.label}
                                             </span>
                                             {item.status === 'uploading' && (
-                                                <span className="text-xs text-zinc-400 flex items-center gap-1">
-                                                    <Loader2 className="w-3 h-3 animate-spin" />
+                                                <span className="text-xs text-ink-secondary flex items-center gap-1">
+                                                    <Loader2 className="w-3 h-3 animate-spin motion-reduce:animate-none" />
                                                     {item.statusLabel}
                                                 </span>
                                             )}
@@ -229,10 +230,10 @@ export function MeetingCreationScreen({
                                                 <span
                                                     className={
                                                         item.status === 'failed'
-                                                            ? 'text-xs text-red-400'
+                                                            ? 'text-xs text-danger'
                                                             : item.status === 'uploaded'
-                                                              ? 'text-xs text-green-400'
-                                                              : 'text-xs text-zinc-400'
+                                                              ? 'text-xs text-success'
+                                                              : 'text-xs text-ink-secondary'
                                                     }
                                                 >
                                                     {item.statusLabel}
@@ -242,7 +243,7 @@ export function MeetingCreationScreen({
                                                 <button
                                                     type="button"
                                                     onClick={() => onRemoveStaged(index)}
-                                                    className="text-zinc-500 hover:text-red-400"
+                                                    className="text-ink-muted hover:text-danger"
                                                     aria-label={`Remove ${item.label}`}
                                                 >
                                                     <X className="w-4 h-4" />
@@ -251,7 +252,7 @@ export function MeetingCreationScreen({
                                         </div>
                                     ))}
                                     {uploadError && (
-                                        <p className="text-xs text-amber-400" role="alert">
+                                        <p className="text-xs text-danger" role="alert">
                                             {uploadError}
                                         </p>
                                     )}
@@ -261,7 +262,7 @@ export function MeetingCreationScreen({
                                             size="sm"
                                             onClick={onRetryUploads}
                                             disabled={isCreating}
-                                            className="text-xs border-zinc-700 text-zinc-300 hover:bg-zinc-800"
+                                            className="text-xs"
                                         >
                                             <RefreshCw className="w-3 h-3 mr-2" />
                                             Retry Uploads
@@ -273,12 +274,12 @@ export function MeetingCreationScreen({
                     </div>
 
                     <div className="lg:sticky lg:top-24 lg:self-start">
-                        <Card className="bg-zinc-900/50 border-zinc-800">
+                        <Card>
                             <CardContent className="p-6 space-y-4">
                                 <div className="flex items-center justify-between">
                                     <div className="flex items-center gap-2">
-                                        <Users className="w-5 h-5 text-indigo-400" />
-                                        <Label className="text-white font-semibold">
+                                        <Users className="w-5 h-5 text-action" />
+                                        <Label className="text-ink font-semibold">
                                             AI Roster
                                         </Label>
                                     </div>
@@ -287,7 +288,7 @@ export function MeetingCreationScreen({
                                             variant="ghost"
                                             size="sm"
                                             onClick={onSelectAll}
-                                            className="text-xs text-zinc-400 hover:text-white h-7"
+                                            className="text-xs text-ink-secondary hover:text-ink h-7"
                                         >
                                             {everySelected ? 'Deselect All' : 'Select All'}
                                         </Button>
@@ -297,27 +298,27 @@ export function MeetingCreationScreen({
                                                 size="sm"
                                                 onClick={onRefreshRoster}
                                                 disabled={loadingRoster}
-                                                className="text-zinc-400 hover:text-white h-7 px-2"
+                                                className="text-ink-secondary hover:text-ink h-7 px-2"
                                             >
-                                                <RefreshCw className={`w-3 h-3 ${loadingRoster ? 'animate-spin' : ''}`} />
+                                                <RefreshCw className={`w-3 h-3 ${loadingRoster ? 'animate-spin motion-reduce:animate-none' : ''}`} />
                                             </Button>
                                         ) : null}
                                     </div>
                                 </div>
 
-                                <p className="text-xs text-zinc-500">
+                                <p className="text-xs text-ink-muted">
                                     Select which AI advisors should participate ({selectedCount} selected)
                                 </p>
 
                                 {loadingRoster ? (
                                     <div className="flex items-center justify-center py-12">
-                                        <Loader2 className="w-6 h-6 animate-spin text-zinc-500" />
+                                        <Loader2 className="w-6 h-6 animate-spin motion-reduce:animate-none text-ink-muted" />
                                     </div>
                                 ) : roster.length === 0 ? (
-                                    <div className="text-center py-8 border border-dashed border-zinc-700 rounded-lg">
-                                        <Bot className="w-8 h-8 mx-auto text-zinc-600 mb-2" />
-                                        <p className="text-sm text-zinc-500">No personas available</p>
-                                        <Link href={rosterNewHref} className="text-xs text-indigo-400 hover:underline mt-2 inline-block">
+                                    <div className="text-center py-8 border border-dashed border-control rounded-lg">
+                                        <Bot className="w-8 h-8 mx-auto text-ink-muted mb-2" />
+                                        <p className="text-sm text-ink-muted">No personas available</p>
+                                        <Link href={rosterNewHref} className="text-xs text-action hover:underline mt-2 inline-block">
                                             Create a persona first →
                                         </Link>
                                     </div>
@@ -326,9 +327,9 @@ export function MeetingCreationScreen({
                                         {roster.map((persona) => (
                                             <div
                                                 key={persona.id}
-                                                className={`flex items-center gap-3 p-3 rounded-lg border transition-all cursor-pointer ${persona.selected
-                                                    ? 'bg-zinc-800 border-zinc-600'
-                                                    : 'bg-zinc-900/50 border-zinc-800 opacity-60'
+                                                className={`m-state flex cursor-pointer items-center gap-3 rounded-control border p-3 ${persona.selected
+                                                    ? 'border-action bg-surface-selected'
+                                                    : 'border-separator bg-surface/50'
                                                     }`}
                                                 onClick={() => onToggleRoster(persona.id)}
                                             >
@@ -336,18 +337,19 @@ export function MeetingCreationScreen({
                                                     checked={persona.selected}
                                                     onClick={(event) => event.stopPropagation()}
                                                     onCheckedChange={() => onToggleRoster(persona.id)}
-                                                    className="border-zinc-600"
                                                 />
-                                                <div
-                                                    className="w-8 h-8 rounded-full flex items-center justify-center flex-shrink-0"
-                                                    style={{ backgroundColor: persona.color }}
-                                                >
-                                                    <Bot className="w-4 h-4 text-white" />
-                                                </div>
+                                                <ParticipantMark
+                                                    participant={{
+                                                        id: persona.id,
+                                                        name: persona.name,
+                                                        color: persona.color,
+                                                    }}
+                                                    size="sm"
+                                                />
                                                 <div className="flex-1 min-w-0">
-                                                    <p className="text-sm font-medium text-white truncate">{persona.name}</p>
+                                                    <p className="text-sm font-medium text-ink truncate">{persona.name}</p>
                                                     {persona.subtitle && (
-                                                        <p className="text-xs text-zinc-500 truncate">{persona.subtitle}</p>
+                                                        <p className="text-xs text-ink-muted truncate">{persona.subtitle}</p>
                                                     )}
                                                 </div>
                                             </div>
@@ -359,9 +361,9 @@ export function MeetingCreationScreen({
                     </div>
                 </div>
 
-                <div className="mt-12 flex items-center justify-end gap-4 border-t border-zinc-800 pt-8">
+                <div className="mt-12 flex items-center justify-end gap-4 border-t border-separator pt-8">
                     {creationError && (
-                        <p className="text-sm text-red-400 flex-1" role="alert">
+                        <p className="text-sm text-danger flex-1" role="alert">
                             {creationError}
                         </p>
                     )}
@@ -369,28 +371,23 @@ export function MeetingCreationScreen({
                         <Button
                             variant="ghost"
                             onClick={onCancel}
-                            className="text-zinc-400"
+                            className="text-ink-secondary"
                         >
                             Cancel
                         </Button>
                     ) : null}
                     <Button
                         onClick={onCreate}
+                        busy={isCreating}
+                        busyLabel={busyLabel}
                         disabled={!ctaEnabled}
-                        className="bg-indigo-600 hover:bg-indigo-700 px-8"
+                        className="px-8"
                     >
-                        {isCreating ? (
-                            <>
-                                <Loader2 className="w-4 h-4 mr-2 animate-spin" />
-                                {busyLabel}
-                            </>
-                        ) : (
-                            createLabel
-                        )}
+                        {createLabel}
                     </Button>
                 </div>
                 {footerNote ? (
-                    <p className="mt-3 text-right text-xs text-zinc-500">{footerNote}</p>
+                    <p className="mt-3 text-right text-xs text-ink-muted">{footerNote}</p>
                 ) : null}
             </main>
         </div>

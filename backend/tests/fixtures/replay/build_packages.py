@@ -56,8 +56,12 @@ PASSAGE = (
 
 def write_json(path: Path, payload) -> None:
     path.parent.mkdir(parents=True, exist_ok=True)
+    # Package JSON is part of the byte-pinned identity: always write CRLF,
+    # regardless of the host platform (see the root .gitattributes).
     path.write_text(
-        json.dumps(payload, indent=2, ensure_ascii=True) + "\n", encoding="utf-8"
+        json.dumps(payload, indent=2, ensure_ascii=True) + "\n",
+        encoding="utf-8",
+        newline="\r\n",
     )
 
 

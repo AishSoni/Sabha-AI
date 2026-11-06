@@ -18,7 +18,7 @@
 import { readFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
-import { fireEvent, render, screen, waitFor } from '@testing-library/react';
+import { fireEvent, render, screen, waitFor, within } from '@testing-library/react';
 import { Providers, getQueryClient } from '@/app/providers';
 import MeetingSpacePage from '@/app/(operator)/meetings/page';
 import { createScriptedFetch, type ScriptedFetch } from '../fixtures/transport';
@@ -138,8 +138,7 @@ describe('meetings list screen ownership', () => {
         fireEvent.click(await screen.findByText('Delete'));
 
         const dialog = await screen.findByRole('alertdialog');
-        const confirmButton = dialog.querySelector('button.bg-red-600') as HTMLElement;
-        fireEvent.click(confirmButton);
+        fireEvent.click(within(dialog).getByRole('button', { name: 'Delete' }));
 
         await waitFor(() => {
             expect(fetcher.calls).toHaveLength(3);

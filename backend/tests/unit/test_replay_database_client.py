@@ -40,6 +40,15 @@ def test_non_postgres_reader_url_is_rejected(
         replay.get_replay_database_url()
 
 
+def test_unix_socket_reader_url_is_accepted(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    url = "postgresql://postgres:@/postgres?host=/var/run/postgresql"
+    monkeypatch.setattr(replay.settings, "replay_database_url", url, raising=False)
+
+    assert replay.get_replay_database_url() == url
+
+
 def test_connection_failure_is_wrapped_without_leaking_the_url(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:

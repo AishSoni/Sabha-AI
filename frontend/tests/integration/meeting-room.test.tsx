@@ -6,7 +6,7 @@
  * own confirmed revision.
  */
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
-import { fireEvent, render, screen, waitFor } from '@testing-library/react';
+import { fireEvent, render, screen, waitFor, within } from '@testing-library/react';
 import { Providers, getQueryClient } from '@/app/providers';
 import { MeetingRoom, meetingKeys } from '@/features/meetings';
 import { LiveMeetingsRuntimeProvider } from '@/features/meetings/runtime/live';
@@ -134,11 +134,16 @@ function json(status: number, body: unknown): Response {
     } as unknown as Response;
 }
 
-function renderRoom() {
+function renderRoom(
+    props: {
+        activeTab?: string;
+        onTabChange?: (tab: string) => void;
+    } = {}
+) {
     return render(
         <Providers>
             <LiveMeetingsRuntimeProvider>
-                <MeetingRoom meetingId={MEETING_ID} />
+                <MeetingRoom meetingId={MEETING_ID} {...props} />
             </LiveMeetingsRuntimeProvider>
         </Providers>
     );
@@ -204,8 +209,23 @@ describe('MeetingRoom', () => {
         });
         renderRoom();
 
-        expect(await screen.findByText('ended')).toBeInTheDocument();
+        await screen.findByText('Product review');
+        fireEvent.click(screen.getByRole('button', { name: 'Details' }));
+        expect(within(screen.getByRole('dialog')).getByText('ended')).toBeInTheDocument();
         expect(screen.queryByPlaceholderText('Type your message...')).not.toBeInTheDocument();
+    });
+
+    it('does not open an empty record or leave a record tab stranded', async () => {
+        installRouter();
+        const onTabChange = vi.fn();
+        renderRoom({ activeTab: 'consensus', onTabChange });
+
+        await screen.findByText('Product review');
+        await waitFor(() => expect(onTabChange).toHaveBeenCalledWith('chat'));
+
+        expect(document.querySelector('#room-record')).toBeNull();
+        expect(screen.getByRole('button', { name: 'Meeting record' })).toBeDisabled();
+        expect(screen.getByTestId('record-disabled-trigger')).toBeInTheDocument();
     });
 
     it('does not move the message viewport when the reader is away from the bottom', async () => {
@@ -290,7 +310,9 @@ describe('MeetingRoom', () => {
         });
         renderRoom();
 
-        expect(await screen.findByText('archived')).toBeInTheDocument();
+        await screen.findByText('Product review');
+        fireEvent.click(screen.getByRole('button', { name: 'Details' }));
+        expect(within(screen.getByRole('dialog')).getByText('archived')).toBeInTheDocument();
         expect(screen.queryByPlaceholderText('Type your message...')).not.toBeInTheDocument();
         expect(screen.queryByRole('button', { name: /Close meeting/i })).not.toBeInTheDocument();
     });
@@ -351,7 +373,7 @@ describe('MeetingRoom', () => {
         installRouter();
         renderRoom();
         await screen.findByText('Product review');
-        fireEvent.mouseDown(screen.getByRole('tab', { name: /Roster/ }));
+        fireEvent.mouseDown(screen.getByRole('tab', { name: /Personas/ }));
 
         expect(await screen.findByText('Knowledge assignments')).toBeInTheDocument();
         expect(screen.queryByText(/Q4_2025_Financial_Report/)).not.toBeInTheDocument();

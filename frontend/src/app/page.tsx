@@ -6,6 +6,7 @@ import {
     RefreshCw,
     Sparkles,
 } from 'lucide-react';
+import { AppearanceMenu } from '@/components/appearance';
 
 const FEATURES = [
     {
@@ -27,28 +28,29 @@ const FEATURES = [
 
 export default function HomePage() {
     return (
-        <div className="min-h-screen bg-gradient-to-br from-zinc-950 via-zinc-900 to-zinc-950">
-            <header className="sticky top-0 z-50 border-b border-zinc-800/50 backdrop-blur-sm">
-                <div className="mx-auto flex max-w-6xl items-center justify-between px-6 py-4">
+        <div className="min-h-screen bg-gradient-to-br from-canvas via-surface to-canvas">
+            <header className="sticky top-0 z-chrome border-b border-separator bg-canvas/80 backdrop-blur-sm">
+                <div className="mx-auto flex max-w-6xl flex-wrap items-center justify-between gap-3 px-6 py-4">
                     <div className="flex items-center gap-3">
-                        <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-gradient-to-br from-indigo-500 to-purple-600">
+                        <div className="flex h-10 w-10 items-center justify-center rounded-group bg-gradient-to-br from-indigo-500 to-purple-600">
                             <Sparkles className="h-5 w-5 text-white" />
                         </div>
                         <div>
-                            <h1 className="text-xl font-bold text-white">Sabha</h1>
-                            <p className="text-xs text-zinc-500">AI Advisory Board</p>
+                            <h1 className="type-item-title text-ink">Sabha</h1>
+                            <p className="type-meta text-ink-muted">AI Advisory Board</p>
                         </div>
                     </div>
-                    <nav className="flex items-center gap-4 text-sm">
+                    <nav className="flex items-center gap-3 type-control">
+                        <AppearanceMenu />
                         <Link
                             href="/login"
-                            className="text-zinc-500 transition-colors hover:text-zinc-200"
+                            className="m-control text-ink-muted hover:text-ink"
                         >
                             Operator
                         </Link>
                         <Link
                             href="/demo"
-                            className="rounded-lg border border-indigo-800 px-3 py-1.5 text-indigo-300 transition-colors hover:bg-indigo-950/40"
+                            className="m-control rounded-control border border-control bg-surface/60 px-3 py-1.5 text-action hover:bg-accent-soft"
                         >
                             Recorded demo
                         </Link>
@@ -56,33 +58,33 @@ export default function HomePage() {
                 </div>
             </header>
 
-            <main className="mx-auto max-w-6xl px-6 py-16">
+            <main id="main-content" className="mx-auto max-w-6xl px-6 py-16" tabIndex={-1}>
                 <section className="mx-auto max-w-3xl text-center">
-                    <p className="text-xs font-semibold uppercase tracking-[0.25em] text-indigo-400">
+                    <p className="type-meta-strong uppercase tracking-[0.25em] text-action">
                         Account-free replay
                     </p>
-                    <h2 className="mt-4 text-4xl font-bold leading-tight text-white md:text-5xl">
+                    <h2 className="type-display mt-4">
                         See how an AI advisory board reasons together
                     </h2>
-                    <p className="mt-5 text-lg text-zinc-400">
+                    <p className="mt-5 type-lead text-ink-secondary">
                         Walk through a prepared recorded bond meeting with multiple
                         AI participants, formal disagreement and consensus, grounded
                         evidence, and a closing summary.
                     </p>
-                    <p className="mt-4 text-sm text-zinc-500">
+                    <p className="mt-4 type-meta text-ink-muted">
                         Prepared demo · recorded responses, not live AI generation.
                     </p>
                     <div className="mt-8 flex flex-wrap items-center justify-center gap-4">
                         <Link
                             href="/demo"
-                            className="inline-flex items-center gap-2 rounded-xl bg-indigo-600 px-6 py-3 text-sm font-semibold text-white transition-colors hover:bg-indigo-500"
+                            className="m-control inline-flex items-center gap-2 rounded-control bg-action px-6 py-3 type-control font-semibold text-action-foreground hover:bg-action-hover"
                         >
                             Start the demo
                             <ArrowRight className="h-4 w-4" />
                         </Link>
                         <Link
                             href="/login"
-                            className="text-sm text-zinc-400 underline-offset-4 transition-colors hover:text-zinc-200 hover:underline"
+                            className="m-control type-control text-ink-secondary underline-offset-4 hover:text-ink hover:underline"
                         >
                             Operator sign-in
                         </Link>
@@ -93,20 +95,20 @@ export default function HomePage() {
                     {FEATURES.map(({ icon: Icon, title, body }) => (
                         <div
                             key={title}
-                            className="rounded-2xl border border-zinc-800 bg-zinc-900/40 p-6"
+                            className="rounded-group border border-separator bg-surface-raised p-6"
                         >
-                            <div className="mb-4 flex h-11 w-11 items-center justify-center rounded-xl bg-indigo-500/15">
-                                <Icon className="h-5 w-5 text-indigo-300" />
+                            <div className="mb-4 flex h-11 w-11 items-center justify-center rounded-control bg-accent-soft">
+                                <Icon className="h-5 w-5 text-action" />
                             </div>
-                            <h3 className="font-semibold text-white">{title}</h3>
-                            <p className="mt-2 text-sm leading-relaxed text-zinc-400">
+                            <h3 className="type-item-title text-ink">{title}</h3>
+                            <p className="mt-2 type-body text-ink-secondary">
                                 {body}
                             </p>
                         </div>
                     ))}
                 </section>
 
-                <p className="mt-10 text-center text-xs text-zinc-600">
+                <p className="mt-10 text-center type-meta text-ink-muted">
                     The live workspace is private and available only to the Sabha
                     operator.
                 </p>

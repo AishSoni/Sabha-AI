@@ -5,7 +5,7 @@ import Link from 'next/link';
 import { Plus, MessageSquare, Calendar, ArrowLeft, Loader2, Archive, Trash2, MoreVertical, ArchiveRestore } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
-import { Badge } from '@/components/ui/badge';
+import { StatusBadge } from '@/components/ui/status-badge';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import {
     DropdownMenu,
@@ -64,22 +64,26 @@ export default function MeetingSpacePage() {
     const archivedMeetings = list.filter(m => m.status === 'archived');
 
     return (
-        <div className="min-h-screen bg-gradient-to-br from-zinc-950 via-zinc-900 to-zinc-950">
+        <div className="min-h-full text-ink">
             {/* Header */}
-            <header className="border-b border-zinc-800/50 backdrop-blur-sm sticky top-0 z-50">
-                <div className="max-w-6xl mx-auto px-6 py-4 flex items-center justify-between">
+            <header className="material-chrome sticky top-0 z-chrome border-b border-separator">
+                <div className="mx-auto flex max-w-6xl items-center justify-between px-6 py-4">
                     <div className="flex items-center gap-4">
-                        <Link href="/" className="text-zinc-400 hover:text-white transition-colors">
-                            <ArrowLeft className="w-5 h-5" />
+                        <Link
+                            href="/"
+                            aria-label="Back to Sabha home"
+                            className="m-control text-ink-muted hover:text-ink"
+                        >
+                            <ArrowLeft className="h-5 w-5" />
                         </Link>
                         <div>
-                            <h1 className="text-xl font-bold text-white">Meeting Space</h1>
-                            <p className="text-xs text-zinc-500">Manage your AI meeting rooms</p>
+                            <h1 className="type-page-title text-ink">Meeting Space</h1>
+                            <p className="type-meta text-ink-muted">Manage your AI meeting rooms</p>
                         </div>
                     </div>
                     <Link href="/meetings/new">
-                        <Button className="bg-indigo-600 hover:bg-indigo-700">
-                            <Plus className="w-4 h-4 mr-2" />
+                        <Button>
+                            <Plus className="h-4 w-4" />
                             Create Meeting Room
                         </Button>
                     </Link>
@@ -87,25 +91,25 @@ export default function MeetingSpacePage() {
             </header>
 
             {/* Main Content */}
-            <main className="max-w-6xl mx-auto px-6 py-8">
+            <main id="main-content" className="max-w-6xl mx-auto px-6 py-8" tabIndex={-1}>
                 <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
-                    <TabsList className="bg-zinc-900/50 border border-zinc-800 mb-6">
-                        <TabsTrigger value="active" className="data-[state=active]:bg-zinc-800">
-                            <MessageSquare className="w-4 h-4 mr-2" />
+                    <TabsList className="mb-6">
+                        <TabsTrigger value="active">
+                            <MessageSquare className="h-4 w-4" />
                             Active
                             {activeMeetings.length > 0 && (
-                                <Badge variant="secondary" className="ml-2 bg-indigo-500/20 text-indigo-400">
+                                <StatusBadge tone="neutral" className="ml-2">
                                     {activeMeetings.length}
-                                </Badge>
+                                </StatusBadge>
                             )}
                         </TabsTrigger>
-                        <TabsTrigger value="archived" className="data-[state=active]:bg-zinc-800">
-                            <Archive className="w-4 h-4 mr-2" />
+                        <TabsTrigger value="archived">
+                            <Archive className="h-4 w-4" />
                             Archived
                             {archivedMeetings.length > 0 && (
-                                <Badge variant="secondary" className="ml-2 bg-zinc-700 text-zinc-400">
+                                <StatusBadge tone="neutral" className="ml-2">
                                     {archivedMeetings.length}
-                                </Badge>
+                                </StatusBadge>
                             )}
                         </TabsTrigger>
                     </TabsList>
@@ -130,12 +134,12 @@ export default function MeetingSpacePage() {
                         {isLoading ? (
                             <LoadingState />
                         ) : archivedMeetings.length === 0 ? (
-                            <div className="text-center py-20">
-                                <div className="w-16 h-16 rounded-2xl bg-zinc-800 flex items-center justify-center mx-auto mb-4">
-                                    <Archive className="w-8 h-8 text-zinc-600" />
+                            <div className="py-20 text-center">
+                                <div className="mx-auto mb-4 flex h-16 w-16 items-center justify-center rounded-group bg-surface-raised">
+                                    <Archive className="h-8 w-8 text-ink-muted" />
                                 </div>
-                                <h3 className="text-lg font-medium text-white mb-2">No archived meetings</h3>
-                                <p className="text-zinc-500">Meetings you archive will appear here</p>
+                                <h3 className="type-item-title mb-2 text-ink">No archived meetings</h3>
+                                <p className="type-body text-ink-secondary">Meetings you archive will appear here</p>
                             </div>
                         ) : (
                             <MeetingGrid
@@ -154,26 +158,24 @@ export default function MeetingSpacePage() {
 
             {/* Delete Confirmation Dialog */}
             <AlertDialog open={!!deleteConfirmId} onOpenChange={(open) => !open && setDeleteConfirmId(null)}>
-                <AlertDialogContent className="bg-zinc-900 border-zinc-800">
+                <AlertDialogContent>
                     <AlertDialogHeader>
-                        <AlertDialogTitle className="text-white">Delete Meeting?</AlertDialogTitle>
-                        <AlertDialogDescription className="text-zinc-400">
+                        <AlertDialogTitle>Delete Meeting?</AlertDialogTitle>
+                        <AlertDialogDescription>
                             This action cannot be undone. This will permanently delete the meeting
                             and all its messages, participants, and data.
                         </AlertDialogDescription>
                     </AlertDialogHeader>
                     <AlertDialogFooter>
-                        <AlertDialogCancel className="bg-zinc-800 border-zinc-700 text-white hover:bg-zinc-700">
-                            Cancel
-                        </AlertDialogCancel>
+                        <AlertDialogCancel>Cancel</AlertDialogCancel>
                         <AlertDialogAction
                             onClick={() => deleteConfirmId && handleDelete(deleteConfirmId)}
-                            className="bg-red-600 hover:bg-red-700"
+                            className="bg-danger text-on-danger hover:bg-danger-hover"
                         >
                             {actionLoading === deleteConfirmId ? (
-                                <Loader2 className="w-4 h-4 animate-spin mr-2" />
+                                <Loader2 className="mr-2 h-4 w-4 animate-spin motion-reduce:animate-none" />
                             ) : (
-                                <Trash2 className="w-4 h-4 mr-2" />
+                                <Trash2 className="mr-2 h-4 w-4" />
                             )}
                             Delete
                         </AlertDialogAction>
@@ -186,23 +188,24 @@ export default function MeetingSpacePage() {
 
 function LoadingState() {
     return (
-        <div className="flex items-center justify-center py-20">
-            <Loader2 className="w-8 h-8 animate-spin text-zinc-500" />
+        <div role="status" className="flex items-center justify-center gap-2 py-20 type-body text-ink-muted">
+            <Loader2 className="h-8 w-8 animate-spin motion-reduce:animate-none" />
+            <span>Loading meetings…</span>
         </div>
     );
 }
 
 function EmptyState() {
     return (
-        <div className="text-center py-20">
-            <div className="w-16 h-16 rounded-2xl bg-zinc-800 flex items-center justify-center mx-auto mb-4">
-                <MessageSquare className="w-8 h-8 text-zinc-600" />
+        <div className="py-20 text-center">
+            <div className="mx-auto mb-4 flex h-16 w-16 items-center justify-center rounded-group bg-surface-raised">
+                <MessageSquare className="h-8 w-8 text-ink-muted" />
             </div>
-            <h3 className="text-lg font-medium text-white mb-2">No meeting rooms yet</h3>
-            <p className="text-zinc-500 mb-6">Create your first meeting room to get started</p>
+            <h3 className="type-item-title mb-2 text-ink">No meeting rooms yet</h3>
+            <p className="type-body mb-6 text-ink-secondary">Create your first meeting room to get started</p>
             <Link href="/meetings/new">
-                <Button className="bg-indigo-600 hover:bg-indigo-700">
-                    <Plus className="w-4 h-4 mr-2" />
+                <Button>
+                    <Plus className="h-4 w-4" />
                     Create Meeting Room
                 </Button>
             </Link>
@@ -223,15 +226,15 @@ function MeetingGrid({ meetings, onArchive, onUnarchive, onDelete, actionLoading
     const getStatusBadge = (status: Meeting['status']) => {
         switch (status) {
             case 'active':
-                return <Badge variant="secondary" className="bg-emerald-500/20 text-emerald-400">Active</Badge>;
+                return <StatusBadge tone="success">Active</StatusBadge>;
             case 'ended':
-                return <Badge variant="secondary" className="bg-indigo-500/20 text-indigo-400">Ended</Badge>;
+                return <StatusBadge tone="neutral">Ended</StatusBadge>;
             case 'voting':
-                return <Badge variant="secondary" className="bg-amber-500/20 text-amber-400">Voting</Badge>;
+                return <StatusBadge tone="warning">Voting</StatusBadge>;
             case 'archived':
-                return <Badge variant="secondary" className="bg-zinc-700 text-zinc-400">Archived</Badge>;
+                return <StatusBadge tone="neutral">Archived</StatusBadge>;
             default:
-                return <Badge variant="secondary" className="bg-zinc-700 text-zinc-400">{status}</Badge>;
+                return <StatusBadge tone="neutral">{status}</StatusBadge>;
         }
     };
 
@@ -240,28 +243,28 @@ function MeetingGrid({ meetings, onArchive, onUnarchive, onDelete, actionLoading
             {meetings.map((meeting) => (
                 <div key={meeting.id} className="relative group">
                     <Link href={`/meetings/${meeting.id}`}>
-                        <Card className="bg-zinc-900/50 border-zinc-800 hover:border-indigo-500/50 transition-all duration-300 hover:shadow-lg hover:shadow-indigo-500/10 cursor-pointer h-full">
+                        <Card className="h-full m-control cursor-pointer hover:border-action/50 hover:shadow-[var(--shadow-raised)]">
                             <CardHeader className="pb-2">
-                                <div className="flex items-start justify-between">
-                                    <CardTitle className="text-white text-lg pr-8">
+                                <div className="flex items-start justify-between gap-3">
+                                    <CardTitle className="type-item-title pr-8">
                                         {meeting.name}
                                     </CardTitle>
                                     {getStatusBadge(meeting.status)}
                                 </div>
                                 {meeting.agenda && (
-                                    <CardDescription className="text-zinc-400 line-clamp-2">
+                                    <CardDescription className="line-clamp-2">
                                         {meeting.agenda}
                                     </CardDescription>
                                 )}
                             </CardHeader>
                             <CardContent>
-                                <div className="flex items-center gap-4 text-xs text-zinc-500">
+                                <div className="flex items-center gap-4 type-meta text-ink-muted">
                                     <span className="flex items-center gap-1">
-                                        <Calendar className="w-3 h-3" />
+                                        <Calendar className="h-3 w-3" />
                                         {formatRelativeTime(meeting.created_at ?? '')}
                                     </span>
                                     {(meeting.total_cost ?? 0) > 0 && (
-                                        <span className="text-amber-500">
+                                        <span className="type-tabular text-ink-secondary">
                                             ${(meeting.total_cost ?? 0).toFixed(4)}
                                         </span>
                                     )}
@@ -271,32 +274,32 @@ function MeetingGrid({ meetings, onArchive, onUnarchive, onDelete, actionLoading
                     </Link>
 
                     {/* Action Menu */}
-                    <div className="absolute top-3 right-3 opacity-0 group-hover:opacity-100 transition-opacity z-10">
+                    <div className="absolute right-3 top-3 z-selection">
                         <DropdownMenu>
                             <DropdownMenuTrigger asChild>
                                 <Button
                                     variant="ghost"
                                     size="icon-xs"
-                                    className="h-7 w-7 bg-zinc-800/80 hover:bg-zinc-700 border border-zinc-700"
+                                    aria-label={`Actions for ${meeting.name}`}
+                                    className="border border-separator bg-surface/80"
                                     onClick={(e) => e.preventDefault()}
                                 >
                                     {actionLoading === meeting.id ? (
-                                        <Loader2 className="w-3.5 h-3.5 animate-spin" />
+                                        <Loader2 className="h-3.5 w-3.5 animate-spin motion-reduce:animate-none" />
                                     ) : (
-                                        <MoreVertical className="w-3.5 h-3.5" />
+                                        <MoreVertical className="h-3.5 w-3.5" />
                                     )}
                                 </Button>
                             </DropdownMenuTrigger>
-                            <DropdownMenuContent align="end" className="bg-zinc-900 border-zinc-800">
+                            <DropdownMenuContent align="end">
                                 {isArchived ? (
                                     <DropdownMenuItem
                                         onClick={(e) => {
                                             e.preventDefault();
                                             onUnarchive?.(meeting.id);
                                         }}
-                                        className="text-zinc-300 hover:text-white"
                                     >
-                                        <ArchiveRestore className="w-4 h-4 mr-2" />
+                                        <ArchiveRestore className="mr-2 h-4 w-4" />
                                         Unarchive
                                     </DropdownMenuItem>
                                 ) : (
@@ -305,21 +308,20 @@ function MeetingGrid({ meetings, onArchive, onUnarchive, onDelete, actionLoading
                                             e.preventDefault();
                                             onArchive?.(meeting.id);
                                         }}
-                                        className="text-zinc-300 hover:text-white"
                                     >
-                                        <Archive className="w-4 h-4 mr-2" />
+                                        <Archive className="mr-2 h-4 w-4" />
                                         Archive
                                     </DropdownMenuItem>
                                 )}
-                                <DropdownMenuSeparator className="bg-zinc-800" />
+                                <DropdownMenuSeparator />
                                 <DropdownMenuItem
                                     onClick={(e) => {
                                         e.preventDefault();
                                         onDelete(meeting.id);
                                     }}
-                                    className="text-red-400 hover:text-red-300 hover:bg-red-900/20"
+                                    className="text-danger focus:bg-danger-soft focus:text-danger"
                                 >
-                                    <Trash2 className="w-4 h-4 mr-2" />
+                                    <Trash2 className="mr-2 h-4 w-4" />
                                     Delete
                                 </DropdownMenuItem>
                             </DropdownMenuContent>

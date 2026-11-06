@@ -3,6 +3,10 @@
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 
+import { AppearanceMenu } from '@/components/appearance';
+import { Starfield } from '@/components/atmosphere';
+import { Button } from '@/components/ui/button';
+
 const LINKS = [
     { href: '/meetings', label: 'Meeting space' },
     { href: '/roster', label: 'AI roster' },
@@ -20,13 +24,14 @@ export function OperatorShell({
     const pathname = usePathname();
 
     return (
-        <div className="min-h-screen bg-neutral-950 text-neutral-100">
-            <header className="border-b border-neutral-800 bg-neutral-900/80">
+        <div className="relative isolate flex h-dvh min-h-0 flex-col text-ink">
+            <Starfield />
+            <header className="material-chrome relative z-chrome shrink-0 border-b border-separator">
                 <div className="mx-auto flex max-w-6xl flex-wrap items-center gap-4 px-4 py-3">
-                    <span className="text-xs font-semibold uppercase tracking-[0.2em] text-emerald-400">
+                    <span className="type-meta-strong uppercase tracking-[0.2em] text-ink">
                         Operator
                     </span>
-                    <nav className="flex flex-1 flex-wrap items-center gap-1 text-sm text-neutral-300">
+                    <nav className="flex flex-1 flex-wrap items-center gap-1 type-control">
                         {LINKS.map((link) => {
                             const active =
                                 pathname === link.href ||
@@ -35,10 +40,11 @@ export function OperatorShell({
                                 <Link
                                     key={link.href}
                                     href={link.href}
-                                    className={`rounded-md px-2.5 py-1.5 transition-colors ${
+                                    aria-current={active ? 'page' : undefined}
+                                    className={`rounded-control px-2.5 py-1.5 m-control ${
                                         active
-                                            ? 'bg-neutral-800 text-white'
-                                            : 'hover:bg-neutral-800/70 hover:text-white'
+                                            ? 'bg-surface-selected text-ink'
+                                            : 'text-ink-secondary hover:bg-surface-raised hover:text-ink'
                                     }`}
                                 >
                                     {link.label}
@@ -48,20 +54,17 @@ export function OperatorShell({
                     </nav>
                     <Link
                         href="/demo"
-                        className="text-xs text-neutral-400 hover:text-neutral-200"
+                        className="type-meta text-ink-secondary m-control hover:text-ink"
                     >
                         Recorded demo
                     </Link>
-                    <button
-                        type="button"
-                        onClick={onLogout}
-                        className="rounded-md border border-neutral-700 px-3 py-1.5 text-xs font-medium text-neutral-200 hover:border-neutral-500 hover:text-white"
-                    >
+                    <AppearanceMenu />
+                    <Button type="button" variant="outline" size="sm" onClick={onLogout}>
                         Sign out
-                    </button>
+                    </Button>
                 </div>
             </header>
-            {children}
+            <div className="relative z-10 min-h-0 flex-1 overflow-y-auto">{children}</div>
         </div>
     );
 }

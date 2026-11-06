@@ -20,7 +20,6 @@ const SETTING_SECTIONS = [
         icon: Key,
         title: 'API Keys',
         description: 'Configure your LLM provider API keys',
-        color: 'text-amber-400',
         enabled: true,
     },
     {
@@ -28,7 +27,6 @@ const SETTING_SECTIONS = [
         icon: Palette,
         title: 'Appearance',
         description: 'Theme and display preferences',
-        color: 'text-purple-400',
         enabled: false,
     },
     {
@@ -36,7 +34,6 @@ const SETTING_SECTIONS = [
         icon: Bell,
         title: 'Notifications',
         description: 'Manage notification settings',
-        color: 'text-blue-400',
         enabled: false,
     },
     {
@@ -44,7 +41,6 @@ const SETTING_SECTIONS = [
         icon: Shield,
         title: 'Privacy',
         description: 'Data and security settings',
-        color: 'text-emerald-400',
         enabled: false,
     },
 ];
@@ -53,50 +49,51 @@ export function SettingsScreen() {
     const [activeSection, setActiveSection] = useState<SettingsSection>('api-keys');
 
     return (
-        <div className="min-h-screen bg-gradient-to-br from-zinc-950 via-zinc-900 to-zinc-950">
+        <div className="min-h-full text-ink">
             {/* Header */}
-            <header className="border-b border-zinc-800/50 backdrop-blur-sm sticky top-0 z-50">
-                <div className="max-w-6xl mx-auto px-6 py-4 flex items-center gap-4">
-                    <Link href="/" className="text-zinc-400 hover:text-white transition-colors">
+            <header className="material-chrome sticky top-0 z-chrome border-b border-separator">
+                <div className="mx-auto flex max-w-6xl items-center gap-4 px-6 py-4">
+                    <Link href="/" aria-label="Back to home" className="m-control text-ink-secondary hover:text-ink">
                         <ArrowLeft className="w-5 h-5" />
                     </Link>
                     <div>
-                        <h1 className="text-xl font-bold text-white">Settings</h1>
-                        <p className="text-xs text-zinc-500">Configure your Sabha experience</p>
+                        <h1 className="text-xl font-bold text-ink">Settings</h1>
+                        <p className="text-xs text-ink-muted">Configure your Sabha experience</p>
                     </div>
                 </div>
             </header>
 
             {/* Main Content */}
-            <main className="max-w-6xl mx-auto px-6 py-8">
-                <div className="flex gap-8">
+            <main id="main-content" className="max-w-6xl mx-auto px-6 py-8" tabIndex={-1}>
+                <div className="flex flex-col gap-8 md:flex-row">
                     {/* Sidebar Navigation */}
-                    <div className="w-64 flex-shrink-0">
+                    <div className="w-full shrink-0 md:w-64">
                         <nav className="space-y-1">
                             {SETTING_SECTIONS.map((section) => (
                                 <button
                                     key={section.id}
+                                    type="button"
                                     onClick={() => section.enabled && setActiveSection(section.id)}
                                     disabled={!section.enabled}
-                                    className={`w-full flex items-center gap-3 px-4 py-3 rounded-lg transition-all text-left ${
+                                    className={`m-control flex w-full items-center gap-3 rounded-control px-4 py-3 text-left ${
                                         activeSection === section.id
-                                            ? 'bg-zinc-800 text-white'
+                                            ? 'bg-surface-selected text-ink'
                                             : section.enabled
-                                              ? 'text-zinc-400 hover:bg-zinc-800/50 hover:text-white'
-                                              : 'text-zinc-600 cursor-not-allowed'
+                                              ? 'text-ink-secondary hover:bg-surface-raised hover:text-ink'
+                                              : 'cursor-not-allowed text-ink-muted'
                                     }`}
                                 >
                                     <div
-                                        className={`w-8 h-8 rounded-lg bg-zinc-800 flex items-center justify-center ${
+                                        className={`flex size-8 items-center justify-center rounded-control bg-surface-raised ${
                                             !section.enabled ? 'opacity-50' : ''
                                         }`}
                                     >
-                                        <section.icon className={`w-4 h-4 ${section.color}`} />
+                                        <section.icon className="size-4 text-ink-secondary" />
                                     </div>
                                     <div>
-                                        <div className="font-medium text-sm">{section.title}</div>
+                                        <div className="type-control font-medium">{section.title}</div>
                                         {!section.enabled && (
-                                            <div className="text-xs text-zinc-600">Coming soon</div>
+                                            <div className="type-meta text-ink-muted">Coming soon</div>
                                         )}
                                     </div>
                                 </button>
@@ -139,14 +136,12 @@ function ComingSoonSection({ title, description }: { title: string; description:
     return (
         <div className="space-y-4">
             <div className="space-y-1">
-                <h2 className="text-lg font-semibold text-white">{title}</h2>
-                <p className="text-sm text-zinc-400">{description}</p>
+                <h2 className="type-section-title">{title}</h2>
+                <p className="type-body text-ink-secondary">{description}</p>
             </div>
-            <div className="bg-amber-500/10 border border-amber-500/30 rounded-lg p-6 text-center">
-                <p className="text-amber-400">
-                    <strong>Coming Soon</strong>
-                </p>
-                <p className="text-sm text-zinc-400 mt-1">
+            <div className="rounded-group border border-warning/40 bg-warning-soft p-6 text-center">
+                <p className="type-item-title text-warning">Coming Soon</p>
+                <p className="mt-1 type-body text-ink-secondary">
                     This feature is under development and will be available in a future update.
                 </p>
             </div>

@@ -1,4 +1,4 @@
-import { render, screen } from "@testing-library/react";
+import { fireEvent, render, screen, waitFor } from "@testing-library/react";
 import { describe, expect, it, vi } from "vitest";
 import type { MeetingsRuntime } from "./contract";
 import { useMeetingsRuntime } from "./context";
@@ -87,5 +87,45 @@ describe("RecordedDirectorAction", () => {
         expect(
             screen.getByRole("button", { name: /Send the supported follow-up/ })
         ).toBeInTheDocument();
+    });
+
+    it("shows the exact prepared question in full", async () => {
+        const question =
+            "Portfolio Analyst, assume a fictional three-year mandate that requires an executable price, yield, and liquidity assessment. What can you conclude from this record?";
+        const sendFollowUp = vi.fn().mockResolvedValue(undefined);
+        vi.mocked(useMeetingsRuntime).mockReturnValue({
+            replay: {
+                transitions: [],
+                checkpoint: "checkpoint-base",
+                preparedBaseCheckpoint: "checkpoint-base",
+                preparedTurns: [
+                    {
+                        kind: "follow_up",
+                        turn_id: "prepared-follow-up",
+                        label: "Send the follow-up",
+                        question,
+                        message_id: "message-follow-up",
+                        intent_id: null,
+                        participant_id: null,
+                        required: true,
+                    },
+                ],
+                playedTurnIds: new Set<string>(),
+                sendFollowUp,
+                legalActions: () => [],
+            },
+        } as unknown as MeetingsRuntime);
+
+        render(<RecordedDirectorAction />);
+
+        const preview = screen.getByText(question);
+        expect(preview).toHaveTextContent(question);
+        expect(preview).not.toHaveClass("line-clamp-2");
+        expect(
+            screen.queryByRole("button", { name: /Expand|Collapse/ })
+        ).not.toBeInTheDocument();
+
+        fireEvent.click(screen.getByRole("button", { name: "Send question" }));
+        await waitFor(() => expect(sendFollowUp).toHaveBeenCalledTimes(1));
     });
 });

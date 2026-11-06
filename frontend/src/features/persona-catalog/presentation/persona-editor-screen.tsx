@@ -9,13 +9,14 @@
  */
 import { useEffect, useRef, useState } from 'react';
 import Link from 'next/link';
-import { ArrowLeft, Bot, Eye, Loader2, Save, History, Settings2, BookOpen } from 'lucide-react';
+import { ArrowLeft, Eye, Loader2, Save, History, Settings2, BookOpen } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { ParticipantMark } from '@/components/identity/participant-mark';
 import type { PersonaCatalogClient } from '../model/client';
 import type { Persona, PersonaStackOption, PersonaUpdateInput, PromptRevision } from '../model/types';
 import { normalizeStackIds, validatePersonaTemplate } from './validation';
@@ -28,6 +29,8 @@ export interface PersonaEditorRoutes {
 
 export interface PersonaEditorScreenProps {
     personaId: string;
+    /** Stable identity used for the participant mark; falls back to the persona id. */
+    markId?: string;
     client: PersonaCatalogClient;
     loadStacks: () => Promise<PersonaStackOption[]>;
     routes: PersonaEditorRoutes;
@@ -45,6 +48,7 @@ export interface PersonaEditorScreenProps {
 
 export function PersonaEditorScreen({
     personaId,
+    markId,
     client,
     loadStacks,
     routes,
@@ -282,18 +286,18 @@ export function PersonaEditorScreen({
 
     if (loading) {
         return (
-            <div className="min-h-screen bg-gradient-to-br from-zinc-950 via-zinc-900 to-zinc-950 flex items-center justify-center">
-                <Loader2 className="w-8 h-8 animate-spin text-zinc-400" />
+            <div className="flex min-h-full items-center justify-center">
+                <Loader2 className="size-8 animate-spin text-ink-muted motion-reduce:animate-none" />
             </div>
         );
     }
 
     if (!persona) {
         return (
-            <div className="min-h-screen bg-gradient-to-br from-zinc-950 via-zinc-900 to-zinc-950 flex items-center justify-center">
+            <div className="flex min-h-full items-center justify-center text-ink">
                 <div className="text-center">
-                    <h2 className="text-lg font-semibold text-white mb-2">Persona Not Found</h2>
-                    <Link href={routes.roster} className="text-emerald-400 hover:underline">
+                    <h2 className="type-item-title mb-2">Persona Not Found</h2>
+                    <Link href={routes.roster} className="text-action hover:underline">
                         Back to Roster
                     </Link>
                 </div>
@@ -302,14 +306,14 @@ export function PersonaEditorScreen({
     }
 
     return (
-        <div className="min-h-screen bg-gradient-to-br from-zinc-950 via-zinc-900 to-zinc-950">
+        <div className="min-h-full text-ink">
             {/* Header */}
-            <header className="border-b border-zinc-800/50 backdrop-blur-sm sticky top-0 z-50">
+            <header className="material-chrome sticky top-0 z-chrome border-b border-separator">
                 <div className="max-w-4xl mx-auto px-6 py-4 flex items-center justify-between">
                     <div className="flex items-center gap-4">
                         <Link
                             href={routes.roster}
-                            className="text-zinc-400 hover:text-white transition-colors"
+                            className="text-ink-secondary hover:text-ink m-control"
                             aria-label="Back to roster"
                             onClick={(event) => {
                                 if (!promptDirty) return;
@@ -320,16 +324,18 @@ export function PersonaEditorScreen({
                             <ArrowLeft className="w-5 h-5" />
                         </Link>
                         <div className="flex items-center gap-3">
-                            <div
-                                className="w-10 h-10 rounded-full flex items-center justify-center"
-                                style={{ backgroundColor: persona.color }}
-                            >
-                                <Bot className="w-5 h-5 text-white" />
-                            </div>
+                            <ParticipantMark
+                                participant={{
+                                    id: markId ?? persona.id,
+                                    name: persona.name,
+                                    color: persona.color,
+                                }}
+                                size="md"
+                            />
                             <div>
-                                <h1 className="text-xl font-bold text-white">{persona.name}</h1>
+                                <h1 className="text-xl font-bold text-ink">{persona.name}</h1>
                                 {persona.subtitle && (
-                                    <p className="text-xs text-zinc-500">{persona.subtitle}</p>
+                                    <p className="text-xs text-ink-muted">{persona.subtitle}</p>
                                 )}
                             </div>
                         </div>
@@ -338,17 +344,17 @@ export function PersonaEditorScreen({
             </header>
 
             {/* Main Content */}
-            <main className="max-w-4xl mx-auto px-6 py-8">
+            <main id="main-content" className="max-w-4xl mx-auto px-6 py-8" tabIndex={-1}>
                 {description && (
-                    <p className="text-sm text-zinc-400 mb-6 max-w-3xl">{description}</p>
+                    <p className="text-sm text-ink-secondary mb-6 max-w-3xl">{description}</p>
                 )}
                 {error && (
-                    <div className="bg-red-500/10 border border-red-500/30 rounded-lg p-4 mb-6">
-                        <p className="text-red-400 text-sm">{error}</p>
+                    <div role="alert" className="mb-6 rounded-group border border-danger/40 bg-danger-soft p-4">
+                        <p className="type-body text-danger">{error}</p>
                     </div>
                 )}
 
-                <p role="status" aria-live="polite" className="text-xs text-emerald-400 min-h-4 mb-4">
+                <p role="status" aria-live="polite" className="text-xs text-success min-h-4 mb-4">
                     {announcement}
                 </p>
 
@@ -356,9 +362,9 @@ export function PersonaEditorScreen({
                     <div
                         role="alertdialog"
                         aria-label="Unsaved system prompt"
-                        className="bg-amber-500/10 border border-amber-500/30 rounded-lg p-4 mb-6"
+                        className="mb-6 rounded-group border border-warning/40 bg-warning-soft p-4"
                     >
-                        <p className="text-amber-300 text-sm mb-3">
+                        <p className="mb-3 type-body text-warning">
                             You have an unsaved system prompt draft. Leaving this page will discard it.
                         </p>
                         <div className="flex flex-wrap items-center gap-2">
@@ -378,12 +384,12 @@ export function PersonaEditorScreen({
                     <div
                         role="alertdialog"
                         aria-label="Confirm revision activation"
-                        className="bg-amber-500/10 border border-amber-500/30 rounded-lg p-4 mb-6"
+                        className="mb-6 rounded-group border border-warning/40 bg-warning-soft p-4"
                         onKeyDown={(event) => {
                             if (event.key === 'Escape') setPendingActivation(null);
                         }}
                     >
-                        <p className="text-amber-300 text-sm mb-3">
+                        <p className="mb-3 type-body text-warning">
                             Activating version {pendingActivation} will replace the unsaved system prompt
                             in the editor. The draft will be discarded.
                         </p>
@@ -412,26 +418,22 @@ export function PersonaEditorScreen({
                     onValueChange={onTabChange}
                     className="space-y-6"
                 >
-                    <TabsList className="bg-zinc-800/50">
-                        <TabsTrigger value="overview" className="data-[state=active]:bg-zinc-700">
-                            <Settings2 className="w-4 h-4 mr-2" />
+                    <TabsList>
+                        <TabsTrigger value="overview">
+                            <Settings2 className="mr-2 size-4" />
                             Overview
                         </TabsTrigger>
-                        <TabsTrigger
-                            ref={promptTabAnchor}
-                            value="prompt"
-                            className="data-[state=active]:bg-zinc-700"
-                        >
-                            <History className="w-4 h-4 mr-2" />
+                        <TabsTrigger ref={promptTabAnchor} value="prompt">
+                            <History className="mr-2 size-4" />
                             System Prompt
                         </TabsTrigger>
                     </TabsList>
 
                     {/* Overview Tab */}
                     <TabsContent value="overview">
-                        <Card className="bg-zinc-900/50 border-zinc-800">
+                        <Card>
                             <CardHeader>
-                                <CardTitle className="text-white">Persona Settings</CardTitle>
+                                <CardTitle>Persona Settings</CardTitle>
                             </CardHeader>
                             <CardContent className="space-y-4">
                                 <div className="space-y-2">
@@ -440,7 +442,6 @@ export function PersonaEditorScreen({
                                         id="edit-name"
                                         value={name}
                                         onChange={(e) => setName(e.target.value)}
-                                        className="bg-zinc-800 border-zinc-700"
                                     />
                                 </div>
 
@@ -450,7 +451,6 @@ export function PersonaEditorScreen({
                                         id="edit-subtitle"
                                         value={subtitle}
                                         onChange={(e) => setSubtitle(e.target.value)}
-                                        className="bg-zinc-800 border-zinc-700"
                                     />
                                 </div>
 
@@ -460,7 +460,12 @@ export function PersonaEditorScreen({
                                         {COLORS.map((c) => (
                                             <button
                                                 key={c}
-                                                className={`w-8 h-8 rounded-full transition-transform ${color === c ? 'ring-2 ring-white scale-110' : ''
+                                                type="button"
+                                                aria-label={`Select ${c}`}
+                                                aria-pressed={color === c}
+                                                className={`m-control size-8 rounded-full ${color === c
+                                                    ? 'ring-2 ring-ink ring-offset-2 ring-offset-surface'
+                                                    : 'hover:ring-2 hover:ring-control hover:ring-offset-2 hover:ring-offset-surface'
                                                     }`}
                                                 style={{ backgroundColor: c }}
                                                 onClick={() => setColor(c)}
@@ -469,16 +474,16 @@ export function PersonaEditorScreen({
                                     </div>
                                 </div>
 
-                                <div className="space-y-3 pt-4 border-t border-zinc-800">
+                                <div className="space-y-3 pt-4 border-t border-separator">
                                     <div className="flex items-center gap-2">
-                                        <BookOpen className="w-4 h-4 text-blue-400" />
-                                        <Label className="text-white text-base">Knowledge Stacks</Label>
+                                        <BookOpen className="w-4 h-4 text-action" />
+                                        <Label className="text-ink text-base">Knowledge Stacks</Label>
                                     </div>
-                                    <p className="text-xs text-zinc-500 mb-2">
+                                    <p className="text-xs text-ink-muted mb-2">
                                         Select document domains this AI can query during a meeting.
                                     </p>
                                     {availableStacks.length === 0 ? (
-                                        <div className="text-sm text-zinc-500 italic">No knowledge stacks created yet.</div>
+                                        <div className="text-sm text-ink-muted italic">No knowledge stacks created yet.</div>
                                     ) : (
                                         <div className="grid gap-2">
                                             {availableStacks.map((stack) => {
@@ -486,9 +491,9 @@ export function PersonaEditorScreen({
                                                 return (
                                                     <label
                                                         key={stack.id}
-                                                        className={`flex items-start gap-3 p-3 rounded-lg border cursor-pointer transition-colors ${isSelected
-                                                                ? 'bg-blue-900/20 border-blue-500/50'
-                                                                : 'bg-zinc-800/30 border-zinc-800 hover:border-zinc-700'
+                                                        className={`m-control flex cursor-pointer items-start gap-3 rounded-control border p-3 ${isSelected
+                                                                ? 'border-action/50 bg-accent-soft'
+                                                                : 'border-separator bg-surface-raised/30 hover:border-control'
                                                             }`}
                                                     >
                                                         <input
@@ -501,19 +506,19 @@ export function PersonaEditorScreen({
                                                                     setSelectedStacks(selectedStacks.filter(id => id !== stack.id));
                                                                 }
                                                             }}
-                                                            className="mt-1 flex-shrink-0"
+                                                            className="mt-1 shrink-0 accent-action"
                                                         />
                                                         <div>
-                                                            <div className="text-sm font-medium text-white">
+                                                            <div className="text-sm font-medium text-ink">
                                                                 {stack.name}
                                                                 {stack.scope && (
-                                                                    <span className="ml-2 text-[10px] uppercase tracking-wide text-zinc-500">
+                                                                    <span className="ml-2 type-meta uppercase tracking-wide text-ink-muted">
                                                                         {stack.scope}
                                                                     </span>
                                                                 )}
                                                             </div>
                                                             {stack.description && (
-                                                                <div className="text-xs text-zinc-500 mt-0.5">{stack.description}</div>
+                                                                <div className="text-xs text-ink-muted mt-0.5">{stack.description}</div>
                                                             )}
                                                         </div>
                                                     </label>
@@ -525,11 +530,11 @@ export function PersonaEditorScreen({
 
                                 <Button
                                     onClick={handleSaveMetadata}
+                                    busy={saving}
+                                    busyLabel="Saving"
                                     disabled={saving}
-                                    className="bg-emerald-600 hover:bg-emerald-700"
                                 >
-                                    {saving && <Loader2 className="w-4 h-4 mr-2 animate-spin" />}
-                                    <Save className="w-4 h-4 mr-2" />
+                                    <Save className="size-4" />
                                     Save Changes
                                 </Button>
                             </CardContent>
@@ -540,11 +545,11 @@ export function PersonaEditorScreen({
                     <TabsContent value="prompt">
                         <div className="grid gap-6 lg:grid-cols-3">
                             {/* Editor */}
-                            <Card className="bg-zinc-900/50 border-zinc-800 lg:col-span-2">
+                            <Card className="lg:col-span-2">
                                 <CardHeader className="flex flex-row items-center justify-between">
-                                    <CardTitle className="text-white">System Prompt</CardTitle>
+                                    <CardTitle>System Prompt</CardTitle>
                                     {persona.active_prompt_version && (
-                                        <span className="text-xs text-zinc-500">
+                                        <span className="text-xs text-ink-muted">
                                             v{persona.active_prompt_version}
                                         </span>
                                     )}
@@ -559,20 +564,20 @@ export function PersonaEditorScreen({
                                             setPromptDirty(true);
                                         }}
                                         placeholder="Define this persona's personality, expertise, and behavior..."
-                                        className="bg-zinc-800 border-zinc-700 min-h-[300px] font-mono text-sm"
+                                        className="min-h-[300px] font-mono text-sm"
                                     />
 
                                     <div className="flex items-center justify-between">
-                                        <span className="text-xs text-zinc-500">
+                                        <span className="text-xs text-ink-muted">
                                             {promptContent.length} characters
                                         </span>
                                         <Button
                                             onClick={handleSavePrompt}
+                                            busy={saving}
+                                            busyLabel="Saving version"
                                             disabled={saving || !promptDirty}
-                                            className="bg-emerald-600 hover:bg-emerald-700"
                                         >
-                                            {saving && <Loader2 className="w-4 h-4 mr-2 animate-spin" />}
-                                            <Save className="w-4 h-4 mr-2" />
+                                            <Save className="size-4" />
                                             Save as New Version
                                         </Button>
                                     </div>
@@ -580,46 +585,46 @@ export function PersonaEditorScreen({
                             </Card>
 
                             {/* Version History */}
-                            <Card className="bg-zinc-900/50 border-zinc-800">
+                            <Card>
                                 <CardHeader>
-                                    <CardTitle className="text-white text-sm">System Prompt Version History</CardTitle>
+                                    <CardTitle>System Prompt Version History</CardTitle>
                                     {historyNote ? (
-                                        <p className="text-[11px] leading-relaxed text-zinc-500">
+                                        <p className="type-meta leading-relaxed text-ink-muted">
                                             {historyNote}
                                         </p>
                                     ) : null}
                                 </CardHeader>
                                 <CardContent className="space-y-2">
                                     {promptVersions.length === 0 ? (
-                                        <p className="text-sm text-zinc-500">No versions yet</p>
+                                        <p className="text-sm text-ink-muted">No versions yet</p>
                                     ) : (
                                         promptVersions.map((v, index) => (
                                             <div
                                                 key={v.id}
-                                                className={`w-full p-3 rounded-lg transition-colors ${v.is_active
-                                                    ? 'bg-emerald-500/10 border border-emerald-500/30'
-                                                    : 'bg-zinc-800/50 border border-transparent'
+                                                className={`m-control w-full rounded-control border p-3 ${v.is_active
+                                                    ? 'border-success/40 bg-success-soft'
+                                                    : 'border-transparent bg-surface-raised/50'
                                                     }`}
                                             >
                                                 <div className="flex items-center justify-between mb-1">
-                                                    <span className="text-sm font-medium text-white">
+                                                    <span className="text-sm font-medium text-ink">
                                                         Version {v.version}
                                                     </span>
                                                     {v.is_active && (
-                                                        <span className="text-xs text-emerald-400">Active</span>
+                                                        <span className="text-xs text-success">Active</span>
                                                     )}
                                                 </div>
                                                 {revisionNotes?.[v.id] && (
-                                                    <p className="text-xs text-zinc-400 mb-1">
+                                                    <p className="text-xs text-ink-secondary mb-1">
                                                         {revisionNotes[v.id]}
                                                     </p>
                                                 )}
                                                 {revisionBadges?.[v.id] && (
-                                                    <p className="text-[10px] uppercase tracking-wide text-amber-400/80 mb-1">
+                                                    <p className="type-meta uppercase tracking-wide text-warning/80 mb-1">
                                                         {revisionBadges[v.id]}
                                                     </p>
                                                 )}
-                                                <span className="text-xs text-zinc-500">
+                                                <span className="text-xs text-ink-muted">
                                                     {new Date(v.created_at).toLocaleDateString()}
                                                 </span>
                                                 <div className="flex flex-wrap items-center gap-2 mt-2">
@@ -627,7 +632,7 @@ export function PersonaEditorScreen({
                                                         ref={index === 0 ? viewRevisionAnchor : undefined}
                                                         variant="ghost"
                                                         size="sm"
-                                                        className="h-7 px-2 text-zinc-300"
+                                                        className="h-7 px-2 text-ink-secondary"
                                                         aria-label={`View version ${v.version}`}
                                                         onClick={() => {
                                                             onViewRevision?.();
@@ -660,15 +665,15 @@ export function PersonaEditorScreen({
                                 ref={inspectorRef}
                                 tabIndex={-1}
                                 aria-label={`Version ${viewedRevision.version} content`}
-                                className="mt-6 outline-none"
+                                className="m-inspector mt-6 outline-none"
                             >
-                                <Card className="bg-zinc-900/50 border-zinc-700">
+                                <Card>
                                     <CardHeader>
                                         <div className="flex flex-wrap items-center justify-between gap-2">
-                                            <CardTitle className="text-white">
+                                            <CardTitle>
                                                 Version {viewedRevision.version}
                                             </CardTitle>
-                                            <span className="text-xs text-zinc-500">
+                                            <span className="text-xs text-ink-muted">
                                                 {viewedRevision.is_active
                                                     ? 'This revision is active.'
                                                     : 'Viewing only — not active.'}
@@ -677,11 +682,11 @@ export function PersonaEditorScreen({
                                     </CardHeader>
                                     <CardContent className="space-y-3">
                                         {revisionNotes?.[viewedRevision.id] && (
-                                            <p className="text-xs text-zinc-400">
+                                            <p className="text-xs text-ink-secondary">
                                                 {revisionNotes[viewedRevision.id]}
                                             </p>
                                         )}
-                                        <pre className="whitespace-pre-wrap break-words font-mono text-sm text-zinc-300 bg-zinc-950/60 border border-zinc-800 rounded-lg p-4">
+                                        <pre className="whitespace-pre-wrap break-words rounded-control border border-separator bg-canvas/60 p-4 font-mono text-sm text-ink-secondary">
                                             {viewedRevision.content}
                                         </pre>
                                         {!viewedRevision.is_active && (

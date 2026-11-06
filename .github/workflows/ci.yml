@@ -17,8 +17,50 @@ concurrency:
   cancel-in-progress: true
 
 jobs:
+  changes:
+    name: Detect changed paths
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    permissions:
+      contents: read
+      pull-requests: read
+    outputs:
+      backend: ${{ steps.filter.outputs.backend }}
+      frontend: ${{ steps.filter.outputs.frontend }}
+
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v4
+
+      - name: Filter changed paths
+        id: filter
+        if: github.event_name != 'workflow_dispatch'
+        uses: dorny/paths-filter@v4
+        with:
+          # PRs use the complete PR diff; pushes use the previous pushed commit.
+          base: ${{ github.ref }}
+          predicate-quantifier: some-with-excludes
+          filters: |
+            backend:
+              - 'backend/**'
+              - '.github/workflows/**'
+              - '.env.example'
+              - '.gitattributes'
+              - '!specs/**'
+              - '!**/*.md'
+            frontend:
+              - 'frontend/**'
+              - '.github/workflows/**'
+              - '.env.example'
+              - '.gitattributes'
+              - '!specs/**'
+              - '!**/*.md'
+
+  # Keep job-level filters so skipped suites still report required checks.
   backend:
     name: Backend CI
+    needs: changes
+    if: github.event_name == 'workflow_dispatch' || needs.changes.outputs.backend == 'true'
     runs-on: ubuntu-latest
     timeout-minutes: 25
 
@@ -49,10 +91,12 @@ jobs:
           python -m pip install -r requirements.txt -r requirements-dev.txt
 
       - name: Run backend tests
-        run: python -m pytest --cov=app --cov-report=term --cov-report=xml
+        run: python -m pytest -n 2 --cov=app --cov-report=term --cov-report=xml
 
   frontend:
     name: Frontend CI
+    needs: changes
+    if: github.event_name == 'workflow_dispatch' || needs.changes.outputs.frontend == 'true'
     runs-on: ubuntu-latest
     timeout-minutes: 20
 

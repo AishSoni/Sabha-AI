@@ -12,16 +12,22 @@ const FRONTEND_PORT = 3100;
 // `npm run test:e2e:prod` builds first, then sets E2E_PRODUCTION so the same
 // journeys run against `next start` rather than the dev server.
 const PRODUCTION = process.env.E2E_PRODUCTION === "1";
+// The dev server compiles routes on demand and can trip Turbopack while files
+// change. Production runs are the acceptance path and can safely use several
+// isolated browser contexts. `E2E_WORKERS=1` is available for debugging.
+const WORKERS = Number(process.env.E2E_WORKERS ?? (PRODUCTION ? 3 : 1));
 
 export default defineConfig({
     testDir: './e2e',
     timeout: 90_000,
     expect: { timeout: 15_000 },
-    fullyParallel: false,
-    workers: 1,
+    fullyParallel: PRODUCTION,
+    workers: WORKERS,
     reporter: [['list']],
     use: {
         baseURL: `http://127.0.0.1:${FRONTEND_PORT}`,
+        actionTimeout: 15_000,
+        navigationTimeout: 30_000,
         trace: 'retain-on-failure',
         ...devices['Desktop Chrome'],
     },

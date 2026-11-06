@@ -1,48 +1,10 @@
 'use client';
 
 import { useState } from 'react';
-import { Loader2, RotateCcw, SkipForward } from 'lucide-react';
+import { RotateCcw, SkipForward } from 'lucide-react';
 
 import { Button } from '@/components/ui/button';
 import { useMeetingsRuntime } from './context';
-
-/**
- * Replay-only pacing control. Live meetings pace their own tokens, so this
- * renders nothing outside a recorded session that carries exploration data.
- */
-export function ReplaySpeedControl() {
-    const runtime = useMeetingsRuntime();
-    const replay = runtime.replay;
-    if (
-        !replay ||
-        (replay.transitions.length === 0 &&
-            (replay.preparedTurns ?? []).length === 0)
-    ) {
-        return null;
-    }
-
-    return (
-        <div
-            className="flex items-center gap-1.5"
-            role="group"
-            aria-label="Recorded playback speed"
-        >
-            <span className="text-xs text-zinc-500">Speed</span>
-            {([1, 2] as const).map((speed) => (
-                <Button
-                    key={speed}
-                    type="button"
-                    size="sm"
-                    variant={replay.playbackSpeed === speed ? 'secondary' : 'ghost'}
-                    aria-pressed={replay.playbackSpeed === speed}
-                    onClick={() => replay.setPlaybackSpeed(speed)}
-                >
-                    {speed}x
-                </Button>
-            ))}
-        </div>
-    );
-}
 
 /**
  * Controls for the prepared turn that owns the current state. They only
@@ -80,20 +42,18 @@ export function PreparedTurnControls({
             }
         };
         return (
-            <div className="mb-4 flex flex-wrap items-center gap-2">
+            <div className="flex flex-wrap items-center gap-2">
                 {activePrepared ? (
                     <Button
                         type="button"
                         size="sm"
                         variant="outline"
+                        busy={busy === 'skip'}
+                        busyLabel="Opening response"
                         disabled={busy !== null}
                         onClick={() => void runDeck('skip')}
                     >
-                        {busy === 'skip' ? (
-                            <Loader2 className="mr-1 h-4 w-4 animate-spin" />
-                        ) : (
-                            <SkipForward className="mr-1 h-4 w-4" />
-                        )}
+                        <SkipForward className="mr-1 size-4" />
                         Show full response
                     </Button>
                 ) : null}
@@ -102,19 +62,17 @@ export function PreparedTurnControls({
                         type="button"
                         size="sm"
                         variant="ghost"
+                        busy={busy === 'replay'}
+                        busyLabel="Replaying turn"
                         disabled={busy !== null}
                         onClick={() => void runDeck('replay')}
                     >
-                        {busy === 'replay' ? (
-                            <Loader2 className="mr-1 h-4 w-4 animate-spin" />
-                        ) : (
-                            <RotateCcw className="mr-1 h-4 w-4" />
-                        )}
+                        <RotateCcw className="mr-1 size-4" />
                         Replay last turn
                     </Button>
                 ) : null}
                 {error ? (
-                    <p role="alert" className="text-xs text-red-400">
+                    <p role="alert" className="type-meta text-danger">
                         {error}
                     </p>
                 ) : null}
@@ -154,21 +112,19 @@ export function PreparedTurnControls({
     if (!skipTarget && !replayTarget) return null;
 
     return (
-        <div className="mb-4 rounded-lg border border-zinc-800 bg-zinc-900/40 px-3 py-2">
+        <div className="rounded-control border border-separator bg-surface-raised px-3 py-2">
             <div className="flex flex-wrap items-center gap-2">
                 {skipTarget ? (
                     <Button
                         type="button"
                         size="sm"
                         variant="outline"
+                        busy={busy === 'skip'}
+                        busyLabel="Opening response"
                         disabled={busy !== null}
                         onClick={() => void run('skip', skipTarget.intent_id)}
                     >
-                        {busy === 'skip' ? (
-                            <Loader2 className="mr-1 h-4 w-4 animate-spin" />
-                        ) : (
-                            <SkipForward className="mr-1 h-4 w-4" />
-                        )}
+                        <SkipForward className="mr-1 size-4" />
                         Show full response
                     </Button>
                 ) : null}
@@ -177,20 +133,18 @@ export function PreparedTurnControls({
                         type="button"
                         size="sm"
                         variant="ghost"
+                        busy={busy === 'replay'}
+                        busyLabel="Replaying turn"
                         disabled={busy !== null}
                         onClick={() => void run('replay', replayTarget.intent_id)}
                     >
-                        {busy === 'replay' ? (
-                            <Loader2 className="mr-1 h-4 w-4 animate-spin" />
-                        ) : (
-                            <RotateCcw className="mr-1 h-4 w-4" />
-                        )}
+                        <RotateCcw className="mr-1 size-4" />
                         Replay this prepared turn
                     </Button>
                 ) : null}
             </div>
             {error ? (
-                <p role="alert" className="mt-1 text-xs text-red-400">
+                <p role="alert" className="mt-1 type-meta text-danger">
                     {error}
                 </p>
             ) : null}

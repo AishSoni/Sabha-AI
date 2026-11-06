@@ -99,16 +99,14 @@ export default function DemoNewMeetingPage() {
     };
 
     return (
-        <main className="mx-auto max-w-4xl px-4 py-8">
+        <main id="main-content" className="mx-auto max-w-4xl px-4 py-8" tabIndex={-1}>
             <div className="mb-6">
                 <div className="mb-2 flex flex-wrap items-center gap-2">
-                    <Badge className="bg-indigo-600 text-white hover:bg-indigo-600">
-                        Prepared demo
-                    </Badge>
-                    <span className="text-xs text-zinc-500">Recorded creation record</span>
+                    <Badge>Prepared demo</Badge>
+                    <span className="text-xs text-ink-muted">Recorded creation record</span>
                 </div>
-                <h1 className="text-2xl font-semibold text-white">Start the meeting</h1>
-                <p className="mt-2 text-sm text-zinc-400">
+                <h1 className="text-2xl font-semibold text-ink">Start the meeting</h1>
+                <p className="mt-2 text-sm text-ink-secondary">
                     This is the recorded creation record for the prepared meeting.
                 </p>
                 <div className="mt-4 flex flex-wrap items-center gap-2">
@@ -116,19 +114,18 @@ export default function DemoNewMeetingPage() {
                         type="button"
                         variant="outline"
                         size="sm"
-                        className="border-zinc-700 text-zinc-200"
                         disabled={!workspace.expanded}
                         onClick={() => setEditing(true)}
                     >
                         Try editing this setup
                     </Button>
-                    <span className="text-xs text-zinc-500">
+                    <span className="text-xs text-ink-muted">
                         Practice only · changes stay in this browser and never alter
                         the recording.
                     </span>
                 </div>
                 {!workspace.expanded ? (
-                    <p className="mt-2 text-xs text-zinc-500">
+                    <p className="mt-2 text-xs text-ink-muted">
                         Practice editing is unavailable for this recording
                         version. The recorded meeting remains usable.
                     </p>
@@ -136,14 +133,14 @@ export default function DemoNewMeetingPage() {
             </div>
 
             {error ? (
-                <p className="mb-4 rounded-lg border border-red-800 bg-red-950/30 p-3 text-sm text-red-300">
+                <p className="mb-4 rounded-lg border border-danger/60 bg-danger-soft p-3 text-sm text-danger">
                     {error}
                 </p>
             ) : null}
 
             {created ? (
-                <Card className="mb-4 border-emerald-900/60 bg-emerald-950/20 p-5">
-                    <div className="flex items-center gap-2 text-emerald-300">
+                <Card className="mb-4 border-success/50 bg-success-soft p-5">
+                    <div className="flex items-center gap-2 text-success">
                         <ShieldCheck className="h-5 w-5" />
                         <h2 className="font-medium">Recorded intake ready</h2>
                     </div>
@@ -151,10 +148,10 @@ export default function DemoNewMeetingPage() {
                         {(intake?.stages ?? []).map((stage) => (
                             <li
                                 key={stage.key}
-                                className="rounded-lg border border-emerald-900/40 bg-zinc-950/40 p-2 text-xs"
+                                className="rounded-lg border border-success/40 bg-canvas/40 p-2 text-xs"
                             >
-                                <p className="font-medium text-emerald-200">{stage.label}</p>
-                                <p className="mt-1 text-zinc-500">
+                                <p className="font-medium text-success">{stage.label}</p>
+                                <p className="mt-1 text-ink-muted">
                                     {new Date(stage.at).toLocaleTimeString([], {
                                         hour: "2-digit",
                                         minute: "2-digit",
@@ -164,11 +161,11 @@ export default function DemoNewMeetingPage() {
                             </li>
                         ))}
                     </ol>
-                    <p className="mt-3 text-xs text-zinc-400">{intake?.note}</p>
+                    <p className="mt-3 text-xs text-ink-secondary">{intake?.note}</p>
                     <Link
                         ref={openRoomRef}
                         href={`/demo/meetings/${run.session.meeting_id}?tab=chat`}
-                        className="mt-4 inline-flex items-center gap-2 rounded-lg bg-indigo-600 px-4 py-2 text-sm font-medium text-white hover:bg-indigo-700"
+                        className="m-control mt-4 inline-flex items-center gap-2 rounded-control bg-action px-4 py-2 type-control font-medium text-action-foreground hover:bg-action-hover"
                     >
                         Open the meeting room
                         <ArrowRight className="h-4 w-4" />
@@ -178,69 +175,70 @@ export default function DemoNewMeetingPage() {
                 <Button
                     ref={createRef}
                     onClick={() => void create()}
-                    disabled={busy}
-                    className="mb-4 bg-indigo-600 hover:bg-indigo-700"
+                    busy={busy}
+                    busyLabel="Recording creation"
+                    className="mb-4"
                 >
-                    {busy ? "Recording creation…" : "Create recorded meeting"}
+                    Create recorded meeting
                 </Button>
             )}
 
             <div className="space-y-4">
-                <Card className="border-zinc-800 bg-zinc-900/50 p-5">
-                    <div className="flex items-center gap-2 text-xs font-medium uppercase tracking-wide text-amber-400">
+                <Card className="p-5">
+                    <div className="flex items-center gap-2 type-meta font-medium uppercase tracking-wide text-warning">
                         <Lock className="h-4 w-4" />
                         Recorded setup
                     </div>
                     <div className="mt-3 grid gap-4">
-                        <label className="grid gap-1 text-sm">
-                            <span className="text-zinc-400">Agenda</span>
+                        <label className="grid gap-1">
+                            <span className="type-control text-ink-secondary">Agenda</span>
                             <input
                                 readOnly
                                 value={preset?.agenda ?? ""}
-                                className="rounded-lg border border-zinc-800 bg-zinc-950 px-3 py-2 text-zinc-200"
+                                className="rounded-control border border-control bg-surface-raised px-3 py-2 type-body text-ink"
                             />
                         </label>
-                        <label className="grid gap-1 text-sm">
-                            <span className="text-zinc-400">Context</span>
+                        <label className="grid gap-1">
+                            <span className="type-control text-ink-secondary">Context</span>
                             <textarea
                                 readOnly
                                 rows={4}
                                 value={preset?.context ?? ""}
-                                className="rounded-lg border border-zinc-800 bg-zinc-950 px-3 py-2 text-zinc-200"
+                                className="rounded-control border border-control bg-surface-raised px-3 py-2 type-body text-ink"
                             />
                         </label>
                     </div>
                 </Card>
 
-                <Card className="border-zinc-800 bg-zinc-900/50 p-5">
-                    <h2 className="text-sm font-semibold text-zinc-300">Board</h2>
+                <Card className="p-5">
+                    <h2 className="type-control font-semibold text-ink-secondary">Board</h2>
                     <div className="mt-3 grid gap-2 sm:grid-cols-3">
                         {participants.map((participant) => (
                             <div
                                 key={participant.participant_id}
-                                className="rounded-lg border border-zinc-800 bg-zinc-950/50 p-3"
+                                className="rounded-control border border-separator bg-surface-raised/50 p-3"
                             >
                                 <div className="flex items-center gap-2">
-                                    <CheckCircle2 className="h-4 w-4 text-emerald-400" />
-                                    <span className="text-sm font-medium text-white">
+                                    <CheckCircle2 className="h-4 w-4 text-success" />
+                                    <span className="text-sm font-medium text-ink">
                                         {participant.name}
                                     </span>
                                 </div>
-                                <p className="mt-1 text-xs text-zinc-500">{participant.role}</p>
+                                <p className="mt-1 text-xs text-ink-muted">{participant.role}</p>
                             </div>
                         ))}
                     </div>
                 </Card>
 
-                <Card className="border-zinc-800 bg-zinc-900/50 p-5">
-                    <h2 className="text-sm font-semibold text-zinc-300">Supplied document</h2>
-                    <div className="mt-3 flex items-start gap-3 rounded-lg border border-zinc-800 bg-zinc-950/50 p-3">
-                        <FileText className="mt-0.5 h-5 w-5 text-indigo-400" />
+                <Card className="p-5">
+                    <h2 className="type-control font-semibold text-ink-secondary">Supplied document</h2>
+                    <div className="mt-3 flex items-start gap-3 rounded-control border border-separator bg-surface-raised/50 p-3">
+                        <FileText className="mt-0.5 h-5 w-5 text-action" />
                         <div>
-                            <p className="text-sm font-medium text-white">
+                            <p className="text-sm font-medium text-ink">
                                 {preset?.document_label ?? "Prepared historical document"}
                             </p>
-                            <p className="mt-1 text-xs text-zinc-500">
+                            <p className="mt-1 text-xs text-ink-muted">
                                 Prepared document supplied with the recording.
                             </p>
                         </div>

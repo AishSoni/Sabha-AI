@@ -12,6 +12,7 @@ interface Box {
 
 const CARD: Box = { x: 0, y: 0, width: 240, height: 80 };
 let target: Box = { x: 100, y: 100, width: 120, height: 40 };
+let avoidBox: Box = { x: 100, y: 155, width: 240, height: 80 };
 
 function makeRect(box: Box): DOMRect {
     return {
@@ -27,28 +28,35 @@ function makeRect(box: Box): DOMRect {
     } as DOMRect;
 }
 
-function Probe() {
+function Probe({ avoid = false }: { avoid?: boolean }) {
     const targetRef = useRef<HTMLButtonElement>(null);
     const cardRef = useRef<HTMLDivElement>(null);
+    const avoidRef = useRef<HTMLDivElement>(null);
     const [elements, setElements] = useState<{
         target: HTMLElement | null;
         card: HTMLElement | null;
-    }>({ target: null, card: null });
+        avoid: HTMLElement | null;
+    }>({ target: null, card: null, avoid: null });
 
     useEffect(() => {
         setElements({
             target: targetRef.current,
             card: cardRef.current,
+            avoid: avoidRef.current,
         });
     }, []);
 
-    const state = useAnchoredCard(elements.target, elements.card);
+    const state = useAnchoredCard(elements.target, elements.card, {
+        avoid:
+            avoid && elements.avoid ? [elements.avoid] : [],
+    });
 
     return (
         <div>
             <button ref={targetRef} data-testid="target">
                 Anchor
             </button>
+            <div ref={avoidRef} data-testid="avoid" />
             <div
                 ref={cardRef}
                 data-testid="card"
@@ -80,6 +88,7 @@ beforeEach(() => {
     vi.spyOn(HTMLElement.prototype, "getBoundingClientRect").mockImplementation(
         function mockRect(this: HTMLElement) {
             if (this.dataset.testid === "target") return makeRect(target);
+            if (this.dataset.testid === "avoid") return makeRect(avoidBox);
             if (this.dataset.testid === "card") return makeRect(CARD);
             return makeRect({ x: 0, y: 0, width: 0, height: 0 });
         }
@@ -135,6 +144,20 @@ describe("useAnchoredCard", () => {
         );
         expect(Number(card.dataset.x) + CARD.width).toBeLessThanOrEqual(
             window.innerWidth
+        );
+    });
+
+    it("moves away from another real control in the same dock", async () => {
+        target = { x: 100, y: 100, width: 120, height: 40 };
+        avoidBox = { x: 100, y: 155, width: 240, height: 80 };
+        render(<Probe avoid />);
+        const card = screen.getByTestId("card");
+        await waitFor(() =>
+            expect(card).toHaveAttribute("data-visible", "true")
+        );
+        expect(card).toHaveAttribute("data-placement", "top");
+        expect(Number(card.dataset.y) + CARD.height).toBeLessThanOrEqual(
+            target.y
         );
     });
 

@@ -15,6 +15,9 @@ import {
     signOutEverywhere,
 } from '@/shared/access';
 
+import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
+
 import { probeOperatorSession } from '../api/session';
 import { safeReturnTarget } from '../state/return-target';
 
@@ -25,9 +28,6 @@ type LoginMode =
     | 'unavailable'
     | 'forbidden'
     | 'unconfigured';
-
-const INPUT =
-    'w-full rounded-md border border-neutral-700 bg-neutral-900 px-3 py-2 text-sm text-neutral-100 placeholder:text-neutral-500 focus:border-emerald-500 focus:outline-none';
 
 export function LoginScreen() {
     const router = useRouter();
@@ -166,68 +166,75 @@ export function LoginScreen() {
     }
 
     return (
-        <main className="flex min-h-screen items-center justify-center bg-neutral-950 px-4 text-neutral-100">
+        <main id="main-content" className="flex min-h-screen items-center justify-center bg-canvas px-4 text-ink" tabIndex={-1}>
             <div className="w-full max-w-sm space-y-6">
                 <div className="space-y-2 text-center">
-                    <p className="text-xs font-semibold uppercase tracking-[0.25em] text-emerald-400">
+                    <p className="type-meta-strong uppercase tracking-[0.25em] text-action">
                         Operator access
                     </p>
-                    <h1 className="text-2xl font-semibold">Sign in to Sabha</h1>
-                    <p className="text-sm text-neutral-400">
+                    <h1 className="type-page-title">Sign in to Sabha</h1>
+                    <p className="type-body text-ink-secondary">
                         Public visitors can still open the guided replay without an
                         account.
                     </p>
                 </div>
 
                 {mode === 'checking' && (
-                    <p className="text-center text-sm text-neutral-400">
+                    <p className="text-center type-body text-ink-muted">
                         Checking sign-in…
                     </p>
                 )}
 
                 {mode === 'unavailable' && (
-                    <div className="space-y-3 rounded-md border border-amber-700/60 bg-amber-950/20 p-4 text-sm">
-                        <p className="text-amber-200">
+                    <div
+                        role="alert"
+                        className="space-y-3 rounded-group border border-warning/40 bg-warning-soft p-4 type-body"
+                    >
+                        <p className="text-warning">
                             Sign-in is temporarily unavailable. Your session was not
                             changed.
                         </p>
-                        <button
+                        <Button
                             type="button"
+                            size="sm"
                             onClick={() => {
                                 setMessage(null);
                                 setMode('checking');
                                 void restore();
                             }}
-                            className="rounded-md bg-amber-600 px-3 py-1.5 text-xs font-medium text-white hover:bg-amber-500"
                         >
                             Retry
-                        </button>
+                        </Button>
                     </div>
                 )}
 
                 {mode === 'forbidden' && (
-                    <div className="space-y-3 rounded-md border border-red-800/60 bg-red-950/20 p-4 text-sm">
-                        <p className="text-red-200">
+                    <div
+                        role="alert"
+                        className="space-y-3 rounded-group border border-danger/40 bg-danger-soft p-4 type-body"
+                    >
+                        <p className="text-danger">
                             This account is not the operator for this workspace.
                         </p>
-                        <button
+                        <Button
                             type="button"
+                            variant="outline"
+                            size="sm"
                             onClick={() => {
                                 void signOutEverywhere().catch(() => {});
                                 setPassword('');
                                 setMode('idle');
                             }}
-                            className="rounded-md border border-red-700 px-3 py-1.5 text-xs font-medium text-red-100 hover:border-red-500"
                         >
                             Sign out
-                        </button>
+                        </Button>
                     </div>
                 )}
 
                 {mode === 'unconfigured' && (
-                    <div className="space-y-3 rounded-md border border-neutral-700 bg-neutral-900 p-4 text-sm text-neutral-300">
+                    <div className="space-y-3 rounded-group border border-separator bg-surface-raised p-4 type-body text-ink-secondary">
                         <p>Operator sign-in is not configured for this deployment.</p>
-                        <a href="/demo" className="text-emerald-400 hover:text-emerald-300">
+                        <a href="/demo" className="text-action hover:text-action-hover">
                             Open guided replay
                         </a>
                     </div>
@@ -235,10 +242,9 @@ export function LoginScreen() {
 
                 {(mode === 'idle' || mode === 'submitting') && (
                     <form className="space-y-4" onSubmit={submit}>
-                        <label className="block space-y-1.5 text-sm">
-                            <span className="text-neutral-300">Email</span>
-                            <input
-                                className={INPUT}
+                        <label className="block space-y-1.5">
+                            <span className="type-control text-ink">Email</span>
+                            <Input
                                 type="email"
                                 name="email"
                                 autoComplete="username"
@@ -248,10 +254,9 @@ export function LoginScreen() {
                                 disabled={mode === 'submitting'}
                             />
                         </label>
-                        <label className="block space-y-1.5 text-sm">
-                            <span className="text-neutral-300">Password</span>
-                            <input
-                                className={INPUT}
+                        <label className="block space-y-1.5">
+                            <span className="type-control text-ink">Password</span>
+                            <Input
                                 type="password"
                                 name="password"
                                 autoComplete="current-password"
@@ -262,22 +267,23 @@ export function LoginScreen() {
                             />
                         </label>
                         {message && (
-                            <p role="alert" className="text-sm text-red-300">
+                            <p role="alert" className="type-body text-danger">
                                 {message}
                             </p>
                         )}
-                        <button
+                        <Button
                             type="submit"
-                            disabled={mode === 'submitting'}
-                            className="w-full rounded-md bg-emerald-600 px-4 py-2 text-sm font-medium text-white hover:bg-emerald-500 disabled:cursor-not-allowed disabled:opacity-60"
+                            className="w-full"
+                            busy={mode === 'submitting'}
+                            busyLabel="Signing in"
                         >
-                            {mode === 'submitting' ? 'Signing in…' : 'Sign in'}
-                        </button>
+                            Sign in
+                        </Button>
                     </form>
                 )}
 
-                <div className="text-center text-xs text-neutral-500">
-                    <a href="/demo" className="hover:text-neutral-300">
+                <div className="text-center type-meta text-ink-muted">
+                    <a href="/demo" className="hover:text-ink-secondary">
                         Return to guided replay
                     </a>
                 </div>

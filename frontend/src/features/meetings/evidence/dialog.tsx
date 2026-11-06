@@ -116,15 +116,15 @@ function Provenance({ descriptor }: { descriptor: EvidenceDescriptor }) {
     return (
         <section
             aria-label="Evidence provenance"
-            className="rounded-md border bg-muted/30 p-3 text-xs"
+            className="rounded-group border border-separator bg-surface-raised p-3 type-meta"
         >
-            <p className="font-medium">{provenance.label}</p>
+            <p className="font-medium text-ink">{provenance.label}</p>
             {rows.length > 0 ? (
                 <dl className="mt-2 grid gap-1 sm:grid-cols-[7rem_1fr]">
                     {rows.map(([label, value]) => (
                         <React.Fragment key={label}>
-                            <dt className="text-muted-foreground">{label}</dt>
-                            <dd className="break-words">{value}</dd>
+                            <dt className="text-ink-muted">{label}</dt>
+                            <dd className="break-words text-ink-secondary">{value}</dd>
                         </React.Fragment>
                     ))}
                 </dl>
@@ -138,7 +138,7 @@ function LoadingState() {
         <div
             role="status"
             aria-live="polite"
-            className="flex items-center gap-2 py-10 text-sm text-muted-foreground"
+            className="flex items-center gap-2 py-10 type-body text-ink-muted"
         >
             <Loader2 className="size-4 animate-spin motion-reduce:animate-none" />
             Loading evidence…
@@ -157,13 +157,13 @@ function ErrorState({
     return (
         <div
             role="alert"
-            className="space-y-3 rounded-md border border-destructive/40 bg-destructive/5 p-4"
+            className="space-y-3 rounded-group border border-danger/40 bg-danger-soft p-4"
         >
-            <div className="flex items-center gap-2 font-medium">
+            <div className="flex items-center gap-2 type-item-title text-danger">
                 <AlertTriangle className="size-4" />
                 {copy.title}
             </div>
-            <p className="text-sm text-muted-foreground">{copy.detail}</p>
+            <p className="type-body text-ink-secondary">{copy.detail}</p>
             {error.retryable ? (
                 <Button type="button" variant="outline" size="sm" onClick={onRetry}>
                     <RotateCcw className="size-3.5" />
@@ -196,7 +196,7 @@ export function EvidencePreviewDialog({
         >
             <DialogContent className="max-h-[88vh] w-[min(64rem,calc(100vw-2rem))] gap-0 overflow-hidden p-0 sm:max-w-4xl motion-reduce:animate-none">
                 <div className="flex max-h-[88vh] min-h-0 flex-col">
-                    <DialogHeader className="border-b px-6 py-4 text-left">
+                    <DialogHeader className="border-b border-separator px-6 py-4 text-left">
                         <DialogTitle className="flex items-center gap-2 pr-8">
                             <FileText className="size-4 shrink-0" />
                             <span className="break-words">
@@ -208,12 +208,12 @@ export function EvidencePreviewDialog({
 
                     <div className="min-h-0 flex-1 space-y-4 overflow-y-auto px-6 py-4">
                         {citation.excerpt ? (
-                            <blockquote className="border-l-2 pl-3 text-sm italic">
+                            <blockquote className="border-l-2 border-separator pl-3 type-body italic text-ink-secondary">
                                 “{citation.excerpt}”
                             </blockquote>
                         ) : null}
                         {citation.locator ? (
-                            <p className="text-xs text-muted-foreground">
+                            <p className="type-meta text-ink-muted">
                                 Locator: {citation.locator}
                             </p>
                         ) : null}
@@ -223,10 +223,10 @@ export function EvidencePreviewDialog({
                         {unavailable ? (
                             <div
                                 role="alert"
-                                className="rounded-md border border-amber-500/40 bg-amber-500/10 p-4 text-sm"
+                                className="rounded-group border border-warning/40 bg-warning-soft p-4 type-body"
                             >
-                                <p className="font-medium">Evidence unavailable</p>
-                                <p className="mt-1 text-muted-foreground">
+                                <p className="font-medium text-warning">Evidence unavailable</p>
+                                <p className="mt-1 text-ink-secondary">
                                     {descriptor?.unavailable_reason ??
                                         "This evidence is no longer retained or is not ready."}
                                 </p>
@@ -243,17 +243,17 @@ export function EvidencePreviewDialog({
                         ) : null}
 
                         {externalUrl ? (
-                            <div className="border-t pt-3">
+                            <div className="border-t border-separator pt-3">
                                 <a
                                     href={externalUrl}
                                     target="_blank"
                                     rel="noopener noreferrer nofollow"
-                                    className="inline-flex items-center gap-1 text-xs underline"
+                                    className="inline-flex items-center gap-1 type-meta text-action underline hover:text-action-hover"
                                 >
                                     Open original source
                                     <ExternalLink className="size-3" />
                                 </a>
-                                <p className="mt-1 text-xs text-muted-foreground">
+                                <p className="mt-1 type-meta text-ink-muted">
                                     Secondary action only. The preview never
                                     falls back to this link.
                                 </p>

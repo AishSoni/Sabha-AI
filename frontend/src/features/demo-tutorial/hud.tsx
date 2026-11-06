@@ -8,20 +8,25 @@
  * journey. A missing or clipped anchor collapses it to the compact bar.
  */
 import {
-    useRef,
+    useMemo,
     useState,
     useSyncExternalStore,
     type CSSProperties,
     type KeyboardEvent,
 } from "react";
 import { createPortal } from "react-dom";
-import Link from "next/link";
-import { ChevronDown, Compass, Sparkles } from "lucide-react";
-import { chapterHref, useReplayRun } from "@/features/meetings/presentation";
-import { useAnchorCandidates } from "./anchors";
+import { Sparkles } from "lucide-react";
+import {
+    getAnchor,
+    useAnchorCandidates,
+    useAnchorVersion,
+} from "./anchors";
 import type { TutorialAnchorId } from "./contract";
+import { ExploreRecordingMenu } from "./explore-menu";
+import { TutorialGuide } from "./guide";
 import { useDemoTutorial } from "./provider";
 import { useModalOpen, useTutorialStreaming } from "./presence";
+import { tutorialProgress } from "./progress";
 import { useAnchoredCard } from "./use-anchored-card";
 
 const emptySubscribe = () => () => {};
@@ -49,21 +54,79 @@ export function TutorialHud() {
           ) as TutorialAnchorId[])
         : [];
     const match = useAnchorCandidates(candidates);
+    const anchorVersion = useAnchorVersion();
+    const avoid = useMemo(() => {
+        // The version is read so a newly mounted control invalidates the
+        // obstacle list even when the prompt id stays the same.
+        void anchorVersion;
+        // Only the controls the current instruction could sit on top of are
+        // hard obstacles. Avoiding every registered anchor makes the card
+        // impossible to place in the populated room.
+        const critical: TutorialAnchorId[] = [
+            "room.speaker",
+            "room.followup",
+        ];
+        const anchors = critical
+            .filter((id) => id !== match?.id)
+            .map((id) => getAnchor(id))
+            .filter((element): element is HTMLElement => Boolean(element));
+        if (typeof document === "undefined") return anchors;
+
+        const room = document.querySelector('[data-testid="room-work-area"]');
+        const dock = document.querySelector('[data-testid="room-dock"]');
+        const flagged = room
+            ? Array.from(
+                  room.querySelectorAll<HTMLElement>("[data-tutorial-avoid]")
+              )
+            : [];
+        return [
+            ...anchors,
+            ...flagged,
+            ...(dock instanceof HTMLElement ? [dock] : []),
+        ];
+    }, [match?.id, anchorVersion]);
     const position = useAnchoredCard(
         prompt?.anchor ? (match?.element ?? null) : null,
-        card
+        card,
+        { avoid }
     );
 
     const hasTarget = Boolean(prompt?.anchor);
     const anchored = !hasTarget || match !== null;
     const placed = !hasTarget || position?.visible === true;
     const suspended = modalOpen || streaming;
+    const inlineRoom =
+        (prompt?.id === "main-speaker" || prompt?.id === "main-followup") &&
+        match !== null;
     const cardVisible =
-        !tutorial.hidden && !suspended && anchored && placed;
-    const compactVisible = !cardVisible && !suspended;
-    const cardMounted = !tutorial.hidden && !suspended && anchored;
+        !inlineRoom && !tutorial.hidden && !suspended && anchored && placed;
+    const compactVisible =
+        !suspended && (tutorial.hidden || (!inlineRoom && !cardVisible));
+    const cardMounted = !inlineRoom && !tutorial.hidden && !suspended && anchored;
+    const inlineTarget =
+        inlineRoom && match
+            ? (() => {
+                  const rect = match.element.getBoundingClientRect();
+                  return {
+                      left: rect.left,
+                      top: rect.top,
+                      width: rect.width,
+                      height: rect.height,
+                  };
+              })()
+            : null;
+    const ringTarget = position?.target ?? inlineTarget;
+    const ringVisible =
+        !tutorial.hidden &&
+        !suspended &&
+        anchored &&
+        hasTarget &&
+        Boolean(ringTarget) &&
+        (cardVisible || inlineRoom);
 
     if (!mounted || !prompt) return null;
+
+    const progress = tutorialProgress(prompt, tutorial.journey);
 
     const onCardKeyDown = (event: KeyboardEvent<HTMLDivElement>) => {
         if (event.key === "Escape") {
@@ -88,95 +151,32 @@ export function TutorialHud() {
 
     return createPortal(
         <>
-            {cardVisible && position && hasTarget ? (
+            {ringVisible && ringTarget ? (
                 <div
                     aria-hidden="true"
                     data-testid="tutorial-ring"
-                    className="pointer-events-none fixed z-30 rounded-lg ring-2 ring-indigo-400/70"
+                    className="pointer-events-none fixed z-highlight rounded-control ring-2 ring-action/70"
                     style={{
-                        left: position.target.left - 4,
-                        top: position.target.top - 4,
-                        width: position.target.width + 8,
-                        height: position.target.height + 8,
+                        left: ringTarget.left - 4,
+                        top: ringTarget.top - 4,
+                        width: ringTarget.width + 8,
+                        height: ringTarget.height + 8,
                     }}
                 />
             ) : null}
             {cardMounted ? (
                 <div
                     ref={setCard}
-                    role="region"
-                    aria-label="Demo tutorial"
-                    data-testid="tutorial-hud"
-                    data-placement={position?.placement ?? "floating"}
                     data-state={cardVisible ? "shown" : "suspended"}
-                    className="fixed z-40 w-[min(20rem,calc(100vw-1.5rem))] rounded-xl border border-indigo-500/40 bg-zinc-900/95 p-3 text-zinc-100 shadow-xl"
+                    className="fixed z-notice w-[min(20rem,calc(100vw-1.5rem))]"
                     style={cardStyle}
                     onKeyDown={onCardKeyDown}
                 >
-                    <div className="flex items-start gap-2">
-                        <Sparkles
-                            className="mt-0.5 h-4 w-4 shrink-0 text-indigo-300"
-                            aria-hidden="true"
-                        />
-                        <div className="min-w-0 flex-1">
-                            <p className="text-sm font-medium leading-snug">
-                                {prompt.instruction}
-                            </p>
-                            {prompt.progress ? (
-                                <p className="mt-0.5 text-xs text-zinc-400">
-                                    {prompt.progress}
-                                </p>
-                            ) : null}
-                        </div>
-                        <ExploreRecordingMenu iconOnly />
-                        <button
-                            type="button"
-                            onClick={tutorial.hide}
-                            className="shrink-0 rounded-md px-1.5 py-0.5 text-xs text-zinc-400 hover:bg-zinc-800 hover:text-zinc-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-indigo-400"
-                        >
-                            Hide
-                        </button>
-                    </div>
-                    {prompt.complete ? (
-                        <p className="mt-2 text-xs text-zinc-400">
-                            {prompt.id === "main-complete"
-                                ? "The recorded meeting is archived. Practice edits stay in this browser. Both tours are optional."
-                                : "Nothing was saved or activated. The recording is unchanged."}
-                        </p>
-                    ) : null}
-                    {prompt.id === "tour-prompt-4" ||
-                    prompt.id === "tour-knowledge-4" ? (
-                        <div className="mt-2 flex flex-wrap gap-1.5">
-                            <TourAction onClick={tutorial.endTour}>
-                                Finish tour
-                            </TourAction>
-                            <TourAction onClick={tutorial.backToDemo}>
-                                Back to demo
-                            </TourAction>
-                        </div>
-                    ) : prompt.id === "main-complete" ? (
-                        <div className="mt-2 flex flex-wrap gap-1.5">
-                            <TourAction
-                                onClick={() => tutorial.startTour("prompt")}
-                            >
-                                Explore prompt versions
-                            </TourAction>
-                            <TourAction
-                                onClick={() => tutorial.startTour("knowledge")}
-                            >
-                                Explore knowledge stacks
-                            </TourAction>
-                            <TourAction onClick={tutorial.hide}>
-                                Finish
-                            </TourAction>
-                        </div>
-                    ) : tutorial.activeTour ? (
-                        <div className="mt-2 flex justify-end">
-                            <TourAction onClick={tutorial.endTour}>
-                                End tour
-                            </TourAction>
-                        </div>
-                    ) : null}
+                    <TutorialGuide
+                        prompt={prompt}
+                        progress={progress}
+                        placement="card"
+                    />
                 </div>
             ) : null}
             {compactVisible ? <CompactBar /> : null}
@@ -195,43 +195,25 @@ export function TutorialHud() {
     );
 }
 
-function TourAction({
-    onClick,
-    children,
-}: {
-    onClick: () => void;
-    children: React.ReactNode;
-}) {
-    return (
-        <button
-            type="button"
-            onClick={onClick}
-            className="rounded-full border border-indigo-500/40 px-2.5 py-0.5 text-xs font-medium text-indigo-200 hover:bg-indigo-900/40 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-indigo-400"
-        >
-            {children}
-        </button>
-    );
-}
-
 function CompactBar() {
     const tutorial = useDemoTutorial();
 
     return (
         <div
             data-testid="tutorial-hud-compact"
-            className="fixed z-40 flex items-center gap-1 rounded-full border border-indigo-500/40 bg-zinc-950/95 p-1 shadow-lg"
+            className="material-panel fixed z-notice flex items-center gap-1 rounded-full border border-action/40 p-1"
             style={{
                 top: "calc(env(safe-area-inset-top, 0px) + 4.5rem)",
-                right: "calc(env(safe-area-inset-right, 0px) + 1rem)",
+                left: "calc(env(safe-area-inset-left, 0px) + 1rem)",
             }}
         >
             <button
                 type="button"
                 onClick={tutorial.show}
                 aria-expanded={!tutorial.hidden}
-                className="inline-flex items-center gap-1.5 rounded-full px-2.5 py-1 text-xs font-medium text-indigo-200 hover:bg-indigo-900/40 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-indigo-400"
+                className="m-control inline-flex min-h-8 items-center gap-1.5 rounded-full px-2.5 py-1 type-meta font-medium text-action hover:bg-accent-soft focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-focus-ring"
             >
-                <Sparkles className="h-3.5 w-3.5" aria-hidden="true" />
+                <Sparkles className="size-4" aria-hidden="true" />
                 Show tips
             </button>
             <ExploreRecordingMenu />
@@ -239,80 +221,4 @@ function CompactBar() {
     );
 }
 
-function ExploreRecordingMenu({ iconOnly = false }: { iconOnly?: boolean }) {
-    const tutorial = useDemoTutorial();
-    const run = useReplayRun();
-    const chapters = run.session.chapters;
-    const detailsRef = useRef<HTMLDetailsElement>(null);
-    const close = () => {
-        if (detailsRef.current) detailsRef.current.open = false;
-    };
 
-    return (
-        <details ref={detailsRef} className="relative shrink-0">
-            <summary
-                aria-label="Explore recording"
-                className={`flex cursor-pointer list-none items-center gap-1 rounded-full text-xs font-medium text-zinc-400 hover:bg-zinc-800 hover:text-zinc-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-indigo-400 [&::-webkit-details-marker]:hidden ${
-                    iconOnly ? "p-1" : "px-2 py-1"
-                }`}
-            >
-                <Compass className="h-3.5 w-3.5" aria-hidden="true" />
-                {iconOnly ? null : (
-                    <>
-                        Explore recording
-                        <ChevronDown className="h-3 w-3" aria-hidden="true" />
-                    </>
-                )}
-            </summary>
-            {/*
-             * The card can sit near the bottom of a short viewport, so the menu
-             * is placed against the viewport rather than the summary. A fixed
-             * panel keeps every item reachable at 720px and 390x844.
-             */}
-            <div
-                onClick={close}
-                className="fixed right-4 top-32 z-50 max-h-[70vh] w-64 overflow-y-auto rounded-lg border border-zinc-700 bg-zinc-950 p-2 shadow-xl"
-            >
-                {chapters.length > 0 ? (
-                    <ul className="mb-1 space-y-0.5 border-b border-zinc-800 pb-1">
-                        {chapters.map((chapter) => (
-                            <li key={chapter.chapter_id}>
-                                <Link
-                                    href={chapterHref(
-                                        chapter,
-                                        run.session.meeting_id
-                                    )}
-                                    aria-current={
-                                        tutorial.chapterId ===
-                                        chapter.chapter_id
-                                            ? "page"
-                                            : undefined
-                                    }
-                                    className="block rounded px-2 py-1 text-xs text-zinc-300 hover:bg-zinc-800 aria-[current=page]:text-white"
-                                >
-                                    {chapter.title}
-                                </Link>
-                            </li>
-                        ))}
-                    </ul>
-                ) : null}
-                {tutorial.canResume ? (
-                    <button
-                        type="button"
-                        onClick={() => void tutorial.resume()}
-                        className="block w-full rounded px-2 py-1 text-left text-xs text-zinc-300 hover:bg-zinc-800"
-                    >
-                        Resume current meeting
-                    </button>
-                ) : null}
-                <button
-                    type="button"
-                    onClick={tutorial.restart}
-                    className="block w-full rounded px-2 py-1 text-left text-xs text-zinc-300 hover:bg-zinc-800"
-                >
-                    Restart recording
-                </button>
-            </div>
-        </details>
-    );
-}

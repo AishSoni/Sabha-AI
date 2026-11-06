@@ -4,10 +4,9 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { ScrollArea } from "@/components/ui/scroll-area";
-import { RateLimitedButton } from "@/components/ui/rate-limited-button";
 import { useProvidersEnvironment, useSettingsStore } from "@/features/settings";
 import { formatCost, formatRelativeTime } from "@/lib/utils";
-import { Loader2, Scroll } from "lucide-react";
+import { Scroll } from "lucide-react";
 import ReactMarkdown from "react-markdown";
 import remarkGfm from "remark-gfm";
 import type { MeetingWithParticipants } from "../api/decoders";
@@ -53,52 +52,46 @@ export function LiveSummaryPanel({
             <div className="max-w-3xl mx-auto space-y-4">
                 <div className="flex items-start justify-between gap-4">
                     <div>
-                        <h3 className="text-lg font-semibold text-white">Meeting Summary</h3>
-                        <p className="text-sm text-zinc-400">
+                        <h3 className="type-section-title">Meeting Summary</h3>
+                        <p className="type-body text-ink-secondary">
                             Summaries are generated on demand and saved to the transcript.
                         </p>
                     </div>
                     <Button
                         onClick={generate}
-                        disabled={
-                            generateSummary.isPending || (meeting.messages ?? []).length === 0
-                        }
-                        className="bg-indigo-600 hover:bg-indigo-700 shrink-0"
+                        busy={generateSummary.isPending}
+                        busyLabel="Generating summary"
+                        disabled={(meeting.messages ?? []).length === 0}
+                        className="shrink-0"
                     >
-                        {generateSummary.isPending ? (
-                            <Loader2 className="w-4 h-4 mr-2 animate-spin" />
-                        ) : (
-                            <Scroll className="w-4 h-4 mr-2" />
-                        )}
+                        <Scroll className="mr-2 size-4" />
                         Generate summary
                     </Button>
                 </div>
 
                 {generateSummary.isError && (
-                    <div className="rounded-lg border border-red-800 bg-red-950/30 p-3 text-sm text-red-300">
+                    <div role="alert" className="rounded-control border border-danger/40 bg-danger-soft p-3 type-body text-danger">
                         {(generateSummary.error as Error).message}
                     </div>
                 )}
 
                 {summaries.length === 0 ? (
-                    <p className="text-sm text-zinc-500">No summaries yet.</p>
+                    <p className="type-body text-ink-muted">No summaries yet.</p>
                 ) : (
                     summaries.map((summary) => (
-                        <Card key={summary.id} className="p-4 bg-zinc-900/50 border-zinc-800">
-                            <div className="flex items-center gap-2 mb-2">
-                                <Badge variant="secondary" className="bg-indigo-900/40 text-indigo-300">
-                                    System AI
-                                </Badge>
-                                <span className="text-xs text-zinc-500">
+                        <Card key={summary.id} className="p-4">
+                            <div className="mb-2 flex items-center gap-2">
+                                <Badge variant="secondary">System AI</Badge>
+                                <span className="type-meta text-ink-muted">
                                     {formatRelativeTime(summary.created_at)}
                                 </span>
                                 {summary.estimated_cost > 0 && (
-                                    <span className="text-xs text-zinc-500">
+                                    <span className="type-meta type-tabular text-ink-muted">
                                         {formatCost(summary.estimated_cost)}
                                     </span>
                                 )}
                             </div>
-                            <div className="prose prose-sm prose-invert max-w-none prose-p:my-1 prose-headings:my-2 prose-ul:my-1 prose-ol:my-1">
+                            <div className="prose prose-sm max-w-none prose-p:my-1 prose-headings:my-2 prose-ul:my-1 prose-ol:my-1 prose-headings:text-ink prose-p:text-ink-secondary prose-li:text-ink-secondary">
                                 <ReactMarkdown remarkPlugins={[remarkGfm]}>
                                     {summary.content}
                                 </ReactMarkdown>

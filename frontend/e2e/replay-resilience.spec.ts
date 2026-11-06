@@ -33,7 +33,7 @@ async function startRecording(page: Page) {
     await page.getByRole("link", { name: "Open the meeting room" }).click();
     await expect(page).toHaveURL(/\/demo\/meetings\/[^/]+\?tab=chat$/);
     await expect(
-        page.getByTestId("tutorial-hud").getByText("Choose who speaks next")
+        page.getByTestId("tutorial-hud").getByText("Choose a recorded reply")
     ).toBeVisible();
 }
 
@@ -53,21 +53,28 @@ test.describe("recorded replay resilience", () => {
         await page
             .getByRole("button", { name: "Credit Analyst opening facts" })
             .click({ clickCount: 2, delay: 10 });
-        await expect(
-            page.getByRole("button", { name: "Show full response" })
-        ).toBeVisible({ timeout: 30_000 });
+        const showFull = page.getByRole("button", {
+            name: "Show full response",
+        });
+        const credit = message(page, CREDIT_MESSAGE);
+        // A rapid second click can land on the reveal control once the first
+        // click readies the turn. Either outcome is valid as long as the
+        // transcript still settles exactly one prepared reply.
+        await expect(showFull.or(credit)).toBeVisible({ timeout: 30_000 });
+        if (await showFull.isVisible()) {
+            await showFull.click();
+        }
         await expect(
             page.getByRole("button", { name: "Cancel", exact: true })
         ).toHaveCount(0);
-        await page.getByRole("button", { name: "Show full response" }).click();
 
-        await expect(message(page, CREDIT_MESSAGE)).toBeVisible({
+        await expect(credit).toBeVisible({
             timeout: 30_000,
         });
         await expect(message(page, CREDIT_MESSAGE)).toHaveCount(1);
         await expect(
-            page.getByTestId("tutorial-hud").getByText("1 of 4 replies")
-        ).toBeVisible();
+            page.getByTestId("tutorial-announcement")
+        ).toContainText("1 of 4 replies");
         await expect(
             page.getByText(/transition is already in progress|not available/)
         ).toHaveCount(0);
@@ -111,8 +118,8 @@ test.describe("recorded replay resilience", () => {
             timeout: 30_000,
         });
         await expect(
-            page.getByTestId("tutorial-hud").getByText("1 of 4 replies")
-        ).toBeVisible({ timeout: 30_000 });
+            page.getByTestId("tutorial-announcement")
+        ).toContainText("1 of 4 replies", { timeout: 30_000 });
         await expect(
             page.getByRole("button", { name: "Cancel", exact: true })
         ).toHaveCount(0);
@@ -143,8 +150,8 @@ test.describe("recorded replay resilience", () => {
         await page.waitForTimeout(2_000);
         await expect(message(page, CREDIT_MESSAGE)).toHaveCount(0);
         await expect(
-            page.getByTestId("tutorial-hud").getByText("0 of 4 replies")
-        ).toBeVisible();
+            page.getByTestId("tutorial-announcement")
+        ).toContainText("0 of 4 replies");
         await expect(
             page.getByText(/Observation paused|Something went wrong/)
         ).toHaveCount(0);
@@ -152,8 +159,8 @@ test.describe("recorded replay resilience", () => {
         // A refresh discards the remaining ephemeral deck without a live turn.
         await page.reload();
         await expect(
-            page.getByTestId("tutorial-hud").getByText("0 of 4 replies")
-        ).toBeVisible();
+            page.getByTestId("tutorial-announcement")
+        ).toContainText("0 of 4 replies");
         await expect(message(page, CREDIT_MESSAGE)).toHaveCount(0);
 
         expect(liveRequests).toEqual([]);

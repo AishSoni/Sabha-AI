@@ -165,6 +165,12 @@ test.describe("recorded evidence previews", () => {
         await expect(
             page.getByText(/CRISIL's annexure row for ISIN INE001A07RW5/).first()
         ).toBeVisible({ timeout: 30_000 });
+        // The prepared turn is replaced by its committed message when playback
+        // finishes. Waiting for the replay control avoids opening the source
+        // disclosure on the transient projection and losing it on that swap.
+        await expect(
+            page.getByRole("button", { name: "Replay last turn" })
+        ).toBeVisible({ timeout: 30_000 });
         await page.getByRole("button", { name: /5 Sources/ }).first().click();
         await expect(
             page.getByText(/CRISIL Rating Rationale/i).first()

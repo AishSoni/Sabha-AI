@@ -177,8 +177,13 @@ describe('recorded replay runtime', () => {
 
         expect(await screen.findByText('Recorded product review')).toBeInTheDocument();
         expect(screen.getByText('What did the board decide?')).toBeInTheDocument();
+        fireEvent.click(screen.getByRole('button', { name: 'Details' }));
+        expect(screen.getByRole('dialog')).toBeInTheDocument();
         expect(screen.getByText('Recorded')).toBeInTheDocument();
+        fireEvent.click(screen.getByRole('button', { name: 'Close' }));
         expect(screen.getByRole('button', { name: 'Restart' })).toBeInTheDocument();
+        expect(screen.getByRole('button', { name: 'Meeting record' })).toBeDisabled();
+        expect(screen.queryByRole('tab', { name: /Disagreements/ })).not.toBeInTheDocument();
         expect(screen.queryByRole('tab', { name: /Summary/ })).not.toBeInTheDocument();
         expect(screen.queryByRole('tab', { name: /Shared Docs/ })).not.toBeInTheDocument();
         expect(screen.queryByPlaceholderText('Type your message...')).not.toBeInTheDocument();
@@ -240,6 +245,8 @@ describe('recorded replay runtime', () => {
 
         expect(await screen.findByText('Recorded product review 2')).toBeInTheDocument();
         expect(screen.queryByText('Recorded product review 1')).not.toBeInTheDocument();
+        fireEvent.click(screen.getByRole('button', { name: 'Details' }));
+        expect(screen.getByRole('dialog')).toBeInTheDocument();
         expect(screen.getByText('Recorded')).toBeInTheDocument();
         expect(
             calls.filter((call) => call.url === `${API}/replay/session`).length
@@ -352,7 +359,6 @@ describe('recorded replay runtime', () => {
         renderReplay();
         expect(await screen.findByText('Recorded product review')).toBeInTheDocument();
 
-        fireEvent.click(screen.getByRole('tab', { name: /Disagreements/ }));
         fireEvent.click(screen.getByRole('button', { name: 'Restart' }));
         await waitFor(() =>
             expect(calls.filter((url) => url === `${API}/replay/session`).length).toBe(2)

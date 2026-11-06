@@ -10,19 +10,19 @@ import { StackEditor } from '@/features/knowledge';
 
 export default function NewKnowledgeStackPage() {
     return (
-        <div className="min-h-screen bg-gradient-to-br from-zinc-950 via-zinc-900 to-zinc-950">
-            <header className="sticky top-0 z-50 border-b border-zinc-800/50 backdrop-blur-sm">
+        <div className="min-h-full text-ink">
+            <header className="material-chrome sticky top-0 z-chrome border-b border-separator">
                 <div className="mx-auto flex max-w-4xl items-center gap-4 px-6 py-4">
-                    <Link href="/knowledge-stacks" className="text-zinc-400 transition-colors hover:text-white">
-                        <ArrowLeft className="h-5 w-5" />
+                    <Link href="/knowledge-stacks" aria-label="Back to knowledge stacks" className="m-control text-ink-secondary hover:text-ink">
+                        <ArrowLeft className="size-5" />
                     </Link>
                     <div>
-                        <h1 className="text-xl font-bold text-white">Create Knowledge Stack</h1>
-                        <p className="text-xs text-zinc-500">Define a new collection for retrieval</p>
+                        <h1 className="type-item-title">Create Knowledge Stack</h1>
+                        <p className="type-meta text-ink-muted">Define a new collection for retrieval</p>
                     </div>
                 </div>
             </header>
-            <main className="mx-auto max-w-4xl px-6 py-8">
+            <main id="main-content" className="mx-auto max-w-4xl px-6 py-8" tabIndex={-1}>
                 <StackEditor />
             </main>
         </div>

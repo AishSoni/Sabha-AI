@@ -52,7 +52,7 @@ async function startRecording(page: Page) {
 
     await page.getByRole("link", { name: "Open the meeting room" }).click();
     await expect(page).toHaveURL(/\/demo\/meetings\/[^/]+/);
-    await expect(hud.getByText("Choose who speaks next")).toBeVisible();
+    await expect(hud.getByText("Choose a recorded reply")).toBeVisible();
     return { hud, network };
 }
 
@@ -104,7 +104,9 @@ test.describe("concise recorded journey", () => {
         test.setTimeout(240_000);
         const { hud, network } = await startRecording(page);
 
-        await expect(hud.getByText("0 of 4 replies")).toBeVisible();
+        await expect(
+            page.getByTestId("tutorial-announcement")
+        ).toContainText("0 of 4 replies");
         const close = page.getByRole("button", { name: "Close meeting" });
         await expect(close).toBeDisabled();
 

@@ -20,11 +20,17 @@ export interface RosterScreenProps {
     description?: string;
     highlightedPersonaId?: string;
     confirmDelete?: (persona: RosterPersonaView) => boolean;
+    /** Optional stable identity for the participant mark. */
+    markIdFor?: (persona: Persona) => string | undefined;
 }
 
-function toView(persona: Persona): RosterPersonaView {
+function toView(
+    persona: Persona,
+    markIdFor?: (persona: Persona) => string | undefined
+): RosterPersonaView {
     return {
         id: persona.id,
+        markId: markIdFor?.(persona),
         name: persona.name,
         subtitle: persona.subtitle,
         color: persona.color,
@@ -40,6 +46,7 @@ export function RosterScreen({
     description,
     highlightedPersonaId,
     confirmDelete,
+    markIdFor,
 }: RosterScreenProps) {
     const [personas, setPersonas] = useState<Persona[]>([]);
     const [loading, setLoading] = useState(true);
@@ -103,7 +110,7 @@ export function RosterScreen({
 
     return (
         <RosterList
-            personas={personas.map(toView)}
+            personas={personas.map((persona) => toView(persona, markIdFor))}
             loading={loading}
             error={error}
             hrefs={hrefs}
