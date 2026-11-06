@@ -104,7 +104,12 @@ test.describe("concise demo copy", () => {
         await expect(
             page.getByText(/Prepared historical committee review/)
         ).toBeVisible();
-        await expect(page.getByText("Recorded", { exact: true })).toBeVisible();
+        await page.getByRole("button", { name: "Details" }).click();
+        const details = page.getByRole("dialog");
+        await expect(details).toBeVisible();
+        await expect(details.getByText("Recorded", { exact: true })).toBeVisible();
+        await expect(details.getByText("Status", { exact: true })).toBeVisible();
+        await page.keyboard.press("Escape");
         await expectNoBannedCopy(page);
 
         await page.goto(
