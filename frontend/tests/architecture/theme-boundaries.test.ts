@@ -51,6 +51,18 @@ describe("appearance boundary", () => {
     }
   });
 
+  it("does not expose manual background-animation controls", () => {
+    const appearanceSource = appearanceSources
+      .map(({ source }) => source)
+      .join("\n");
+    expect(appearanceSource).not.toMatch(
+      /backgroundAnimation|setBackgroundAnimation|Background animation|BACKGROUND_OPTIONS|Pause animation|Resume animation/,
+    );
+
+    const menu = fs.readFileSync(path.join(appearanceDir, "menu.tsx"), "utf8");
+    expect(menu).not.toMatch(/\bPaused\b|\bplay\b|\bpause\b/);
+  });
+
   it("does not ship the transition-all or legacy animation layer", () => {
     expect(styleSources).not.toMatch(/transition:\s*all/);
     expect(globals).not.toMatch(/tw-animate-css/);

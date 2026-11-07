@@ -76,8 +76,17 @@ describe("homepage isolation", () => {
 
   it("keeps the homepage chrome brand-only with no appearance or motion controls", () => {
     const chrome = source(path.join(HOMEPAGE_ROOT, "ui/home-chrome.tsx"));
-    expect(chrome).toMatch(/HOME_COPY\.brand/);
+    expect(chrome).toMatch(/<SabhaLogo\b/);
+    expect(chrome).toMatch(/@\/components\/brand\/sabha-logo/);
+    expect(chrome).not.toMatch(/Sparkles|HOME_COPY\.brand/);
     expect(chrome).not.toMatch(/<AppearanceMenu\b|Pause animation|Resume animation/);
     expect(chrome).not.toMatch(/["']use client["']/);
+  });
+
+  it("uses the Sabha mark in the demo CTA badge instead of a generic star", () => {
+    const cta = source(path.join(HOMEPAGE_ROOT, "ui/home-demo-cta.tsx"));
+    expect(cta).toMatch(/<SabhaMark\b/);
+    expect(cta).toMatch(/@\/components\/brand\/sabha-logo/);
+    expect(cta).not.toMatch(/Sparkles/);
   });
 });

@@ -1,5 +1,6 @@
 @import "tailwindcss";
 @import "../styles/tokens.css";
+@import "../styles/brand.css";
 @import "../styles/typography.css";
 @import "../styles/motion.css";
 @import "../styles/materials.css";

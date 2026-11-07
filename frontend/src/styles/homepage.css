@@ -125,10 +125,10 @@ html[data-theme="light"] .home-page {
 .home-chrome__brand {
   display: inline-flex;
   align-items: center;
-  gap: 0.55rem;
   min-height: 2.75rem;
   border-radius: 0.5rem;
   color: var(--home-text);
+  font-size: 1.25rem;
   text-decoration: none;
   pointer-events: auto;
 }
@@ -138,15 +138,11 @@ html[data-theme="light"] .home-page {
   outline-offset: 3px;
 }
 
-.home-chrome__mark {
-  color: var(--home-accent);
+.home-chrome__brand .sabha-logo__mark {
   filter: drop-shadow(0 0 12px rgba(167, 139, 250, 0.45));
 }
 
-.home-chrome__wordmark {
-  font-size: 1.25rem;
-  font-weight: 700;
-  letter-spacing: -0.03em;
+.home-chrome__brand .sabha-logo__wordmark {
   text-shadow: 0 0 24px rgba(167, 139, 250, 0.28);
 }
 
@@ -542,6 +538,21 @@ html[data-theme="light"] .home-page {
   transition:
     opacity 170ms ease,
     transform 280ms ease;
+}
+
+.home-demo-cta__mark {
+  display: block;
+  width: auto;
+  height: 1.65rem;
+  overflow: visible;
+}
+
+.home-demo-cta__badge .sabha-mark .sabha-mark__light {
+  display: none;
+}
+
+.home-demo-cta__badge .sabha-mark .sabha-mark__dark {
+  display: block;
 }
 
 .home-demo-cta__badge svg {
@@ -1464,10 +1475,13 @@ html[data-theme="light"] .home-page {
 }
 
 .home-footer__brand {
-  margin: 0;
+  display: flex;
   color: var(--home-text);
-  font-size: 1rem;
-  font-weight: 600;
+  font-size: 1.125rem;
+}
+
+.home-footer__brand .sabha-logo__mark {
+  filter: drop-shadow(0 0 12px rgba(167, 139, 250, 0.3));
 }
 
 .home-footer__description {

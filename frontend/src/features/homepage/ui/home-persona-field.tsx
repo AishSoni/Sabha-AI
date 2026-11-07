@@ -247,6 +247,19 @@ export function HomePersonaField() {
       data-testid="home-persona-field"
       data-webgl={engineState}
       data-motion={reducedMotion ? "reduced" : "full"}
+      data-activity={
+        reducedMotion
+          ? "reduced"
+          : documentHidden
+            ? "hidden"
+            : !inView
+              ? "offscreen"
+              : engineState === "failed"
+                ? "fallback"
+                : engineState === "static"
+                  ? "static"
+                  : "running"
+      }
       data-density={density}
       aria-hidden="true"
     >

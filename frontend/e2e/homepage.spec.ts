@@ -14,6 +14,17 @@ test.describe("homepage composition", () => {
     await expect(page.locator(".home-page > main > section")).toHaveCount(2);
     await expect(page.locator(".home-page > footer")).toHaveCount(1);
 
+    const brand = page.locator(".home-chrome__brand");
+    await expect(brand).toHaveAttribute("href", "/");
+    await expect(brand.locator(".sabha-logo__wordmark")).toHaveText("Sabha AI");
+    await expect(brand.locator(".sabha-logo__mark")).toBeVisible();
+    await expect(
+      page.locator(".home-footer__brand .sabha-logo__wordmark"),
+    ).toHaveText("Sabha AI");
+    await expect(
+      page.locator('link[rel="icon"][href*="icon.svg"]'),
+    ).toHaveCount(1);
+
     await expect(
       page.getByRole("heading", {
         level: 1,
@@ -47,6 +58,9 @@ test.describe("homepage composition", () => {
       .getByRole("link", { name: "Try the recorded demo" });
     await expect(demo).toHaveAttribute("href", "/demo");
     await expect(demo.locator(".home-demo-cta__badge")).toHaveCount(1);
+    await expect(
+      demo.locator(".home-demo-cta__badge .sabha-mark__dark"),
+    ).toBeVisible();
     const operator = page
       .locator(".home-hero")
       .getByRole("link", { name: "Operator sign-in" });
@@ -182,6 +196,130 @@ test.describe("homepage composition", () => {
 
 });
 
+test.describe("homepage constellation brand", () => {
+  test("swaps the mark with the resolved appearance", async ({ page }) => {
+    await page.emulateMedia({ colorScheme: "dark" });
+    await page.goto("/");
+
+    const brand = page.locator(".home-chrome__brand");
+    await expect(brand.locator(".sabha-mark__dark")).toBeVisible();
+    await expect(brand.locator(".sabha-mark__light")).toBeHidden();
+    await expect
+      .poll(() =>
+        page
+          .locator(".home-page")
+          .evaluate((element) => getComputedStyle(element).backgroundColor),
+      )
+      .toBe("rgb(7, 4, 15)");
+
+    await page.emulateMedia({ colorScheme: "light" });
+
+    await expect(brand.locator(".sabha-mark__light")).toBeVisible();
+    await expect(brand.locator(".sabha-mark__dark")).toBeHidden();
+    await expect
+      .poll(() =>
+        page
+          .locator(".home-page")
+          .evaluate((element) => getComputedStyle(element).backgroundColor),
+      )
+      .toBe("rgb(246, 241, 248)");
+  });
+});
+
+test.describe("homepage lifecycle", () => {
+  test("stops ambient work when the field leaves the viewport", async ({
+    page,
+  }) => {
+    await page.setViewportSize({ width: 1440, height: 900 });
+    await page.goto("/");
+
+    const field = page.getByTestId("home-persona-field");
+    await expect(field).toHaveAttribute("data-activity", "running");
+
+    await page.locator("#evidence").scrollIntoViewIfNeeded();
+    await expect(field).toHaveAttribute("data-activity", "offscreen");
+
+    await page.evaluate(() => window.scrollTo(0, 0));
+    await expect(field).toHaveAttribute("data-activity", "running");
+  });
+
+  test("stops ambient work while the document is hidden", async ({ page }) => {
+    await page.goto("/");
+
+    const field = page.getByTestId("home-persona-field");
+    await expect(field).toHaveAttribute("data-activity", "running");
+
+    await page.evaluate(() => {
+      Object.defineProperty(document, "hidden", {
+        configurable: true,
+        get: () => true,
+      });
+      document.dispatchEvent(new Event("visibilitychange"));
+    });
+    await expect(field).toHaveAttribute("data-activity", "hidden");
+
+    await page.evaluate(() => {
+      Object.defineProperty(document, "hidden", {
+        configurable: true,
+        get: () => false,
+      });
+      document.dispatchEvent(new Event("visibilitychange"));
+    });
+    await expect(field).toHaveAttribute("data-activity", "running");
+  });
+});
+
+test.describe("homepage fallback", () => {
+  test("keeps the static constellation when WebGL2 is unavailable", async ({
+    page,
+  }) => {
+    await page.addInitScript(`
+      (() => {
+        const original = HTMLCanvasElement.prototype.getContext;
+        HTMLCanvasElement.prototype.getContext = function (type, ...args) {
+          if (type === "webgl2") return null;
+          return original.call(this, type, ...args);
+        };
+      })();
+    `);
+    await page.goto("/");
+
+    const field = page.getByTestId("home-persona-field");
+    await expect(field).toHaveAttribute("data-webgl", "failed");
+    await expect(field).toHaveAttribute("data-activity", "fallback");
+    await expect(page.getByTestId("home-persona-canvas")).toHaveCSS(
+      "opacity",
+      "0",
+    );
+    await expect(page.getByTestId("home-persona-static")).toBeVisible();
+    await expect(
+      page
+        .locator(".home-hero")
+        .getByRole("link", { name: "Try the recorded demo" }),
+    ).toHaveAttribute("href", "/demo");
+  });
+
+  test("keeps the invitation usable when the webfont fails", async ({
+    page,
+  }) => {
+    await page.route("**/*.woff2", (route) => route.abort());
+    await page.goto("/");
+
+    await expect(
+      page.getByRole("heading", {
+        level: 1,
+        name: "Bring more minds to your next decision.",
+      }),
+    ).toBeVisible();
+    await expect(
+      page
+        .locator(".home-hero")
+        .getByRole("link", { name: "Try the recorded demo" }),
+    ).toBeVisible();
+    await expect(page.locator(".home-chrome__brand .sabha-logo")).toBeVisible();
+  });
+});
+
 test.describe("homepage evidence graph", () => {
   test("selects a node without moving the authored graph", async ({ page }) => {
     await page.setViewportSize({ width: 1440, height: 900 });
@@ -299,6 +437,7 @@ test.describe("homepage reduced motion", () => {
 
     const field = page.getByTestId("home-persona-field");
     await expect(field).toHaveAttribute("data-motion", "reduced");
+    await expect(field).toHaveAttribute("data-activity", "reduced");
     await expect(field).toHaveAttribute("data-webgl", "static");
     await expect(page.getByTestId("home-persona-canvas")).toHaveCSS(
       "opacity",
@@ -340,6 +479,9 @@ test.describe("homepage without JavaScript", () => {
     await expect(
       page.getByText("Prepared demo · recorded responses, not live generation."),
     ).toHaveCount(0);
+    await expect(
+      page.locator(".home-chrome__brand .sabha-logo__wordmark"),
+    ).toHaveText("Sabha AI");
     await expect(page.getByTestId("home-persona-static")).toBeVisible();
     await expect(page.locator(".home-graph__map")).toBeVisible();
     await expect(page.locator(".home-graph__overlay")).toHaveCount(0);

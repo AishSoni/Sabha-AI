@@ -10,27 +10,37 @@ type MediaListener = (event: MediaQueryListEvent) => void;
 let originalMatchMedia: typeof window.matchMedia | undefined;
 let mountCount = 0;
 
-function installMatchMedia(initialDark: boolean) {
+function installMatchMedia(initialDark: boolean, initialReduced = false) {
   let dark = initialDark;
+  let reduced = initialReduced;
   const listeners = new Set<MediaListener>();
-  const query = {
-    get matches() {
-      return dark;
-    },
-    media: "(prefers-color-scheme: dark)",
-    onchange: null,
-    addEventListener: (_type: string, listener: MediaListener) => {
-      listeners.add(listener);
-    },
-    removeEventListener: (_type: string, listener: MediaListener) => {
-      listeners.delete(listener);
-    },
-    addListener: (listener: MediaListener) => listeners.add(listener),
-    removeListener: (listener: MediaListener) => listeners.delete(listener),
-    dispatchEvent: () => true,
-  } as unknown as MediaQueryList;
 
-  const matchMedia = vi.fn(() => query);
+  const makeQuery = (queryText: string) =>
+    ({
+      get matches() {
+        return queryText.includes("prefers-reduced-motion")
+          ? reduced
+          : dark;
+      },
+      media: queryText,
+      onchange: null,
+      addEventListener: (_type: string, listener: MediaListener) => {
+        listeners.add(listener);
+      },
+      removeEventListener: (_type: string, listener: MediaListener) => {
+        listeners.delete(listener);
+      },
+      addListener: (listener: MediaListener) => listeners.add(listener),
+      removeListener: (listener: MediaListener) => listeners.delete(listener),
+      dispatchEvent: () => true,
+    }) as unknown as MediaQueryList;
+
+  const darkQuery = makeQuery("(prefers-color-scheme: dark)");
+  const reducedQuery = makeQuery("(prefers-reduced-motion: reduce)");
+
+  const matchMedia = vi.fn((queryText: string) =>
+    queryText.includes("prefers-reduced-motion") ? reducedQuery : darkQuery,
+  );
   Object.defineProperty(window, "matchMedia", {
     value: matchMedia,
     configurable: true,
@@ -45,18 +55,19 @@ function installMatchMedia(initialDark: boolean) {
         listener({ matches: next } as MediaQueryListEvent);
       }
     },
+    setReduced(next: boolean) {
+      reduced = next;
+      for (const listener of listeners) {
+        listener({ matches: next } as MediaQueryListEvent);
+      }
+    },
     listenerCount: () => listeners.size,
   };
 }
 
 function Probe() {
-  const {
-    preference,
-    resolved,
-    setPreference,
-    resolvedBackgroundAnimation,
-    setBackgroundAnimation,
-  } = useAppearance();
+  const { preference, resolved, setPreference, reducedMotion } =
+    useAppearance();
 
   React.useEffect(() => {
     mountCount += 1;
@@ -66,7 +77,7 @@ function Probe() {
     <div>
       <span data-testid="preference">{preference}</span>
       <span data-testid="resolved">{resolved}</span>
-      <span data-testid="background">{resolvedBackgroundAnimation}</span>
+      <span data-testid="reduced">{String(reducedMotion)}</span>
       <button type="button" onClick={() => setPreference("dark")}>
         dark
       </button>
@@ -75,12 +86,6 @@ function Probe() {
       </button>
       <button type="button" onClick={() => setPreference("system")}>
         system
-      </button>
-      <button type="button" onClick={() => setBackgroundAnimation("paused")}>
-        pause background
-      </button>
-      <button type="button" onClick={() => setBackgroundAnimation("on")}>
-        resume background
       </button>
     </div>
   );
@@ -107,8 +112,8 @@ afterEach(() => {
 });
 
 describe("AppearanceProvider", () => {
-  it("pauses background motion without remounting or storing the choice", () => {
-    installMatchMedia(false);
+  it("uses the OS reduced-motion preference without remounting or storing it", () => {
+    installMatchMedia(false, true);
     const localSet = vi.spyOn(window.localStorage, "setItem");
     render(
       <AppearanceProvider>
@@ -116,9 +121,7 @@ describe("AppearanceProvider", () => {
       </AppearanceProvider>,
     );
 
-    expect(document.documentElement).toHaveAttribute("data-background", "on");
-    fireEvent.click(screen.getByRole("button", { name: "pause background" }));
-    expect(screen.getByTestId("background")).toHaveTextContent("paused");
+    expect(screen.getByTestId("reduced")).toHaveTextContent("true");
     expect(document.documentElement).toHaveAttribute(
       "data-background",
       "paused",
