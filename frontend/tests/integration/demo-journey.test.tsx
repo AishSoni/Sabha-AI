@@ -348,7 +348,7 @@ describe("canonical guided demo journey", () => {
         );
 
         await screen.findByTestId("tutorial-hud");
-        fireEvent.click(screen.getByRole("link", { name: "Demo settings" }));
+        fireEvent.click(screen.getByRole("link", { name: "Settings" }));
 
         expect(
             await screen.findByRole("heading", {

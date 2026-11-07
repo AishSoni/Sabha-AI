@@ -1,18 +1,22 @@
 "use client";
 
-import Link from 'next/link';
-import { usePathname } from 'next/navigation';
+import Link from "next/link";
+import { usePathname } from "next/navigation";
 
-import { AppearanceMenu } from '@/components/appearance';
-import { Starfield } from '@/components/atmosphere';
-import { Button } from '@/components/ui/button';
+import { AppearanceMenu } from "@/components/appearance";
+import { AppShell, type AppNavItem } from "@/components/shell";
+import { Button } from "@/components/ui/button";
 
-const LINKS = [
-    { href: '/meetings', label: 'Meeting space' },
-    { href: '/roster', label: 'AI roster' },
-    { href: '/knowledge-stacks', label: 'Knowledge stacks' },
-    { href: '/settings', label: 'Settings' },
+const LINKS: readonly AppNavItem[] = [
+    { href: "/meetings", label: "Meetings" },
+    { href: "/roster", label: "Personas" },
+    { href: "/knowledge-stacks", label: "Knowledge" },
+    { href: "/settings", label: "Settings", exact: true },
 ];
+
+function isRoomPath(pathname: string): boolean {
+    return /^\/meetings\/[^/]+$/.test(pathname);
+}
 
 export function OperatorShell({
     children,
@@ -22,49 +26,55 @@ export function OperatorShell({
     onLogout: () => void;
 }) {
     const pathname = usePathname();
+    const room = isRoomPath(pathname);
 
     return (
-        <div className="relative isolate flex h-dvh min-h-0 flex-col text-ink">
-            <Starfield />
-            <header className="material-chrome relative z-chrome shrink-0 border-b border-separator">
-                <div className="mx-auto flex max-w-6xl flex-wrap items-center gap-4 px-4 py-3">
-                    <span className="type-meta-strong uppercase tracking-[0.2em] text-ink">
-                        Operator
-                    </span>
-                    <nav className="flex flex-1 flex-wrap items-center gap-1 type-control">
-                        {LINKS.map((link) => {
-                            const active =
-                                pathname === link.href ||
-                                pathname.startsWith(`${link.href}/`);
-                            return (
-                                <Link
-                                    key={link.href}
-                                    href={link.href}
-                                    aria-current={active ? 'page' : undefined}
-                                    className={`rounded-control px-2.5 py-1.5 m-control ${
-                                        active
-                                            ? 'bg-surface-selected text-ink'
-                                            : 'text-ink-secondary hover:bg-surface-raised hover:text-ink'
-                                    }`}
-                                >
-                                    {link.label}
-                                </Link>
-                            );
-                        })}
-                    </nav>
+        <AppShell
+            homeHref="/meetings"
+            runtimeLabel="Operator"
+            navLabel="Operator workspace"
+            items={LINKS}
+            hideChrome={room}
+            actions={
+                <>
                     <Link
                         href="/demo"
-                        className="type-meta text-ink-secondary m-control hover:text-ink"
+                        className="m-control hidden min-h-9 items-center rounded-control px-2.5 type-control text-ink-secondary outline-none hover:bg-surface-raised hover:text-ink focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-focus-ring xl:inline-flex"
                     >
                         Recorded demo
                     </Link>
                     <AppearanceMenu />
-                    <Button type="button" variant="outline" size="sm" onClick={onLogout}>
+                    <Button
+                        type="button"
+                        variant="outline"
+                        size="sm"
+                        className="hidden sm:inline-flex"
+                        onClick={onLogout}
+                    >
+                        Sign out
+                    </Button>
+                </>
+            }
+            compactFooter={
+                <div className="flex flex-col gap-1">
+                    <Link
+                        href="/demo"
+                        className="m-control flex min-h-11 items-center rounded-control px-3 type-control text-ink-secondary hover:bg-surface-raised hover:text-ink"
+                    >
+                        Recorded demo
+                    </Link>
+                    <Button
+                        type="button"
+                        variant="outline"
+                        className="justify-start"
+                        onClick={onLogout}
+                    >
                         Sign out
                     </Button>
                 </div>
-            </header>
-            <div className="relative z-10 min-h-0 flex-1 overflow-y-auto">{children}</div>
-        </div>
+            }
+        >
+            {children}
+        </AppShell>
     );
 }

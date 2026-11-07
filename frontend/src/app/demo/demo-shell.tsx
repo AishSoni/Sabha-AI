@@ -2,7 +2,6 @@
 
 import type { ReactNode } from "react";
 import { usePathname } from "next/navigation";
-import { Starfield } from "@/components/atmosphere";
 import { DemoNav, DemoWorkspaceProvider } from "@/features/demo-workspace";
 import { isRoomPath } from "@/features/demo-tutorial";
 import { DemoTutorialProvider } from "@/features/demo-tutorial/provider";
@@ -39,33 +38,26 @@ function PinnedWorkspace({ children }: { children: ReactNode }) {
         >
             <ReplayRunProvider>
                 <DemoTutorialProvider>
-                    <div className="relative isolate flex h-dvh min-h-0 flex-col">
-                        <Starfield />
-                        {room ? <DemoNav /> : null}
+                    <DemoNav hideChrome={room}>
                         <TutorialBoundary>
                             <TutorialHud />
                             <TutorialNotices />
+                            {/*
+                             * The chapter entry remounts the route page when a
+                             * chapter changes. Keeping it inside the tutorial
+                             * provider means a hidden HUD survives chapter
+                             * inspection instead of restarting the visitor's
+                             * presentation state.
+                             *
+                             * Ordinary routes use document scrolling. The room
+                             * owns the dynamic viewport and must not create a
+                             * second page scrollbar.
+                             */}
+                            <div className={room ? "h-dvh min-h-0" : undefined}>
+                                <ChapterBootstrap>{children}</ChapterBootstrap>
+                            </div>
                         </TutorialBoundary>
-                        {/*
-                         * The chapter entry remounts the route page when a
-                         * chapter changes. Keeping it inside the tutorial
-                         * provider means a hidden HUD survives chapter
-                         * inspection instead of restarting the visitor's
-                         * presentation state.
-                         *
-                         * This is the single viewport owner for demo routes:
-                         * ordinary pages scroll here, while the room fills the
-                         * same space without creating a second page scrollbar.
-                         */}
-                        <div className="relative z-10 min-h-0 flex-1 overflow-y-auto">
-                            {room ? null : (
-                                <div className="sticky top-0 z-chrome">
-                                    <DemoNav />
-                                </div>
-                            )}
-                            <ChapterBootstrap>{children}</ChapterBootstrap>
-                        </div>
-                    </div>
+                    </DemoNav>
                 </DemoTutorialProvider>
             </ReplayRunProvider>
         </DemoWorkspaceProvider>
