@@ -35,9 +35,9 @@ import {
 
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
-import { Card } from '@/components/ui/card';
+import { StatusBadge } from '@/components/ui/status-badge';
 import { Dialog, DialogContent, DialogDescription, DialogTitle } from '@/components/ui/dialog';
-import { Input } from '@/components/ui/input';
+import { Textarea } from '@/components/ui/textarea';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip';
@@ -107,6 +107,29 @@ const TERMINAL_STATUSES = ['completed', 'failed', 'interrupted', 'cancelled'];
 
 function isTerminal(status: string): boolean {
     return TERMINAL_STATUSES.includes(status);
+}
+
+function meetingStatusTone(
+    status: string
+): 'success' | 'warning' | 'neutral' {
+    if (status === 'active') return 'success';
+    if (status === 'voting') return 'warning';
+    return 'neutral';
+}
+
+function meetingStatusLabel(status: string): string {
+    switch (status) {
+        case 'active':
+            return 'Active';
+        case 'voting':
+            return 'Voting';
+        case 'ended':
+            return 'Ended';
+        case 'archived':
+            return 'Archived';
+        default:
+            return status;
+    }
 }
 
 export function MeetingRoom({
@@ -388,97 +411,87 @@ function MeetingConversation({
 
     return (
         <div className="flex min-h-0 flex-1 flex-col overflow-hidden bg-transparent">
-            <header className="material-chrome relative z-chrome flex shrink-0 flex-wrap items-start gap-3 border-b border-separator px-4 py-3">
-                <Link
-                    href={runtime.presentation.homeHref}
-                    className="mt-0.5 rounded-control p-1 text-ink-secondary hover:bg-surface-raised hover:text-ink"
-                    aria-label="Back to meetings"
-                >
-                    <ArrowLeft className="h-5 w-5" />
-                </Link>
-                <div className="min-w-0 flex-1">
-                    <h1 className="line-clamp-2 type-room-title text-balance text-ink sm:line-clamp-none">
-                        {meeting.name}
-                    </h1>
-                    {meeting.agenda && (
-                        <p className="mt-1 line-clamp-1 type-meta text-ink-secondary sm:line-clamp-2">
-                            {meeting.agenda}
-                        </p>
-                    )}
-                </div>
-                <div className="flex flex-wrap items-center justify-end gap-2">
-                    {runtime.restart && (
-                        <Button
-                            variant="ghost"
-                            size="sm"
-                            className="text-ink-secondary"
-                            onClick={runtime.restart}
-                        >
-                            Restart
-                        </Button>
-                    )}
-                    <Button
-                        type="button"
-                        variant="outline"
-                        size="sm"
-                        onClick={() => setDetailsOpen(true)}
+            <header className="material-chrome relative z-chrome shrink-0 border-b border-separator px-3 py-2.5 sm:px-4">
+                <div className="flex items-start gap-2 sm:gap-3">
+                    <Link
+                        href={runtime.presentation.homeHref}
+                        className="m-control mt-0.5 inline-flex min-h-9 shrink-0 items-center gap-1.5 rounded-control px-2 type-control text-ink-secondary outline-none hover:bg-surface-raised hover:text-ink focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-focus-ring"
+                        aria-label="Back to meetings"
                     >
-                        Details
-                    </Button>
-                    {capabilities.closing && !ended && (
+                        <ArrowLeft aria-hidden="true" className="size-4" />
+                        <span className="hidden sm:inline">Meetings</span>
+                    </Link>
+                    <div className="min-w-0 flex-1">
+                        <div className="flex min-w-0 flex-wrap items-center gap-2">
+                            <h1
+                                className="line-clamp-1 min-w-0 type-room-title text-balance text-ink"
+                                title={meeting.name}
+                            >
+                                {meeting.name}
+                            </h1>
+                            <StatusBadge
+                                tone={meetingStatusTone(meeting.status)}
+                            >
+                                {meetingStatusLabel(meeting.status)}
+                            </StatusBadge>
+                            <Badge variant="outline">
+                                {runtime.replay
+                                    ? 'Recorded demo'
+                                    : 'Operator'}
+                            </Badge>
+                        </div>
+                        {meeting.agenda ? (
+                            <details className="group mt-0.5 max-w-[90ch]">
+                                <summary className="m-control cursor-pointer truncate type-meta text-ink-secondary marker:text-ink-muted group-open:whitespace-normal group-open:type-body group-open:text-ink">
+                                    {meeting.agenda}
+                                </summary>
+                            </details>
+                        ) : null}
+                    </div>
+                    <div className="flex shrink-0 flex-wrap items-center justify-end gap-1.5">
+                        {runtime.restart && (
+                            <Button
+                                variant="ghost"
+                                size="sm"
+                                className="text-ink-secondary"
+                                onClick={runtime.restart}
+                            >
+                                Restart
+                            </Button>
+                        )}
                         <Button
-                            ref={closeAnchorRef}
-                            id="closing-tab"
-                            data-testid="closing-entry"
                             type="button"
                             variant="outline"
                             size="sm"
-                            onClick={openClosing}
-                            disabled={Boolean(closeReason)}
-                            aria-label={
-                                closeReason
-                                    ? `Close meeting. ${closeReason}`
-                                    : 'Close meeting'
-                            }
-                            title={closeReason ?? undefined}
+                            onClick={() => setDetailsOpen(true)}
                         >
-                            <LogOut className="mr-2 h-4 w-4" />
-                            Close
+                            Details
                         </Button>
-                    )}
-                </div>
-                <div
-                    className="flex w-full flex-nowrap items-center gap-2 overflow-x-auto pb-0.5 pl-8"
-                    aria-label="Meeting perspectives"
-                    role="group"
-                >
-                    <span className="shrink-0 type-meta text-ink-muted">Perspectives</span>
-                    {(meeting.participants ?? []).map((participant) => {
-                        const active = turns.activeParticipantId === participant.id;
-                        return (
-                            <span
-                                key={participant.id}
-                                className={cn(
-                                    'inline-flex shrink-0 items-center gap-2 whitespace-nowrap rounded-full border px-2 py-0',
-                                    active
-                                        ? 'border-action bg-accent-soft text-ink'
-                                        : 'border-separator bg-surface-raised/60 text-ink'
-                                )}
+                        {capabilities.closing && !ended && (
+                            <Button
+                                ref={closeAnchorRef}
+                                id="closing-tab"
+                                data-testid="closing-entry"
+                                type="button"
+                                variant="outline"
+                                size="sm"
+                                onClick={openClosing}
+                                disabled={Boolean(closeReason)}
+                                aria-label={
+                                    closeReason
+                                        ? `Close meeting. ${closeReason}`
+                                        : 'Close meeting'
+                                }
+                                title={closeReason ?? undefined}
                             >
-                                <ParticipantMark participant={participant} size="md" />
-                                <span className="type-meta font-medium">
-                                    {participant.name}
-                                </span>
-                                <span className="type-meta capitalize text-ink-muted">
-                                    {participant.role}
-                                </span>
-                            </span>
-                        );
-                    })}
-                    <span className="inline-flex shrink-0 items-center gap-2 whitespace-nowrap rounded-full border border-separator bg-surface-raised/60 px-2 py-0 text-ink">
-                        <DirectorMark size="md" />
-                        <span className="type-meta font-medium">You</span>
-                    </span>
+                                <LogOut
+                                    aria-hidden="true"
+                                    className="mr-2 size-4"
+                                />
+                                Close
+                            </Button>
+                        )}
+                    </div>
                 </div>
             </header>
 
@@ -700,7 +713,11 @@ function MeetingConversation({
                                     value="disagreements"
                                     className="m-0 flex min-h-0 flex-1 flex-col"
                                 >
-                                    <DisagreementsPanel disagreements={disagreements} compact />
+                                    <DisagreementsPanel
+                                        disagreements={disagreements}
+                                        participants={meeting.participants ?? []}
+                                        compact
+                                    />
                                 </TabsContent>
                             )}
                             {capabilities.consensus && (
@@ -861,6 +878,14 @@ function MessageList({
     const contentRef = useRef<HTMLDivElement>(null);
     const stickToBottomRef = useRef(true);
     const messageCount = meeting.messages?.length ?? 0;
+    const messages = meeting.messages ?? [];
+    const activeOperationId = activeOperation?.operation_id ?? null;
+    const projectionVisible =
+        Boolean(activeOperationId) &&
+        !messages.some((message) => message.operation_id === activeOperationId);
+    const [newContent, setNewContent] = useState(false);
+    const previousCountRef = useRef(messageCount);
+    const previousOperationRef = useRef(activeOperationId);
 
     useEffect(() => {
         const viewport = contentRef.current?.closest<HTMLElement>(
@@ -869,7 +894,9 @@ function MessageList({
         if (!viewport) return;
 
         const updateStickiness = () => {
-            stickToBottomRef.current = isNearScrollBottom(viewport);
+            const near = isNearScrollBottom(viewport);
+            stickToBottomRef.current = near;
+            if (near) setNewContent(false);
         };
         updateStickiness();
         viewport.addEventListener('scroll', updateStickiness, { passive: true });
@@ -877,52 +904,104 @@ function MessageList({
     }, []);
 
     useEffect(() => {
-        if (!stickToBottomRef.current) return;
+        const previousCount = previousCountRef.current;
+        const previousOperation = previousOperationRef.current;
+        previousCountRef.current = messageCount;
+        previousOperationRef.current = activeOperationId;
+        const grew =
+            messageCount > previousCount ||
+            (activeOperationId !== null &&
+                activeOperationId !== previousOperation);
+        if (!grew) return;
+
         const viewport = contentRef.current?.closest<HTMLElement>(
             '[data-slot="scroll-area-viewport"]'
         );
         if (!viewport) return;
 
-        // Scroll only the message viewport, and jump instead of animating.
-        // scrollIntoView used to move the whole demo page while a turn streamed.
-        viewport.scrollTop = viewport.scrollHeight;
-    }, [messageCount, projection]);
+        if (stickToBottomRef.current) {
+            // Scroll only the message viewport, and jump instead of animating.
+            viewport.scrollTop = viewport.scrollHeight;
+            return;
+        }
+        // The reader is intentionally above the tail. Preserve that position
+        // and offer an explicit way back instead of yanking them down.
+        // eslint-disable-next-line react-hooks/set-state-in-effect
+        setNewContent(true);
+    }, [activeOperationId, messageCount, projectionVisible]);
+
+    const scrollToLatest = () => {
+        const viewport = contentRef.current?.closest<HTMLElement>(
+            '[data-slot="scroll-area-viewport"]'
+        );
+        if (viewport) viewport.scrollTop = viewport.scrollHeight;
+        stickToBottomRef.current = true;
+        setNewContent(false);
+    };
 
     return (
-        <ScrollArea data-testid="room-discussion" className="min-h-0 flex-1">
-            <div
-                ref={contentRef}
-                className="mx-auto max-w-[74ch] space-y-6 px-4 py-5"
-            >
-                {(meeting.messages ?? []).map((message) => (
-                    <MessageBubble
-                        key={message.id}
-                        message={message}
-                        participant={(meeting.participants ?? []).find(
-                            (p) => p.id === message.sender_id
-                        )}
-                    />
-                ))}
+        <div className="relative flex min-h-0 flex-1 flex-col">
+            <ScrollArea data-testid="room-discussion" className="min-h-0 flex-1">
+                <div
+                    ref={contentRef}
+                    className="mx-auto max-w-[74ch] space-y-6 px-4 py-5"
+                >
+                    {messages.map((message) => (
+                        <div
+                            key={message.operation_id ?? message.id}
+                            data-contribution-id={
+                                message.operation_id ?? message.id
+                            }
+                        >
+                            <MessageBubble
+                                message={message}
+                                participant={(meeting.participants ?? []).find(
+                                    (p) => p.id === message.sender_id
+                                )}
+                            />
+                        </div>
+                    ))}
 
-                {activeOperation && (
-                    <TurnProjectionBubble
-                        operation={activeOperation}
-                        projection={projection}
-                        participant={(meeting.participants ?? []).find(
-                            (p) => p.id === activeOperation.participant_id
-                        )}
-                        isObserving={isObserving}
-                        onResume={onResume}
-                    />
-                )}
+                    {projectionVisible && activeOperation && (
+                        <div
+                            key={activeOperation.operation_id}
+                            data-contribution-id={activeOperation.operation_id}
+                        >
+                            <TurnProjectionBubble
+                                operation={activeOperation}
+                                projection={projection}
+                                participant={(meeting.participants ?? []).find(
+                                    (p) => p.id === activeOperation.participant_id
+                                )}
+                                isObserving={isObserving}
+                                onResume={onResume}
+                            />
+                        </div>
+                    )}
 
-                {(meeting.messages ?? []).length === 0 && !activeOperation && (
-                    <div className="text-center py-12 text-ink-muted">
-                        <p>No messages yet. Start the conversation!</p>
-                    </div>
-                )}
-            </div>
-        </ScrollArea>
+                    {messages.length === 0 && !activeOperation && (
+                        <div className="py-12 text-center text-ink-muted">
+                            <p>No messages yet. Start the conversation!</p>
+                        </div>
+                    )}
+                </div>
+            </ScrollArea>
+            {newContent ? (
+                <div className="pointer-events-none absolute inset-x-0 bottom-3 flex justify-center px-4">
+                    <Button
+                        type="button"
+                        variant="outline"
+                        size="sm"
+                        data-testid="new-content"
+                        className="pointer-events-auto bg-surface shadow-[var(--shadow-raised)]"
+                        onClick={scrollToLatest}
+                    >
+                        New content
+                        <ChevronDown aria-hidden="true" className="size-4" />
+                    </Button>
+                </div>
+            ) : null}
+        </div>
     );
 }
 
@@ -955,7 +1034,9 @@ function RoomControls({ meeting, turns }: RoomControlsProps) {
                     </div>
                     <div
                         ref={speakerRef}
-                        className="flex flex-wrap gap-2"
+                        role="group"
+                        aria-label="Who speaks next?"
+                        className="grid max-h-48 grid-cols-1 gap-2 overflow-y-auto pr-1 sm:grid-cols-2 lg:grid-cols-3"
                     >
                         {runtime.replay ? (
                             runtime.replay.preparedTurns?.length ? null : (
@@ -971,7 +1052,7 @@ function RoomControls({ meeting, turns }: RoomControlsProps) {
                                                 variant="outline"
                                                 size="sm"
                                                 disabled
-                                                className="border-action/50 bg-accent-soft text-ink-muted"
+                                                className="w-full justify-start border-action/50 bg-accent-soft text-ink-muted"
                                             >
                                                 <DirectorMark size="sm" />
                                                 <span className="ml-1">You</span>
@@ -987,7 +1068,7 @@ function RoomControls({ meeting, turns }: RoomControlsProps) {
                             <Button
                                 variant="outline"
                                 size="sm"
-                                className="border-action bg-accent-soft text-action hover:bg-surface-raised"
+                                className="w-full justify-start border-action bg-accent-soft text-action hover:bg-surface-raised"
                             >
                                 <DirectorMark size="sm" />
                                 <span className="ml-1">You</span>
@@ -1002,16 +1083,23 @@ function RoomControls({ meeting, turns }: RoomControlsProps) {
                             );
                             if (!ParticipantAction) return null;
                             return (
-                                <ParticipantAction
+                                <div
                                     key={participant.id}
-                                    participant={participant}
-                                    isActive={isActive}
-                                    isQueued={isQueued}
-                                    disabled={turns.isSubmitting}
-                                    onStart={(settings) =>
-                                        handleStartTurn(participant.id, settings)
-                                    }
-                                />
+                                    className="flex min-w-0 flex-col gap-0.5"
+                                >
+                                    <ParticipantAction
+                                        participant={participant}
+                                        isActive={isActive}
+                                        isQueued={isQueued}
+                                        disabled={turns.isSubmitting}
+                                        onStart={(settings) =>
+                                            handleStartTurn(participant.id, settings)
+                                        }
+                                    />
+                                    <span className="truncate px-1 type-meta capitalize text-ink-muted">
+                                        {participant.role}
+                                    </span>
+                                </div>
                             );
                         })}
                     </div>
@@ -1179,8 +1267,13 @@ function MessageComposer({ meetingId }: { meetingId: string }) {
 
     return (
         <div>
-            <div className="flex gap-2">
-                <Input
+            <label htmlFor="room-composer" className="sr-only">
+                Director message
+            </label>
+            <div className="flex items-end gap-2">
+                <Textarea
+                    id="room-composer"
+                    rows={1}
                     value={inputValue}
                     onChange={(event) => input(event.target.value)}
                     onKeyDown={(event) => {
@@ -1190,24 +1283,31 @@ function MessageComposer({ meetingId }: { meetingId: string }) {
                         }
                     }}
                     placeholder="Type your message..."
-                    className="bg-surface-raised border-control text-ink placeholder:text-ink-muted"
+                    aria-describedby="room-composer-hint"
+                    className="max-h-32 min-h-10 resize-none bg-surface-raised border-control text-ink placeholder:text-ink-muted"
                 />
                 <Button
+                    type="button"
                     onClick={() => void handleSend()}
-                    disabled={!inputValue.trim() || sendMessage.isPending}
+                    busy={sendMessage.isPending}
+                    busyLabel="Sending"
+                    disabled={!inputValue.trim()}
                     aria-label="Send message"
                     className="bg-action hover:bg-action-hover"
                 >
-                    {sendMessage.isPending ? (
-                        <Loader2 className="w-4 h-4 animate-spin" />
-                    ) : (
-                        <Send className="w-4 h-4" />
-                    )}
+                    <Send aria-hidden="true" className="size-4" />
                 </Button>
             </div>
+            <p
+                id="room-composer-hint"
+                className="mt-1 type-meta text-ink-muted"
+            >
+                Enter to send · Shift+Enter for a new line
+            </p>
             {sendMessage.isError && (
-                <p className="mt-2 text-xs text-danger">
-                    The message was not saved. Your draft is still here; try again.
+                <p role="alert" className="mt-2 type-meta text-danger">
+                    The message was not saved. Your draft is still here; try
+                    again.
                 </p>
             )}
         </div>
@@ -1216,9 +1316,11 @@ function MessageComposer({ meetingId }: { meetingId: string }) {
 
 function DisagreementsPanel({
     disagreements,
+    participants = [],
     compact = false,
 }: {
     disagreements: Disagreement[];
+    participants?: AIParticipant[];
     compact?: boolean;
 }) {
     return (
@@ -1248,6 +1350,7 @@ function DisagreementsPanel({
                             <DisagreementCard
                                 key={disagreement.id}
                                 disagreement={disagreement}
+                                participants={participants}
                                 compact={compact}
                             />
                         ))}
@@ -1321,51 +1424,74 @@ function EmptyTab({
 
 function DisagreementCard({
     disagreement,
+    participants,
     compact = false,
 }: {
     disagreement: Disagreement;
+    participants: AIParticipant[];
     compact?: boolean;
 }) {
-    const severityColors: Record<number, string> = {
-        1: 'border-warning/50 bg-warning-soft',
-        2: 'border-warning/50 bg-warning-soft',
-        3: 'border-danger/50 bg-danger-soft',
-        4: 'border-danger/50 bg-danger-soft',
-        5: 'border-danger/50 bg-danger-soft',
-    };
-    const severity = (disagreement.severity || 3) as keyof typeof severityColors;
+    const severity = Math.min(5, Math.max(1, disagreement.severity || 3));
+    const source = participants.find(
+        (participant) => participant.id === disagreement.source_ai_id
+    );
     return (
-        <Card className={cn('border', compact ? 'p-3' : 'p-4', severityColors[severity])}>
-            <div className="space-y-2">
-                <div className="flex items-start justify-between gap-3">
-                    <h4 className="type-control font-semibold text-ink">
-                        {disagreement.topic}
-                    </h4>
-                    <Badge
-                        variant="secondary"
-                        className={cn(
-                            'shrink-0 text-xs capitalize',
-                            disagreement.status === 'open'
-                                ? 'bg-danger-soft text-danger'
-                                : 'bg-surface-selected text-ink-secondary'
-                        )}
-                    >
-                        {disagreement.status}
-                    </Badge>
+        <details
+            className={cn(
+                'group material-raised rounded-control border border-separator',
+                compact ? 'text-sm' : ''
+            )}
+        >
+            <summary className="m-control flex cursor-pointer list-none items-start gap-3 p-3">
+                <div className="min-w-0 flex-1">
+                    <div className="flex flex-wrap items-center gap-2">
+                        <h4 className="type-control font-semibold text-ink">
+                            {disagreement.topic}
+                        </h4>
+                        <Badge variant="outline" className="capitalize">
+                            {disagreement.status}
+                        </Badge>
+                    </div>
+                    <p className="mt-1 type-meta text-ink-muted">
+                        Severity {severity}/5 · Challenging{' '}
+                        {disagreement.target_name}
+                    </p>
                 </div>
-                <p className="type-control text-ink-secondary">{disagreement.reasoning}</p>
-                <div className="flex flex-wrap items-center gap-x-2 gap-y-1 type-meta text-ink-muted">
-                    <span>
-                        Challenging{' '}
-                        <span className="text-ink-secondary">{disagreement.target_name}</span>
-                    </span>
-                    <span aria-hidden="true">·</span>
-                    <span>{formatRelativeTime(disagreement.created_at)}</span>
-                    <span aria-hidden="true">·</span>
-                    <span>Severity {severity}/5</span>
-                </div>
+                <ChevronDown
+                    aria-hidden="true"
+                    className="mt-0.5 size-4 shrink-0 text-ink-muted transition-transform duration-200 group-open:rotate-180 motion-reduce:transition-none"
+                />
+            </summary>
+            <div className="space-y-3 border-t border-separator p-3">
+                <p className="type-body text-ink-secondary">
+                    {disagreement.reasoning}
+                </p>
+                <dl className="grid gap-2 type-meta sm:grid-cols-2">
+                    <div>
+                        <dt className="text-ink-muted">Logged by</dt>
+                        <dd className="text-ink">
+                            {source?.name ?? disagreement.source_ai_id}
+                        </dd>
+                    </div>
+                    <div>
+                        <dt className="text-ink-muted">Challenging</dt>
+                        <dd className="text-ink">{disagreement.target_name}</dd>
+                    </div>
+                    <div>
+                        <dt className="text-ink-muted">Status</dt>
+                        <dd className="capitalize text-ink">
+                            {disagreement.status}
+                        </dd>
+                    </div>
+                    <div>
+                        <dt className="text-ink-muted">Recorded</dt>
+                        <dd className="text-ink">
+                            {formatRelativeTime(disagreement.created_at)}
+                        </dd>
+                    </div>
+                </dl>
             </div>
-        </Card>
+        </details>
     );
 }
 
@@ -1376,54 +1502,74 @@ function ConsensusCard({
     consensus: Consensus;
     compact?: boolean;
 }) {
-    const strengthColors: Record<number, string> = {
-        1: 'border-success/40 bg-success-soft',
-        2: 'border-success/40 bg-success-soft',
-        3: 'border-success/50 bg-success-soft',
-        4: 'border-success/50 bg-success-soft',
-        5: 'border-success/50 bg-success-soft',
-    };
-    const strength = (consensus.strength || 3) as keyof typeof strengthColors;
+    const strength = Math.min(5, Math.max(1, consensus.strength || 3));
     return (
-        <Card className={cn('border', compact ? 'p-3' : 'p-4', strengthColors[strength])}>
-            <div className="space-y-2">
-                <h4 className="type-control font-semibold text-ink">{consensus.topic}</h4>
-                <div className="flex flex-wrap gap-1.5">
-                    {(consensus.participants as string[]).map((name, index) => (
-                        <Badge
-                            key={`${name}-${index}`}
-                            variant="secondary"
-                            className="bg-success-soft text-xs text-success"
-                        >
-                            {name}
-                        </Badge>
+        <details
+            className={cn(
+                'group material-raised rounded-control border border-separator',
+                compact ? 'text-sm' : ''
+            )}
+        >
+            <summary className="m-control flex cursor-pointer list-none items-start gap-3 p-3">
+                <div className="min-w-0 flex-1">
+                    <h4 className="type-control font-semibold text-ink">
+                        {consensus.topic}
+                    </h4>
+                    <p className="mt-1 type-meta text-ink-muted">
+                        Strength {strength}/5 ·{' '}
+                        {consensus.participants.length} participant
+                        {consensus.participants.length === 1 ? '' : 's'}
+                    </p>
+                </div>
+                <ChevronDown
+                    aria-hidden="true"
+                    className="mt-0.5 size-4 shrink-0 text-ink-muted transition-transform duration-200 group-open:rotate-180 motion-reduce:transition-none"
+                />
+            </summary>
+            <div className="space-y-3 border-t border-separator p-3">
+                <ul className="flex flex-wrap gap-1.5">
+                    {consensus.participants.map((name, index) => (
+                        <li key={`${name}-${index}`}>
+                            <Badge variant="secondary" className="text-xs">
+                                {name}
+                            </Badge>
+                        </li>
                     ))}
-                </div>
-                <div className="flex items-center gap-2 type-meta text-ink-muted">
-                    <span>Strength {strength}/5</span>
-                    <span aria-hidden="true">·</span>
-                    <span>{formatRelativeTime(consensus.created_at)}</span>
-                </div>
+                </ul>
+                <dl className="grid gap-2 type-meta sm:grid-cols-2">
+                    <div>
+                        <dt className="text-ink-muted">Strength</dt>
+                        <dd className="text-ink">{strength}/5</dd>
+                    </div>
+                    <div>
+                        <dt className="text-ink-muted">Recorded</dt>
+                        <dd className="text-ink">
+                            {formatRelativeTime(consensus.created_at)}
+                        </dd>
+                    </div>
+                </dl>
             </div>
-        </Card>
+        </details>
     );
 }
 
 function ParticipantRoster({ participants }: { participants: AIParticipant[] }) {
     return (
         <ScrollArea className="h-full p-4">
-            <div className="max-w-3xl mx-auto space-y-4">
+            <div className="mx-auto max-w-3xl space-y-4">
                 <div className="mb-6">
-                    <h3 className="text-lg font-semibold text-ink mb-1">AI Roster</h3>
-                    <p className="text-sm text-ink-secondary">
-                        View the AI participants in this meeting. Each AI has its own
-                        personality and system prompt.
+                    <h2 className="type-section-title text-ink">
+                        Participants
+                    </h2>
+                    <p className="mt-1 max-w-[68ch] type-body text-ink-secondary">
+                        This is the participant snapshot saved with the meeting.
+                        It is not the current editable persona template.
                     </p>
                 </div>
                 {participants.length === 0 ? (
                     <EmptyTab
-                        icon={<Bot className="w-12 h-12" />}
-                        title="No Participants"
+                        icon={<Bot className="h-12 w-12" />}
+                        title="No participants"
                         text="This meeting has no AI participants."
                     />
                 ) : (
@@ -1449,15 +1595,17 @@ function ParticipantDetailCard({ participant }: { participant: AIParticipant }) 
     const stackCount = participant.stack_ids?.length ?? 0;
 
     return (
-        <Card className="bg-surface/50 border-separator overflow-hidden">
-            <div className="p-4 flex items-start gap-4">
+        <article className="material-raised overflow-hidden rounded-group">
+            <div className="flex items-start gap-4 p-4">
                 <ParticipantMark participant={participant} size="lg" />
-                <div className="flex-1 min-w-0">
-                    <div className="flex items-center gap-2 mb-1">
-                        <h4 className="font-semibold text-ink">{participant.name}</h4>
+                <div className="min-w-0 flex-1">
+                    <div className="mb-1 flex flex-wrap items-center gap-2">
+                        <h3 className="type-item-title text-ink">
+                            {participant.name}
+                        </h3>
                         <Badge
-                            variant="secondary"
-                            className="border text-xs capitalize text-ink"
+                            variant="outline"
+                            className="text-xs capitalize text-ink"
                             style={{
                                 backgroundColor: `${participant.color}20`,
                                 borderColor: participant.color,
@@ -1466,8 +1614,15 @@ function ParticipantDetailCard({ participant }: { participant: AIParticipant }) 
                             {participant.role}
                         </Badge>
                     </div>
-                    <p className="type-meta text-ink-muted">
-                        Model: {participant.provider_config?.model || 'Default'}
+                    <p className="break-words type-meta text-ink-muted">
+                        Model:{' '}
+                        <span className="text-ink-secondary">
+                            {participant.provider_config?.model || 'Default'}
+                        </span>
+                    </p>
+                    <p className="mt-0.5 type-meta text-ink-muted">
+                        Saved with this meeting · persona{' '}
+                        {participant.persona_id ?? 'snapshot'}
                     </p>
                 </div>
             </div>
@@ -1475,22 +1630,22 @@ function ParticipantDetailCard({ participant }: { participant: AIParticipant }) 
                 <CollapsibleTrigger asChild>
                     <Button
                         variant="ghost"
-                        className="w-full justify-between px-4 py-2 h-auto text-sm text-ink-secondary hover:text-ink hover:bg-surface-raised rounded-none border-t border-separator"
+                        className="h-auto w-full justify-between rounded-none border-t border-separator px-4 py-2 text-sm text-ink-secondary hover:bg-surface-raised hover:text-ink"
                     >
                         <span className="flex items-center gap-2">
-                            <Bot className="w-4 h-4" />
-                            System Prompt
+                            <Bot aria-hidden="true" className="size-4" />
+                            Saved system prompt
                         </span>
                         {promptOpen ? (
-                            <ChevronUp className="w-4 h-4" />
+                            <ChevronUp aria-hidden="true" className="size-4" />
                         ) : (
-                            <ChevronDown className="w-4 h-4" />
+                            <ChevronDown aria-hidden="true" className="size-4" />
                         )}
                     </Button>
                 </CollapsibleTrigger>
                 <CollapsibleContent>
-                    <div className="px-4 py-3 bg-canvas/50 border-t border-separator">
-                        <pre className="text-xs text-ink-secondary whitespace-pre-wrap font-mono leading-relaxed">
+                    <div className="max-h-72 overflow-auto border-t border-separator bg-canvas/50 px-4 py-3">
+                        <pre className="whitespace-pre-wrap break-words type-body text-ink-secondary">
                             {participant.system_prompt}
                         </pre>
                     </div>
@@ -1500,35 +1655,48 @@ function ParticipantDetailCard({ participant }: { participant: AIParticipant }) 
                 <CollapsibleTrigger asChild>
                     <Button
                         variant="ghost"
-                        className="w-full justify-between px-4 py-2 h-auto text-sm text-ink-secondary hover:text-ink hover:bg-surface-raised rounded-none border-t border-separator"
+                        className="h-auto w-full justify-between rounded-none border-t border-separator px-4 py-2 text-sm text-ink-secondary hover:bg-surface-raised hover:text-ink"
                     >
                         <span className="flex items-center gap-2">
-                            <Lock className="w-4 h-4" />
+                            <Lock aria-hidden="true" className="size-4" />
                             Knowledge assignments
-                            <Badge variant="secondary" className="text-xs bg-surface-raised text-ink-secondary">
-                                {stackCount} stack{stackCount === 1 ? '' : 's'}
+                            <Badge
+                                variant="secondary"
+                                className="bg-surface-raised text-xs text-ink-secondary"
+                            >
+                                {stackCount} stack
+                                {stackCount === 1 ? '' : 's'}
                             </Badge>
                         </span>
                         {knowledgeOpen ? (
-                            <ChevronUp className="w-4 h-4" />
+                            <ChevronUp aria-hidden="true" className="size-4" />
                         ) : (
-                            <ChevronDown className="w-4 h-4" />
+                            <ChevronDown aria-hidden="true" className="size-4" />
                         )}
                     </Button>
                 </CollapsibleTrigger>
                 <CollapsibleContent>
-                    <div className="px-4 py-3 bg-canvas/50 border-t border-separator">
+                    <div className="border-t border-separator bg-canvas/50 px-4 py-3">
                         {stackCount === 0 ? (
-                            <p className="text-xs text-ink-muted italic">
-                                No knowledge stacks linked to this AI.
+                            <p className="type-meta italic text-ink-muted">
+                                No knowledge stacks are assigned to this
+                                participant. Shared meeting files are listed
+                                separately.
                             </p>
                         ) : (
                             <ul className="space-y-2">
                                 {participant.stack_ids?.map((stackId) => (
-                                    <li key={stackId} className="flex items-center gap-2 text-sm">
-                                        <FileText className="w-4 h-4 text-ink-muted" />
+                                    <li
+                                        key={stackId}
+                                        className="flex items-center gap-2 type-body"
+                                    >
+                                        <FileText
+                                            aria-hidden="true"
+                                            className="size-4 text-ink-muted"
+                                        />
                                         <span className="text-ink-secondary">
-                                            {stackLabels[stackId] ?? "Unlabeled knowledge stack"}
+                                            {stackLabels[stackId] ??
+                                                'Unlabeled knowledge stack'}
                                         </span>
                                     </li>
                                 ))}
@@ -1537,7 +1705,7 @@ function ParticipantDetailCard({ participant }: { participant: AIParticipant }) 
                     </div>
                 </CollapsibleContent>
             </Collapsible>
-        </Card>
+        </article>
     );
 }
 
@@ -1722,11 +1890,6 @@ function MessageBubble({
                     <span className="type-meta text-ink-muted">
                         {formatRelativeTime(message.created_at)}
                     </span>
-                    {message.estimated_cost > 0 && (
-                        <Badge variant="secondary" className="bg-surface-raised type-meta text-ink-secondary">
-                            {formatCost(message.estimated_cost)}
-                        </Badge>
-                    )}
                 </div>
                 {message.thinking_content && (
                     <ThinkingBlock

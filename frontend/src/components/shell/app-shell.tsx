@@ -221,7 +221,14 @@ export function AppShell({
                     )}
                 </header>
             )}
-            <div className="relative z-10">{children}</div>
+            <div
+                className={cn(
+                    "relative z-10",
+                    hideChrome && "h-dvh min-h-0"
+                )}
+            >
+                {children}
+            </div>
         </div>
     );
 }
