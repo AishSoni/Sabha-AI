@@ -11,7 +11,6 @@ export const HOME_COPY = {
   evidence: {
     heading: "Different perspectives. Traceable sources.",
     body: "The prepared demo gives every role the same shared material, then a private working set. Dashed lines show what was assigned; solid lines show an example citation from a prepared turn.",
-    disclosure: "Prepared demo · recorded responses, not live generation.",
     illustrative: "Illustrative view of the prepared demo · not a live retrieval record",
     legend: {
       assignment: "Assigned / available",

@@ -2,9 +2,7 @@
 
 import Link from "next/link";
 import { useMemo, useState, type CSSProperties } from "react";
-import { ArrowUpRight, FileText } from "lucide-react";
-
-import { ParticipantMark } from "@/components/identity/participant-mark";
+import { ArrowUpRight } from "lucide-react";
 
 import { HOME_COPY } from "../presentation/copy";
 import {
@@ -17,12 +15,20 @@ import {
   type EvidenceEdge,
   type EvidenceNode,
 } from "../presentation/evidence-graph";
+import { createHomeStars } from "../presentation/starfield";
+
+const MAP_STARS = createHomeStars(0x5ab4b, 170).map((star) => ({
+  ...star,
+  x: star.x * 0.625,
+  y: star.y * 0.6,
+}));
 
 function nodeStyle(node: EvidenceNode): CSSProperties {
   return {
     left: `${(node.x / 1000) * 100}%`,
     top: `${(node.y / 600) * 100}%`,
-  };
+    "--home-node-color": node.color ?? "var(--home-star)",
+  } as CSSProperties;
 }
 
 function edgePath(edge: EvidenceEdge): string {
@@ -43,19 +49,12 @@ function edgePath(edge: EvidenceEdge): string {
 }
 
 function NodeMark({ node }: { node: EvidenceNode }) {
-  if (node.kind === "persona" && node.color) {
-    return (
-      <ParticipantMark
-        participant={{ id: node.id, name: node.name, color: node.color }}
-        size="sm"
-      />
-    );
-  }
-
   return (
-    <span className="home-graph__doc-mark" aria-hidden="true">
-      <FileText className="size-4" strokeWidth={1.7} />
-    </span>
+    <span
+      className="home-graph__star"
+      data-kind={node.kind}
+      aria-hidden="true"
+    />
   );
 }
 
@@ -142,9 +141,6 @@ export function HomeEvidence() {
           <p className="home-evidence__copy type-lead">
             {HOME_COPY.evidence.body}
           </p>
-          <p className="home-evidence__disclosure type-meta">
-            {HOME_COPY.evidence.disclosure}
-          </p>
           <div className="home-graph__legend" aria-label="Graph legend">
             <span>
               <span
@@ -163,154 +159,162 @@ export function HomeEvidence() {
           </div>
         </div>
 
-        <div className="home-graph__layout">
-          <div className="home-graph">
-            <div
-              className="home-graph__visual"
-              aria-label="Illustrative evidence constellation"
+        <div className="home-graph">
+          <div
+            className="home-graph__map"
+            role="group"
+            aria-label="Illustrative evidence star map"
+          >
+            <svg
+              className="home-graph__sky"
+              viewBox="0 0 1000 600"
+              aria-hidden="true"
+              focusable="false"
             >
-              <svg
-                className="home-graph__edges"
-                viewBox="0 0 1000 600"
-                aria-hidden="true"
-                focusable="false"
-              >
-                {EVIDENCE_EDGES.map((edge) => {
-                  const active =
-                    edge.from === focusId || edge.to === focusId;
-                  return (
-                    <path
-                      key={edge.id}
-                      className="home-graph__edge"
-                      data-kind={edge.kind}
-                      data-active={active}
-                      data-dim={!active}
-                      d={edgePath(edge)}
-                    />
-                  );
-                })}
-              </svg>
+              <defs>
+                <radialGradient id="home-map-nebula" cx="50%" cy="48%" r="60%">
+                  <stop offset="0%" stopColor="var(--home-map-core)" />
+                  <stop offset="58%" stopColor="var(--home-map-mid)" />
+                  <stop offset="100%" stopColor="transparent" />
+                </radialGradient>
+              </defs>
+              <rect width="1000" height="600" fill="url(#home-map-nebula)" />
+              {MAP_STARS.map((star, index) => (
+                <circle
+                  key={`${star.x}-${star.y}-${index}`}
+                  cx={star.x}
+                  cy={star.y}
+                  r={star.radius}
+                  className="home-graph__sky-star"
+                  opacity={star.opacity}
+                />
+              ))}
+            </svg>
 
+            <svg
+              className="home-graph__edges"
+              viewBox="0 0 1000 600"
+              aria-hidden="true"
+              focusable="false"
+            >
+              {EVIDENCE_EDGES.map((edge) => {
+                const active = edge.from === focusId || edge.to === focusId;
+                return (
+                  <path
+                    key={edge.id}
+                    className="home-graph__edge"
+                    data-kind={edge.kind}
+                    data-active={active}
+                    data-dim={!active}
+                    d={edgePath(edge)}
+                  />
+                );
+              })}
+            </svg>
+
+            {EVIDENCE_NODES.map((node) => {
+              const state = nodeState(node);
+              return (
+                <button
+                  key={node.id}
+                  type="button"
+                  className="home-graph__node"
+                  style={nodeStyle(node)}
+                  aria-pressed={state.selected}
+                  data-kind={node.kind}
+                  data-selected={state.selected}
+                  data-preview={state.preview}
+                  data-related={state.related}
+                  data-dim={state.dim}
+                  onClick={() => selectNode(node.id)}
+                  onMouseEnter={() => setHoveredId(node.id)}
+                  onMouseLeave={() => setHoveredId(null)}
+                  onFocus={() => setHoveredId(node.id)}
+                  onBlur={() => setHoveredId(null)}
+                >
+                  <NodeMark node={node} />
+                  <NodeLabel node={node} />
+                </button>
+              );
+            })}
+          </div>
+
+          <div className="home-graph__mobile">
+            <h3 className="type-item-title">Connections</h3>
+            <ul className="home-graph__node-list">
               {EVIDENCE_NODES.map((node) => {
                 const state = nodeState(node);
                 return (
-                  <button
-                    key={node.id}
-                    type="button"
-                    className="home-graph__node"
-                    style={nodeStyle(node)}
-                    aria-pressed={state.selected}
-                    data-selected={state.selected}
-                    data-preview={state.preview}
-                    data-related={state.related}
-                    data-dim={state.dim}
-                    onClick={() => selectNode(node.id)}
-                    onMouseEnter={() => setHoveredId(node.id)}
-                    onMouseLeave={() => setHoveredId(null)}
-                    onFocus={() => setHoveredId(node.id)}
-                    onBlur={() => setHoveredId(null)}
-                  >
-                    <NodeMark node={node} />
-                    <NodeLabel node={node} />
-                  </button>
+                  <li key={node.id}>
+                    <button
+                      type="button"
+                      className="home-graph__node-list-button"
+                      aria-pressed={state.selected}
+                      data-kind={node.kind}
+                      data-selected={state.selected}
+                      style={nodeStyle(node)}
+                      onClick={() => selectNode(node.id)}
+                    >
+                      <NodeMark node={node} />
+                      <NodeLabel node={node} />
+                    </button>
+                  </li>
                 );
               })}
-            </div>
+            </ul>
 
-            <div className="home-graph__mobile">
-              <h3 className="type-item-title">Connections</h3>
-              <ul className="home-graph__node-list">
-                {EVIDENCE_NODES.map((node) => {
-                  const state = nodeState(node);
-                  return (
-                    <li key={node.id}>
-                      <button
-                        type="button"
-                        className="home-graph__node-list-button"
-                        aria-pressed={state.selected}
-                        data-selected={state.selected}
-                        onClick={() => selectNode(node.id)}
-                      >
-                        <NodeMark node={node} />
-                        <NodeLabel node={node} />
-                      </button>
-                    </li>
-                  );
-                })}
-              </ul>
-
-              <details className="home-graph__reading">
-                <summary>{HOME_COPY.evidence.readingLabel}</summary>
-                <ConnectionList />
-              </details>
-            </div>
+            <details className="home-graph__reading">
+              <summary>{HOME_COPY.evidence.readingLabel}</summary>
+              <ConnectionList />
+            </details>
           </div>
 
-          <aside
-            className="home-graph__detail material-solid"
+          <div
+            className="home-graph__hud"
             aria-live="polite"
             aria-atomic="true"
           >
-            <p className="home-graph__detail-label">
-              {HOME_COPY.evidence.detailLabel}
-            </p>
-            <h3 className="type-item-title">{selectedNode.name}</h3>
-            <p className="home-graph__detail-kind">{selectedNode.kindLabel}</p>
-            <p className="home-graph__detail-copy">
-              {selectedNode.description}
-            </p>
-
-            <h4 className="home-graph__connections-title">
-              {HOME_COPY.evidence.connectionsLabel}
-            </h4>
-            {selectedAssignments.length ? (
-              <div className="home-graph__connection-group">
-                <p className="home-graph__connection-kind">
-                  {edgeKindLabel("assignment")}
-                </p>
-                <ul>
-                  {selectedAssignments.map((edge) => {
-                    const other =
-                      edge.from === selectedId ? edge.to : edge.from;
-                    return (
-                      <li key={edge.id}>
-                        <span>{evidenceNodeName(other)}</span>
-                        <span className="home-graph__edge-note">
-                          {edge.note}
-                        </span>
-                      </li>
-                    );
-                  })}
-                </ul>
-              </div>
-            ) : null}
-            {selectedCitations.length ? (
-              <div className="home-graph__connection-group">
-                <p className="home-graph__connection-kind">
-                  {edgeKindLabel("citation")}
-                </p>
-                <ul>
-                  {selectedCitations.map((edge) => {
-                    const other =
-                      edge.from === selectedId ? edge.to : edge.from;
-                    return (
-                      <li key={edge.id}>
-                        <span>{evidenceNodeName(other)}</span>
-                        <span className="home-graph__edge-note">
-                          {edge.note}
-                        </span>
-                      </li>
-                    );
-                  })}
-                </ul>
-              </div>
-            ) : null}
-            {!selectedAssignments.length && !selectedCitations.length ? (
-              <p className="home-graph__edge-note">
-                No direct connections in this illustrative view.
+            <div className="home-graph__hud-identity">
+              <p className="home-graph__hud-label">
+                {HOME_COPY.evidence.detailLabel}
               </p>
-            ) : null}
-          </aside>
+              <h3 className="type-item-title">{selectedNode.name}</h3>
+              <p className="home-graph__hud-kind">{selectedNode.kindLabel}</p>
+            </div>
+            <p className="home-graph__hud-copy">{selectedNode.description}</p>
+            <div className="home-graph__hud-connections">
+              <h4>{HOME_COPY.evidence.connectionsLabel}</h4>
+              {selectedAssignments.length ? (
+                <div className="home-graph__hud-group">
+                  <p>{edgeKindLabel("assignment")}</p>
+                  <ul>
+                    {selectedAssignments.map((edge) => {
+                      const other =
+                        edge.from === selectedId ? edge.to : edge.from;
+                      return <li key={edge.id}>{evidenceNodeName(other)}</li>;
+                    })}
+                  </ul>
+                </div>
+              ) : null}
+              {selectedCitations.length ? (
+                <div className="home-graph__hud-group">
+                  <p>{edgeKindLabel("citation")}</p>
+                  <ul>
+                    {selectedCitations.map((edge) => {
+                      const other =
+                        edge.from === selectedId ? edge.to : edge.from;
+                      return <li key={edge.id}>{evidenceNodeName(other)}</li>;
+                    })}
+                  </ul>
+                </div>
+              ) : null}
+              {!selectedAssignments.length && !selectedCitations.length ? (
+                <p className="home-graph__hud-empty">
+                  No direct connections in this illustrative view.
+                </p>
+              ) : null}
+            </div>
+          </div>
         </div>
 
         <details className="home-graph__reading home-graph__reading--desktop">

@@ -26,10 +26,24 @@ test.describe("homepage composition", () => {
       ),
     ).toHaveCount(0);
     await expect(
-      page
-        .locator(".home-evidence")
-        .getByText("Prepared demo · recorded responses, not live generation."),
-    ).toBeVisible();
+      page.getByText("Prepared demo · recorded responses, not live generation."),
+    ).toHaveCount(0);
+    const map = page.locator(".home-graph__map");
+    await expect(map).toBeVisible();
+    const mapWidth = await map.evaluate(
+      (element) => element.getBoundingClientRect().width,
+    );
+    const viewportWidth = await page.evaluate(() => window.innerWidth);
+    expect(Math.abs(mapWidth - viewportWidth)).toBeLessThanOrEqual(1);
+    await expect(page.locator(".home-graph__hud")).toBeVisible();
+    await expect(page.locator(".home-graph__hud h3")).toHaveText(
+      "Shared fact sheet",
+    );
+    await expect(page.locator(".home-graph__detail")).toHaveCount(0);
+    await expect(
+      page.getByRole("button", { name: /^Appearance:/ }),
+    ).toHaveCount(0);
+    await expect(page.getByTestId("home-motion-toggle")).toHaveCount(0);
 
     const demo = page
       .locator(".home-hero")
@@ -70,60 +84,20 @@ test.describe("homepage composition", () => {
     network.assertClean();
   });
 
-  test("appearance follows the system and can be changed in memory", async ({
+  test("keeps the homepage free of appearance and motion controls", async ({
     page,
   }) => {
-    await page.emulateMedia({ colorScheme: "dark" });
     await page.goto("/");
 
-    await expect(page.locator("html")).not.toHaveAttribute("data-theme");
-    await expect
-      .poll(() => page.locator("body").evaluate((el) => getComputedStyle(el).backgroundColor))
-      .toBe("rgb(9, 13, 20)");
-
-    await page.getByRole("button", { name: /^Appearance:/ }).click();
-    await page.getByRole("menuitemradio", { name: "Light" }).click();
-
-    await expect(page.locator("html")).toHaveAttribute("data-theme", "light");
-    await expect
-      .poll(() => page.locator("body").evaluate((el) => getComputedStyle(el).backgroundColor))
-      .toBe("rgb(245, 247, 250)");
     await expect(
-      page.getByRole("button", { name: "Appearance: Light" }),
-    ).toBeVisible();
-    await expect(page.getByRole("heading", { level: 1 })).toBeVisible();
+      page.getByRole("button", { name: /^Appearance:/ }),
+    ).toHaveCount(0);
+    await expect(page.getByTestId("home-motion-toggle")).toHaveCount(0);
+    await expect(page.locator(".home-chrome__appearance")).toHaveCount(0);
+    await expect(page.locator(".home-chrome__pause")).toHaveCount(0);
+    await expect(page.locator(".home-graph__detail")).toHaveCount(0);
   });
-
-  test("the motion control pauses the ambient field without navigating", async ({
-    page,
-  }) => {
-    await page.goto("/");
-    const toggle = page.getByTestId("home-motion-toggle");
-    await expect(toggle).toHaveAttribute("aria-label", "Pause animation");
-    await expect(page.locator("html")).toHaveAttribute(
-      "data-background",
-      "on",
-    );
-
-    await toggle.click();
-    await expect(toggle).toHaveAttribute("aria-label", "Resume animation");
-    await expect(page.locator("html")).toHaveAttribute(
-      "data-background",
-      "paused",
-    );
-    await expect(page).toHaveURL(/\/$/);
-
-    await toggle.click();
-    await expect(toggle).toHaveAttribute("aria-label", "Pause animation");
-    await expect(page.locator("html")).toHaveAttribute(
-      "data-background",
-      "on",
-    );
-  });
-
-  test("rotates the decorative tail phrase and holds it when paused", async ({
-    page,
-  }) => {
+  test("rotates the decorative tail phrase", async ({ page }) => {
     await page.goto("/");
     const phrase = page.locator(".home-headline__tail-text");
     await expect(phrase).toContainText("to your next decision.");
@@ -136,12 +110,6 @@ test.describe("homepage composition", () => {
         name: "Bring more minds to your next decision.",
       }),
     ).toBeVisible();
-
-    await page.waitForTimeout(800);
-    await page.getByTestId("home-motion-toggle").click();
-    const pausedPhrase = await phrase.innerText();
-    await page.waitForTimeout(7400);
-    expect(await phrase.innerText()).toBe(pausedPhrase);
   });
 
   test("keeps the hero invitation visible at compact and wide sizes", async ({
@@ -201,9 +169,6 @@ test.describe("homepage composition", () => {
     await page.goto("/");
     const before = await storageSnapshot(context, page);
 
-    await page.getByRole("button", { name: /^Appearance:/ }).click();
-    await page.getByRole("menuitemradio", { name: "Dark" }).click();
-    await page.getByTestId("home-motion-toggle").click();
     await page
       .getByRole("link", { name: "Explore the evidence constellation" })
       .click();
@@ -226,10 +191,10 @@ test.describe("homepage evidence graph", () => {
     await page.goto("/#evidence");
 
     const credit = page
-      .locator(".home-graph__visual .home-graph__node")
+      .locator(".home-graph__map .home-graph__node")
       .filter({ hasText: "The Credit Analyst" });
     const crisil = page
-      .locator(".home-graph__visual .home-graph__node")
+      .locator(".home-graph__map .home-graph__node")
       .filter({ hasText: "Crisil annexure" });
     const before = await credit.boundingBox();
 
@@ -237,17 +202,17 @@ test.describe("homepage evidence graph", () => {
     await crisil.press("Enter");
 
     await expect(
-      page.locator(".home-graph__detail h3"),
+      page.locator(".home-graph__hud h3"),
     ).toHaveText("Crisil annexure");
     await expect(
-      page.locator(".home-graph__detail").getByText("Cited source"),
+      page.locator(".home-graph__hud").getByText("Cited source"),
     ).toBeVisible();
     await expect(
-      page.locator(".home-graph__visual .home-graph__edge[data-active='true']"),
+      page.locator(".home-graph__map .home-graph__edge[data-active='true']"),
     ).toHaveCount(1);
     await expect(crisil).toHaveAttribute("aria-pressed", "true");
     await expect(
-      page.locator(".home-graph__visual .home-graph__node[aria-pressed='true']"),
+      page.locator(".home-graph__map .home-graph__node[aria-pressed='true']"),
     ).toHaveCount(1);
 
     const after = await credit.boundingBox();
@@ -273,7 +238,7 @@ test.describe("homepage evidence graph", () => {
     await page.setViewportSize({ width: 390, height: 844 });
     await page.goto("/#evidence");
 
-    await expect(page.locator(".home-graph__visual")).toBeHidden();
+    await expect(page.locator(".home-graph__map")).toBeHidden();
     const mobile = page.locator(".home-graph__mobile");
     await expect(mobile).toBeVisible();
     await mobile
@@ -281,7 +246,7 @@ test.describe("homepage evidence graph", () => {
       .filter({ hasText: "Portfolio mandate" })
       .click();
     await expect(
-      page.locator(".home-graph__detail h3"),
+      page.locator(".home-graph__hud h3"),
     ).toHaveText("Portfolio mandate");
   });
 });
@@ -289,7 +254,7 @@ test.describe("homepage evidence graph", () => {
 test.describe("homepage reduced motion", () => {
   test.use({ reducedMotion: "reduce" });
 
-  test("keeps a static, readable composition and explains the paused control", async ({
+  test("keeps a static, readable composition without motion controls", async ({
     page,
   }) => {
     await page.goto("/");
@@ -302,22 +267,12 @@ test.describe("homepage reduced motion", () => {
       "0",
     );
 
-    const toggle = page.getByTestId("home-motion-toggle");
-    await expect(toggle).toBeDisabled();
-    await expect(toggle).toHaveAttribute(
-      "aria-label",
-      "Animation paused by your reduced-motion setting",
-    );
+    await expect(page.getByTestId("home-motion-toggle")).toHaveCount(0);
     await expect(page.getByRole("heading", { level: 1 })).toBeVisible();
     await expect(
       page
         .locator(".home-hero")
         .getByRole("link", { name: "Try the recorded demo" }),
-    ).toBeVisible();
-    await expect(
-      page.getByText(
-        "Prepared demo · recorded responses, not live generation.",
-      ),
     ).toBeVisible();
 
     const phrase = page.locator(".home-headline__tail-text");
@@ -345,12 +300,10 @@ test.describe("homepage without JavaScript", () => {
         .getByRole("link", { name: "Try the recorded demo" }),
     ).toHaveAttribute("href", "/demo");
     await expect(
-      page.getByText(
-        "Prepared demo · recorded responses, not live generation.",
-      ),
-    ).toBeVisible();
+      page.getByText("Prepared demo · recorded responses, not live generation."),
+    ).toHaveCount(0);
     await expect(page.getByTestId("home-persona-static")).toBeVisible();
-    await expect(page.locator(".home-chrome__appearance")).toBeHidden();
-    await expect(page.locator(".home-chrome__pause")).toBeHidden();
+    await expect(page.locator(".home-graph__map")).toBeVisible();
+    await expect(page.locator(".home-graph__hud")).toBeVisible();
   });
 });
