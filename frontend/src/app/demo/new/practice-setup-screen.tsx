@@ -197,6 +197,7 @@ export function PracticeSetupScreen({
                 title="Practice setup"
                 description="Saved in this browser; the recorded meeting is unchanged."
                 backHref="/demo"
+                backLabel="Back to the board"
                 createLabel="Create practice setup"
                 busyLabel="Creating practice setup..."
                 disclosure={

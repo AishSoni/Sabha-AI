@@ -1,17 +1,15 @@
 'use client';
 
 /**
- * Shared create-meeting presentation (spec-05, spec-25).
+ * Shared create-meeting presentation (spec-05, spec-25, spec-33).
  *
  * The live route and the demo practice setup pass the same structural values
  * into this screen. Live composition keeps the native file input; the demo
  * replaces that one control with its approved-sample picker.
  */
-import type { ReactNode } from 'react';
+import { useEffect, useRef, useState, type ReactNode } from 'react';
 import Link from 'next/link';
 import {
-    ArrowLeft,
-    Bot,
     FileText,
     Loader2,
     RefreshCw,
@@ -21,11 +19,12 @@ import {
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
-import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { Checkbox } from '@/components/ui/checkbox';
-import { Card, CardContent } from '@/components/ui/card';
+import { FormField } from '@/components/ui/form-field';
+import { Skeleton } from '@/components/ui/skeleton';
 import { ParticipantMark } from '@/components/identity/participant-mark';
+import { PageHeader, PageContainer } from '@/components/shell';
 
 export interface MeetingCreationRosterItem {
     id: string;
@@ -70,6 +69,7 @@ export interface MeetingCreationScreenProps {
     title?: string;
     description?: string;
     backHref?: string;
+    backLabel?: string;
     createLabel?: string;
     busyLabel?: string;
     footerNote?: string;
@@ -102,14 +102,19 @@ export function MeetingCreationScreen({
     canCreate,
     title = 'Create Meeting Room',
     description = 'Set up a new AI advisory session',
-    backHref = '/',
+    backHref = '/meetings',
+    backLabel = 'Back to meetings',
     createLabel = 'Create Meeting Room',
     busyLabel = 'Creating...',
     footerNote,
     disclosure,
 }: MeetingCreationScreenProps) {
+    const agendaRef = useRef<HTMLInputElement>(null);
+    const errorRef = useRef<HTMLParagraphElement>(null);
+    const [agendaError, setAgendaError] = useState<string | null>(null);
     const selectedCount = roster.filter((persona) => persona.selected).length;
-    const everySelected = roster.length > 0 && roster.every((persona) => persona.selected);
+    const everySelected =
+        roster.length > 0 && roster.every((persona) => persona.selected);
     const ctaEnabled =
         canCreate ??
         (agenda.trim().length > 0 &&
@@ -117,279 +122,404 @@ export function MeetingCreationScreen({
             !navigationDone &&
             selectedCount > 0);
 
+    useEffect(() => {
+        if (creationError) errorRef.current?.focus();
+    }, [creationError]);
+
+    const submit = () => {
+        if (!agenda.trim()) {
+            setAgendaError('Enter a meeting agenda before creating the room.');
+            agendaRef.current?.focus();
+            return;
+        }
+        setAgendaError(null);
+        onCreate();
+    };
+
     return (
-        <div className="min-h-full">
-            <header className="material-chrome sticky top-0 z-chrome border-b border-separator">
-                <div className="max-w-4xl mx-auto px-6 py-4 flex items-center justify-between">
-                    <div className="flex items-center gap-4">
-                        <Link href={backHref} className="text-ink-secondary hover:text-ink transition-colors">
-                            <ArrowLeft className="w-5 h-5" />
-                        </Link>
-                        <div>
-                            <h1 className="text-xl font-bold text-ink">{title}</h1>
-                            <p className="text-xs text-ink-muted">{description}</p>
-                        </div>
-                    </div>
-                </div>
-            </header>
-
-            <main id="main-content" className="max-w-4xl mx-auto px-6 py-8" tabIndex={-1}>
+        <main id="main-content" tabIndex={-1}>
+            <PageHeader
+                title={title}
+                description={description}
+                backHref={backHref}
+                backLabel={backLabel}
+            />
+            <PageContainer>
                 {disclosure}
-
-                <div className="grid lg:grid-cols-[1fr,320px] gap-8">
-                    <div className="space-y-8">
-                        <section className="space-y-4">
-                            <div>
-                                <Label htmlFor="agenda" className="text-lg font-semibold text-ink">
-                                    Meeting Agenda <span className="text-danger">*</span>
-                                </Label>
-                                <p className="text-sm text-ink-muted mt-1">
-                                    A concise title describing what this meeting is about
-                                </p>
-                            </div>
-                            <Input
-                                id="agenda"
-                                placeholder="e.g., Product launch strategy for Q2"
-                                value={agenda}
-                                onChange={(event) => onAgendaChange(event.target.value)}
-                                className="h-12 text-lg"
-                            />
-                        </section>
-
-                        <section className="space-y-4">
-                            <div>
-                                <Label htmlFor="context" className="text-lg font-semibold text-ink">
-                                    Meeting Context
-                                </Label>
-                                <p className="text-sm text-ink-muted mt-1">
-                                    Extra details to help the AI advisors understand the situation
-                                </p>
-                            </div>
-                            <Textarea
-                                id="context"
-                                placeholder="Provide additional context, background information, constraints, or specific questions you want addressed..."
-                                value={context}
-                                onChange={(event) => onContextChange(event.target.value)}
-                                className="min-h-[150px]"
-                            />
-                        </section>
-
-                        <section className="space-y-4">
-                            <div>
-                                <Label className="text-lg font-semibold text-ink">
-                                    Shared Documents
-                                </Label>
-                                <p className="text-sm text-ink-muted mt-1">
-                                    Documents will be available for RAG search by all AI advisors
-                                </p>
-                            </div>
-                            {uploadControl ?? (
-                                <div className="m-control rounded-group border-2 border-dashed border-control bg-surface/30 p-8 text-center hover:border-action">
-                                    <input
-                                        type="file"
-                                        multiple
+                <div>
+                    <div className="grid gap-8 xl:grid-cols-[minmax(0,1fr)_20rem]">
+                        <div className="min-w-0 space-y-8">
+                            <section aria-labelledby="agenda-heading">
+                                <h2
+                                    id="agenda-heading"
+                                    className="sr-only"
+                                >
+                                    Agenda
+                                </h2>
+                                <FormField
+                                    label="Meeting agenda"
+                                    description="A concise title describing what this meeting is about."
+                                    error={agendaError}
+                                    required
+                                >
+                                    <Input
+                                        ref={agendaRef}
+                                        id="agenda"
+                                        value={agenda}
                                         onChange={(event) => {
-                                            if (event.target.files) {
-                                                onFilesSelected?.(event.target.files);
-                                            }
+                                            setAgendaError(null);
+                                            onAgendaChange(event.target.value);
                                         }}
-                                        className="hidden"
-                                        id="file-upload"
-                                        accept=".pdf,.docx,.xlsx,.csv,.txt,.md"
+                                        className="h-12 type-lead"
+                                        aria-invalid={agendaError ? true : undefined}
                                     />
-                                    <label htmlFor="file-upload" className="cursor-pointer">
-                                        <Upload className="w-10 h-10 text-ink-muted mx-auto mb-3" />
-                                        <p className="text-sm text-ink-secondary">
-                                            Click to upload documents
-                                        </p>
-                                        <p className="text-xs text-ink-muted mt-2">
-                                            PDF, DOCX, XLSX, CSV, TXT, MD
-                                        </p>
-                                    </label>
-                                </div>
-                            )}
+                                </FormField>
+                                <p className="mt-2 type-meta text-ink-muted">
+                                    Example: “Should we launch the Mumbai pilot
+                                    in Q3, and what would make it a success?”
+                                </p>
+                            </section>
 
-                            {stagedItems.length > 0 && (
-                                <div className="space-y-2">
-                                    {stagedItems.map((item, index) => (
-                                        <div
-                                            key={item.key}
-                                            className="flex items-center gap-3 p-3 bg-surface-raised rounded-lg"
+                            <section aria-labelledby="context-heading">
+                                <h2
+                                    id="context-heading"
+                                    className="sr-only"
+                                >
+                                    Context
+                                </h2>
+                                <FormField
+                                    label="Meeting context (optional)"
+                                    description="Background, constraints, or the specific question you want the board to address."
+                                >
+                                    <Textarea
+                                        id="context"
+                                        value={context}
+                                        onChange={(event) =>
+                                            onContextChange(event.target.value)
+                                        }
+                                        className="min-h-[150px]"
+                                    />
+                                </FormField>
+                            </section>
+
+                            <section aria-labelledby="documents-heading">
+                                <div className="mb-3">
+                                    <h2
+                                        id="documents-heading"
+                                        className="type-section-title text-ink"
+                                    >
+                                        Shared documents
+                                    </h2>
+                                    <p className="mt-1 max-w-[68ch] type-body text-ink-secondary">
+                                        Documents added here are shared with
+                                        every participant in this meeting. They
+                                        become readable after preparation
+                                        finishes.
+                                    </p>
+                                </div>
+
+                                {uploadControl ?? (
+                                    <div className="m-control rounded-group border border-dashed border-control bg-surface/40 p-6 text-center transition-colors hover:border-action">
+                                        <input
+                                            type="file"
+                                            multiple
+                                            onChange={(event) => {
+                                                if (event.target.files) {
+                                                    onFilesSelected?.(
+                                                        event.target.files
+                                                    );
+                                                }
+                                            }}
+                                            className="hidden"
+                                            id="file-upload"
+                                            accept=".pdf,.docx,.xlsx,.csv,.txt,.md"
+                                        />
+                                        <label
+                                            htmlFor="file-upload"
+                                            className="flex cursor-pointer flex-col items-center gap-2"
                                         >
-                                            <FileText className="w-5 h-5 text-ink-muted shrink-0" />
-                                            <span className="text-sm text-ink-secondary flex-1 truncate">
-                                                {item.label}
+                                            <Upload
+                                                aria-hidden="true"
+                                                className="size-7 text-ink-muted"
+                                            />
+                                            <span className="type-control text-ink">
+                                                Choose documents
                                             </span>
-                                            {item.status === 'uploading' && (
-                                                <span className="text-xs text-ink-secondary flex items-center gap-1">
-                                                    <Loader2 className="w-3 h-3 animate-spin motion-reduce:animate-none" />
-                                                    {item.statusLabel}
-                                                </span>
-                                            )}
-                                            {item.status !== 'uploading' && item.statusLabel ? (
-                                                <span
-                                                    className={
-                                                        item.status === 'failed'
-                                                            ? 'text-xs text-danger'
-                                                            : item.status === 'uploaded'
-                                                              ? 'text-xs text-success'
-                                                              : 'text-xs text-ink-secondary'
-                                                    }
-                                                >
-                                                    {item.statusLabel}
-                                                </span>
-                                            ) : null}
-                                            {item.removable ? (
-                                                <button
-                                                    type="button"
-                                                    onClick={() => onRemoveStaged(index)}
-                                                    className="text-ink-muted hover:text-danger"
-                                                    aria-label={`Remove ${item.label}`}
-                                                >
-                                                    <X className="w-4 h-4" />
-                                                </button>
-                                            ) : null}
-                                        </div>
-                                    ))}
-                                    {uploadError && (
-                                        <p className="text-xs text-danger" role="alert">
-                                            {uploadError}
-                                        </p>
-                                    )}
-                                    {showRetryUploads && onRetryUploads && (
-                                        <Button
-                                            variant="outline"
-                                            size="sm"
-                                            onClick={onRetryUploads}
-                                            disabled={isCreating}
-                                            className="text-xs"
-                                        >
-                                            <RefreshCw className="w-3 h-3 mr-2" />
-                                            Retry Uploads
-                                        </Button>
-                                    )}
-                                </div>
-                            )}
-                        </section>
-                    </div>
-
-                    <div className="lg:sticky lg:top-24 lg:self-start">
-                        <Card>
-                            <CardContent className="p-6 space-y-4">
-                                <div className="flex items-center justify-between">
-                                    <div className="flex items-center gap-2">
-                                        <Users className="w-5 h-5 text-action" />
-                                        <Label className="text-ink font-semibold">
-                                            AI Roster
-                                        </Label>
+                                            <span className="type-meta text-ink-muted">
+                                                PDF, DOCX, XLSX, CSV, TXT, or MD
+                                            </span>
+                                        </label>
                                     </div>
-                                    <div className="flex items-center gap-2">
-                                        <Button
-                                            variant="ghost"
-                                            size="sm"
-                                            onClick={onSelectAll}
-                                            className="text-xs text-ink-secondary hover:text-ink h-7"
+                                )}
+
+                                {stagedItems.length > 0 ? (
+                                    <div className="mt-3 space-y-2">
+                                        <p
+                                            aria-live="polite"
+                                            className="type-meta text-ink-muted"
                                         >
-                                            {everySelected ? 'Deselect All' : 'Select All'}
-                                        </Button>
-                                        {onRefreshRoster ? (
-                                            <Button
-                                                variant="ghost"
-                                                size="sm"
-                                                onClick={onRefreshRoster}
-                                                disabled={loadingRoster}
-                                                className="text-ink-secondary hover:text-ink h-7 px-2"
+                                            {stagedItems.length} document
+                                            {stagedItems.length === 1
+                                                ? ''
+                                                : 's'}{' '}
+                                            staged
+                                        </p>
+                                        <ul className="material-raised divide-y divide-separator overflow-hidden rounded-group">
+                                            {stagedItems.map((item, index) => (
+                                                <li
+                                                    key={item.key}
+                                                    data-status={item.status}
+                                                    className="flex items-center gap-3 p-3"
+                                                >
+                                                    <FileText
+                                                        aria-hidden="true"
+                                                        className="size-5 shrink-0 text-ink-muted"
+                                                    />
+                                                    <span className="min-w-0 flex-1 truncate type-body text-ink">
+                                                        {item.label}
+                                                    </span>
+                                                    {item.status ===
+                                                    'uploading' ? (
+                                                        <span className="flex items-center gap-1 type-meta text-ink-secondary">
+                                                            <Loader2
+                                                                aria-hidden="true"
+                                                                className="size-3 animate-spin motion-reduce:animate-none"
+                                                            />
+                                                            {item.statusLabel}
+                                                        </span>
+                                                    ) : item.statusLabel ? (
+                                                        <span
+                                                            className={
+                                                                item.status ===
+                                                                'failed'
+                                                                    ? 'type-meta text-danger'
+                                                                    : item.status ===
+                                                                        'uploaded'
+                                                                      ? 'type-meta text-success'
+                                                                      : 'type-meta text-ink-secondary'
+                                                            }
+                                                        >
+                                                            {item.statusLabel}
+                                                        </span>
+                                                    ) : null}
+                                                    {item.removable ? (
+                                                        <Button
+                                                            type="button"
+                                                            variant="ghost"
+                                                            size="icon-sm"
+                                                            aria-label={`Remove ${item.label}`}
+                                                            onClick={() =>
+                                                                onRemoveStaged(
+                                                                    index
+                                                                )
+                                                            }
+                                                            className="text-ink-muted hover:text-danger"
+                                                        >
+                                                            <X aria-hidden="true" />
+                                                        </Button>
+                                                    ) : null}
+                                                </li>
+                                            ))}
+                                        </ul>
+                                        {uploadError ? (
+                                            <p
+                                                role="alert"
+                                                className="type-meta text-danger"
                                             >
-                                                <RefreshCw className={`w-3 h-3 ${loadingRoster ? 'animate-spin motion-reduce:animate-none' : ''}`} />
+                                                {uploadError}
+                                            </p>
+                                        ) : null}
+                                        {showRetryUploads &&
+                                        onRetryUploads ? (
+                                            <Button
+                                                type="button"
+                                                variant="outline"
+                                                size="sm"
+                                                onClick={onRetryUploads}
+                                                disabled={isCreating}
+                                            >
+                                                <RefreshCw
+                                                    aria-hidden="true"
+                                                    className="size-3.5"
+                                                />
+                                                Retry uploads
                                             </Button>
                                         ) : null}
                                     </div>
+                                ) : null}
+                            </section>
+                        </div>
+
+                        <aside
+                            aria-labelledby="participants-heading"
+                            className="material-raised h-fit min-w-0 rounded-group p-5 xl:sticky xl:top-20"
+                        >
+                            <div className="flex flex-wrap items-center justify-between gap-2">
+                                <div className="flex items-center gap-2">
+                                    <Users
+                                        aria-hidden="true"
+                                        className="size-4 text-ink-muted"
+                                    />
+                                    <h2
+                                        id="participants-heading"
+                                        className="type-section-title text-ink"
+                                    >
+                                        Participants
+                                    </h2>
                                 </div>
+                                <div className="flex items-center gap-1">
+                                    <Button
+                                        type="button"
+                                        variant="ghost"
+                                        size="sm"
+                                        onClick={onSelectAll}
+                                        className="text-ink-secondary hover:text-ink"
+                                    >
+                                        {everySelected
+                                            ? 'Deselect all'
+                                            : 'Select all'}
+                                    </Button>
+                                    {onRefreshRoster ? (
+                                        <Button
+                                            type="button"
+                                            variant="ghost"
+                                            size="icon-sm"
+                                            onClick={onRefreshRoster}
+                                            disabled={loadingRoster}
+                                            aria-label="Refresh personas"
+                                        >
+                                            <RefreshCw
+                                                aria-hidden="true"
+                                                className={
+                                                    loadingRoster
+                                                        ? 'animate-spin motion-reduce:animate-none'
+                                                        : undefined
+                                                }
+                                            />
+                                        </Button>
+                                    ) : null}
+                                </div>
+                            </div>
 
-                                <p className="text-xs text-ink-muted">
-                                    Select which AI advisors should participate ({selectedCount} selected)
-                                </p>
+                            <p className="mt-2 type-meta text-ink-secondary">
+                                Select which AI advisors should participate (
+                                {selectedCount} selected)
+                            </p>
 
-                                {loadingRoster ? (
-                                    <div className="flex items-center justify-center py-12">
-                                        <Loader2 className="w-6 h-6 animate-spin motion-reduce:animate-none text-ink-muted" />
-                                    </div>
-                                ) : roster.length === 0 ? (
-                                    <div className="text-center py-8 border border-dashed border-control rounded-lg">
-                                        <Bot className="w-8 h-8 mx-auto text-ink-muted mb-2" />
-                                        <p className="text-sm text-ink-muted">No personas available</p>
-                                        <Link href={rosterNewHref} className="text-xs text-action hover:underline mt-2 inline-block">
-                                            Create a persona first →
-                                        </Link>
-                                    </div>
-                                ) : (
-                                    <div className="space-y-2 max-h-[400px] overflow-y-auto pr-1">
-                                        {roster.map((persona) => (
-                                            <div
-                                                key={persona.id}
-                                                className={`m-state flex cursor-pointer items-center gap-3 rounded-control border p-3 ${persona.selected
+                            {loadingRoster ? (
+                                <div
+                                    role="status"
+                                    className="mt-4 space-y-2"
+                                >
+                                    <span className="sr-only">
+                                        Loading personas…
+                                    </span>
+                                    {Array.from({ length: 3 }, (_, index) => (
+                                        <Skeleton
+                                            key={index}
+                                            className="h-14 w-full"
+                                        />
+                                    ))}
+                                </div>
+                            ) : roster.length === 0 ? (
+                                <div className="mt-4 rounded-control border border-dashed border-control p-5 text-center">
+                                    <p className="type-body text-ink-secondary">
+                                        No personas available
+                                    </p>
+                                    <Link
+                                        href={rosterNewHref}
+                                        className="m-control mt-2 inline-flex min-h-9 items-center rounded-control type-control text-action outline-none hover:underline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-focus-ring"
+                                    >
+                                        Create a persona first
+                                    </Link>
+                                </div>
+                            ) : (
+                                <div
+                                    role="group"
+                                    aria-label="Available personas"
+                                    className="mt-4 max-h-[26rem] space-y-2 overflow-y-auto pr-1"
+                                >
+                                    {roster.map((persona) => (
+                                        <label
+                                            key={persona.id}
+                                            htmlFor={`meeting-persona-${persona.id}`}
+                                            className={`m-state flex min-h-14 cursor-pointer items-center gap-3 rounded-control border p-3 ${
+                                                persona.selected
                                                     ? 'border-action bg-surface-selected'
                                                     : 'border-separator bg-surface/50'
-                                                    }`}
-                                                onClick={() => onToggleRoster(persona.id)}
-                                            >
-                                                <Checkbox
-                                                    checked={persona.selected}
-                                                    onClick={(event) => event.stopPropagation()}
-                                                    onCheckedChange={() => onToggleRoster(persona.id)}
-                                                />
-                                                <ParticipantMark
-                                                    participant={{
-                                                        id: persona.id,
-                                                        name: persona.name,
-                                                        color: persona.color,
-                                                    }}
-                                                    size="sm"
-                                                />
-                                                <div className="flex-1 min-w-0">
-                                                    <p className="text-sm font-medium text-ink truncate">{persona.name}</p>
-                                                    {persona.subtitle && (
-                                                        <p className="text-xs text-ink-muted truncate">{persona.subtitle}</p>
-                                                    )}
-                                                </div>
-                                            </div>
-                                        ))}
-                                    </div>
-                                )}
-                            </CardContent>
-                        </Card>
+                                            }`}
+                                        >
+                                            <Checkbox
+                                                id={`meeting-persona-${persona.id}`}
+                                                checked={persona.selected}
+                                                onCheckedChange={() =>
+                                                    onToggleRoster(persona.id)
+                                                }
+                                            />
+                                            <ParticipantMark
+                                                participant={{
+                                                    id: persona.id,
+                                                    name: persona.name,
+                                                    color: persona.color,
+                                                }}
+                                                size="sm"
+                                            />
+                                            <span className="min-w-0 flex-1">
+                                                <span className="block truncate type-control text-ink">
+                                                    {persona.name}
+                                                </span>
+                                                {persona.subtitle ? (
+                                                    <span className="block truncate type-meta text-ink-muted">
+                                                        {persona.subtitle}
+                                                    </span>
+                                                ) : null}
+                                            </span>
+                                        </label>
+                                    ))}
+                                </div>
+                            )}
+                        </aside>
                     </div>
-                </div>
 
-                <div className="mt-12 flex items-center justify-end gap-4 border-t border-separator pt-8">
-                    {creationError && (
-                        <p className="text-sm text-danger flex-1" role="alert">
-                            {creationError}
-                        </p>
-                    )}
-                    {onCancel ? (
+                    <div className="mt-12 flex flex-wrap items-center justify-end gap-4 border-t border-separator pt-8">
+                        {creationError ? (
+                            <p
+                                ref={errorRef}
+                                tabIndex={-1}
+                                className="min-w-0 flex-1 type-body text-danger outline-none"
+                                role="alert"
+                            >
+                                {creationError}
+                            </p>
+                        ) : null}
+                        {onCancel ? (
+                            <Button
+                                type="button"
+                                variant="ghost"
+                                onClick={onCancel}
+                                className="text-ink-secondary"
+                            >
+                                Cancel
+                            </Button>
+                        ) : null}
                         <Button
-                            variant="ghost"
-                            onClick={onCancel}
-                            className="text-ink-secondary"
+                            type="button"
+                            onClick={submit}
+                            busy={isCreating}
+                            busyLabel={busyLabel}
+                            disabled={!ctaEnabled}
+                            className="px-8"
                         >
-                            Cancel
+                            {createLabel}
                         </Button>
+                    </div>
+                    {footerNote ? (
+                        <p className="mt-3 text-right type-meta text-ink-muted">
+                            {footerNote}
+                        </p>
                     ) : null}
-                    <Button
-                        onClick={onCreate}
-                        busy={isCreating}
-                        busyLabel={busyLabel}
-                        disabled={!ctaEnabled}
-                        className="px-8"
-                    >
-                        {createLabel}
-                    </Button>
                 </div>
-                {footerNote ? (
-                    <p className="mt-3 text-right text-xs text-ink-muted">{footerNote}</p>
-                ) : null}
-            </main>
-        </div>
+            </PageContainer>
+        </main>
     );
 }
