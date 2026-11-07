@@ -1,12 +1,14 @@
 <div align="center">
 
-# Sabha
+<img src="docs/assets/sabha-mark.svg" width="96" height="96" alt="Sabha Constellation-S mark" />
+
+# Sabha AI
 
 **A multi-agent advisory board for consequential decisions.**
 
 [**Live project →**](https://sabha-ai-as.vercel.app/) · [**Architecture**](#architecture)
 
-[![Live project](https://img.shields.io/badge/Live_project-sabha--ai--as.vercel.app-6E56CF?style=for-the-badge)](https://sabha-ai-as.vercel.app/)
+[![Live project](https://img.shields.io/badge/Live_project-sabha--ai--as.vercel.app-6d28d9?style=for-the-badge)](https://sabha-ai-as.vercel.app/)
 [![No account required](https://img.shields.io/badge/Guided_replay-no_account_required-2EA043?style=for-the-badge)](https://sabha-ai-as.vercel.app/)
 
 [![Next.js 16](https://img.shields.io/badge/Next.js-16-000000?style=flat-square&logo=nextdotjs&logoColor=white)](https://nextjs.org/)
@@ -184,10 +186,11 @@ Sabha/
 ├── frontend/
 │   ├── src/app/                 # public, demo, and operator route groups
 │   ├── src/features/            # access, knowledge, meetings, persona-catalog, settings
+│   ├── src/components/          # shared UI: appearance, atmosphere, brand, identity
 │   ├── src/shared/              # API transport, auth, credentials, query, runtime
 │   ├── e2e/                     # Playwright journeys and backend starter
 │   └── tests/fixtures/          # frozen OpenAPI contract
-├── docs/                        # operations, permissions, PDF extraction
+├── docs/                        # operations, permissions, PDF extraction, brand assets
 ├── specs/                       # product and implementation specifications
 ├── .env.example
 ├── AGENTS.md                    # participant prompts and tool contract

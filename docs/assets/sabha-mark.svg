@@ -1,0 +1,29 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 128 128" width="128" height="128" role="img" aria-label="Sabha">
+  <defs>
+    <linearGradient id="night-arc" x1="300" y1="340" x2="418" y2="529" gradientUnits="userSpaceOnUse">
+      <stop stop-color="#ffffff" stop-opacity=".6"/>
+      <stop offset=".5" stop-color="#b68fdd"/>
+      <stop offset="1" stop-color="#d0bce9" stop-opacity=".2"/>
+    </linearGradient>
+    <radialGradient id="lilac-node" cx="20%" cy="20%" r="90%">
+      <stop stop-color="#e2cff4"/>
+      <stop offset=".6" stop-color="#be98df"/>
+      <stop offset="1" stop-color="#a87cd0"/>
+    </radialGradient>
+  </defs>
+  <rect width="128" height="128" rx="28" fill="#160823"/>
+  <g transform="translate(28.36 20.98) scale(.36) translate(-257 -305)">
+    <path d="M303 406 C301 365 357 341 417 336 M313 423 C338 440 392 437 408 469 C416 482 412 495 404 504 M298 524 C337 535 374 521 404 507" fill="none" stroke="url(#night-arc)" stroke-width="8" stroke-linecap="round"/>
+    <circle cx="419" cy="336" r="17" fill="#fff"/>
+    <circle cx="305.5" cy="418.5" r="16.5" fill="url(#lilac-node)"/>
+    <circle cx="404.5" cy="504" r="16.5" fill="#fff"/>
+    <g fill="#faf5ff">
+      <circle cx="337.5" cy="315.3" r="5.6"/>
+      <circle cx="282.4" cy="359.5" r="5.2"/>
+      <circle cx="413.4" cy="412" r="5.4"/>
+      <circle cx="444.3" cy="445.5" r="5.4"/>
+      <circle cx="301.8" cy="482.8" r="5.1"/>
+      <circle cx="267.8" cy="510.5" r="6"/>
+    </g>
+  </g>
+</svg>
