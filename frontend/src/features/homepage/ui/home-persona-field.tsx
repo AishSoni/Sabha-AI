@@ -36,7 +36,6 @@ function clamp(value: number, min: number, max: number): number {
 export function HomePersonaField() {
   const appearance = useAppearanceOptional();
   const reducedMotion = appearance?.reducedMotion ?? false;
-  const paused = appearance?.resolvedBackgroundAnimation === "paused";
   const resolved: ResolvedAppearance = appearance?.resolved ?? "dark";
 
   const fieldRef = useRef<HTMLDivElement>(null);
@@ -54,7 +53,7 @@ export function HomePersonaField() {
 
   resolvedRef.current = resolved;
   densityRef.current = density;
-  pauseStateRef.current = reducedMotion || paused || !inView || documentHidden;
+  pauseStateRef.current = reducedMotion || !inView || documentHidden;
 
   useEffect(() => {
     const update = () => setDensity(densityForWidth(window.innerWidth));
@@ -92,33 +91,38 @@ export function HomePersonaField() {
       const contentRect = content.getBoundingClientRect();
       if (!fieldRect.width || !fieldRect.height) return;
 
-      const centerX = contentRect.left + contentRect.width / 2 - fieldRect.left;
-      const centerY = contentRect.top + contentRect.height / 2 - fieldRect.top;
-      const radiusX = contentRect.width / 2 + 110;
-      const radiusY = contentRect.height / 2 + 130;
+      const foreground = [
+        content.querySelector(".home-headline"),
+        content.querySelector(".home-hero__actions"),
+      ]
+        .filter((element): element is Element => element !== null)
+        .map((element) => element.getBoundingClientRect());
+      const bounds = foreground.length ? foreground : [contentRect];
+      const left = Math.min(...bounds.map((rect) => rect.left));
+      const right = Math.max(...bounds.map((rect) => rect.right));
+      const top = Math.min(...bounds.map((rect) => rect.top));
+      const bottom = Math.max(...bounds.map((rect) => rect.bottom));
 
-      field.style.setProperty(
-        "--home-mask-cx",
-        `${clamp((centerX / fieldRect.width) * 100, 12, 88)}%`,
-      );
-      field.style.setProperty(
-        "--home-mask-cy",
-        `${clamp((centerY / fieldRect.height) * 100, 12, 88)}%`,
-      );
-      field.style.setProperty(
-        "--home-mask-rx",
-        `${clamp((radiusX / fieldRect.width) * 100, 30, 72)}%`,
-      );
-      field.style.setProperty(
-        "--home-mask-ry",
-        `${clamp((radiusY / fieldRect.height) * 100, 24, 68)}%`,
-      );
+      const centerX = (left + right) / 2 - fieldRect.left;
+      const centerY = (top + bottom) / 2 - fieldRect.top;
+      const radiusX = (right - left) / 2 + 110;
+      const radiusY = Math.max((bottom - top) / 2 + 130, radiusX / 1.4);
+
+      const cx = clamp((centerX / fieldRect.width) * 100, 12, 88);
+      const cy = clamp((centerY / fieldRect.height) * 100, 12, 88);
+      const rx = clamp((radiusX / fieldRect.width) * 100, 30, 72);
+      const ry = clamp((radiusY / fieldRect.height) * 100, 24, 68);
+
+      field.style.setProperty("--home-mask-cx", `${cx}%`);
+      field.style.setProperty("--home-mask-cy", `${cy}%`);
+      field.style.setProperty("--home-mask-rx", `${rx}%`);
+      field.style.setProperty("--home-mask-ry", `${ry}%`);
 
       const mask: FieldMask = {
-        centerX: clamp(centerX, 0, fieldRect.width),
-        centerY: clamp(centerY, 0, fieldRect.height),
-        radiusX,
-        radiusY,
+        centerX: (cx / 100) * fieldRect.width,
+        centerY: (cy / 100) * fieldRect.height,
+        radiusX: (rx / 100) * fieldRect.width,
+        radiusY: (ry / 100) * fieldRect.height,
       };
       maskRef.current = mask;
       engineRef.current?.setMask(mask);
@@ -203,9 +207,9 @@ export function HomePersonaField() {
 
   useEffect(() => {
     engineRef.current?.setPaused(
-      reducedMotion || paused || !inView || documentHidden,
+      reducedMotion || !inView || documentHidden,
     );
-  }, [reducedMotion, paused, inView, documentHidden]);
+  }, [reducedMotion, inView, documentHidden]);
 
   return (
     <div

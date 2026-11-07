@@ -23,7 +23,7 @@ test.describe("appearance lifecycle", () => {
         page,
     }) => {
         await page.emulateMedia({ colorScheme: "dark" });
-        await page.goto("/");
+        await page.goto("/demo");
 
         await expect(page.locator("html")).not.toHaveAttribute("data-theme");
         await expectBody(page, DARK_CANVAS);
@@ -42,11 +42,6 @@ test.describe("appearance lifecycle", () => {
             )
         ).toBe("light");
 
-        await page
-            .locator(".home-hero")
-            .getByRole("link", { name: "Try the recorded demo" })
-            .click();
-        await expect(page).toHaveURL(/\/demo$/);
         await expect(page.locator("html")).toHaveAttribute("data-theme", "light");
         await expectBody(page, LIGHT_CANVAS);
 
@@ -118,7 +113,7 @@ test.describe("appearance lifecycle", () => {
     test("stays within 320 CSS pixels in both appearances", async ({ page }) => {
         await page.setViewportSize({ width: 320, height: 844 });
         await page.emulateMedia({ colorScheme: "light" });
-        await page.goto("/");
+        await page.goto("/demo");
 
         const noOverflow = () =>
             page.evaluate(
@@ -401,14 +396,10 @@ test.describe("appearance lifecycle", () => {
             colorScheme: "light",
             reducedMotion: "reduce",
         });
-        await page.goto("/");
+        await page.goto("/demo");
         await chooseAppearance(page, "Dark");
         await expectBody(page, DARK_CANVAS);
-        await expect(
-            page
-                .locator(".home-hero")
-                .getByRole("link", { name: "Try the recorded demo" })
-        ).toBeVisible();
+        await expect(page.getByRole("banner")).toBeVisible();
     });
 
     test("uses the same participant marks on the roster and in the room", async ({

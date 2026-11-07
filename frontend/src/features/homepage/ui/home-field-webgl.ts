@@ -95,11 +95,16 @@ void main() {
   card += vAccent * ring * 0.18;
 
   vec2 glyphScale =
-    min(vCardSize.x, vCardSize.y) / max(vCardSize, vec2(1.0));
-  vec2 glyphUv = clamp(vLocal * glyphScale + 0.5, 0.0, 1.0);
-  vec4 glyph = texture(uGlyphs, vec3(glyphUv, vLayer));
+    vCardSize / max(min(vCardSize.x, vCardSize.y), 1.0);
+  vec2 glyphUv = vLocal * glyphScale + 0.5;
+  float inGlyph =
+    step(0.0, glyphUv.x) *
+    step(glyphUv.x, 1.0) *
+    step(0.0, glyphUv.y) *
+    step(glyphUv.y, 1.0);
+  vec4 glyph = texture(uGlyphs, vec3(clamp(glyphUv, 0.0, 1.0), vLayer));
   vec3 glyphColor = mix(uGlyph, vAccent, 0.28);
-  card = mix(card, glyphColor, glyph.a * 0.96);
+  card = mix(card, glyphColor, glyph.a * 0.96 * inGlyph);
 
   float rim = smoothstep(-2.4, -0.9, dist) * (1.0 - smoothstep(-0.9, 0.0, dist));
   card = mix(card, uRim, rim * 0.7);
@@ -119,10 +124,11 @@ void main() {
 
 const CARD_RADIUS = 16;
 const BASE_VELOCITY = 0.32;
-const BURST_MULTIPLIER = 24;
+const BURST_MULTIPLIER = 20;
 const BURST_DURATION = 3200;
 const BURST_RAMP_UP = 700;
-const SCROLL_BOOST = 8;
+const SCROLL_RAMP_UP = 220;
+const SCROLL_SURGE_HOLD = 140;
 const INSTANCE_STRIDE = 11;
 const TEXTURE_SIZE = 256;
 const TEXTURE_LAYERS = EMBLEMS.length;
@@ -300,6 +306,32 @@ function burstAt(now: number, startedAt: number): number {
   return 1;
 }
 
+function scrollSurgeAt(
+  now: number,
+  startedAt: number,
+  activeUntil: number,
+  anchor: number,
+): number {
+  if (!Number.isFinite(startedAt)) return 1;
+  const elapsed = now - startedAt;
+  if (elapsed < 0) return anchor;
+  const ramped =
+    anchor +
+    (BURST_MULTIPLIER - anchor) *
+      Math.min(elapsed / SCROLL_RAMP_UP, 1);
+  if (now <= activeUntil) return ramped;
+  const decayStart = Math.max(activeUntil, startedAt + SCROLL_RAMP_UP);
+  const decayElapsed = Math.max(decayStart - startedAt, 0);
+  const decayAnchor =
+    anchor +
+    (BURST_MULTIPLIER - anchor) *
+      Math.min(decayElapsed / SCROLL_RAMP_UP, 1);
+  const progress = (now - decayStart) / BURST_DURATION;
+  if (progress >= 1) return 1;
+  const remaining = 1 - progress;
+  return 1 + (decayAnchor - 1) * remaining * remaining;
+}
+
 export async function createHomeFieldEngine(
   options: CreateFieldEngineOptions,
 ): Promise<FieldEngine> {
@@ -328,8 +360,9 @@ export async function createHomeFieldEngine(
     radiusY: canvas.clientHeight * 0.3,
   };
   let lastScrollY = typeof window === "undefined" ? 0 : window.scrollY;
-  let scrollImpulse = 0;
-  let scrollSmoothed = 0;
+  let scrollSurgeAnchor = 1;
+  let scrollSurgeStartedAt = Number.NEGATIVE_INFINITY;
+  let scrollActiveUntil = Number.NEGATIVE_INFINITY;
 
   const program = createProgram(gl);
   const vertexArray = gl.createVertexArray();
@@ -428,7 +461,18 @@ export async function createHomeFieldEngine(
 
   function handleScroll() {
     const next = window.scrollY;
-    scrollImpulse += Math.abs(next - lastScrollY);
+    if (next === lastScrollY) return;
+    const now = performance.now();
+    if (now > scrollActiveUntil) {
+      scrollSurgeAnchor = scrollSurgeAt(
+        now,
+        scrollSurgeStartedAt,
+        scrollActiveUntil,
+        scrollSurgeAnchor,
+      );
+      scrollSurgeStartedAt = now;
+    }
+    scrollActiveUntil = now + SCROLL_SURGE_HOLD;
     lastScrollY = next;
   }
 
@@ -533,14 +577,17 @@ export async function createHomeFieldEngine(
     const delta = Math.min((now - lastTime) / 1000, 0.05);
     lastTime = now;
 
-    scrollSmoothed += (scrollImpulse - scrollSmoothed) * 0.08;
-    scrollImpulse *= 0.82;
-    const scrollMultiplier =
-      1 + Math.min(scrollSmoothed / 900, 1) * SCROLL_BOOST;
-    const burst = burstAt(now, startedAt);
+    const loadBurst = burstAt(now, startedAt);
+    const scrollSurge = scrollSurgeAt(
+      now,
+      scrollSurgeStartedAt,
+      scrollActiveUntil,
+      scrollSurgeAnchor,
+    );
+    const surge = Math.max(loadBurst, scrollSurge);
     offsetPercent = positiveModulo(
       offsetPercent +
-        BASE_VELOCITY * burst * scrollMultiplier * Math.min(delta, 0.15),
+        BASE_VELOCITY * surge * Math.min(delta, 0.15),
       100,
     );
 

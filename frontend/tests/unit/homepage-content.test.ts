@@ -31,9 +31,7 @@ describe("homepage copy", () => {
     });
     expect(HOME_COPY.demoCta).toBe("Try the recorded demo");
     expect(HOME_COPY.operatorCta).toBe("Operator sign-in");
-    expect(HOME_COPY.evidence.disclosure).toBe(
-      "Prepared demo · recorded responses, not live generation.",
-    );
+    expect("disclosure" in HOME_COPY.evidence).toBe(false);
   });
 
   it("labels the evidence view as illustrative rather than live", () => {

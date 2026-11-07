@@ -28,7 +28,6 @@ function iconsFor(index: number) {
 
 export function HomeHeadline({ id }: { id?: string }) {
   const appearance = useAppearanceOptional();
-  const paused = appearance?.resolvedBackgroundAnimation === "paused";
   const reducedMotion = appearance?.reducedMotion ?? false;
   const headingRef = useRef<HTMLHeadingElement>(null);
   const [inView, setInView] = useState(true);
@@ -47,13 +46,13 @@ export function HomeHeadline({ id }: { id?: string }) {
   }, []);
 
   useEffect(() => {
-    if (paused || reducedMotion || !inView) return;
+    if (reducedMotion || !inView) return;
     const timer = window.setInterval(() => {
       setPrevious((current) => current ?? index);
       setIndex((current) => (current + 1) % 18);
     }, FLIP_INTERVAL);
     return () => window.clearInterval(timer);
-  }, [index, inView, paused, reducedMotion]);
+  }, [index, inView, reducedMotion]);
 
   useEffect(() => {
     if (previous === null) return;

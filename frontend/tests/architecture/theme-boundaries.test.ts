@@ -41,9 +41,8 @@ describe("appearance boundary", () => {
     expect(layout).toMatch(/AppearanceProvider/);
   });
 
-  it("mounts the appearance menu in the public, operator, and demo chrome", () => {
+  it("mounts the appearance menu in the operator and demo chrome", () => {
     const chrome = [
-      path.join(src, "features", "homepage", "ui", "home-chrome.tsx"),
       path.join(src, "features", "access", "ui", "operator-shell.tsx"),
       path.join(src, "features", "demo-workspace", "ui", "demo-nav.tsx"),
     ];
