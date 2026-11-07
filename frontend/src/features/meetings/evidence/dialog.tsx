@@ -17,6 +17,7 @@ import { Button } from "@/components/ui/button";
 import {
     Dialog,
     DialogContent,
+    DialogDescription,
     DialogHeader,
     DialogTitle,
 } from "@/components/ui/dialog";
@@ -114,23 +115,44 @@ function Provenance({ descriptor }: { descriptor: EvidenceDescriptor }) {
     if (provenance.detail) rows.push(["Identity", provenance.detail]);
 
     return (
-        <section
-            aria-label="Evidence provenance"
-            className="rounded-group border border-separator bg-surface-raised p-3 type-meta"
-        >
-            <p className="font-medium text-ink">{provenance.label}</p>
-            {rows.length > 0 ? (
-                <dl className="mt-2 grid gap-1 sm:grid-cols-[7rem_1fr]">
-                    {rows.map(([label, value]) => (
-                        <React.Fragment key={label}>
-                            <dt className="text-ink-muted">{label}</dt>
-                            <dd className="break-words text-ink-secondary">{value}</dd>
-                        </React.Fragment>
-                    ))}
-                </dl>
-            ) : null}
-        </section>
+        <details className="material-raised rounded-group border border-separator p-3">
+            <summary className="m-control cursor-pointer type-control text-ink">
+                Provenance and rights
+            </summary>
+            <div className="mt-2 type-meta">
+                <p className="font-medium text-ink">{provenance.label}</p>
+                {rows.length > 0 ? (
+                    <dl className="mt-2 grid gap-1 sm:grid-cols-[7rem_1fr]">
+                        {rows.map(([label, value]) => (
+                            <React.Fragment key={label}>
+                                <dt className="text-ink-muted">{label}</dt>
+                                <dd className="break-words text-ink-secondary">
+                                    {value}
+                                </dd>
+                            </React.Fragment>
+                        ))}
+                    </dl>
+                ) : null}
+            </div>
+        </details>
     );
+}
+
+function formatLabel(mediaType: EvidenceDescriptor["media_type"]): string {
+    switch (mediaType) {
+        case "text/markdown":
+            return "Markdown";
+        case "text/plain":
+            return "Plain text";
+        case "text/csv":
+            return "CSV table";
+        case "application/json":
+            return "JSON";
+        case "application/pdf":
+            return "PDF";
+        default:
+            return mediaType;
+    }
 }
 
 function LoadingState() {
@@ -198,19 +220,28 @@ export function EvidencePreviewDialog({
                 <div className="flex max-h-[88vh] min-h-0 flex-col">
                     <DialogHeader className="border-b border-separator px-6 py-4 text-left">
                         <DialogTitle className="flex items-center gap-2 pr-8">
-                            <FileText className="size-4 shrink-0" />
+                            <FileText aria-hidden="true" className="size-4 shrink-0" />
                             <span className="break-words">
                                 {descriptor?.title ?? "Evidence preview"}
                             </span>
                         </DialogTitle>
-
+                        <DialogDescription>
+                            {descriptor
+                                ? `${formatLabel(descriptor.media_type)} · retained source`
+                                : "Retained source preview"}
+                        </DialogDescription>
                     </DialogHeader>
 
                     <div className="min-h-0 flex-1 space-y-4 overflow-y-auto px-6 py-4">
                         {citation.excerpt ? (
-                            <blockquote className="border-l-2 border-separator pl-3 type-body italic text-ink-secondary">
-                                “{citation.excerpt}”
-                            </blockquote>
+                            <section aria-label="Cited excerpt">
+                                <h3 className="type-meta-strong uppercase tracking-wide text-ink-muted">
+                                    Cited excerpt
+                                </h3>
+                                <blockquote className="mt-1 border-l-2 border-action pl-3 type-body italic text-ink-secondary">
+                                    “{citation.excerpt}”
+                                </blockquote>
+                            </section>
                         ) : null}
                         {citation.locator ? (
                             <p className="type-meta text-ink-muted">

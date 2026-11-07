@@ -118,7 +118,7 @@ function safeUrl(url: string): string {
 
 function MarkdownBody({ text }: { text: string }) {
     return (
-        <div className="space-y-3 text-sm leading-6 [&_a]:underline [&_blockquote]:border-l-2 [&_blockquote]:pl-3 [&_code]:rounded [&_code]:bg-muted [&_code]:px-1 [&_h1]:text-xl [&_h1]:font-semibold [&_h2]:text-lg [&_h2]:font-semibold [&_h3]:font-medium [&_li]:ml-5 [&_li]:list-disc [&_ol_li]:list-decimal [&_p]:my-2 [&_table]:w-full [&_table]:border-collapse [&_td]:border [&_td]:px-2 [&_td]:py-1 [&_th]:border [&_th]:bg-muted [&_th]:px-2 [&_th]:py-1">
+        <div className="space-y-3 type-body [&_a]:underline [&_blockquote]:border-l-2 [&_blockquote]:pl-3 [&_code]:rounded [&_code]:bg-surface-raised [&_code]:px-1 [&_h1]:text-2xl [&_h1]:font-semibold [&_h2]:text-xl [&_h2]:font-semibold [&_h3]:font-medium [&_li]:ml-5 [&_li]:list-disc [&_ol_li]:list-decimal [&_p]:my-2 [&_table]:w-full [&_table]:border-collapse [&_td]:border [&_td]:px-2 [&_td]:py-1 [&_th]:border [&_th]:bg-surface-raised [&_th]:px-2 [&_th]:py-1">
             <ReactMarkdown
                 remarkPlugins={[remarkGfm]}
                 skipHtml
@@ -134,7 +134,7 @@ function MarkdownBody({ text }: { text: string }) {
                         </a>
                     ),
                     img: ({ alt }) => (
-                        <span className="text-muted-foreground">
+                        <span className="text-ink-muted">
                             {alt ? `[Image omitted: ${alt}]` : "[Image omitted]"}
                         </span>
                     ),
@@ -160,13 +160,18 @@ function PreformattedBody({
     return (
         <div className="space-y-2">
             {label ? (
-                <p className="text-xs text-muted-foreground">{label}</p>
+                <p className="type-meta text-ink-muted">{label}</p>
             ) : null}
-            <pre className="max-h-[55vh] overflow-auto rounded-md border bg-muted/40 p-3 text-xs whitespace-pre-wrap break-words">
+            <pre
+                role="region"
+                aria-label="Evidence text"
+                tabIndex={0}
+                className="max-h-[55vh] overflow-auto whitespace-pre-wrap break-words rounded-control border border-separator bg-surface-raised p-3 type-body text-ink-secondary focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-focus-ring"
+            >
                 {bounded}
             </pre>
             {clipped ? (
-                <p className="text-xs text-muted-foreground">
+                <p className="type-meta text-ink-muted">
                     Preview truncated; the retained source may contain more.
                 </p>
             ) : null}
@@ -188,16 +193,21 @@ function CsvBody({ content }: { content: EvidenceTextContent }) {
     const [header, ...body] = table.rows;
     return (
         <div className="space-y-2">
-            <div className="max-h-[55vh] overflow-auto rounded-md border">
-                <table className="w-full border-collapse text-left text-xs">
+            <div
+                role="region"
+                aria-label="Evidence table"
+                tabIndex={0}
+                className="max-h-[55vh] overflow-auto rounded-control border border-separator focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-focus-ring"
+            >
+                <table className="w-full border-collapse text-left type-meta">
                     {header ? (
-                        <thead className="bg-muted">
+                        <thead className="bg-surface-raised">
                             <tr>
                                 {header.map((cell, index) => (
                                     <th
                                         key={`h-${index}`}
                                         scope="col"
-                                        className="border px-2 py-1 font-medium"
+                                        className="border border-separator px-2 py-1 font-medium"
                                     >
                                         {cell}
                                     </th>
@@ -211,7 +221,7 @@ function CsvBody({ content }: { content: EvidenceTextContent }) {
                                 {cells.map((cell, cellIndex) => (
                                     <td
                                         key={`c-${rowIndex}-${cellIndex}`}
-                                        className="border px-2 py-1 align-top"
+                                        className="border border-separator px-2 py-1 align-top"
                                     >
                                         {cell}
                                     </td>
@@ -222,8 +232,8 @@ function CsvBody({ content }: { content: EvidenceTextContent }) {
                 </table>
             </div>
             {table.truncated || content.truncated ? (
-                <p className="text-xs text-muted-foreground">
-                    Table preview truncated to {CSV_MAX_ROWS} rows and{" "}
+                <p className="type-meta text-ink-muted">
+                    Table preview truncated to {CSV_MAX_ROWS} rows and{' '}
                     {CSV_MAX_COLUMNS} columns.
                 </p>
             ) : null}
@@ -257,7 +267,7 @@ export function EvidenceContentRenderer({
                 src={content.url}
                 title={`PDF preview: ${descriptor.title}`}
                 referrerPolicy="no-referrer"
-                className="h-[60vh] w-full rounded-md border bg-muted"
+                className="h-[60vh] w-full rounded-control border border-separator bg-surface-raised"
             />
         );
     }
