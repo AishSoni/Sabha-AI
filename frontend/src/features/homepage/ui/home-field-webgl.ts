@@ -33,7 +33,8 @@ void main() {
   vec2 local = aCorner * aSize;
   float c = cos(aAngle);
   float s = sin(aAngle);
-  vec2 rotated = mat2(c, -s, s, c) * local;
+  // Match CSS rotate(): positive angles turn clockwise on screen (y-down).
+  vec2 rotated = mat2(c, s, -s, c) * local;
   vec2 pixel = aCenter + rotated;
   vec2 clip = (pixel / uResolution) * 2.0 - 1.0;
   gl_Position = vec4(clip.x, -clip.y, 0.0, 1.0);
@@ -138,6 +139,8 @@ export interface FieldMask {
   readonly centerY: number;
   readonly radiusX: number;
   readonly radiusY: number;
+  /** Fraction of the radius that stays fully transparent (0-1). */
+  readonly plateau?: number;
 }
 
 export interface FieldEngine {
@@ -358,6 +361,7 @@ export async function createHomeFieldEngine(
     centerY: canvas.clientHeight / 2,
     radiusX: canvas.clientWidth * 0.34,
     radiusY: canvas.clientHeight * 0.3,
+    plateau: 0.86,
   };
   let lastScrollY = typeof window === "undefined" ? 0 : window.scrollY;
   let scrollSurgeAnchor = 1;
@@ -502,7 +506,8 @@ export async function createHomeFieldEngine(
         Math.sqrt(normalizedX * normalizedX + normalizedY * normalizedY) +
         (Math.max(width, height) * 0.5) /
           Math.max(Math.min(mask.radiusX, mask.radiusY), 1);
-      if (centerDistance < 0.86) continue;
+      const cullDistance = Math.max(0.24, (mask.plateau ?? 0.86) - 0.06);
+      if (centerDistance < cullDistance) continue;
 
       const radius = Math.hypot(width, height) * 0.5;
       if (

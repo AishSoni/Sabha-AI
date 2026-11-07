@@ -66,7 +66,7 @@ describe("homepage emblem field", () => {
     expect(HOME_FIELD_SLOTS_BY_DENSITY.compact).toHaveLength(SPIRAL_CARD_COUNT);
   });
 
-  it("samples the spiral deterministically with tangent-aware cards", () => {
+  it("samples the spiral deterministically with radially oriented cards", () => {
     const first = sampleSpiral(12.5);
     const second = sampleSpiral(12.5);
     expect(first).toEqual(second);
@@ -78,6 +78,10 @@ describe("homepage emblem field", () => {
     const card = cardSceneAt(17, SPIRAL_CARD_COUNT, 0);
     expect(card).toEqual(cardSceneAt(17, SPIRAL_CARD_COUNT, 0));
     expect(Number.isFinite(card.angle)).toBe(true);
+    expect(card.angle).toBeCloseTo(
+      Math.atan2(card.y, card.x) + Math.PI / 2,
+      6,
+    );
     expect(card.fade).toBeGreaterThanOrEqual(0);
     expect(card.scale).toBeGreaterThan(0);
   });
