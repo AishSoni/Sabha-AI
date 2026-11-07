@@ -15,11 +15,10 @@ import {
 import { FIELD_PALETTES } from "../presentation/field-palette";
 import {
   HOME_FIELD_SLOTS,
-  resolveFieldSlot,
   type FieldDensity,
 } from "../presentation/field-layout";
 import { EmblemSvg } from "./emblem-svg";
-import type { FieldEngine } from "./home-field-webgl";
+import type { FieldEngine, FieldMask } from "./home-field-webgl";
 
 type EngineState = "static" | "ready" | "failed";
 
@@ -37,11 +36,12 @@ export function HomePersonaField() {
   const appearance = useAppearanceOptional();
   const reducedMotion = appearance?.reducedMotion ?? false;
   const paused = appearance?.resolvedBackgroundAnimation === "paused";
-  const resolved: ResolvedAppearance = appearance?.resolved ?? "light";
+  const resolved: ResolvedAppearance = appearance?.resolved ?? "dark";
 
   const fieldRef = useRef<HTMLDivElement>(null);
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const engineRef = useRef<FieldEngine | null>(null);
+  const maskRef = useRef<FieldMask | null>(null);
   const resolvedRef = useRef<ResolvedAppearance>(resolved);
   const densityRef = useRef<FieldDensity>("wide");
   const pauseStateRef = useRef(false);
@@ -91,35 +91,36 @@ export function HomePersonaField() {
       const contentRect = content.getBoundingClientRect();
       if (!fieldRect.width || !fieldRect.height) return;
 
-      const centerX =
-        ((contentRect.left + contentRect.width / 2 - fieldRect.left) /
-          fieldRect.width) *
-        100;
-      const centerY =
-        ((contentRect.top + contentRect.height / 2 - fieldRect.top) /
-          fieldRect.height) *
-        100;
-      const radiusX =
-        ((contentRect.width / 2 + 64) / fieldRect.width) * 100;
-      const radiusY =
-        ((contentRect.height / 2 + 56) / fieldRect.height) * 100;
+      const centerX = contentRect.left + contentRect.width / 2 - fieldRect.left;
+      const centerY = contentRect.top + contentRect.height / 2 - fieldRect.top;
+      const radiusX = contentRect.width / 2 + 110;
+      const radiusY = contentRect.height / 2 + 130;
 
       field.style.setProperty(
         "--home-mask-cx",
-        `${clamp(centerX, 12, 88)}%`,
+        `${clamp((centerX / fieldRect.width) * 100, 12, 88)}%`,
       );
       field.style.setProperty(
         "--home-mask-cy",
-        `${clamp(centerY, 12, 88)}%`,
+        `${clamp((centerY / fieldRect.height) * 100, 12, 88)}%`,
       );
       field.style.setProperty(
         "--home-mask-rx",
-        `${clamp(radiusX, 30, 72)}%`,
+        `${clamp((radiusX / fieldRect.width) * 100, 30, 72)}%`,
       );
       field.style.setProperty(
         "--home-mask-ry",
-        `${clamp(radiusY, 24, 68)}%`,
+        `${clamp((radiusY / fieldRect.height) * 100, 24, 68)}%`,
       );
+
+      const mask: FieldMask = {
+        centerX: clamp(centerX, 0, fieldRect.width),
+        centerY: clamp(centerY, 0, fieldRect.height),
+        radiusX,
+        radiusY,
+      };
+      maskRef.current = mask;
+      engineRef.current?.setMask(mask);
     };
 
     updateMask();
@@ -175,6 +176,7 @@ export function HomePersonaField() {
         engineRef.current = engine;
         engine.setDensity(densityRef.current);
         engine.setPalette(FIELD_PALETTES[resolvedRef.current]);
+        if (maskRef.current) engine.setMask(maskRef.current);
         engine.setPaused(pauseStateRef.current);
       } catch {
         if (!disposed) setEngineState("failed");
@@ -214,34 +216,36 @@ export function HomePersonaField() {
       data-density={density}
       aria-hidden="true"
     >
-      <div
-        className="home-persona-field__static"
-        data-testid="home-persona-static"
-      >
-        {HOME_FIELD_SLOTS.map((slot) => {
-          const position = resolveFieldSlot(slot);
-          const style = {
-            left: `${position.x}%`,
-            top: `${position.y}%`,
-            width: `${slot.size}px`,
-            "--home-slot-rotation": `${position.rotation}rad`,
-            "--home-slot-opacity": String(slot.opacity),
-          } as CSSProperties;
+      <div className="home-persona-field__stage">
+        <div
+          className="home-persona-field__static"
+          data-testid="home-persona-static"
+        >
+          {HOME_FIELD_SLOTS.map((slot) => {
+            const style = {
+              left: `${slot.x}%`,
+              top: `${slot.y}%`,
+              width: `${slot.width}%`,
+              height: `${slot.height}%`,
+              "--home-slot-rotation": `${slot.rotation}rad`,
+              "--home-slot-opacity": String(slot.opacity),
+            } as CSSProperties;
 
-          return (
-            <span
-              key={slot.id}
-              className="home-slot"
-              data-compact={slot.compact}
-              data-medium={slot.medium}
-              data-emblem={slot.emblemId}
-              data-testid="home-persona-slot"
-              style={style}
-            >
-              <EmblemSvg emblemId={slot.emblemId} />
-            </span>
-          );
-        })}
+            return (
+              <span
+                key={slot.id}
+                className="home-slot"
+                data-compact="true"
+                data-medium="true"
+                data-emblem={slot.emblemId}
+                data-testid="home-persona-slot"
+                style={style}
+              >
+                <EmblemSvg emblemId={slot.emblemId} />
+              </span>
+            );
+          })}
+        </div>
       </div>
       <canvas
         ref={canvasRef}

@@ -61,10 +61,10 @@ function NodeMark({ node }: { node: EvidenceNode }) {
 
 function NodeLabel({ node }: { node: EvidenceNode }) {
   return (
-    <>
+    <span className="home-graph__node-copy">
       <span className="home-graph__node-name">{node.name}</span>
       <span className="home-graph__node-kind">{node.kindLabel}</span>
-    </>
+    </span>
   );
 }
 
@@ -141,6 +141,9 @@ export function HomeEvidence() {
           </h2>
           <p className="home-evidence__copy type-lead">
             {HOME_COPY.evidence.body}
+          </p>
+          <p className="home-evidence__disclosure type-meta">
+            {HOME_COPY.evidence.disclosure}
           </p>
           <div className="home-graph__legend" aria-label="Graph legend">
             <span>
