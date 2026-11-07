@@ -23,7 +23,6 @@ import {
 } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
-import { Card } from '@/components/ui/card';
 import { isApiError } from '@/shared/api/errors';
 import { useAnchorRef } from '@/features/demo-tutorial';
 import { useClosing } from '../api/closing-queries';
@@ -160,11 +159,10 @@ function VoteRow({
                     >
                         {voteLabel(vote)}
                     </Badge>
-                    {typeof cost === 'number' && cost > 0 ? (
-                        <span className="text-xs text-ink-muted">${cost.toFixed(4)}</span>
-                    ) : null}
                     {usageNote ? (
-                        <span className="text-xs text-ink-muted">{usageNote}</span>
+                        <span className="type-meta text-ink-muted">
+                            {usageNote}
+                        </span>
                     ) : null}
                 </div>
                 <ClosingGeneratedText
@@ -198,27 +196,29 @@ function StatusCard({
     children?: React.ReactNode;
 }) {
     const toneClasses = {
-        active: 'border-action/50 bg-accent-soft',
-        success: 'border-success/50 bg-success-soft',
-        warning: 'border-warning/50 bg-warning-soft',
-        error: 'border-danger/50 bg-danger-soft',
-        muted: 'border-separator bg-surface/50',
+        active: 'border-l-action',
+        success: 'border-l-success',
+        warning: 'border-l-warning',
+        error: 'border-l-danger',
+        muted: 'border-l-separator',
     }[tone];
     return (
-        <Card
+        <section
             id={id}
-            className={`p-4 ${toneClasses}`}
+            className={`material-raised rounded-group border border-separator border-l-4 p-4 ${toneClasses}`}
             role="status"
             aria-live="polite"
         >
             <div className="flex items-start gap-3">
                 <span className="mt-0.5 shrink-0">{icon}</span>
                 <div className="min-w-0 flex-1">
-                    <h4 className="mb-1 font-medium text-ink">{title}</h4>
+                    <h4 className="mb-1 type-control font-medium text-ink">
+                        {title}
+                    </h4>
                     {children}
                 </div>
             </div>
-        </Card>
+        </section>
     );
 }
 
@@ -366,10 +366,10 @@ export function ClosingPanel({
 
     return (
         <div id="closing-panel" className="space-y-3">
-            <h4 className="flex items-center gap-2 text-sm font-semibold text-ink-secondary">
-                <LogOut className="h-4 w-4" />
+            <h2 className="flex items-center gap-2 type-section-title text-ink">
+                <LogOut aria-hidden="true" className="size-4" />
                 Close Meeting
-            </h4>
+            </h2>
 
             {archived ? (
                 <StatusCard
@@ -577,8 +577,10 @@ export function ClosingPanel({
             ) : null}
 
             {(onSkipText && textProjection && !textTerminal) || (ended && onReplayClosing) ? (
-                <div className="flex flex-wrap items-center gap-2 rounded-lg border border-separator bg-surface/40 px-3 py-2">
-                    <span className="text-xs text-ink-secondary">Recorded closing</span>
+                <div className="material-raised flex flex-wrap items-center gap-2 rounded-control border border-separator px-3 py-2">
+                    <span className="type-meta text-ink-secondary">
+                        Recorded closing
+                    </span>
                     {onSkipText && textProjection && !textTerminal ? (
                         <Button
                             type="button"
@@ -603,21 +605,24 @@ export function ClosingPanel({
             ) : null}
 
             {summaryText || (deckClosing && closing?.summary) ? (
-                <Card id="closing-final-summary" className="border-separator bg-surface/50 p-4">
-                    <h5 className="mb-2 text-xs font-semibold uppercase tracking-wide text-ink-muted">
+                <section
+                    id="closing-final-summary"
+                    className="material-raised rounded-group border border-separator p-4"
+                >
+                    <h3 className="type-section-title text-ink">
                         Final summary
-                    </h5>
+                    </h3>
                     {summaryText ? (
                         <ClosingGeneratedText
                             item={summaryText}
-                            className="whitespace-pre-wrap text-sm text-ink-secondary"
+                            className="mt-2 whitespace-pre-wrap type-body text-ink-secondary"
                         />
                     ) : (
-                        <p className="whitespace-pre-wrap text-sm text-ink-secondary">
+                        <p className="mt-2 whitespace-pre-wrap type-body text-ink-secondary">
                             {closing?.summary}
                         </p>
                     )}
-                </Card>
+                </section>
             ) : null}
 
             {actionError ? (
@@ -666,12 +671,14 @@ export function ClosingPanel({
 
             {canStart ? (
                 confirmMode === null ? (
-                    <Card className="border-separator bg-surface/50 p-4">
+                    <section className="material-raised rounded-group border border-separator p-4">
                         <div className="mb-3">
-                            <h4 className="mb-1 font-medium text-ink">End this meeting?</h4>
-                            <p className="text-xs text-ink-muted">
-                                Closing waits for queued work, then optionally votes
-                                before writing the final summary.
+                            <h3 className="mb-1 type-item-title text-ink">
+                                End this meeting?
+                            </h3>
+                            <p className="type-meta text-ink-secondary">
+                                Closing waits for queued work, then optionally
+                                votes before writing the final summary.
                             </p>
                         </div>
                         <div className={runtime.replay ? 'grid gap-3' : 'grid grid-cols-2 gap-3'}>
@@ -705,18 +712,30 @@ export function ClosingPanel({
                                 </Button>
                             ) : null}
                         </div>
-                    </Card>
+                    </section>
                 ) : (
-                    <Card className="border-danger/50 bg-danger-soft p-4">
+                    <section
+                        className={`material-raised rounded-group border p-4 ${
+                            confirmMode === 'force'
+                                ? 'border-danger/50'
+                                : 'border-separator'
+                        }`}
+                    >
                         <div className="mb-4 flex items-start gap-3">
-                            <AlertTriangle className="mt-0.5 h-5 w-5 shrink-0 text-danger" />
+                            <AlertTriangle
+                                className={`mt-0.5 h-5 w-5 shrink-0 ${
+                                    confirmMode === 'force'
+                                        ? 'text-danger'
+                                        : 'text-warning'
+                                }`}
+                            />
                             <div>
-                                <h4 className="mb-1 font-medium text-ink">
+                                <h3 className="mb-1 type-item-title text-ink">
                                     {confirmMode === 'force'
                                         ? 'Force this meeting to end?'
                                         : 'Ask the board to end this meeting?'}
-                                </h4>
-                                <p className="text-sm text-ink-secondary">
+                                </h3>
+                                <p className="type-body text-ink-secondary">
                                     {confirmMode === 'force'
                                         ? 'The vote is skipped. Queued work is still allowed to drain before the summary.'
                                         : 'Participants vote first. A rejected vote leaves the meeting active.'}
@@ -750,7 +769,7 @@ export function ClosingPanel({
                                 Cancel
                             </Button>
                         </div>
-                    </Card>
+                    </section>
                 )
             ) : null}
         </div>

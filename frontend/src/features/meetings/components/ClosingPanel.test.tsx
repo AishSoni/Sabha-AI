@@ -333,7 +333,6 @@ describe('closing panel observation', () => {
         expect(screen.getByText('Yes')).toBeInTheDocument();
         expect(screen.getByText('No vote')).toBeInTheDocument();
         expect(screen.getByText('provider timeout')).toBeInTheDocument();
-        expect(screen.getByText('$0.0100')).toBeInTheDocument();
         expect(screen.getByText('Usage not reported')).toBeInTheDocument();
         expect(postBodies()).toHaveLength(0);
     });
