@@ -11,7 +11,7 @@ import { Button } from "@/components/ui/button";
 
 import { HOME_COPY } from "../presentation/copy";
 
-export function HomeHeader() {
+export function HomeChrome() {
   const appearance = useAppearanceOptional();
   const reducedMotion = appearance?.reducedMotion ?? false;
   const paused = appearance?.resolvedBackgroundAnimation === "paused";
@@ -20,26 +20,27 @@ export function HomeHeader() {
     : paused
       ? "Resume animation"
       : "Pause animation";
-  const visibleMotionLabel = reducedMotion ? "Paused" : paused ? "Resume" : "Pause";
+  const visibleMotionLabel = reducedMotion
+    ? "Paused"
+    : paused
+      ? "Resume"
+      : "Pause";
 
   return (
-    <header className="home-header">
+    <div className="home-chrome">
       <noscript>
-        <style>{`.home-header__appearance,.home-header__pause{display:none}`}</style>
+        <style>{`.home-chrome__appearance,.home-chrome__pause{display:none}`}</style>
       </noscript>
-      <div className="home-header__inner">
-        <Link href="/" className="home-header__brand" aria-label="Sabha home">
-          <span className="home-header__mark" aria-hidden="true">
+      <div className="home-chrome__inner">
+        <Link href="/" className="home-chrome__brand" aria-label="Sabha home">
+          <span className="home-chrome__mark" aria-hidden="true">
             <Sparkles className="size-4" strokeWidth={1.8} />
           </span>
-          <span className="home-header__wordmark">{HOME_COPY.brand}</span>
-          <span className="home-header__subtitle">
-            {HOME_COPY.brandSubtitle}
-          </span>
+          <span className="home-chrome__wordmark">{HOME_COPY.brand}</span>
         </Link>
 
-        <div className="home-header__controls">
-          <span className="home-header__appearance">
+        <div className="home-chrome__controls">
+          <span className="home-chrome__appearance">
             <AppearanceMenu />
           </span>
           {appearance ? (
@@ -47,7 +48,7 @@ export function HomeHeader() {
               type="button"
               variant="ghost"
               size="sm"
-              className="home-header__pause"
+              className="home-chrome__pause"
               aria-label={motionLabel}
               title={motionLabel}
               data-testid="home-motion-toggle"
@@ -62,11 +63,13 @@ export function HomeHeader() {
               ) : (
                 <Pause className="size-4" aria-hidden="true" />
               )}
-              <span className="hidden sm:inline">{visibleMotionLabel}</span>
+              <span className="home-chrome__pause-label">
+                {visibleMotionLabel}
+              </span>
             </Button>
           ) : null}
         </div>
       </div>
-    </header>
+    </div>
   );
 }
