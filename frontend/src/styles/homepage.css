@@ -940,6 +940,7 @@ html[data-theme="light"] .home-page {
 }
 
 .home-graph {
+  position: relative;
   margin-top: clamp(2.5rem, 5vw, 4.5rem);
 }
 
@@ -947,8 +948,7 @@ html[data-theme="light"] .home-page {
   position: relative;
   display: none;
   width: 100%;
-  aspect-ratio: 1000 / 600;
-  min-height: 32rem;
+  height: min(calc(100svh - 2rem), calc(100vw * 0.6));
   overflow: hidden;
   isolation: isolate;
   border-top: 1px solid var(--home-line);
@@ -1093,17 +1093,17 @@ html[data-theme="light"] .home-page {
 
 .home-graph__node > .home-graph__node-copy {
   position: absolute;
-  top: calc(50% + 0.85rem);
+  top: calc(50% + 1.05rem);
   left: 50%;
   width: max-content;
-  max-width: 9.5rem;
+  max-width: 14rem;
   transform: translateX(-50%);
   text-align: center;
   pointer-events: none;
 }
 
 .home-graph__node[data-kind="persona"] > .home-graph__node-copy {
-  top: calc(50% + 1rem);
+  top: calc(50% + 1.25rem);
 }
 
 .home-graph__node:focus-visible,
@@ -1122,7 +1122,7 @@ html[data-theme="light"] .home-page {
 .home-graph__node-name {
   display: block;
   color: var(--home-soft);
-  font-size: 0.72rem;
+  font-size: 1rem;
   font-weight: 600;
   line-height: 1.25;
   text-shadow: 0 1px 10px var(--home-bg-deep);
@@ -1136,65 +1136,131 @@ html[data-theme="light"] .home-page {
 
 .home-graph__node-kind {
   display: block;
-  margin-top: 0.12rem;
+  margin-top: 0.18rem;
   color: var(--home-muted);
-  font-size: 0.62rem;
-  line-height: 1.2;
+  font-size: 0.8125rem;
+  line-height: 1.25;
   text-shadow: 0 1px 8px var(--home-bg-deep);
 }
 
-.home-graph__hud {
-  display: grid;
-  grid-template-columns: minmax(10rem, 0.72fr) minmax(15rem, 1.45fr) minmax(13rem, 1fr);
-  gap: clamp(1.5rem, 3vw, 2.75rem);
-  align-items: start;
-  padding: 1.5rem clamp(1.25rem, 5vw, 2.5rem);
-  border-bottom: 1px solid var(--home-line);
-  background: color-mix(in srgb, var(--home-surface) 88%, transparent);
+.home-graph__overlay {
+  position: absolute;
+  z-index: 6;
+  top: 50%;
+  right: clamp(1rem, 2.5vw, 2rem);
+  width: min(22rem, calc(100% - 2rem));
+  max-height: calc(100% - 2rem);
+  padding: 1.35rem 1.4rem 1.2rem;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  border: 1px solid color-mix(in srgb, var(--home-accent) 32%, transparent);
+  border-radius: 1.25rem;
+  background:
+    linear-gradient(135deg, rgba(255, 255, 255, 0.09), transparent 42%),
+    color-mix(in srgb, var(--home-surface) 35%, transparent);
+  box-shadow:
+    0 1.5rem 4rem var(--home-card-shadow),
+    inset 0 1px 0 rgba(255, 255, 255, 0.12);
+  -webkit-backdrop-filter: blur(20px) saturate(1.35);
+  backdrop-filter: blur(20px) saturate(1.35);
+  transform: translateY(-50%);
+  animation: home-glass-in 180ms ease-out both;
+  scrollbar-width: thin;
+  scrollbar-color: var(--home-line-strong) transparent;
 }
 
-.home-graph__hud-label {
+.home-graph__overlay[data-side="left"] {
+  right: auto;
+  left: clamp(1rem, 2.5vw, 2rem);
+}
+
+.home-graph__overlay[data-pinned="false"] {
+  pointer-events: none;
+}
+
+.home-graph__overlay-head {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 0.75rem;
+}
+
+.home-graph__overlay-label {
   margin: 0;
   color: var(--home-accent);
-  font-size: 0.68rem;
+  font-size: 0.65rem;
   font-weight: 600;
   letter-spacing: 0.09em;
   text-transform: uppercase;
 }
 
-.home-graph__hud h3 {
-  margin: 0.4rem 0 0;
+.home-graph__overlay h3 {
+  margin: 0.35rem 0 0;
   color: var(--home-text);
-  font-size: 1.15rem;
+  font-size: 1.375rem;
+  line-height: 1.15;
 }
 
-.home-graph__hud-kind {
-  margin: 0.2rem 0 0;
+.home-graph__overlay-kind {
+  margin: 0.25rem 0 0;
   color: var(--home-muted);
-  font-size: 0.78rem;
+  font-size: 0.8125rem;
+  line-height: 1.3;
 }
 
-.home-graph__hud-copy {
-  margin: 0;
+.home-graph__overlay-close {
+  display: grid;
+  flex: none;
+  place-items: center;
+  width: 2rem;
+  height: 2rem;
+  padding: 0;
+  border: 1px solid var(--home-line);
+  border-radius: 999px;
+  background: color-mix(in srgb, var(--home-surface) 70%, transparent);
+  color: var(--home-soft);
+  cursor: pointer;
+  transition:
+    color 180ms,
+    border-color 180ms,
+    background-color 180ms;
+}
+
+.home-graph__overlay-close:hover {
+  color: var(--home-text);
+  border-color: var(--home-line-strong);
+}
+
+.home-graph__overlay-close:focus-visible {
+  outline: 2px solid var(--home-accent);
+  outline-offset: 2px;
+}
+
+.home-graph__overlay-copy {
+  margin: 0.85rem 0 0;
   color: var(--home-soft);
   font-size: 0.875rem;
-  line-height: 1.6;
+  line-height: 1.65;
 }
 
-.home-graph__hud-connections h4 {
+.home-graph__overlay-connections {
+  margin-top: 1rem;
+}
+
+.home-graph__overlay-connections h4 {
   margin: 0;
   color: var(--home-text);
-  font-size: 0.72rem;
+  font-size: 0.7rem;
   font-weight: 600;
   letter-spacing: 0.07em;
   text-transform: uppercase;
 }
 
-.home-graph__hud-group {
-  margin-top: 0.65rem;
+.home-graph__overlay-group {
+  margin-top: 0.6rem;
 }
 
-.home-graph__hud-group p {
+.home-graph__overlay-group p {
   margin: 0 0 0.3rem;
   color: var(--home-muted);
   font-size: 0.65rem;
@@ -1203,7 +1269,7 @@ html[data-theme="light"] .home-page {
   text-transform: uppercase;
 }
 
-.home-graph__hud-group ul {
+.home-graph__overlay-group ul {
   display: flex;
   flex-wrap: wrap;
   gap: 0.3rem;
@@ -1212,19 +1278,43 @@ html[data-theme="light"] .home-page {
   list-style: none;
 }
 
-.home-graph__hud-group li {
+.home-graph__overlay-group li {
   padding: 0.2rem 0.5rem;
   border: 1px solid var(--home-line);
   border-radius: 999px;
   color: var(--home-soft);
-  font-size: 0.72rem;
+  font-size: 0.75rem;
   line-height: 1.25;
 }
 
-.home-graph__hud-empty {
-  margin: 0.65rem 0 0;
+.home-graph__overlay-empty {
+  margin: 0.6rem 0 0;
   color: var(--home-muted);
   font-size: 0.75rem;
+}
+
+.home-graph__overlay .home-graph__reading {
+  margin-top: 0.9rem;
+  padding-top: 0.2rem;
+}
+
+.home-graph__overlay .home-graph__reading summary {
+  font-size: 0.75rem;
+}
+
+@keyframes home-glass-in {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+
+@supports not ((backdrop-filter: blur(1px)) or (-webkit-backdrop-filter: blur(1px))) {
+  .home-graph__overlay {
+    background: color-mix(in srgb, var(--home-surface) 94%, transparent);
+  }
 }
 
 .home-graph__mobile {
@@ -1271,12 +1361,12 @@ html[data-theme="light"] .home-page {
 }
 
 .home-graph__node-list-button .home-graph__node-name {
-  font-size: 0.8125rem;
+  font-size: 0.9375rem;
   text-shadow: none;
 }
 
 .home-graph__node-list-button .home-graph__node-kind {
-  font-size: 0.72rem;
+  font-size: 0.8125rem;
   text-shadow: none;
 }
 
@@ -1351,18 +1441,6 @@ html[data-theme="light"] .home-page {
 .home-evidence__demo-link:hover {
   color: var(--home-accent-strong);
   text-decoration: underline;
-}
-
-.home-graph__reading--desktop {
-  display: none;
-  max-width: 80rem;
-  margin: 1.5rem auto 0;
-  padding: 0 clamp(1.25rem, 5vw, 2.5rem);
-  border-top: 1px solid var(--home-line);
-}
-
-.home-graph__reading--desktop[open] {
-  padding-bottom: 1rem;
 }
 
 /* ------------------------------------------------------------------------- */
@@ -1527,10 +1605,6 @@ html[data-theme="light"] .home-page {
     display: none;
   }
 
-  .home-graph__reading--desktop {
-    display: block;
-  }
-
   .home-footer__inner {
     flex-direction: row;
     align-items: flex-start;
@@ -1550,9 +1624,20 @@ html[data-theme="light"] .home-page {
 }
 
 @media (max-width: 767px) {
-  .home-graph__hud {
-    grid-template-columns: 1fr;
-    gap: 1rem;
+  .home-graph {
+    padding-bottom: 1rem;
+  }
+
+  .home-graph__overlay {
+    position: relative;
+    top: auto;
+    right: auto;
+    left: auto;
+    width: auto;
+    max-height: none;
+    margin: 1rem clamp(1rem, 5vw, 1.25rem) 0;
+    transform: none;
+    animation: none;
   }
 }
 
@@ -1636,8 +1721,13 @@ html[data-theme="light"] .home-page {
   .home-graph__edge,
   .home-graph__node,
   .home-graph__star,
+  .home-graph__overlay-close,
   .home-graph__node-list-button {
     transition: none !important;
+  }
+
+  .home-graph__overlay {
+    animation: none !important;
   }
 
   .home-demo-cta-particle {
@@ -1689,7 +1779,14 @@ html[data-theme="light"] .home-page {
   .home-demo-cta,
   .home-operator-link,
   .home-graph__node-list-button,
-  .home-graph__hud {
+  .home-graph__overlay {
     border: 1px solid CanvasText;
+  }
+
+  .home-graph__overlay {
+    background: Canvas;
+    box-shadow: none;
+    -webkit-backdrop-filter: none;
+    backdrop-filter: none;
   }
 }
