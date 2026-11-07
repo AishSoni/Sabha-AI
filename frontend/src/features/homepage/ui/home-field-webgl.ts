@@ -60,8 +60,6 @@ uniform vec3 uGlow;
 uniform float uRadius;
 uniform vec2 uResolution;
 uniform float uDpr;
-uniform vec2 uMaskCenter;
-uniform vec2 uMaskRadii;
 
 in vec2 vLocal;
 in vec2 vCardSize;
@@ -96,7 +94,10 @@ void main() {
   float ring = 1.0 - smoothstep(0.0, 0.04, abs(radial - 0.62));
   card += vAccent * ring * 0.18;
 
-  vec4 glyph = texture(uGlyphs, vec3(vLocal + 0.5, vLayer));
+  vec2 glyphScale =
+    min(vCardSize.x, vCardSize.y) / max(vCardSize, vec2(1.0));
+  vec2 glyphUv = clamp(vLocal * glyphScale + 0.5, 0.0, 1.0);
+  vec4 glyph = texture(uGlyphs, vec3(glyphUv, vLayer));
   vec3 glyphColor = mix(uGlyph, vAccent, 0.28);
   card = mix(card, glyphColor, glyph.a * 0.96);
 
@@ -105,20 +106,13 @@ void main() {
 
   vec2 frag = gl_FragCoord.xy / uDpr;
   frag.y = uResolution.y - frag.y;
-  float contentMask = smoothstep(
-    0.92,
-    1.12,
-    length((frag - uMaskCenter) / max(uMaskRadii, vec2(1.0)))
-  );
   vec2 radialCoord = (frag - uResolution * 0.5) / (uResolution * 0.45);
   float vignette = clamp(
     (length(radialCoord) - 0.505) / 0.395,
     0.0,
     1.0
   );
-  float mask = contentMask * vignette;
-
-  float alpha = inside * vOpacity * mask;
+  float alpha = inside * vOpacity * vignette;
   outColor = vec4(card * alpha, alpha);
 }
 `;
@@ -325,7 +319,7 @@ export async function createHomeFieldEngine(
   let frame = 0;
   let lastTime = 0;
   let offsetPercent = 0;
-  let startedAt = performance.now();
+  const startedAt = performance.now();
   let ready = false;
   let mask: FieldMask = {
     centerX: canvas.clientWidth / 2,
@@ -395,8 +389,6 @@ export async function createHomeFieldEngine(
     glow: gl.getUniformLocation(program, "uGlow"),
     radius: gl.getUniformLocation(program, "uRadius"),
     dpr: gl.getUniformLocation(program, "uDpr"),
-    maskCenter: gl.getUniformLocation(program, "uMaskCenter"),
-    maskRadii: gl.getUniformLocation(program, "uMaskRadii"),
   };
 
   for (const location of Object.values(uniforms)) {
@@ -448,9 +440,6 @@ export async function createHomeFieldEngine(
     const sceneToCss = stageCss / SPIRAL_CAMERA_SIZE;
     const cx = css.width / 2;
     const cy = css.height / 2;
-    const q = 0.45 * Math.min(css.width, css.height);
-    const diagonalCull = css.width * 0.45;
-    const verticalCull = css.height * 0.45;
 
     let count = 0;
     for (let index = 0; index < SPIRAL_CARD_COUNT; index += 1) {
@@ -463,12 +452,13 @@ export async function createHomeFieldEngine(
       const x = cx + scene.x * sceneToCss;
       const y = cy + scene.y * sceneToCss;
 
-      const normalizedX = (x - cx) / diagonalCull;
-      const normalizedY = (y - cy) / verticalCull;
+      const normalizedX = (x - mask.centerX) / Math.max(mask.radiusX, 1);
+      const normalizedY = (y - mask.centerY) / Math.max(mask.radiusY, 1);
       const centerDistance =
         Math.sqrt(normalizedX * normalizedX + normalizedY * normalizedY) +
-        (Math.max(width, height) * 0.5) / q;
-      if (centerDistance < 0.505) continue;
+        (Math.max(width, height) * 0.5) /
+          Math.max(Math.min(mask.radiusX, mask.radiusY), 1);
+      if (centerDistance < 0.86) continue;
 
       const radius = Math.hypot(width, height) * 0.5;
       if (
@@ -518,16 +508,6 @@ export async function createHomeFieldEngine(
     context.uniform3f(uniforms.glyph!, glyph[0], glyph[1], glyph[2]);
     context.uniform3f(uniforms.rim!, rim[0], rim[1], rim[2]);
     context.uniform3f(uniforms.glow!, glow[0], glow[1], glow[2]);
-    context.uniform2f(
-      uniforms.maskCenter!,
-      mask.centerX,
-      mask.centerY,
-    );
-    context.uniform2f(
-      uniforms.maskRadii!,
-      Math.max(mask.radiusX, 1),
-      Math.max(mask.radiusY, 1),
-    );
 
     context.bindBuffer(context.ARRAY_BUFFER, instanceBuffer);
     context.bufferSubData(
@@ -611,7 +591,9 @@ export async function createHomeFieldEngine(
         stop();
       } else {
         lastTime = 0;
-        startedAt = performance.now();
+        // The arrival burst is a one-shot first-load gesture. Resuming after a
+        // pause must not replay it; only the initial load and scroll deltas
+        // are allowed to accelerate the spiral.
         start();
       }
     },

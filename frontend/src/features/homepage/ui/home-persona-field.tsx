@@ -12,6 +12,7 @@ import {
   type ResolvedAppearance,
 } from "@/components/appearance";
 
+import { emblemById } from "../presentation/emblems";
 import { FIELD_PALETTES } from "../presentation/field-palette";
 import {
   HOME_FIELD_SLOTS,
@@ -222,6 +223,7 @@ export function HomePersonaField() {
           data-testid="home-persona-static"
         >
           {HOME_FIELD_SLOTS.map((slot) => {
+            const emblem = emblemById(slot.emblemId);
             const style = {
               left: `${slot.x}%`,
               top: `${slot.y}%`,
@@ -229,6 +231,7 @@ export function HomePersonaField() {
               height: `${slot.height}%`,
               "--home-slot-rotation": `${slot.rotation}rad`,
               "--home-slot-opacity": String(slot.opacity),
+              "--home-slot-accent": emblem.accent,
             } as CSSProperties;
 
             return (
@@ -241,7 +244,7 @@ export function HomePersonaField() {
                 data-testid="home-persona-slot"
                 style={style}
               >
-                <EmblemSvg emblemId={slot.emblemId} />
+                <EmblemSvg emblemId={slot.emblemId} variant="glyph" />
               </span>
             );
           })}

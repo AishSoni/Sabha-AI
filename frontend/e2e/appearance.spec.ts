@@ -44,7 +44,7 @@ test.describe("appearance lifecycle", () => {
 
         await page
             .locator(".home-hero")
-            .getByRole("link", { name: "Explore the recorded demo" })
+            .getByRole("link", { name: "Try the recorded demo" })
             .click();
         await expect(page).toHaveURL(/\/demo$/);
         await expect(page.locator("html")).toHaveAttribute("data-theme", "light");
@@ -407,7 +407,7 @@ test.describe("appearance lifecycle", () => {
         await expect(
             page
                 .locator(".home-hero")
-                .getByRole("link", { name: "Explore the recorded demo" })
+                .getByRole("link", { name: "Try the recorded demo" })
         ).toBeVisible();
     });
 

@@ -5,7 +5,7 @@ export const HOME_COPY = {
     lead: "Bring more minds",
     tail: "to your next decision.",
   },
-  demoCta: "Explore the recorded demo",
+  demoCta: "Try the recorded demo",
   operatorCta: "Operator sign-in",
   evidenceAnchor: "Explore the evidence constellation",
   evidence: {

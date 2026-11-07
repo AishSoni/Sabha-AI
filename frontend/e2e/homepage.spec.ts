@@ -33,13 +33,18 @@ test.describe("homepage composition", () => {
 
     const demo = page
       .locator(".home-hero")
-      .getByRole("link", { name: "Explore the recorded demo" });
+      .getByRole("link", { name: "Try the recorded demo" });
     await expect(demo).toHaveAttribute("href", "/demo");
-    await expect(
-      page
-        .locator(".home-hero")
-        .getByRole("link", { name: "Operator sign-in" }),
-    ).toHaveAttribute("href", "/login");
+    await expect(demo.locator(".home-demo-cta__badge")).toHaveCount(1);
+    const operator = page
+      .locator(".home-hero")
+      .getByRole("link", { name: "Operator sign-in" });
+    await expect(operator).toHaveAttribute("href", "/login");
+    await expect
+      .poll(() =>
+        operator.evaluate((element) => getComputedStyle(element).borderRadius),
+      )
+      .toBe("999px");
     await expect(
       page.getByRole("link", { name: "Explore the evidence constellation" }),
     ).toHaveAttribute("href", "#evidence");
@@ -114,6 +119,29 @@ test.describe("homepage composition", () => {
       "data-background",
       "on",
     );
+  });
+
+  test("rotates the decorative tail phrase and holds it when paused", async ({
+    page,
+  }) => {
+    await page.goto("/");
+    const phrase = page.locator(".home-headline__tail-text");
+    await expect(phrase).toContainText("to your next decision.");
+
+    await page.waitForTimeout(7400);
+    await expect(phrase).toContainText("before the next call.");
+    await expect(
+      page.getByRole("heading", {
+        level: 1,
+        name: "Bring more minds to your next decision.",
+      }),
+    ).toBeVisible();
+
+    await page.waitForTimeout(800);
+    await page.getByTestId("home-motion-toggle").click();
+    const pausedPhrase = await phrase.innerText();
+    await page.waitForTimeout(7400);
+    expect(await phrase.innerText()).toBe(pausedPhrase);
   });
 
   test("keeps the hero invitation visible at compact and wide sizes", async ({
@@ -284,13 +312,18 @@ test.describe("homepage reduced motion", () => {
     await expect(
       page
         .locator(".home-hero")
-        .getByRole("link", { name: "Explore the recorded demo" }),
+        .getByRole("link", { name: "Try the recorded demo" }),
     ).toBeVisible();
     await expect(
       page.getByText(
         "Prepared demo · recorded responses, not live generation.",
       ),
     ).toBeVisible();
+
+    const phrase = page.locator(".home-headline__tail-text");
+    await expect(phrase).toContainText("to your next decision.");
+    await page.waitForTimeout(7400);
+    await expect(phrase).toContainText("to your next decision.");
   });
 });
 
@@ -309,7 +342,7 @@ test.describe("homepage without JavaScript", () => {
     await expect(
       page
         .locator(".home-hero")
-        .getByRole("link", { name: "Explore the recorded demo" }),
+        .getByRole("link", { name: "Try the recorded demo" }),
     ).toHaveAttribute("href", "/demo");
     await expect(
       page.getByText(
