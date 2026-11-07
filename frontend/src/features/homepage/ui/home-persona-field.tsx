@@ -91,38 +91,67 @@ export function HomePersonaField() {
       const contentRect = content.getBoundingClientRect();
       if (!fieldRect.width || !fieldRect.height) return;
 
-      const foreground = [
-        content.querySelector(".home-headline"),
-        content.querySelector(".home-hero__actions"),
-      ]
-        .filter((element): element is Element => element !== null)
-        .map((element) => element.getBoundingClientRect());
-      const bounds = foreground.length ? foreground : [contentRect];
-      const left = Math.min(...bounds.map((rect) => rect.left));
-      const right = Math.max(...bounds.map((rect) => rect.right));
-      const top = Math.min(...bounds.map((rect) => rect.top));
-      const bottom = Math.max(...bounds.map((rect) => rect.bottom));
+      // The headline block spans the whole content column, so measure the
+      // rendered text lines instead of the element box. Using the block box
+      // would leave no room for the falloff and collapse it to a hard edge.
+      const foreground: DOMRect[] = [];
+      const headline = content.querySelector(".home-headline");
+      if (headline) {
+        const range = document.createRange();
+        range.selectNodeContents(headline);
+        foreground.push(range.getBoundingClientRect());
+      }
+      content
+        .querySelectorAll(".home-demo-cta-shell, .home-operator-link")
+        .forEach((element) => {
+          foreground.push(element.getBoundingClientRect());
+        });
+
+      const bounds = foreground.filter(
+        (rect) => rect.width > 0 && rect.height > 0,
+      );
+      const measured = bounds.length ? bounds : [contentRect];
+      const left = Math.min(...measured.map((rect) => rect.left));
+      const right = Math.max(...measured.map((rect) => rect.right));
+      const top = Math.min(...measured.map((rect) => rect.top));
+      const bottom = Math.max(...measured.map((rect) => rect.bottom));
 
       const centerX = (left + right) / 2 - fieldRect.left;
       const centerY = (top + bottom) / 2 - fieldRect.top;
-      const radiusX = (right - left) / 2 + 110;
-      const radiusY = Math.max((bottom - top) / 2 + 130, radiusX / 1.4);
+
+      // A protected core around the readable content, then a wide falloff
+      // sized from the viewport rather than the leftover room. The band has
+      // its own floor so the edge stays soft on short or narrow screens.
+      const coreRadiusX = (right - left) / 2 + 88;
+      const coreRadiusY = (bottom - top) / 2 + 112;
+      const fadeBand = clamp(
+        Math.min(fieldRect.width, fieldRect.height) * 0.22,
+        96,
+        210,
+      );
+      const fadeScale = (coreRadiusX + fadeBand) / Math.max(coreRadiusX, 1);
+      const radiusX = coreRadiusX * fadeScale;
+      // Keep the protected oval from flattening into a band on wide screens.
+      const radiusY = Math.max(coreRadiusY * fadeScale, radiusX * 0.72);
+      const plateau = clamp((1 / fadeScale) * 100, 55, 88);
 
       const cx = clamp((centerX / fieldRect.width) * 100, 12, 88);
       const cy = clamp((centerY / fieldRect.height) * 100, 12, 88);
-      const rx = clamp((radiusX / fieldRect.width) * 100, 30, 72);
-      const ry = clamp((radiusY / fieldRect.height) * 100, 24, 68);
+      const rx = (radiusX / fieldRect.width) * 100;
+      const ry = (radiusY / fieldRect.height) * 100;
 
       field.style.setProperty("--home-mask-cx", `${cx}%`);
       field.style.setProperty("--home-mask-cy", `${cy}%`);
       field.style.setProperty("--home-mask-rx", `${rx}%`);
       field.style.setProperty("--home-mask-ry", `${ry}%`);
+      field.style.setProperty("--home-mask-plateau", `${plateau}%`);
 
       const mask: FieldMask = {
         centerX: (cx / 100) * fieldRect.width,
         centerY: (cy / 100) * fieldRect.height,
         radiusX: (rx / 100) * fieldRect.width,
         radiusY: (ry / 100) * fieldRect.height,
+        plateau: plateau / 100,
       };
       maskRef.current = mask;
       engineRef.current?.setMask(mask);

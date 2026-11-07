@@ -130,6 +130,15 @@ export function cardSizeAt(index: number): CardSize {
   return SIZE_TIERS[index % SIZE_TIERS.length]!;
 }
 
+/**
+ * Orient a card by the radial normal of its position rather than by the
+ * spiral tangent. The long edge then points away from the centre and turns
+ * with the orbit instead of spinning independently of it.
+ */
+export function cardAngleAt(x: number, y: number): number {
+  return Math.atan2(y, x) + Math.PI / 2;
+}
+
 export function cardSceneAt(
   index: number,
   count: number,
@@ -164,7 +173,7 @@ export function cardSceneAt(
   return {
     x,
     y,
-    angle: Math.atan2(sample.ty, sample.tx),
+    angle: cardAngleAt(x, y),
     fade,
     scale,
   };
