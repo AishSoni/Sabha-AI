@@ -93,15 +93,17 @@ export function TutorialHud() {
 
     const hasTarget = Boolean(prompt?.anchor);
     const anchored = !hasTarget || match !== null;
-    const placed = !hasTarget || position?.visible === true;
     const suspended = modalOpen || streaming;
     const inlineRoom =
         (prompt?.id === "main-speaker" || prompt?.id === "main-followup") &&
         match !== null;
+    // A real target keeps the instruction visible even when the floating card
+    // cannot be placed beside it: fall back to a fixed reading position rather
+    // than hiding the current objective behind the compact bar.
     const cardVisible =
-        !inlineRoom && !tutorial.hidden && !suspended && anchored && placed;
+        !inlineRoom && !tutorial.hidden && !suspended && anchored;
     const compactVisible =
-        !suspended && (tutorial.hidden || (!inlineRoom && !cardVisible));
+        !suspended && (tutorial.hidden || (!inlineRoom && !anchored));
     const cardMounted = !inlineRoom && !tutorial.hidden && !suspended && anchored;
     const inlineTarget =
         inlineRoom && match
@@ -136,18 +138,26 @@ export function TutorialHud() {
     };
 
     const cardStyle: CSSProperties =
-        position && hasTarget
+        position && hasTarget && position.visible
             ? {
                   left: position.x,
                   top: position.y,
-                  visibility: cardVisible ? "visible" : "hidden",
+                  visibility: "visible",
               }
-            : {
-                  left: "50%",
-                  bottom: "calc(env(safe-area-inset-bottom, 0px) + 1.5rem)",
-                  transform: "translateX(-50%)",
-                  visibility: cardVisible ? "visible" : "hidden",
-              };
+            : position && hasTarget
+              ? {
+                    left: "50%",
+                    top: "calc(env(safe-area-inset-top, 0px) + 4.5rem)",
+                    transform: "translateX(-50%)",
+                    width: "min(20rem, calc(100vw - 2rem))",
+                    visibility: "visible",
+                }
+              : {
+                    left: "50%",
+                    bottom: "calc(env(safe-area-inset-bottom, 0px) + 1.5rem)",
+                    transform: "translateX(-50%)",
+                    visibility: cardVisible ? "visible" : "hidden",
+                };
 
     return createPortal(
         <>
