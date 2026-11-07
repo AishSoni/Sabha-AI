@@ -9,29 +9,28 @@
  */
 import Link from "next/link";
 import {
-    ArrowLeft,
     Bot,
     Copy,
-    Loader2,
     MoreVertical,
     Plus,
     Trash2,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { Badge } from "@/components/ui/badge";
 import { ParticipantMark } from "@/components/identity/participant-mark";
-import {
-    Card,
-    CardContent,
-    CardDescription,
-    CardHeader,
-    CardTitle,
-} from "@/components/ui/card";
 import {
     DropdownMenu,
     DropdownMenuContent,
     DropdownMenuItem,
     DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
+import { EmptyState } from "@/components/ui/empty-state";
+import { Notice } from "@/components/ui/notice";
+import {
+    LoadingState,
+    PageContainer,
+    PageHeader,
+} from "@/components/shell";
 
 export interface RosterPersonaView {
     id: string;
@@ -42,6 +41,8 @@ export interface RosterPersonaView {
     color: string;
     activePrompt?: string | null;
     activePromptVersion?: number | null;
+    stackIds?: string[] | null;
+    stackLabels?: string[] | null;
 }
 
 export interface RosterHrefs {
@@ -60,6 +61,7 @@ export interface RosterListProps {
     highlightedPersonaId?: string;
     onDuplicate: (persona: RosterPersonaView) => void;
     onDelete: (personaId: string) => void;
+    onRetry?: () => void;
 }
 
 export function RosterList({
@@ -67,150 +69,225 @@ export function RosterList({
     loading,
     error,
     hrefs,
-    heading = "AI Roster",
-    description = "Manage your AI personas",
+    heading = "Personas",
+    description = "Manage the advisory participants available to your meetings.",
     highlightedPersonaId,
     onDuplicate,
     onDelete,
+    onRetry,
 }: RosterListProps) {
     return (
-        <div className="min-h-full text-ink">
-            <header className="material-chrome sticky top-0 z-chrome border-b border-separator">
-                <div className="max-w-6xl mx-auto px-6 py-4 flex items-center justify-between">
-                    <div className="flex items-center gap-4">
-                        <Link
-                            href={hrefs.home}
-                            className="text-ink-secondary hover:text-ink m-control"
-                            aria-label="Back"
-                        >
-                            <ArrowLeft className="w-5 h-5" />
-                        </Link>
-                        <div>
-                            <h1 className="text-xl font-bold text-ink">{heading}</h1>
-                            <p className="text-xs text-ink-muted">{description}</p>
-                        </div>
-                    </div>
-
-                    <Link href={hrefs.create}>
-                        <Button>
-                            <Plus className="mr-2 size-4" />
-                            Create Persona
-                        </Button>
+        <main id="main-content" tabIndex={-1}>
+            <PageHeader
+                title={heading}
+                description={description}
+                backHref={hrefs.home}
+                backLabel="Back to meetings"
+                actions={
+                    <Link
+                        href={hrefs.create}
+                        className="m-control inline-flex min-h-10 items-center gap-2 rounded-control bg-action px-4 type-control font-medium text-action-foreground outline-none hover:bg-action-hover focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-focus-ring"
+                    >
+                        <Plus aria-hidden="true" className="size-4" />
+                        Create Persona
                     </Link>
-                </div>
-            </header>
+                }
+            />
 
-            <main id="main-content" className="max-w-6xl mx-auto px-6 py-8" tabIndex={-1}>
-                {error && (
-                    <div role="alert" className="mb-8 rounded-group border border-danger/40 bg-danger-soft p-4">
-                        <p className="type-body text-danger">{error}</p>
-                    </div>
-                )}
+            <PageContainer>
+                {error ? (
+                    <Notice
+                        tone="danger"
+                        className="mb-5"
+                        action={
+                            onRetry ? (
+                                <Button
+                                    type="button"
+                                    variant="outline"
+                                    size="sm"
+                                    onClick={onRetry}
+                                >
+                                    Try again
+                                </Button>
+                            ) : undefined
+                        }
+                    >
+                        {error}
+                    </Notice>
+                ) : null}
 
                 {loading ? (
-                    <div className="flex items-center justify-center py-20">
-                        <Loader2 className="size-8 animate-spin text-ink-muted motion-reduce:animate-none" />
-                    </div>
+                    <LoadingState label="Loading personas…" rows={4} />
                 ) : personas.length === 0 ? (
-                    <div className="text-center py-20">
-                        <Bot className="mx-auto mb-4 size-12 text-ink-muted" />
-                        <h2 className="type-item-title mb-2">No Personas Yet</h2>
-                        <p className="mb-6 type-body text-ink-secondary">
-                            Create your first AI persona to get started.
-                        </p>
-                        <Link href={hrefs.create}>
-                            <Button>
-                                <Plus className="mr-2 size-4" />
-                                Create Persona
-                            </Button>
-                        </Link>
-                    </div>
+                    <EmptyState
+                        icon={<Bot className="size-6" />}
+                        title="No personas yet"
+                        description="Create your first persona so it can participate in a meeting."
+                        action={
+                            <Link href={hrefs.create}>
+                                <Button>
+                                    <Plus
+                                        aria-hidden="true"
+                                        className="size-4"
+                                    />
+                                    Create Persona
+                                </Button>
+                            </Link>
+                        }
+                        className="material-raised rounded-group"
+                    />
                 ) : (
-                    <>
-                        <h2 className="mb-4 type-section-title">
-                            Your Personas ({personas.length})
-                        </h2>
-
-                        <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-4">
-                            {personas.map((persona) => (
-                                <Card
-                                    key={persona.id}
-                                    className="transition-colors hover:border-action/40"
-                                >
-                                    <CardHeader className="pb-2">
-                                        <div className="flex items-center justify-between">
-                                            <div className="flex items-center gap-3">
-                                                <ParticipantMark
-                                                    participant={{
-                                                        id: persona.markId ?? persona.id,
-                                                        name: persona.name,
-                                                        color: persona.color,
-                                                    }}
-                                                    size="md"
-                                                />
-                                                <div>
-                                                    <Link href={hrefs.persona(persona.id)}>
-                                                        <CardTitle className="cursor-pointer transition-colors hover:text-action">
-                                                            {persona.name}
-                                                        </CardTitle>
-                                                    </Link>
-                                                    {persona.subtitle && (
-                                                        <CardDescription>
-                                                            {persona.subtitle}
-                                                        </CardDescription>
-                                                    )}
-                                                    {highlightedPersonaId === persona.id && (
-                                                        <span className="mt-1 inline-block rounded-full bg-accent-soft px-2 py-0.5 type-meta font-medium text-action">
-                                                            Start here
-                                                        </span>
-                                                    )}
-                                                </div>
-                                            </div>
-                                            <DropdownMenu>
-                                                <DropdownMenuTrigger asChild>
-                                                    <Button
-                                                        variant="ghost"
-                                                        size="icon"
-                                                        aria-label={`Actions for ${persona.name}`}
-                                                    >
-                                                        <MoreVertical className="size-4" />
-                                                    </Button>
-                                                </DropdownMenuTrigger>
-                                                <DropdownMenuContent>
-                                                    <DropdownMenuItem onClick={() => onDuplicate(persona)}>
-                                                        <Copy className="mr-2 size-4" />
-                                                        Duplicate
-                                                    </DropdownMenuItem>
-                                                    <DropdownMenuItem
-                                                        onClick={() => onDelete(persona.id)}
-                                                        className="text-danger focus:bg-danger-soft focus:text-danger"
-                                                    >
-                                                        <Trash2 className="mr-2 size-4" />
-                                                        Delete
-                                                    </DropdownMenuItem>
-                                                </DropdownMenuContent>
-                                            </DropdownMenu>
-                                        </div>
-                                    </CardHeader>
-                                    <CardContent>
-                                        <p className="line-clamp-2 type-body text-ink-muted">
-                                            {persona.activePrompt
-                                                ? persona.activePrompt.substring(0, 100) +
-                                                  (persona.activePrompt.length > 100 ? "..." : "")
-                                                : "No system prompt configured"}
-                                        </p>
-                                        {persona.activePromptVersion ? (
-                                            <p className="mt-2 type-meta text-ink-muted">
-                                                Prompt v{persona.activePromptVersion}
-                                            </p>
-                                        ) : null}
-                                    </CardContent>
-                                </Card>
-                            ))}
+                    <section aria-labelledby="persona-list-heading">
+                        <div className="mb-3 flex flex-wrap items-baseline justify-between gap-2">
+                            <h2
+                                id="persona-list-heading"
+                                className="type-section-title text-ink"
+                            >
+                                Your Personas ({personas.length})
+                            </h2>
                         </div>
-                    </>
+                        <ul className="material-raised divide-y divide-separator overflow-hidden rounded-group">
+                            {personas.map((persona) => (
+                                <li
+                                    key={persona.id}
+                                    data-testid={`persona-row-${persona.id}`}
+                                    className="flex flex-col gap-3 p-4 sm:flex-row sm:items-center sm:justify-between"
+                                >
+                                    <div className="flex min-w-0 items-start gap-3">
+                                        <ParticipantMark
+                                            participant={{
+                                                id:
+                                                    persona.markId ??
+                                                    persona.id,
+                                                name: persona.name,
+                                                color: persona.color,
+                                            }}
+                                            size="md"
+                                        />
+                                        <div className="min-w-0">
+                                            <div className="flex flex-wrap items-center gap-2">
+                                                <Link
+                                                    href={hrefs.persona(
+                                                        persona.id
+                                                    )}
+                                                    className="m-control rounded-control type-item-title text-ink outline-none hover:text-action focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-focus-ring"
+                                                >
+                                                    {persona.name}
+                                                </Link>
+                                                {highlightedPersonaId ===
+                                                    persona.id && (
+                                                    <Badge variant="outline">
+                                                        Start here
+                                                    </Badge>
+                                                )}
+                                            </div>
+                                            {persona.subtitle ? (
+                                                <p className="type-meta text-ink-muted">
+                                                    {persona.subtitle}
+                                                </p>
+                                            ) : null}
+                                            <div className="mt-1 flex flex-wrap items-center gap-2 type-meta text-ink-muted">
+                                                {persona.activePromptVersion ? (
+                                                    <span>
+                                                        Prompt v
+                                                        {
+                                                            persona.activePromptVersion
+                                                        }
+                                                    </span>
+                                                ) : (
+                                                    <span>
+                                                        No active prompt
+                                                        revision
+                                                    </span>
+                                                )}
+                                                {persona.stackIds ? (
+                                                    <>
+                                                        <span aria-hidden="true">
+                                                            ·
+                                                        </span>
+                                                        <span>
+                                                            {persona
+                                                                .stackIds
+                                                                .length === 0
+                                                                ? "No assigned knowledge"
+                                                                : `${
+                                                                      persona
+                                                                          .stackIds
+                                                                          .length
+                                                                  } ${
+                                                                      persona
+                                                                          .stackIds
+                                                                          .length ===
+                                                                      1
+                                                                          ? "assigned knowledge stack"
+                                                                          : "assigned knowledge stacks"
+                                                                  }`}
+                                                        </span>
+                                                    </>
+                                                ) : null}
+                                            </div>
+                                            {persona.stackLabels &&
+                                            persona.stackLabels.length > 0 ? (
+                                                <p className="mt-1 line-clamp-1 type-meta text-ink-secondary">
+                                                    {persona.stackLabels.join(
+                                                        " · "
+                                                    )}
+                                                </p>
+                                            ) : null}
+                                        </div>
+                                    </div>
+                                    <div className="flex shrink-0 flex-wrap items-center gap-2">
+                                        <Link
+                                            href={hrefs.persona(persona.id)}
+                                            className="m-control inline-flex min-h-9 items-center rounded-control border border-control bg-surface px-3 type-control text-ink outline-none hover:bg-surface-raised focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-focus-ring"
+                                        >
+                                            Open persona
+                                        </Link>
+                                        <DropdownMenu>
+                                            <DropdownMenuTrigger asChild>
+                                                <Button
+                                                    variant="ghost"
+                                                    size="icon-sm"
+                                                    aria-label={`Actions for ${persona.name}`}
+                                                >
+                                                    <MoreVertical
+                                                        aria-hidden="true"
+                                                    />
+                                                </Button>
+                                            </DropdownMenuTrigger>
+                                            <DropdownMenuContent align="end">
+                                                <DropdownMenuItem
+                                                    onClick={() =>
+                                                        onDuplicate(persona)
+                                                    }
+                                                >
+                                                    <Copy
+                                                        aria-hidden="true"
+                                                        className="mr-2 size-4"
+                                                    />
+                                                    Duplicate
+                                                </DropdownMenuItem>
+                                                <DropdownMenuItem
+                                                    onClick={() =>
+                                                        onDelete(persona.id)
+                                                    }
+                                                    className="text-danger focus:bg-danger-soft focus:text-danger"
+                                                >
+                                                    <Trash2
+                                                        aria-hidden="true"
+                                                        className="mr-2 size-4"
+                                                    />
+                                                    Delete
+                                                </DropdownMenuItem>
+                                            </DropdownMenuContent>
+                                        </DropdownMenu>
+                                    </div>
+                                </li>
+                            ))}
+                        </ul>
+                    </section>
                 )}
-            </main>
-        </div>
+            </PageContainer>
+        </main>
     );
 }

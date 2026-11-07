@@ -22,11 +22,14 @@ export interface RosterScreenProps {
     confirmDelete?: (persona: RosterPersonaView) => boolean;
     /** Optional stable identity for the participant mark. */
     markIdFor?: (persona: Persona) => string | undefined;
+    /** Optional readable names for knowledge stacks assigned to personas. */
+    stackLabels?: Record<string, string>;
 }
 
 function toView(
     persona: Persona,
-    markIdFor?: (persona: Persona) => string | undefined
+    markIdFor?: (persona: Persona) => string | undefined,
+    stackLabels?: Record<string, string>
 ): RosterPersonaView {
     return {
         id: persona.id,
@@ -36,6 +39,10 @@ function toView(
         color: persona.color,
         activePrompt: persona.active_prompt,
         activePromptVersion: persona.active_prompt_version,
+        stackIds: persona.stack_ids,
+        stackLabels: persona.stack_ids?.map(
+            (stackId) => stackLabels?.[stackId] ?? stackId
+        ),
     };
 }
 
@@ -47,10 +54,12 @@ export function RosterScreen({
     highlightedPersonaId,
     confirmDelete,
     markIdFor,
+    stackLabels,
 }: RosterScreenProps) {
     const [personas, setPersonas] = useState<Persona[]>([]);
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState<string | null>(null);
+    const [reloadToken, setReloadToken] = useState(0);
     const actionRef = useRef(false);
 
     useEffect(() => {
@@ -69,7 +78,7 @@ export function RosterScreen({
         return () => {
             active = false;
         };
-    }, [client]);
+    }, [client, reloadToken]);
 
     async function handleDuplicate(persona: RosterPersonaView) {
         if (actionRef.current) return;
@@ -110,7 +119,9 @@ export function RosterScreen({
 
     return (
         <RosterList
-            personas={personas.map((persona) => toView(persona, markIdFor))}
+            personas={personas.map((persona) =>
+                toView(persona, markIdFor, stackLabels)
+            )}
             loading={loading}
             error={error}
             hrefs={hrefs}
@@ -119,6 +130,11 @@ export function RosterScreen({
             highlightedPersonaId={highlightedPersonaId}
             onDuplicate={(persona) => void handleDuplicate(persona)}
             onDelete={(id) => void handleDelete(id)}
+            onRetry={() => {
+                setLoading(true);
+                setError(null);
+                setReloadToken((token) => token + 1);
+            }}
         />
     );
 }

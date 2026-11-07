@@ -28,6 +28,12 @@ function Content() {
             }}
             heading="Practice personas"
             description="Temporary templates for this browser tab. They never rename, replace, or rerun the prepared participants."
+            stackLabels={Object.fromEntries(
+                (seed?.stacks ?? []).map((stack) => [
+                    stack.stackId,
+                    stack.label,
+                ])
+            )}
             markIdFor={(persona) =>
                 seed?.personas.find(
                     (template) => template.personaId === persona.id
