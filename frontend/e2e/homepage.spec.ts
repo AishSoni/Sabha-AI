@@ -35,10 +35,7 @@ test.describe("homepage composition", () => {
     );
     const viewportWidth = await page.evaluate(() => window.innerWidth);
     expect(Math.abs(mapWidth - viewportWidth)).toBeLessThanOrEqual(1);
-    await expect(page.locator(".home-graph__hud")).toBeVisible();
-    await expect(page.locator(".home-graph__hud h3")).toHaveText(
-      "Shared fact sheet",
-    );
+    await expect(page.locator(".home-graph__overlay")).toHaveCount(0);
     await expect(page.locator(".home-graph__detail")).toHaveCount(0);
     await expect(
       page.getByRole("button", { name: /^Appearance:/ }),
@@ -202,10 +199,10 @@ test.describe("homepage evidence graph", () => {
     await crisil.press("Enter");
 
     await expect(
-      page.locator(".home-graph__hud h3"),
+      page.locator(".home-graph__overlay h3"),
     ).toHaveText("Crisil annexure");
     await expect(
-      page.locator(".home-graph__hud").getByText("Cited source"),
+      page.locator(".home-graph__overlay").getByText("Cited source"),
     ).toBeVisible();
     await expect(
       page.locator(".home-graph__map .home-graph__edge[data-active='true']"),
@@ -220,11 +217,52 @@ test.describe("homepage evidence graph", () => {
     expect(after?.y).toBe(before?.y);
   });
 
+  test("reveals glass details on hover and pins them on click", async ({
+    page,
+  }) => {
+    await page.setViewportSize({ width: 1440, height: 900 });
+    await page.goto("/#evidence");
+
+    const overlay = page.locator(".home-graph__overlay");
+    await expect(overlay).toHaveCount(0);
+
+    const credit = page
+      .locator(".home-graph__map .home-graph__node")
+      .filter({ hasText: "The Credit Analyst" });
+    await credit.hover();
+    await expect(overlay).toBeVisible();
+    await expect(overlay.locator("h3")).toHaveText("The Credit Analyst");
+    await expect(overlay).toHaveAttribute("data-pinned", "false");
+    await expect
+      .poll(() =>
+        overlay.evaluate((element) => getComputedStyle(element).backdropFilter),
+      )
+      .toContain("blur");
+
+    await page.mouse.move(4, 4);
+    await expect(overlay).toHaveCount(0);
+
+    await credit.click();
+    await expect(overlay).toBeVisible();
+    await expect(overlay).toHaveAttribute("data-pinned", "true");
+    await page.mouse.move(4, 4);
+    await expect(overlay).toBeVisible();
+
+    await page.keyboard.press("Escape");
+    await expect(overlay).toHaveCount(0);
+  });
+
   test("offers a complete relationship list on request", async ({ page }) => {
     await page.setViewportSize({ width: 1440, height: 900 });
     await page.goto("/#evidence");
 
-    const reading = page.locator(".home-graph__reading--desktop");
+    const crisil = page
+      .locator(".home-graph__map .home-graph__node")
+      .filter({ hasText: "Crisil annexure" });
+    await crisil.focus();
+    await crisil.press("Enter");
+
+    const reading = page.locator(".home-graph__overlay .home-graph__reading");
     await reading.locator("summary").click();
     await expect(reading).toHaveAttribute("open", "");
     await expect(
@@ -246,7 +284,7 @@ test.describe("homepage evidence graph", () => {
       .filter({ hasText: "Portfolio mandate" })
       .click();
     await expect(
-      page.locator(".home-graph__hud h3"),
+      page.locator(".home-graph__overlay h3"),
     ).toHaveText("Portfolio mandate");
   });
 });
@@ -304,6 +342,9 @@ test.describe("homepage without JavaScript", () => {
     ).toHaveCount(0);
     await expect(page.getByTestId("home-persona-static")).toBeVisible();
     await expect(page.locator(".home-graph__map")).toBeVisible();
-    await expect(page.locator(".home-graph__hud")).toBeVisible();
+    await expect(page.locator(".home-graph__overlay")).toHaveCount(0);
+    await expect(
+      page.locator(".home-graph__node-name").first(),
+    ).toBeVisible();
   });
 });
