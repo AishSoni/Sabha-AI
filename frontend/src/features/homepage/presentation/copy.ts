@@ -5,14 +5,13 @@ export const HOME_COPY = {
     lead: "Bring more minds",
     tail: "to your next decision.",
   },
-  lead: "Distinct AI perspectives, grounded in sources you can inspect, with you setting the direction.",
   demoCta: "Explore the recorded demo",
   operatorCta: "Operator sign-in",
-  disclosure: "Prepared demo · recorded responses, not live generation.",
   evidenceAnchor: "Explore the evidence constellation",
   evidence: {
     heading: "Different perspectives. Traceable sources.",
     body: "The prepared demo gives every role the same shared material, then a private working set. Dashed lines show what was assigned; solid lines show an example citation from a prepared turn.",
+    disclosure: "Prepared demo · recorded responses, not live generation.",
     illustrative: "Illustrative view of the prepared demo · not a live retrieval record",
     legend: {
       assignment: "Assigned / available",
