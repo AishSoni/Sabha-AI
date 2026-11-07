@@ -166,14 +166,10 @@ test.describe("appearance lifecycle", () => {
                 ring: ring.backgroundImage,
             };
         });
-        expect(panel.background).toMatch(
-            /rgba\((255, 255, 255|17, 25, 37), 0\.(64|62)\)/
-        );
-        expect(panel.backdrop).toContain("blur(10px)");
-        expect(panel.backdrop).toContain("saturate(1.3)");
-        expect(panel.image).toContain("linear-gradient");
-        expect(panel.shadow).toContain("inset");
-        expect(panel.ring).toContain("linear-gradient");
+        expect(panel.background).toMatch(/^rgb\(/)
+        expect(panel.background).not.toContain("rgba")
+        expect(panel.backdrop).toBe("none")
+        expect(panel.shadow).toContain("rgb")
 
         await page.goto("/demo/roster");
         await expect(field).toBeVisible();
@@ -399,13 +395,14 @@ test.describe("appearance lifecycle", () => {
                 name: /Review HDFC Ltd's 7\.87% 2022 debenture/,
             })
         ).toBeVisible();
+        await page.getByRole("tab", { name: /Personas/ }).click();
         const roomMarks = page.locator("[data-participant-mark]");
-        await expect(roomMarks).toHaveCount(4);
+        await expect(roomMarks).toHaveCount(3);
         const room = await roomMarks.evaluateAll((marks) =>
             marks.map((mark) => mark.getAttribute("data-participant-mark"))
         );
 
         expect(roster).toEqual(["burst", "nova", "orbit"]);
-        expect(room.slice(0, roster.length)).toEqual(roster);
+        expect(room).toEqual(roster);
     });
 });

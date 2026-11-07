@@ -53,6 +53,7 @@ test.describe("demo keyboard and narrow-screen accessibility", () => {
             )
         ).toBe(true);
 
+        await page.getByRole("button", { name: "Open navigation" }).click();
         await page.getByRole("link", { name: "Knowledge" }).click();
         await page
             .locator('a[href="/demo/knowledge-stacks/credit-private"]')

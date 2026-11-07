@@ -354,6 +354,7 @@ test.describe("recorded visitor isolation", () => {
             );
 
             // A's reset removed its own prompt edit.
+            await pageA.getByRole("link", { name: "Back to meetings" }).click();
             await openPromptHistory(pageA, "The Credit Analyst");
             await expect(pageA.getByPlaceholder(PROMPT)).not.toHaveValue(
                 "Visitor A practice marker."

@@ -88,7 +88,7 @@ test.describe("integrated practice exploration", () => {
         // Open the assigned credit stack and stage a permitted sample.
         await page.getByRole("link", { name: "Knowledge" }).click();
         await expect(
-            page.getByRole("heading", { name: "Knowledge Stacks" })
+            page.getByRole("heading", { name: "Knowledge", exact: true, level: 1 })
         ).toBeVisible();
         await page
             .locator('a[href="/demo/knowledge-stacks/credit-private"]')

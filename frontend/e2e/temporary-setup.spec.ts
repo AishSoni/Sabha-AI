@@ -86,6 +86,7 @@ test.describe("temporary practice setup", () => {
         await expect(page.getByText(/Saved stacks:/).first()).toBeVisible();
 
         // Change the originating template after the setup was captured.
+        await page.getByRole("link", { name: "Back to meetings" }).click();
         await page.getByRole("link", { name: "Personas", exact: true }).click();
         await page.getByRole("link", { name: "The Credit Analyst" }).click();
         await expect(
@@ -113,6 +114,7 @@ test.describe("temporary practice setup", () => {
         ).toHaveCount(0);
 
         // Stack contents stay current even though the captured binding is fixed.
+        await page.getByRole("link", { name: "Back to meetings" }).click();
         await page.getByRole("link", { name: "Knowledge" }).click();
         await page
             .locator('a[href="/demo/knowledge-stacks/credit-private"]')

@@ -329,11 +329,14 @@ test.describe("contextual demo tutorial", () => {
         await expect(page.getByTestId("tutorial-hud")).toHaveCount(0);
         await expect(compact).toBeVisible();
 
+        await page.getByRole("link", { name: "Back to meetings" }).click();
         await page.getByRole("link", { name: "Personas" }).click();
         await expect(page).toHaveURL(/\/demo\/roster/);
         await expect(page.getByTestId("tutorial-hud")).toHaveCount(0);
         await expect(compact).toBeVisible();
 
+        await page.goBack();
+        await expect(page).toHaveURL(/\/demo$/);
         await page.goBack();
         await expect(page).toHaveURL(/\/demo\/meetings\/[^/]+/);
         await expect(page.getByTestId("tutorial-hud")).toHaveCount(0);
