@@ -2,8 +2,10 @@
 
 import Link from "next/link";
 import { ArrowRight, BookOpen, Lock, ShieldCheck, Users } from "lucide-react";
+
 import { Badge } from "@/components/ui/badge";
-import { Card } from "@/components/ui/card";
+import { EmptyState } from "@/components/ui/empty-state";
+import { PageContainer, PageHeader, LoadingState } from "@/components/shell";
 import { ParticipantMark } from "@/components/identity/participant-mark";
 import { useDemoWorkspace } from "@/features/demo-workspace";
 import { useAnchorRef } from "@/features/demo-tutorial";
@@ -55,8 +57,10 @@ export default function DemoBoardPage() {
 
     if (!board) {
         return (
-            <main id="main-content" className="mx-auto max-w-5xl p-6" tabIndex={-1}>
-                <p className="text-sm text-ink-muted">Loading the prepared board…</p>
+            <main id="main-content" tabIndex={-1}>
+                <PageContainer>
+                    <LoadingState label="Loading the prepared board…" rows={3} />
+                </PageContainer>
             </main>
         );
     }
@@ -65,113 +69,198 @@ export default function DemoBoardPage() {
     const stacks = board.stacks ?? {};
 
     return (
-        <main id="main-content" className="mx-auto max-w-5xl px-4 py-8 text-ink" tabIndex={-1}>
-            <div className="mb-6 flex flex-wrap items-start justify-between gap-4">
-                <div>
-                    <div className="mb-2 flex flex-wrap items-center gap-2">
+        <main id="main-content" tabIndex={-1}>
+            <PageHeader
+                title={board.title ?? "Prepared board"}
+                description={
+                    board.preset?.context ??
+                    "Inspect the prepared participants and their knowledge assignments before starting the recorded meeting."
+                }
+                meta={
+                    <>
                         <Badge>Prepared demo</Badge>
                         <span className="type-meta text-ink-muted">
-                            Recorded responses, not live AI generation · as of 31 July 2020
+                            Recorded responses, not live AI generation · as of 31
+                            July 2020
                         </span>
-                    </div>
-                    <h1 className="type-page-title">
-                        {board.title ?? "Prepared board"}
-                    </h1>
-                    <p className="mt-2 max-w-3xl type-body text-ink-secondary">
-                        {board.preset?.context ??
-                            "Inspect the prepared participants and their knowledge assignments before starting the recorded meeting."}
-                    </p>
-                </div>
-                <Link
-                    ref={startRef}
-                    href="/demo/new"
-                    className="m-control inline-flex min-h-10 items-center gap-2 rounded-control bg-action px-4 type-control font-medium text-action-foreground hover:bg-action-hover focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-focus-ring"
-                >
-                    Start the meeting
-                    <ArrowRight className="size-4" />
-                </Link>
-            </div>
+                    </>
+                }
+                actions={
+                    <Link
+                        ref={startRef}
+                        href="/demo/new"
+                        className="m-control inline-flex min-h-10 items-center gap-2 rounded-control bg-action px-4 type-control font-medium text-action-foreground outline-none hover:bg-action-hover focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-focus-ring"
+                    >
+                        Start the meeting
+                        <ArrowRight aria-hidden="true" className="size-4" />
+                    </Link>
+                }
+            />
 
-            <section ref={boardRef} aria-labelledby="board-heading">
-                <div className="mb-3 flex items-center gap-2">
-                    <Users className="size-4 text-action" />
-                    <h2 id="board-heading" className="type-control font-semibold uppercase tracking-wide text-ink-secondary">
-                        Prepared participants
-                    </h2>
-                </div>
-                <div className="grid gap-4 md:grid-cols-3">
-                    {participants.map((participant) => {
-                        const assigned = participant.stack_ids
-                            .map((id) => ({ id, ...(stacks[id] ?? { label: "Unlabeled stack", scope: "private" as const }) }))
-                            .filter(Boolean);
-                        const catalogPersonaId = catalogByParticipant.get(
-                            participant.participant_id
-                        );
-                        return (
-                            <Card key={participant.participant_id} className="p-5">
-                                <div className="flex items-center gap-3">
-                                    <ParticipantMark
-                                        participant={{
-                                            id: participant.participant_id,
-                                            name: participant.name,
-                                            color: participant.color,
-                                        }}
-                                        size="sm"
-                                    />
-                                    <div>
-                                        <h3 className="type-item-title">{participant.name}</h3>
-                                        <p className="type-meta text-ink-muted">{participant.role}</p>
-                                    </div>
-                                </div>
-                                <p className="mt-3 type-body text-ink-secondary">{participant.persona_summary}</p>
-                                <details className="group mt-4 rounded-control border border-separator bg-canvas/40 p-3">
-                                    <summary className="flex cursor-pointer list-none items-center justify-between gap-2 type-control text-ink-secondary">
-                                        <span className="flex items-center gap-2">
-                                            <BookOpen className="size-4 text-action" />
-                                            Knowledge assignments
-                                        </span>
-                                        <span className="text-ink-muted group-open:hidden">Inspect</span>
-                                    </summary>
-                                    <ul className="mt-3 space-y-2">
-                                        {assigned.map((stack) => (
-                                            <li key={stack.id} className="flex items-start gap-2 type-meta text-ink-secondary">
-                                                {stack.scope === "shared" ? (
-                                                    <ShieldCheck className="mt-0.5 size-3.5 shrink-0 text-success" />
-                                                ) : (
-                                                    <Lock className="mt-0.5 size-3.5 shrink-0 text-warning" />
-                                                )}
-                                                <span>
-                                                    {stack.label}
-                                                    <span className="ml-1 text-ink-muted">
-                                                        ({stack.scope})
-                                                    </span>
-                                                </span>
-                                            </li>
-                                        ))}
-                                    </ul>
-                                </details>
-                                {catalogPersonaId ? (
-                                    <Link
-                                        href={`/demo/roster/${catalogPersonaId}`}
-                                        className="m-control mt-4 inline-flex items-center gap-2 type-meta font-medium text-action hover:underline"
-                                    >
-                                        Compare with practice template
-                                        <ArrowRight className="size-3.5" />
-                                    </Link>
-                                ) : null}
-                            </Card>
-                        );
-                    })}
-                </div>
-            </section>
+            <PageContainer>
+                <div className="grid gap-8 lg:grid-cols-[minmax(0,1fr)_18rem]">
+                    <section
+                        ref={boardRef}
+                        aria-labelledby="board-heading"
+                        className="min-w-0"
+                    >
+                        <div className="mb-3 flex items-center gap-2">
+                            <Users
+                                aria-hidden="true"
+                                className="size-4 text-ink-muted"
+                            />
+                            <h2
+                                id="board-heading"
+                                className="type-section-title text-ink"
+                            >
+                                Prepared participants
+                            </h2>
+                            <span className="type-meta text-ink-muted">
+                                {participants.length}
+                            </span>
+                        </div>
 
-            <div className="mt-6 rounded-group border border-separator bg-surface p-4 type-body text-ink-secondary">
-                <p className="type-item-title">Prepared meeting preset</p>
-                <p className="mt-1">{board.preset?.agenda}</p>
-                <p className="mt-1 type-meta text-ink-muted">
-                    Supplied document: {board.preset?.document_label}
-                </p>
-            </div>
+                        {participants.length === 0 ? (
+                            <EmptyState
+                                title="No prepared participants"
+                                description="This recording does not include a participant roster."
+                                className="material-raised rounded-group"
+                            />
+                        ) : (
+                            <ul className="material-raised divide-y divide-separator overflow-hidden rounded-group">
+                                {participants.map((participant) => {
+                                    const assigned = participant.stack_ids.map(
+                                        (id) => ({
+                                            id,
+                                            ...(stacks[id] ?? {
+                                                label: "Unlabeled stack",
+                                                scope: "private" as const,
+                                            }),
+                                        })
+                                    );
+                                    const catalogPersonaId =
+                                        catalogByParticipant.get(
+                                            participant.participant_id
+                                        );
+                                    return (
+                                        <li
+                                            key={participant.participant_id}
+                                            className="grid gap-4 p-5 sm:grid-cols-[auto_minmax(0,1fr)]"
+                                        >
+                                            <ParticipantMark
+                                                participant={{
+                                                    id: participant.participant_id,
+                                                    name: participant.name,
+                                                    color: participant.color,
+                                                }}
+                                                size="sm"
+                                            />
+                                            <div className="min-w-0">
+                                                <div className="flex flex-wrap items-baseline gap-x-2 gap-y-1">
+                                                    <h3 className="type-item-title text-ink">
+                                                        {participant.name}
+                                                    </h3>
+                                                    <p className="type-meta text-ink-muted">
+                                                        {participant.role}
+                                                    </p>
+                                                </div>
+                                                <p className="mt-1 max-w-[68ch] type-body text-ink-secondary">
+                                                    {participant.persona_summary}
+                                                </p>
+
+                                                <details className="group mt-3 rounded-control border border-separator bg-canvas/40 p-3">
+                                                    <summary className="flex min-h-9 cursor-pointer list-none items-center gap-2 type-control text-ink-secondary">
+                                                        <BookOpen
+                                                            aria-hidden="true"
+                                                            className="size-4"
+                                                        />
+                                                        Knowledge assignments
+                                                    </summary>
+                                                    <ul className="mt-2 space-y-2">
+                                                        {assigned.length === 0 ? (
+                                                            <li className="type-meta text-ink-muted">
+                                                                No knowledge
+                                                                material assigned
+                                                                to this participant.
+                                                            </li>
+                                                        ) : (
+                                                            assigned.map(
+                                                                (stack) => (
+                                                                    <li
+                                                                        key={
+                                                                            stack.id
+                                                                        }
+                                                                        className="flex items-start gap-2 type-meta text-ink-secondary"
+                                                                    >
+                                                                        {stack.scope ===
+                                                                        "shared" ? (
+                                                                            <ShieldCheck
+                                                                                aria-hidden="true"
+                                                                                className="mt-0.5 size-3.5 shrink-0 text-success"
+                                                                            />
+                                                                        ) : (
+                                                                            <Lock
+                                                                                aria-hidden="true"
+                                                                                className="mt-0.5 size-3.5 shrink-0 text-warning"
+                                                                            />
+                                                                        )}
+                                                                        <span>
+                                                                            <span className="type-meta-strong text-ink">
+                                                                                {stack.scope ===
+                                                                                "shared"
+                                                                                    ? "Shared"
+                                                                                    : "Assigned"}
+                                                                            </span>{" "}
+                                                                            {stack.label}
+                                                                        </span>
+                                                                    </li>
+                                                                )
+                                                            )
+                                                        )}
+                                                    </ul>
+                                                </details>
+
+                                                {catalogPersonaId ? (
+                                                    <Link
+                                                        href={`/demo/roster/${catalogPersonaId}`}
+                                                        className="m-control mt-3 inline-flex min-h-9 items-center gap-2 rounded-control type-meta font-medium text-action outline-none hover:underline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-focus-ring"
+                                                    >
+                                                        Compare with practice
+                                                        template
+                                                        <ArrowRight
+                                                            aria-hidden="true"
+                                                            className="size-3.5"
+                                                        />
+                                                    </Link>
+                                                ) : null}
+                                            </div>
+                                        </li>
+                                    );
+                                })}
+                            </ul>
+                        )}
+                    </section>
+
+                    <aside className="material-raised h-fit rounded-group p-5">
+                        <h2 className="type-section-title text-ink">
+                            Prepared agenda
+                        </h2>
+                        <p className="mt-2 type-body text-ink-secondary">
+                            {board.preset?.agenda ||
+                                "No agenda was saved with this recording."}
+                        </p>
+                        <div className="mt-4 border-t border-separator pt-4">
+                            <p className="type-meta-strong uppercase tracking-wide text-ink-muted">
+                                Supplied document
+                            </p>
+                            <p className="mt-1 type-body text-ink-secondary">
+                                {board.preset?.document_label ||
+                                    "No document label was saved."}
+                            </p>
+                        </div>
+                    </aside>
+                </div>
+            </PageContainer>
         </main>
     );
 }
