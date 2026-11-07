@@ -2,12 +2,19 @@
 
 ## Status, dependencies, and scope
 
-**Status: proposed detailed specification, not implementation/acceptance evidence.**
+**Status: implemented and locally accepted on `spec-33-application-experience`
+(2026-11-08).**
 This is the third and final redesign spec. It applies
 [Spec 31's system and motion contracts](spec-31-design-system-and-motion.md) to
 every application screen. [Spec 32](spec-32-constellation-homepage.md) owns the
 homepage only. Every screen below requires light and dark treatment, complete
 states, and deliberate animation; motion is not confined to the homepage.
+
+The sections below are the implemented contract. The execution record at the end
+maps each acceptance gate to the evidence that was actually produced and names
+the limits of that evidence. Local acceptance covers the recorded/demo surface in
+the production browser runner; live operator screens are covered by unit,
+integration, and architecture suites rather than a hosted Auth environment.
 
 Layouts, geometry, and consolidated navigation labels introduced here are design
 proposals for review. Existing domain behavior and supported commands remain
@@ -661,3 +668,134 @@ placement, optional nonmodal evidence inspection, and exact motion tuning agains
 the Spec 31 foundation. Default to retaining the existing shared evidence dialog
 until the optional alternative proves equivalent behavior. No decision here
 authorizes invented summary fields, live graphs, new persistence, or a new runtime.
+
+## 18. Execution record
+
+Implementation lives on `spec-33-application-experience`, branched from the
+clean `ui-redesign` tip. Work is not pushed. Every phase was committed
+separately: shared shell, board, both meeting lists, creation/intake, room,
+evidence, closing, persona catalog/editor, knowledge, settings/vault/access,
+tutorial HUD, route fallbacks, and the acceptance corrections.
+
+### Delivered
+
+- One `AppShell` with Sabha identity, runtime label, wide text navigation, a
+  labelled compact drawer, appearance menu, `aria-current`, and route-level
+  focus. Operator and demo bind it to their own destinations and actions.
+- Shared `PageHeader`, `PageContainer`, loading/error/empty primitives, and
+  route-level `loading`/`error`/`not-found` files for both runtimes.
+- Prepared board, operator meeting list, and recorded meeting list rebuilt as
+  scannable rows with provenance, lifecycle, empty/filter/error/mutation states,
+  archive/unarchive/delete semantics retained.
+- Shared creation form rebuilt with labelled fields, participant selection, real
+  upload/sample controls, staged rows, and unchanged eligibility. Recorded intake
+  keeps its receipt and room link; practice creation still lands directly on the
+  saved setup.
+- Room header, stable transcript keys, tail-follow/upscroll recovery with
+  **New content**, multiline composer, speaker grid, participant snapshot
+  disclosures, and a deliberate **Meeting details** dialog. Costs/context tokens
+  moved out of each contribution and into that dialog.
+- Disagreement/consensus records use expandable solid reading rows rather than
+  saturated whole cards; empty states and actual severity/strength stay visible.
+- Shared evidence dialog: cited excerpt, provenance disclosure, format-specific
+  renderers, internal scroll regions, deterministic loading/error taxonomy, and
+  focus return. No second viewer was added.
+- Closing stages, ballots, recovery actions, streamed summary, and return/archive
+  path restyled as one stable reading surface; no procedural motion decides a
+  stage.
+- Persona catalog rows show mandate, active prompt version, and assigned-stack
+  summary. Editor retains metadata save, immutable revision save, separate
+  activation, dirty/leave protection, and revision inspection, now with real
+  accessible dialogs and provider-independent layout.
+- Knowledge list/detail/document rows rebuilt with scope labels, honest
+  ready/processing/failed/revoked states, real retry/delete actions, and the
+  existing shared evidence preview for ready local samples.
+- Settings contains only working sections: Appearance and Providers & vault.
+  Notifications/Privacy placeholders are removed. The local vault exposes
+  unlock/lock and change-passphrase; `changeVaultPassphrase` re-encrypts sealed
+  envelopes in browser memory and rejects a wrong current passphrase without
+  altering persisted state.
+- Operator sign-in is a focused form with password visibility, separate
+  credential-scope copy, and explicit demo return. Private content is not mounted
+  before access settles.
+- Tutorial HUD is a solid raised surface. When an existing anchor cannot be
+  placed beside its control, the instruction stays visible at a fixed fallback
+  position; only a missing anchor or a deliberately hidden tutorial collapses to
+  the compact bar.
+- Room-local `Reset demo` keeps the full reset reachable after global chrome
+  collapses; recording restart remains a separate action.
+
+### Deliberate limits and deviations
+
+- The shared evidence dialog remains the only viewer, as the spec prefers.
+- Navigation labels are **Meetings / Personas / Knowledge / Settings**; demo
+  adds **Board** and **New meeting**. Routes are unchanged.
+- The room hides global chrome and owns its header. Destructive workspace reset
+  therefore appears inside recorded and practice rooms.
+- Compact navigation registers tutorial anchors on **Open navigation** because
+  drawer links mount only while the modal is open; a hidden duplicate link is
+  never created.
+- Knowledge's page title is **Knowledge** (matching navigation) rather than a
+  second "Knowledge Stacks" heading beside the list heading.
+- Live operator rendering is covered by unit/integration/architecture tests, not
+  a hosted Auth browser run. No hosted security, rights, or release gate is
+  claimed.
+- Static screenshots cannot discharge motion-continuity or screen-reader review.
+  Reduced-motion and state-preservation behavior is covered by browser journeys.
+
+### Executed checks
+
+Commands run from `frontend/` on Windows unless noted.
+
+| Check | Command | Result |
+| --- | --- | --- |
+| Unit/integration | `npx vitest run --reporter=dot` | 114 files, 687 tests passed |
+| Architecture | `npm run test:architecture` | 7 files, 52 tests passed |
+| Types | `npx tsc --noEmit` | clean |
+| Lint | `npm run lint` | 0 errors, 19 pre-existing warnings |
+| Production build | `npm run build` | compiled successfully, 25 application routes plus `/icon.svg` |
+| Production browser | `npm run test:e2e:prod` | 67 passed, 2 opt-in skipped (69 total) |
+| Legacy v5 package | `npm run test:e2e:legacy` | 1 passed |
+| Mixed operator/demo | `npm run test:e2e:mixed` | 1 passed |
+
+The two skipped production rows are version-5 compatibility and mixed-runtime
+isolation, which run through their dedicated commands above because the backend
+must serve a different mounted graph.
+
+### Acceptance matrix
+
+| Gate | Status | Evidence |
+| --- | --- | --- |
+| APP01 Coverage | Pass (local) | Every route in section 2 is built. Shared shell/header/state primitives are used across operator, demo, and practice routes. Both appearances come from the same tokens and are exercised by `appearance.spec.ts`. |
+| APP02 Shell | Pass (local) | `appearance.spec.ts` verifies chrome glass over the static field; `demo-accessibility.spec.ts` drives compact navigation by keyboard; `room-reading-space.spec.ts` keeps two-thirds of the room for discussion; `RouteFocus` moves focus on route change. |
+| APP03 Meeting list/setup | Pass (local) | `meetings-list-screen.test.tsx`, `demo-practice-meetings.test.tsx`, `meeting-creation-catalog.test.tsx`, `temporary-setup.spec.ts`, and `integrated-practice.spec.ts` cover row states, archive/delete refetch, creation validation, staged samples, and both intake outcomes. |
+| APP04 Room | Pass (local) | `meeting-room.test.tsx`, `meeting-room-closing.test.tsx`, `room-reading-space.spec.ts`, and the 390x844/200% checks in `demo-accessibility.spec.ts`. Agenda and long prompts use disclosure/scroll regions. |
+| APP05 Director agency | Pass (local) | `prepared-deck.spec.ts`, both `guided-journey.spec.ts` orders, and `demo-journey.test.tsx` preserve user-selected speaker order, the single **You** follow-up, and no automatic next participant. |
+| APP06 Operations | Pass (local) | `replay-resilience.spec.ts` covers double actions, aborted streams, and reset mid-stream; six `demo-failure.spec.ts` cases cover seed/session/tape/backend failures without live fallback; `replay-isolation.spec.ts` proves canonical settlement and per-visitor state. |
+| APP07 Record/evidence | Pass (local) | Evidence unit tests plus three `evidence-preview.spec.ts` journeys cover retained asset identity, provenance, keyboard reachability, and focus return. Disagreement/consensus detail is covered by `meeting-room.test.tsx`. |
+| APP08 Closing | Pass (local) | `ClosingPanel.test.tsx` and `meeting-room-closing.test.tsx` cover every stage, retry/abort, ballots, and saved summary rendering; `guided-journey.spec.ts` / `demo-accessibility.spec.ts` complete the vote and return path. Failure-state screenshots are not claimed. |
+| APP09 Personas | Pass (local) | `persona-editor-screen.test.tsx` pins immutable revision save, separate activation, draft leave confirmation, and view-without-activation; `demo-roster.test.tsx` and `integrated-practice.spec.ts` cover catalog rows, prompt history, and practice isolation. |
+| APP10 Knowledge | Pass (local) | `demo-knowledge-stacks.test.tsx` (10 tests), document-panel/stack-editor unit tests, `integrated-practice.spec.ts`, and `temporary-setup.spec.ts` cover scope, assignments, failed ingestion/retry, preview, and delete/discard semantics. |
+| APP11 Access/settings | Pass (local) | `login-screen.test.tsx` covers denied/unavailable/unconfigured states and password clearing; vault unit tests cover wrong passphrase and re-encryption; `appearance.spec.ts` proves memory-only theme switching; demo settings is asserted credential-free. Hosted Auth is not claimed. |
+| APP12 Tutorial | Pass (local) | `demo-hud.spec.ts` (five journeys), `demo-accessibility.spec.ts`, `appearance.spec.ts`, and `legacy-journey.spec.ts` cover anchored tips, hide/resume, modal suspension, clipped-target fallback, both optional tours, and missing-anchor compact behavior. |
+| APP13 Motion | Pass (local) | `appearance.spec.ts` covers reduced motion and palette switching; room/hud journeys assert state continuity rather than animation completion. Static screenshots do not prove beginning/midpoint/interruption frames; that remains a review activity. |
+| APP14 Isolation | Pass (local) | Architecture replay/import boundaries plus `replay-isolation.spec.ts`, `replay-resilience.spec.ts`, public no-persistence guardrails, the legacy v5 journey, and the mixed operator/demo journey. |
+| APP15 Accessibility/performance | Pass (local) | Contrast tests, 200% zoom/reflow, compact keyboard journeys, target sizes, no page-level horizontal overflow, and no per-token layout animation. No screen-reader or real-user performance trace is claimed. |
+
+### Visual evidence
+
+Synthetic/public recorded-demo captures live in `docs/assets/spec-33/`. They
+contain the approved v9 package's public content and browser-memory practice
+data only; no operator key, vault secret, or private document byte is present.
+
+| File | Surface |
+| --- | --- |
+| `demo-board.png` | Prepared board, wide |
+| `demo-room-discussion.png` | Populated recorded room with one settled reply |
+| `demo-room-record.png` | Open meeting record beside discussion |
+| `demo-room-evidence.png` | Shared evidence dialog with cited excerpt and provenance |
+| `demo-settings.png` | Demo settings, appearance only |
+| `demo-persona-revision.png` | Earlier revision inspection without activation |
+| `demo-knowledge-stack.png` | Practice stack detail with documents and access explanation |
+| `demo-compact-navigation.png` | 390px labelled navigation drawer |
+| `practice-failed-document.png` | Practice setup with a failed ingestion row and retry action |
