@@ -29,7 +29,7 @@ describe("homepage copy", () => {
       lead: "Bring more minds",
       tail: "to your next decision.",
     });
-    expect(HOME_COPY.demoCta).toBe("Explore the recorded demo");
+    expect(HOME_COPY.demoCta).toBe("Try the recorded demo");
     expect(HOME_COPY.operatorCta).toBe("Operator sign-in");
     expect(HOME_COPY.evidence.disclosure).toBe(
       "Prepared demo · recorded responses, not live generation.",

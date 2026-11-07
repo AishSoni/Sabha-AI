@@ -10,6 +10,15 @@ const FLIP_INTERVAL = 7000;
 const FLIP_DURATION = 700;
 const ICON_COUNT = 3;
 
+// Keep the rotating tail copy here so it is quick to edit without touching the
+// animation or layout. The first phrase remains the accessible headline.
+const TAIL_PHRASES = [
+  "to your next decision.",
+  "before the next call.",
+  "for the hardest question.",
+  "with every source in view.",
+] as const;
+
 function iconsFor(index: number) {
   return Array.from({ length: ICON_COUNT }, (_, offset) => {
     const emblem = EMBLEMS[(index * ICON_COUNT + offset) % EMBLEMS.length];
@@ -54,6 +63,9 @@ export function HomeHeadline({ id }: { id?: string }) {
 
   const current = iconsFor(index);
   const outgoing = previous === null ? null : iconsFor(previous);
+  const currentPhrase = TAIL_PHRASES[index % TAIL_PHRASES.length]!;
+  const outgoingPhrase =
+    previous === null ? null : TAIL_PHRASES[previous % TAIL_PHRASES.length]!;
 
   return (
     <h1
@@ -65,7 +77,26 @@ export function HomeHeadline({ id }: { id?: string }) {
     >
       <span className="home-headline__line">Bring more minds</span>
       <span className="home-headline__tail">
-        <span className="home-headline__tail-text">to your next decision.</span>
+        <span className="home-headline__tail-text" aria-hidden="true">
+          {outgoingPhrase ? (
+            <span
+              key={`phrase-out-${previous}`}
+              className="home-headline__phrase home-headline__phrase--out"
+            >
+              {outgoingPhrase}
+            </span>
+          ) : null}
+          <span
+            key={`phrase-in-${index}`}
+            className={
+              previous === null
+                ? "home-headline__phrase"
+                : "home-headline__phrase home-headline__phrase--in"
+            }
+          >
+            {currentPhrase}
+          </span>
+        </span>
         <span className="home-headline__icons" aria-hidden="true">
           {outgoing ? (
             <span

@@ -34,7 +34,7 @@ export function HomeChrome() {
       <div className="home-chrome__inner">
         <Link href="/" className="home-chrome__brand" aria-label="Sabha home">
           <span className="home-chrome__mark" aria-hidden="true">
-            <Sparkles className="size-4" strokeWidth={1.8} />
+            <Sparkles className="size-5" strokeWidth={2} />
           </span>
           <span className="home-chrome__wordmark">{HOME_COPY.brand}</span>
         </Link>

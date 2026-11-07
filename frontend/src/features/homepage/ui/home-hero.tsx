@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { ChevronDown } from "lucide-react";
+import { ChevronDown, Sparkles } from "lucide-react";
 
 import { HOME_COPY } from "../presentation/copy";
 import { HomeHeadline } from "./home-headline";
@@ -17,7 +17,10 @@ export function HomeHero() {
 
         <div className="home-hero__actions">
           <Link href="/demo" className="home-demo-cta">
-            {HOME_COPY.demoCta}
+            <span className="home-demo-cta__label">{HOME_COPY.demoCta}</span>
+            <span className="home-demo-cta__badge" aria-hidden="true">
+              <Sparkles className="size-5" strokeWidth={2} />
+            </span>
           </Link>
           <Link href="/login" className="home-operator-link">
             {HOME_COPY.operatorCta}

@@ -69,10 +69,40 @@ export function HomeEmblemSprite() {
 
       {EMBLEMS.map((emblem) => (
         <symbol
+          key={`glyph-${emblem.id}`}
+          id={`home-emblem-glyph-${emblem.id}`}
+          viewBox="0 0 100 100"
+        >
+          {emblem.parts.map((part, index) =>
+            part.mode === "fill" ? (
+              <path
+                key={`${emblem.id}-glyph-${index}`}
+                d={part.d}
+                fill={`url(#home-card-ink-${emblem.id})`}
+                fillRule="evenodd"
+                opacity={partOpacity(part, 0.96)}
+              />
+            ) : (
+              <path
+                key={`${emblem.id}-glyph-${index}`}
+                d={part.d}
+                fill="none"
+                stroke={emblem.accent}
+                strokeWidth={partWidth(part, 2.4)}
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                opacity={partOpacity(part, 0.9)}
+              />
+            ),
+          )}
+        </symbol>
+      ))}
+
+      {EMBLEMS.map((emblem) => (
+        <symbol
           key={emblem.id}
           id={`home-emblem-card-${emblem.id}`}
           viewBox="0 0 100 100"
-          preserveAspectRatio="none"
         >
           <rect
             x="1.5"
