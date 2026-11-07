@@ -9,7 +9,8 @@ test.describe("homepage composition", () => {
     const network = guardNetwork(page);
     await page.goto("/");
 
-    await expect(page.locator(".home-page > header")).toHaveCount(1);
+    await expect(page.locator(".home-page > .home-chrome")).toHaveCount(1);
+    await expect(page.locator("header")).toHaveCount(0);
     await expect(page.locator(".home-page > main > section")).toHaveCount(2);
     await expect(page.locator(".home-page > footer")).toHaveCount(1);
 
@@ -23,11 +24,11 @@ test.describe("homepage composition", () => {
       page.getByText(
         "Distinct AI perspectives, grounded in sources you can inspect, with you setting the direction.",
       ),
-    ).toBeVisible();
+    ).toHaveCount(0);
     await expect(
-      page.getByText(
-        "Prepared demo · recorded responses, not live generation.",
-      ),
+      page
+        .locator(".home-evidence")
+        .getByText("Prepared demo · recorded responses, not live generation."),
     ).toBeVisible();
 
     const demo = page
@@ -129,8 +130,8 @@ test.describe("homepage composition", () => {
     ]) {
       await page.setViewportSize(viewport);
       const geometry = await page.evaluate(() => {
-        const disclosure = document
-          .querySelector(".home-hero__disclosure")
+        const operator = document
+          .querySelector(".home-operator-link")
           ?.getBoundingClientRect();
         const cta = document
           .querySelector(".home-demo-cta")
@@ -145,7 +146,7 @@ test.describe("homepage composition", () => {
           viewportWidth: window.innerWidth,
           viewportHeight: window.innerHeight,
           scrollWidth: document.documentElement.scrollWidth,
-          disclosureBottom: disclosure?.bottom ?? Infinity,
+          operatorBottom: operator?.bottom ?? Infinity,
           ctaWidth: cta?.width ?? 0,
           visibleSlots,
         };
@@ -154,13 +155,13 @@ test.describe("homepage composition", () => {
       expect(geometry.scrollWidth, `${viewport.width}px overflow`).toBeLessThanOrEqual(
         geometry.viewportWidth,
       );
-      expect(geometry.disclosureBottom, `${viewport.width}px disclosure`).toBeLessThanOrEqual(
+      expect(geometry.operatorBottom, `${viewport.width}px operator`).toBeLessThanOrEqual(
         geometry.viewportHeight,
       );
-      expect(geometry.ctaWidth, `${viewport.width}px CTA`).toBeGreaterThanOrEqual(280);
-      expect(geometry.visibleSlots, `${viewport.width}px slots`).toBe(
-        viewport.width < 768 ? 7 : viewport.width < 1200 ? 14 : 18,
+      expect(geometry.ctaWidth, `${viewport.width}px CTA`).toBeGreaterThanOrEqual(
+        viewport.width <= 320 ? 288 : 320,
       );
+      expect(geometry.visibleSlots, `${viewport.width}px slots`).toBe(189);
     }
   });
 
@@ -316,7 +317,7 @@ test.describe("homepage without JavaScript", () => {
       ),
     ).toBeVisible();
     await expect(page.getByTestId("home-persona-static")).toBeVisible();
-    await expect(page.locator(".home-header__appearance")).toBeHidden();
-    await expect(page.locator(".home-header__pause")).toBeHidden();
+    await expect(page.locator(".home-chrome__appearance")).toBeHidden();
+    await expect(page.locator(".home-chrome__pause")).toBeHidden();
   });
 });

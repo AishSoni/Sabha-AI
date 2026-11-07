@@ -40,9 +40,10 @@ describe("homepage isolation", () => {
 
   it("composes exactly the four approved page regions", () => {
     const page = source(path.join(HOMEPAGE_ROOT, "ui/home-page.tsx"));
-    for (const region of ["HomeHeader", "HomeHero", "HomeEvidence", "HomeFooter"]) {
+    for (const region of ["HomeChrome", "HomeHero", "HomeEvidence", "HomeFooter"]) {
       expect(page).toContain(`<${region}`);
     }
+    expect(page).not.toMatch(/<header\b/);
     expect(page.match(/<main\b/g)).toHaveLength(1);
     expect(page).toMatch(/id="main-content"/);
   });
@@ -73,9 +74,9 @@ describe("homepage isolation", () => {
     }
   });
 
-  it("keeps the public appearance control in the homepage header", () => {
-    const header = source(path.join(HOMEPAGE_ROOT, "ui/home-header.tsx"));
-    expect(header).toMatch(/<AppearanceMenu\b/);
-    expect(header).toMatch(/Pause animation|Resume animation/);
+  it("keeps the public appearance and motion controls in the homepage chrome", () => {
+    const chrome = source(path.join(HOMEPAGE_ROOT, "ui/home-chrome.tsx"));
+    expect(chrome).toMatch(/<AppearanceMenu\b/);
+    expect(chrome).toMatch(/Pause animation|Resume animation/);
   });
 });
