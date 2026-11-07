@@ -8,3 +8,4 @@ export type {
   ResolvedAppearance,
 } from "./provider";
 export { AppearanceMenu } from "./menu";
+export { AppearanceControl } from "./control";

@@ -124,6 +124,81 @@ export async function openVault(
 }
 
 /**
+ * Re-encrypt every sealed credential under a new passphrase. The old
+ * passphrase must open the current vault first; failures leave the vault in
+ * its previous state. Returns the new salt and sealed envelopes for the
+ * caller to persist — no passphrase or plaintext is returned.
+ */
+export type VaultPassphraseChangeResult =
+    | { ok: true; salt: string; sealed: Record<string, string> }
+    | { ok: false; error: string };
+
+export async function changeVaultPassphrase(
+    currentPassphrase: string,
+    nextPassphrase: string,
+    existingSalt: string | null,
+    sealed: Record<string, string>,
+): Promise<VaultPassphraseChangeResult> {
+    const opened = await openVault(currentPassphrase, existingSalt, sealed);
+    if (!opened.ok) return opened;
+
+    const plaintexts = Object.keys(sealed)
+        .map((id) => [id, revealFromVault(id)] as const)
+        .filter((entry): entry is readonly [string, string] => Boolean(entry[1]));
+
+    const nextSalt = crypto.getRandomValues(new Uint8Array(SALT_BYTES));
+    let nextKey: CryptoKey;
+    try {
+        nextKey = await deriveVaultKey(nextPassphrase, nextSalt);
+    } catch {
+        return {
+            ok: false,
+            error: 'The key vault could not be re-encrypted in this browser.',
+        };
+    }
+
+    const nextSealed: Record<string, string> = {};
+    try {
+        for (const [id, plaintext] of plaintexts) {
+            const iv = crypto.getRandomValues(new Uint8Array(IV_BYTES));
+            const encrypted = new Uint8Array(
+                await crypto.subtle.encrypt(
+                    { name: 'AES-GCM', iv: iv as unknown as BufferSource },
+                    nextKey,
+                    encoder.encode(plaintext) as unknown as BufferSource,
+                ),
+            );
+            const envelope: CredentialEnvelope = {
+                version: 1,
+                kdf: {
+                    algorithm: 'PBKDF2',
+                    hash: 'SHA-256',
+                    iterations: PBKDF2_ITERATIONS,
+                    salt: bytesToBase64(nextSalt),
+                },
+                cipher: {
+                    algorithm: 'AES-GCM',
+                    iv: bytesToBase64(iv),
+                },
+                ciphertext: bytesToBase64(encrypted),
+            };
+            nextSealed[id] = serializeEnvelope(envelope);
+        }
+    } catch {
+        return {
+            ok: false,
+            error: 'The key vault could not be re-encrypted in this browser.',
+        };
+    }
+
+    vaultKey = nextKey;
+    vaultSalt = nextSalt;
+    inMemoryKeys.clear();
+    for (const [id, plaintext] of plaintexts) inMemoryKeys.set(id, plaintext);
+    return { ok: true, salt: bytesToBase64(nextSalt), sealed: nextSealed };
+}
+
+/**
  * Seal a plaintext credential under the unlocked vault key as a versioned
  * envelope. Returns null while the vault is locked — callers must never
  * write ciphertext they cannot decrypt again, and the plaintext stays in

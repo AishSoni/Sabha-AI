@@ -9,6 +9,7 @@
 import { create } from 'zustand';
 import { persist } from 'zustand/middleware';
 import {
+    changeVaultPassphrase as changeVaultPassphraseCapability,
     forgetInVault,
     lockVault as lockVaultMemory,
     observeVaultStorage,
@@ -67,6 +68,7 @@ export interface SettingsState {
     resetAllSettings: () => void;
     unlockVault: (passphrase: string) => Promise<boolean>;
     lockVault: () => void;
+    changeVaultPassphrase: (currentPassphrase: string, nextPassphrase: string) => Promise<boolean>;
     composeGenerationSettings: () => GenerationSettings | null;
     getProviderApiKey: (providerId: string) => string | undefined;
     initializeFromServer: (data: {
@@ -231,6 +233,27 @@ export const useSettingsStore = create<SettingsState>()(
             lockVault: () => {
                 lockVaultMemory();
                 set({ vaultUnlocked: false });
+            },
+
+            changeVaultPassphrase: async (currentPassphrase, nextPassphrase) => {
+                const state = get();
+                const result = await changeVaultPassphraseCapability(
+                    currentPassphrase,
+                    nextPassphrase,
+                    state.vaultSalt,
+                    state.vaultCiphertexts
+                );
+                if (!result.ok) {
+                    set({ vaultError: result.error });
+                    return false;
+                }
+                set({
+                    vaultUnlocked: true,
+                    vaultError: null,
+                    vaultSalt: result.salt,
+                    vaultCiphertexts: result.sealed,
+                });
+                return true;
             },
 
             composeGenerationSettings: () => {

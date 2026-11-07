@@ -9,6 +9,7 @@
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import { base64ToBytes, bytesToBase64 } from './envelope';
 import {
+    changeVaultPassphrase,
     forgetInVault,
     lockVault,
     observeVaultStorage,
@@ -150,6 +151,51 @@ describe('openVault', () => {
 
         expect(result.ok).toBe(false);
         expect(revealFromVault('openrouter')).toBeUndefined();
+    });
+});
+
+describe('changeVaultPassphrase', () => {
+    it('re-encrypts sealed keys and requires the new passphrase afterwards', async () => {
+        const first = await openVault('old vault phrase', null, {});
+        if (!first.ok) throw new Error('first unlock must succeed');
+        const sealed = await sealIntoVault('openrouter', 'sk-router-secret');
+        lockVault();
+
+        const changed = await changeVaultPassphrase(
+            'old vault phrase',
+            'new vault phrase',
+            first.salt,
+            { openrouter: sealed as string }
+        );
+
+        expect(changed.ok).toBe(true);
+        if (!changed.ok) return;
+        expect(revealFromVault('openrouter')).toBe('sk-router-secret');
+        expect(changed.sealed.openrouter).not.toContain('sk-router-secret');
+        lockVault();
+
+        const old = await openVault('old vault phrase', changed.salt, changed.sealed);
+        expect(old.ok).toBe(false);
+        const next = await openVault('new vault phrase', changed.salt, changed.sealed);
+        expect(next.ok).toBe(true);
+        expect(revealFromVault('openrouter')).toBe('sk-router-secret');
+    });
+
+    it('keeps the existing vault when the current passphrase is wrong', async () => {
+        const first = await openVault('old vault phrase', null, {});
+        if (!first.ok) throw new Error('first unlock must succeed');
+        const sealed = await sealIntoVault('gemini', 'sk-gemini-secret');
+        lockVault();
+
+        const changed = await changeVaultPassphrase(
+            'wrong phrase',
+            'new vault phrase',
+            first.salt,
+            { gemini: sealed as string }
+        );
+
+        expect(changed.ok).toBe(false);
+        expect(revealFromVault('gemini')).toBeUndefined();
     });
 });
 
