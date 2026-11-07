@@ -15,8 +15,10 @@ import {
     signOutEverywhere,
 } from '@/shared/access';
 
+import { Starfield } from '@/components/atmosphere';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
+import { Eye, EyeOff } from 'lucide-react';
 
 import { probeOperatorSession } from '../api/session';
 import { safeReturnTarget } from '../state/return-target';
@@ -38,6 +40,7 @@ export function LoginScreen() {
     );
     const [email, setEmail] = useState('');
     const [password, setPassword] = useState('');
+    const [showPassword, setShowPassword] = useState(false);
     const [message, setMessage] = useState<string | null>(null);
     const attempt = useRef(0);
     const mounted = useRef(true);
@@ -166,24 +169,31 @@ export function LoginScreen() {
     }
 
     return (
-        <main id="main-content" className="flex min-h-screen items-center justify-center bg-canvas px-4 text-ink" tabIndex={-1}>
-            <div className="w-full max-w-sm space-y-6">
-                <div className="space-y-2 text-center">
-                    <p className="type-meta-strong uppercase tracking-[0.25em] text-action">
-                        Operator access
-                    </p>
-                    <h1 className="type-page-title">Sign in to Sabha</h1>
-                    <p className="type-body text-ink-secondary">
-                        Public visitors can still open the guided replay without an
-                        account.
-                    </p>
-                </div>
+        <div className="relative isolate flex min-h-dvh items-center justify-center text-ink">
+            <Starfield density="subtle" parallax={false} meteors={false} />
+            <main
+                id="main-content"
+                className="relative z-10 w-full px-4 py-10"
+                tabIndex={-1}
+            >
+                <div className="m-page material-raised mx-auto w-full max-w-md space-y-6 rounded-group p-6 sm:p-8">
+                    <div className="space-y-2 text-center">
+                        <p className="type-meta-strong uppercase tracking-[0.25em] text-action">
+                            Operator sign-in
+                        </p>
+                        <h1 className="type-page-title">Sign in to Sabha</h1>
+                        <p className="type-body text-ink-secondary">
+                            Public visitors can still open the guided replay
+                            without an account. Signing in does not unlock
+                            provider credentials; that stays in Settings.
+                        </p>
+                    </div>
 
-                {mode === 'checking' && (
-                    <p className="text-center type-body text-ink-muted">
-                        Checking sign-in…
-                    </p>
-                )}
+                    {mode === 'checking' && (
+                        <p role="status" className="text-center type-body text-ink-muted">
+                            Checking sign-in…
+                        </p>
+                    )}
 
                 {mode === 'unavailable' && (
                     <div
@@ -254,18 +264,48 @@ export function LoginScreen() {
                                 disabled={mode === 'submitting'}
                             />
                         </label>
-                        <label className="block space-y-1.5">
-                            <span className="type-control text-ink">Password</span>
-                            <Input
-                                type="password"
-                                name="password"
-                                autoComplete="current-password"
-                                required
-                                value={password}
-                                onChange={(event) => setPassword(event.target.value)}
-                                disabled={mode === 'submitting'}
-                            />
-                        </label>
+                        <div className="block space-y-1.5">
+                            <label
+                                htmlFor="login-password"
+                                className="type-control text-ink"
+                            >
+                                Password
+                            </label>
+                            <div className="relative">
+                                <Input
+                                    id="login-password"
+                                    type={showPassword ? 'text' : 'password'}
+                                    name="password"
+                                    autoComplete="current-password"
+                                    required
+                                    value={password}
+                                    onChange={(event) =>
+                                        setPassword(event.target.value)
+                                    }
+                                    disabled={mode === 'submitting'}
+                                    className="pr-11"
+                                />
+                                <button
+                                    type="button"
+                                    onClick={() =>
+                                        setShowPassword((visible) => !visible)
+                                    }
+                                    aria-label={
+                                        showPassword
+                                            ? 'Hide typed characters'
+                                            : 'Show typed characters'
+                                    }
+                                    aria-pressed={showPassword}
+                                    className="m-control absolute inset-y-0 right-0 flex w-10 items-center justify-center rounded-r-control text-ink-muted outline-none hover:text-ink focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-focus-ring"
+                                >
+                                    {showPassword ? (
+                                        <EyeOff aria-hidden="true" className="size-4" />
+                                    ) : (
+                                        <Eye aria-hidden="true" className="size-4" />
+                                    )}
+                                </button>
+                            </div>
+                        </div>
                         {message && (
                             <p role="alert" className="type-body text-danger">
                                 {message}
@@ -282,12 +322,13 @@ export function LoginScreen() {
                     </form>
                 )}
 
-                <div className="text-center type-meta text-ink-muted">
-                    <a href="/demo" className="hover:text-ink-secondary">
-                        Return to guided replay
-                    </a>
+                    <div className="text-center type-meta text-ink-muted">
+                        <a href="/demo" className="hover:text-ink-secondary">
+                            Return to guided replay
+                        </a>
+                    </div>
                 </div>
-            </div>
-        </main>
+            </main>
+        </div>
     );
 }
