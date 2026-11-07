@@ -289,7 +289,10 @@ describe("demo practice knowledge stacks", () => {
         await renderAt("/demo/knowledge-stacks");
 
         expect(
-            await screen.findByRole("heading", { name: "Knowledge Stacks" })
+            await screen.findByRole("heading", {
+                name: "Knowledge",
+                level: 1,
+            })
         ).toBeInTheDocument();
         expect(await screen.findByText("Issuer fact sheet")).toBeInTheDocument();
         expect(screen.getAllByText(/1 document/)).toHaveLength(4);

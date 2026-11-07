@@ -46,7 +46,7 @@ export function StackListView({
     onRetry,
     firstLinkRef,
     disclosure,
-    title = "Knowledge Stacks",
+    title = "Knowledge",
     description = "Saved document collections that can be assigned to personas or shared with a meeting.",
     backHref = "/meetings",
     backLabel = "Back to meetings",

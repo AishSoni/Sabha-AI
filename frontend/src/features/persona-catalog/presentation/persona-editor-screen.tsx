@@ -723,7 +723,7 @@ export function PersonaEditorScreen({
                                             <Badge variant="outline">
                                                 {viewedRevision.is_active
                                                     ? 'Active revision'
-                                                    : 'Viewing only · not active'}
+                                                    : 'Viewing only — not active.'}
                                             </Badge>
                                         </div>
                                     </CardHeader>
