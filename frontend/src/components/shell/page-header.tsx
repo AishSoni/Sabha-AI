@@ -1,4 +1,4 @@
-import type { ReactNode } from "react";
+import type { MouseEvent, ReactNode } from "react";
 import Link from "next/link";
 import { ArrowLeft } from "lucide-react";
 
@@ -9,6 +9,7 @@ export interface PageHeaderProps {
     description?: ReactNode;
     backHref?: string;
     backLabel?: string;
+    onBackClick?: (event: MouseEvent<HTMLAnchorElement>) => void;
     meta?: ReactNode;
     actions?: ReactNode;
     headingId?: string;
@@ -24,6 +25,7 @@ export function PageHeader({
     description,
     backHref,
     backLabel = "Back",
+    onBackClick,
     meta,
     actions,
     headingId,
@@ -35,6 +37,8 @@ export function PageHeader({
                 {backHref ? (
                     <Link
                         href={backHref}
+                        onClick={onBackClick}
+                        aria-label={backLabel}
                         className="m-control mb-4 inline-flex min-h-9 items-center gap-2 rounded-control type-control text-ink-secondary outline-none hover:text-ink focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-focus-ring"
                     >
                         <ArrowLeft aria-hidden="true" className="size-4" />

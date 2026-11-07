@@ -9,14 +9,26 @@
  */
 import { useEffect, useRef, useState } from 'react';
 import Link from 'next/link';
-import { ArrowLeft, Eye, Loader2, Save, History, Settings2, BookOpen } from 'lucide-react';
+import { Eye, Save, History, Settings2, BookOpen } from 'lucide-react';
 import { Button } from '@/components/ui/button';
+import { Badge } from '@/components/ui/badge';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import {
+    AlertDialog,
+    AlertDialogAction,
+    AlertDialogCancel,
+    AlertDialogContent,
+    AlertDialogDescription,
+    AlertDialogFooter,
+    AlertDialogHeader,
+    AlertDialogTitle,
+} from '@/components/ui/alert-dialog';
 import { ParticipantMark } from '@/components/identity/participant-mark';
+import { LoadingState, PageContainer, PageHeader } from '@/components/shell';
 import type { PersonaCatalogClient } from '../model/client';
 import type { Persona, PersonaStackOption, PersonaUpdateInput, PromptRevision } from '../model/types';
 import { normalizeStackIds, validatePersonaTemplate } from './validation';
@@ -286,132 +298,133 @@ export function PersonaEditorScreen({
 
     if (loading) {
         return (
-            <div className="flex min-h-full items-center justify-center">
-                <Loader2 className="size-8 animate-spin text-ink-muted motion-reduce:animate-none" />
-            </div>
+            <main id="main-content" tabIndex={-1}>
+                <PageContainer>
+                    <LoadingState label="Loading persona…" rows={3} />
+                </PageContainer>
+            </main>
         );
     }
 
     if (!persona) {
         return (
-            <div className="flex min-h-full items-center justify-center text-ink">
-                <div className="text-center">
-                    <h2 className="type-item-title mb-2">Persona Not Found</h2>
-                    <Link href={routes.roster} className="text-action hover:underline">
-                        Back to Roster
-                    </Link>
-                </div>
-            </div>
+            <main id="main-content" tabIndex={-1}>
+                <PageHeader
+                    title="Persona Not Found"
+                    description="This persona is no longer available in the catalog."
+                    backHref={routes.roster}
+                    backLabel="Back to Roster"
+                />
+                <PageContainer>
+                    <p className="type-body text-ink-secondary">
+                        Return to the persona catalog to choose another
+                        template.
+                    </p>
+                </PageContainer>
+            </main>
         );
     }
 
     return (
-        <div className="min-h-full text-ink">
-            {/* Header */}
-            <header className="material-chrome sticky top-0 z-chrome border-b border-separator">
-                <div className="max-w-4xl mx-auto px-6 py-4 flex items-center justify-between">
-                    <div className="flex items-center gap-4">
-                        <Link
-                            href={routes.roster}
-                            className="text-ink-secondary hover:text-ink m-control"
-                            aria-label="Back to roster"
-                            onClick={(event) => {
-                                if (!promptDirty) return;
-                                event.preventDefault();
-                                setLeaveConfirm(true);
+        <main id="main-content" tabIndex={-1}>
+            <PageHeader
+                title={persona.name}
+                description={description ?? persona.subtitle}
+                backHref={routes.roster}
+                backLabel="Back to roster"
+                onBackClick={(event) => {
+                    if (!promptDirty) return;
+                    event.preventDefault();
+                    setLeaveConfirm(true);
+                }}
+                meta={
+                    <>
+                        <ParticipantMark
+                            participant={{
+                                id: markId ?? persona.id,
+                                name: persona.name,
+                                color: persona.color,
                             }}
-                        >
-                            <ArrowLeft className="w-5 h-5" />
-                        </Link>
-                        <div className="flex items-center gap-3">
-                            <ParticipantMark
-                                participant={{
-                                    id: markId ?? persona.id,
-                                    name: persona.name,
-                                    color: persona.color,
-                                }}
-                                size="md"
-                            />
-                            <div>
-                                <h1 className="text-xl font-bold text-ink">{persona.name}</h1>
-                                {persona.subtitle && (
-                                    <p className="text-xs text-ink-muted">{persona.subtitle}</p>
-                                )}
-                            </div>
-                        </div>
-                    </div>
-                </div>
-            </header>
+                            size="sm"
+                        />
+                        <span className="type-meta text-ink-muted">
+                            Persona template
+                        </span>
+                    </>
+                }
+            />
 
-            {/* Main Content */}
-            <main id="main-content" className="max-w-4xl mx-auto px-6 py-8" tabIndex={-1}>
-                {description && (
-                    <p className="text-sm text-ink-secondary mb-6 max-w-3xl">{description}</p>
-                )}
+            <PageContainer>
                 {error && (
                     <div role="alert" className="mb-6 rounded-group border border-danger/40 bg-danger-soft p-4">
                         <p className="type-body text-danger">{error}</p>
                     </div>
                 )}
 
-                <p role="status" aria-live="polite" className="text-xs text-success min-h-4 mb-4">
+                <p role="status" aria-live="polite" className="mb-4 min-h-4 type-meta text-success">
                     {announcement}
                 </p>
 
-                {leaveConfirm && (
-                    <div
-                        role="alertdialog"
-                        aria-label="Unsaved system prompt"
-                        className="mb-6 rounded-group border border-warning/40 bg-warning-soft p-4"
-                    >
-                        <p className="mb-3 type-body text-warning">
-                            You have an unsaved system prompt draft. Leaving this page will discard it.
-                        </p>
-                        <div className="flex flex-wrap items-center gap-2">
-                            <Link href={routes.roster}>
-                                <Button variant="destructive" size="sm">
+                <AlertDialog
+                    open={leaveConfirm}
+                    onOpenChange={setLeaveConfirm}
+                >
+                    <AlertDialogContent aria-label="Unsaved system prompt">
+                        <AlertDialogHeader>
+                            <AlertDialogTitle>
+                                Unsaved system prompt
+                            </AlertDialogTitle>
+                            <AlertDialogDescription>
+                                Leave with an unsaved prompt? Your unsaved
+                                system prompt draft will be discarded. The
+                                active revision is unchanged.
+                            </AlertDialogDescription>
+                        </AlertDialogHeader>
+                        <AlertDialogFooter>
+                            <AlertDialogCancel>Keep editing</AlertDialogCancel>
+                            <AlertDialogAction asChild>
+                                <Link href={routes.roster}>
                                     Discard and leave
-                                </Button>
-                            </Link>
-                            <Button variant="ghost" size="sm" autoFocus onClick={() => setLeaveConfirm(false)}>
-                                Keep editing
-                            </Button>
-                        </div>
-                    </div>
-                )}
+                                </Link>
+                            </AlertDialogAction>
+                        </AlertDialogFooter>
+                    </AlertDialogContent>
+                </AlertDialog>
 
-                {pendingActivation !== null && (
-                    <div
-                        role="alertdialog"
-                        aria-label="Confirm revision activation"
-                        className="mb-6 rounded-group border border-warning/40 bg-warning-soft p-4"
-                        onKeyDown={(event) => {
-                            if (event.key === 'Escape') setPendingActivation(null);
-                        }}
-                    >
-                        <p className="mb-3 type-body text-warning">
-                            Activating version {pendingActivation} will replace the unsaved system prompt
-                            in the editor. The draft will be discarded.
-                        </p>
-                        <div className="flex flex-wrap items-center gap-2">
-                            <Button
-                                variant="destructive"
-                                size="sm"
-                                onClick={() => void performActivation(pendingActivation)}
+                <AlertDialog
+                    open={pendingActivation !== null}
+                    onOpenChange={(open) => {
+                        if (!open) setPendingActivation(null);
+                    }}
+                >
+                    <AlertDialogContent aria-label="Confirm revision activation">
+                        <AlertDialogHeader>
+                            <AlertDialogTitle>
+                                Confirm revision activation
+                            </AlertDialogTitle>
+                            <AlertDialogDescription>
+                                Activating version {pendingActivation} will
+                                replace the unsaved system prompt in the
+                                editor. The draft will be discarded.
+                            </AlertDialogDescription>
+                        </AlertDialogHeader>
+                        <AlertDialogFooter>
+                            <AlertDialogCancel>Keep editing</AlertDialogCancel>
+                            <AlertDialogAction
+                                onClick={() => {
+                                    if (pendingActivation !== null) {
+                                        void performActivation(
+                                            pendingActivation
+                                        );
+                                    }
+                                }}
                             >
-                                Discard draft and activate version {pendingActivation}
-                            </Button>
-                            <Button
-                                variant="ghost"
-                                size="sm"
-                                autoFocus
-                                onClick={() => setPendingActivation(null)}
-                            >
-                                Keep editing
-                            </Button>
-                        </div>
-                    </div>
-                )}
+                                Discard draft and activate version{' '}
+                                {pendingActivation}
+                            </AlertDialogAction>
+                        </AlertDialogFooter>
+                    </AlertDialogContent>
+                </AlertDialog>
 
                 <Tabs
                     defaultValue={initialTab}
@@ -543,15 +556,24 @@ export function PersonaEditorScreen({
 
                     {/* System Prompt Tab */}
                     <TabsContent value="prompt">
-                        <div className="grid gap-6 lg:grid-cols-3">
+                        <div className="grid gap-6 xl:grid-cols-[minmax(0,1fr)_20rem]">
                             {/* Editor */}
-                            <Card className="lg:col-span-2">
+                            <Card>
                                 <CardHeader className="flex flex-row items-center justify-between">
-                                    <CardTitle>System Prompt</CardTitle>
+                                    <div>
+                                        <CardTitle>System Prompt</CardTitle>
+                                        <p className="mt-1 type-meta text-ink-muted">
+                                            Saving creates a new immutable
+                                            revision and makes it active.
+                                            Viewing an older revision never
+                                            changes what is active.
+                                        </p>
+                                    </div>
                                     {persona.active_prompt_version && (
-                                        <span className="text-xs text-ink-muted">
-                                            v{persona.active_prompt_version}
-                                        </span>
+                                        <Badge variant="outline">
+                                            Active v
+                                            {persona.active_prompt_version}
+                                        </Badge>
                                     )}
                                 </CardHeader>
                                 <CardContent className="space-y-4">
@@ -564,12 +586,15 @@ export function PersonaEditorScreen({
                                             setPromptDirty(true);
                                         }}
                                         placeholder="Define this persona's personality, expertise, and behavior..."
-                                        className="min-h-[300px] font-mono text-sm"
+                                        className="min-h-[320px] resize-y type-body leading-relaxed"
                                     />
 
-                                    <div className="flex items-center justify-between">
-                                        <span className="text-xs text-ink-muted">
+                                    <div className="flex flex-wrap items-center justify-between gap-2">
+                                        <span className="type-meta text-ink-muted">
                                             {promptContent.length} characters
+                                            {promptDirty
+                                                ? ' · unsaved draft'
+                                                : ''}
                                         </span>
                                         <Button
                                             onClick={handleSavePrompt}
@@ -587,68 +612,89 @@ export function PersonaEditorScreen({
                             {/* Version History */}
                             <Card>
                                 <CardHeader>
-                                    <CardTitle>System Prompt Version History</CardTitle>
+                                    <CardTitle>
+                                        System Prompt Version History
+                                    </CardTitle>
                                     {historyNote ? (
                                         <p className="type-meta leading-relaxed text-ink-muted">
                                             {historyNote}
                                         </p>
                                     ) : null}
                                 </CardHeader>
-                                <CardContent className="space-y-2">
+                                <CardContent className="max-h-[34rem] space-y-2 overflow-y-auto">
                                     {promptVersions.length === 0 ? (
-                                        <p className="text-sm text-ink-muted">No versions yet</p>
+                                        <p className="type-body text-ink-muted">
+                                            No versions yet
+                                        </p>
                                     ) : (
                                         promptVersions.map((v, index) => (
                                             <div
                                                 key={v.id}
-                                                className={`m-control w-full rounded-control border p-3 ${v.is_active
-                                                    ? 'border-success/40 bg-success-soft'
-                                                    : 'border-transparent bg-surface-raised/50'
-                                                    }`}
+                                                className={`m-control w-full rounded-control border p-3 ${
+                                                    v.is_active
+                                                        ? 'border-l-4 border-separator border-l-success'
+                                                        : 'border-separator'
+                                                }`}
                                             >
-                                                <div className="flex items-center justify-between mb-1">
-                                                    <span className="text-sm font-medium text-ink">
+                                                <div className="mb-1 flex items-center justify-between">
+                                                    <span className="type-control text-ink">
                                                         Version {v.version}
                                                     </span>
-                                                    {v.is_active && (
-                                                        <span className="text-xs text-success">Active</span>
-                                                    )}
+                                                    {v.is_active ? (
+                                                        <Badge variant="outline">
+                                                            Active
+                                                        </Badge>
+                                                    ) : null}
                                                 </div>
                                                 {revisionNotes?.[v.id] && (
-                                                    <p className="text-xs text-ink-secondary mb-1">
+                                                    <p className="mb-1 type-meta text-ink-secondary">
                                                         {revisionNotes[v.id]}
                                                     </p>
                                                 )}
                                                 {revisionBadges?.[v.id] && (
-                                                    <p className="type-meta uppercase tracking-wide text-warning/80 mb-1">
+                                                    <p className="mb-1 type-meta uppercase tracking-wide text-warning">
                                                         {revisionBadges[v.id]}
                                                     </p>
                                                 )}
-                                                <span className="text-xs text-ink-muted">
-                                                    {new Date(v.created_at).toLocaleDateString()}
+                                                <span className="type-meta text-ink-muted">
+                                                    {new Date(
+                                                        v.created_at
+                                                    ).toLocaleDateString()}
                                                 </span>
-                                                <div className="flex flex-wrap items-center gap-2 mt-2">
+                                                <div className="mt-2 flex flex-wrap items-center gap-2">
                                                     <Button
-                                                        ref={index === 0 ? viewRevisionAnchor : undefined}
+                                                        ref={
+                                                            index === 0
+                                                                ? viewRevisionAnchor
+                                                                : undefined
+                                                        }
                                                         variant="ghost"
                                                         size="sm"
-                                                        className="h-7 px-2 text-ink-secondary"
+                                                        className="text-ink-secondary"
                                                         aria-label={`View version ${v.version}`}
                                                         onClick={() => {
                                                             onViewRevision?.();
-                                                            viewRevision(v.version);
+                                                            viewRevision(
+                                                                v.version
+                                                            );
                                                         }}
                                                     >
-                                                        <Eye className="w-3.5 h-3.5 mr-1" />
+                                                        <Eye className="size-3.5" />
                                                         View revision
                                                     </Button>
                                                     <Button
                                                         variant="outline"
                                                         size="sm"
-                                                        className="h-7 px-2"
                                                         aria-label={`Make version ${v.version} active`}
-                                                        disabled={v.is_active || saving}
-                                                        onClick={() => requestActivation(v.version)}
+                                                        disabled={
+                                                            v.is_active ||
+                                                            saving
+                                                        }
+                                                        onClick={() =>
+                                                            requestActivation(
+                                                                v.version
+                                                            )
+                                                        }
                                                     >
                                                         Make active
                                                     </Button>
@@ -671,29 +717,40 @@ export function PersonaEditorScreen({
                                     <CardHeader>
                                         <div className="flex flex-wrap items-center justify-between gap-2">
                                             <CardTitle>
-                                                Version {viewedRevision.version}
+                                                Version{' '}
+                                                {viewedRevision.version}
                                             </CardTitle>
-                                            <span className="text-xs text-ink-muted">
+                                            <Badge variant="outline">
                                                 {viewedRevision.is_active
-                                                    ? 'This revision is active.'
-                                                    : 'Viewing only — not active.'}
-                                            </span>
+                                                    ? 'Active revision'
+                                                    : 'Viewing only · not active'}
+                                            </Badge>
                                         </div>
                                     </CardHeader>
                                     <CardContent className="space-y-3">
                                         {revisionNotes?.[viewedRevision.id] && (
-                                            <p className="text-xs text-ink-secondary">
-                                                {revisionNotes[viewedRevision.id]}
+                                            <p className="type-meta text-ink-secondary">
+                                                {
+                                                    revisionNotes[
+                                                        viewedRevision.id
+                                                    ]
+                                                }
                                             </p>
                                         )}
-                                        <pre className="whitespace-pre-wrap break-words rounded-control border border-separator bg-canvas/60 p-4 font-mono text-sm text-ink-secondary">
-                                            {viewedRevision.content}
+                                        <pre className="max-h-[60vh] overflow-auto whitespace-pre-wrap break-words rounded-control border border-separator bg-canvas/60 p-4 type-body text-ink-secondary">
+                                            {
+                                                viewedRevision.content
+                                            }
                                         </pre>
                                         {!viewedRevision.is_active && (
                                             <Button
                                                 size="sm"
                                                 aria-label={`Activate version ${viewedRevision.version} from the revision view`}
-                                                onClick={() => requestActivation(viewedRevision.version)}
+                                                onClick={() =>
+                                                    requestActivation(
+                                                        viewedRevision.version
+                                                    )
+                                                }
                                                 disabled={saving}
                                             >
                                                 Make this version active
@@ -705,7 +762,7 @@ export function PersonaEditorScreen({
                         )}
                     </TabsContent>
                 </Tabs>
-            </main>
-        </div>
+            </PageContainer>
+        </main>
     );
 }
