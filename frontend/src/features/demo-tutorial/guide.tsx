@@ -29,7 +29,8 @@ export function TutorialGuide({
             data-testid="tutorial-hud"
             data-placement={placement}
             data-state="shown"
-            className="m-notice material-glass-card relative overflow-hidden rounded-group border border-action/40 text-ink"
+            className="m-notice material-raised relative overflow-hidden rounded-group border border-separator text-ink"
+            style={{ animationDuration: "120ms" }}
         >
             {progress ? (
                 <div

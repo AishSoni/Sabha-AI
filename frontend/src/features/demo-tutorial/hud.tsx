@@ -155,7 +155,7 @@ export function TutorialHud() {
                 <div
                     aria-hidden="true"
                     data-testid="tutorial-ring"
-                    className="pointer-events-none fixed z-highlight rounded-control ring-2 ring-action/70"
+                    className="pointer-events-none fixed z-highlight rounded-control ring-2 ring-focus-ring outline outline-1 outline-action/60"
                     style={{
                         left: ringTarget.left - 4,
                         top: ringTarget.top - 4,
@@ -201,7 +201,7 @@ function CompactBar() {
     return (
         <div
             data-testid="tutorial-hud-compact"
-            className="material-panel fixed z-notice flex items-center gap-1 rounded-full border border-action/40 p-1"
+            className="material-raised fixed z-notice flex items-center gap-1 rounded-full border border-separator p-1"
             style={{
                 top: "calc(env(safe-area-inset-top, 0px) + 4.5rem)",
                 left: "calc(env(safe-area-inset-left, 0px) + 1rem)",
