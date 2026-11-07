@@ -16,6 +16,11 @@ import {
   EVIDENCE_NODE_BY_ID,
   EVIDENCE_NODES,
 } from "@/features/homepage/presentation/evidence-graph";
+import {
+  SPIRAL_CARD_COUNT,
+  cardSceneAt,
+  sampleSpiral,
+} from "@/features/homepage/presentation/spiral";
 import { createHomeStars } from "@/features/homepage/presentation/starfield";
 
 describe("homepage copy", () => {
@@ -26,7 +31,7 @@ describe("homepage copy", () => {
     });
     expect(HOME_COPY.demoCta).toBe("Explore the recorded demo");
     expect(HOME_COPY.operatorCta).toBe("Operator sign-in");
-    expect(HOME_COPY.disclosure).toBe(
+    expect(HOME_COPY.evidence.disclosure).toBe(
       "Prepared demo · recorded responses, not live generation.",
     );
   });
@@ -40,14 +45,14 @@ describe("homepage copy", () => {
 });
 
 describe("homepage emblem field", () => {
-  it("has eight distinct authored emblems with self-contained SVG output", () => {
+  it("has eighteen distinct authored persona sigils", () => {
     const ids = EMBLEMS.map((emblem) => emblem.id);
     expect(new Set(ids).size).toBe(ids.length);
-    expect(ids).toHaveLength(8);
+    expect(ids).toHaveLength(18);
 
     for (const id of ids) {
       const emblem = emblemById(id);
-      expect(emblem.fill.length).toBeGreaterThan(0);
+      expect(emblem.parts.length).toBeGreaterThan(0);
       const markup = emblemSvgMarkup(emblem);
       expect(markup).toContain("<svg");
       expect(markup).not.toMatch(/(href|src)=/);
@@ -55,37 +60,45 @@ describe("homepage emblem field", () => {
     }
   });
 
-  it("uses the authored density budget without changing slot identity", () => {
-    expect(HOME_FIELD_SLOTS).toHaveLength(18);
-    expect(HOME_FIELD_SLOTS_BY_DENSITY.wide).toHaveLength(18);
-    expect(HOME_FIELD_SLOTS_BY_DENSITY.medium).toHaveLength(14);
-    expect(HOME_FIELD_SLOTS_BY_DENSITY.compact).toHaveLength(7);
-
-    for (const slot of HOME_FIELD_SLOTS_BY_DENSITY.compact) {
-      expect(slot.compact).toBe(true);
-    }
-    for (const slot of HOME_FIELD_SLOTS_BY_DENSITY.medium) {
-      expect(slot.medium).toBe(true);
-    }
+  it("uses the one-for-one spiral density at every breakpoint", () => {
+    expect(SPIRAL_CARD_COUNT).toBe(189);
+    expect(HOME_FIELD_SLOTS).toHaveLength(SPIRAL_CARD_COUNT);
+    expect(HOME_FIELD_SLOTS_BY_DENSITY.wide).toHaveLength(SPIRAL_CARD_COUNT);
+    expect(HOME_FIELD_SLOTS_BY_DENSITY.medium).toHaveLength(SPIRAL_CARD_COUNT);
+    expect(HOME_FIELD_SLOTS_BY_DENSITY.compact).toHaveLength(SPIRAL_CARD_COUNT);
   });
 
-  it("resolves a deterministic tangent-aware position", () => {
-    const slot = HOME_FIELD_SLOTS[0]!;
-    const first = resolveFieldSlot(slot);
-    const second = resolveFieldSlot(slot);
-
+  it("samples the spiral deterministically with tangent-aware cards", () => {
+    const first = sampleSpiral(12.5);
+    const second = sampleSpiral(12.5);
     expect(first).toEqual(second);
-    expect(first.x).toBeGreaterThan(0);
-    expect(first.y).toBeGreaterThan(0);
-    expect(Number.isFinite(first.rotation)).toBe(true);
+    expect(Number.isFinite(first.x)).toBe(true);
+    expect(Number.isFinite(first.y)).toBe(true);
+    expect(Number.isFinite(first.tx)).toBe(true);
+    expect(Number.isFinite(first.ty)).toBe(true);
+
+    const card = cardSceneAt(17, SPIRAL_CARD_COUNT, 0);
+    expect(card).toEqual(cardSceneAt(17, SPIRAL_CARD_COUNT, 0));
+    expect(Number.isFinite(card.angle)).toBe(true);
+    expect(card.fade).toBeGreaterThanOrEqual(0);
+    expect(card.scale).toBeGreaterThan(0);
   });
 
-  it("keeps static positions stable at fractional precision", () => {
+  it("keeps every authored slot finite and positioned by the spiral", () => {
     for (const slot of HOME_FIELD_SLOTS) {
-      const position = resolveFieldSlot(slot);
-      expect(position.x).toBe(Number(position.x.toFixed(3)));
-      expect(position.y).toBe(Number(position.y.toFixed(3)));
-      expect(position.rotation).toBe(Number(position.rotation.toFixed(3)));
+      expect(Number.isFinite(slot.x)).toBe(true);
+      expect(Number.isFinite(slot.y)).toBe(true);
+      expect(Number.isFinite(slot.width)).toBe(true);
+      expect(Number.isFinite(slot.height)).toBe(true);
+      expect(slot.width).toBeGreaterThan(0);
+      expect(slot.height).toBeGreaterThan(0);
+      expect(slot.opacity).toBeGreaterThanOrEqual(0);
+      expect(slot.opacity).toBeLessThanOrEqual(1);
+      expect(resolveFieldSlot(slot)).toEqual({
+        x: slot.x,
+        y: slot.y,
+        rotation: slot.rotation,
+      });
     }
   });
 });
