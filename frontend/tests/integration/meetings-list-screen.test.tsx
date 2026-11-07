@@ -97,10 +97,11 @@ describe('meetings list screen ownership', () => {
             </Providers>
         );
 
-        const card = (await screen.findByText('Alpha review')).closest('div.relative');
-        expect(card).not.toBeNull();
+        const card = await screen.findByTestId('meeting-row-m-1');
 
-        const trigger = card!.querySelector('[aria-haspopup="menu"]') as HTMLElement;
+        const trigger = within(card).getByRole('button', {
+            name: /more actions/i,
+        });
         trigger.dispatchEvent(new PointerEvent('pointerdown', { bubbles: true, button: 0, pointerId: 1, pointerType: 'mouse' }));
         fireEvent.click(trigger);
 
@@ -130,8 +131,10 @@ describe('meetings list screen ownership', () => {
             </Providers>
         );
 
-        const card = (await screen.findByText('Doomed meeting')).closest('div.relative');
-        const trigger = card!.querySelector('[aria-haspopup="menu"]') as HTMLElement;
+        const card = await screen.findByTestId('meeting-row-m-1');
+        const trigger = within(card).getByRole('button', {
+            name: /more actions/i,
+        });
         trigger.dispatchEvent(new PointerEvent('pointerdown', { bubbles: true, button: 0, pointerId: 1, pointerType: 'mouse' }));
         fireEvent.click(trigger);
 

@@ -1,19 +1,30 @@
-'use client';
+"use client";
 
-import { useState } from 'react';
-import Link from 'next/link';
-import { Plus, MessageSquare, Calendar, ArrowLeft, Loader2, Archive, Trash2, MoreVertical, ArchiveRestore } from 'lucide-react';
-import { Button } from '@/components/ui/button';
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
-import { StatusBadge } from '@/components/ui/status-badge';
-import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { useMemo, useRef, useState } from "react";
+import Link from "next/link";
+import {
+    Archive,
+    ArchiveRestore,
+    Calendar,
+    Loader2,
+    MessageSquare,
+    MoreVertical,
+    Plus,
+    Trash2,
+} from "lucide-react";
+
+import { Button } from "@/components/ui/button";
+import { EmptyState } from "@/components/ui/empty-state";
+import { Notice } from "@/components/ui/notice";
+import { StatusBadge } from "@/components/ui/status-badge";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import {
     DropdownMenu,
     DropdownMenuContent,
     DropdownMenuItem,
     DropdownMenuSeparator,
     DropdownMenuTrigger,
-} from '@/components/ui/dropdown-menu';
+} from "@/components/ui/dropdown-menu";
 import {
     AlertDialog,
     AlertDialogAction,
@@ -23,35 +34,119 @@ import {
     AlertDialogFooter,
     AlertDialogHeader,
     AlertDialogTitle,
-} from '@/components/ui/alert-dialog';
-import { useMeetingList, useArchiveMeeting, useUnarchiveMeeting, useDeleteMeeting, type Meeting } from '@/features/meetings';
-import { formatRelativeTime } from '@/lib/utils';
+} from "@/components/ui/alert-dialog";
+import {
+    FetchErrorState,
+    LoadingState,
+    PageContainer,
+    PageHeader,
+} from "@/components/shell";
+import {
+    useMeetingList,
+    useArchiveMeeting,
+    useUnarchiveMeeting,
+    useDeleteMeeting,
+    type Meeting,
+} from "@/features/meetings";
+import { formatRelativeTime } from "@/lib/utils";
 
+function statusBadge(status: Meeting["status"]) {
+    switch (status) {
+        case "active":
+            return <StatusBadge tone="success">Active</StatusBadge>;
+        case "ended":
+            return <StatusBadge tone="neutral">Ended</StatusBadge>;
+        case "voting":
+            return <StatusBadge tone="warning">Voting</StatusBadge>;
+        case "archived":
+            return <StatusBadge tone="neutral">Archived</StatusBadge>;
+        default:
+            return <StatusBadge tone="neutral">{status}</StatusBadge>;
+    }
+}
 
 export default function MeetingSpacePage() {
-    const { data, isLoading } = useMeetingList();
-    const list = data ?? [];
+    const meetings = useMeetingList();
+    const list = useMemo(() => meetings.data ?? [], [meetings.data]);
     const archiveMeeting = useArchiveMeeting();
     const unarchiveMeeting = useUnarchiveMeeting();
     const deleteMeeting = useDeleteMeeting();
 
-    const [activeTab, setActiveTab] = useState('active');
+    const [activeTab, setActiveTab] = useState("active");
     const [deleteConfirmId, setDeleteConfirmId] = useState<string | null>(null);
     const [actionLoading, setActionLoading] = useState<string | null>(null);
+    const [actionError, setActionError] = useState<string | null>(null);
+    const [announcement, setAnnouncement] = useState("");
+    const listHeadingRef = useRef<HTMLHeadingElement>(null);
 
-    const handleArchive = (meetingId: string) => {
-        setActionLoading(meetingId);
-        archiveMeeting.mutate(meetingId, { onSettled: () => setActionLoading(null) });
+    const activeMeetings = useMemo(
+        () =>
+            list.filter(
+                (meeting) =>
+                    meeting.status === "active" ||
+                    meeting.status === "ended" ||
+                    meeting.status === "voting"
+            ),
+        [list]
+    );
+    const archivedMeetings = useMemo(
+        () => list.filter((meeting) => meeting.status === "archived"),
+        [list]
+    );
+
+    const focusList = () => {
+        window.requestAnimationFrame(() => listHeadingRef.current?.focus());
     };
 
-    const handleUnarchive = (meetingId: string) => {
-        setActionLoading(meetingId);
-        unarchiveMeeting.mutate(meetingId, { onSettled: () => setActionLoading(null) });
+    const handleArchive = (meeting: Meeting) => {
+        setActionLoading(meeting.id);
+        setActionError(null);
+        archiveMeeting.mutate(meeting.id, {
+            onSuccess: () => {
+                setAnnouncement(`${meeting.name} archived.`);
+                focusList();
+            },
+            onError: (cause) =>
+                setActionError(
+                    cause instanceof Error
+                        ? cause.message
+                        : "The meeting could not be archived."
+                ),
+            onSettled: () => setActionLoading(null),
+        });
+    };
+
+    const handleUnarchive = (meeting: Meeting) => {
+        setActionLoading(meeting.id);
+        setActionError(null);
+        unarchiveMeeting.mutate(meeting.id, {
+            onSuccess: () => {
+                setAnnouncement(`${meeting.name} restored to the active list.`);
+                focusList();
+            },
+            onError: (cause) =>
+                setActionError(
+                    cause instanceof Error
+                        ? cause.message
+                        : "The meeting could not be restored."
+                ),
+            onSettled: () => setActionLoading(null),
+        });
     };
 
     const handleDelete = (meetingId: string) => {
         setActionLoading(meetingId);
+        setActionError(null);
         deleteMeeting.mutate(meetingId, {
+            onSuccess: () => {
+                setAnnouncement("Meeting deleted.");
+            },
+            onError: (cause) =>
+                setActionError(
+                    cause instanceof Error
+                        ? cause.message
+                        : "The meeting could not be deleted."
+                ),
             onSettled: () => {
                 setActionLoading(null);
                 setDeleteConfirmId(null);
@@ -59,276 +154,373 @@ export default function MeetingSpacePage() {
         });
     };
 
-    // Filter meetings by status
-    const activeMeetings = list.filter(m => m.status === 'active' || m.status === 'ended' || m.status === 'voting');
-    const archivedMeetings = list.filter(m => m.status === 'archived');
+    const noMeetings = !meetings.isLoading && !meetings.isError && list.length === 0;
 
     return (
-        <div className="min-h-full text-ink">
-            {/* Header */}
-            <header className="material-chrome sticky top-0 z-chrome border-b border-separator">
-                <div className="mx-auto flex max-w-6xl items-center justify-between px-6 py-4">
-                    <div className="flex items-center gap-4">
-                        <Link
-                            href="/"
-                            aria-label="Back to Sabha home"
-                            className="m-control text-ink-muted hover:text-ink"
-                        >
-                            <ArrowLeft className="h-5 w-5" />
-                        </Link>
-                        <div>
-                            <h1 className="type-page-title text-ink">Meeting Space</h1>
-                            <p className="type-meta text-ink-muted">Manage your AI meeting rooms</p>
-                        </div>
-                    </div>
-                    <Link href="/meetings/new">
-                        <Button>
-                            <Plus className="h-4 w-4" />
-                            Create Meeting Room
-                        </Button>
+        <main id="main-content" tabIndex={-1}>
+            <PageHeader
+                title="Meetings"
+                description="Open a meeting room, review its lifecycle, or archive an ended record."
+                actions={
+                    <Link
+                        href="/meetings/new"
+                        className="m-control inline-flex min-h-10 items-center gap-2 rounded-control bg-action px-4 type-control font-medium text-action-foreground outline-none hover:bg-action-hover focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-focus-ring"
+                    >
+                        <Plus aria-hidden="true" className="size-4" />
+                        Create meeting
                     </Link>
-                </div>
-            </header>
+                }
+            />
 
-            {/* Main Content */}
-            <main id="main-content" className="max-w-6xl mx-auto px-6 py-8" tabIndex={-1}>
-                <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
-                    <TabsList className="mb-6">
-                        <TabsTrigger value="active">
-                            <MessageSquare className="h-4 w-4" />
-                            Active
-                            {activeMeetings.length > 0 && (
-                                <StatusBadge tone="neutral" className="ml-2">
-                                    {activeMeetings.length}
-                                </StatusBadge>
-                            )}
-                        </TabsTrigger>
-                        <TabsTrigger value="archived">
-                            <Archive className="h-4 w-4" />
-                            Archived
-                            {archivedMeetings.length > 0 && (
-                                <StatusBadge tone="neutral" className="ml-2">
-                                    {archivedMeetings.length}
-                                </StatusBadge>
-                            )}
-                        </TabsTrigger>
-                    </TabsList>
+            <PageContainer>
+                {actionError ? (
+                    <Notice tone="danger" className="mb-4">
+                        {actionError}
+                    </Notice>
+                ) : null}
+                <p aria-live="polite" className="sr-only">
+                    {announcement}
+                </p>
 
-                    <TabsContent value="active">
-                        {isLoading ? (
-                            <LoadingState />
-                        ) : activeMeetings.length === 0 ? (
-                            <EmptyState />
-                        ) : (
-                            <MeetingGrid
-                                meetings={activeMeetings}
-                                onArchive={handleArchive}
-                                onDelete={(id) => setDeleteConfirmId(id)}
-                                actionLoading={actionLoading}
-                                isArchived={false}
-                            />
-                        )}
-                    </TabsContent>
+                {meetings.isError && list.length === 0 ? (
+                    <FetchErrorState
+                        title="Meetings are unavailable"
+                        description={meetings.error.message}
+                        onRetry={() => void meetings.refetch()}
+                        busy={meetings.isFetching}
+                    />
+                ) : (
+                    <Tabs
+                        value={activeTab}
+                        onValueChange={setActiveTab}
+                        className="w-full"
+                    >
+                        <TabsList className="mb-5 h-auto flex-wrap justify-start">
+                            <TabsTrigger value="active">
+                                <MessageSquare
+                                    aria-hidden="true"
+                                    className="size-4"
+                                />
+                                Active
+                                {activeMeetings.length > 0 ? (
+                                    <StatusBadge
+                                        tone="neutral"
+                                        className="ml-2"
+                                    >
+                                        {activeMeetings.length}
+                                    </StatusBadge>
+                                ) : null}
+                            </TabsTrigger>
+                            <TabsTrigger value="archived">
+                                <Archive
+                                    aria-hidden="true"
+                                    className="size-4"
+                                />
+                                Archived
+                                {archivedMeetings.length > 0 ? (
+                                    <StatusBadge
+                                        tone="neutral"
+                                        className="ml-2"
+                                    >
+                                        {archivedMeetings.length}
+                                    </StatusBadge>
+                                ) : null}
+                            </TabsTrigger>
+                        </TabsList>
 
-                    <TabsContent value="archived">
-                        {isLoading ? (
-                            <LoadingState />
-                        ) : archivedMeetings.length === 0 ? (
-                            <div className="py-20 text-center">
-                                <div className="mx-auto mb-4 flex h-16 w-16 items-center justify-center rounded-group bg-surface-raised">
-                                    <Archive className="h-8 w-8 text-ink-muted" />
-                                </div>
-                                <h3 className="type-item-title mb-2 text-ink">No archived meetings</h3>
-                                <p className="type-body text-ink-secondary">Meetings you archive will appear here</p>
-                            </div>
-                        ) : (
-                            <MeetingGrid
-                                meetings={archivedMeetings}
-                                onUnarchive={handleUnarchive}
-                                onDelete={(id) => setDeleteConfirmId(id)}
-                                actionLoading={actionLoading}
-                                isArchived={true}
-                            />
-                        )}
-                    </TabsContent>
-                </Tabs>
-            </main>
+                        {meetings.isError ? (
+                            <Notice tone="warning" className="mb-4">
+                                The latest list could not be refreshed. Showing
+                                the last loaded meetings.{" "}
+                                <button
+                                    type="button"
+                                    className="font-medium underline underline-offset-2"
+                                    onClick={() => void meetings.refetch()}
+                                >
+                                    Try again
+                                </button>
+                            </Notice>
+                        ) : null}
 
-
-
-            {/* Delete Confirmation Dialog */}
-            <AlertDialog open={!!deleteConfirmId} onOpenChange={(open) => !open && setDeleteConfirmId(null)}>
-                <AlertDialogContent>
-                    <AlertDialogHeader>
-                        <AlertDialogTitle>Delete Meeting?</AlertDialogTitle>
-                        <AlertDialogDescription>
-                            This action cannot be undone. This will permanently delete the meeting
-                            and all its messages, participants, and data.
-                        </AlertDialogDescription>
-                    </AlertDialogHeader>
-                    <AlertDialogFooter>
-                        <AlertDialogCancel>Cancel</AlertDialogCancel>
-                        <AlertDialogAction
-                            onClick={() => deleteConfirmId && handleDelete(deleteConfirmId)}
-                            className="bg-danger text-on-danger hover:bg-danger-hover"
-                        >
-                            {actionLoading === deleteConfirmId ? (
-                                <Loader2 className="mr-2 h-4 w-4 animate-spin motion-reduce:animate-none" />
+                        <TabsContent value="active">
+                            <h2
+                                ref={
+                                    activeTab === "active"
+                                        ? listHeadingRef
+                                        : undefined
+                                }
+                                tabIndex={activeTab === "active" ? -1 : undefined}
+                                className="sr-only"
+                            >
+                                Active meetings
+                            </h2>
+                            {meetings.isLoading ? (
+                                <LoadingState label="Loading meetings…" />
+                            ) : activeMeetings.length === 0 ? (
+                                <EmptyState
+                                    icon={<MessageSquare className="size-6" />}
+                                    title={
+                                        noMeetings
+                                            ? "No meeting rooms yet"
+                                            : "No active meetings"
+                                    }
+                                    description={
+                                        noMeetings
+                                            ? "Create your first meeting room to get started."
+                                            : archivedMeetings.length > 0
+                                              ? "Archived meetings are available in the Archived tab."
+                                              : "Create a meeting room to get started."
+                                    }
+                                    action={
+                                        <Link href="/meetings/new">
+                                            <Button>
+                                                <Plus
+                                                    aria-hidden="true"
+                                                    className="size-4"
+                                                />
+                                                Create meeting
+                                            </Button>
+                                        </Link>
+                                    }
+                                    className="material-raised rounded-group"
+                                />
                             ) : (
-                                <Trash2 className="mr-2 h-4 w-4" />
+                                <MeetingRows
+                                    meetings={activeMeetings}
+                                    headingRef={listHeadingRef}
+                                    archived={false}
+                                    actionLoading={actionLoading}
+                                    onArchive={handleArchive}
+                                    onUnarchive={handleUnarchive}
+                                    onDelete={(meeting) =>
+                                        setDeleteConfirmId(meeting.id)
+                                    }
+                                />
                             )}
-                            Delete
-                        </AlertDialogAction>
-                    </AlertDialogFooter>
-                </AlertDialogContent>
-            </AlertDialog>
-        </div>
-    );
-}
+                        </TabsContent>
 
-function LoadingState() {
-    return (
-        <div role="status" className="flex items-center justify-center gap-2 py-20 type-body text-ink-muted">
-            <Loader2 className="h-8 w-8 animate-spin motion-reduce:animate-none" />
-            <span>Loading meetings…</span>
-        </div>
-    );
-}
+                        <TabsContent value="archived">
+                            <h2
+                                ref={
+                                    activeTab === "archived"
+                                        ? listHeadingRef
+                                        : undefined
+                                }
+                                tabIndex={
+                                    activeTab === "archived" ? -1 : undefined
+                                }
+                                className="sr-only"
+                            >
+                                Archived meetings
+                            </h2>
+                            {meetings.isLoading ? (
+                                <LoadingState label="Loading meetings…" />
+                            ) : archivedMeetings.length === 0 ? (
+                                <EmptyState
+                                    icon={<Archive className="size-6" />}
+                                    title="No archived meetings"
+                                    description={
+                                        noMeetings
+                                            ? "Meetings you archive will appear here."
+                                            : "Archive an ended meeting to keep its record here."
+                                    }
+                                    className="material-raised rounded-group"
+                                />
+                            ) : (
+                                <MeetingRows
+                                    meetings={archivedMeetings}
+                                    headingRef={listHeadingRef}
+                                    archived
+                                    actionLoading={actionLoading}
+                                    onArchive={handleArchive}
+                                    onUnarchive={handleUnarchive}
+                                    onDelete={(meeting) =>
+                                        setDeleteConfirmId(meeting.id)
+                                    }
+                                />
+                            )}
+                        </TabsContent>
+                    </Tabs>
+                )}
 
-function EmptyState() {
-    return (
-        <div className="py-20 text-center">
-            <div className="mx-auto mb-4 flex h-16 w-16 items-center justify-center rounded-group bg-surface-raised">
-                <MessageSquare className="h-8 w-8 text-ink-muted" />
-            </div>
-            <h3 className="type-item-title mb-2 text-ink">No meeting rooms yet</h3>
-            <p className="type-body mb-6 text-ink-secondary">Create your first meeting room to get started</p>
-            <Link href="/meetings/new">
-                <Button>
-                    <Plus className="h-4 w-4" />
-                    Create Meeting Room
-                </Button>
-            </Link>
-        </div>
-    );
-}
-
-interface MeetingGridProps {
-    meetings: Meeting[];
-    onArchive?: (id: string) => void;
-    onUnarchive?: (id: string) => void;
-    onDelete: (id: string) => void;
-    actionLoading: string | null;
-    isArchived: boolean;
-}
-
-function MeetingGrid({ meetings, onArchive, onUnarchive, onDelete, actionLoading, isArchived }: MeetingGridProps) {
-    const getStatusBadge = (status: Meeting['status']) => {
-        switch (status) {
-            case 'active':
-                return <StatusBadge tone="success">Active</StatusBadge>;
-            case 'ended':
-                return <StatusBadge tone="neutral">Ended</StatusBadge>;
-            case 'voting':
-                return <StatusBadge tone="warning">Voting</StatusBadge>;
-            case 'archived':
-                return <StatusBadge tone="neutral">Archived</StatusBadge>;
-            default:
-                return <StatusBadge tone="neutral">{status}</StatusBadge>;
-        }
-    };
-
-    return (
-        <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-4">
-            {meetings.map((meeting) => (
-                <div key={meeting.id} className="relative group">
-                    <Link href={`/meetings/${meeting.id}`}>
-                        <Card className="h-full m-control cursor-pointer hover:border-action/50 hover:shadow-[var(--shadow-raised)]">
-                            <CardHeader className="pb-2">
-                                <div className="flex items-start justify-between gap-3">
-                                    <CardTitle className="type-item-title pr-8">
-                                        {meeting.name}
-                                    </CardTitle>
-                                    {getStatusBadge(meeting.status)}
-                                </div>
-                                {meeting.agenda && (
-                                    <CardDescription className="line-clamp-2">
-                                        {meeting.agenda}
-                                    </CardDescription>
-                                )}
-                            </CardHeader>
-                            <CardContent>
-                                <div className="flex items-center gap-4 type-meta text-ink-muted">
-                                    <span className="flex items-center gap-1">
-                                        <Calendar className="h-3 w-3" />
-                                        {formatRelativeTime(meeting.created_at ?? '')}
-                                    </span>
-                                    {(meeting.total_cost ?? 0) > 0 && (
-                                        <span className="type-tabular text-ink-secondary">
-                                            ${(meeting.total_cost ?? 0).toFixed(4)}
-                                        </span>
-                                    )}
-                                </div>
-                            </CardContent>
-                        </Card>
-                    </Link>
-
-                    {/* Action Menu */}
-                    <div className="absolute right-3 top-3 z-selection">
-                        <DropdownMenu>
-                            <DropdownMenuTrigger asChild>
-                                <Button
-                                    variant="ghost"
-                                    size="icon-xs"
-                                    aria-label={`Actions for ${meeting.name}`}
-                                    className="border border-separator bg-surface/80"
-                                    onClick={(e) => e.preventDefault()}
-                                >
-                                    {actionLoading === meeting.id ? (
-                                        <Loader2 className="h-3.5 w-3.5 animate-spin motion-reduce:animate-none" />
-                                    ) : (
-                                        <MoreVertical className="h-3.5 w-3.5" />
-                                    )}
-                                </Button>
-                            </DropdownMenuTrigger>
-                            <DropdownMenuContent align="end">
-                                {isArchived ? (
-                                    <DropdownMenuItem
-                                        onClick={(e) => {
-                                            e.preventDefault();
-                                            onUnarchive?.(meeting.id);
-                                        }}
-                                    >
-                                        <ArchiveRestore className="mr-2 h-4 w-4" />
-                                        Unarchive
-                                    </DropdownMenuItem>
+                <AlertDialog
+                    open={!!deleteConfirmId}
+                    onOpenChange={(open) =>
+                        !open ? setDeleteConfirmId(null) : undefined
+                    }
+                >
+                    <AlertDialogContent>
+                        <AlertDialogHeader>
+                            <AlertDialogTitle>Delete meeting?</AlertDialogTitle>
+                            <AlertDialogDescription>
+                                This permanently deletes the meeting and all its
+                                messages, participants, and stored data. It
+                                cannot be undone.
+                            </AlertDialogDescription>
+                        </AlertDialogHeader>
+                        <AlertDialogFooter>
+                            <AlertDialogCancel>Cancel</AlertDialogCancel>
+                            <AlertDialogAction
+                                onClick={() =>
+                                    deleteConfirmId &&
+                                    handleDelete(deleteConfirmId)
+                                }
+                                className="bg-danger text-on-danger hover:bg-danger-hover"
+                            >
+                                {actionLoading === deleteConfirmId ? (
+                                    <Loader2
+                                        aria-hidden="true"
+                                        className="mr-2 size-4 animate-spin motion-reduce:animate-none"
+                                    />
                                 ) : (
-                                    <DropdownMenuItem
-                                        onClick={(e) => {
-                                            e.preventDefault();
-                                            onArchive?.(meeting.id);
-                                        }}
-                                    >
-                                        <Archive className="mr-2 h-4 w-4" />
-                                        Archive
-                                    </DropdownMenuItem>
+                                    <Trash2
+                                        aria-hidden="true"
+                                        className="mr-2 size-4"
+                                    />
                                 )}
-                                <DropdownMenuSeparator />
-                                <DropdownMenuItem
-                                    onClick={(e) => {
-                                        e.preventDefault();
-                                        onDelete(meeting.id);
-                                    }}
-                                    className="text-danger focus:bg-danger-soft focus:text-danger"
-                                >
-                                    <Trash2 className="mr-2 h-4 w-4" />
-                                    Delete
-                                </DropdownMenuItem>
-                            </DropdownMenuContent>
-                        </DropdownMenu>
-                    </div>
-                </div>
-            ))}
-        </div>
+                                Delete
+                            </AlertDialogAction>
+                        </AlertDialogFooter>
+                    </AlertDialogContent>
+                </AlertDialog>
+            </PageContainer>
+        </main>
+    );
+}
+
+function MeetingRows({
+    meetings,
+    archived,
+    actionLoading,
+    onArchive,
+    onUnarchive,
+    onDelete,
+}: {
+    meetings: Meeting[];
+    headingRef?: React.RefObject<HTMLHeadingElement | null>;
+    archived: boolean;
+    actionLoading: string | null;
+    onArchive: (meeting: Meeting) => void;
+    onUnarchive: (meeting: Meeting) => void;
+    onDelete: (meeting: Meeting) => void;
+}) {
+    return (
+        <ul className="material-raised divide-y divide-separator overflow-hidden rounded-group">
+            {meetings.map((meeting) => {
+                const busy = actionLoading === meeting.id;
+                return (
+                    <li
+                        key={meeting.id}
+                        data-testid={`meeting-row-${meeting.id}`}
+                        className="flex flex-col gap-3 p-4 sm:grid sm:grid-cols-[minmax(0,1fr)_auto] sm:items-center"
+                    >
+                        <div className="min-w-0">
+                            <div className="flex flex-wrap items-center gap-2">
+                                <h3 className="type-item-title text-ink">
+                                    {meeting.name}
+                                </h3>
+                                {statusBadge(meeting.status)}
+                            </div>
+                            {meeting.agenda ? (
+                                <p className="mt-1 line-clamp-2 max-w-[74ch] type-body text-ink-secondary">
+                                    {meeting.agenda}
+                                </p>
+                            ) : (
+                                <p className="mt-1 type-body text-ink-muted">
+                                    No agenda saved.
+                                </p>
+                            )}
+                            <p className="mt-1 flex flex-wrap items-center gap-2 type-meta text-ink-muted">
+                                <Calendar
+                                    aria-hidden="true"
+                                    className="size-3.5"
+                                />
+                                <span>
+                                    {formatRelativeTime(
+                                        meeting.created_at ?? ""
+                                    )}
+                                </span>
+                                {busy ? (
+                                    <span
+                                        role="status"
+                                        className="inline-flex items-center gap-1"
+                                    >
+                                        <Loader2
+                                            aria-hidden="true"
+                                            className="size-3 animate-spin motion-reduce:animate-none"
+                                        />
+                                        Updating row
+                                    </span>
+                                ) : null}
+                            </p>
+                        </div>
+                        <div className="flex flex-wrap items-center gap-2">
+                            <Link
+                                href={`/meetings/${meeting.id}`}
+                                className="m-control inline-flex min-h-9 items-center rounded-control border border-control bg-surface px-3 type-control text-ink outline-none hover:bg-surface-raised focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-focus-ring"
+                            >
+                                Open meeting
+                            </Link>
+                            <DropdownMenu>
+                                <DropdownMenuTrigger asChild>
+                                    <Button
+                                        type="button"
+                                        variant="ghost"
+                                        size="icon-sm"
+                                        aria-label={`More actions for ${meeting.name}`}
+                                        disabled={busy}
+                                    >
+                                        {busy ? (
+                                            <Loader2
+                                                aria-hidden="true"
+                                                className="animate-spin motion-reduce:animate-none"
+                                            />
+                                        ) : (
+                                            <MoreVertical aria-hidden="true" />
+                                        )}
+                                    </Button>
+                                </DropdownMenuTrigger>
+                                <DropdownMenuContent align="end">
+                                    {archived ? (
+                                        <DropdownMenuItem
+                                            onClick={() =>
+                                                onUnarchive(meeting)
+                                            }
+                                        >
+                                            <ArchiveRestore
+                                                aria-hidden="true"
+                                                className="mr-2 size-4"
+                                            />
+                                            Unarchive
+                                        </DropdownMenuItem>
+                                    ) : (
+                                        <DropdownMenuItem
+                                            onClick={() => onArchive(meeting)}
+                                        >
+                                            <Archive
+                                                aria-hidden="true"
+                                                className="mr-2 size-4"
+                                            />
+                                            Archive
+                                        </DropdownMenuItem>
+                                    )}
+                                    <DropdownMenuSeparator />
+                                    <DropdownMenuItem
+                                        onClick={() => onDelete(meeting)}
+                                        className="text-danger focus:bg-danger-soft focus:text-danger"
+                                    >
+                                        <Trash2
+                                            aria-hidden="true"
+                                            className="mr-2 size-4"
+                                        />
+                                        Delete
+                                    </DropdownMenuItem>
+                                </DropdownMenuContent>
+                            </DropdownMenu>
+                        </div>
+                    </li>
+                );
+            })}
+        </ul>
     );
 }
