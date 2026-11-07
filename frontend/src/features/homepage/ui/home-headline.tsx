@@ -64,7 +64,9 @@ export function HomeHeadline({ id }: { id?: string }) {
   const outgoing = previous === null ? null : iconsFor(previous);
   const currentPhrase = TAIL_PHRASES[index % TAIL_PHRASES.length]!;
   const outgoingPhrase =
-    previous === null ? null : TAIL_PHRASES[previous % TAIL_PHRASES.length]!;
+    previous === null
+      ? null
+      : TAIL_PHRASES[previous % TAIL_PHRASES.length]!;
 
   return (
     <h1

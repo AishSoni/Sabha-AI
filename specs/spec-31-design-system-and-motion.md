@@ -354,9 +354,11 @@ tables/documents may scroll within a labelled region, not force page overflow.
 
 Reduced motion disables spatial travel, ambient loops, parallax, shimmer, and
 automatic headline cycling; it does not remove completion feedback or functions.
-No flashes or rapid strobing. Infinite decorative effects need a reachable pause
-control; homepage details are in Spec 32. Reduce transparency independently of
-motion. Forced-colors mode uses system colors and solid surfaces.
+No flashes or rapid strobing. Decorative effects are bounded and respect the
+operating-system reduced-motion preference; the product intentionally exposes no
+in-app animation controls. Homepage details are in Spec 32. Reduce transparency
+independently of motion. Forced-colors mode uses system colors and solid
+surfaces.
 
 For each component, test: initial/loading, ready, empty, active/pending, success,
 recoverable error, terminal/unavailable, permission loss where applicable, and
@@ -402,16 +404,19 @@ error states, or focus behavior to obtain a cleaner screenshot.
 
 ## Execution record
 
-Implementation status: **implemented locally, not accepted.** Specs 32 and 33
-remain. The entries below are actual results for the `ui-redesign` branch. No
-hosted deployment, route-by-route visual review, font redistribution permission,
-or performance trace is claimed.
+Implementation status: **implemented locally, not accepted.** Spec 32 is now
+implemented and locally accepted; Spec 33 remains. The entries below are actual
+results for the `ui-redesign` branch. No hosted deployment, route-by-route visual
+review, font redistribution permission, or performance trace is claimed.
 
 The implemented slice includes the semantic light/dark palette and six identity
 slots, self-hosted Satoshi, the memory-only System/Light/Dark owner and menu,
 shared primitive/state/motion contracts, skip link and named main landmarks, and
-the migration of every existing screen off its hardcoded palette. The only
-intentional hardcoded brand mark is the homepage logo gradient and Sparkles.
+the migration of every existing screen off its hardcoded palette. The brand
+system now uses the approved Constellation-S mark and **Sabha AI** wordmark: an
+inline SVG with separate light/night groups, unique gradient-ID prefixes, and a
+matching app icon. Sparkles remains only as a decorative semantic icon in the
+demo CTA, not as a brand mark.
 
 | Check | Command/environment | Result |
 | --- | --- | --- |
@@ -856,25 +861,21 @@ control, and must be absent from the accessibility tree and pointer handling.
 
 #### Motion lifecycle and preferences
 
-- Offer a reachable, labelled **Background animation: On / Paused** control in
-  the shared Appearance UI. It is separate from meeting playback, 1x/2x,
-  Show full response, and genuine operation feedback. Pausing leaves a composed
-  static environment and does not pause a turn or recording.
-- The choice is memory-only in the public presentation owner and survives soft
-  navigation, consistent with section 3. No cookies, browser storage, account
-  setting, analytics, cross-tab sync, or Auth/provider initialization.
+- The shared Appearance UI contains theme choices only. There is no in-app
+  **Background animation: On / Paused** control anywhere in the product, and no
+  second pause affordance in a header, footer, or settings drawer. Meeting
+  playback, 1x/2x, Show full response, and genuine operation feedback remain
+  separate product controls.
 - With `prefers-reduced-motion: reduce`, render a static field from the outset
-  and stop an existing decorative loop immediately. A manual On choice cannot
-  override the active accessibility preference. Explain a disabled Resume/On
-  control; retain the user's manual pause if the OS preference later changes.
-- Hover/focus-only suspension is not the pause mechanism. People must be able
-  to stop the environment and continue working elsewhere on the page.
+  and stop an existing decorative loop immediately. This operating-system
+  preference is the sole authority that pauses decorative motion; no manual
+  product preference overrides it.
 - Suspend work while the document is hidden or the field is inactive. Resume
   from a stable position without a catch-up burst. Do not restart, reseed,
   flash, or replay an entrance on every route change, theme switch, or refetch.
 - Preserve the application-field state when visiting/leaving the homepage but
-  do not run a hidden application renderer there. Do not conflate its control
-  with the homepage hero's separate scene choreography or playback controls.
+  do not run a hidden application renderer there. Do not conflate it with the
+  homepage hero's separate scene choreography or playback controls.
 - With JavaScript, asset, or renderer failure, a theme-correct static canvas
   remains. All text, links, forms, dialogs, and runtime controls still work.
 
@@ -920,7 +921,8 @@ universally supported, expose **Solid surfaces** as a memory-only Appearance
 choice as well. Standard mode respects the OS preference where supported;
 Solid surfaces always wins over the decorative material. Replace the fill and
 edge treatment appropriately, not just the blur. This choice is independent of
-background animation and must leave actions, spacing, selection, and focus intact.
+appearance theme and motion preference and must leave actions, spacing,
+selection, and focus intact.
 
 ### B.6 dddynamite participant marks
 
@@ -1085,11 +1087,11 @@ than inventing an impossible fixture.
 | ST02 Atmosphere calibration | Compare static/animated captures and a sustained reading interaction. Record final density, point size, drift, wash, and theme-specific values. Inspect irregularity, repeat seams, flicker/aliasing, foreground distraction, and bright patches. Test light independently, not by inversion. A pleasant still is insufficient evidence that motion is subtle. |
 | ST03 Material calibration and contrast | Compare 65%/75%/88% tint samples at a controlled backdrop/blur in both themes. Record chosen values and actual text/control/focus contrast over the brightest permitted moving background, selected/hover states, and portal menus. Verify visible transmission without sharp stars behind labels; no label opacity, clipping seams, or nested filters. Retain WCAG AA thresholds from section 8. |
 | ST04 Avatar catalog | Provide a provenance/notice record and visual contact sheet at 24/32/40px, both themes, monochrome and solid fallback. Inspect optical size, centering, distinguishable silhouettes, clipping, legible outlines and focus. Verify local safe assets, theme-role recoloring, names/roles, stable mapping through reorder/add/remove/theme/navigation/reload/restart, collision handling, and immutable recorded identity. |
-| ST05 Preferences and accessibility | Keyboard/assistive-technology checks for Appearance, Background animation and Solid surfaces. Pause persists while interacting elsewhere; OS reduced motion produces static first paint and halts loops; reduced transparency, explicit opaque, unsupported blur and forced colors produce coherent solid surfaces. Choices stay memory-only and independent from playback speed, real feedback and feature state. |
+| ST05 Preferences and accessibility | Keyboard/assistive-technology checks for Appearance and Solid surfaces. No animation control is exposed; OS reduced motion produces static first paint and halts loops; reduced transparency, explicit opaque, unsupported blur and forced colors produce coherent solid surfaces. Choices stay memory-only and independent from playback speed, real feedback and feature state. |
 | ST06 Responsive/input | Exercise 320px, 390x844, 768px, 1024x768, 1440x900, 1920x917 and wide, plus 200% text and 400% zoom/reflow. Test long names/agenda, wrapped chrome, keyboard focus, touch, virtual keyboard, menus/dialogs, short viewports, and no horizontal page overflow or decorative hit interception. Reading width and operable controls take priority over matching exposed desktop margins. |
-| ST07 Continuity and interruption | Trace soft navigation, theme/System changes, manual pause, Solid surfaces, tab hiding/resuming, and homepage entry/return. No field reseed/entrance burst, catch-up, flash, duplicate renderer, feature remount, refetch, draft loss, focus loss, checkpoint change, or evidence reset. Interrupt disclosure/inspector transitions and stream while scrolled up; retain the contribution anchor and Addendum A's behavior. |
+| ST07 Continuity and interruption | Trace soft navigation, theme/System changes, OS reduced motion, Solid surfaces, tab hiding/resuming, and homepage entry/return. No field reseed/entrance burst, catch-up, flash, duplicate renderer, feature remount, refetch, draft loss, focus loss, checkpoint change, or evidence reset. Interrupt disclosure/inspector transitions and stream while scrolled up; retain the contribution anchor and Addendum A's behavior. |
 | ST08 Cross-browser/failure | Exercise supported Chromium, Firefox and WebKit targets, with actual browser versions recorded and real-device follow-up for relevant mobile behavior. Inspect sticky/backdrop sampling, corner/ancestor overflow, top-edge flicker, stacking/portal seams, click/scroll hit testing, and responsive fallback. Test JS/asset/renderer/context failure where applicable; content and real actions remain usable without the effect. |
-| ST09 Combined performance | Record the four B.8 configurations on reference desktop and constrained hardware, including sustained reading/scrolling/streaming, inspector interaction and repeated routes. Compare frame/paint/composite cost, tasks, resolution, bytes and memory/layers; verify hidden/paused states stop work and cleanup is bounded. Document degradation choices and final application budget; an assumed GPU acceleration claim does not pass. |
+| ST09 Combined performance | Record the four B.8 configurations on reference desktop and constrained hardware, including sustained reading/scrolling/streaming, inspector interaction and repeated routes. Compare frame/paint/composite cost, tasks, resolution, bytes and memory/layers; verify hidden and reduced-motion states stop work and cleanup is bounded. Document degradation choices and final application budget; an assumed GPU acceleration claim does not pass. |
 | ST10 Runtime isolation and room-first completion | Keep RF01-RF08 and existing replay/practice/live/vault/evidence/closing/tutorial tests passing. Verify no new provider/Auth/settings/bootstrap/network calls or persistent writes caused by decoration/preferences/avatars; no command-count or prepared-action availability changes. Actual record relationships and access-loss behavior remain truthful. Visual completion requires Addendum A plus this material/identity review, not only passing tests. |
 
 At minimum, room evidence includes resting and expanded question, long historical
@@ -1100,7 +1102,7 @@ these by auto-advancing the tutorial, faking events, or making unavailable actio
 look available. The shared evidence viewer remains singular and revision-safe.
 
 Include interaction recordings/traces, not just stills: ordinary background
-movement while reading, pause/resume, material scroll edges, question expansion,
+movement while reading, reduced-motion fallback, material scroll edges, question expansion,
 record open/close, theme switch during streaming, reduced/opaque fallbacks, and
 avatar identity continuity. Record a visual decision for each gate with failures
 and open questions. Mark a gate complete only against new evidence for this pass.
@@ -1142,8 +1144,11 @@ by its presence. Retain exactly three numbered redesign specs.
   guarantee in Sabha.
 - [WCAG 2.2: Pause, Stop, Hide](https://www.w3.org/WAI/WCAG22/Understanding/pause-stop-hide.html)
   and [web.dev: Motion accessibility](https://web.dev/learn/accessibility/motion):
-  persistent automatic decorative movement needs an operable pause/stop/hide
-  answer; reduced motion or hover-only suspension is not the whole solution.
+  persistent automatic decorative movement normally needs an operable
+  pause/stop/hide answer. This revision deliberately removes in-app animation
+  controls; any future persistent decoration must be reviewed against this
+  criterion, with OS reduced motion as the current mitigation rather than a
+  claim of conformance.
 - [MDN: prefers-reduced-transparency](https://developer.mozilla.org/en-US/docs/Web/CSS/@media/prefers-reduced-transparency):
   support is limited; retain explicit and unsupported-browser solid fallbacks.
 - [web.dev: Animations guide](https://web.dev/articles/animations-guide): profile
@@ -1249,9 +1254,10 @@ replay-evidence or stored-data changes. Appearance remains memory-only.
 
 Status: **implemented locally, not accepted**. This record covers the requested
 room layout refinement and a bounded first slice of Addendum B (shared atmosphere,
-background-animation pause, and dddynamite participant marks). It does not claim
-the full Addendum B route sweep or ST01-ST10 completion, and it does not accept
-Addendum A or Spec 31.
+background-animation pause, and dddynamite participant marks). The pause control
+was later removed by the animation-control removal record below. It does not
+claim the full Addendum B route sweep or ST01-ST10 completion, and it does not
+accept Addendum A or Spec 31.
 
 Commits on `ui-redesign`:
 
@@ -1267,10 +1273,12 @@ Commits on `ui-redesign`:
   `components/atmosphere`, mounted behind the demo and operator shells. The field
   is fixed, decorative, `aria-hidden`, and pointer-events-none. Navigation chrome
   is selectively translucent; discussion, dock, and record surfaces stay opaque.
-- Appearance now owns a memory-only `Background animation: On / Paused` choice,
-  independent of replay. `prefers-reduced-motion` forces the resolved state to
-  paused and disables manual On. No storage, cookie, network, Auth, provider, or
-  query access is added.
+- At this stage Appearance owned a memory-only
+  `Background animation: On / Paused` choice, independent of replay;
+  `prefers-reduced-motion` forced the resolved state to paused and disabled
+  manual On. No storage, cookie, network, Auth, provider, or query access was
+  added. The manual choice was later removed; OS reduced motion remains the only
+  pause authority.
 - Ten local dddynamite star/spark/burst silhouettes, assigned deterministically
   from participant identity. Names and roles remain visible; color is
   supplementary; no initials or generic letter shapes are used. The director uses
@@ -1305,7 +1313,7 @@ Commits on `ui-redesign`:
 | Build | `cd frontend; npm run build` | 20 routes compiled |
 | Production browser journeys | `cd frontend; npm run test:e2e:prod` | 48 tests: 46 passed, 2 conditionally skipped |
 | Identity contract | `npx vitest run src/components/identity/participant-mark.test.tsx` | 4 tests passed |
-| Appearance/starfield pause | `e2e/appearance.spec.ts` | 8 tests passed |
+| Appearance/starfield | `e2e/appearance.spec.ts` | 8 tests passed at this record; the current suite has 13 and the manual pause was later removed |
 
 Room reading space at 1440x900 remains above the two-thirds threshold: work area
 674px, discussion 450px, ratio **0.66766**, with no outer page scroll. The
@@ -1318,15 +1326,37 @@ assumed.
 | Gate | Status | Evidence / remaining work |
 | --- | --- | --- |
 | ST01 coverage/composition | Partial | Demo/operator shells and room populated states are covered by browser journeys; no full non-homepage route inventory or capture set. |
-| ST02 atmosphere calibration | Partial | Shared field, drift, wash, pause, and reduced-motion behavior implemented; no sustained-reading or seam/alias capture series. |
+| ST02 atmosphere calibration | Partial | Shared field, drift, wash, and reduced-motion behavior implemented; no sustained-reading or seam/alias capture series. |
 | ST03 material calibration/contrast | Partial | Chrome uses translucent surface with opaque working surfaces; no 65/75/88% tint comparison or browser-composited contrast table. |
 | ST04 avatar catalog | Partial | Ten local marks, stable assignment, silhouette/no-initial contract, and 24/32/40px component test exist; no both-theme contact sheet, forced-colors review, or complete provenance package. |
-| ST05 preferences/accessibility | Partial | Keyboard/AT menu, memory-only pause, reduced-motion override, and no-persistence e2e pass; explicit Solid-surfaces preference remains unimplemented. |
+| ST05 preferences/accessibility | Partial | Keyboard/AT theme menu, OS reduced-motion handling, and no-persistence e2e pass; no animation control remains in the UI. Explicit Solid-surfaces preference remains unimplemented. |
 | ST06 responsive/input | Partial | 320/390/768/1024 and room reading-space checks pass; 200% text, 400% zoom/reflow, forced colors, and virtual-keyboard states not separately reviewed. |
 | ST07 continuity/interruption | Partial | Theme toggles, practice draft retention, soft navigation, and tutorial state pass; no interruption trace for streaming, scroller, and inline help. |
 | ST08 cross-browser/failure | Open | Chromium production run only; Firefox/WebKit, real-device, and renderer-failure tests absent. |
 | ST09 combined performance | Open | No four-configuration traces, asset budget, paint/composite report, or memory/layer growth measurement. |
 | ST10 runtime isolation/room-first completion | Partial | Full local runtime suites pass and no persistence/network was added; hosted gates and visual review remain open. |
+
+### Animation-control removal record
+
+Status: **implemented locally on `ui-redesign` (2026-11-07).**
+
+- The shared Appearance menu now contains theme choices only. The
+  `Background animation` section, On/Paused options, memory-only manual
+  preference, and its setter were removed from `menu.tsx` and `provider.tsx`.
+- `data-background` is now derived solely from `prefers-reduced-motion`. No page
+  exposes an in-app animation toggle.
+- The homepage persona field and headline no longer expose a paused state. They
+  still suspend when offscreen or document-hidden and remain static under
+  reduced motion.
+- The homepage demo CTA badge now uses the night Constellation-S mark instead of
+  Sparkles.
+
+Verification: `npm test` 114 files / 685 tests; `npm run test:architecture`
+7 files / 52 tests; `npx tsc --noEmit` clean; `npm run lint` 0 errors and 19
+pre-existing warnings; homepage + appearance development E2E 29 passed;
+production E2E 69 tests: 67 passed and 2 conditional skips; production build
+compiled 20 routes in 5.2s. The appearance E2E explicitly asserts that the menu
+has no `Background animation` text and no On/Paused radio items.
 
 ### Exit and rollout
 

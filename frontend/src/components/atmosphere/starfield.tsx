@@ -229,7 +229,7 @@ function usePointerParallax(
  * A fixed, pointer-transparent stellar field for application routes. Three
  * seeded depth planes drift at different speeds, a faint galaxy band gives the
  * field structure, and a few sparse meteors keep it from feeling mechanical.
- * The Appearance owner can pause every layer without touching room state.
+ * OS reduced motion pauses every layer without touching room state.
  */
 export function Starfield({
   density = "standard",

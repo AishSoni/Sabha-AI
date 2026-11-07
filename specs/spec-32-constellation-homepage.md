@@ -2,376 +2,470 @@
 
 ## Status and ownership
 
-**Status: proposed detailed specification; no implementation is recorded here.**
-Depends on [Spec 31](spec-31-design-system-and-motion.md). Read
-[Spec 33](spec-33-application-experience.md) for the real demo/operator destinations.
-This document owns `/`: four sections, both appearances, assets, responsive
-composition, hero choreography, document constellation, and homepage acceptance.
+**Status: implemented and locally accepted on `ui-redesign` (2026-11-07).**
 
-The user locked the four-section arrangement, Cosmos-inspired persona field,
-rotating second-line concept, demo CTA, quieter operator login, document graph,
-Satoshi, restrained glass, and subsequently both light and dark UI. Exact copy,
-persona art, palette/timing values, graph content, and implementation renderer
-remain reviewable proposals. In particular, rotating-line wording has been
-explicitly deferred; do not represent the draft below as approved copy.
+Depends on [Spec 31](spec-31-design-system-and-motion.md). Read
+[Spec 33](spec-33-application-experience.md) for the real demo/operator
+destinations. This document owns `/`: its four visible regions, both appearances,
+brand assets, responsive composition, hero choreography, document constellation,
+and homepage acceptance.
+
+This revision replaces the earlier proposals. The Constellation-S logo is now
+approved and implemented; the rotating second line is approved; the homepage no
+longer owns appearance or motion controls; and the evidence graph, renderer,
+density, and responsive behavior below describe the built experience rather than
+an option for review. Exact values are recorded so later work does not have to
+reconstruct them from code.
+
+The local gates in §10 pass except for HP09's real-user/INP evidence, which is a
+release-verification activity rather than outstanding implementation. Hosted
+deployment, throttled field traces, screen-reader review, and physical-device
+review are not claimed.
 
 ## 1. Experience and information hierarchy
 
-The homepage should communicate: **different AI perspectives, grounded in
-inspectable sources, with the person choosing the direction**. It is an invitation
-to inspect a prepared advisory meeting, not a claim of current autonomous research.
+The homepage communicates: **different AI perspectives, grounded in inspectable
+sources, with the person choosing the direction**. It is an invitation to inspect
+a prepared advisory meeting, not a claim of live autonomous research.
 
 Hierarchy:
 
-1. A stable two-line invitation and an unmistakable demo action.
+1. A stable invitation and an unmistakable recorded-demo action.
 2. Distinct persona representations in a coherent surrounding field.
 3. A legible explanation of the source/evidence relationship below the hero.
-4. Minimal navigation, appearance/effects controls, and operator access.
+4. A quiet brand mark, operator access, and footer destinations.
 
-No extra feature-card row, pricing, testimonials, fabricated customer logos,
-newsletter, FAQ accordion, dashboard screenshot, or fifth section is included.
-Do not copy Cosmos's name, imagery, proprietary code, search input, app-download
-CTA, or QR panel. Borrow studied behavior and composition through an original
-implementation, with rights-cleared Sabha assets.
+The page has four visible regions: floating chrome, constellation hero, evidence
+constellation, and footer. There are two semantic `<section>` elements inside
+`<main>` (hero and evidence); chrome and footer are not additional sections.
+
+No feature-card row, pricing, testimonials, fabricated customer logos,
+newsletter, FAQ accordion, dashboard screenshot, or fifth region is included.
+Cosmos's name, imagery, proprietary code, search input, app-download CTA, and QR
+panel are not copied. The implementation is original and uses Sabha-authored
+inline SVG.
 
 ## 2. Page anatomy and responsive frame
 
-### 2.1 Section 1: minimal header
+### 2.1 Chrome and the Constellation-S brand
 
-- Brand/name at the leading edge; existing mark may receive a quieter treatment,
-  but redesigning the logo itself is not authorized by this spec.
-- Trailing appearance menu and **Pause animation / Resume animation** control.
-  Include the state in the accessible name; do not make users discover a hidden
-  settings drawer to stop perpetual effects.
-- Primary demo and operator actions live in the hero; header does not repeat a
-  full marketing navigation or become an additional glass capsule.
-- Proposed height 64px wide, 56px compact, with Spec 31 gutters. It shares the
-  hero environment rather than pushing the central composition down by another
-  full header-height margin. At text enlargement it can grow normally.
-- On scroll it may remain sticky with an opaque quiet surface and subtle lower
-  edge; no automatic hide/reveal chasing pointer direction. Focus is never hidden
-  beneath it. No second sticky header is introduced.
+The chrome is a floating absolute layer over the hero, not a sticky header. It
+does not push the central composition down and does not become an opaque second
+header on scroll. Its inner measure is `80rem` with normal Spec 31 gutters. The
+only content is the brand link; there is no marketing navigation, appearance
+menu, pause control, or duplicate demo CTA.
 
-### 2.2 Section 2: persona-constellation hero
+The approved brand replaces the former Sparkles placeholder everywhere the Sabha
+brand appears:
 
-At 1440x900, header and hero together occupy approximately the first stable
-viewport. Use a minimum height, never a fixed clipping height: enlarged text,
-short laptop screens, mobile browser chrome, and wrapped controls may extend it.
-At 390x844 the entire invitation, demo button, operator link, and disclosure
-should ordinarily be visible without a preliminary scroll.
+- The mark is the supplied Constellation-S concept: three linked arcs, three
+  nodes (plum, lilac, plum), and six small stars. It is an inline SVG with a
+  `198 x 239` viewBox and no external image, `<use>` URL, raster fallback, or
+  runtime color inversion.
+- The wordmark reads **Sabha AI** in a heavy geometric sans at `700` weight,
+  line-height `1`, and `-0.045em` tracking. The lockup is inline-flex with a
+  `0.5em` gap; the mark height is `1.65em`.
+- Light and night artwork are authored as separate SVG groups. CSS shows the
+  appropriate group from the resolved theme rather than recoloring one group:
+  explicit `data-theme` wins, and system dark applies only when no explicit
+  light theme is set. Every lockup receives a unique gradient-ID prefix so two
+  lockups on one page cannot collide.
+- The mark itself is `aria-hidden`. The chrome link is named **Sabha home**. The
+  footer lockup exposes **Sabha AI** as readable text. The wordmark is never
+  re-created as an image.
+- `frontend/src/app/icon.svg` is the 64px dark rounded-square app icon, using the
+  night constellation. The former default `favicon.ico` was removed, so Next
+  serves the SVG icon through `<link rel="icon">`.
+
+The chrome link has a minimum `2.75rem` target. At text enlargement the lockup
+grows normally with its font size. It remains legible over the field because the
+mark and wordmark carry restrained shadows, not a glass capsule.
+
+The demo CTA badge also uses the Constellation-S mark, forced to its night
+variant so it remains legible on the badge's fixed violet gradient in both page
+themes. There is no Sparkles brand mark. Sparkles remains only as a semantic
+icon for tutorial, persona generation, and thinking states.
+
+### 2.2 Section 1: persona-constellation hero
+
+The hero is `<section class="home-hero" aria-labelledby="home-hero-title">`.
+It has a minimum height of `100svh`, never a fixed clipping height. It uses
+`padding: 6.75rem 1rem 5rem`; at `768px` and above the vertical padding becomes
+`7rem` and `5.5rem`, and at `639px` and below it becomes `6rem` and `4.5rem`.
+The hero owns the theme canvas, starfield, field, central content, and the bottom
+anchor; the floating chrome sits above it.
 
 Layer order:
 
-1. Theme canvas and sparse starfield.
-2. Persona field, softened through a central exclusion mask.
-3. Stable central content and controls.
-4. Minimal header/effects controls and optional downward navigation.
+1. Theme canvas and deterministic sparse starfield.
+2. Persona field, softened through a measured central exclusion mask.
+3. Stable central content and actions.
+4. Floating brand chrome and the bottom evidence anchor.
 
-Foreground is real HTML, server-renderable and operable without canvas/fonts.
-The center is optically balanced, not mechanically centered between unrelated
-page sections. Protect enough space for the longest approved headline, CTA,
-operator access, and recorded disclosure at every supported size.
+The foreground is real server-rendered HTML and remains complete without
+JavaScript, canvas, or fonts. The hero content is centered in a `75rem` measure.
 
-| Region | Proposed wide behavior | Proposed compact behavior |
+| Region | Wide behavior | Compact behavior |
 | --- | --- | --- |
-| Foreground | Max 880px; two-line title, <=3 short lead lines | Full available width, 16px gutters; keep fixed/rotating phrases readable |
-| Persona field | 14–20 visible representations across depth levels, edge cropping allowed | 6–8, predominantly peripheral; omit crowded placements |
-| Display text | Spec 31 display scale; second-line slot shared by outgoing/incoming copy | Responsive size; allow up to two lines for changing phrase without hiding actions |
-| Demo CTA | 280–360px wide, 56px height, restrained glass | Width <=320px or available width, 52px minimum height |
-| Operator login | Quieter text/outline treatment below demo CTA, >=44px target | Same hierarchy; never a tiny secondary hit target |
-| Disclosure | Plain readable metadata under actions | Wrap normally, not hidden or reduced below readable size |
+| Foreground | Two-line title, action row, anchor | Full width with `16px` gutters; title can wrap, actions remain visible |
+| Persona field | 189 rendered slots; the viewport reveals an elliptical subset | Same 189 slots, heavily cropped; no reduced density contract |
+| Display text | `clamp(2.125rem, 3.6vw + 1.25rem, 4.5rem)`, line-height `1.02` | Fluid clamp continues; phrase may wrap at `<=639px` |
+| Tail slot | Reserved `1.18em`; phrases do not move the CTA | Reserved `2.04em`; phrase may take two lines |
+| Demo CTA | Shell `min(100%, 26rem)`; button min-height `4rem` | Shell `min(100%, 20rem)`; button min-height `3.5rem`; measured width is at least `288px` down to `320px` |
+| Operator link | Quiet pill, min-height `2.75rem`, full radius | Same hierarchy and target; may fall below the first viewport at enlarged text |
+| Evidence anchor | Bottom center, `1.25rem` inset | `0.8rem` inset; still a full link target |
 
-Visible representation counts are a proposed density budget, not the number of
-available personas. Repeated artwork must not imply a larger roster or more
-simultaneous meeting participants. Reduce count before shrinking essential text.
+At `1440x900` the invite, actions, and anchor occupy the first stable viewport.
+At `390x844` the invite and both actions remain visible without a preliminary
+scroll at default text size. At 200% text the page grows vertically and scrolls;
+there is no horizontal overflow, and the CTA/operator may move below the fold.
 
 ### 2.3 Hero copy and action contract
 
-Draft static fallback for review: **Bring more minds / to your next decision.**
-The second line is reserved for later approved rotating copy. This draft may be
-revised without changing the layout contract; implementation must not invent a
-bank of rotating phrases to fill the slot.
+The static accessible title is:
 
-Primary action: **Explore the recorded demo** -> `/demo`.
-Secondary action: **Operator sign-in** -> `/login`.
-Concise disclosure: **Prepared demo · recorded responses, not live generation.**
-Do not imply the homepage starts a meeting, chooses a persona, requests a model,
-or triggers inference. Clicking the CTA navigates immediately; it does not wait
-for the current scene or an outgoing animation to complete. A selected scene is
-not passed as a hidden persona/meeting configuration.
+> **Bring more minds**
+> **to your next decision.**
 
-If a lead sentence is needed, keep it product-specific and short, describing
-distinct perspectives, cited evidence, and user direction. No generic AI slogans.
-Avoid an additional brand wordmark above the headline if the header already names
-Sabha; reserve space for the invitation itself.
+The second line rotates through four approved phrases:
 
-Optional bottom chevron links to section 3, labelled **Explore the evidence
-constellation**. It uses normal anchor behavior, appropriate sticky-header
-offset, and reduced-motion-safe scrolling. It is not an autoplay/progress control.
+1. `to your next decision.`
+2. `before the next call.`
+3. `for the hardest question.`
+4. `with every source in view.`
 
-## 3. Persona art and scene data
+The interval is `7000ms`; the outgoing/incoming transition is `700ms`. The H1
+keeps `aria-label="Bring more minds to your next decision."` for its entire life,
+so assistive technology receives one stable headline. Rotating text and the three
+emblem thumbnails are `aria-hidden`; there is no live region announcing every
+cycle. The visible first phrase remains the accessible description.
 
-### 3.1 Art direction proposal and approval gate
+The headline advances through an 18-scene index (one phase per authored emblem),
+while the copy itself repeats every four scenes. The interval runs only while the
+headline is intersecting the viewport and motion is eligible. OS reduced motion
+freezes the phrase and suppresses outgoing decorative layers. The interval
+restarts from the current state when the page returns; it does not replay a
+backlog of scenes.
 
-Proposed direction: original role emblems/objects with consistent lighting,
-framing, and texture, suggesting a mandate without pretending to be a human.
-This is a proposal, not an approved asset style. Obtain one representative art
-sheet in both themes before producing the full set; this spec authorizes no
-image-generation run by itself.
+Primary action: **Try the recorded demo** -> `/demo`.
 
-No generic robot heads, fake human profile photographs, financial-only branding,
-or random space stock photography. The role artwork should remain recognizable
-at small scale and without a colored border. Favor distinctive silhouettes,
-not tiny text baked into an image. Live custom personas need an initial/shape
-fallback; the homepage shows only the curated approved public subset.
+- The link is a real Next.js link and exposes the destination without JavaScript.
+- With normal motion and an unmodified click, it runs a `1050ms` sweep, then uses
+  `router.push('/demo')`. It never starts a meeting, selects a persona, requests
+  a model, or triggers inference.
+- Modified clicks (meta/ctrl/shift/alt or non-primary button) and
+  `prefers-reduced-motion: reduce` bypass the sweep and navigate normally.
+- The CTA has a `3rem` badge with the night Constellation-S mark, plus particles,
+  ring, and arrow. At `1440x900` the badge renders `48 x 48px` and the mark
+  `21.86 x 26.39px`; the night group is visible in both page themes. Its
+  decorative motion is suppressed under reduced motion.
 
-Asset manifest must record:
+Secondary action: **Operator sign-in** -> `/login`. It is a quiet full-radius
+pill, not a second primary button.
 
-- Public persona/template identity, display name, role/mandate, art identity.
-- Rights/license and source; approval status and intended appearances.
-- Dimensions, focal point, aspect ratio, mobile derivative, compressed sizes.
-- Solid/light/dark presentation and fallback; never invert artwork at runtime.
-- Scene association and accessible description where it conveys real information.
+Bottom anchor: **Explore the evidence constellation** -> `#evidence`. It uses
+normal anchor behavior, is a full link target, and is not a carousel/progress
+control.
 
-No homepage import from private operator persona data or provider configuration.
-Names/roles must match approved public examples; do not imply every example is
-in the currently recorded meeting. If artwork repeats, use depth/placement rather
-than inventing extra names. Establish all per-slot aspect ratios before loading.
+There is no hero disclosure line. The claim that the demo is prepared and
+recorded lives in the evidence section's visible label:
 
-### 3.2 Scene contract
+> **Illustrative view of the prepared demo · not a live retrieval record**
 
-A scene is data: stable ID, approved headline phrase, persona/art references,
-optional supporting wording, and field-image selection. It cannot contain code,
-provider calls, navigation overrides, analytics, or arbitrary remote asset URLs.
+The homepage never says it is generating live responses. The absence of the old
+disclosure is intentional and covered by tests.
 
-Until rotating copy is approved, ship the static fallback with the ambient field
-if implementation proceeds. Once approved, pair phrase and imagery deliberately.
-Do not rotate named viewpoints while leaving unrelated artwork as if it belongs
-to that scene. Not every phrase needs two inline thumbnails; the user requested
-persona representations in the field, not a mandatory copy of Cosmos's pair.
+## 3. Persona art and scene system
 
-Second-line transitions use overlapping layers within a reserved-height slot.
-The slot is based on the longest approved phrase at the current type size and
-wrap allowance, not on the first phrase alone. At text enlargement, prefer a
-stable static layout over clipped or endlessly resizing rotating text.
+### 3.1 Authored emblems
 
-Only one logical headline is exposed to assistive technology. Decorative outgoing
-copies and scene art are hidden from it. No live-region announcement every cycle.
-A static accessible headline describes the product accurately across scenes.
+The field contains 18 original role sigils, authored as inline SVG: strategist,
+investor, operator, analyst, engineer, designer, legal, scientist, writer,
+founder, researcher, marketer, finance, risk, product, data, people, and
+wildcard. Each has a distinct silhouette, internal parts, and accent. There are
+no robot heads, human profile photographs, stock space imagery, or remote asset
+URLs. The unit suite enforces 18 unique IDs and inline-safe markup with no
+external `href`, `src`, or `<image>`.
 
-## 4. Hero choreography and state machine
+The 189 field slots repeat those 18 sigils. Repetition conveys depth and
+composition, not a claim that 189 personas are present. No names are attached to
+individual field cards.
 
-### 4.1 States
+### 3.2 Slot and scene contract
 
-| State | Foreground | Field and scene behavior |
+`HOME_FIELD_SLOTS` is a deterministic list of 189 slots at every breakpoint. The
+`data-density` value is `wide` at `>=1200px`, `medium` at `>=768px`, and `compact`
+below that, but the slot count is deliberately one-for-one. The renderer's
+`setDensity()` is a no-op: the viewport changes which part of the constellation
+is visible, not the roster count. This replaces the earlier proposal of 14–20
+visible representations wide and 6–8 compact.
+
+Each slot has a seeded position, scale, opacity, and spiral phase. The layout is
+deterministic, so screenshots and tests are stable. The spiral samples positions
+along one shared path; orientation follows the radial direction rather than
+random spin. Adjacent slots may overlap, but the central exclusion keeps them out
+of the title and controls.
+
+The scene index is also deterministic. The headline's 18-phase index selects
+three emblem thumbnails from the same 18-sigil set. A phrase does not imply that
+the pictured roles are speaking in the current recording.
+
+### 3.3 Renderer and static fallback
+
+The DOM always renders all 189 `.home-slot` spans with inline emblem markup. A
+lazy-loaded WebGL2 canvas overlays them for the ambient field:
+
+- The engine requests `webgl2`; if unavailable it throws and the field records
+  `data-webgl="failed"`. There is no Canvas2D or DOM animation fallback.
+- The engine packs the 18 glyphs into an 18-layer texture array. It uses one
+  instanced draw with stride `11`, radius `16`, texture size `256`, and the
+  spiral scene contract above.
+- `data-webgl` is `static` before the engine resolves, `ready` after a successful
+  context, and `failed` after an initialization or context-loss failure.
+- The static 189-slot composition stays visible whenever the canvas is not
+  running. The canvas fades over it rather than replacing the HTML.
+- Device pixel ratio is capped at `1.5` below `768px` and `2` at wider sizes.
+
+The hero starfield is 72 deterministic stars across a `1600 x 1000` field. It is
+not an independently animated particle system and does not respond to pointer
+movement.
+
+## 4. Hero choreography and state
+
+### 4.1 Runtime states
+
+`data-activity` exposes the field's current reason:
+
+| State | Condition | Behavior |
 | --- | --- | --- |
-| Initial HTML | Fallback title/actions/disclosure immediately readable | Correct theme background and deterministic static composition |
-| Assets preparing | Controls remain usable | Load minimum essential art, reserve frames; no full-page spinner |
-| Ready arrival | One brief optional entrance, never gated | Fade in field, short coordinated acceleration then settle |
-| Ambient | Stable layout and actions | Slow shared movement; scene cycle only when eligible |
-| Interacting | CTA/links respond immediately | Pause cycling on headline hover/focus and any open menu; do not move action targets |
-| Offscreen/hidden | No extra work | Suspend field loop and scene scheduling; do not catch up multiple scenes on return |
-| User paused | State visible in effects control | Freeze decorative field/star motion and automatic scene cycling |
-| Reduced motion | Static readable composition | No automatic cycling, travel, burst, zoom, or scroll impulse |
-| Degraded/error | Full usable HTML remains | Stable fallback art or stars only; no retries that block navigation |
+| `reduced` | OS reduced motion | Static field; no arrival, ambient travel, scroll surge, or phrase cycling |
+| `hidden` | `document.hidden` | Loop and phrase scheduling suspend; no catch-up on return |
+| `offscreen` | Hero not intersecting | Loop and phrase scheduling suspend |
+| `fallback` | WebGL2 unavailable or context lost | Static field remains; links and headline continue |
+| `static` | Engine module still loading, or canvas not ready | Static field is readable immediately |
+| `running` | Visible, eligible, engine ready | Ambient spiral runs and the phrase interval is active |
 
-Pause and reduced motion are presentation preferences, held in memory only.
-Pausing does not pause the recorded meeting on another route or alter its runtime.
-User pause remains in effect across homepage visibility changes within the mounted
-application. If the OS requests reduced motion, it wins over Resume; explain the
-setting rather than silently re-enabling travel.
+Precedence is exactly `reduced -> hidden -> offscreen -> fallback -> static ->
+running`. The same conditions drive `data-motion` (`reduced` or `full`) and
+`data-webgl` independently.
 
-### 4.2 Proposed timing and motion behavior
+There is no in-app background-animation control anywhere in the product. The
+homepage does not own a pause preference and the Appearance menu contains theme
+choices only. `prefers-reduced-motion` is the sole authority that pauses the
+decorative field, phrase rotation, atmosphere, and CTA particles.
 
-| Element | Proposed behavior |
+### 4.2 Timing and motion
+
+| Element | Implemented behavior |
 | --- | --- |
-| Foreground arrival | Opacity + y <=8px, 240–400ms; no word-by-word delay; usable before/through animation |
-| Field readiness | 700–1000ms opacity reveal after minimum assets are decoded |
-| Field arrival | 500–700ms acceleration, settles within 2.5–3.2s; tune subtler than Cosmos for legible persona art |
-| Ambient trajectory | One coherent path system; tangent-aware orientation, restrained scale-depth, fade at boundaries |
-| Scene dwell | Start proposal 6s, counted only while eligible and ready; not an unconditional interval |
-| Headline change | 500–650ms opacity/vertical movement <=12px; optional shallow rotateX <=12deg and blur <=4px if readable |
-| Field art replacement | 650–850ms in-place mix; preserve frame/aspect/trajectory, subtle scale <=1.08→1 |
-| Scroll response | Optional bounded impulse along existing trajectory, smooth rise/fall; never alter scroll position |
-| Stars | Mostly static; no sparkling/strobing; if movement is retained, substantially slower than persona field |
+| Field ambient | Base velocity `0.32` along the shared spiral; tangent/radial orientation |
+| Arrival burst | Multiplier `20` for `3200ms`, ramped in over `700ms` |
+| Scroll response | Passive measured deltas, ramp `220ms`, hold `140ms`, bounded multiplier; never changes scroll position |
+| Resume | Resets the frame clock and resumes at the current offset; does not replay the arrival burst |
+| Phrase dwell | `7000ms`, only while visible and eligible |
+| Phrase transition | `700ms`; no outgoing layers are scheduled under reduced motion |
+| CTA sweep | `1050ms` before `router.push('/demo')`; bypassed for reduced motion and modified clicks |
+| Static/reduced | No travel, burst, zoom, scroll impulse, or phrase cycling |
 
-The stronger 3D headline roll in Cosmos is a studied reference, not a required
-effect. Prototype the shallow version against Satoshi and the approved text
-before increasing it. Final values belong to the Spec 31 family and must remain
-consistent across normal/reduced states.
+There is no hover-pause requirement for the headline or field. Pointer movement
+does not steer the field and does not create a parallax.
 
-### 4.3 Spatial rules and exclusion zone
+### 4.3 Exclusion and geometry
 
-Use one shared deterministic movement model rather than independent looping
-keyframes. A spiral is a strong prototype candidate; a literal vortex is not a
-locked requirement. Approximate arc-length travel to avoid curvature-induced
-speed jumps; orientation should relate to travel with limited initial variation.
-No continuous random spins, pointer-chasing, or tile collisions across controls.
+The central exclusion is an ellipse measured from the rendered headline range
+plus the CTA and operator rectangles. The core receives `88px` horizontal and
+`112px` vertical breathing room. The fade band spans `96–210px`; the plateau is
+`55–88%` of the measured area. This is computed at runtime rather than hard-coded
+to one desktop composition.
 
-Mask the persona layer with a soft elliptical center. Its dimensions derive from
-the actual content bounds plus breathing room, not a single hard-coded desktop
-radius. The mask must protect disclosure and controls as well as the title.
-On compact layouts, use a simpler sparse arrangement if the necessary mask would
-erase most art. Exclusion is transparent alpha, not an opaque/glowing rectangle.
+On resize, the `ResizeObserver` updates the canvas and mask and draws once when
+paused. It does not reselect the scene or restart the arrival burst. Theme changes
+recolor the environment only.
 
-Keep image swaps inside stable slots. New images cover-crop to the seeded slot;
-never alter its silhouette midflight. Preserve draw order and opacity when mixing
-images so a card does not reveal whatever is behind it halfway through a swap.
-Antialias corners/edges so moving diagonals do not crawl. Avoid fake depth through
-giant drop shadows or glass frames around every representation.
+## 5. Section 2: document/evidence constellation
 
-### 4.4 Eligibility, loading, and interruption
+### 5.1 Composition
 
-Cycle only while visible, document active, not reduced/paused, no headline
-hover/focus, no open menu, and next required assets ready. Waiting for assets
-extends the current scene; a slow load is not permission to show empty frames.
-After a bounded wait of 10s, skip an unavailable candidate or retain the current
-scene. No fetch/retry loop should accumulate while hidden.
+The section is `#evidence`, headed **Different perspectives. Traceable
+sources.** It explains that the prepared demo gives every role the same shared
+material, then a private working set; dashed lines show assignment and solid
+lines show an example citation from a prepared turn.
 
-On resume, begin a fresh dwell rather than instantly replacing the phrase being
-read. User navigation cancels pending scene work. Resize updates geometry without
-restarting the arrival burst or reselecting imagery. Theme changes recolor only
-the environment/frames, preserving timing and scene identity.
+The desktop presentation is a full-bleed `.home-graph__map` with authored
+positions, SVG edges, and semantic `<button>` nodes. It bleeds to the viewport
+edge while its heading and labels keep readable gutters. The map uses 170
+deterministic background stars, separate from the hero's 72.
 
-Optional scroll impulse is based on measured scroll velocity, smoothed and capped.
-It must not cause a burst after programmatic anchor navigation or returning from
-the background. Omit it on reduced motion and resource-constrained fallback.
-No pointer parallax is specified; it was an earlier unverified hypothesis, not
-the behavior found in the inspected Cosmos field.
+There is no permanent detail panel and no force-directed simulation. Selection
+highlights edges and opens an overlay; the graph itself does not move.
 
-## 5. Section 3: document/evidence constellation
+### 5.2 Content and relationship truth
 
-### 5.1 Purpose and composition
+The graph is illustrative, not a live retrieval record. It contains exactly nine
+nodes and thirteen edges:
 
-Communicate how distinct perspectives can draw on shared and assigned material,
-and how a person can inspect cited evidence. It resembles a carefully composed
-Obsidian-style knowledge graph expressed as a constellation, not a live database
-visualization or decorative galaxy with unexplained connecting lines.
+- Personas: The Credit Analyst, The Downside Reviewer, The Portfolio Analyst.
+- Shared material: Shared fact sheet.
+- Private working sets: Credit evidence, Downside worksheet, Portfolio mandate.
+- Cited sources: Crisil annexure, HDFC FY20 MD&A.
 
-Proposed heading: **Different perspectives. Traceable sources.** Draft supporting
-copy must distinguish available knowledge from material actually cited. Use a
-large graph area with an adjacent/underneath compact explanation, not three cards
-inside another glass panel. Maximum content width follows Spec 31; graph may
-bleed modestly within the section while labels stay within readable gutters.
+Six assignment edges show availability through the shared or private stack.
+Seven citation edges show a prepared response citing a source, with notes such as
+`C10`, `C1, C2, and C12`, or `C3`. There are no file-to-file semantic links, no
+`source-register`, no SHA-256 values, no retrieval scores, and no fabricated
+citation counts. The unit suite enforces the node/edge counts, the assignment vs
+citation distinction, and the absence of file-to-file edges.
 
-### 5.2 Content and relationship semantics
+The visible illustrative label is part of the section, not a tooltip:
 
-Default proposed approach: a small, authored **illustrative** graph built from
-rights-cleared public examples, explicitly labelled as illustrative. It does not
-import live knowledge, initialize replay, or claim to depict the current recording.
-If approved recorded examples are used instead, freeze their validated public
-identities/relationships at build time and label the package/as-of context; that
-choice requires an approved content manifest before implementation.
+> **Illustrative view of the prepared demo · not a live retrieval record**
 
-| Node/edge | Meaning | Must not imply |
-| --- | --- | --- |
-| File node | Named example source/document, readable type/label | Automatically cited, verified, or freshly retrieved |
-| Persona node | Named AI role represented in the example | A human, autonomous actor, or active generation |
-| Scope grouping | Shared meeting material or participant assignment | Published demo inputs are confidential to anonymous visitors |
-| Assignment edge | Material is available to the named role/scope | The role retrieved or cited every connected file |
-| Citation edge | Specific authored/recorded contribution cites a source; only if backed by approved identities | Similarity, assignment, or proximity equals a citation |
+The graph does not import live knowledge, initialize replay, or claim to depict
+the current recording.
 
-Do not draw file-to-file semantic links from imagination. If illustrative links
-are used, label their relationship as an example and explain it in the legend.
-No private filenames, unapproved source bytes, fabricated retrieval scores, or
-unsupported citation counts. Hash/retention identity is not factual validation.
+### 5.3 Interaction
 
-### 5.3 Interaction and animation
+- Hovering or focusing a node previews connected edges and opens the overlay with
+  `data-pinned="false"`. Moving away removes an unpinned overlay.
+- Clicking or pressing Enter/Space on a node pins the overlay. The pressed node
+  has `aria-pressed="true"`; only one node is pressed at a time.
+- The overlay labels the selection **Selected example**, shows the node name,
+  kind, description, and connection groups, and includes a `<details>` element
+  labelled **Read all connections**.
+- Escape clears the pinned overlay. Clicking the graph backdrop also clears it.
+- Focus has the same visible emphasis as hover. Touch tap pins; drag is not
+  required.
+- Edge style and the legend's **Assigned / available** and **Example citation**
+  labels distinguish relationship kinds without relying on hue alone.
 
-- Proposed desktop graph: 8–12 nodes at stable authored positions; smaller
-  screens show a reduced but semantically complete arrangement with a full
-  accessible relationship list underneath/on request.
-- No force-directed settling loop, compulsory dragging, zoom-to-read labels, or
-  continual node jitter. Choose layouts so text fits at its readable default.
-- First entry may reveal the graph in a single 400–600ms sequence: nodes fade,
-  then relevant edges resolve. Use no repeated per-scroll replay; reduced motion
-  shows it immediately. It is not pinned.
-- Selection by click or keyboard highlights connected nodes/edges in 180ms and
-  updates one solid detail region. Selection does not move the whole graph.
-- Hover can preview the same emphasis, but never owns unique information.
-  Focus has an equivalent visible state. Touch tap selects, not drag-only input.
-- Distinguish selected relation with thickness/style and text, not only hue.
-- Use semantic buttons/list controls or an equivalent accessible DOM structure;
-  a canvas-only graph with no relationship alternative fails acceptance.
-- A selected example opens a description in place. Only approved public assets
-  may offer a real evidence preview using the shared renderer. Otherwise explain
-  that it is illustrative; never render a dead **Open file** action.
+Below the desktop map, the **Inspect evidence in the demo** link navigates to
+`/demo`. It is not a second hero CTA and does not pretend to deep-link to an exact
+claim.
 
-An optional **Inspect evidence in the demo** link may navigate to `/demo` below
-the explanation. It is not a second primary CTA above the fold, and does not
-pretend to open an exact recording claim without an approved deep-link contract.
+### 5.4 Compact presentation and transition
 
-### 5.4 Hero-to-graph transition
+At `767px` and below the positional map is hidden and a structured
+`.home-graph__mobile` list presents the same nodes and relationships. Selecting a
+list item opens the same overlay behavior. This is a semantic alternative, not a
+decorative simplification: all nine nodes and their connection information remain
+available.
 
-Default: normal scrolling, continuous palette, generous but controlled spacing,
-and a visual change from scattered persona field to organized graph. The hero
-can fade at its section boundary; it does not morph personas into files and
-thereby imply unsupported relationships. A more literal transformation would
-need a separately reviewed mapping and performance proof. No scroll hijacking,
-mandatory pinning, or forced multi-screen animation sequence.
+The hero-to-evidence transition is normal scrolling with a continuous palette.
+There is no scroll hijacking, mandatory pinning, persona-to-file morph, or
+replayed reveal per scroll. The graph is visible in the initial HTML.
 
-## 6. Section 4: footer
+## 6. Footer
 
-Keep a fine divider, Sabha name, short accurate product description, and real
-destinations only. A quiet demo/operator pair is acceptable but not compulsory
-duplication of every header action. Appearance/effects controls remain accessible
-from the sticky header; do not build a footer link farm or disabled legal links.
-Include repository/legal links only when their actual destinations and content
-exist and are approved. No made-up copyright/company claims.
+The footer has a fine divider, the Constellation-S lockup, a short accurate
+description, and only real destinations:
 
-## 7. Light/dark, responsive, and fallback contracts
+- Description: **A prepared advisory meeting you can inspect — roles, shared
+  material, and cited sources in one recorded session.**
+- **Explore the recorded demo** -> `/demo`
+- **Operator sign-in** -> `/login`
 
-Dark hero: cool near-black canvas, restrained stars, persona imagery carries the
-foreground detail. Light hero: cool porcelain canvas, ink-blue fine stars/lines,
-same composition and imagery with theme-appropriate edges. No inverted art or
-separate rainbow/light-mode identity. Glass CTA must remain a clearly identifiable
-control against the brightest/darkest passing assets; fall back to solid when
-needed rather than adding a luminous border.
+The footer does not repeat every header action, add disabled legal links, invent
+copyright claims, or host appearance controls. Those controls are not present on
+the homepage; the shared Appearance menu remains available on application routes
+with theme choices only.
 
-At 1024x768 reduce field density and display size before hiding content. At 320px
-allow the title/action column to grow vertically and simplify the field. At 200%
-text or 400% zoom use readable flow, not a clipped fixed-height cinematic scene.
-Graph nodes may switch to a structured connection list at narrow widths. Both
-forms preserve meaning and selection detail.
+## 7. Appearance, responsive, and fallback contracts
 
-JavaScript/canvas failure leaves title, disclosure, navigation, and normal links.
-Font failure leaves a stable readable fallback. Asset failure leaves deterministic
-reserved frames or a reduced field, not broken-image icons around the headline.
-No live effect or third-party fetch repairs missing public assets.
+### 7.1 Light and dark
+
+Dark uses the deep near-black canvas, pale ink, violet accent, and night logo
+group. Light uses the porcelain canvas, deep ink, darker violet accent, and light
+logo group. Both use the same composition, emblem art, and hierarchy; artwork is
+not inverted at runtime and there is no separate light-mode identity.
+
+The theme switch is driven by explicit `data-theme` with a System fallback. The
+logo variant, page tokens, stars, CTA, overlay, and graph colors all follow the
+same resolved theme. The browser test verifies the correct logo group is visible
+and the page background changes between `rgb(7, 4, 15)` and
+`rgb(246, 241, 248)`.
+
+Forced-colors mode hides the field, starfield, and decorative effects and uses
+`CanvasText` borders so controls remain identifiable.
+
+### 7.2 Responsive and enlarged text
+
+Verified breakpoints are `320x800`, `390x844`, `768x900`, `1024x768`, and
+`1440x900`. At every size there is no horizontal overflow and all 189 static
+slots remain rendered. The operator link remains within the first viewport at
+default text size; the CTA is at least `288px` wide at `320px` and at least
+`320px` above that.
+
+A one-off 200% text audit at `1280x900`, `1024x768`, and `390x844` found no
+horizontal overflow. At the two narrower sizes the CTA/operator move below the
+fold and the page scrolls; this is accepted rather than clipping the cinematic
+hero. The phrase slot grows to `2.04em` at compact widths and to about `140px` at
+200% on mobile.
+
+A one-off `320px` transition audit sampled four phrase changes: the tail slot
+stayed `69.359375px` high, the CTA top stayed `439.96875px`, and scroll width
+stayed equal to the viewport. This supports the no-jump contract but is recorded
+as an audit, not as a permanent test.
+
+### 7.3 Degraded states
+
+- **No JavaScript:** server-rendered H1, wordmark, demo link, static field, map,
+  nodes, and footer remain. The overlay is absent.
+- **WebGL2 failure/context loss:** `data-webgl="failed"`, canvas opacity `0`,
+  `data-activity="fallback"`, static field and links intact.
+- **Font failure:** Satoshi falls back; H1, demo link, and logo remain visible and
+  readable.
+- **Reduced motion:** static field, no canvas animation, no phrase cycling, and
+  `data-background="paused"` stops the shared atmosphere and CTA effects.
+- **Missing artwork:** there is no remote hero artwork to fail. All emblem and
+  logo geometry is inline; the only network font assets have a fallback.
+
+No live effect or third-party request repairs missing assets.
 
 ## 8. Rendering and performance contract
 
-Prototype a bounded renderer with independent HTML content. The reference's
-WebGL2/worker strategy is evidence, not a mandate to overengineer Sabha's smaller
-field. Pick between DOM/Canvas2D/WebGL only after measuring the proposed density,
-image mixing, central mask, and device profiles. Record the decision inside this
-spec's implementation notes, not in a fourth design spec.
+The homepage uses a WebGL2-only ambient engine because the measured 189-slot,
+18-texture field fits it and the static DOM is a complete fallback. The engine is
+dynamically imported only by the homepage and does not enter other routes.
 
-- No per-frame component state; deterministic seed for stable screenshots.
-- Canvas/effect implementation lazy-loaded; core content and controls do not
-  depend on its download. Dynamic code/assets stay out of application routes
-  that do not need them.
-- Proposed incremental animation code budget <=80 KiB compressed. Initial hero
-  art <=600 KiB combined desktop, <=300 KiB compact; additional scenes deferred.
-  Fonts have a separate measured budget and first-paint strategy.
-- Proposed DPR cap 1.5 compact / 2 desktop; reduce for constrained resources.
-- Target effect frame work <=8ms reference desktop / <=16ms constrained profile;
-  capture actual traces including texture upload and scrolling. Never claim a
-  frame-rate guarantee from this specification alone.
-- Fail progressively: fewer representations, lower resolution, omit scroll
-  impulse, then static composition. Content/action quality never degrades first.
-- Proposed page goals on an agreed reproducible mobile profile: CLS <=.1,
-  LCP <=2.5s, INP <=200ms. Lab evidence informs release; field outcomes require
-  actual measurement and do not justify adding forbidden analytics to replay.
+- No per-frame React state; rendering is driven inside the engine's animation
+  frame and seeded layout.
+- The engine chunk is separate from the homepage client chunk.
+- No raster hero assets. Emblems, logo, starfield, and favicon are inline or SVG.
+- Fonts are self-hosted Satoshi variable and italic; font redistribution remains
+  governed by Spec 31 and is not re-licensed by this spec.
+- DPR caps: `1.5` compact, `2` desktop.
+- No hidden work: offscreen, hidden-document, and reduced-motion states stop the
+  loop. A paused resize draws one frame rather than restarting the loop.
+- The page targets CLS `<=0.1`, LCP `<=2.5s`, and INP `<=200ms` on an agreed
+  reproducible mobile profile. Lab evidence informs release; field outcomes
+  require measurement and are not inferred from this document.
+
+Measured in the production build:
+
+| Item | Measurement |
+| --- | --- |
+| Homepage client chunk | `43,603 B` raw / `13,828 B` gzip |
+| Lazy WebGL engine chunk | `10,688 B` raw / `4,417 B` gzip |
+| Satoshi variable + italic | `42,588 B` + `43,844 B` total `86,432 B` |
+| Raster hero art | `0 B` |
+| Animation code increment | `4.4 KiB` gzip, within the `<=80 KiB` budget |
+| Hero art budget | `0 KiB` against `<=600 KiB` desktop / `<=300 KiB` compact |
+
+A local unthrottled Chromium sample of the final production build at `1440x900`
+measured LCP `248ms` (the headline line), CLS `0`, one long task, 41 resources,
+and `633,290 B` transfer. A second, cache-warm `390x844` load measured LCP
+`124ms`, CLS `0`, and zero long tasks. Neither sample is a throttled field
+trace, and INP was not measured. The numbers demonstrate that the local build is
+not blocked by the budgets; they do not support a real-user performance claim.
 
 ## 9. Reference study: verified versus proposed
 
-The current Cosmos hero was inspected in public delivered code and Chromium,
-including mobile/reduced motion. Its field uses a shared spiral, tangent rotation,
-arc-length sampling, center alpha mask, entry impulse, scroll-velocity response,
-scene preparation, and stable slot image mixing. Hover pause/resume was observed.
-Reduced-motion scheduling and additional visibility rules were traced in code;
-not every rule was independently instrumented in a browser.
+The Cosmos hero was inspected in public delivered code and Chromium, including
+mobile and reduced motion. Its field uses a shared spiral, tangent rotation,
+arc-length sampling, a center alpha mask, an entry impulse, scroll-velocity
+response, scene preparation, and stable slot image mixing. Hover pause/resume was
+observed. Reduced-motion scheduling and additional visibility rules were traced
+in code; not every rule was independently instrumented in a browser.
 
 Despite an exported `Canvas2D` component name, the inspected renderer prefers
 WebGL2, with an OffscreenCanvas worker on supported desktops and other fallbacks.
@@ -385,28 +479,63 @@ First-party delivered code, hashed URLs subject to change:
 - [WebGL renderer](https://www.cosmos.so/_next/static/chunks/0fcpv0clz792h.js)
 - [Worker renderer](https://www.cosmos.so/_next/static/chunks/1voqwqpqltjc1.js)
 
-The values and behaviors proposed earlier in this document are Sabha decisions
-for review, not a transcription of Cosmos configuration or permission to reuse
-its implementation/assets.
+Sabha's implementation is an original, bounded interpretation of those observed
+behaviors. The values in §4 are Sabha decisions, not a transcription of Cosmos
+configuration or permission to reuse its implementation or assets.
 
-## 10. Acceptance and remaining decisions
+## 10. Acceptance gates
 
-| Gate | Required evidence |
-| --- | --- |
-| HP01 Composition | Exactly four sections; stable center; visible primary action/disclosure; no generic added marketing sections |
-| HP02 Appearance | Complete Light/Dark/System review at Spec 31 viewports; stars/art/glass work in both; no inversion trick |
-| HP03 Geometry | Longest approved phrase, font swap, resize, enlarged text; no CTA jumping or clipped phrases |
-| HP04 Motion | Arrival/ambient/pause/resume/offscreen/hidden/reduced and rapid navigation; no automatic app action |
-| HP05 Loading | Slow/missing next scene, image decode failure, font failure, JS/canvas unavailable; usable real links throughout |
-| HP06 Semantics | Accurate disclosure, real destinations, noninteractive moving art, one accessible headline, keyboard-equivalent graph |
-| HP07 Graph truth | Approved node/edge ledger, scope/citation distinction, illustrative label or exact recorded provenance, no private/live dependency |
-| HP08 Continuity | Theme/resize preserves scene; image mixing preserves aspect/opacity/draw order; no resetting arrival on refocus |
-| HP09 Performance | Measured asset/code budgets, profile traces, no perpetual hidden work, no unnecessary work on app routes |
-| HP10 Isolation | Public page/demo path has no Auth/vault bootstrap, provider calls, persistent writes, or third-party asset runtime dependency |
+| Gate | Status | Evidence and remaining work |
+| --- | --- | --- |
+| HP01 Composition | Pass (local) | E2E asserts one chrome region, zero `<header>` elements, two main sections, one footer, full-bleed map, and no permanent detail region. Screenshots at 1440 and 390 confirm the hierarchy. |
+| HP02 Appearance | Pass (local) | E2E switches System dark/light and verifies the correct logo group, page background, and foreground tokens. CSS provides light/dark tokens for every homepage surface. No route-by-route manual review at every viewport is claimed. |
+| HP03 Geometry | Pass (local) | E2E covers five viewports, no horizontal overflow, CTA width, operator position, and 189 slots. One-off 320px phrase audit and 200% text audits found no clipping or horizontal overflow. |
+| HP04 Motion | Pass (local) | E2E covers the 7s phrase change, reduced motion, offscreen and hidden suspension, and client navigation. Source review confirms resume resets the clock and does not replay the arrival burst; that specific resume path is not browser-instrumented. |
+| HP05 Loading | Pass (local) | E2E covers WebGL2 failure, font failure, no-JavaScript, reduced motion, and static fallback. There are no scene/image fetches to delay, so the former slow-next-scene case is not applicable. |
+| HP06 Semantics | Pass (local) | One stable H1 name, decorative rotation hidden, named brand link, real `/demo` and `/login` destinations, keyboard graph selection with `aria-pressed`, Escape clear, and a `<details>` relationship list. No screen-reader pass is claimed. |
+| HP07 Graph truth | Pass (local) | Unit tests enforce 9 nodes, 6 assignment edges, 7 citation edges, no file-to-file links, and no source-register/hash/retrieval-score strings. The visible label says illustrative and not a live retrieval record. |
+| HP08 Continuity | Pass (local) | Theme switching is CSS-only; resize uses `ResizeObserver` and draws once when paused; source review confirms theme/resize do not restart the arrival burst or reselect a scene. Browser tests cover theme swap and reduced/running transitions. |
+| HP09 Performance | Partial (local) | Production chunks are 13,828 B and 4,417 B gzip; animation increment is 4.4 KiB; raster hero art is 0 B; fonts are 86,432 B. Local LCP/CLS sample passes, CLS is 0, and hidden/offscreen loops stop. INP, throttled traces, and real-user field data remain unmeasured. |
+| HP10 Isolation | Pass (local) | E2E asserts no public persistence and no third-party requests; architecture tests enforce homepage boundaries. The page does not bootstrap Auth/vault, call providers, or initialize replay. |
 
-Before final visual implementation, review: persona art style and curated roster;
-baseline/rotating copy; final trajectory and density; graph illustrative versus
-recorded content; exact motion values after a bounded prototype. The homepage
-can have a complete static state while those creative choices remain unresolved;
-do not confuse a documented open decision with implementation permission to
-invent final content.
+Local implementation gates are complete. HP09's field/INP evidence is explicitly
+a release-verification item, not a missing feature; do not convert this partial
+row into a claim of production performance.
+
+## 11. Execution record
+
+Implementation lives in `frontend/src/features/homepage/`, with the shared brand
+in `frontend/src/components/brand/sabha-logo.tsx` and
+`frontend/src/styles/brand.css`.
+
+| Check | Command/environment | Result |
+| --- | --- | --- |
+| Full unit/integration | `cd frontend; npm test` | 114 files, 685 tests passed (28.50s); existing console warnings only |
+| Architecture | `cd frontend; npm run test:architecture` | 7 files, 52 tests passed (2.96s) |
+| Homepage + appearance E2E, dev | `npx playwright test e2e/homepage.spec.ts e2e/appearance.spec.ts --reporter=line` | 29 passed (1.1m); 16 homepage, 13 appearance |
+| Full production E2E | `cd frontend; npm run test:e2e:prod` | 69 tests: 67 passed, 2 skipped (1.8m); all 16 homepage tests passed |
+| Types | `npx tsc --noEmit` | Clean |
+| Lint | `npm run lint` | 0 errors, 19 pre-existing warnings in unrelated files |
+| Build | `npm run build` / production E2E build | Next.js 16.1.4; compiled in 5.2s; 20 static routes; `/icon.svg` present |
+| App icon | production HTML inspection | `<link rel="icon" href="/icon.svg?...">` present |
+
+The production Playwright skips are the existing conditional `legacy-journey`
+and `mixed-operator` suites, not homepage failures. The homepage suite covers
+composition, logo/theme, CTA mark, rotation, responsive geometry,
+persistence/network isolation, lifecycle suspension, WebGL fallback, font
+fallback, graph selection/overlay/keyboard, compact list, reduced motion,
+no-JavaScript behavior, and the absence of appearance or motion controls. The
+appearance suite additionally asserts that the shared menu exposes theme choices
+without `Background animation` or On/Paused items.
+
+## 12. Remaining verification outside this close-out
+
+- Hosted deployment and route-by-route visual review after deployment.
+- Throttled performance traces, INP measurement, and real-user field data.
+- Screen-reader and physical-device review.
+- Font redistribution permission remains a Spec 31 release item.
+- Spec 33's application routes remain separate; this document only closes `/`.
+
+No open creativity or implementation decision remains in this spec. The logo,
+copy, density, motion values, graph content, and renderer are recorded above and
+are covered by the local test suite.

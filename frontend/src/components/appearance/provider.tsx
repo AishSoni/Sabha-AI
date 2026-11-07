@@ -4,16 +4,12 @@ import * as React from "react";
 
 export type AppearancePreference = "system" | "light" | "dark";
 export type ResolvedAppearance = "light" | "dark";
-export type BackgroundAnimation = "on" | "paused";
 
 type AppearanceContextValue = {
   preference: AppearancePreference;
   resolved: ResolvedAppearance;
   setPreference: (preference: AppearancePreference) => void;
-  backgroundAnimation: BackgroundAnimation;
-  resolvedBackgroundAnimation: BackgroundAnimation;
   reducedMotion: boolean;
-  setBackgroundAnimation: (value: BackgroundAnimation) => void;
 };
 
 const AppearanceContext = React.createContext<AppearanceContextValue | null>(
@@ -61,15 +57,14 @@ function subscribeToReducedMotion(callback: () => void) {
 /**
  * Memory-only appearance owner. It deliberately never reads or writes
  * localStorage, sessionStorage, cookies, IndexedDB, Auth, vault, or queries.
- * A reload returns to System and background motion On by design.
+ * A reload returns to System; the OS reduced-motion preference remains the
+ * only authority that pauses decorative CSS animation.
  */
 export function AppearanceProvider({
   children,
 }: Readonly<{ children: React.ReactNode }>) {
   const [preference, setPreferenceState] =
     React.useState<AppearancePreference>("system");
-  const [backgroundAnimation, setBackgroundAnimationState] =
-    React.useState<BackgroundAnimation>("on");
   const systemDark = React.useSyncExternalStore(
     subscribeToSystem,
     () => getQuerySnapshot(DARK_QUERY),
@@ -82,9 +77,6 @@ export function AppearanceProvider({
   );
   const resolved: ResolvedAppearance =
     preference === "system" ? (systemDark ? "dark" : "light") : preference;
-  const resolvedBackgroundAnimation: BackgroundAnimation = reducedMotion
-    ? "paused"
-    : backgroundAnimation;
 
   React.useEffect(() => {
     const root = document.documentElement;
@@ -98,40 +90,22 @@ export function AppearanceProvider({
   React.useEffect(() => {
     document.documentElement.setAttribute(
       "data-background",
-      resolvedBackgroundAnimation,
+      reducedMotion ? "paused" : "on",
     );
-  }, [resolvedBackgroundAnimation]);
+  }, [reducedMotion]);
 
   const setPreference = React.useCallback((next: AppearancePreference) => {
     setPreferenceState(next);
   }, []);
-
-  const setBackgroundAnimation = React.useCallback(
-    (next: BackgroundAnimation) => {
-      setBackgroundAnimationState(next);
-    },
-    [],
-  );
 
   const value = React.useMemo(
     () => ({
       preference,
       resolved,
       setPreference,
-      backgroundAnimation,
-      resolvedBackgroundAnimation,
       reducedMotion,
-      setBackgroundAnimation,
     }),
-    [
-      preference,
-      resolved,
-      setPreference,
-      backgroundAnimation,
-      resolvedBackgroundAnimation,
-      reducedMotion,
-      setBackgroundAnimation,
-    ],
+    [preference, resolved, setPreference, reducedMotion],
   );
 
   return (

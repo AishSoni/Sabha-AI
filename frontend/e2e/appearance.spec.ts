@@ -240,13 +240,6 @@ test.describe("appearance lifecycle", () => {
         }));
         expect(Math.abs(parallax.x)).toBeGreaterThan(8);
         expect(Math.abs(parallax.y)).toBeGreaterThan(1);
-
-        await page.getByRole("button", { name: /^Appearance:/ }).click();
-        await page.getByRole("menuitemradio", { name: "Paused" }).click();
-        await expect(page.locator(".atmosphere-parallax").first()).toHaveCSS(
-            "transform",
-            "none"
-        );
     });
 
     test("keeps the starfield visible and moving in the meeting room", async ({
@@ -299,10 +292,7 @@ test.describe("appearance lifecycle", () => {
         expect(chatBackground).not.toBe("rgb(17, 25, 37)");
     });
 
-    test("pauses and resumes the shared starfield without persistent state", async ({
-        page,
-        context,
-    }) => {
+    test("exposes theme choices without animation controls", async ({ page }) => {
         await page.goto("/demo");
         const field = page.getByTestId("atmosphere-field");
         await expect(field).toBeVisible();
@@ -313,32 +303,17 @@ test.describe("appearance lifecycle", () => {
             "on"
         );
 
-        const before = await storageSnapshot(context, page);
         await page.getByRole("button", { name: /^Appearance:/ }).click();
-        await page.getByRole("menuitemradio", { name: "Paused" }).click();
-        await expect(page.locator("html")).toHaveAttribute(
-            "data-background",
-            "paused"
-        );
-        await expect
-            .poll(() =>
-                field
-                    .locator("svg")
-                    .first()
-                    .evaluate(
-                        (element) =>
-                            getComputedStyle(element).animationPlayState
-                    )
-            )
-            .toBe("paused");
-
-        await page.getByRole("button", { name: /^Appearance:/ }).click();
-        await page.getByRole("menuitemradio", { name: "On" }).click();
-        await expect(page.locator("html")).toHaveAttribute(
-            "data-background",
-            "on"
-        );
-        expect(await storageSnapshot(context, page)).toEqual(before);
+        await expect(
+            page.getByRole("menuitemradio", { name: "System" })
+        ).toBeVisible();
+        await expect(page.getByText("Background animation")).toHaveCount(0);
+        await expect(
+            page.getByRole("menuitemradio", { name: /^Paused$/ })
+        ).toHaveCount(0);
+        await expect(
+            page.getByRole("menuitemradio", { name: /^On$/ })
+        ).toHaveCount(0);
     });
 
     test("keyboard users can skip straight to main content", async ({ page }) => {
@@ -397,6 +372,10 @@ test.describe("appearance lifecycle", () => {
             reducedMotion: "reduce",
         });
         await page.goto("/demo");
+        await expect(page.locator("html")).toHaveAttribute(
+            "data-background",
+            "paused"
+        );
         await chooseAppearance(page, "Dark");
         await expectBody(page, DARK_CANVAS);
         await expect(page.getByRole("banner")).toBeVisible();

@@ -1,0 +1,68 @@
+/* Sabha Constellation-S brand lockup. */
+
+.sabha-logo {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5em;
+  min-width: 0;
+  color: currentColor;
+}
+
+.sabha-logo__mark {
+  display: block;
+  flex: none;
+  width: auto;
+  height: 1.65em;
+  overflow: visible;
+}
+
+.sabha-logo__wordmark {
+  font-weight: 700;
+  line-height: 1;
+  letter-spacing: -0.045em;
+  white-space: nowrap;
+}
+
+.sabha-mark__light {
+  display: block;
+}
+
+.sabha-mark__dark {
+  display: none;
+}
+
+html[data-theme="dark"] .sabha-mark__light {
+  display: none;
+}
+
+html[data-theme="dark"] .sabha-mark__dark {
+  display: block;
+}
+
+html[data-theme="light"] .sabha-mark__light {
+  display: block;
+}
+
+html[data-theme="light"] .sabha-mark__dark {
+  display: none;
+}
+
+@media (prefers-color-scheme: dark) {
+  html:not([data-theme="light"]) .sabha-mark__light {
+    display: none;
+  }
+
+  html:not([data-theme="light"]) .sabha-mark__dark {
+    display: block;
+  }
+}
+
+@media (prefers-color-scheme: light) {
+  html:not([data-theme="dark"]) .sabha-mark__light {
+    display: block;
+  }
+
+  html:not([data-theme="dark"]) .sabha-mark__dark {
+    display: none;
+  }
+}
