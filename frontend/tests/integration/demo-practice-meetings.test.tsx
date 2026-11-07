@@ -327,7 +327,7 @@ describe("demo practice meetings", () => {
 
         await waitFor(() =>
             expect(
-                screen.getByText(/No practice setup in this tab/)
+                screen.getByText(/No practice setup yet/)
             ).toBeInTheDocument()
         );
         expect(window.confirm).toHaveBeenCalled();
