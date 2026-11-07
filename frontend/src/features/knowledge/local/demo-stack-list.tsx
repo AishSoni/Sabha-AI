@@ -18,12 +18,7 @@ function Content() {
     const firstStackRef = useAnchorRef("knowledge.stack");
 
     return (
-        <main id="main-content" className="mx-auto max-w-5xl px-4 py-8 text-ink" tabIndex={-1}>
-            <div className="mb-4 rounded-control border border-warning/40 bg-warning-soft px-3 py-2 type-body text-warning">
-                These stacks and documents live in this browser tab only.
-                Deleting or resetting them does not change the recorded meeting,
-                its Files view, or its citations.
-            </div>
+        <main id="main-content" tabIndex={-1}>
             <StackListView
                 stacks={stacks.stacks}
                 isLoading={stacks.isLoading}
@@ -43,6 +38,15 @@ function Content() {
                     if (confirmed) stacks.deleteStack(stackId);
                 }}
                 firstLinkRef={firstStackRef}
+                backHref="/demo"
+                backLabel="Back to the board"
+                disclosure={
+                    <div className="rounded-control border border-warning/40 bg-warning-soft px-3 py-2 type-body text-warning">
+                        These stacks and documents live in this browser tab
+                        only. Deleting or resetting them does not change the
+                        recorded meeting, its Files view, or its citations.
+                    </div>
+                }
             />
         </main>
     );

@@ -1,25 +1,20 @@
 "use client";
 
 /**
- * Pure knowledge-stack collection presentation (spec-23).
+ * Pure knowledge-stack collection presentation (spec-23, spec-33).
  */
+import type { ReactNode } from "react";
 import Link from "next/link";
-import {
-    AlertTriangle,
-    BookOpen,
-    Loader2,
-    Plus,
-    Trash2,
-} from "lucide-react";
+import { BookOpen, Plus, Trash2 } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
+import { EmptyState } from "@/components/ui/empty-state";
+import { Notice } from "@/components/ui/notice";
 import {
-    Card,
-    CardContent,
-    CardDescription,
-    CardHeader,
-    CardTitle,
-} from "@/components/ui/card";
+    LoadingState,
+    PageContainer,
+    PageHeader,
+} from "@/components/shell";
 import type { KnowledgeHrefs, KnowledgeStackView } from "./contract";
 
 export interface StackListViewProps {
@@ -30,8 +25,14 @@ export interface StackListViewProps {
     removeError?: string | null;
     hrefs: KnowledgeHrefs;
     onDelete: (stackId: string) => void;
+    onRetry?: () => void;
     /** Optional demo-tutorial anchor on the first stack link. */
     firstLinkRef?: (node: HTMLAnchorElement | null) => void;
+    disclosure?: ReactNode;
+    title?: string;
+    description?: string;
+    backHref?: string;
+    backLabel?: string;
 }
 
 export function StackListView({
@@ -42,111 +43,190 @@ export function StackListView({
     removeError,
     hrefs,
     onDelete,
+    onRetry,
     firstLinkRef,
+    disclosure,
+    title = "Knowledge Stacks",
+    description = "Saved document collections that can be assigned to personas or shared with a meeting.",
+    backHref = "/meetings",
+    backLabel = "Back to meetings",
 }: StackListViewProps) {
     return (
-        <div className="space-y-4">
-            <div className="flex items-center justify-between">
-                <div>
-                    <h2 className="type-section-title">Knowledge Stacks</h2>
-                    <p className="type-body text-ink-secondary">
-                        Saved document collections that participants can be assigned to.
-                    </p>
-                </div>
-                <Link href={hrefs.createStack}>
-                    <Button type="button" size="sm">
-                        <Plus className="mr-1 size-4" />
+        <>
+            <PageHeader
+                title={title}
+                description={description}
+                backHref={backHref}
+                backLabel={backLabel}
+                actions={
+                    <Link
+                        href={hrefs.createStack}
+                        className="m-control inline-flex min-h-10 items-center gap-2 rounded-control bg-action px-4 type-control font-medium text-action-foreground outline-none hover:bg-action-hover focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-focus-ring"
+                    >
+                        <Plus aria-hidden="true" className="size-4" />
                         New Stack
-                    </Button>
-                </Link>
-            </div>
+                    </Link>
+                }
+            />
 
-            {removeError && (
-                <div role="alert" className="flex items-center gap-2 rounded-control border border-danger/40 bg-danger-soft px-3 py-2 type-body text-danger">
-                    <AlertTriangle className="size-4" />
-                    {removeError}
-                </div>
-            )}
+            <PageContainer>
+                {disclosure ? <div className="mb-5">{disclosure}</div> : null}
+                {removeError ? (
+                    <Notice tone="danger" className="mb-4">
+                        {removeError}
+                    </Notice>
+                ) : null}
 
-            {isLoading && (
-                <div className="flex items-center gap-2 type-meta text-ink-secondary">
-                    <Loader2 className="size-4 animate-spin motion-reduce:animate-none" />
-                    Loading stacks…
-                </div>
-            )}
-            {isError && (
-                <div role="alert" className="flex items-center gap-2 type-body text-danger">
-                    <AlertTriangle className="size-4" />
-                    Knowledge stacks are temporarily unavailable.
-                </div>
-            )}
-            {!isLoading && !isError && stacks.length === 0 && (
-                <Card className="border-dashed bg-surface-raised/40">
-                    <CardContent className="py-10 text-center type-body text-ink-muted">
-                        No stacks yet. Create one to group documents for a participant.
-                    </CardContent>
-                </Card>
-            )}
-
-            <div className="grid gap-4 sm:grid-cols-2">
-                {stacks.map((stack, index) => (
-                    <Card key={stack.id}>
-                        <CardHeader className="flex flex-row items-start justify-between gap-3">
-                            <div className="min-w-0">
-                                <CardTitle className="flex items-center gap-2 truncate">
-                                    <BookOpen className="size-4 text-ink-secondary" />
-                                    {stack.name}
-                                </CardTitle>
-                                <CardDescription className="line-clamp-2">
-                                    {stack.description || "No description"}
-                                </CardDescription>
-                            </div>
-                            <Button
-                                type="button"
-                                size="sm"
-                                variant="ghost"
-                                className="text-danger hover:bg-danger-soft"
-                                disabled={removePending}
-                                onClick={() => onDelete(stack.id)}
-                                aria-label={`Delete ${stack.name}`}
-                            >
-                                <Trash2 className="size-4" />
-                            </Button>
-                        </CardHeader>
-                        <CardContent className="space-y-2">
-                            <div className="flex flex-wrap items-center justify-between gap-2">
-                                {stack.documentCount === undefined ? (
-                                    <Badge variant="outline">Documents</Badge>
-                                ) : (
-                                    <div className="flex flex-wrap gap-2">
-                                        <Badge variant="outline">
-                                            {stack.documentCount} document
-                                            {stack.documentCount === 1 ? "" : "s"}
-                                        </Badge>
-                                        <Badge variant="success">
-                                            {stack.readyCount ?? 0} ready
-                                        </Badge>
-                                    </div>
-                                )}
-                                <Link
-                                    ref={index === 0 ? firstLinkRef : undefined}
-                                    href={hrefs.stack(stack.id)}
-                                    className="m-control type-body text-action hover:underline"
+                {isLoading ? (
+                    <LoadingState label="Loading knowledge stacks…" rows={4} />
+                ) : isError ? (
+                    <Notice
+                        tone="warning"
+                        action={
+                            onRetry ? (
+                                <Button
+                                    type="button"
+                                    variant="outline"
+                                    size="sm"
+                                    onClick={onRetry}
                                 >
-                                    Open →
-                                </Link>
-                            </div>
-                            {stack.assignedParticipantNames && (
-                                <p className="type-meta text-ink-muted">
-                                    {stack.assignedParticipantNames.length > 0
-                                        ? `Assigned to ${stack.assignedParticipantNames.join(", ")}`
-                                        : "No practice participant assigned"}
-                                </p>
-                            )}
-                        </CardContent>
-                    </Card>
-                ))}
-            </div>
-        </div>
+                                    Try again
+                                </Button>
+                            ) : undefined
+                        }
+                    >
+                        Knowledge stacks are temporarily unavailable.
+                    </Notice>
+                ) : stacks.length === 0 ? (
+                    <EmptyState
+                        icon={<BookOpen className="size-6" />}
+                        title="No knowledge stacks yet"
+                        description="Create one to group documents for a persona or share them with a meeting."
+                        action={
+                            <Link href={hrefs.createStack}>
+                                <Button>
+                                    <Plus
+                                        aria-hidden="true"
+                                        className="size-4"
+                                    />
+                                    New Stack
+                                </Button>
+                            </Link>
+                        }
+                        className="material-raised rounded-group"
+                    />
+                ) : (
+                    <section aria-labelledby="stacks-heading">
+                        <div className="mb-3 flex flex-wrap items-baseline justify-between gap-2">
+                            <h2
+                                id="stacks-heading"
+                                className="type-section-title text-ink"
+                            >
+                                Knowledge stacks
+                            </h2>
+                            <span className="type-meta text-ink-muted">
+                                {stacks.length}
+                            </span>
+                        </div>
+                        <ul className="material-raised divide-y divide-separator overflow-hidden rounded-group">
+                            {stacks.map((stack, index) => (
+                                <li
+                                    key={stack.id}
+                                    data-testid={`knowledge-stack-${stack.id}`}
+                                    className="flex flex-col gap-3 p-4 sm:flex-row sm:items-center sm:justify-between"
+                                >
+                                    <div className="min-w-0">
+                                        <div className="flex flex-wrap items-center gap-2">
+                                            <BookOpen
+                                                aria-hidden="true"
+                                                className="size-4 text-ink-muted"
+                                            />
+                                            <h3 className="type-item-title text-ink">
+                                                {stack.name}
+                                            </h3>
+                                            {stack.scope ? (
+                                                <Badge variant="outline">
+                                                    {stack.scope === "shared"
+                                                        ? "Shared"
+                                                        : "Assigned"}
+                                                </Badge>
+                                            ) : null}
+                                        </div>
+                                        <p className="mt-1 line-clamp-2 max-w-[68ch] type-body text-ink-secondary">
+                                            {stack.description ||
+                                                "No description"}
+                                        </p>
+                                        <div className="mt-1 flex flex-wrap items-center gap-2 type-meta text-ink-muted">
+                                            {stack.documentCount ===
+                                            undefined ? (
+                                                <span>Document count unavailable</span>
+                                            ) : (
+                                                <>
+                                                    <span>
+                                                        {stack.documentCount}{" "}
+                                                        document
+                                                        {stack.documentCount ===
+                                                        1
+                                                            ? ""
+                                                            : "s"}
+                                                    </span>
+                                                    <span aria-hidden="true">
+                                                        ·
+                                                    </span>
+                                                    <span>
+                                                        {stack.readyCount ?? 0}{" "}
+                                                        ready
+                                                    </span>
+                                                </>
+                                            )}
+                                            {stack.assignedParticipantNames ? (
+                                                <>
+                                                    <span aria-hidden="true">
+                                                        ·
+                                                    </span>
+                                                    <span>
+                                                        {stack
+                                                            .assignedParticipantNames
+                                                            .length > 0
+                                                            ? `Assigned to ${stack.assignedParticipantNames.join(
+                                                                  ", "
+                                                              )}`
+                                                            : "No persona assigned"}
+                                                    </span>
+                                                </>
+                                            ) : null}
+                                        </div>
+                                    </div>
+                                    <div className="flex shrink-0 items-center gap-2">
+                                        <Link
+                                            ref={
+                                                index === 0
+                                                    ? firstLinkRef
+                                                    : undefined
+                                            }
+                                            href={hrefs.stack(stack.id)}
+                                            className="m-control inline-flex min-h-9 items-center rounded-control border border-control bg-surface px-3 type-control text-ink outline-none hover:bg-surface-raised focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-focus-ring"
+                                        >
+                                            Open →
+                                        </Link>
+                                        <Button
+                                            type="button"
+                                            size="icon-sm"
+                                            variant="ghost"
+                                            className="text-danger hover:bg-danger-soft"
+                                            disabled={removePending}
+                                            onClick={() => onDelete(stack.id)}
+                                            aria-label={`Delete ${stack.name}`}
+                                        >
+                                            <Trash2 aria-hidden="true" />
+                                        </Button>
+                                    </div>
+                                </li>
+                            ))}
+                        </ul>
+                    </section>
+                )}
+            </PageContainer>
+        </>
     );
 }

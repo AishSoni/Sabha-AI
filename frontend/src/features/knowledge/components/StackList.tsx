@@ -48,6 +48,7 @@ export function StackList({ userId }: StackListProps) {
                 stack: (id) => `/knowledge-stacks/${id}`,
             }}
             onDelete={(id) => void handleDelete(id)}
+            onRetry={() => void stacks.refetch()}
         />
     );
 }

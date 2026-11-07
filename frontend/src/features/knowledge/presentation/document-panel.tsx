@@ -19,13 +19,7 @@ import {
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { StatusBadge } from "@/components/ui/status-badge";
-import {
-    Card,
-    CardContent,
-    CardDescription,
-    CardHeader,
-    CardTitle,
-} from "@/components/ui/card";
+import { Notice } from "@/components/ui/notice";
 import type {
     KnowledgeDocumentView,
     KnowledgeUploadReceiptView,
@@ -76,11 +70,17 @@ function statusBadge(document: KnowledgeDocumentView) {
             </StatusBadge>
         );
     }
-    return (
-        <StatusBadge tone="pending">
-            {document.status === "pending" ? "Queued" : "Indexing"}
-        </StatusBadge>
-    );
+    const label =
+        document.status === "pending"
+            ? "Queued"
+            : document.status === "processing"
+              ? "Processing"
+              : document.status === "uploading"
+                ? "Uploading"
+                : document.status === "staged"
+                  ? "Staged"
+                  : document.status;
+    return <StatusBadge tone="pending">{label}</StatusBadge>;
 }
 
 export function DocumentPanelView({
@@ -106,17 +106,17 @@ export function DocumentPanelView({
     const inputRef = useRef<HTMLInputElement>(null);
 
     return (
-        <Card>
-            <CardHeader className="flex flex-row items-start justify-between gap-4">
+        <section className="material-raised rounded-group border border-separator">
+            <div className="flex flex-row items-start justify-between gap-4 border-b border-separator p-4">
                 <div>
-                    <CardTitle className="flex items-center gap-2">
-                        <FileText className="h-5 w-5 text-ink-muted" />
+                    <h2 className="flex items-center gap-2 type-section-title text-ink">
+                        <FileText aria-hidden="true" className="size-5 text-ink-muted" />
                         {title ?? "Documents"}
-                    </CardTitle>
-                    <CardDescription>
+                    </h2>
+                    <p className="mt-1 max-w-[68ch] type-body text-ink-secondary">
                         {description ??
                             `Files in this ${scopeLabel} become eligible for retrieval only after indexing is confirmed.`}
-                    </CardDescription>
+                    </p>
                 </div>
                 <div>
                     {uploadAction ?? (
@@ -137,14 +137,14 @@ export function DocumentPanelView({
                                 busyLabel="Uploading"
                                 onClick={() => inputRef.current?.click()}
                             >
-                                <Upload className="h-4 w-4" />
+                                <Upload aria-hidden="true" />
                                 Upload
                             </Button>
                         </>
                     )}
                 </div>
-            </CardHeader>
-            <CardContent className="space-y-3">
+            </div>
+            <div className="space-y-3 p-4">
                 {receipt?.operationId && (
                     <UploadProgressView
                         operationId={receipt.operationId}
@@ -158,31 +158,26 @@ export function DocumentPanelView({
                         role="status"
                         className="flex items-center gap-2 rounded-group border border-success/40 bg-success-soft px-3 py-2 type-body text-success"
                     >
-                        <CheckCircle2 className="h-4 w-4" />
+                        <CheckCircle2 aria-hidden="true" className="size-4" />
                         {receipt.fileName} is ready for retrieval.
                     </div>
                 )}
                 {(localError || uploadError) && (
-                    <div
-                        role="alert"
-                        className="flex items-center gap-2 rounded-group border border-danger/40 bg-danger-soft px-3 py-2 type-body text-danger"
-                    >
-                        <AlertTriangle className="h-4 w-4" />
+                    <Notice tone="danger">
                         {localError ?? uploadError}
-                    </div>
+                    </Notice>
                 )}
 
                 {isLoading && (
                     <div role="status" className="flex items-center gap-2 type-body text-ink-muted">
-                        <Loader2 className="h-4 w-4 animate-spin motion-reduce:animate-none" />
+                        <Loader2 aria-hidden="true" className="size-4 animate-spin motion-reduce:animate-none" />
                         Loading documents…
                     </div>
                 )}
                 {isError && (
-                    <div role="alert" className="flex items-center gap-2 type-body text-danger">
-                        <AlertTriangle className="h-4 w-4" />
+                    <Notice tone="danger">
                         Documents are temporarily unavailable.
-                    </div>
+                    </Notice>
                 )}
                 {!isLoading && !isError && (documents?.length ?? 0) === 0 && (
                     <p className="rounded-group border border-dashed border-separator px-3 py-6 text-center type-body text-ink-muted">
@@ -191,59 +186,62 @@ export function DocumentPanelView({
                     </p>
                 )}
 
-                {(documents ?? []).map((document) => (
-                    <div
-                        key={document.id}
-                        className="flex flex-wrap items-center gap-3 rounded-group border border-separator bg-surface-raised/40 px-3 py-2"
-                    >
-                        <FileText className="h-4 w-4 shrink-0 text-ink-muted" />
-                        <div className="min-w-0 flex-1">
-                            <p className="truncate type-body font-medium text-ink">
-                                {document.file_name}
-                            </p>
-                            <p className="type-meta text-ink-muted">
-                                {document.file_type.toUpperCase()} ·{" "}
-                                {(document.file_size_bytes / 1024).toFixed(0)} KB
-                                {document.error_message
-                                    ? ` · ${document.error_message}`
-                                    : ""}
-                            </p>
-                        </div>
-                        {statusBadge(document)}
-                        {renderPreviewAction?.(document)}
-                        {document.operation_id &&
-                            (document.status === "failed" ||
-                                document.status === "pending") && (
-                                <Button
-                                    type="button"
-                                    size="sm"
-                                    variant="ghost"
-                                    disabled={retrying}
-                                    onClick={() => onRetry(document.operation_id!)}
-                                    aria-label={`Retry ${document.file_name}`}
-                                >
-                                    <RotateCcw className="h-3.5 w-3.5" />
-                                </Button>
-                            )}
-                        <Button
-                            type="button"
-                            size="sm"
-                            variant="ghost"
-                            className="text-danger hover:text-danger-hover"
-                            disabled={deletingId === document.id}
-                            aria-busy={deletingId === document.id}
-                            onClick={() => onDelete(document)}
-                            aria-label={`Delete ${document.file_name}`}
+                <ul className="divide-y divide-separator">
+                    {(documents ?? []).map((document) => (
+                        <li
+                            key={document.id}
+                            data-status={document.status}
+                            className="flex flex-wrap items-center gap-3 py-3"
                         >
-                            {deletingId === document.id ? (
-                                <Loader2 className="h-3.5 w-3.5 animate-spin motion-reduce:animate-none" />
-                            ) : (
-                                <Trash2 className="h-3.5 w-3.5" />
-                            )}
-                        </Button>
-                    </div>
-                ))}
-            </CardContent>
-        </Card>
+                            <FileText aria-hidden="true" className="size-4 shrink-0 text-ink-muted" />
+                            <div className="min-w-0 flex-1">
+                                <p className="truncate type-body font-medium text-ink">
+                                    {document.file_name}
+                                </p>
+                                <p className="type-meta text-ink-muted">
+                                    {document.file_type.toUpperCase()} ·{" "}
+                                    {(document.file_size_bytes / 1024).toFixed(0)} KB
+                                    {document.error_message
+                                        ? ` · ${document.error_message}`
+                                        : ""}
+                                </p>
+                            </div>
+                            {statusBadge(document)}
+                            {renderPreviewAction?.(document)}
+                            {document.operation_id &&
+                                (document.status === "failed" ||
+                                    document.status === "pending") && (
+                                    <Button
+                                        type="button"
+                                        size="sm"
+                                        variant="ghost"
+                                        disabled={retrying}
+                                        onClick={() => onRetry(document.operation_id!)}
+                                        aria-label={`Retry ${document.file_name}`}
+                                    >
+                                        <RotateCcw aria-hidden="true" className="size-3.5" />
+                                    </Button>
+                                )}
+                            <Button
+                                type="button"
+                                size="sm"
+                                variant="ghost"
+                                className="text-danger hover:text-danger-hover"
+                                disabled={deletingId === document.id}
+                                aria-busy={deletingId === document.id}
+                                onClick={() => onDelete(document)}
+                                aria-label={`Delete ${document.file_name}`}
+                            >
+                                {deletingId === document.id ? (
+                                    <Loader2 aria-hidden="true" className="size-3.5 animate-spin motion-reduce:animate-none" />
+                                ) : (
+                                    <Trash2 aria-hidden="true" className="size-3.5" />
+                                )}
+                            </Button>
+                        </li>
+                    ))}
+                </ul>
+            </div>
+        </section>
     );
 }
