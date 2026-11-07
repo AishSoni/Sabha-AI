@@ -2,10 +2,18 @@
 
 import { useState } from "react";
 import Link from "next/link";
-import { ArrowRight, CheckCircle2, FileText, Lock, ShieldCheck } from "lucide-react";
+import {
+    ArrowRight,
+    CheckCircle2,
+    FileText,
+    Lock,
+    ShieldCheck,
+} from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { Card } from "@/components/ui/card";
+import { Notice } from "@/components/ui/notice";
+import { PageContainer, PageHeader } from "@/components/shell";
+import { ParticipantMark } from "@/components/identity/participant-mark";
 import { useDemoWorkspace } from "@/features/demo-workspace";
 import { useReplayRun } from "@/features/meetings/runtime/replay-run";
 import { markTutorialFact, useAnchorRef } from "@/features/demo-tutorial";
@@ -99,17 +107,52 @@ export default function DemoNewMeetingPage() {
     };
 
     return (
-        <main id="main-content" className="mx-auto max-w-4xl px-4 py-8" tabIndex={-1}>
-            <div className="mb-6">
-                <div className="mb-2 flex flex-wrap items-center gap-2">
-                    <Badge>Prepared demo</Badge>
-                    <span className="text-xs text-ink-muted">Recorded creation record</span>
-                </div>
-                <h1 className="text-2xl font-semibold text-ink">Start the meeting</h1>
-                <p className="mt-2 text-sm text-ink-secondary">
-                    This is the recorded creation record for the prepared meeting.
-                </p>
-                <div className="mt-4 flex flex-wrap items-center gap-2">
+        <main id="main-content" tabIndex={-1}>
+            <PageHeader
+                title="Start the meeting"
+                description="This is the recorded creation record for the prepared meeting. Review the fixed setup, then create the recorded intake."
+                backHref="/demo"
+                backLabel="Back to the board"
+                meta={
+                    <>
+                        <Badge>Prepared demo</Badge>
+                        <span className="type-meta text-ink-muted">
+                            Recorded creation record · as of 31 July 2020
+                        </span>
+                    </>
+                }
+            />
+
+            <PageContainer>
+                <Notice tone="info" className="mb-6">
+                    Recorded demo: the prepared setup and responses are
+                    historical. Creating the intake does not call live AI and
+                    never changes the recording.
+                </Notice>
+
+                {error ? (
+                    <Notice tone="danger" className="mb-4">
+                        {error}
+                    </Notice>
+                ) : null}
+
+                <div className="material-raised mb-6 flex flex-col gap-3 rounded-group p-5 sm:flex-row sm:items-center sm:justify-between">
+                    <div className="min-w-0">
+                        <h2 className="type-item-title text-ink">
+                            Practice with this setup
+                        </h2>
+                        <p className="mt-1 max-w-[68ch] type-body text-ink-secondary">
+                            Open an editable copy in browser memory. Practice
+                            edits never alter the recorded meeting.
+                        </p>
+                        {!workspace.expanded ? (
+                            <p className="mt-1 type-meta text-ink-muted">
+                                Practice editing is unavailable for this
+                                recording version. The recorded meeting remains
+                                usable.
+                            </p>
+                        ) : null}
+                    </div>
                     <Button
                         type="button"
                         variant="outline"
@@ -119,133 +162,188 @@ export default function DemoNewMeetingPage() {
                     >
                         Try editing this setup
                     </Button>
-                    <span className="text-xs text-ink-muted">
-                        Practice only · changes stay in this browser and never alter
-                        the recording.
-                    </span>
                 </div>
-                {!workspace.expanded ? (
-                    <p className="mt-2 text-xs text-ink-muted">
-                        Practice editing is unavailable for this recording
-                        version. The recorded meeting remains usable.
-                    </p>
-                ) : null}
-            </div>
 
-            {error ? (
-                <p className="mb-4 rounded-lg border border-danger/60 bg-danger-soft p-3 text-sm text-danger">
-                    {error}
-                </p>
-            ) : null}
-
-            {created ? (
-                <Card className="mb-4 border-success/50 bg-success-soft p-5">
-                    <div className="flex items-center gap-2 text-success">
-                        <ShieldCheck className="h-5 w-5" />
-                        <h2 className="font-medium">Recorded intake ready</h2>
-                    </div>
-                    <ol className="mt-4 grid gap-2 sm:grid-cols-5">
-                        {(intake?.stages ?? []).map((stage) => (
-                            <li
-                                key={stage.key}
-                                className="rounded-lg border border-success/40 bg-canvas/40 p-2 text-xs"
-                            >
-                                <p className="font-medium text-success">{stage.label}</p>
-                                <p className="mt-1 text-ink-muted">
-                                    {new Date(stage.at).toLocaleTimeString([], {
-                                        hour: "2-digit",
-                                        minute: "2-digit",
-                                        second: "2-digit",
-                                    })}
-                                </p>
-                            </li>
-                        ))}
-                    </ol>
-                    <p className="mt-3 text-xs text-ink-secondary">{intake?.note}</p>
-                    <Link
-                        ref={openRoomRef}
-                        href={`/demo/meetings/${run.session.meeting_id}?tab=chat`}
-                        className="m-control mt-4 inline-flex items-center gap-2 rounded-control bg-action px-4 py-2 type-control font-medium text-action-foreground hover:bg-action-hover"
+                {created ? (
+                    <section
+                        aria-labelledby="intake-ready"
+                        className="material-raised mb-6 rounded-group border-l-4 border-l-success p-5"
                     >
-                        Open the meeting room
-                        <ArrowRight className="h-4 w-4" />
-                    </Link>
-                </Card>
-            ) : (
-                <Button
-                    ref={createRef}
-                    onClick={() => void create()}
-                    busy={busy}
-                    busyLabel="Recording creation"
-                    className="mb-4"
-                >
-                    Create recorded meeting
-                </Button>
-            )}
-
-            <div className="space-y-4">
-                <Card className="p-5">
-                    <div className="flex items-center gap-2 type-meta font-medium uppercase tracking-wide text-warning">
-                        <Lock className="h-4 w-4" />
-                        Recorded setup
-                    </div>
-                    <div className="mt-3 grid gap-4">
-                        <label className="grid gap-1">
-                            <span className="type-control text-ink-secondary">Agenda</span>
-                            <input
-                                readOnly
-                                value={preset?.agenda ?? ""}
-                                className="rounded-control border border-control bg-surface-raised px-3 py-2 type-body text-ink"
-                            />
-                        </label>
-                        <label className="grid gap-1">
-                            <span className="type-control text-ink-secondary">Context</span>
-                            <textarea
-                                readOnly
-                                rows={4}
-                                value={preset?.context ?? ""}
-                                className="rounded-control border border-control bg-surface-raised px-3 py-2 type-body text-ink"
-                            />
-                        </label>
-                    </div>
-                </Card>
-
-                <Card className="p-5">
-                    <h2 className="type-control font-semibold text-ink-secondary">Board</h2>
-                    <div className="mt-3 grid gap-2 sm:grid-cols-3">
-                        {participants.map((participant) => (
-                            <div
-                                key={participant.participant_id}
-                                className="rounded-control border border-separator bg-surface-raised/50 p-3"
+                        <div className="flex items-center gap-2 text-success">
+                            <ShieldCheck aria-hidden="true" className="size-5" />
+                            <h2
+                                id="intake-ready"
+                                className="type-section-title text-ink"
                             >
-                                <div className="flex items-center gap-2">
-                                    <CheckCircle2 className="h-4 w-4 text-success" />
-                                    <span className="text-sm font-medium text-ink">
-                                        {participant.name}
-                                    </span>
-                                </div>
-                                <p className="mt-1 text-xs text-ink-muted">{participant.role}</p>
-                            </div>
-                        ))}
-                    </div>
-                </Card>
-
-                <Card className="p-5">
-                    <h2 className="type-control font-semibold text-ink-secondary">Supplied document</h2>
-                    <div className="mt-3 flex items-start gap-3 rounded-control border border-separator bg-surface-raised/50 p-3">
-                        <FileText className="mt-0.5 h-5 w-5 text-action" />
-                        <div>
-                            <p className="text-sm font-medium text-ink">
-                                {preset?.document_label ?? "Prepared historical document"}
+                                Recorded intake ready
+                            </h2>
+                        </div>
+                        <p className="mt-1 type-body text-ink-secondary">
+                            The prepared creation step has completed. Open the
+                            room when you are ready.
+                        </p>
+                        <ol className="mt-4 grid gap-2 sm:grid-cols-5">
+                            {(intake?.stages ?? []).map((stage) => (
+                                <li
+                                    key={stage.key}
+                                    className="rounded-control border border-separator bg-canvas/40 p-3"
+                                >
+                                    <p className="type-meta-strong text-success">
+                                        {stage.label}
+                                    </p>
+                                    <p className="mt-1 type-meta text-ink-muted">
+                                        {new Date(stage.at).toLocaleTimeString(
+                                            [],
+                                            {
+                                                hour: "2-digit",
+                                                minute: "2-digit",
+                                                second: "2-digit",
+                                            }
+                                        )}
+                                    </p>
+                                </li>
+                            ))}
+                        </ol>
+                        {intake?.note ? (
+                            <p className="mt-3 type-meta text-ink-secondary">
+                                {intake.note}
                             </p>
-                            <p className="mt-1 text-xs text-ink-muted">
-                                Prepared document supplied with the recording.
+                        ) : null}
+                        <Link
+                            ref={openRoomRef}
+                            href={`/demo/meetings/${run.session.meeting_id}?tab=chat`}
+                            className="m-control mt-4 inline-flex min-h-10 items-center gap-2 rounded-control bg-action px-4 type-control font-medium text-action-foreground outline-none hover:bg-action-hover focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-focus-ring"
+                        >
+                            Open the meeting room
+                            <ArrowRight aria-hidden="true" className="size-4" />
+                        </Link>
+                    </section>
+                ) : (
+                    <div className="material-raised mb-6 flex flex-col gap-3 rounded-group p-5 sm:flex-row sm:items-center sm:justify-between">
+                        <div>
+                            <h2 className="type-item-title text-ink">
+                                Create the recorded intake
+                            </h2>
+                            <p className="mt-1 type-body text-ink-secondary">
+                                This advances the recording to its prepared
+                                intake step.
                             </p>
                         </div>
+                        <Button
+                            ref={createRef}
+                            type="button"
+                            busy={busy}
+                            busyLabel="Recording creation"
+                            onClick={() => void create()}
+                        >
+                            Create recorded meeting
+                        </Button>
                     </div>
-                </Card>
+                )}
 
-            </div>
+                <div className="grid gap-6 lg:grid-cols-[minmax(0,1fr)_20rem]">
+                    <section
+                        aria-labelledby="recorded-setup-heading"
+                        className="material-raised min-w-0 rounded-group p-5"
+                    >
+                        <div className="flex items-center gap-2">
+                            <Lock
+                                aria-hidden="true"
+                                className="size-4 text-warning"
+                            />
+                            <h2
+                                id="recorded-setup-heading"
+                                className="type-section-title text-ink"
+                            >
+                                Recorded setup
+                            </h2>
+                        </div>
+                        <p className="mt-1 type-meta text-ink-muted">
+                            Read-only values saved with this recording.
+                        </p>
+                        <dl className="mt-4 grid gap-5">
+                            <div>
+                                <dt className="type-meta-strong uppercase tracking-wide text-ink-muted">
+                                    Agenda
+                                </dt>
+                                <dd className="mt-1 type-body text-ink">
+                                    {preset?.agenda || "No recorded agenda."}
+                                </dd>
+                            </div>
+                            <div>
+                                <dt className="type-meta-strong uppercase tracking-wide text-ink-muted">
+                                    Context
+                                </dt>
+                                <dd className="mt-1 whitespace-pre-wrap type-body text-ink-secondary">
+                                    {preset?.context ||
+                                        "No recorded context."}
+                                </dd>
+                            </div>
+                        </dl>
+                    </section>
+
+                    <aside className="material-raised h-fit rounded-group p-5">
+                        <h2 className="type-section-title text-ink">Board</h2>
+                        {participants.length === 0 ? (
+                            <p className="mt-2 type-body text-ink-muted">
+                                No recorded participants.
+                            </p>
+                        ) : (
+                            <ul className="mt-3 space-y-3">
+                                {participants.map((participant) => (
+                                    <li
+                                        key={participant.participant_id}
+                                        className="flex items-start gap-3"
+                                    >
+                                        <ParticipantMark
+                                            participant={{
+                                                id: participant.participant_id,
+                                                name: participant.name,
+                                                color: participant.color,
+                                            }}
+                                            size="sm"
+                                        />
+                                        <div className="min-w-0">
+                                            <p className="type-control text-ink">
+                                                {participant.name}
+                                            </p>
+                                            <p className="type-meta text-ink-muted">
+                                                {participant.role}
+                                            </p>
+                                        </div>
+                                    </li>
+                                ))}
+                            </ul>
+                        )}
+                        <div className="mt-4 border-t border-separator pt-4">
+                            <p className="type-meta-strong uppercase tracking-wide text-ink-muted">
+                                Supplied document
+                            </p>
+                            <div className="mt-2 flex items-start gap-2">
+                                <FileText
+                                    aria-hidden="true"
+                                    className="mt-0.5 size-4 shrink-0 text-ink-muted"
+                                />
+                                <div>
+                                    <p className="type-control text-ink">
+                                        {preset?.document_label ??
+                                            "Prepared historical document"}
+                                    </p>
+                                    <p className="mt-1 type-meta text-ink-muted">
+                                        Prepared document supplied with the
+                                        recording.
+                                    </p>
+                                </div>
+                            </div>
+                        </div>
+                    </aside>
+                </div>
+
+                <p className="mt-4 flex items-center gap-2 type-meta text-ink-muted">
+                    <CheckCircle2 aria-hidden="true" className="size-3.5" />
+                    Recorded meeting · no live provider calls
+                </p>
+            </PageContainer>
         </main>
     );
 }
