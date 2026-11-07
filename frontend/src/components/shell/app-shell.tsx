@@ -27,7 +27,7 @@ export interface AppNavItem {
     /** Only mark the route itself active, not its children. */
     exact?: boolean;
     /** A real callback, attached to the one visible link. */
-    registerNode?: (node: HTMLAnchorElement | null) => void;
+    registerNode?: (node: HTMLElement | null) => void;
 }
 
 export interface AppShellProps {
@@ -56,17 +56,23 @@ function NavLink({
     item,
     pathname,
     compact,
+    attachAnchor = true,
     onNavigate,
 }: {
     item: AppNavItem;
     pathname: string;
     compact?: boolean;
+    attachAnchor?: boolean;
     onNavigate?: () => void;
 }) {
     const active = isActive(pathname, item);
     return (
         <Link
-            ref={(node) => item.registerNode?.(node)}
+            ref={
+                attachAnchor
+                    ? (node) => item.registerNode?.(node)
+                    : undefined
+            }
             href={item.href}
             aria-current={active ? "page" : undefined}
             onClick={onNavigate}
@@ -172,6 +178,11 @@ export function AppShell({
                                 size="icon-sm"
                                 aria-label="Open navigation"
                                 aria-expanded={menuOpen}
+                                ref={(node) => {
+                                    for (const item of items) {
+                                        item.registerNode?.(node);
+                                    }
+                                }}
                                 onClick={() => setMenuPath(pathname)}
                             >
                                 <Menu aria-hidden="true" />
@@ -205,6 +216,7 @@ export function AppShell({
                                             item={item}
                                             pathname={pathname}
                                             compact
+                                            attachAnchor={false}
                                             onNavigate={() =>
                                                 setMenuPath(null)
                                             }

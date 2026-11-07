@@ -115,26 +115,28 @@ function Provenance({ descriptor }: { descriptor: EvidenceDescriptor }) {
     if (provenance.detail) rows.push(["Identity", provenance.detail]);
 
     return (
-        <details className="material-raised rounded-group border border-separator p-3">
-            <summary className="m-control cursor-pointer type-control text-ink">
-                Provenance and rights
-            </summary>
-            <div className="mt-2 type-meta">
-                <p className="font-medium text-ink">{provenance.label}</p>
-                {rows.length > 0 ? (
-                    <dl className="mt-2 grid gap-1 sm:grid-cols-[7rem_1fr]">
-                        {rows.map(([label, value]) => (
-                            <React.Fragment key={label}>
-                                <dt className="text-ink-muted">{label}</dt>
-                                <dd className="break-words text-ink-secondary">
-                                    {value}
-                                </dd>
-                            </React.Fragment>
-                        ))}
-                    </dl>
-                ) : null}
-            </div>
-        </details>
+        <section aria-label="Evidence provenance" className="material-raised rounded-group border border-separator">
+            <details className="p-3">
+                <summary className="m-control cursor-pointer type-control text-ink">
+                    Provenance and rights
+                </summary>
+                <div className="mt-2 type-meta">
+                    <p className="font-medium text-ink">{provenance.label}</p>
+                    {rows.length > 0 ? (
+                        <dl className="mt-2 grid gap-1 sm:grid-cols-[7rem_1fr]">
+                            {rows.map(([label, value]) => (
+                                <React.Fragment key={label}>
+                                    <dt className="text-ink-muted">{label}</dt>
+                                    <dd className="break-words text-ink-secondary">
+                                        {value}
+                                    </dd>
+                                </React.Fragment>
+                            ))}
+                        </dl>
+                    ) : null}
+                </div>
+            </details>
+        </section>
     );
 }
 

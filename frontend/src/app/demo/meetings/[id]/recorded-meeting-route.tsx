@@ -5,6 +5,7 @@ import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import { MeetingRoom } from "@/features/meetings/components/MeetingRoom";
 import { useReplayRun } from "@/features/meetings/runtime/replay-run";
 import { chapterHref } from "@/features/meetings/runtime/chapters";
+import { DemoRoomReset } from "@/features/demo-workspace";
 
 /**
  * The canonical recorded meeting route (spec-18). Local practice IDs never
@@ -73,6 +74,7 @@ export function RecordedMeetingRoute({ meetingId }: { meetingId: string }) {
             initialTab={selectedTab}
             activeTab={selectedTab}
             onTabChange={changeTab}
+            headerActions={<DemoRoomReset />}
         />
     );
 }

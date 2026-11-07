@@ -24,6 +24,7 @@ export {
 } from "./contract";
 export { DemoWorkspaceProvider, useDemoWorkspace } from "./provider";
 export { DemoNav } from "./ui/demo-nav";
+export { DemoRoomReset } from "./ui/demo-room-reset";
 export {
     SUPPORTED_WORKSPACE_SEED_VERSIONS,
     decodeWorkspaceSeed,

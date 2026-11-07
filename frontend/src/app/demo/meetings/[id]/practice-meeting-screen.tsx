@@ -20,7 +20,7 @@ import {
     CardHeader,
     CardTitle,
 } from "@/components/ui/card";
-import { useDemoWorkspace } from "@/features/demo-workspace";
+import { DemoRoomReset, useDemoWorkspace } from "@/features/demo-workspace";
 import type { WorkspaceSample } from "@/features/demo-workspace";
 import { DocumentPanelView } from "@/features/knowledge/presentation";
 import {
@@ -133,23 +133,26 @@ export function PracticeMeetingScreen({
                         {meeting.agenda || "No additional context"}
                     </p>
                 </div>
-                <Button
-                    type="button"
-                    variant="ghost"
-                    size="sm"
-                    className="text-danger hover:text-danger-hover"
-                    onClick={() => {
-                        const confirmed = window.confirm(
-                            `Discard "${meeting.name}"? This practice setup will be removed from this browser.`
-                        );
-                        if (confirmed) {
-                            practice.discardMeeting(meeting.meetingId);
-                            router.push("/demo/meetings");
-                        }
-                    }}
-                >
-                    Discard practice setup
-                </Button>
+                <div className="flex flex-wrap items-center justify-end gap-2">
+                    <DemoRoomReset />
+                    <Button
+                        type="button"
+                        variant="ghost"
+                        size="sm"
+                        className="text-danger hover:text-danger-hover"
+                        onClick={() => {
+                            const confirmed = window.confirm(
+                                `Discard "${meeting.name}"? This practice setup will be removed from this browser.`
+                            );
+                            if (confirmed) {
+                                practice.discardMeeting(meeting.meetingId);
+                                router.push("/demo/meetings");
+                            }
+                        }}
+                    >
+                        Discard practice setup
+                    </Button>
+                </div>
             </div>
 
             <div className="rounded-group border border-warning/40 bg-warning-soft px-3 py-2 type-body text-warning">

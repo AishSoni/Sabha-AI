@@ -101,6 +101,8 @@ export interface MeetingRoomProps {
     /** Route-owned tab for a routable room. Omit for the live room. */
     activeTab?: string;
     onTabChange?: (tab: string) => void;
+    /** Runtime-owned utility actions shown in the room header. */
+    headerActions?: React.ReactNode;
 }
 
 const TERMINAL_STATUSES = ['completed', 'failed', 'interrupted', 'cancelled'];
@@ -137,6 +139,7 @@ export function MeetingRoom({
     initialTab,
     activeTab,
     onTabChange,
+    headerActions,
 }: MeetingRoomProps) {
     const runtime = useMeetingsRuntime();
     const meetingQuery = useRuntimeMeeting(meetingId);
@@ -209,6 +212,7 @@ export function MeetingRoom({
                 initialTab={initialTab}
                 activeTab={activeTab}
                 onTabChange={onTabChange}
+                headerActions={headerActions}
             />
         </main>
     );
@@ -240,6 +244,7 @@ interface ConversationProps {
     initialTab?: string;
     activeTab?: string;
     onTabChange?: (tab: string) => void;
+    headerActions?: React.ReactNode;
 }
 
 function RecordToggle({
@@ -302,6 +307,7 @@ function MeetingConversation({
     initialTab,
     activeTab,
     onTabChange,
+    headerActions,
 }: ConversationProps) {
     const runtime = useMeetingsRuntime();
     const { capabilities, slots } = runtime;
@@ -449,6 +455,7 @@ function MeetingConversation({
                         ) : null}
                     </div>
                     <div className="flex shrink-0 flex-wrap items-center justify-end gap-1.5">
+                        {headerActions}
                         {runtime.restart && (
                             <Button
                                 variant="ghost"
