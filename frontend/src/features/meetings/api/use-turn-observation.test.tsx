@@ -305,7 +305,7 @@ function replayRuntime(
     return {
         scope: {
             identity: { kind: 'replay', id: `run-${nextRunId()}:package-1`, epoch: 1 },
-            label: 'Recorded session',
+            label: 'Demo',
             provenance: {},
         },
         capabilities: {

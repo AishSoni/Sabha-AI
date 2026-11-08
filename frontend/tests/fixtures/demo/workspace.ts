@@ -21,14 +21,14 @@ export function demoWorkspaceSeedWire() {
             practice:
                 "Practice changes live in this browser tab only and disappear when the workspace is reset or the page is refreshed.",
             recording:
-                "Participant replies and evidence come from the prepared recording; practice edits never change recorded content.",
+                "Participant replies, retrieval, and evidence come from the demo; browser edits never change recorded content.",
         },
         stacks: [
             {
                 stack_id: "shared-fact-sheet",
                 label: "Issuer fact sheet",
                 scope: "shared",
-                description: "Shared reference material for the recorded board.",
+                description: "Shared reference material for the demo board.",
             },
             {
                 stack_id: "credit-evidence",
@@ -46,7 +46,7 @@ export function demoWorkspaceSeedWire() {
                 stack_id: "portfolio-mandate",
                 label: "Portfolio mandate",
                 scope: "private",
-                description: "Practice mandate constraints for the portfolio role.",
+                description: "Fictional mandate constraints for the portfolio role.",
             },
         ],
         personas: [
@@ -123,8 +123,9 @@ export function demoWorkspaceSeedWire() {
                 sha256: "b".repeat(64),
                 role: "shared-research",
                 destination_kinds: ["meeting", "stack"],
-                description: "The prepared issuer fact sheet used by the recorded board.",
-                accessible_label: "Upload the prepared issuer fact sheet",
+                description:
+                    "Historical terms, rating, and stated limits for the HDFC debenture. Shared reference material.",
+                accessible_label: "Shared HDFC fact sheet, Markdown, four chunks",
                 provenance: "demo-authored",
                 rights_status: "approved-for-upload",
                 approved_at: "2026-10-31",
@@ -143,8 +144,9 @@ export function demoWorkspaceSeedWire() {
                 sha256: "c".repeat(64),
                 role: "participant-notes",
                 destination_kinds: ["stack"],
-                description: "Private covenant notes for the credit practice stack.",
-                accessible_label: "Upload the prepared credit notes",
+                description:
+                    "Private credit working notes. Only the Credit Analyst is assigned to this knowledge stack.",
+                accessible_label: "Credit analyst notes, Markdown, two chunks",
                 provenance: "demo-authored",
                 rights_status: "approved-for-upload",
                 approved_at: "2026-10-31",
@@ -163,8 +165,9 @@ export function demoWorkspaceSeedWire() {
                 sha256: "d".repeat(64),
                 role: "mandate-material",
                 destination_kinds: ["stack"],
-                description: "The fictional mandate limits used by the portfolio role.",
-                accessible_label: "Upload the prepared portfolio mandate",
+                description:
+                    "Fictional portfolio mandate for the Portfolio Analyst knowledge stack, with explicit record limits.",
+                accessible_label: "Portfolio mandate, Markdown, three chunks",
                 provenance: "demo-authored",
                 rights_status: "approved-for-upload",
                 approved_at: "2026-10-31",
@@ -183,8 +186,10 @@ export function demoWorkspaceSeedWire() {
                 sha256: "e".repeat(64),
                 role: "failure-retry",
                 destination_kinds: ["meeting", "stack"],
-                description: "A prepared worksheet that fails once so retry can be practised.",
-                accessible_label: "Upload the prepared downside worksheet",
+                description:
+                    "Demo-authored downside worksheet. This sample fails once on purpose so the retry path can be practised safely.",
+                accessible_label:
+                    "Downside worksheet failure and retry sample, Markdown",
                 provenance: "demo-authored",
                 rights_status: "approved-for-upload",
                 approved_at: "2026-10-31",
@@ -193,7 +198,7 @@ export function demoWorkspaceSeedWire() {
                 scenario_id: "fail-once",
                 prepared_chunk_count: 3,
                 failure_message:
-                    "Prepared simulation: the first ingestion attempt stopped before indexing. Retry reuses this same document and operation.",
+                    "Simulation: the first ingestion attempt stopped before indexing. Retry reuses this same document and operation.",
             },
         ],
         documents: [

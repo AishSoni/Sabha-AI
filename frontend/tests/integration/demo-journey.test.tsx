@@ -230,7 +230,7 @@ describe("canonical guided demo journey", () => {
 
         expect(
             await screen.findByRole("heading", {
-                name: "HDFC Ltd 7.87% 2022 debenture",
+                name: "Demo board",
             })
         ).toBeInTheDocument();
         expect(
@@ -303,7 +303,7 @@ describe("canonical guided demo journey", () => {
         await waitFor(() => expect(demoLocation.getPathname()).toBe("/demo"));
         expect(
             await screen.findByRole("heading", {
-                name: "HDFC Ltd 7.87% 2022 debenture",
+                name: "Demo board",
             })
         ).toBeInTheDocument();
         expect(screen.queryByText(/Room route/)).not.toBeInTheDocument();

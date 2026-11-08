@@ -116,7 +116,7 @@ function session(): ReplaySession {
         run_id: "run-1",
         package_version: "9",
         meeting_id: MEETING,
-        label: "Prepared demo",
+        label: "Demo",
         title: "Recorded review",
         as_of: "2020-07-31",
         disclosure: "",

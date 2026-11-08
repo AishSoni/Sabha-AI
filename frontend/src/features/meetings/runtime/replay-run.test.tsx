@@ -61,7 +61,7 @@ function sessionWire() {
         run_id: "run-1",
         package_version: "1",
         meeting_id: MEETING_ID,
-        label: "Recorded session",
+        label: "Demo",
         title: "Recorded credit review",
         as_of: "2026-01-15",
         disclosure: "",

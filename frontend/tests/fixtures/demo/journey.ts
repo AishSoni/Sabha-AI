@@ -167,16 +167,16 @@ export const DEMO_BEATS = [
         anchor: "demo-board",
         checkpoint: "checkpoint-initial",
         ordinal: 1,
-        objective: "Inspect the prepared participants and their knowledge assignments.",
+        objective: "Inspect the three participants and their shared and private knowledge assignments.",
         route: "board",
         tab: "roster",
         start_checkpoint: "checkpoint-initial",
         completed_checkpoint: "checkpoint-initial",
-        disclosure: "Prepared board for the recorded meeting.",
+        disclosure: "The board is read-only; inspection does not complete a guide step.",
         steps: [
             {
                 step_id: "inspect-board",
-                label: "Review the prepared board",
+                label: "Inspect the three participants and knowledge assignments",
                 completion: "acknowledge",
                 requires_tab: "roster",
             },
@@ -195,11 +195,11 @@ export const DEMO_BEATS = [
         anchor: "demo-new",
         checkpoint: "checkpoint-initial",
         ordinal: 2,
-        objective: "Complete the prepared creation form.",
+        objective: "Complete the creation form and confirm the supplied historical document.",
         route: "new",
         start_checkpoint: "checkpoint-initial",
         completed_checkpoint: "checkpoint-created",
-        disclosure: "No upload or write occurs; the intake receipt is recorded.",
+        disclosure: "No upload or write occurs; the intake receipt is part of the demo.",
         steps: [
             {
                 step_id: "create-meeting",
@@ -222,7 +222,7 @@ export const DEMO_BEATS = [
         tab: "chat",
         start_checkpoint: "checkpoint-created",
         completed_checkpoint: "checkpoint-credit",
-        disclosure: "Prepared retrieval; no live search or model call.",
+        disclosure: "Retained retrieval; no live search or model call.",
         steps: [
             {
                 step_id: "ask-credit",
@@ -276,7 +276,7 @@ export const DEMO_BEATS = [
         tab: "chat",
         start_checkpoint: "checkpoint-downside",
         completed_checkpoint: "checkpoint-portfolio",
-        disclosure: "The mandate excerpt is fictional and prepared for this replay.",
+        disclosure: "The mandate is fictional and demo-authored. No current price, yield, or liquidity is available.",
         steps: [
             {
                 step_id: "send-follow-up",
@@ -330,12 +330,12 @@ export const DEMO_BEATS = [
         anchor: "demo-room",
         checkpoint: "checkpoint-consensus",
         ordinal: 7,
-        objective: "Request the recorded closing.",
+        objective: "Use the real close entry and review the ballots and closing brief.",
         route: "meeting",
         tab: "closing",
         start_checkpoint: "checkpoint-consensus",
         completed_checkpoint: "checkpoint-closed",
-        disclosure: "Recorded closing. No live vote or model call occurs.",
+        disclosure: "Retained closing. No live vote or model call occurs.",
         steps: [
             {
                 step_id: "close-meeting",
@@ -358,7 +358,7 @@ export const DEMO_BEATS = [
         route: "list",
         start_checkpoint: "checkpoint-closed",
         completed_checkpoint: "checkpoint-archived",
-        disclosure: "The archive is a recorded overlay; the meeting stays ended.",
+        disclosure: "Archiving is an overlay. The meeting remains ended and cannot be reopened in this demo.",
         steps: [
             {
                 step_id: "archive-meeting",
@@ -379,11 +379,11 @@ export function replaySessionWire() {
         package_id: "hdfc-ine001a07rw5",
         content_sha256: "a".repeat(64),
         meeting_id: DEMO_MEETING_ID,
-        label: "Guided replay",
-        title: "HDFC Ltd 7.87% 2022 debenture",
+        label: "Demo",
+        title: "A HDFC Bond Review Demo",
         as_of: "31 July 2020",
         disclosure:
-            "Prepared recording. Replies and evidence are recorded; no live model or search runs.",
+            "Demo · responses were recorded, not live AI generation.",
         stack_labels: DEMO_STACK_LABELS,
         provenance: { source: "packaged" },
         capabilities: {
@@ -419,7 +419,7 @@ export function replaySessionWire() {
 export function demoSafeConfigWire() {
     return {
         board: {
-            title: "HDFC Ltd 7.87% 2022 debenture",
+            title: "Demo board",
             participants: DEMO_BOARD_PARTICIPANTS.map((participant) => ({
                 ...participant,
                 stack_ids: [...participant.stack_ids],
@@ -434,12 +434,13 @@ export function demoSafeConfigWire() {
                 ])
             ),
             preset: {
-                agenda: "Decide whether the mandate permits the HDFC position.",
+                agenda: "A HDFC Bond Review Demo",
                 context:
-                    "Prepared board for the recorded HDFC debenture discussion.",
+                    "Historical committee review. Establish the terms and rating, test the downside, apply a fictional mandate, and close with a research checklist. Not investment advice.",
                 participant_ids: Object.values(DEMO_PARTICIPANT_IDS),
                 document_id: "document-fact-sheet",
-                document_label: "Prepared fact sheet",
+                document_label:
+                    "HDFC Ltd 7.87% 2022 Debenture - Shared Fact Sheet (as of 31 July 2020)",
             },
         },
         intake: {
@@ -450,12 +451,12 @@ export function demoSafeConfigWire() {
                 { key: "embedded", label: "Embedded", at: "2026-10-16T09:00:03Z" },
                 { key: "ready", label: "Ready", at: "2026-10-16T09:00:04Z" },
             ],
-            note: "Recorded intake stages for the prepared document.",
+            note: "Meeting created.",
         },
     };
 }
 
-export function demoMeetingWire(name = "HDFC Ltd 7.87% 2022 debenture") {
+export function demoMeetingWire(name = "A HDFC Bond Review Demo") {
     return {
         id: DEMO_MEETING_ID,
         user_id: null,

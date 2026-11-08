@@ -210,7 +210,7 @@ describe("demo persona catalog", () => {
         await renderAt("/demo");
 
         expect(
-            await screen.findByRole("heading", { name: "HDFC Ltd 7.87% 2022 debenture" })
+            await screen.findByRole("heading", { name: "Demo board" })
         ).toBeInTheDocument();
         fireEvent.click(
             await screen.findByRole("link", {
