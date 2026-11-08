@@ -11,7 +11,7 @@ and the gates that remain unproven, lives in
 | Piece | Entry point | Responsibility |
 | --- | --- | --- |
 | HTTP API | `backend/main.py` (`main:app`) | Operator-gated live `/api/*` routes, server-sent events, `/health` |
-| Recorded replay API | `backend/main.py` (`/api/replay/*`) | Read-only recorded graph; independent of the live container |
+| Demo API | `backend/main.py` (`/api/replay/*`) | Read-only demo graph; independent of the live container |
 | Turn worker (optional) | `backend/worker.py` | Claims and executes queued turns; no HTTP |
 | Web client | `frontend/` (Next.js) | Meeting UI, uploads, operation observation |
 | Application store | Supabase Postgres | Authoritative records, queue, grants, RPCs |
@@ -23,7 +23,7 @@ Running both is safe: admission, ordering, leases, fences and publication are
 enforced in Postgres, so two processes cannot execute the same turn.
 `TURN_RUNNER_ENABLED` selects whether the API also runs inference inline.
 
-Live and recorded replay are separate request graphs in the same process.
+Live and demo are separate request graphs in the same process.
 Every live `/api/*` request passes through one operator admission dependency
 before any module adapter; `/api/replay/*` is mounted outside that gate.
 `/api/*` resolves only the live container; `/api/replay/*` resolves only the
@@ -131,7 +131,7 @@ NEXT_PUBLIC_RATE_LIMIT_DEFAULT=5
 
 `NEXT_PUBLIC_API_URL` falls back to `http://localhost:8000/api` when unset. The
 Supabase variables are public; never put `SUPABASE_SERVICE_KEY` in a
-`NEXT_PUBLIC_*` variable. Public replay works without either Supabase variable.
+`NEXT_PUBLIC_*` variable. Public demo works without either Supabase variable.
 
 `local` and `hosted` are both writable but private: every live request requires
 the configured operator's Supabase access token. A valid account that is not the
@@ -545,11 +545,11 @@ Publish from a clean checkout with the offline provisioner credential:
 cd backend
 python -m scripts.replay_roles --reader-login sabha_replay_login `
     --provisioner-login sabha_replay_publisher
-python -m scripts.replay_package validate replay_packages/hdfc-ine001a07rw5
+python -m scripts.replay_package validate replay_packages/hdfc-ine001a07rw5-v10
 python -m scripts.replay_package --database-url $env:REPLAY_PROVISIONER_DATABASE_URL `
-    publish replay_packages/hdfc-ine001a07rw5
+    publish replay_packages/hdfc-ine001a07rw5-v10
 python -m scripts.replay_package --database-url $env:REPLAY_PROVISIONER_DATABASE_URL `
-    activate hdfc-ine001a07rw5 4
+    activate hdfc-ine001a07rw5 10
 python -m scripts.replay_package --database-url $env:REPLAY_PROVISIONER_DATABASE_URL `
     prune --older-than-days 30
 python -m scripts.replay_package --database-url $env:REPLAY_PROVISIONER_DATABASE_URL list
@@ -588,8 +588,8 @@ Runtime configuration:
 ```text
 REPLAY_DATABASE_URL=postgresql://sabha_replay_login:<password>@<host>:5432/postgres
 REPLAY_PACKAGE_ID=hdfc-ine001a07rw5
-REPLAY_PACKAGE_VERSION=7              # optional; registry default otherwise
-REPLAY_PACKAGE_SHA256=1a48a568db5aafb2f521b0a690ad68bc06371baa2efa89c2e0f30f3b4c90f774
+REPLAY_PACKAGE_VERSION=10             # optional; registry default otherwise
+REPLAY_PACKAGE_SHA256=fafe211e3500d571921c50bdb4e68c5dd264abb440745f6de3ec73886f680cd0
 REPLAY_ONLY=true                      # serve no live graph
 REPLAY_STREAM_MAX_PER_CLIENT=2
 REPLAY_STREAM_MAX_GLOBAL=8
@@ -598,54 +598,56 @@ REPLAY_STREAM_MAX_SECONDS=120
 ```
 
 `python -m scripts.e2e_provision --serve` provisions a disposable local
-database, publishes the guided package by default, and serves the replay-only app
-for `npm run test:e2e`; it owns the embedded Postgres for the lifetime of the
-process. Pass `--package replay_packages/placeholder-analyst` to exercise the
+database, publishes demo package version 10 by default, and serves the
+replay-only app for `npm run test:e2e`; it owns the embedded Postgres for the
+lifetime of the process. Pass `--package replay_packages/placeholder-analyst` to exercise the
 synthetic backend fixture instead. Install the browser once with
 `npx playwright install chromium`.
 
-### Guided bond journey (spec 18)
+### Demo bond journey (spec 18)
 
-The guided package is `backend/replay_packages/hdfc-ine001a07rw5` version `7`
-with content hash `1a48a568db5aafb2f521b0a690ad68bc06371baa2efa89c2e0f30f3b4c90f774`.
-Version 7 keeps the original eight-beat journey and the approved expanded
-exploration graph: 28 checkpoints, 27 transitions (8 canonical), 14 chapters,
-three prepared choice states, and six recorded closings. The schema-2 package
-uses a schema-3 practice workspace seed with an explicit four-sample upload
-allowlist and one ready practice document in each of the four practice stacks.
-The fail-once retry scenario remains available in meeting scope. Evidence-only
-assets, including the source register and the attributed third-party excerpts,
-stay outside that allowlist. The version-5 package is retained as a checked-in
-compatibility fixture at
+The current authored demo package is
+`backend/replay_packages/hdfc-ine001a07rw5-v10` version `10` with content hash
+`fafe211e3500d571921c50bdb4e68c5dd264abb440745f6de3ec73886f680cd0`.
+It keeps the original eight-beat journey and the approved expanded exploration
+graph: 33 checkpoints, 14 chapters, three demo choice states, and six retained
+closings. The schema-3 package uses a schema-3 workspace seed with an explicit
+four-sample upload allowlist and one ready demo document in each of the four
+knowledge stacks. The fail-once retry scenario remains available in meeting
+scope. Evidence-only assets, including the source register and the attributed
+third-party excerpts, stay outside that allowlist. Versions 7–9 remain immutable
+for pinned runs and compatibility checks; the version-5 package remains a
+checked-in compatibility fixture at
 `backend/tests/fixtures/replay/hdfc-ine001a07rw5-v5` with its original hash.
 Older published versions remain subject to the documented retention policy;
 they are not replaced for active pinned runs.
 It was approved through
 [the content ledger](../specs/spec-18-guided-bond-journey-content.md): short
 attributed source excerpts, exact locators, a source register, and no untracked
-research bytes. Regenerate it only with the tracked builder:
+research bytes. Regenerate the authored demo copy only with the tracked version
+10 builder:
 
 ```powershell
 cd backend
-python -m scripts.build_guided_package
-python -m scripts.replay_package validate replay_packages/hdfc-ine001a07rw5
+python -m scripts.build_schema3_package_v10
+python -m scripts.replay_package validate replay_packages/hdfc-ine001a07rw5-v10
 ```
 
-The browser routes are `/demo` (prepared board), `/demo/new` (locked creation
-preset, recorded intake, and the inline temporary setup), `/demo/meetings`
-(recorded list, practice setups, and archive), `/demo/meetings/[id]` (real room
-with guide tab hints), `/demo/roster` (practice personas and prompt history),
-`/demo/knowledge-stacks` (practice stacks and samples), and `/demo/settings`
+The browser routes are `/demo` (demo board), `/demo/new` (creation record,
+locked preset, demo intake, and the inline browser setup), `/demo/meetings`
+(demo list, browser practice setups, and archive), `/demo/meetings/[id]` (real
+room with guide tab hints), `/demo/roster` (personas and prompt history),
+`/demo/knowledge-stacks` (knowledge stacks and samples), and `/demo/settings`
 (operator-provider explanation only). The guide owns only the canonical step
 order, anchors, Continue/Back/Restart, chapter links, and route/tab
 coordination; it never synthesizes clicks or writes progress. Expanded
-packages also expose the approved prepared choices, 1x/2x playback, skip,
-replay, and recorded-summary inspection. Back moves the inspection cursor and
+packages also expose the approved demo choices, 1x/2x playback, skip, repeat,
+and summary inspection. Back moves the inspection cursor and
 does not un-complete canonical evidence. Refresh or a fresh tab starts a new
 volatile workspace; a direct recorded-meeting link otherwise returns to the
 entry checkpoint, while an explicit chapter link installs that chapter after
-the session loads. Reset discards practice edits and returns to step one;
-Restart recording resets only playback and the bookmark. No practice edit,
+the session loads. Reset discards browser edits and returns to step one;
+Restart demo resets only playback and the bookmark. No browser edit,
 bookmark, draft, or sample is persisted in localStorage, sessionStorage,
 IndexedDB, cookies, Cache Storage, or a service worker. The only browser
 persistence is the separate operator Auth/vault envelope, which the public demo
@@ -669,10 +671,10 @@ acceptance slice adds:
   failure/retry/removal, and the unchanged recorded turn.
 - `temporary-setup.spec.ts` for captured prompts, fixed snapshots, current
   stack contents, and no fabricated transcript.
-- `exploration-playback.spec.ts` for chapter deep links, recorded summary,
-  1x/2x speed, skip/replay, bookmark restoration, and both opening branches.
-- `replay-isolation.spec.ts` for two visitors, practice edits, reset scopes,
-  and recording-only restart.
+- `exploration-playback.spec.ts` for chapter deep links, summary,
+  1x/2x speed, skip/repeat, bookmark restoration, and both opening branches.
+- `replay-isolation.spec.ts` for two visitors, browser edits, reset scopes,
+  and demo playback restart.
 - `replay-resilience.spec.ts` for double actions, double sample adds,
   refocus/poll, stream abort/resume, and stale-state refresh.
 - `demo-accessibility.spec.ts` and `demo-failure.spec.ts` for keyboard-only
@@ -699,7 +701,7 @@ credential separation; those remain in the hosted checklist and Spec 19.
 
 The local release decision is recorded in
 [the Spec 19 completion record](../specs/spec-19-replay-release-acceptance.md).
-Public replay release stays blocked until an operator runs every step below
+Public demo release stays blocked until an operator runs every step below
 against the real hosted project, records the results in that same record, and
 re-checks the reader credential after any grant change. Use an approved
 non-destructive environment; these checks are read-only unless a step says
@@ -786,7 +788,7 @@ conditional local decision.
 - **One operator, no tenancy.** The live workspace is deliberately single-tenant:
   exactly one Supabase Auth UUID may enter. `anon` and `authenticated` cannot
   read or write live tables directly, and the replay reader is limited to
-  explicitly published replay objects. Public replay remains account-free.
+  explicitly published replay objects. Public demo remains account-free.
 - **Packaged replay is local-first and publicly blocked.** Spec 17 ships the
   package format, offline publication, checkpoint reads, paced SSE, closing
   transport, and the packaged analyst slice. Spec 18 adds the approved
@@ -794,7 +796,7 @@ conditional local decision.
   conditional local acceptance only: hosted reader grants, Storage bucket
   visibility, reverse-proxy SSE, hosted browser/mixed-mode journeys, and
   deployed publication/rollback remain unexecuted operator steps in the
-  [hosted runbook](#hosted-replay-acceptance-runbook-spec-19). Public replay
+  [hosted runbook](#hosted-replay-acceptance-runbook-spec-19). Public demo
   release stays blocked until those steps pass.
 - **OCR deployment proof is host-specific.** The probe and benchmark run on
   the Windows acceptance host; a hosted worker must repeat both after installing
@@ -913,7 +915,7 @@ NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY=<publishable-or-anon-key>
 ```
 
 `NEXT_PUBLIC_*` values are inlined by Next.js; changing them requires a new
-deployment. Public replay must build and load `/` and `/demo` with neither
+deployment. Public demo must build and load `/` and `/demo` with neither
 Supabase variable set. With the variables set, `/login` renders the form and the
 private route group probes `/api/access/session` before mounting children.
 

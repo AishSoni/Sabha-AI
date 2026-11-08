@@ -9,7 +9,7 @@
 [**Live project →**](https://sabha-ai-as.vercel.app/) · [**Architecture**](#architecture)
 
 [![Live project](https://img.shields.io/badge/Live_project-sabha--ai--as.vercel.app-6d28d9?style=for-the-badge)](https://sabha-ai-as.vercel.app/)
-[![No account required](https://img.shields.io/badge/Guided_replay-no_account_required-2EA043?style=for-the-badge)](https://sabha-ai-as.vercel.app/)
+[![No account required](https://img.shields.io/badge/Demo-no_account_required-2EA043?style=for-the-badge)](https://sabha-ai-as.vercel.app/)
 
 [![Next.js 16](https://img.shields.io/badge/Next.js-16-000000?style=flat-square&logo=nextdotjs&logoColor=white)](https://nextjs.org/)
 [![React 19](https://img.shields.io/badge/React-19-61DAFB?style=flat-square&logo=react&logoColor=white)](https://react.dev/)
@@ -26,7 +26,7 @@ The product has two surfaces:
 | Surface | Audience | What it is |
 |---|---|---|
 | **Live workspace** | The configured operator | A private board room for creating meetings, managing the roster, uploading evidence, running turns, and closing with a summary. |
-| **Guided replay** | Anyone, no account required | A read-only reconstruction of a recorded meeting, served from a pinned package. [Open the project →](https://sabha-ai-as.vercel.app/) |
+| **Demo** | Anyone, no account required | A read-only demo meeting, served from a pinned package. [Open the project →](https://sabha-ai-as.vercel.app/) |
 
 Sabha is deliberately not an auto-facilitator. The director drives the agenda and turn order; the system makes the work durable, attributable, and inspectable.
 
@@ -43,7 +43,7 @@ Sabha is deliberately not an auto-facilitator. The director drives the agenda an
 - [Configuration](#configuration)
 - [Database, migrations, and access](#database-migrations-and-access)
 - [API surface](#api-surface)
-- [Recorded replay](#recorded-replay)
+- [Demo package](#demo-package)
 - [Testing and acceptance](#testing-and-acceptance)
 - [Operations](#operations)
 - [Status and release gates](#status-and-release-gates)
@@ -56,7 +56,7 @@ Sabha is deliberately not an auto-facilitator. The director drives the agenda an
 
 ## Architecture
 
-Sabha separates the live advisory workspace from the recorded replay at the request boundary. The browser uses Supabase only for authentication; every meeting, document, turn, and evidence read flows through FastAPI.
+Sabha separates the live advisory workspace from the demo package at the request boundary. The browser uses Supabase only for authentication; every meeting, document, turn, and evidence read flows through FastAPI.
 
 ```mermaid
 flowchart LR
@@ -102,7 +102,7 @@ Most multi-agent chat demos put several models in a loop and let them talk until
 - **Turns survive failure.** A submitted turn is a durable operation in Postgres, not an HTTP request held open until a model replies.
 - **Conflict is visible.** Disagreements carry a target, topic, reasoning, and severity from 1–5. Consensus carries participants and strength.
 - **Citations resolve to evidence.** Retrieval results are tied to immutable document revisions and previewable source bytes.
-- **Recorded meetings replay without live infrastructure.** A replay package contains the meeting, turns, events, evidence, and closing record needed to reconstruct the room.
+- **A demo meeting replays without live infrastructure.** A demo package contains the meeting, turns, events, evidence, and closing record needed to reconstruct the room.
 
 ---
 
@@ -141,9 +141,9 @@ Documents are uploaded to private object storage, parsed, chunked, embedded, and
 
 Closing is a coordinated operation with lease and drain controls. Summary checkpoints make a long close recoverable. Once closed, the meeting can be archived; live and recorded rooms present the closing record consistently.
 
-### 7. Replay a recorded meeting
+### 7. Explore the demo
 
-A guided replay is served from a pinned package through a separate request graph. It never composes the live container and never writes. The player can move between checkpoints such as creation, credit analysis, downside case, portfolio fit, consensus, close, and archive, while seeing the turns and evidence that existed at that point.
+The demo is served from a pinned package through a separate request graph. It never composes the live container and never writes. A visitor can move between checkpoints such as creation, credit analysis, downside case, portfolio fit, consensus, close, and archive, while seeing the turns and evidence that existed at that point.
 
 ---
 
@@ -176,7 +176,7 @@ Sabha/
 │   │   ├── presentation/        # router assembly, dependencies, errors, timing
 │   │   └── replay/              # package-backed read graph
 │   ├── migrations/              # ordered SQL history after the baseline
-│   ├── replay_packages/         # tracked guided and test packages
+│   ├── replay_packages/         # tracked demo and test packages
 │   ├── scripts/                 # migration, backup, replay, acceptance tooling
 │   ├── tests/
 │   ├── main.py                  # live application entry point
@@ -298,7 +298,7 @@ NEXT_PUBLIC_SUPABASE_URL=https://your-project.supabase.co
 NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY=your_publishable_or_anon_key
 ```
 
-Sign in at `/login` with the Supabase user whose UUID matches `OPERATOR_USER_ID`. The public guided replay at `/` and `/demo/**` does not require Supabase configuration.
+Sign in at `/login` with the Supabase user whose UUID matches `OPERATOR_USER_ID`. The public demo at `/` and `/demo/**` does not require Supabase configuration.
 
 ---
 
@@ -374,15 +374,17 @@ The frozen contract lives at `frontend/tests/fixtures/openapi.json` (**56 paths*
 
 ---
 
-## Recorded replay
+## Demo package
 
-The guided journey is the HDFC Ltd 7.87% 2022 debenture meeting, pinned as package `hdfc-ine001a07rw5`:
+The authored demo is the HDFC Ltd 7.87% 2022 debenture meeting, published as package `hdfc-ine001a07rw5` version **10**:
 
-- Manifest version **5**, schema **2**, content SHA-256 `005a274a178ed7489bb108d7703d833316ac9e1933093866ec87040340f65d8f`
-- 9 checkpoints: initial, created, credit, downside, followup, portfolio, consensus, closed, archived
-- 4 turn tapes plus a closing tape, 4 retrieval sets, and 7 previewable assets
-- One validated browser-memory workspace seed (3 personas, 4 stacks, 1 practice intake preset) with the approved base instructions, a highlighted persona, and links to the prepared board participants
-- A separate upload allowlist of 4 approved Markdown samples, 4 seeded practice documents (one per stack), and a deterministic fail-once retry scenario
+- Manifest version **10**, schema **3**, content SHA-256 `fafe211e3500d571921c50bdb4e68c5dd264abb440745f6de3ec73886f680cd0`
+- 33 checkpoints, including the canonical journey and inspection branches
+- 14 chapters, 14 turn tapes, 6 closing tapes, 10 retrieval sets, and retained source assets
+- One validated browser-memory workspace seed (3 personas, 4 knowledge stacks) with the approved base instructions, a highlighted persona, and links to the demo board participants
+- A separate upload allowlist of 4 approved Markdown samples and a deterministic fail-once retry scenario
+
+Earlier immutable versions, including version 7, remain available for pinned runs. A deployment may pin an earlier version until it activates version 10.
 
 A second package, `placeholder-analyst`, supports synthetic tests. Assets are stored immutably in the public read-only `replay-assets` bucket under a content-addressed path.
 
@@ -391,8 +393,8 @@ The replay runtime is pinned by `REPLAY_DATABASE_URL` and `REPLAY_PACKAGE_ID`, o
 Package tooling:
 
 ```bash
-python -m scripts.build_guided_package
-python -m scripts.replay_package validate backend/replay_packages/hdfc-ine001a07rw5
+python -m scripts.build_schema3_package_v10
+python -m scripts.replay_package validate replay_packages/hdfc-ine001a07rw5-v10
 python -m scripts.replay_package publish <directory>
 python -m scripts.replay_package activate <package-id> <version>
 python -m scripts.replay_package prune --older-than-days 30
@@ -441,7 +443,7 @@ npm run test:e2e        # dev server
 npm run test:e2e:prod   # production build, then next start
 ```
 
-Playwright starts a disposable replay backend through `e2e/start-backend.mjs` on port 8123 and the frontend on port 3100. The guided journey, replay isolation, replay resilience, and evidence preview specs run without live Supabase or a provider key.
+Playwright starts a disposable demo backend through `e2e/start-backend.mjs` on port 8123 and the frontend on port 3100. The demo journey, replay isolation, replay resilience, and evidence preview specs run without live Supabase or a provider key.
 
 The latest recorded local acceptance passed 924 backend tests with 1 skipped, and 391 frontend tests across 68 files. The OpenAPI fixture remained at 56 paths with no drift, lint reported 0 errors and 29 pre-existing warnings, and the production build passed.
 
@@ -477,7 +479,7 @@ Backups include SQL, original document bytes, a manifest, and the append-only de
 |---|---|---|
 | Live operator workspace | Implemented and locally accepted | Protection and deployment checks unproven |
 | Durable turns and closing | Implemented and locally accepted | Hosted worker/reverse-proxy behavior unexecuted |
-| Guided replay | Implemented; conditional local acceptance | **Public release blocked** pending hosted acceptance |
+| Demo | Implemented; conditional local acceptance | **Public release blocked** pending hosted acceptance |
 | Evidence preview | Implemented for live documents and replay assets | Hosted storage/browser checks unexecuted |
 | Multi-user tenancy | Not implemented | Out of scope for the current design |
 

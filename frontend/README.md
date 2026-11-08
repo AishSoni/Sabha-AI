@@ -1,11 +1,11 @@
 # Sabha Frontend
 
-Next.js 16 and React 19 client for Sabha's live advisory workspace and public guided replay.
+Next.js 16 and React 19 client for Sabha's live advisory workspace and public demo.
 
 The frontend presents one room experience over two runtimes:
 
 - **Live** — authenticated operator workspace backed by the FastAPI live API.
-- **Replay** — account-free, read-only reconstruction served from a pinned recorded package.
+- **Demo** — account-free, read-only reconstruction served from a pinned package.
 
 The browser uses Supabase only for authentication. It never receives a database, storage, or vector credential.
 
@@ -40,7 +40,7 @@ NEXT_PUBLIC_RATE_LIMIT_OLLAMA=...
 NEXT_PUBLIC_RATE_LIMIT_DEFAULT=...
 ```
 
-Public replay works without `NEXT_PUBLIC_SUPABASE_URL` or `NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY`. `/login` and the private route group show a safe configuration message when those variables are missing.
+Public demo works without `NEXT_PUBLIC_SUPABASE_URL` or `NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY`. `/login` and the private route group show a safe configuration message when those variables are missing.
 
 ---
 
@@ -48,12 +48,12 @@ Public replay works without `NEXT_PUBLIC_SUPABASE_URL` or `NEXT_PUBLIC_SUPABASE_
 
 | Route | Surface | Purpose |
 |---|---|---|
-| `/` | Public | Landing page with guided replay entry point and operator sign-in |
+| `/` | Public | Landing page with demo entry point and operator sign-in |
 | `/login` | Public | Supabase Auth sign-in for the single operator |
-| `/demo` | Public replay | Prepared board introduction |
-| `/demo/new` | Public replay | Locked meeting-creation preset and intake view |
-| `/demo/meetings` | Public replay | Recorded meeting list and archive |
-| `/demo/meetings/[id]` | Public replay | Recorded room with guided checkpoints and evidence |
+| `/demo` | Public demo | Demo board introduction |
+| `/demo/new` | Public demo | Meeting creation record and setup |
+| `/demo/meetings` | Public demo | Demo meeting list and archive |
+| `/demo/meetings/[id]` | Public demo | Demo room with checkpoints and evidence |
 | `/meetings` | Operator | Live meeting list |
 | `/meetings/new` | Operator | Create a meeting and choose participants |
 | `/meetings/[id]` | Operator | Live meeting room, turns, closing, evidence, and summary |
@@ -80,7 +80,7 @@ The client treats authorization as server-owned. It does not infer access from t
 
 The provider-key vault is client-side and locks on page reload. Signing in again does not unlock it; the operator must unlock it explicitly. This is a deliberate limitation of the current single-operator design.
 
-Public replay never asks for an account and does not send live credentials. A live logout detaches the browser but does not cancel work already admitted by the backend.
+Public demo never asks for an account and does not send live credentials. A live logout detaches the browser but does not cancel work already admitted by the backend.
 
 ---
 
@@ -90,7 +90,7 @@ Public replay never asks for an account and does not send live credentials. A li
 src/
 ├── app/
 │   ├── (operator)/        # authenticated meetings, roster, stacks, settings
-│   ├── demo/              # public recorded journey
+│   ├── demo/              # public demo
 │   ├── login/
 │   └── page.tsx           # public landing
 ├── features/
@@ -123,18 +123,18 @@ src/
 - **The URL and route segment** determine runtime scope and selected meeting/checkpoint.
 - Turn execution and observation are separate concerns. Submitting a turn returns an operation receipt; status and SSE events are replayed from a sequence cursor, so a reload does not lose the turn.
 
-### Live and replay runtimes
+### Live and demo runtimes
 
 The same room components render both surfaces through a runtime scope:
 
 - Live clients call `/api/*` with the operator bearer token and use live query keys.
-- Replay clients call the public `/api/replay/*` endpoints and never mount live providers or credential code.
-- Replay turns and closing records are replayed from recorded events; the replay UI cannot submit, cancel, retry, or mutate.
-- If the replay backend has no configured package, the UI surfaces a safe unavailable state rather than falling back to live data.
+- Demo clients call the public `/api/replay/*` endpoints and never mount live providers or credential code.
+- Demo turns and closing records are replayed from recorded events; the demo UI cannot submit, cancel, retry, or mutate.
+- If the demo backend has no configured package, the UI surfaces a safe unavailable state rather than falling back to live data.
 
 ### Evidence and citations
 
-Citations resolve to an exact live document revision or replay asset. The evidence viewer supports previews for the six live document formats and the guided package's recorded assets. Source HTML and Office active content are never executed in the preview.
+Citations resolve to an exact live document revision or demo asset. The evidence viewer supports previews for the six live document formats and the demo package's retained assets. Source HTML and Office active content are never executed in the preview.
 
 ---
 
@@ -197,7 +197,7 @@ The latest recorded local acceptance passed 391 frontend tests across 68 files. 
 
 **Live API calls return `503`.** The backend cannot reach Supabase Auth. Check the backend operator-access configuration and logs.
 
-**Replay shows an unavailable state.** The replay process has no configured package or database reader. Check `REPLAY_PACKAGE_ID`, `REPLAY_DATABASE_URL`, and the backend logs. This is not a live fallback path.
+**Demo shows an unavailable state.** The demo process has no configured package or database reader. Check `REPLAY_PACKAGE_ID`, `REPLAY_DATABASE_URL`, and the backend logs. This is not a live fallback path.
 
 **Types are stale after an API change.** Export the OpenAPI contract from the backend, then run `npm run sync:openapi`.
 
