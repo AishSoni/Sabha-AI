@@ -86,7 +86,7 @@ function sessionWire(index = 1) {
         run_id: `run-${index}`,
         package_version: 'package-1',
         meeting_id: MEETING_ID,
-        label: `Recorded session ${index}`,
+        label: `Demo ${index}`,
         provenance: { source: 'packaged' },
         capabilities: {
             meetingRead: true,
@@ -179,7 +179,7 @@ describe('recorded replay runtime', () => {
         expect(screen.getByText('What did the board decide?')).toBeInTheDocument();
         fireEvent.click(screen.getByRole('button', { name: 'Details' }));
         expect(screen.getByRole('dialog')).toBeInTheDocument();
-        expect(screen.getByText('Recorded')).toBeInTheDocument();
+        expect(screen.getByText('Demo')).toBeInTheDocument();
         fireEvent.click(screen.getByRole('button', { name: 'Close' }));
         expect(screen.getByRole('button', { name: 'Restart' })).toBeInTheDocument();
         expect(screen.getByRole('button', { name: 'Meeting record' })).toBeDisabled();
@@ -247,7 +247,7 @@ describe('recorded replay runtime', () => {
         expect(screen.queryByText('Recorded product review 1')).not.toBeInTheDocument();
         fireEvent.click(screen.getByRole('button', { name: 'Details' }));
         expect(screen.getByRole('dialog')).toBeInTheDocument();
-        expect(screen.getByText('Recorded')).toBeInTheDocument();
+        expect(screen.getByText('Demo')).toBeInTheDocument();
         expect(
             calls.filter((call) => call.url === `${API}/replay/session`).length
         ).toBe(2);
@@ -398,7 +398,7 @@ describe('recorded replay runtime', () => {
 
         expect(
             await screen.findByText(
-                'Recorded replay is not configured on this server.',
+                'The demo is not configured on this server.',
                 undefined,
                 { timeout: 5_000 }
             )

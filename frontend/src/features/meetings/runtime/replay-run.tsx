@@ -144,7 +144,7 @@ export function ReplayRunProvider({ children }: { children: ReactNode }) {
         if (deckRef.current) return deckRef.current;
         const baseCheckpoint = session.prepared_base_checkpoint;
         if (!baseCheckpoint) {
-            throw new Error("The prepared turn deck has no base checkpoint.");
+            throw new Error("The demo turn deck has no base checkpoint.");
         }
         if (!deckBasePromise.current) {
             deckBasePromise.current = fetchReplayBundle(
@@ -353,7 +353,7 @@ export function ReplayRunProvider({ children }: { children: ReactNode }) {
             const state = await ensureDeckBase();
             const turn = turnById(session, turnId);
             if (!turn || turn.kind !== "reply") {
-                throw new Error("That prepared turn is not part of this recording.");
+                throw new Error("That turn is not part of this demo.");
             }
             if (state.results[turnId] || state.activeTurnId) return;
             markStarted(turn.intent_id, true);
@@ -375,7 +375,7 @@ export function ReplayRunProvider({ children }: { children: ReactNode }) {
             if (state.results[turnId]) return;
             const turn = turnById(session, turnId);
             if (!turn || turn.kind !== "reply") {
-                throw new Error("That prepared result is not available.");
+                throw new Error("That result is not available in this demo.");
             }
             const result = await fetchReplayBundle(
                 session,
@@ -393,7 +393,7 @@ export function ReplayRunProvider({ children }: { children: ReactNode }) {
             const state = await ensureDeckBase();
             const turn = turnById(session, turnId);
             if (!turn || turn.kind !== "reply" || !state.results[turnId]) {
-                throw new Error("That prepared turn cannot be replayed.");
+                throw new Error("That turn cannot be repeated.");
             }
             if (state.activeTurnId) return;
             markStarted(turn.intent_id, true);
@@ -441,7 +441,7 @@ export function ReplayRunProvider({ children }: { children: ReactNode }) {
         const state = await ensureDeckBase();
         if (state.closing) return;
         const closing = session.prepared_closing;
-        if (!closing) throw new Error("This recording has no prepared closing.");
+        if (!closing) throw new Error("This demo has no closing.");
         const played = new Set([
             ...Object.keys(state.results),
             ...(state.followUpSent
@@ -541,12 +541,12 @@ export function ReplayRunProvider({ children }: { children: ReactNode }) {
             }
         ): Promise<ReplayTransitionOutcome> => {
             const current = sessionRef.current;
-            if (!current) throw new Error("Replay session is not loaded.");
+            if (!current) throw new Error("The demo session is not loaded.");
             if (next === stateRef.current.checkpoint && !options?.force) {
                 return "unchanged";
             }
             if (!current.checkpoints.includes(next)) {
-                throw new Error("That checkpoint is not part of this recording.");
+                throw new Error("That checkpoint is not part of this demo.");
             }
             if (options?.signal?.aborted) return "aborted";
             if (activeTransition.current !== null) {
@@ -575,7 +575,7 @@ export function ReplayRunProvider({ children }: { children: ReactNode }) {
                         options?.expectedMessageId
                     ) {
                         throw new Error(
-                            "The initial checkpoint has no recorded turn snapshot."
+                            "The initial checkpoint has no turn snapshot."
                         );
                     }
                     controller.abort();
@@ -600,7 +600,7 @@ export function ReplayRunProvider({ children }: { children: ReactNode }) {
                     : null;
                 if (options?.expectedOperationId && !operation) {
                     throw new Error(
-                        "The completed checkpoint does not expose the recorded turn."
+                        "The completed checkpoint does not expose the turn."
                     );
                 }
                 const expectedMessage =
@@ -701,11 +701,11 @@ export function ReplayRunProvider({ children }: { children: ReactNode }) {
     const startIntent = useCallback(
         async (intentId: string) => {
             const current = sessionRef.current;
-            if (!current) throw new Error("Replay session is not loaded.");
+            if (!current) throw new Error("The demo session is not loaded.");
             const intent = current.intents.find(
                 (item) => item.intent_id === intentId
             );
-            if (!intent) throw new Error("That recorded intent is not available.");
+            if (!intent) throw new Error("That action is not available in this demo.");
             if (deckEnabled) {
                 const prepared = current.prepared_turns.find(
                     (turn) => turn.intent_id === intentId
@@ -734,7 +734,7 @@ export function ReplayRunProvider({ children }: { children: ReactNode }) {
                 transition.source_checkpoint !== stateRef.current.checkpoint
             ) {
                 throw new Error(
-                    "That prepared action is not available from this recorded moment."
+                    "That action is not available from this point in the demo."
                 );
             }
             const generation = generationRef.current;
@@ -756,7 +756,7 @@ export function ReplayRunProvider({ children }: { children: ReactNode }) {
                         closingBeat?.completed_checkpoint;
                     if (!completed) {
                         throw new Error(
-                            "The recorded closing does not declare a completed checkpoint."
+                            "The demo closing does not declare a completed checkpoint."
                         );
                     }
                     if (!(await commit(completed))) {
@@ -824,7 +824,7 @@ export function ReplayRunProvider({ children }: { children: ReactNode }) {
     const skipIntent = useCallback(
         async (intentId: string) => {
             const current = sessionRef.current;
-            if (!current) throw new Error("Replay session is not loaded.");
+            if (!current) throw new Error("The demo session is not loaded.");
             if (deckEnabled) {
                 const prepared = current.prepared_turns.find(
                     (turn) => turn.intent_id === intentId
@@ -838,7 +838,7 @@ export function ReplayRunProvider({ children }: { children: ReactNode }) {
                 (item) => item.intent_id === intentId
             );
             if (!transition) {
-                throw new Error("That prepared result is not available.");
+                throw new Error("That result is not available in this demo.");
             }
             if (
                 transition.source_checkpoint !== stateRef.current.checkpoint &&
@@ -849,7 +849,7 @@ export function ReplayRunProvider({ children }: { children: ReactNode }) {
                 )
             ) {
                 throw new Error(
-                    "That prepared result is not available from this recorded moment."
+                    "That result is not available from this point in the demo."
                 );
             }
             const generation = generationRef.current;
@@ -880,7 +880,7 @@ export function ReplayRunProvider({ children }: { children: ReactNode }) {
     const replayIntent = useCallback(
         async (intentId: string) => {
             const current = sessionRef.current;
-            if (!current) throw new Error("Replay session is not loaded.");
+            if (!current) throw new Error("The demo session is not loaded.");
             if (deckEnabled) {
                 const prepared = current.prepared_turns.find(
                     (turn) => turn.intent_id === intentId
@@ -894,7 +894,7 @@ export function ReplayRunProvider({ children }: { children: ReactNode }) {
                 (item) => item.intent_id === intentId
             );
             if (!transition) {
-                throw new Error("That prepared turn cannot be replayed.");
+                throw new Error("That turn cannot be repeated.");
             }
             const generation = generationRef.current;
             const outcome = await transitionToCheckpoint(
@@ -918,11 +918,11 @@ export function ReplayRunProvider({ children }: { children: ReactNode }) {
     const goToChapter = useCallback(
         async (chapterId: string, options?: { force?: boolean; signal?: AbortSignal }) => {
             const current = sessionRef.current;
-            if (!current) throw new Error("Replay session is not loaded.");
+            if (!current) throw new Error("The demo session is not loaded.");
             const chapter = current.chapters.find(
                 (item) => item.chapter_id === chapterId
             );
-            if (!chapter) throw new Error("That recorded chapter is unavailable.");
+            if (!chapter) throw new Error("That demo chapter is unavailable.");
             await switchCheckpoint(chapter.checkpoint, {
                 force: options?.force ?? false,
                 signal: options?.signal,
@@ -993,14 +993,14 @@ export function ReplayRunProvider({ children }: { children: ReactNode }) {
         value.reads.contextStats = async () => {
             const stats = composedBundle(session, await getState()).contextStats;
             if (!stats) {
-                throw new Error("Context statistics are not part of this recording.");
+                throw new Error("Context statistics are not part of this demo.");
             }
             return stats;
         };
         value.reads.closing = async () => {
             const closing = composedBundle(session, await getState()).closing;
             if (!closing) {
-                throw new Error("Closing is not part of this recording.");
+                throw new Error("Closing is not part of this demo.");
             }
             return closing;
         };
@@ -1021,7 +1021,7 @@ export function ReplayRunProvider({ children }: { children: ReactNode }) {
                 (item) => item.operation_id === operationId
             );
             if (!operation) {
-                throw new Error("Recorded turn not found.");
+                throw new Error("Turn not found in this demo.");
             }
             return operation;
         };

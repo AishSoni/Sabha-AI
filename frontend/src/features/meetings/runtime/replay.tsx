@@ -458,7 +458,7 @@ export function decodeReplaySession(value: unknown): ReplaySession {
             record.meeting_id,
             "GET /replay/session.meeting_id"
         ),
-        label: optionalString(record.label, "GET /replay/session.label") ?? "Recorded session",
+        label: optionalString(record.label, "GET /replay/session.label") ?? "Demo",
         title: optionalString(record.title, "GET /replay/session.title") ?? "",
         as_of: optionalString(record.as_of, "GET /replay/session.as_of") ?? "",
         disclosure:
@@ -600,7 +600,7 @@ function replayClosingEventsUrl(
 
 function replayReadonly(command: string): Promise<never> {
     return Promise.reject(
-        new ApiError("http", 403, `Replay is read-only (${command}).`)
+        new ApiError("http", 403, `The demo is read-only (${command}).`)
     );
 }
 
@@ -747,9 +747,9 @@ export function replayLegalActions(
             if (transition.source_checkpoint !== checkpoint) {
                 reason = source
                     ? `Available from “${source.title}”.`
-                    : "This action belongs to a different recorded moment.";
+                    : "This action belongs to a different point in the demo.";
             } else if (missing.length > 0) {
-                reason = "Complete the preceding prepared action first.";
+                reason = "Complete the preceding action first.";
             }
             return {
                 transition,
@@ -830,7 +830,7 @@ export function createReplayRuntime(
                     throw new ApiError(
                         "http",
                         404,
-                        "Context statistics are not part of this recording."
+                        "Context statistics are not part of this demo."
                     );
                 }
                 const payload = await requestJson<unknown>(
@@ -844,7 +844,7 @@ export function createReplayRuntime(
             },
             closing: async (meetingId, callerSignal) => {
                 if (!session.capabilities.closing) {
-                    throw new ApiError("http", 404, "Closing is not part of this recording.");
+                    throw new ApiError("http", 404, "Closing is not part of this demo.");
                 }
                 const payload = await requestJson<unknown>(
                     checkpointQuery(
@@ -915,7 +915,7 @@ export function createReplayRuntime(
                 observeOptions
             ): AsyncGenerator<TurnEvent, void, unknown> {
                 if (meetingId !== session.meeting_id) {
-                    throw new ApiError("http", 404, "Recorded meeting not found.");
+                    throw new ApiError("http", 404, "Demo meeting not found.");
                 }
                 const response = await fetch(
                     replayTurnEventsUrl(
@@ -988,9 +988,9 @@ export function createReplayRuntime(
             ],
         },
         presentation: {
-            label: "Recorded",
+            label: "Demo",
             homeHref: "/demo",
-            readOnlyNotice: "Recorded",
+            readOnlyNotice: "Demo",
             provenance: session.provenance,
         },
         slots: {
@@ -1027,22 +1027,22 @@ export function createReplayRuntime(
             canClose: false,
             closeReason: null,
             startPreparedTurn: async () => {
-                throw new Error("This recording has no prepared turn deck.");
+                throw new Error("This demo has no turn deck.");
             },
             sendFollowUp: async () => {
-                throw new Error("This recording has no prepared follow-up.");
+                throw new Error("This demo has no follow-up.");
             },
             replayPreparedTurn: async () => {
-                throw new Error("This recording has no prepared turn deck.");
+                throw new Error("This demo has no turn deck.");
             },
             showFullPreparedResponse: async () => {
-                throw new Error("This recording has no prepared turn deck.");
+                throw new Error("This demo has no turn deck.");
             },
             startPreparedClosing: async () => {
-                throw new Error("This recording has no prepared closing.");
+                throw new Error("This demo has no closing.");
             },
             archivePreparedMeeting: async () => {
-                throw new Error("This recording has no prepared archive.");
+                throw new Error("This demo has no archive step.");
             },
             preview: session.preview,
             retired: session.retired,
@@ -1154,7 +1154,7 @@ export function ReplayMeetingRoom({ meetingId }: { meetingId: string }) {
                 const decoded = decodeReplaySession(payload);
                 if (decoded.meeting_id !== meetingId) {
                     throw new Error(
-                        "This recording does not contain the requested meeting."
+                        "This demo does not contain the requested meeting."
                     );
                 }
                 setSession(decoded);
@@ -1165,7 +1165,7 @@ export function ReplayMeetingRoom({ meetingId }: { meetingId: string }) {
                 setError(
                     cause instanceof Error
                         ? cause
-                        : new Error("The recording is unavailable.")
+                        : new Error("The demo is unavailable.")
                 );
                 setLoading(false);
             });
@@ -1185,10 +1185,10 @@ export function ReplayMeetingRoom({ meetingId }: { meetingId: string }) {
             }
         ): Promise<ReplayTransitionOutcome> => {
             const current = sessionRef.current;
-            if (!current) throw new Error("Replay session is not loaded.");
+            if (!current) throw new Error("The demo session is not loaded.");
             if (next === stateRef.current.checkpoint) return "unchanged";
             if (!current.checkpoints.includes(next)) {
-                throw new Error("That checkpoint is not part of this recording.");
+                throw new Error("That checkpoint is not part of this demo.");
             }
             if (transitioning.current) {
                 throw new Error("A checkpoint transition is already in progress.");
@@ -1211,7 +1211,7 @@ export function ReplayMeetingRoom({ meetingId }: { meetingId: string }) {
                     : null;
                 if (options?.expectedOperationId && !operation) {
                     throw new Error(
-                        "The completed checkpoint does not expose the recorded turn."
+                        "The completed checkpoint does not expose the turn."
                     );
                 }
                 const expectedMessage =
@@ -1271,11 +1271,11 @@ export function ReplayMeetingRoom({ meetingId }: { meetingId: string }) {
     const startIntent = useCallback(
         async (intentId: string) => {
             const current = sessionRef.current;
-            if (!current) throw new Error("Replay session is not loaded.");
+            if (!current) throw new Error("The demo session is not loaded.");
             const intent = current.intents.find(
                 (item) => item.intent_id === intentId
             );
-            if (!intent) throw new Error("That recorded intent is not available.");
+            if (!intent) throw new Error("That action is not available in this demo.");
             await switchCheckpoint(intent.checkpoint);
         },
         [switchCheckpoint]
@@ -1287,7 +1287,7 @@ export function ReplayMeetingRoom({ meetingId }: { meetingId: string }) {
             const transition = current?.transitions.find(
                 (item) => item.intent_id === intentId
             );
-            if (!transition) throw new Error("That prepared result is unavailable.");
+            if (!transition) throw new Error("That result is not available in this demo.");
             await switchCheckpoint(transition.completed_checkpoint);
             setSettledIntents((previous) => new Set(previous).add(intentId));
         },
@@ -1300,7 +1300,7 @@ export function ReplayMeetingRoom({ meetingId }: { meetingId: string }) {
             const transition = current?.transitions.find(
                 (item) => item.intent_id === intentId
             );
-            if (!transition) throw new Error("That prepared turn cannot be replayed.");
+            if (!transition) throw new Error("That turn cannot be repeated.");
             await switchCheckpoint(transition.source_checkpoint);
             await startIntent(intentId);
         },
@@ -1313,7 +1313,7 @@ export function ReplayMeetingRoom({ meetingId }: { meetingId: string }) {
             const chapter = current?.chapters.find(
                 (item) => item.chapter_id === chapterId
             );
-            if (!chapter) throw new Error("That recorded chapter is unavailable.");
+            if (!chapter) throw new Error("That demo chapter is unavailable.");
             await switchCheckpoint(chapter.checkpoint);
         },
         [switchCheckpoint]
@@ -1321,9 +1321,9 @@ export function ReplayMeetingRoom({ meetingId }: { meetingId: string }) {
 
     if (loading) {
         return (
-            <ReplayFrame title="Loading recorded session">
+            <ReplayFrame title="Loading demo">
                 <p className="type-body text-ink-muted">
-                    Fetching the replay composition and its recorded meeting.
+                    Fetching the demo and its meeting.
                 </p>
             </ReplayFrame>
         );
@@ -1332,19 +1332,19 @@ export function ReplayMeetingRoom({ meetingId }: { meetingId: string }) {
     if (error || !session) {
         const notConfigured =
             isApiError(error) && error.status === 503
-                ? "Recorded replay is not configured on this server."
+                ? "The demo is not configured on this server."
                 : null;
         return (
-            <ReplayFrame title="Recorded session unavailable">
+            <ReplayFrame title="Demo unavailable">
                 <p className="type-body text-ink-secondary">
-                    {notConfigured ?? error?.message ?? "The recording is unavailable."}
+                    {notConfigured ?? error?.message ?? "The demo is unavailable."}
                 </p>
                 <button
                     type="button"
                     onClick={restart}
                     className="m-control inline-flex min-h-10 items-center rounded-control border border-control bg-surface px-4 type-control text-ink hover:bg-surface-raised focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-focus-ring"
                 >
-                    Restart replay
+                    Restart demo
                 </button>
             </ReplayFrame>
         );

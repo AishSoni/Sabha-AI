@@ -86,7 +86,7 @@ export function ReplaySessionProvider({ children }: { children: ReactNode }) {
                 setError(
                     cause instanceof Error
                         ? cause
-                        : new Error("The recording is unavailable.")
+                        : new Error("The demo is unavailable.")
                 );
             });
         return () => {
@@ -104,12 +104,12 @@ export function ReplaySessionProvider({ children }: { children: ReactNode }) {
     if (error) {
         const notConfigured =
             isApiError(error) && error.status === 503
-                ? "Recorded replay is not configured on this server."
+                ? "The demo is not configured on this server."
                 : null;
         return (
-            <ReplayFrame title="Recorded demo unavailable">
+            <ReplayFrame title="Demo unavailable">
                 <p className="type-body text-ink-secondary">
-                    {notConfigured ?? error.message ?? "The recording is unavailable."}
+                    {notConfigured ?? error.message ?? "The demo is unavailable."}
                 </p>
                 <button
                     type="button"
@@ -124,9 +124,9 @@ export function ReplaySessionProvider({ children }: { children: ReactNode }) {
 
     if (!session) {
         return (
-            <ReplayFrame title="Loading guided replay">
+            <ReplayFrame title="Loading demo">
                 <p className="type-body text-ink-muted">
-                    Fetching the recorded package and its initial checkpoint.
+                    Fetching the demo package and its initial checkpoint.
                 </p>
             </ReplayFrame>
         );

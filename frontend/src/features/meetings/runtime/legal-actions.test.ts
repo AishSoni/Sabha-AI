@@ -203,7 +203,7 @@ describe("replayLegalActions", () => {
 
         expect(blocked?.available).toBe(false);
         expect(blocked?.reason).toBe(
-            "Complete the preceding prepared action first."
+            "Complete the preceding action first."
         );
 
         const allowed = replayLegalActions(

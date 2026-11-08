@@ -87,7 +87,7 @@ test.describe("demo failure recovery", () => {
 
         await page.goto("/demo");
         await expect(
-            page.getByRole("heading", { name: "Recorded demo unavailable" })
+            page.getByRole("heading", { name: "Demo unavailable" })
         ).toBeVisible({ timeout: 30_000 });
         await expect(page.getByTestId("tutorial-hud")).toHaveCount(0);
         await expect(page.getByTestId("tutorial-hud-compact")).toHaveCount(0);
@@ -189,7 +189,7 @@ test.describe("demo failure recovery", () => {
 
         await page.goto("/demo");
         await expect(
-            page.getByRole("heading", { name: "Recorded demo unavailable" })
+            page.getByRole("heading", { name: "Demo unavailable" })
         ).toBeVisible({ timeout: 30_000 });
         await expect(page.getByTestId("tutorial-hud")).toHaveCount(0);
         await expect(page.getByTestId("tutorial-hud-compact")).toHaveCount(0);
