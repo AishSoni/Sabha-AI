@@ -42,7 +42,7 @@ test.describe("version-5 package compatibility", () => {
         ).toBeVisible();
         await expect(
             page.getByText(
-                /Recorded responses, not live AI generation/
+                /Responses were recorded, not live AI generation/
             ).first()
         ).toBeVisible();
         await expect(

@@ -20,7 +20,7 @@ function makeAsset(overrides: Partial<ReplayAsset> = {}): ReplayAsset {
         public_url: "https://assets.example/asset.md",
         source: "Included in this demo",
         capture_date: "2020-07-31",
-        rights: "Authored for this replay",
+        rights: "Authored for this demo",
         authored: true,
         public_demo: true,
         extraction: null,
@@ -33,7 +33,7 @@ function renderPanel(assets: ReplayAsset[]) {
     const runtime = {
         scope: {
             identity: { kind: "replay", id: "run-1", epoch: 1 },
-            label: "Recorded replay",
+            label: "Demo",
             provenance: {},
         },
         keys: {

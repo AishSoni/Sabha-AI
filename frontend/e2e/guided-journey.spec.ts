@@ -39,7 +39,7 @@ async function startRecording(page: Page) {
     await expect(page.getByRole("button", { name: /Continue/ })).toHaveCount(0);
     await expect(page.getByText(/Step \d+ of 8/)).toHaveCount(0);
     await expect(
-        page.getByText(/Recorded responses, not live AI generation/)
+        page.getByText(/Responses were recorded, not live AI generation/)
     ).toHaveCount(1);
 
     await page.getByRole("link", { name: "Start meeting" }).click();

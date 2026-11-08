@@ -119,12 +119,12 @@ def _guided_beats() -> list[dict]:
             "checkpoint": "checkpoint-initial",
             "intent_id": None,
             "ordinal": 1,
-            "objective": "Inspect the prepared board and its knowledge assignments.",
+            "objective": "Inspect the demo board and its knowledge assignments.",
             "route": "board",
             "tab": "roster",
             "start_checkpoint": "checkpoint-initial",
             "completed_checkpoint": "checkpoint-initial",
-            "disclosure": "Prepared board for the recorded meeting.",
+            "disclosure": "The demo board is read-only; inspection does not complete a guide step.",
             "steps": [
                 {
                     "step_id": "inspect-board",
@@ -148,7 +148,7 @@ def _guided_beats() -> list[dict]:
             "tab": None,
             "start_checkpoint": "checkpoint-initial",
             "completed_checkpoint": "checkpoint-active",
-            "disclosure": "The creation form uses a prepared preset.",
+            "disclosure": "The creation form uses a demo preset.",
             "steps": [
                 {
                     "step_id": "create-meeting",
@@ -172,7 +172,7 @@ def _guided_beats() -> list[dict]:
             "tab": "chat",
             "start_checkpoint": "checkpoint-active",
             "completed_checkpoint": "checkpoint-completed",
-            "disclosure": "The recorded turn is prepared content.",
+            "disclosure": "The turn is retained, not live.",
             "steps": [
                 {
                     "step_id": "ask-credit",
@@ -192,12 +192,12 @@ def _guided_beats() -> list[dict]:
             "checkpoint": "checkpoint-completed",
             "intent_id": None,
             "ordinal": 4,
-            "objective": "Use the recorded closing workflow.",
+            "objective": "Use the closing workflow.",
             "route": "meeting",
             "tab": "closing",
             "start_checkpoint": "checkpoint-completed",
             "completed_checkpoint": "checkpoint-closed",
-            "disclosure": "The closing is recorded, not live.",
+            "disclosure": "The closing is retained, not live.",
             "steps": [
                 {
                     "step_id": "close",

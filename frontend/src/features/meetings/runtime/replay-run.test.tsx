@@ -99,8 +99,8 @@ function sessionWire() {
 function meetingWire() {
     return {
         id: MEETING_ID,
-        name: "Recorded board",
-        agenda: "Recorded agenda",
+        name: "Demo board",
+        agenda: "Demo agenda",
         status: "active",
         total_cost: 0,
         created_at: "2026-01-15T10:00:00Z",

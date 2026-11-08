@@ -71,7 +71,7 @@ export default function DemoBoardPage() {
                     <div className="mb-2 flex flex-wrap items-center gap-2">
                         <Badge>Demo</Badge>
                         <span className="type-meta text-ink-muted">
-                            Recorded responses, not live AI generation
+                            Responses were recorded, not live AI generation
                         </span>
                     </div>
                     <h1 className="type-page-title">

@@ -28,15 +28,45 @@ const BANNED = [
     "Review the formal disagreement",
     "Review the formal consensus",
     "This meeting is read-only.",
+    "Try the recorded demo",
+    "Prepared demo",
+    "Recorded session",
+    "Recorded summary",
+    "Recorded closing",
+    "Replay last turn",
+    "Prepared for this replay",
+    "Prepared participants",
+    "Prepared setup",
+    "Recorded meeting",
+    "Recorded creation",
+    "Recorded intake",
+    "Recorded board",
+    "Recorded evidence",
+    "Recorded replay",
+    "Recording creation",
 ];
 
 async function expectNoBannedCopy(page: Page) {
     const text = await page.locator("body").innerText();
+    const accessible = await page
+        .locator("[aria-label], [title], img[alt], input[placeholder]")
+        .evaluateAll((nodes) =>
+            nodes.flatMap((node) =>
+                [
+                    node.getAttribute("aria-label"),
+                    node.getAttribute("title"),
+                    node.getAttribute("alt"),
+                    node.getAttribute("placeholder"),
+                ].filter((value): value is string => Boolean(value))
+            )
+        );
+    const haystack = [text, ...accessible].join("\n");
     for (const phrase of BANNED) {
-        expect(text, `retired copy: ${phrase}`).not.toContain(phrase);
+        expect(haystack, `retired copy: ${phrase}`).not.toContain(phrase);
     }
-    expect(text).not.toMatch(/\bDirector\b/);
-    expect(text).not.toMatch(/Step \d+ of 8/);
+    expect(haystack).not.toMatch(/\bDirector\b/);
+    expect(haystack).not.toMatch(/Step \d+ of 8/);
+    expect(haystack).not.toMatch(/Recorded demo(?! excerpt)/i);
 }
 
 test.describe("concise demo copy", () => {
@@ -60,7 +90,7 @@ test.describe("concise demo copy", () => {
         await expect(page.getByTestId("tutorial-hud")).toBeVisible();
         await expect(
             page.getByText(
-                "Recorded responses, not live AI generation"
+                "Responses were recorded, not live AI generation"
             )
         ).toHaveCount(1);
         await expectNoBannedCopy(page);

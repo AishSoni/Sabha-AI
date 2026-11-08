@@ -353,9 +353,9 @@ function replayRuntime(
             ],
         },
         presentation: {
-            label: 'Recorded session',
+            label: 'Demo',
             homeHref: '/demo',
-            readOnlyNotice: 'Recorded.',
+            readOnlyNotice: 'Demo',
             provenance: {},
         },
         slots: {},
