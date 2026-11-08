@@ -87,6 +87,39 @@ describe('turn reads', () => {
     });
 });
 
+describe('turn visibility', () => {
+    it('keeps active work when the payload also carries a full terminal window', async () => {
+        scripted.install();
+        const terminal = Array.from({ length: 100 }, (_, index) => ({
+            ...operationJson,
+            operation_id: `terminal-${index}`,
+            request_key: `terminal-request-${index}`,
+            status: 'completed',
+            admission: index + 1,
+            queue_position: null,
+        }));
+        const active = {
+            ...operationJson,
+            operation_id: 'operation-active',
+            request_key: 'request-active',
+            admission: 101,
+            queue_position: 1,
+        };
+        scripted.enqueueJson(200, [...terminal, active]);
+
+        const { result } = renderHook(
+            () => useMeetingTurns('meeting-1', true, runtime),
+            { wrapper }
+        );
+
+        await waitFor(() => expect(result.current.data).toHaveLength(101));
+        expect(result.current.data?.at(-1)).toMatchObject({
+            operation_id: 'operation-active',
+            status: 'queued',
+        });
+    });
+});
+
 describe('turn commands', () => {
     it('submits once, seeds the operation identity, and sends the BYOK header', async () => {
         scripted.install();

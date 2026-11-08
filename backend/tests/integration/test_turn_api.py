@@ -10,6 +10,7 @@ from __future__ import annotations
 
 import asyncio
 import json
+import uuid
 
 import pytest
 from fastapi.testclient import TestClient
@@ -90,6 +91,41 @@ def _submit(
     return client.post(f"/api/meetings/{meeting_id}/turns", json=body)
 
 
+def _seed_terminal_operations(
+    world: DurableQueueWorld,
+    meeting_id: str,
+    participant_id: str,
+    count: int,
+    *,
+    status: str = "done",
+) -> list[str]:
+    """Insert committed history without paying for a provider turn."""
+    operation_ids = []
+    for index in range(count):
+        operation_id = str(
+            world.db.query(
+                """
+                INSERT INTO operations (
+                    request_key, status, meeting_id, participant_id, kind,
+                    payload_hash, payload, created_at, updated_at, completed_at
+                )
+                VALUES (%s, %s, %s, %s, 'turn', %s, %s::jsonb, now(), now(), now())
+                RETURNING id
+                """,
+                (
+                    f"seed-{uuid.uuid4()}",
+                    status,
+                    meeting_id,
+                    participant_id,
+                    f"seed-hash-{index}",
+                    json.dumps({"seed": index}),
+                ),
+            )[0][0]
+        )
+        operation_ids.append(operation_id)
+    return operation_ids
+
+
 def _parse_sse(text: str) -> list[dict]:
     events = []
     for line in text.splitlines():
@@ -130,6 +166,74 @@ def test_submit_status_list_and_idempotency(turn_app):
     status = client.get(f"/api/meetings/{meeting_id}/turns/{operation_id}")
     assert status.status_code == 200
     assert status.json()["operation_id"] == operation_id
+
+
+def test_list_keeps_active_work_after_the_terminal_history_window(turn_app):
+    client, world, _provider, _service = turn_app
+    meeting_id, participant_id = _meeting(world)
+    seeded = _seed_terminal_operations(world, meeting_id, participant_id, 105)
+
+    receipt = _submit(
+        client, meeting_id, participant_id, "active-after-history"
+    ).json()
+    active_id = receipt["operation_id"]
+
+    listed = client.get(
+        f"/api/meetings/{meeting_id}/turns", params={"limit": 100}
+    )
+    assert listed.status_code == 200
+    rows = listed.json()
+    assert len(rows) == 101
+    assert sum(1 for row in rows if row["status"] == "completed") == 100
+    assert rows[-1]["operation_id"] == active_id
+    assert rows[-1]["status"] == "queued"
+    assert [row["admission"] for row in rows] == sorted(
+        row["admission"] for row in rows
+    )
+    returned_ids = {row["operation_id"] for row in rows}
+    assert seeded[0] not in returned_ids
+    assert seeded[-1] in returned_ids
+
+    bounded = client.get(
+        f"/api/meetings/{meeting_id}/turns", params={"limit": 5}
+    )
+    assert bounded.status_code == 200
+    bounded_rows = bounded.json()
+    assert len(bounded_rows) == 6
+    assert bounded_rows[-1]["operation_id"] == active_id
+    assert sum(1 for row in bounded_rows if row["status"] == "completed") == 5
+
+    # Reading is observation only: refetching cannot submit or pay for a turn.
+    before_count = len(world.db.query("SELECT id FROM operations WHERE meeting_id = %s", (meeting_id,)))
+    before_inference = world.inference_count(meeting_id)
+    assert client.get(
+        f"/api/meetings/{meeting_id}/turns", params={"limit": 100}
+    ).status_code == 200
+    assert client.get(
+        f"/api/meetings/{meeting_id}/turns", params={"limit": 100}
+    ).status_code == 200
+    assert world.inference_count(meeting_id) == before_inference
+    assert len(world.db.query("SELECT id FROM operations WHERE meeting_id = %s", (meeting_id,))) == before_count
+
+
+def test_list_keeps_active_work_older_than_the_terminal_history_window(turn_app):
+    client, world, _provider, _service = turn_app
+    meeting_id, participant_id = _meeting(world)
+
+    receipt = _submit(client, meeting_id, participant_id, "active-before-history").json()
+    active_id = receipt["operation_id"]
+    seeded = _seed_terminal_operations(world, meeting_id, participant_id, 105)
+
+    listed = client.get(
+        f"/api/meetings/{meeting_id}/turns", params={"limit": 100}
+    )
+    assert listed.status_code == 200
+    rows = listed.json()
+    assert len(rows) == 101
+    assert rows[0]["operation_id"] == active_id
+    assert rows[0]["status"] == "queued"
+    assert seeded[0] not in {row["operation_id"] for row in rows}
+    assert seeded[-1] in {row["operation_id"] for row in rows}
 
 
 def test_execution_publishes_one_final_message_and_terminal_event(turn_app):
