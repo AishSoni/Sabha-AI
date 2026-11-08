@@ -60,8 +60,8 @@ export function RecordedMeetingRoute({ meetingId }: { meetingId: string }) {
         return (
             <main id="main-content" className="mx-auto max-w-3xl px-4 py-12 text-ink" tabIndex={-1}>
                 <p className="type-body text-ink-secondary">
-                    This replay has not reached the meeting room yet. Returning to the
-                    prepared board…
+                    This demo has not reached the meeting room yet. Returning to the
+                    demo board…
                 </p>
             </main>
         );

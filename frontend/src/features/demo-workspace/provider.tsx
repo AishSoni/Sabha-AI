@@ -86,7 +86,7 @@ const WORKSPACE_RESET: LocalOutcome<never> = {
     ok: false,
     scope: "local",
     code: "workspace_reset",
-    message: "This workspace was reset; the practice change was discarded.",
+    message: "This workspace was reset; the change was discarded.",
 };
 
 export function DemoWorkspaceProvider({
@@ -147,7 +147,7 @@ export function DemoWorkspaceProvider({
                     applySeed(null);
                     setStatus("mismatch");
                     setError(
-                        "The workspace expansion does not match the pinned recording. Practice features are disabled so recorded content and practice edits cannot be mixed."
+                        "The workspace expansion does not match the pinned demo. Demo editing is disabled so recorded content and browser changes cannot be mixed."
                     );
                     return;
                 }
@@ -160,7 +160,7 @@ export function DemoWorkspaceProvider({
                 if (isApiError(cause) && cause.status === 404) {
                     setStatus("legacy");
                     setError(
-                        "This recording was published before the practice workspace existed. The recorded meeting still works; practice features are unavailable."
+                        "This demo was published before the browser workspace existed. The demo meeting still works; browser editing is unavailable."
                     );
                     return;
                 }
@@ -168,7 +168,7 @@ export function DemoWorkspaceProvider({
                 setError(
                     cause instanceof Error
                         ? cause.message
-                        : "The practice workspace seed is unavailable."
+                        : "The demo workspace is unavailable."
                 );
             });
 

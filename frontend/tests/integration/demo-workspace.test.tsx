@@ -168,7 +168,7 @@ describe("demo workspace provider", () => {
         );
         expect(screen.getByTestId("expanded").textContent).toBe("false");
         expect(screen.getByTestId("error").textContent).toContain(
-            "recorded meeting still works"
+            "demo meeting still works"
         );
     });
 
@@ -182,7 +182,7 @@ describe("demo workspace provider", () => {
         );
         expect(screen.getByTestId("expanded").textContent).toBe("false");
         expect(screen.getByTestId("error").textContent).toContain(
-            "does not match the pinned recording"
+            "does not match the pinned demo"
         );
     });
 });
@@ -275,7 +275,7 @@ describe("workspace seed decoder", () => {
         const mismatch = demoWorkspaceSeedWire();
         mismatch.documents[0].chunk_count = 99;
         expect(() => decodeWorkspaceSeed(mismatch)).toThrow(
-            /chunk count does not match the prepared sample/
+            /chunk count does not match the sample/
         );
     });
 

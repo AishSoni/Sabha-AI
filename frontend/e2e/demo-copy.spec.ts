@@ -60,7 +60,7 @@ test.describe("concise demo copy", () => {
         await expect(page.getByTestId("tutorial-hud")).toBeVisible();
         await expect(
             page.getByText(
-                "Recorded responses, not live AI generation · as of 31 July 2020"
+                "Recorded responses, not live AI generation"
             )
         ).toHaveCount(1);
         await expectNoBannedCopy(page);

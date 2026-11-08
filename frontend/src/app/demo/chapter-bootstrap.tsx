@@ -97,7 +97,7 @@ function ChapterEntry({
             const message =
                 cause instanceof Error
                     ? cause.message
-                    : "The recorded chapter could not be restored.";
+                    : "The demo chapter could not be restored.";
             if (message.includes("already in progress")) {
                 // A previous navigation is still settling. Retrying after it
                 // finishes lets the latest URL win without exposing a
@@ -127,13 +127,13 @@ function ChapterEntry({
 
     if (invalid || error) {
         const reason = session.retired
-            ? "This recorded package has been retired. Chapters and prepared actions are no longer available."
+            ? "This demo package has been retired. Chapters and demo actions are no longer available."
             : error ??
               (chapter
                   ? "This chapter is not available at the requested route or tab."
-                  : "That chapter is not part of the pinned recording.");
+                  : "That chapter is not part of the pinned demo.");
         return (
-            <ReplayFrame title="Recorded chapter unavailable">
+            <ReplayFrame title="Demo chapter unavailable">
                 <p className="type-body text-ink-secondary">{reason}</p>
                 <p className="type-meta text-ink-muted">
                     The URL cannot select a live screen, another meeting, or an
@@ -144,7 +144,7 @@ function ChapterEntry({
                         href="/demo"
                         className="m-control inline-flex min-h-10 items-center rounded-control bg-action px-4 type-control font-medium text-action-foreground hover:bg-action-hover focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-focus-ring"
                     >
-                        Open the recorded board
+                        Open the demo board
                     </Link>
                     <button
                         type="button"
@@ -160,7 +160,7 @@ function ChapterEntry({
 
     if (chapterId !== null && !installed) {
         return (
-            <ReplayFrame title="Restoring recorded chapter">
+            <ReplayFrame title="Restoring demo chapter">
                 <p className="type-body text-ink-secondary">
                     Installing the approved snapshot before opening the room.
                 </p>

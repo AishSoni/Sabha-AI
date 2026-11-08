@@ -50,7 +50,7 @@ function decodeRevision(value: unknown, path: string): WorkspaceRevision {
     const record = decodeObject(value, path);
     const prompt = requireString(record.prompt, `${path}.prompt`);
     if (prompt.length === 0 || prompt.length > WORKSPACE_LIMITS.promptChars) {
-        fail(`${path}.prompt`, "prompt exceeds the practice ceiling");
+        fail(`${path}.prompt`, "prompt exceeds the demo ceiling");
     }
     return {
         revisionId: requireString(record.revision_id, `${path}.revision_id`),
@@ -352,7 +352,7 @@ export function decodeWorkspaceSeed(value: unknown): WorkspaceSeed {
         fail("workspace-seed.stacks", "stack ceiling exceeded");
     }
     if (practiceSetups.length > WORKSPACE_LIMITS.practiceSetups) {
-        fail("workspace-seed.practice_setups", "practice setup ceiling exceeded");
+        fail("workspace-seed.practice_setups", "setup ceiling exceeded");
     }
 
     const personaIds = new Set<string>();
@@ -413,7 +413,7 @@ export function decodeWorkspaceSeed(value: unknown): WorkspaceSeed {
         if (document.chunkCount !== sample.preparedChunkCount) {
             fail(
                 `workspace-seed.documents.${document.documentId}.chunk_count`,
-                "chunk count does not match the prepared sample"
+                "chunk count does not match the sample"
             );
         }
     }

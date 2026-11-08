@@ -76,7 +76,7 @@ describe("ChapterBootstrap", () => {
         );
         renderChapter();
 
-        expect(screen.getByText("Restoring recorded chapter")).toBeInTheDocument();
+        expect(screen.getByText("Restoring demo chapter")).toBeInTheDocument();
         await waitFor(() =>
             expect(replayRun.goToChapter).toHaveBeenCalledWith("chapter-facts", {
                 signal: expect.any(AbortSignal),
@@ -104,13 +104,13 @@ describe("ChapterBootstrap", () => {
         );
         renderChapter();
 
-        expect(screen.getByText("Recorded chapter unavailable")).toBeInTheDocument();
+        expect(screen.getByText("Demo chapter unavailable")).toBeInTheDocument();
         expect(
             screen.getByText(
                 "This chapter is not available at the requested route or tab."
             )
         ).toBeInTheDocument();
-        expect(screen.getByText("Open the recorded board")).toBeInTheDocument();
+        expect(screen.getByText("Open the demo board")).toBeInTheDocument();
         expect(replayRun.goToChapter).not.toHaveBeenCalled();
     });
 
@@ -118,9 +118,9 @@ describe("ChapterBootstrap", () => {
         demoLocation.params = new URLSearchParams("chapter=chapter-missing");
         renderChapter();
 
-        expect(screen.getByText("Recorded chapter unavailable")).toBeInTheDocument();
+        expect(screen.getByText("Demo chapter unavailable")).toBeInTheDocument();
         expect(
-            screen.getByText("That chapter is not part of the pinned recording.")
+            screen.getByText("That chapter is not part of the pinned demo.")
         ).toBeInTheDocument();
         expect(replayRun.goToChapter).not.toHaveBeenCalled();
     });
@@ -132,7 +132,7 @@ describe("ChapterBootstrap", () => {
         );
         renderChapter();
 
-        expect(screen.getByText("Recorded chapter unavailable")).toBeInTheDocument();
+        expect(screen.getByText("Demo chapter unavailable")).toBeInTheDocument();
         expect(
             screen.getByText(
                 "This chapter is not available at the requested route or tab."
@@ -168,7 +168,7 @@ describe("ChapterBootstrap", () => {
             </ChapterBootstrap>
         );
 
-        expect(screen.getByText("Restoring recorded chapter")).toBeInTheDocument();
+        expect(screen.getByText("Restoring demo chapter")).toBeInTheDocument();
         await waitFor(() =>
             expect(replayRun.goToChapter).toHaveBeenCalledWith("chapter-facts", {
                 signal: expect.any(AbortSignal),
@@ -183,9 +183,9 @@ describe("ChapterBootstrap", () => {
         replayRun.session.retired = true;
         renderChapter();
 
-        expect(screen.getByText("Recorded chapter unavailable")).toBeInTheDocument();
+        expect(screen.getByText("Demo chapter unavailable")).toBeInTheDocument();
         expect(
-            screen.getByText(/This recorded package has been retired/)
+            screen.getByText(/This demo package has been retired/)
         ).toBeInTheDocument();
     });
 });

@@ -56,7 +56,7 @@ export default function DemoBoardPage() {
     if (!board) {
         return (
             <main id="main-content" className="mx-auto max-w-5xl p-6" tabIndex={-1}>
-                <p className="text-sm text-ink-muted">Loading the prepared board…</p>
+                <p className="text-sm text-ink-muted">Loading demo…</p>
             </main>
         );
     }
@@ -69,17 +69,17 @@ export default function DemoBoardPage() {
             <div className="mb-6 flex flex-wrap items-start justify-between gap-4">
                 <div>
                     <div className="mb-2 flex flex-wrap items-center gap-2">
-                        <Badge>Prepared demo</Badge>
+                        <Badge>Demo</Badge>
                         <span className="type-meta text-ink-muted">
-                            Recorded responses, not live AI generation · as of 31 July 2020
+                            Recorded responses, not live AI generation
                         </span>
                     </div>
                     <h1 className="type-page-title">
-                        {board.title ?? "Prepared board"}
+                        {board.title ?? "Demo board"}
                     </h1>
                     <p className="mt-2 max-w-3xl type-body text-ink-secondary">
                         {board.preset?.context ??
-                            "Inspect the prepared participants and their knowledge assignments before starting the recorded meeting."}
+                            "Inspect the participants and their knowledge assignments before starting the demo meeting."}
                     </p>
                 </div>
                 <Link
@@ -87,7 +87,7 @@ export default function DemoBoardPage() {
                     href="/demo/new"
                     className="m-control inline-flex min-h-10 items-center gap-2 rounded-control bg-action px-4 type-control font-medium text-action-foreground hover:bg-action-hover focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-focus-ring"
                 >
-                    Start the meeting
+                    Start meeting
                     <ArrowRight className="size-4" />
                 </Link>
             </div>
@@ -96,7 +96,7 @@ export default function DemoBoardPage() {
                 <div className="mb-3 flex items-center gap-2">
                     <Users className="size-4 text-action" />
                     <h2 id="board-heading" className="type-control font-semibold uppercase tracking-wide text-ink-secondary">
-                        Prepared participants
+                        Participants
                     </h2>
                 </div>
                 <div className="grid gap-4 md:grid-cols-3">
@@ -155,7 +155,7 @@ export default function DemoBoardPage() {
                                         href={`/demo/roster/${catalogPersonaId}`}
                                         className="m-control mt-4 inline-flex items-center gap-2 type-meta font-medium text-action hover:underline"
                                     >
-                                        Compare with practice template
+                                        Compare with persona
                                         <ArrowRight className="size-3.5" />
                                     </Link>
                                 ) : null}
@@ -166,10 +166,10 @@ export default function DemoBoardPage() {
             </section>
 
             <div className="mt-6 rounded-group border border-separator bg-surface p-4 type-body text-ink-secondary">
-                <p className="type-item-title">Prepared meeting preset</p>
+                <p className="type-item-title">Meeting details</p>
                 <p className="mt-1">{board.preset?.agenda}</p>
                 <p className="mt-1 type-meta text-ink-muted">
-                    Supplied document: {board.preset?.document_label}
+                    Document: {board.preset?.document_label}
                 </p>
             </div>
         </main>
