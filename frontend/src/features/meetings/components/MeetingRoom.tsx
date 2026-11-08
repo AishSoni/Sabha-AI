@@ -353,7 +353,7 @@ function MeetingConversation({
     const returnRef = useAnchorRef('room.return');
     useTutorialStreamingFlag(
         'recorded-room',
-        Boolean(turns.activeOperation) || turns.isObserving
+        Boolean(turns.observationOperation) || turns.isObserving
     );
     const DocumentsPanel = slots.documentPanel;
     const SummaryPanel = slots.summaryPanel;
@@ -555,7 +555,7 @@ function MeetingConversation({
                     >
                         <MessageList
                             meeting={meeting}
-                            activeOperation={turns.activeOperation}
+                            observationOperation={turns.observationOperation}
                             projection={turns.projection}
                             isObserving={turns.isObserving}
                             onResume={turns.resumeObservation}
@@ -845,7 +845,7 @@ function RoomTab({
 
 interface MessageListProps {
     meeting: MeetingWithParticipants;
-    activeOperation: TurnOperation | null | undefined;
+    observationOperation: TurnOperation | null | undefined;
     projection: TurnProjection | undefined;
     isObserving: boolean;
     onResume: () => void;
@@ -853,7 +853,7 @@ interface MessageListProps {
 
 function MessageList({
     meeting,
-    activeOperation,
+    observationOperation,
     projection,
     isObserving,
     onResume,
@@ -861,6 +861,11 @@ function MessageList({
     const contentRef = useRef<HTMLDivElement>(null);
     const stickToBottomRef = useRef(true);
     const messageCount = meeting.messages?.length ?? 0;
+    const projectionAlreadyCommitted =
+        Boolean(projection?.finalMessageId) &&
+        (meeting.messages ?? []).some(
+            (message) => message.id === projection?.finalMessageId
+        );
 
     useEffect(() => {
         const viewport = contentRef.current?.closest<HTMLElement>(
@@ -904,19 +909,19 @@ function MessageList({
                     />
                 ))}
 
-                {activeOperation && (
+                {observationOperation && !projectionAlreadyCommitted && (
                     <TurnProjectionBubble
-                        operation={activeOperation}
+                        operation={observationOperation}
                         projection={projection}
                         participant={(meeting.participants ?? []).find(
-                            (p) => p.id === activeOperation.participant_id
+                            (p) => p.id === observationOperation.participant_id
                         )}
                         isObserving={isObserving}
                         onResume={onResume}
                     />
                 )}
 
-                {(meeting.messages ?? []).length === 0 && !activeOperation && (
+                {(meeting.messages ?? []).length === 0 && !observationOperation && (
                     <div className="text-center py-12 text-ink-muted">
                         <p>No messages yet. Start the conversation!</p>
                     </div>

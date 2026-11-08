@@ -9,13 +9,13 @@
  * click reconciles with the original operation instead of buying a second
  * inference run.
  */
-import { useCallback, useMemo, useRef, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import type { TurnGenerationSettings } from '../api/generation-settings';
 import type { TurnOperation, TurnStatus } from '../api/turn-decoders';
 import { isTerminalTurnStatus } from '../api/turn-decoders';
 import type { TurnEvent } from '../api/turn-events';
 import { useCancelTurn, useSubmitTurn } from '../api/turn-mutations';
-import { useMeetingTurns } from '../api/turn-queries';
+import { useMeetingTurns, useTurnOperation } from '../api/turn-queries';
 import { useTurnObservation } from '../api/use-turn-observation';
 import type { MeetingsRuntime } from '../runtime/contract';
 import { isApiError } from '@/shared/api/errors';
@@ -33,6 +33,12 @@ export interface MeetingTurnControllerOptions {
 export interface MeetingTurnController {
     operations: TurnOperation[];
     activeOperation: TurnOperation | null;
+    /**
+     * The operation whose projection is on screen. It remains set after the
+     * queue read reports a terminal status so settlement can install the
+     * canonical message before the provisional bubble disappears.
+     */
+    observationOperation: TurnOperation | null;
     queuedOperations: TurnOperation[];
     activeParticipantId: string | null;
     projection: ReturnType<typeof useTurnObservation>['projection'];
@@ -102,11 +108,70 @@ export function useMeetingTurnController({
         [operations]
     );
 
+    const [watchedOperation, setWatchedOperation] = useState<TurnOperation | null>(null);
+    const settledOperations = useRef<Set<string>>(new Set());
+
+    // The queue read can report `completed` before the observer has settled.
+    // Keep the last watched identity until its terminal callback runs; only
+    // then may observation move to the next queued operation.
+    useEffect(() => {
+        if (!activeOperation) return;
+        if (settledOperations.current.has(activeOperation.operation_id)) return;
+        setWatchedOperation((current) => {
+            if (!current) return activeOperation;
+            if (current.operation_id === activeOperation.operation_id) {
+                return activeOperation;
+            }
+            if (!settledOperations.current.has(current.operation_id)) return current;
+            return activeOperation;
+        });
+    }, [activeOperation, watchedOperation]);
+
+    const watchedId = watchedOperation?.operation_id ?? '';
+    const watchedDetail = useTurnOperation(
+        meetingId,
+        watchedId,
+        Boolean(watchedOperation) &&
+            meetingId.length > 0 &&
+            runtime.capabilities.turnObservation &&
+            activeOperation?.operation_id !== watchedOperation?.operation_id,
+        runtime
+    );
+
+    const observationOperation = useMemo(() => {
+        if (!watchedOperation) return null;
+        const fromList = operations.find(
+            (operation) => operation.operation_id === watchedOperation.operation_id
+        );
+        const fromDetail =
+            watchedDetail.data?.operation_id === watchedOperation.operation_id
+                ? watchedDetail.data
+                : null;
+        // Any terminal read wins so a lost stream is reconciled from the
+        // durable status even when another cache still says queued.
+        const terminal = [fromList, fromDetail].find(
+            (operation) => operation && isTerminalTurnStatus(operation.status)
+        );
+        return terminal ?? fromList ?? fromDetail ?? watchedOperation;
+    }, [operations, watchedDetail.data, watchedOperation]);
+
+    const handleObservedTerminal = useCallback(
+        (event: TurnEvent | null, status: TurnStatus) => {
+            const settledId = observationOperation?.operation_id;
+            if (settledId) settledOperations.current.add(settledId);
+            setWatchedOperation((current) =>
+                current?.operation_id === settledId ? null : current
+            );
+            onTerminal?.(event, status);
+        },
+        [observationOperation?.operation_id, onTerminal]
+    );
+
     const observation = useTurnObservation({
         meetingId,
-        operation: activeOperation,
+        operation: observationOperation,
         runtime,
-        onTerminal,
+        onTerminal: handleObservedTerminal,
     });
 
     const submit = useCallback(
@@ -177,6 +242,7 @@ export function useMeetingTurnController({
     return {
         operations,
         activeOperation,
+        observationOperation,
         queuedOperations,
         activeParticipantId: activeOperation?.participant_id ?? null,
         projection: observation.projection,

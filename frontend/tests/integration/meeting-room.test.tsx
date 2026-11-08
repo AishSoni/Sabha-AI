@@ -10,6 +10,7 @@ import { fireEvent, render, screen, waitFor, within } from '@testing-library/rea
 import { Providers, getQueryClient } from '@/app/providers';
 import { MeetingRoom, meetingKeys } from '@/features/meetings';
 import { LiveMeetingsRuntimeProvider } from '@/features/meetings/runtime/live';
+import { makeSseResponse, sseFrame } from '../fixtures/sse';
 
 const MEETING_ID = '11111111-1111-4111-8111-111111111111';
 const PARTICIPANT_ID = '22222222-2222-4222-8222-222222222222';
@@ -182,6 +183,73 @@ describe('MeetingRoom', () => {
         expect(send[0]!.method).toBe('POST');
         expect(send[0]!.body).toEqual({ content: 'Ship on Friday' });
         expect(input).toHaveValue('');
+    });
+
+    it('replaces a terminal projection with the canonical message once', async () => {
+        const canonical = {
+            ...messageWire('Canonical answer'),
+            id: '44444444-4444-4444-8444-444444444444',
+            sender_type: 'ai',
+            sender_id: PARTICIPANT_ID,
+            sender_name: 'The Investor',
+        };
+        let meetingReads = 0;
+        installRouter({
+            '/events?after=0': () =>
+                makeSseResponse([
+                    sseFrame(
+                        JSON.stringify({
+                            meeting_id: MEETING_ID,
+                            operation_id: '55555555-5555-4555-8555-555555555555',
+                            event_id: 'event-1',
+                            sequence: 1,
+                            type: 'text',
+                            content: 'Partial answer',
+                        })
+                    ),
+                    sseFrame(
+                        JSON.stringify({
+                            meeting_id: MEETING_ID,
+                            operation_id: '55555555-5555-4555-8555-555555555555',
+                            event_id: 'event-2',
+                            sequence: 2,
+                            type: 'done',
+                            message_id: canonical.id,
+                        })
+                    ),
+                ]),
+            [`/meetings/${MEETING_ID}`]: () => {
+                meetingReads += 1;
+                return json(200, {
+                    ...meetingWire(),
+                    messages: meetingReads === 1 ? [] : [canonical],
+                });
+            },
+            '/turns?limit=100': () =>
+                json(200, [
+                    {
+                        operation_id: '55555555-5555-4555-8555-555555555555',
+                        meeting_id: MEETING_ID,
+                        participant_id: PARTICIPANT_ID,
+                        request_key: 'turn-request-1',
+                        status: 'executing',
+                        admission: 1,
+                        queue_position: null,
+                        created_at: '2026-10-20T10:00:00.000000Z',
+                        started_at: '2026-10-20T10:00:01.000000Z',
+                        completed_at: null,
+                        final_message_id: null,
+                        cancel_requested: false,
+                        error: null,
+                        effective_generation: null,
+                    },
+                ]),
+        });
+        renderRoom();
+
+        expect(await screen.findByText('Canonical answer')).toBeInTheDocument();
+        expect(screen.queryByText('Partial answer')).not.toBeInTheDocument();
+        expect(screen.getAllByText('Canonical answer')).toHaveLength(1);
     });
 
     it('keeps the draft when the save fails', async () => {

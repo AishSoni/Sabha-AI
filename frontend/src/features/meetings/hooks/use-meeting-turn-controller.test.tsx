@@ -22,10 +22,15 @@ const mocks = vi.hoisted(() => ({
         isObserving: false,
         resume: vi.fn(),
     },
+    observedOptions: [] as Array<{
+        operation: TurnOperation | null;
+        onTerminal?: (event: unknown, status: string) => void;
+    }>,
 }));
 
 vi.mock('../api/turn-queries', () => ({
     useMeetingTurns: () => mocks.turns,
+    useTurnOperation: () => ({ data: undefined }),
 }));
 
 vi.mock('../api/turn-mutations', () => ({
@@ -39,7 +44,10 @@ vi.mock('../api/turn-mutations', () => ({
 }));
 
 vi.mock('../api/use-turn-observation', () => ({
-    useTurnObservation: () => mocks.observe,
+    useTurnObservation: (options: (typeof mocks.observedOptions)[number]) => {
+        mocks.observedOptions.push(options);
+        return mocks.observe;
+    },
 }));
 
 const operation = (overrides: Partial<TurnOperation> = {}): TurnOperation =>
@@ -64,6 +72,7 @@ const operation = (overrides: Partial<TurnOperation> = {}): TurnOperation =>
 beforeEach(() => {
     vi.clearAllMocks();
     mocks.turns.data = [];
+    mocks.observedOptions.length = 0;
     mocks.submit.mockReset();
     mocks.cancel.mockReset();
 });
@@ -157,6 +166,50 @@ describe('meeting turn controller', () => {
         expect(result.current.queuedOperations.map((item) => item.operation_id)).toEqual([
             'waiting',
         ]);
+    });
+
+    it('keeps watching the previous operation until terminal settlement', () => {
+        mocks.turns.data = [
+            operation({
+                operation_id: 'operation-1',
+                status: 'executing',
+                queue_position: null,
+            }),
+            operation({ operation_id: 'operation-2', admission: 2 }),
+        ];
+        const onTerminal = vi.fn();
+        const { result, rerender } = renderHook(() =>
+            useMeetingTurnController({
+                meetingId: 'meeting-1',
+                runtime: createLiveMeetingsRuntime(),
+                onTerminal,
+            })
+        );
+
+        expect(result.current.activeOperation?.operation_id).toBe('operation-1');
+        expect(mocks.observedOptions.at(-1)?.operation?.operation_id).toBe('operation-1');
+
+        // The queue read reports completion before the observer settles.
+        mocks.turns.data = [
+            operation({
+                operation_id: 'operation-1',
+                status: 'completed',
+                queue_position: null,
+            }),
+            operation({ operation_id: 'operation-2', admission: 2 }),
+        ];
+        rerender();
+
+        expect(result.current.activeOperation?.operation_id).toBe('operation-2');
+        expect(result.current.observationOperation?.operation_id).toBe('operation-1');
+        expect(mocks.observedOptions.at(-1)?.operation?.operation_id).toBe('operation-1');
+
+        act(() => {
+            mocks.observedOptions.at(-1)?.onTerminal?.(null, 'completed');
+        });
+
+        expect(onTerminal).toHaveBeenCalledTimes(1);
+        expect(result.current.observationOperation?.operation_id).toBe('operation-2');
     });
 
     it('keeps cancellation as its own command', async () => {

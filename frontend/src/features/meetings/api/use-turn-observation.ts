@@ -76,8 +76,8 @@ export function useTurnObservation({
     );
     const [epoch, setEpoch] = useState(0);
     const [isObserving, setIsObserving] = useState(false);
-    const handledTerminal = useRef<string | null>(null);
-    const settling = useRef(false);
+    const handledTerminal = useRef<Set<string>>(new Set());
+    const settling = useRef<Set<string>>(new Set());
     const terminalCallback = useRef(onTerminal);
     terminalCallback.current = onTerminal;
 
@@ -89,12 +89,13 @@ export function useTurnObservation({
 
     const settle = useCallback(
         (event: TurnEvent | null, terminalStatus: TurnStatus) => {
-            if (!operationId || handledTerminal.current === scopeKey) return;
-            if (settling.current) return;
+            if (!operationId || handledTerminal.current.has(scopeKey)) return;
+            if (settling.current.has(scopeKey)) return;
 
             const finish = () => {
-                if (handledTerminal.current === scopeKey) return;
-                handledTerminal.current = scopeKey;
+                if (handledTerminal.current.has(scopeKey)) return;
+                handledTerminal.current.add(scopeKey);
+                settling.current.delete(scopeKey);
 
                 const detailKey = runtime.keys.turnDetail(meetingId, operationId);
                 const listKey = runtime.keys.turnList(meetingId);
@@ -114,9 +115,19 @@ export function useTurnObservation({
                         )
                 );
                 // Canonical messages, costs, and effects have committed by the
-                // time a terminal event is published. Refresh the meeting read.
+                // time a terminal event is published. Refresh every read that
+                // the turn can change, not only the transcript.
                 void queryClient.invalidateQueries({ queryKey: meetingKey });
                 void queryClient.invalidateQueries({ queryKey: listKey });
+                void queryClient.invalidateQueries({
+                    queryKey: runtime.keys.contextStats(meetingId),
+                });
+                void queryClient.invalidateQueries({
+                    queryKey: runtime.keys.disagreements(meetingId),
+                });
+                void queryClient.invalidateQueries({
+                    queryKey: runtime.keys.consensus(meetingId),
+                });
                 terminalCallback.current?.(event, terminalStatus);
             };
 
@@ -126,7 +137,7 @@ export function useTurnObservation({
                 return;
             }
 
-            settling.current = true;
+            settling.current.add(scopeKey);
             void (async () => {
                 try {
                     await hook.beforeTerminal({
@@ -138,10 +149,9 @@ export function useTurnObservation({
                 } catch {
                     // Keep the provisional projection; a later settlement
                     // attempt may still install the canonical checkpoint.
-                    settling.current = false;
+                    settling.current.delete(scopeKey);
                     return;
                 }
-                settling.current = false;
                 finish();
             })();
         },
