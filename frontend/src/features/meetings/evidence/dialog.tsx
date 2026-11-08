@@ -47,7 +47,7 @@ function errorCopy(error: EvidenceLoadError): { title: string; detail: string } 
         case "cors":
             return {
                 title: "The evidence host blocked this request",
-                detail: "The recorded asset could not be fetched from its declared origin.",
+                detail: "The source file could not be fetched from its declared origin.",
             };
         case "timeout":
             return {
@@ -67,12 +67,12 @@ function errorCopy(error: EvidenceLoadError): { title: string; detail: string } 
         case "wrong_type":
             return {
                 title: "This format cannot be previewed",
-                detail: "The response did not match the recorded evidence type.",
+                detail: "The response did not match the retained evidence type.",
             };
         case "integrity":
             return {
                 title: "The evidence failed its integrity check",
-                detail: "The retained bytes do not match the recorded revision or asset.",
+                detail: "The retained bytes do not match the source revision or asset.",
             };
         case "parser":
             return {

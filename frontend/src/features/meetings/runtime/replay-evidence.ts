@@ -76,8 +76,8 @@ function unavailableReason(asset: ReplayAsset): string | null {
     if (!isEvidenceMediaType(asset.media_type)) {
         return "This asset format cannot be previewed in the app.";
     }
-    if (!asset.public_url) return "No recorded public asset URL is available.";
-    if (asset.size <= 0) return "The recorded asset is empty.";
+    if (!asset.public_url) return "No public source URL is available.";
+    if (asset.size <= 0) return "The source file is empty.";
     if (asset.size > EVIDENCE_MAX_BYTES) {
         return "This asset exceeds the in-app preview size limit.";
     }
@@ -142,11 +142,11 @@ function requestError(error: unknown, url: string): EvidenceLoadError {
             if (isCrossOrigin(url)) {
                 return new EvidenceLoadError(
                     "cors",
-                    "The recorded asset could not be read because the storage origin blocked the request.",
+                    "The source file could not be read because the storage origin blocked the request.",
                     { cause: error }
                 );
             }
-            return new EvidenceLoadError("network", "The recorded asset could not be reached.", {
+            return new EvidenceLoadError("network", "The source file could not be reached.", {
                 cause: error,
             });
         }
@@ -154,28 +154,28 @@ function requestError(error: unknown, url: string): EvidenceLoadError {
             if (error.status === 404 || error.status === 410 || error.status === 503) {
                 return new EvidenceLoadError(
                     "unavailable",
-                    "The recorded asset is not available.",
+                    "The source file is not available.",
                     { cause: error }
                 );
             }
             if (error.status === 413) {
-                return new EvidenceLoadError("too_large", "The recorded asset is too large.", {
+                return new EvidenceLoadError("too_large", "The source file is too large.", {
                     cause: error,
                 });
             }
             if (error.status === 422) {
                 return new EvidenceLoadError(
                     "unsupported",
-                    "The recorded asset format is not supported.",
+                    "The source file format is not supported.",
                     { cause: error }
                 );
             }
-            return new EvidenceLoadError("http", "The recorded asset request failed.", {
+            return new EvidenceLoadError("http", "The source file request failed.", {
                 cause: error,
             });
         }
     }
-    return new EvidenceLoadError("unknown", "The recorded asset could not be read.", {
+    return new EvidenceLoadError("unknown", "The source file could not be read.", {
         cause: error,
     });
 }
@@ -201,7 +201,7 @@ function textContent(
 function pdfContent(bytes: Uint8Array): EvidenceContent {
     const magic = new TextDecoder("ascii").decode(bytes.slice(0, 5));
     if (magic !== "%PDF-") {
-        throw new EvidenceLoadError("integrity", "The recorded PDF failed its format check.");
+        throw new EvidenceLoadError("integrity", "The source PDF failed its format check.");
     }
     const url = URL.createObjectURL(
         new Blob([new Uint8Array(bytes)], { type: "application/pdf" })
@@ -242,7 +242,7 @@ export function createReplayEvidence(
             if (!asset) {
                 throw new EvidenceLoadError(
                     "unavailable",
-                    "The recorded asset is no longer part of this replay package."
+                    "The source file is no longer part of this demo package."
                 );
             }
             const reason = unavailableReason(asset);
@@ -252,7 +252,7 @@ export function createReplayEvidence(
             if (!isEvidenceMediaType(asset.media_type)) {
                 throw new EvidenceLoadError(
                     "unsupported",
-                    "The recorded asset format is not supported."
+                    "The source file format is not supported."
                 );
             }
 
@@ -268,12 +268,12 @@ export function createReplayEvidence(
 
             const size = response.bytes.byteLength;
             if (size > EVIDENCE_MAX_BYTES) {
-                throw new EvidenceLoadError("too_large", "The recorded asset is too large.");
+                throw new EvidenceLoadError("too_large", "The source file is too large.");
             }
             if (size !== asset.size) {
                 throw new EvidenceLoadError(
                     "integrity",
-                    "The recorded asset size does not match the package manifest."
+                    "The source file size does not match the package manifest."
                 );
             }
 
@@ -281,7 +281,7 @@ export function createReplayEvidence(
             if (declaredType && declaredType !== asset.media_type) {
                 throw new EvidenceLoadError(
                     "wrong_type",
-                    "The recorded asset was served with an unexpected media type."
+                    "The source file was served with an unexpected media type."
                 );
             }
 
@@ -291,14 +291,14 @@ export function createReplayEvidence(
             } catch (error) {
                 throw new EvidenceLoadError(
                     "integrity",
-                    "The recorded asset could not be verified.",
+                    "The source file could not be verified.",
                     { cause: error }
                 );
             }
             if (actualHash.toLowerCase() !== asset.sha256.toLowerCase()) {
                 throw new EvidenceLoadError(
                     "integrity",
-                    "The recorded asset does not match the package manifest hash."
+                    "The source file does not match the package manifest hash."
                 );
             }
 
