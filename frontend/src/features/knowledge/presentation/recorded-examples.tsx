@@ -42,15 +42,15 @@ export function RecordedExamplesView({
             <CardHeader>
                 <CardTitle className="flex items-center gap-2">
                     <BookOpenCheck className="size-4 text-action" />
-                    Recorded example using the prepared input
+                    Recorded example using the demo input
                 </CardTitle>
             </CardHeader>
             <CardContent className="space-y-3">
                 <p className="type-body text-ink-secondary">
                     These citations come from the recorded HDFC meeting and
-                    explicitly reference the same prepared asset. They are not a
-                    fresh retrieval against your practice edits or a claim that
-                    the practice document was parsed or indexed.
+                    explicitly reference the same demo asset. They are not a
+                    fresh retrieval against your browser edits or a claim that
+                    the document was parsed or indexed.
                 </p>
                 <ul className="space-y-3">
                     {examples.map((example) => (
@@ -69,7 +69,7 @@ export function RecordedExamplesView({
                             </p>
                             {example.excerpt ? (
                                 <p className="mt-1 type-meta text-ink-muted">
-                                    Recorded excerpt: “{example.excerpt}”
+                                    Recorded demo excerpt: “{example.excerpt}”
                                 </p>
                             ) : null}
                             <p className="mt-1 type-meta text-ink-muted">

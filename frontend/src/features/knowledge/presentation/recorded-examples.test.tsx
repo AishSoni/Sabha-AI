@@ -18,10 +18,10 @@ describe("RecordedExamplesView", () => {
         render(<RecordedExamplesView examples={[EXAMPLE]} />);
 
         expect(
-            screen.getByText("Recorded example using the prepared input")
+            screen.getByText("Recorded example using the demo input")
         ).toBeInTheDocument();
         expect(
-            screen.getByText(/not a fresh retrieval against your practice edits/i)
+            screen.getByText(/not a fresh retrieval against your browser edits/i)
         ).toBeInTheDocument();
         expect(screen.getByText(EXAMPLE.text)).toBeInTheDocument();
         expect(screen.getByText(/Claim C10/)).toBeInTheDocument();

@@ -14,7 +14,7 @@ export function DemoKnowledgeGate({ children }: { children: ReactNode }) {
     if (workspace.status === "loading") {
         return (
             <main id="main-content" className="mx-auto max-w-5xl px-4 py-16 type-body text-ink-secondary" tabIndex={-1}>
-                Loading the practice knowledge workspace…
+                Loading demo knowledge…
             </main>
         );
     }
@@ -23,17 +23,17 @@ export function DemoKnowledgeGate({ children }: { children: ReactNode }) {
         return (
             <main id="main-content" className="mx-auto max-w-5xl px-4 py-16 text-ink" tabIndex={-1}>
                 <h1 className="type-page-title">
-                    Practice knowledge is unavailable
+                    Knowledge unavailable
                 </h1>
                 <p className="mt-3 max-w-2xl type-body text-ink-secondary">
                     {workspace.error ??
-                        "This recording has no practice knowledge workspace. The prepared Files view and the recorded journey are unchanged."}
+                        "This demo has no browser knowledge workspace. The board remains available."}
                 </p>
                 <Link
                     href="/demo"
                     className="m-control mt-6 inline-flex min-h-10 items-center rounded-control border border-control bg-surface px-4 type-control text-ink hover:bg-surface-raised focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-focus-ring"
                 >
-                    Back to the prepared board
+                    Back to the demo board
                 </Link>
             </main>
         );

@@ -76,17 +76,17 @@ function Content({
         return (
             <main id="main-content" className="mx-auto max-w-3xl px-4 py-16 text-ink" tabIndex={-1}>
                 <h1 className="type-page-title">
-                    This practice stack is not available
+                    This knowledge stack is not available
                 </h1>
                 <p className="mt-3 type-body text-ink-secondary">
                     It may have been deleted or replaced by a demo reset. The
-                    recorded meeting and its evidence are unchanged.
+                    demo meeting and its evidence are unchanged.
                 </p>
                 <Link
                     href="/demo/knowledge-stacks"
                     className="m-control mt-6 inline-flex min-h-10 items-center rounded-control border border-control bg-surface px-4 type-control text-ink hover:bg-surface-raised focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-focus-ring"
                 >
-                    Back to practice stacks
+                    Back to knowledge stacks
                 </Link>
             </main>
         );
@@ -109,7 +109,7 @@ function Content({
                 href="/demo/knowledge-stacks"
                 className="m-control inline-flex type-body text-action hover:underline"
             >
-                ← Back to practice stacks
+                ← Back to knowledge stacks
             </Link>
 
             <div>
@@ -125,8 +125,8 @@ function Content({
             <div ref={documentRef}>
                 <DocumentPanelView
                 scopeLabel="stack"
-                title="Practice documents"
-                description="Prepared samples move through queued and indexing states before becoming eligible. Stack contents stay current for participants already bound to this stack."
+                title="Documents"
+                description="Samples move through queued and indexing states before becoming eligible. Stack contents stay current for participants already bound to this stack."
                 documents={documents.documents}
                 isLoading={documents.isLoading}
                 isError={documents.isError}
@@ -136,7 +136,7 @@ function Content({
                 onRetry={documents.retryDocument}
                 onDelete={(document) => {
                     const confirmed = window.confirm(
-                        `Remove "${document.file_name}" from this practice stack? It will stop being eligible immediately. The recorded meeting and its documents are unchanged.`
+                        `Remove "${document.file_name}" from this knowledge stack? It will stop being eligible immediately. The demo meeting and its documents are unchanged.`
                     );
                     if (confirmed) documents.removeDocument(document);
                 }}
@@ -157,7 +157,7 @@ function Content({
                         Add sample
                     </Button>
                 }
-                emptyMessage="No practice documents yet. Add an approved sample to watch eligibility change."
+                emptyMessage="No documents yet. Add a sample to watch eligibility change."
                 />
             </div>
 
@@ -167,7 +167,7 @@ function Content({
                 </CardHeader>
                 <CardContent className="space-y-3 type-body text-ink-secondary">
                     <ParticipantList
-                        label="Saved practice participants"
+                        label="Saved participants"
                         names={participants.savedParticipants}
                         empty="No saved participant references this stack yet."
                     />
@@ -215,8 +215,8 @@ function Content({
                 initialDescription={stack.description ?? ""}
                 saving={stacks.pending}
                 error={stacks.error}
-                title="Edit this practice stack"
-                description="Renaming the stack does not rewrite recorded participants. Contents stay current for practice participants already assigned to it."
+                title="Edit this knowledge stack"
+                description="Renaming the stack does not rewrite meeting participants. Contents stay current for participants already assigned to it."
                 onSubmit={async (input) => {
                     const result = await stacks.updateStack(stack.id, input);
                     if (!result.ok) throw new Error(result.error);
@@ -227,7 +227,7 @@ function Content({
                 open={pickerOpen}
                 onOpenChange={setPickerOpen}
                 samples={eligibleSamples}
-                destinationLabel={`Practice stack: ${stack.name}`}
+                destinationLabel={`Knowledge stack: ${stack.name}`}
                 audienceLabel={audience}
                 isAlreadyAdded={(sample) => documents.isAlreadyAdded(sample)}
                 onConfirm={(sample) => documents.addSample(sample)}
@@ -262,12 +262,12 @@ function audienceLabel(participants: {
 }): string {
     const saved =
         participants.savedParticipants.length > 0
-            ? `Saved practice participants: ${participants.savedParticipants.join(", ")}.`
-            : "No saved practice participant references this stack yet.";
+            ? `Saved participants: ${participants.savedParticipants.join(", ")}.`
+            : "No saved participant references this stack yet.";
     const defaults =
         participants.templateDefaults.length > 0
-            ? `Future snapshots default to: ${participants.templateDefaults.join(", ")}.`
-            : "No persona template defaults to this stack.";
+            ? `Future participant snapshots default to: ${participants.templateDefaults.join(", ")}.`
+            : "No persona defaults to this stack.";
     return `${saved} ${defaults}`;
 }
 
@@ -279,7 +279,7 @@ function readyAccessLabel(participants: {
         return `ready and retrievable by ${participants.savedParticipants.join(", ")}.`;
     }
     if (participants.templateDefaults.length > 0) {
-        return `ready; no saved participant yet. A new snapshot from ${participants.templateDefaults.join(", ")} would include it.`;
+        return `ready; no saved participant yet. A new participant snapshot from ${participants.templateDefaults.join(", ")} would include it.`;
     }
     return "ready, but no participant is currently bound to this stack.";
 }
@@ -287,7 +287,7 @@ function readyAccessLabel(participants: {
 function notEligibleLabel(status: string): string {
     if (status === "failed") return "not eligible because processing failed. Retry it before expecting retrieval.";
     if (status === "pending" || status === "processing") {
-        return "not eligible until the prepared simulation reports Ready.";
+        return "not eligible until the processing reports Ready.";
     }
-    return "not eligible in this practice view.";
+    return "not eligible in this demo.";
 }

@@ -52,7 +52,7 @@ function publicUrl(value: string): URL {
     } catch (cause) {
         throw new SampleSourceError(
             "unsafe_url",
-            "The prepared sample has no valid public source.",
+            "The sample has no valid public source.",
             { cause }
         );
     }
@@ -63,7 +63,7 @@ function publicUrl(value: string): URL {
     ) {
         throw new SampleSourceError(
             "unsafe_url",
-            "The prepared sample source is not a credential-free public URL."
+            "The sample source is not a credential-free public URL."
         );
     }
     return url;
@@ -77,7 +77,7 @@ export async function verifySampleSource(
     if (!asset) {
         throw new SampleSourceError(
             "missing_asset",
-            "The prepared sample is not part of this published package."
+            "The sample is not part of this published package."
         );
     }
     if (
@@ -88,14 +88,14 @@ export async function verifySampleSource(
     ) {
         throw new SampleSourceError(
             "metadata_mismatch",
-            "The prepared sample no longer matches the published asset metadata."
+            "The sample no longer matches the published asset metadata."
         );
     }
     const url = publicUrl(asset.publicUrl);
     if (sample.sizeBytes > WORKSPACE_LIMITS.sampleBytes) {
         throw new SampleSourceError(
             "too_large",
-            "The prepared sample exceeds the in-app size limit."
+            "The sample exceeds the in-app size limit."
         );
     }
 
@@ -108,7 +108,7 @@ export async function verifySampleSource(
     } catch (cause) {
         throw new SampleSourceError(
             "unreachable",
-            "The prepared sample source could not be loaded.",
+            "The sample source could not be loaded.",
             { cause }
         );
     }
@@ -117,20 +117,20 @@ export async function verifySampleSource(
     if (size > WORKSPACE_LIMITS.sampleBytes) {
         throw new SampleSourceError(
             "too_large",
-            "The prepared sample exceeds the in-app size limit."
+            "The sample exceeds the in-app size limit."
         );
     }
     if (size !== sample.sizeBytes) {
         throw new SampleSourceError(
             "integrity",
-            "The prepared sample size does not match its approved record."
+            "The sample size does not match its approved record."
         );
     }
     const declaredType = response.contentType?.split(";")[0]?.trim().toLowerCase();
     if (declaredType && declaredType !== sample.mediaType.toLowerCase()) {
         throw new SampleSourceError(
             "wrong_type",
-            "The prepared sample was served with an unexpected media type."
+            "The sample was served with an unexpected media type."
         );
     }
 
@@ -140,14 +140,14 @@ export async function verifySampleSource(
     } catch (cause) {
         throw new SampleSourceError(
             "integrity",
-            "The prepared sample could not be verified.",
+            "The sample could not be verified.",
             { cause }
         );
     }
     if (actualHash.toLowerCase() !== sample.sha256.toLowerCase()) {
         throw new SampleSourceError(
             "integrity",
-            "The prepared sample does not match its approved SHA-256."
+            "The sample does not match its approved SHA-256."
         );
     }
 }

@@ -99,14 +99,14 @@ describe("practice knowledge stack state", () => {
     it("creates and renames a stack with a bounded name", () => {
         const created = createLocalStack(localStateFromSeed(seed()), {
             stackId: "new-stack",
-            name: "  New practice stack  ",
+            name: "  New knowledge stack  ",
             description: "  Temporary contents.  ",
         });
         expect(created.ok).toBe(true);
         if (!created.ok) return;
         expect(created.stack).toMatchObject({
             stackId: "new-stack",
-            label: "New practice stack",
+            label: "New knowledge stack",
             description: "Temporary contents.",
             scope: "shared",
         });

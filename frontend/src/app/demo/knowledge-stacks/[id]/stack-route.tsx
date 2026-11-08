@@ -79,14 +79,14 @@ export function DemoKnowledgeStackRoute({ stackId }: { stackId: string }) {
                                 title: sample.fileName,
                             }}
                             citation={{
-                                source: example.sourceTitle ?? "Recorded evidence",
+                                source: example.sourceTitle ?? "Demo evidence",
                                 title: sample.fileName,
                                 snippet: example.excerpt,
                                 claim_id: example.claimId,
                                 locator: example.locator,
                             }}
-                            label="Preview recorded example"
-                            ariaLabel={`Preview recorded example: ${sample.fileName}`}
+                            label="Preview demo example"
+                            ariaLabel={`Preview demo example: ${sample.fileName}`}
                         />
                     );
                 }}

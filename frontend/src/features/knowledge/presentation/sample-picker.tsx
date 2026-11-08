@@ -92,9 +92,9 @@ export function SamplePicker({
         <Dialog open={open} onOpenChange={onOpenChange}>
             <DialogContent className="max-h-[90vh] max-w-2xl overflow-y-auto">
                 <DialogHeader>
-                    <DialogTitle>Add a prepared sample</DialogTitle>
+                    <DialogTitle>Add a sample</DialogTitle>
                     <DialogDescription>
-                        Choose from the approved practice library. Your own files
+                        Choose from the sample library. Your own files
                         are never opened, and processing is simulated locally.
                     </DialogDescription>
                 </DialogHeader>
@@ -110,11 +110,10 @@ export function SamplePicker({
                 </div>
 
                 <fieldset className="space-y-2">
-                    <legend className="sr-only">Approved samples</legend>
+                    <legend className="sr-only">Samples</legend>
                     {samples.length === 0 && (
                         <p className="rounded-control border border-dashed border-separator px-3 py-6 text-center type-body text-ink-muted">
-                            No prepared samples are available for this
-                            destination.
+                            No samples are available for this destination.
                         </p>
                     )}
                     {samples.map((sample) => {
@@ -187,7 +186,7 @@ export function SamplePicker({
                 <p className="flex items-start gap-2 rounded-control border border-separator bg-surface-raised/40 px-3 py-2 type-meta text-ink-muted">
                     <CheckCircle2 className="mt-0.5 size-4 shrink-0 text-success" />
                     Adding a sample stages a local document. It becomes eligible
-                    only after the prepared simulation reports Ready.
+                    only after processing reports Ready.
                 </p>
 
                 <div aria-live="polite" className="min-h-5 type-body">

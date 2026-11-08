@@ -13,8 +13,8 @@ const SHARED: WorkspaceSample = {
     sha256: "b".repeat(64),
     role: "shared-research",
     destinationKinds: ["meeting", "stack"],
-    description: "The prepared issuer fact sheet used by the recorded board.",
-    accessibleLabel: "Upload the prepared issuer fact sheet",
+    description: "The issuer fact sheet used by the demo board.",
+    accessibleLabel: "Upload the issuer fact sheet",
     provenance: "demo-authored",
     rightsStatus: "approved-for-upload",
     approvedAt: "2026-10-31",
@@ -33,7 +33,7 @@ const MANDATE: WorkspaceSample = {
     sizeBytes: 669,
     role: "mandate-material",
     description: "The fictional mandate limits used by the portfolio role.",
-    accessibleLabel: "Upload the prepared portfolio mandate",
+    accessibleLabel: "Upload the portfolio mandate",
     previewMode: "unsupported",
     previewNote: "Markdown preview is not enabled for this sample.",
     preparedChunkCount: 3,
@@ -70,12 +70,12 @@ function Harness({
     );
 }
 
-describe("practice sample picker", () => {
+describe("sample picker", () => {
     it("offers only supplied samples with format, size, destination, and audience", () => {
         render(<Harness />);
 
         expect(
-            screen.getByRole("dialog", { name: "Add a prepared sample" })
+            screen.getByRole("dialog", { name: "Add a sample" })
         ).toBeTruthy();
         expect(screen.getByText("shared-fact-sheet.md")).toBeTruthy();
         expect(screen.getByText("portfolio-mandate.md")).toBeTruthy();
@@ -160,7 +160,7 @@ describe("practice sample picker", () => {
     it("keeps the dialog open and announces a failed local add", async () => {
         const onConfirm = vi.fn(async () => ({
             ok: false as const,
-            error: "The prepared sample is already added in this destination.",
+            error: "The sample is already added in this destination.",
         }));
         render(<Harness onConfirm={onConfirm} />);
 
@@ -169,7 +169,7 @@ describe("practice sample picker", () => {
         await waitFor(() =>
             expect(
                 screen.getByText(
-                    "The prepared sample is already added in this destination."
+                    "The sample is already added in this destination."
                 )
             ).toBeTruthy()
         );

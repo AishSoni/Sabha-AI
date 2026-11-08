@@ -136,7 +136,7 @@ afterEach(() => {
     sequence = 0;
 });
 
-describe("local practice documents", () => {
+describe("local documents", () => {
     it("stages one approved sample through queued and indexing to ready", async () => {
         vi.stubGlobal(
             "fetch",
@@ -251,7 +251,7 @@ describe("local practice documents", () => {
         fireEvent.click(screen.getByRole("button", { name: "add credit" }));
         await waitFor(() =>
             expect(screen.getByTestId("error").textContent).toBe(
-                "The prepared sample could not be verified."
+                "The sample could not be verified."
             )
         );
         expect(screen.getByTestId("counts").textContent).toBe("0/0");

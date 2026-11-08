@@ -140,7 +140,7 @@ export function StackListView({
                                 <p className="type-meta text-ink-muted">
                                     {stack.assignedParticipantNames.length > 0
                                         ? `Assigned to ${stack.assignedParticipantNames.join(", ")}`
-                                        : "No practice participant assigned"}
+                                        : "No participant assigned"}
                                 </p>
                             )}
                         </CardContent>

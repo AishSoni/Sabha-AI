@@ -175,7 +175,7 @@ test.describe("concise demo copy", () => {
                 name: "Credit evidence (private to The Credit Analyst)",
             })
         ).toBeVisible({ timeout: 30_000 });
-        await expect(page.getByText("Saved practice participants")).toBeVisible();
+        await expect(page.getByText("Saved participants")).toBeVisible();
         await expectNoBannedCopy(page);
 
         await page.goto("/demo/meetings");

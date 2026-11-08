@@ -129,7 +129,7 @@ export function nextTransition(
             kind: "to-failed",
             message:
                 sample.failureMessage ??
-                "The prepared ingestion stopped before indexing.",
+                "Ingestion stopped before indexing.",
         };
     }
     return {

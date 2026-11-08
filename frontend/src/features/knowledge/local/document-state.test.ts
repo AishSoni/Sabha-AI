@@ -73,7 +73,7 @@ function readyDocument(
     };
 }
 
-describe("practice document state", () => {
+describe("document state", () => {
     it("moves one document from queued to indexing to ready", () => {
         const sampleRecord = sample();
         const added = add(emptyLocalState(), sampleRecord);

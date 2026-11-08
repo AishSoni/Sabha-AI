@@ -240,7 +240,7 @@ function sessionWithRecordedExample() {
             locator: "assets/shared/hdfc-v007-shared-fact-sheet.md",
             public_url:
                 "https://cdn.example.test/replay/hdfc-v007-shared-fact-sheet.md",
-            source: "Demo-authored prepared input",
+            source: "Demo-authored input",
             capture_date: "2026-10-16",
             rights: "Demo-authored for this replay.",
             authored: true,
@@ -283,7 +283,7 @@ afterEach(() => {
     vi.restoreAllMocks();
 });
 
-describe("demo practice knowledge stacks", () => {
+describe("demo knowledge stacks", () => {
     it("lists seeded stacks with real counts and assignments without live calls", async () => {
         const calls = installDemoRouter();
         await renderAt("/demo/knowledge-stacks");
@@ -339,14 +339,14 @@ describe("demo practice knowledge stacks", () => {
         expect(verifySample).toHaveBeenCalledTimes(1);
     });
 
-    it("fails a prepared sample once and retries the same row to ready", async () => {
+    it("fails a sample once and retries the same row to ready", async () => {
         installDemoRouter();
         vi.spyOn(window, "confirm").mockReturnValue(true);
         await renderAt("/demo/knowledge-stacks/downside-worksheet");
         await screen.findByRole("heading", { name: "Downside worksheet" });
 
         // The downside worksheet is seeded as a ready document. Remove it so the
-        // prepared failure and retry path can run in this stack.
+        // sample failure and retry path can run in this stack.
         await screen.findAllByText("downside-worksheet.md");
         fireEvent.click(
             screen.getByRole("button", {
@@ -407,17 +407,17 @@ describe("demo practice knowledge stacks", () => {
             ).not.toBeInTheDocument()
         );
         expect(confirm).toHaveBeenCalledWith(
-            expect.stringMatching(/recorded meeting and its documents are unchanged/i)
+            expect.stringMatching(/demo meeting and its documents are unchanged/i)
         );
         expect(screen.getByText(/0 documents · 0 ready/)).toBeInTheDocument();
     });
 
-    it("links a prepared sample to its explicit recorded claim and never performs a live retrieval", async () => {
+    it("links a sample to its explicit recorded claim and never performs a live retrieval", async () => {
         const calls = installDemoRouter(200, sessionWithRecordedExample());
         await renderAt("/demo/knowledge-stacks/shared-fact-sheet");
 
         expect(
-            await screen.findByText("Recorded example using the prepared input")
+            await screen.findByText("Recorded example using the demo input")
         ).toBeInTheDocument();
         expect(
             screen.getByText(
@@ -427,7 +427,7 @@ describe("demo practice knowledge stacks", () => {
         expect(screen.getByText(/Claim C10/)).toBeInTheDocument();
         expect(
             screen.getByRole("button", {
-                name: /Preview recorded example/,
+                name: /Preview demo example/,
             })
         ).toBeInTheDocument();
         expect(
@@ -445,7 +445,7 @@ describe("demo practice knowledge stacks", () => {
 
         fireEvent.click(
             await screen.findByRole("button", {
-                name: "Preview recorded example: hdfc-v007-shared-fact-sheet.md",
+                name: "Preview demo example: hdfc-v007-shared-fact-sheet.md",
             })
         );
 
@@ -494,7 +494,7 @@ describe("demo practice knowledge stacks", () => {
         const confirm = vi.spyOn(window, "confirm").mockReturnValue(true);
         await renderAt("/demo/knowledge-stacks/new");
 
-        await screen.findByRole("heading", { name: "New practice stack" });
+        await screen.findByRole("heading", { name: "New knowledge stack" });
         fireEvent.change(screen.getByLabelText("Name"), {
             target: { value: "Temporary research" },
         });
@@ -531,7 +531,7 @@ describe("demo practice knowledge stacks", () => {
             ).not.toBeInTheDocument()
         );
         expect(confirm).toHaveBeenCalledWith(
-            expect.stringMatching(/practice documents will be revoked first/i)
+            expect.stringMatching(/documents will be revoked first/i)
         );
     });
 
@@ -540,11 +540,11 @@ describe("demo practice knowledge stacks", () => {
         await renderAt("/demo/knowledge-stacks/missing-stack");
         expect(
             await screen.findByRole("heading", {
-                name: "This practice stack is not available",
+                name: "This knowledge stack is not available",
             })
         ).toBeInTheDocument();
         expect(
-            screen.getByRole("link", { name: "Back to practice stacks" })
+            screen.getByRole("link", { name: "Back to knowledge stacks" })
         ).toHaveAttribute("href", "/demo/knowledge-stacks");
     });
 
@@ -553,11 +553,11 @@ describe("demo practice knowledge stacks", () => {
         await renderAt("/demo/knowledge-stacks");
         expect(
             await screen.findByRole("heading", {
-                name: "Practice knowledge is unavailable",
+                name: "Knowledge unavailable",
             })
         ).toBeInTheDocument();
         expect(
-            screen.getByRole("link", { name: "Back to the prepared board" })
+            screen.getByRole("link", { name: "Back to the demo board" })
         ).toHaveAttribute("href", "/demo");
     });
 });

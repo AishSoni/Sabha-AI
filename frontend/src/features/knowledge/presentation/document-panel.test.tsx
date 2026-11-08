@@ -22,7 +22,7 @@ const DOCUMENTS: KnowledgeDocumentView[] = [
         status: "failed",
         chunk_count: 0,
         operation_id: "operation-failed",
-        error_message: "Prepared simulation stopped before indexing.",
+        error_message: "Ingestion stopped before indexing.",
     },
     {
         id: "doc-queued",
@@ -128,11 +128,11 @@ describe("shared document panel", () => {
                 {...baseProps()}
                 documents={[]}
                 uploadAction={<button type="button">Add approved sample</button>}
-                emptyMessage="No prepared documents in this stack."
+                emptyMessage="No documents in this stack."
             />
         );
         expect(
-            screen.getByText("No prepared documents in this stack.")
+            screen.getByText("No documents in this stack.")
         ).toBeTruthy();
         expect(screen.queryByText(/Upload a PDF/)).toBeNull();
     });

@@ -24,13 +24,13 @@ function Content() {
                 href="/demo/knowledge-stacks"
                 className="m-control inline-flex type-body text-action hover:underline"
             >
-                ← Back to practice stacks
+                ← Back to knowledge stacks
             </Link>
             <div>
-                <h1 className="type-page-title">New practice stack</h1>
+                <h1 className="type-page-title">New knowledge stack</h1>
                 <p className="mt-1 type-body text-ink-secondary">
                     A temporary document collection for this browser tab. It
-                    never creates an operator stack or assigns a recorded
+                    never creates an operator stack or assigns a meeting
                     participant.
                 </p>
             </div>
@@ -39,7 +39,7 @@ function Content() {
                 initialName=""
                 initialDescription=""
                 error={stacks.error}
-                description="Stack contents stay current for practice participants assigned to this stack. Template defaults apply to new snapshots and do not rewrite saved assignments."
+                description="Stack contents stay current for participants assigned to this stack. Persona defaults apply to new participant snapshots and do not rewrite saved assignments."
                 onSubmit={async (input) => {
                     const result = await stacks.createStack(input);
                     if (!result.ok) throw new Error(result.error);

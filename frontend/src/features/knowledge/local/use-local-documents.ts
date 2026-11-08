@@ -42,7 +42,7 @@ function localId(prefix: string): string {
 function addFailureMessage(reason: AddDocumentFailure): string {
     switch (reason) {
         case "sample_unavailable":
-            return "The prepared sample is not available in this workspace.";
+            return "The sample is not available in this workspace.";
         case "destination_not_allowed":
             return "This sample cannot be added to this destination.";
         case "duplicate_sample":
@@ -50,7 +50,7 @@ function addFailureMessage(reason: AddDocumentFailure): string {
         case "limit_reached":
             return "This workspace reached its document record limit. Remove a document or reset the demo.";
         case "concurrent_limit":
-            return "Two prepared documents are already processing. Wait for one to finish.";
+            return "Two documents are already processing. Wait for one to finish.";
     }
 }
 
@@ -220,7 +220,7 @@ export function useLocalDocuments(
             setLocalError(null);
             if (!workspace.expanded) {
                 const error =
-                    "Practice documents are unavailable because this workspace cannot expand.";
+                    "Documents are unavailable because this workspace cannot expand.";
                 setLocalError(error);
                 return { ok: false, error };
             }
@@ -229,7 +229,7 @@ export function useLocalDocuments(
             );
             if (!currentSample) {
                 const error =
-                    "The prepared sample is not available in this workspace.";
+                    "The sample is not available in this workspace.";
                 setLocalError(error);
                 return { ok: false, error };
             }
@@ -256,7 +256,7 @@ export function useLocalDocuments(
                 const error =
                     cause instanceof SampleSourceError
                         ? cause.message
-                        : "The prepared sample could not be verified.";
+                        : "The sample could not be verified.";
                 setUploading(false);
                 if (workspace.isCurrentEpoch(epoch)) {
                     setLocalError(error);
@@ -268,7 +268,7 @@ export function useLocalDocuments(
                 return {
                     ok: false,
                     error:
-                        "This workspace was reset; the prepared sample was not added.",
+                        "This workspace was reset; the sample was not added.",
                 };
             }
             const ids = {
