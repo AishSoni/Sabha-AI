@@ -77,10 +77,13 @@ def test_user_write_is_accepted_before_close_and_rejected_after(world: ClosingWo
     first = world.append_message(meeting_id, key="note-1", content="Before close")
     assert first["outcome"] == "accepted"
 
-    duplicate = world.append_message(meeting_id, key="note-1", content="Changed")
+    duplicate = world.append_message(meeting_id, key="note-1", content="Before close")
     assert duplicate["outcome"] == "duplicate"
     assert duplicate["message"]["id"] == first["message"]["id"]
-    assert duplicate["message"]["content"] == "Before close"
+
+    conflict = world.append_message(meeting_id, key="note-1", content="Changed")
+    assert conflict["outcome"] == "conflict"
+    assert world.message_count(meeting_id) == 1
 
     world.request(meeting_id, mode="vote")
     rejected = world.append_message(meeting_id, key="note-2", content="During close")

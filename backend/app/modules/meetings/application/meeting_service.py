@@ -445,9 +445,10 @@ class MeetingService:
         """Persist a user message through the meeting-locked guard.
 
         Returns ``(outcome, message)`` where outcome is accepted, duplicate,
-        meeting_closed, not_found, or invalid. The guard reads the meeting row
-        under lock, so a close racing this write cannot slip through a stale
-        precheck.
+        conflict, meeting_closed, not_found, or invalid. A duplicate retry
+        must match the original payload; reusing the key for different content
+        is a conflict. The guard reads the meeting row under lock, so a close
+        racing this write cannot slip through a stale precheck.
         """
         payload = {
             "id": str(uuid.uuid4()),

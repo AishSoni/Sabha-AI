@@ -112,6 +112,54 @@ def test_duplicate_user_message_request_key_returns_the_original(disposable_db, 
     assert message_count(disposable_db, MEETING) == 1
 
 
+def test_different_payload_with_the_same_request_key_is_a_conflict(
+    disposable_db, monkeypatch
+):
+    seed_meeting(disposable_db, status="active")
+    patch_manager(monkeypatch, disposable_db)
+
+    with TestClient(app) as client:
+        first = client.post(
+            f"/api/meetings/{MEETING}/message",
+            json={"content": "Original", "request_key": "message-key-2"},
+        )
+        conflict = client.post(
+            f"/api/meetings/{MEETING}/message",
+            json={"content": "Different", "request_key": "message-key-2"},
+        )
+
+    assert first.status_code == 200, first.text
+    assert conflict.status_code == 409, conflict.text
+    assert message_count(disposable_db, MEETING) == 1
+    rows = disposable_db.query(
+        "SELECT content FROM messages WHERE meeting_id = %s AND request_key = %s",
+        (MEETING, "message-key-2"),
+    )
+    assert rows == [("Original",)]
+
+
+def test_same_content_with_a_new_request_key_is_a_new_message(
+    disposable_db, monkeypatch
+):
+    seed_meeting(disposable_db, status="active")
+    patch_manager(monkeypatch, disposable_db)
+
+    with TestClient(app) as client:
+        first = client.post(
+            f"/api/meetings/{MEETING}/message",
+            json={"content": "Same words", "request_key": "message-key-3"},
+        )
+        second = client.post(
+            f"/api/meetings/{MEETING}/message",
+            json={"content": "Same words", "request_key": "message-key-4"},
+        )
+
+    assert first.status_code == 200, first.text
+    assert second.status_code == 200, second.text
+    assert second.json()["id"] != first.json()["id"]
+    assert message_count(disposable_db, MEETING) == 2
+
+
 @pytest.mark.parametrize("status", ["voting", "ended", "archived"])
 def test_turn_rejected_before_inference_for_non_active_meetings(turn_env, monkeypatch, status):
     db = turn_env["db"]

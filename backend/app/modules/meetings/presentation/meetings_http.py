@@ -95,6 +95,11 @@ async def add_user_message(
                 "to an active meeting"
             ),
         )
+    if outcome == "conflict":
+        raise HTTPException(
+            status_code=409,
+            detail="A different message was already saved with this request key",
+        )
     if outcome == "invalid" or message is None:
         raise HTTPException(status_code=422, detail="Invalid message")
 

@@ -97,7 +97,7 @@ def test_failed_migration_rolls_back_and_resumes_at_the_failed_step(
     resumed = apply_migrations(empty_db.uri, migrations_dir=migrations)
 
     assert resumed[0] == FAILED_STEP
-    assert resumed[-1] == "037_turn_queue_active_window"
+    assert resumed[-1] == "038_message_request_key_conflict"
     assert _relation(empty_db, "public.meeting_closings") is True
     assert _relation(empty_db, "public.document_revisions") is True
     assert all(applied is True for _, applied in status(empty_db.uri, migrations_dir=migrations))
