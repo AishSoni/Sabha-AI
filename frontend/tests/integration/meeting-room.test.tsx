@@ -278,6 +278,66 @@ describe('MeetingRoom', () => {
         expect(input).toHaveValue('Do not lose me');
     });
 
+    it('does not send while an input method is composing', async () => {
+        const calls = installRouter({
+            '/message': () => json(200, messageWire('Composed')),
+        });
+        renderRoom();
+
+        const input = await screen.findByPlaceholderText('Type your message...');
+        fireEvent.compositionStart(input);
+        fireEvent.change(input, { target: { value: 'Composed' } });
+        fireEvent.keyDown(input, { key: 'Enter', isComposing: true });
+
+        await new Promise((resolve) => setTimeout(resolve, 10));
+        expect(calls.filter((call) => call.url.endsWith('/message'))).toHaveLength(0);
+        expect(input).toHaveValue('Composed');
+
+        fireEvent.compositionEnd(input);
+        fireEvent.keyUp(input, { key: 'Enter' });
+        fireEvent.keyDown(input, { key: 'Enter' });
+
+        await waitFor(() => expect(input).toHaveValue(''));
+        expect(calls.filter((call) => call.url.endsWith('/message'))).toHaveLength(1);
+    });
+
+    it('ignores the Enter that confirms an IME candidate but sends the next one', async () => {
+        const calls = installRouter({
+            '/message': () => json(200, messageWire('Candidate')),
+        });
+        renderRoom();
+
+        const input = await screen.findByPlaceholderText('Type your message...');
+        fireEvent.compositionStart(input);
+        fireEvent.change(input, { target: { value: 'Candidate' } });
+        fireEvent.compositionEnd(input);
+
+        // Safari can order compositionend before the confirming keydown.
+        fireEvent.keyDown(input, { key: 'Enter' });
+        await new Promise((resolve) => setTimeout(resolve, 10));
+        expect(calls.filter((call) => call.url.endsWith('/message'))).toHaveLength(0);
+        expect(input).toHaveValue('Candidate');
+
+        fireEvent.keyUp(input, { key: 'Enter' });
+        fireEvent.keyDown(input, { key: 'Enter' });
+
+        await waitFor(() => expect(input).toHaveValue(''));
+        expect(calls.filter((call) => call.url.endsWith('/message'))).toHaveLength(1);
+    });
+
+    it('keeps Shift+Enter as a newline and does not send', async () => {
+        const calls = installRouter();
+        renderRoom();
+
+        const input = await screen.findByPlaceholderText('Type your message...');
+        fireEvent.change(input, { target: { value: 'First line' } });
+        fireEvent.keyDown(input, { key: 'Enter', shiftKey: true });
+
+        await new Promise((resolve) => setTimeout(resolve, 10));
+        expect(calls.filter((call) => call.url.endsWith('/message'))).toHaveLength(0);
+        expect(input).toHaveValue('First line');
+    });
+
     it('reuses one request key after a lost response and saves once', async () => {
         let posts = 0;
         const calls = installRouter({

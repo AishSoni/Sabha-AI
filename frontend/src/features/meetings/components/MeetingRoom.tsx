@@ -8,7 +8,12 @@
  * presentational tab state and the composer draft. No legacy store is read or
  * written here, and navigation never replays a paid command.
  */
-import { useEffect, useRef, useState } from 'react';
+import {
+    useEffect,
+    useRef,
+    useState,
+    type KeyboardEvent as ReactKeyboardEvent,
+} from 'react';
 import Link from 'next/link';
 import ReactMarkdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
@@ -1153,6 +1158,9 @@ function MessageComposer({ meeting }: { meeting: MeetingWithParticipants }) {
     const draftRef = useRef<Draft>(initialDraft());
     const pendingIntentsRef = useRef<Map<string, SentDraft>>(new Map());
     const inFlightKeyRef = useRef<string | null>(null);
+    const composingRef = useRef(false);
+    const justEndedCompositionRef = useRef(false);
+    const compositionResetTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
 
     const sendMessage = useMutation({
         mutationFn: ({
@@ -1211,6 +1219,48 @@ function MessageComposer({ meeting }: { meeting: MeetingWithParticipants }) {
         setInputValue(text);
     };
 
+    useEffect(
+        () => () => {
+            if (compositionResetTimer.current) {
+                clearTimeout(compositionResetTimer.current);
+            }
+        },
+        []
+    );
+
+    const startComposition = () => {
+        composingRef.current = true;
+        justEndedCompositionRef.current = false;
+        if (compositionResetTimer.current) {
+            clearTimeout(compositionResetTimer.current);
+            compositionResetTimer.current = null;
+        }
+    };
+
+    const endComposition = () => {
+        composingRef.current = false;
+        // Safari can dispatch compositionend immediately before the keydown
+        // that confirms the candidate. Suppress that Enter, not the next one.
+        justEndedCompositionRef.current = true;
+        if (compositionResetTimer.current) {
+            clearTimeout(compositionResetTimer.current);
+        }
+        compositionResetTimer.current = setTimeout(() => {
+            justEndedCompositionRef.current = false;
+            compositionResetTimer.current = null;
+        }, 0);
+    };
+
+    const isCompositionEnter = (event: ReactKeyboardEvent<HTMLInputElement>) => {
+        const native = event.nativeEvent;
+        return (
+            composingRef.current ||
+            native.isComposing ||
+            native.keyCode === 229 ||
+            justEndedCompositionRef.current
+        );
+    };
+
     const handleSend = async () => {
         const draftNow = draftRef.current;
         const content = draftNow.text.trim();
@@ -1254,10 +1304,22 @@ function MessageComposer({ meeting }: { meeting: MeetingWithParticipants }) {
                 <Input
                     value={inputValue}
                     onChange={(event) => input(event.target.value)}
+                    onCompositionStart={startComposition}
+                    onCompositionEnd={endComposition}
                     onKeyDown={(event) => {
                         if (event.key === 'Enter' && !event.shiftKey) {
+                            if (isCompositionEnter(event)) return;
                             event.preventDefault();
                             void handleSend();
+                        }
+                    }}
+                    onKeyUp={(event) => {
+                        if (event.key === 'Enter') {
+                            justEndedCompositionRef.current = false;
+                            if (compositionResetTimer.current) {
+                                clearTimeout(compositionResetTimer.current);
+                                compositionResetTimer.current = null;
+                            }
                         }
                     }}
                     placeholder="Type your message..."
