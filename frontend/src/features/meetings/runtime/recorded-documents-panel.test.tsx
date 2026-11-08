@@ -18,7 +18,7 @@ function makeAsset(overrides: Partial<ReplayAsset> = {}): ReplayAsset {
         size: 8,
         locator: "package:shared/asset.md",
         public_url: "https://assets.example/asset.md",
-        source: "Prepared for this replay",
+        source: "Included in this demo",
         capture_date: "2020-07-31",
         rights: "Authored for this replay",
         authored: true,
@@ -73,7 +73,7 @@ describe("RecordedDocumentsPanel", () => {
             makeAsset({
                 asset_id: "shared-fact-sheet",
                 storage_path: "shared/hdfc-v007-shared-fact-sheet.md",
-                source: "Prepared for this replay",
+                source: "Included in this demo",
             }),
             makeAsset({
                 asset_id: "credit-evidence",
@@ -83,16 +83,16 @@ describe("RecordedDocumentsPanel", () => {
             }),
         ]);
 
-        expect(screen.getByRole("heading", { name: "Files" })).toBeInTheDocument();
+        expect(screen.getByRole("heading", { name: "Documents" })).toBeInTheDocument();
         expect(
             screen.getByRole("heading", { name: "Retained source material" })
         ).toBeInTheDocument();
         expect(
-            screen.getByRole("heading", { name: "Prepared for this replay" })
+            screen.getByRole("heading", { name: "Included in this demo" })
         ).toBeInTheDocument();
         expect(
             screen.getByRole("heading", {
-                name: "Demo-authored participant inputs",
+                name: "Participant inputs",
             })
         ).toBeInTheDocument();
         expect(screen.getAllByRole("button", { name: /Preview evidence/ })).toHaveLength(
@@ -106,7 +106,7 @@ describe("RecordedDocumentsPanel", () => {
         renderPanel([]);
 
         expect(
-            await screen.findByText("No files are available for this replay.")
+            await screen.findByText("No documents are available for this demo.")
         ).toBeInTheDocument();
     });
 });

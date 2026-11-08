@@ -55,7 +55,7 @@ describe("replay evidence descriptors", () => {
             asset_id: "shared-fact-sheet",
             storage_path: "shared/hdfc-v007-shared-fact-sheet.md",
             authored: true,
-            source: "Prepared for this replay",
+            source: "Included in this demo",
         });
         const demo = makeAsset({
             asset_id: "credit-evidence",
@@ -77,9 +77,9 @@ describe("replay evidence descriptors", () => {
             "credit-evidence",
         ]);
         expect(descriptors[0]?.provenance.label).toBe("Retained source material");
-        expect(descriptors[1]?.provenance.label).toBe("Prepared for this replay");
+        expect(descriptors[1]?.provenance.label).toBe("Included in this demo");
         expect(descriptors[2]?.provenance.label).toBe(
-            "Demo-authored participant input"
+            "Participant input"
         );
         expect(descriptors.every((item) => item.readiness === "ready")).toBe(true);
         expect(isDemoAuthoredInput(demo)).toBe(true);

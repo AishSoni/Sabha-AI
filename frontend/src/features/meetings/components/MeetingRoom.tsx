@@ -1732,7 +1732,7 @@ function MessageBubble({
                     <ThinkingBlock
                         content={message.thinking_content}
                         isStreaming={false}
-                        provenance={runtime.replay ? 'Prepared reasoning' : undefined}
+                        provenance={runtime.replay ? 'Reasoning (recorded)' : undefined}
                     />
                 )}
                 {toolCalls.length > 0 && (
@@ -1833,7 +1833,7 @@ function TurnProjectionBubble({
                     )}
                     {!isQueued && isObserving && (
                         <span className="type-meta text-ink-muted">
-                            {runtime.replay ? 'recording' : 'live'}
+                            {runtime.replay ? 'Demo' : 'Live'}
                         </span>
                     )}
                 </div>
@@ -1842,7 +1842,7 @@ function TurnProjectionBubble({
                     <ThinkingBlock
                         content={projection.thinking}
                         isStreaming={!projection.terminal && !projection.observationInterrupted}
-                        provenance={runtime.replay ? 'Prepared reasoning' : undefined}
+                        provenance={runtime.replay ? 'Reasoning (recorded)' : undefined}
                     />
                 )}
 

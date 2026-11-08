@@ -8,17 +8,17 @@ describe('ThinkingBlock', () => {
             <ThinkingBlock
                 content="Check the record before answering."
                 isStreaming={false}
-                provenance="Prepared reasoning"
+                provenance="Reasoning (recorded)"
             />
         );
 
-        expect(screen.getByText('Prepared reasoning')).toBeInTheDocument();
+        expect(screen.getByText('Reasoning (recorded)')).toBeInTheDocument();
     });
 
     it('omits provenance when the caller does not supply it', () => {
         render(<ThinkingBlock content="Live reasoning" isStreaming={false} />);
 
-        expect(screen.queryByText('Prepared reasoning')).not.toBeInTheDocument();
+        expect(screen.queryByText('Reasoning (recorded)')).not.toBeInTheDocument();
     });
 
     it('expands a persisted block on demand', () => {

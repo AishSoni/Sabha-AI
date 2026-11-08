@@ -103,11 +103,11 @@ test.describe("recorded evidence previews", () => {
             page.getByRole("heading", { name: "Retained source material" })
         ).toBeVisible();
         await expect(
-            page.getByRole("heading", { name: "Prepared for this replay" })
+            page.getByRole("heading", { name: "Included in this demo" })
         ).toBeVisible();
         await expect(
             page.getByRole("heading", {
-                name: "Demo-authored participant inputs",
+                name: "Participant inputs",
             })
         ).toBeVisible();
         await expect(
@@ -169,7 +169,7 @@ test.describe("recorded evidence previews", () => {
         // finishes. Waiting for the replay control avoids opening the source
         // disclosure on the transient projection and losing it on that swap.
         await expect(
-            page.getByRole("button", { name: "Replay last turn" })
+            page.getByRole("button", { name: "Repeat last turn" })
         ).toBeVisible({ timeout: 30_000 });
         await page.getByRole("button", { name: /5 Sources/ }).first().click();
         await expect(

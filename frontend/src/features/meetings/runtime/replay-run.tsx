@@ -452,7 +452,7 @@ export function ReplayRunProvider({ children }: { children: ReactNode }) {
         ]);
         if (!canCloseDeck(session, played)) {
             throw new Error(
-                "Play every prepared reply and send the follow-up before closing."
+                "Continue through every reply and send the follow-up before closing."
             );
         }
         const bundle = await fetchReplayBundle(

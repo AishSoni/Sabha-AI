@@ -53,7 +53,7 @@ test.describe("recorded exploration and playback", () => {
         ).toBeVisible({ timeout: 30_000 });
         await expect(page.getByText("Meeting ended")).toBeVisible();
         await expect(
-            page.getByRole("heading", { name: "Final summary" })
+            page.getByRole("heading", { name: "Summary" })
         ).toBeVisible();
         await expect(
             page.getByTestId("tutorial-announcement")
@@ -61,9 +61,9 @@ test.describe("recorded exploration and playback", () => {
 
         await openChapter(page, "chapter-summary", "summary");
         await expect(
-            page.getByRole("heading", { name: "Recorded summary" })
+            page.getByRole("heading", { name: "Summary" })
         ).toBeVisible();
-        await expect(page.getByText("Recorded system summary")).toBeVisible();
+        await expect(page.getByText("System summary")).toBeVisible();
         await expect(
             page.getByText(/Outcome: a research checklist, not a buy\/sell recommendation/)
         ).toBeVisible();
@@ -118,7 +118,7 @@ test.describe("recorded exploration and playback", () => {
             page.getByTestId("tutorial-announcement")
         ).toContainText("1 of 4 replies");
 
-        await page.getByRole("button", { name: "Replay last turn" }).click();
+        await page.getByRole("button", { name: "Repeat last turn" }).click();
         await expect(message(page, CREDIT_MESSAGE)).toBeVisible({
             timeout: 30_000,
         });

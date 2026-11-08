@@ -123,10 +123,10 @@ test.describe("concise demo copy", () => {
             page.getByRole("heading", { name: "Retained source material" })
         ).toBeVisible({ timeout: 30_000 });
         await expect(
-            page.getByRole("heading", { name: "Prepared for this replay" })
+            page.getByRole("heading", { name: "Included in this demo" })
         ).toBeVisible();
         await expect(
-            page.getByRole("heading", { name: "Demo-authored participant inputs" })
+            page.getByRole("heading", { name: "Participant inputs" })
         ).toBeVisible();
         await expect(
             page.getByText("Demo-authored private input", { exact: true })
@@ -147,16 +147,16 @@ test.describe("concise demo copy", () => {
             `/demo/meetings/${MEETING_ID}?chapter=chapter-summary&tab=summary`
         );
         await expect(
-            page.getByRole("heading", { name: "Recorded summary" })
+            page.getByRole("heading", { name: "Summary" })
         ).toBeVisible({ timeout: 30_000 });
-        await expect(page.getByText("Recorded system summary")).toBeVisible();
+        await expect(page.getByText("System summary")).toBeVisible();
         await expectNoBannedCopy(page);
 
         await page.goto(
             `/demo/meetings/${MEETING_ID}?chapter=chapter-closing&tab=closing`
         );
         await expect(
-            page.getByRole("heading", { name: "Final summary" })
+            page.getByRole("heading", { name: "Summary" })
         ).toBeVisible({ timeout: 30_000 });
         await expectNoBannedCopy(page);
 

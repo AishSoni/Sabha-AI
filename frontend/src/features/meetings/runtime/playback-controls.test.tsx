@@ -65,7 +65,7 @@ describe("prepared playback controls", () => {
 
         await act(async () => {
             fireEvent.click(
-                screen.getByRole("button", { name: "Replay this prepared turn" })
+                screen.getByRole("button", { name: "Repeat this turn" })
             );
         });
         await waitFor(() =>
@@ -82,7 +82,7 @@ describe("prepared playback controls", () => {
         ).not.toBeInTheDocument();
         await act(async () => {
             fireEvent.click(
-                screen.getByRole("button", { name: "Replay this prepared turn" })
+                screen.getByRole("button", { name: "Repeat this turn" })
             );
         });
         await waitFor(() =>

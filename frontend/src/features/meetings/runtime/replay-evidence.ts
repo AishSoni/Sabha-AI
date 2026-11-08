@@ -48,9 +48,9 @@ export function isDemoAuthoredInput(asset: ReplayAsset): boolean {
 
 function provenanceForAsset(asset: ReplayAsset) {
     const label = isDemoAuthoredInput(asset)
-        ? "Demo-authored participant input"
+        ? "Participant input"
         : asset.authored
-          ? "Prepared for this replay"
+          ? "Included in this demo"
           : "Retained source material";
     return {
         label,

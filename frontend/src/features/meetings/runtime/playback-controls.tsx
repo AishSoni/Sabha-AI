@@ -35,7 +35,7 @@ export function PreparedTurnControls({
                 setError(
                     cause instanceof Error
                         ? cause.message
-                        : 'The prepared turn could not be opened.'
+                        : 'The turn could not be opened.'
                 );
             } finally {
                 setBusy(null);
@@ -63,12 +63,12 @@ export function PreparedTurnControls({
                         size="sm"
                         variant="ghost"
                         busy={busy === 'replay'}
-                        busyLabel="Replaying turn"
+                        busyLabel="Repeating turn"
                         disabled={busy !== null}
                         onClick={() => void runDeck('replay')}
                     >
                         <RotateCcw className="mr-1 size-4" />
-                        Replay last turn
+                        Repeat last turn
                     </Button>
                 ) : null}
                 {error ? (
@@ -102,7 +102,7 @@ export function PreparedTurnControls({
             else await replay.replayIntent(intentId);
         } catch (cause) {
             setError(
-                cause instanceof Error ? cause.message : 'The prepared turn could not be opened.'
+                cause instanceof Error ? cause.message : 'The turn could not be opened.'
             );
         } finally {
             setBusy(null);
@@ -134,12 +134,12 @@ export function PreparedTurnControls({
                         size="sm"
                         variant="ghost"
                         busy={busy === 'replay'}
-                        busyLabel="Replaying turn"
+                        busyLabel="Repeating turn"
                         disabled={busy !== null}
                         onClick={() => void run('replay', replayTarget.intent_id)}
                     >
                         <RotateCcw className="mr-1 size-4" />
-                        Replay this prepared turn
+                        Repeat this turn
                     </Button>
                 ) : null}
             </div>

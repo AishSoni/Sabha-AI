@@ -71,23 +71,23 @@ export function RecordedDocumentsPanel({ meetingId }: { meetingId: string }) {
             key: "retained",
             title: "Retained source material",
             description:
-                "Third-party material transcribed or excerpted for this replay; not a historical original.",
+                "Third-party material transcribed or excerpted for this demo; not a historical original.",
             assets: assets.filter((asset) => !asset.authored),
         },
         {
             key: "prepared",
-            title: "Prepared for this replay",
+            title: "Included in this demo",
             description:
-                "Authored for playback. These files are not historical originals.",
+                "Authored for the demo. These files are not historical originals.",
             assets: assets.filter(
                 (asset) => asset.authored && !isDemoAuthoredInput(asset)
             ),
         },
         {
             key: "demo",
-            title: "Demo-authored participant inputs",
+            title: "Participant inputs",
             description:
-                "Demo-authored private inputs included with this public replay. They are not protected customer data.",
+                "Private inputs included with this demo. They are not protected customer data.",
             assets: assets.filter(isDemoAuthoredInput),
         },
     ].filter((group) => group.assets.length > 0);
@@ -100,16 +100,16 @@ export function RecordedDocumentsPanel({ meetingId }: { meetingId: string }) {
     return (
         <div className="space-y-6 p-4">
             <div className="space-y-1">
-                <h2 className="type-section-title">Files</h2>
+                <h2 className="type-section-title">Documents</h2>
                 <p className="type-meta text-ink-muted">
-                    Read-only files retained for this replay. No upload or delete
-                    actions are available.
+                    Read-only documents retained for this demo. Upload and delete
+                    are unavailable.
                 </p>
             </div>
 
             {empty ? (
                 <p className="type-body text-ink-muted">
-                    No files are available for this replay.
+                    No documents are available for this demo.
                 </p>
             ) : null}
 
@@ -132,7 +132,7 @@ export function RecordedDocumentsPanel({ meetingId }: { meetingId: string }) {
             {recordedDocuments.length > 0 ? (
                 <section className="space-y-2">
                     <h3 className="type-control font-medium uppercase tracking-wide text-ink-secondary">
-                        Recorded meeting documents
+                        Demo documents
                     </h3>
                     <div className="space-y-2">
                         {recordedDocuments.map((document) => (
@@ -146,7 +146,7 @@ export function RecordedDocumentsPanel({ meetingId }: { meetingId: string }) {
                                         {document.file_name}
                                     </p>
                                     <p className="type-meta text-ink-muted">
-                                        {document.status} · recorded
+                                        {document.status} · retained
                                     </p>
                                 </div>
                             </div>
@@ -157,7 +157,7 @@ export function RecordedDocumentsPanel({ meetingId }: { meetingId: string }) {
 
             {documents.isError ? (
                 <p className="text-xs text-ink-muted">
-                    Recorded meeting documents are unavailable at this checkpoint.
+                    Meeting documents are unavailable at this checkpoint.
                 </p>
             ) : null}
         </div>

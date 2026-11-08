@@ -312,7 +312,7 @@ export function ClosingPanel({
                     );
                 } else {
                     setActionError(
-                        'This recording has no supported closing step.'
+                        'This demo has no supported closing step.'
                     );
                 }
             } catch (error) {
@@ -394,7 +394,7 @@ export function ClosingPanel({
                 >
                     <p className="text-sm text-ink-secondary">
                         {runtime.replay
-                            ? 'The recorded final summary is shown below.'
+                            ? 'The demo final summary is shown below.'
                             : 'The final summary is committed below and in Summary History. The chat is now read-only.'}
                     </p>
                 </StatusCard>
@@ -578,7 +578,7 @@ export function ClosingPanel({
 
             {(onSkipText && textProjection && !textTerminal) || (ended && onReplayClosing) ? (
                 <div className="flex flex-wrap items-center gap-2 rounded-lg border border-separator bg-surface/40 px-3 py-2">
-                    <span className="text-xs text-ink-secondary">Recorded closing</span>
+                    <span className="text-xs text-ink-secondary">Closing summary</span>
                     {onSkipText && textProjection && !textTerminal ? (
                         <Button
                             type="button"
@@ -596,7 +596,7 @@ export function ClosingPanel({
                             variant="ghost"
                             onClick={onReplayClosing}
                         >
-                            Replay closing
+                            Review closing
                         </Button>
                     ) : null}
                 </div>
@@ -605,7 +605,7 @@ export function ClosingPanel({
             {summaryText || (deckClosing && closing?.summary) ? (
                 <Card id="closing-final-summary" className="border-separator bg-surface/50 p-4">
                     <h5 className="mb-2 text-xs font-semibold uppercase tracking-wide text-ink-muted">
-                        Final summary
+                        Summary
                     </h5>
                     {summaryText ? (
                         <ClosingGeneratedText
@@ -659,7 +659,7 @@ export function ClosingPanel({
                 >
                     <p className="text-sm text-ink-secondary">
                         {deckClosing?.closeReason ??
-                            'Play every prepared reply and send the follow-up before closing.'}
+                            'Continue through every reply and send the follow-up before closing.'}
                     </p>
                 </StatusCard>
             ) : null}

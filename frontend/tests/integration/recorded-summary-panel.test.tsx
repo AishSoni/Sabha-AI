@@ -35,7 +35,7 @@ const runtime = {
         chapters: [
             {
                 chapter_id: "chapter-summary",
-                title: "Recorded summary",
+                title: "Summary",
                 objective: "Read the saved summary",
                 checkpoint: "checkpoint-archived",
                 route: "meeting",
@@ -60,14 +60,14 @@ describe("RecordedSummaryPanel", () => {
             </MeetingsRuntimeProvider>
         );
 
-        expect(screen.getByText("Recorded summary")).toBeInTheDocument();
+        expect(screen.getByText("Summary")).toBeInTheDocument();
         expect(screen.getByText("Inspection only")).toBeInTheDocument();
-        expect(screen.getByText("Recorded system summary")).toBeInTheDocument();
+        expect(screen.getByText("System summary")).toBeInTheDocument();
         expect(
             screen.getByText(/retained the/)
         ).toBeInTheDocument();
         expect(
-            screen.getByText(/Recorded scope: as of 2020-07-31/)
+            screen.getByText(/Demo scope: as of 2020-07-31/)
         ).toBeInTheDocument();
         expect(screen.queryByText("Generate summary")).not.toBeInTheDocument();
     });

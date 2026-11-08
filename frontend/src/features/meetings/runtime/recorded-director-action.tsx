@@ -36,7 +36,7 @@ export function RecordedDirectorAction() {
                 <div className="flex flex-col gap-2 sm:flex-row sm:items-start">
                     <div className="min-w-0 flex-1">
                         <p className="type-meta text-ink-secondary">
-                            Your turn <span aria-hidden="true">·</span> Prepared question
+                            Your turn <span aria-hidden="true">·</span> Follow-up
                         </p>
                         <p
                             id="prepared-follow-up-question"
@@ -123,7 +123,7 @@ export function RecordedDirectorAction() {
                             <span className="text-ink-secondary">
                                 {action.transition.label ||
                                     action.intent.label ||
-                                    "Prepared follow-up"}
+                                    "Follow-up"}
                             </span>
                             {action.reason ? ` — ${action.reason}` : null}
                         </li>

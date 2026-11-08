@@ -12,7 +12,7 @@ interface ThinkingBlockProps {
 
 /**
  * A quiet transcript disclosure. Recorded reasoning is a prepared artifact, so
- * the caller labels it "Prepared reasoning"; live reasoning never borrows that
+ * the caller labels it "Reasoning (recorded)"; live reasoning never borrows that
  * label.
  */
 export function ThinkingBlock({ content, isStreaming, provenance }: ThinkingBlockProps) {
