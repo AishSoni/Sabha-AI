@@ -25,8 +25,8 @@ async function openBoard(page: Page) {
         page.goto("/demo"),
     ]);
     const session = (await response.json()) as { package_version: string };
-    expect(session.package_version).toBe("9");
-    await expect(page.getByRole("heading", { name: /Prepared board/ })).toBeVisible();
+    expect(session.package_version).toBe("10");
+    await expect(page.getByRole("heading", { name: /Demo board/ })).toBeVisible();
     await expect(page.getByTestId("tutorial-hud")).toBeVisible();
 }
 
@@ -103,7 +103,7 @@ test.describe("integrated practice exploration", () => {
         await expect(page.getByText("Ready (2 chunks)")).toBeVisible({
             timeout: 30_000,
         });
-        await expect(page.getByText("Saved practice participants")).toBeVisible();
+        await expect(page.getByText("Saved participants")).toBeVisible();
         await expect(page.getByText("The Credit Analyst").first()).toBeVisible();
 
         // The ready document previews real recorded bytes, not a mock.
@@ -169,14 +169,14 @@ test.describe("integrated practice exploration", () => {
 
         // Jump only to approved recorded chapters, then inspect the real archive.
         await openExploreMenu(page);
-        await page.getByRole("link", { name: "Completed closing" }).click();
+        await page.getByRole("link", { name: "Closing", exact: true }).click();
         await expect(page).toHaveURL(/chapter=chapter-closing/);
         await expect(
             page.getByText(/The committee voted to conclude/).first()
         ).toBeVisible({ timeout: 30_000 });
 
         await openExploreMenu(page);
-        await page.getByRole("link", { name: "Archived result" }).click();
+        await page.getByRole("link", { name: "Archived meeting" }).click();
         await expect(page).toHaveURL(/\/demo\/meetings/);
         await page.getByRole("button", { name: "Archived" }).click();
         await expect(

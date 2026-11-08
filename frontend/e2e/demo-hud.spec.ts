@@ -49,7 +49,7 @@ async function startRecording(page: Page) {
     await expect(progress).toHaveAttribute("aria-valuetext", "Step 2 of 10");
 
     await page.getByRole("button", { name: "Create meeting" }).click();
-    await expect(page.getByText("Meeting created")).toBeVisible();
+    await expect(page.getByRole("heading", { name: "Meeting created" })).toBeVisible();
     await expect(hud.getByText("Open the meeting room")).toBeVisible();
     await expect(progress).toHaveAttribute("aria-valuenow", "30");
 

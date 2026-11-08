@@ -19,7 +19,7 @@ async function startRecording(page: Page) {
     await page.getByRole("link", { name: "Start meeting" }).click();
     await expect(page).toHaveURL(/\/demo\/new$/);
     await page.getByRole("button", { name: "Create meeting" }).click();
-    await expect(page.getByText("Meeting created")).toBeVisible();
+    await expect(page.getByRole("heading", { name: "Meeting created" })).toBeVisible();
     await page.getByRole("link", { name: "Open the meeting room" }).click();
     await expect(page).toHaveURL(/\/demo\/meetings\/[^/]+/);
     return { hud, network };
@@ -97,7 +97,7 @@ test.describe("recorded log notices", () => {
         // A recorded chapter is inspection, not a new event stream: returning
         // to the consensus snapshot cannot replay the notice.
         await page.locator('summary[aria-label="Explore demo"]:visible').click();
-        await page.getByRole("link", { name: "Recorded consensus" }).click();
+        await page.getByRole("link", { name: "Consensus" }).click();
         await expect(page).toHaveURL(/chapter=chapter-consensus/);
         await expect(
             page.getByText(

@@ -41,7 +41,7 @@ async function startRecording(page: Page) {
     await page.getByRole("link", { name: "Start meeting" }).click();
     await expect(page).toHaveURL(/\/demo\/new$/);
     await page.getByRole("button", { name: "Create meeting" }).click();
-    await expect(page.getByText("Meeting created")).toBeVisible();
+    await expect(page.getByRole("heading", { name: "Meeting created" })).toBeVisible();
     await page.getByRole("link", { name: "Open the meeting room" }).click();
     await expect(page).toHaveURL(/\/demo\/meetings\/[^/]+/);
     await expect(
@@ -83,8 +83,8 @@ test.describe("recorded visitor isolation", () => {
             expect(sessionA.run_id).toBeTruthy();
             expect(sessionB.run_id).toBeTruthy();
             expect(sessionA.run_id).not.toBe(sessionB.run_id);
-            expect(sessionA.package_version).toBe("9");
-            expect(sessionB.package_version).toBe("9");
+            expect(sessionA.package_version).toBe("10");
+            expect(sessionB.package_version).toBe("10");
 
             // B moves to the recorded setup and stays there.
             await pageB.getByRole("link", { name: "Start meeting" }).click();

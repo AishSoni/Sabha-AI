@@ -19,7 +19,7 @@ test.describe("prepared turn deck", () => {
         await page.goto(`/demo/meetings/${MEETING_ID}`);
         await expect(
             page.getByRole("heading", {
-                name: /Review HDFC Ltd's 7\.87% 2022 debenture/,
+                name: /A HDFC Bond Review Demo/,
             })
         ).toBeVisible({ timeout: 30_000 });
         await expect(page.getByText("Who speaks next?")).toBeVisible();

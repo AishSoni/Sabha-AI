@@ -8,7 +8,7 @@ async function openRoom(page: Page) {
     await page.goto("/demo/meetings/a0000000-0000-4000-8000-000000000001");
     await expect(
         page.getByRole("heading", {
-            name: /Review HDFC Ltd's 7\.87% 2022 debenture/,
+            name: /A HDFC Bond Review Demo/,
         })
     ).toBeVisible({ timeout: 30_000 });
 }
@@ -29,13 +29,13 @@ test.describe("demo failure recovery", () => {
 
         await page.goto("/demo/knowledge-stacks");
         await expect(
-            page.getByRole("heading", { name: "Practice knowledge is unavailable" })
+            page.getByRole("heading", { name: "Knowledge unavailable" })
         ).toBeVisible();
         await expect(page.getByText(/seed|workspace/i).first()).toBeVisible();
 
         await page.getByRole("link", { name: "Board", exact: true }).click();
         await expect(
-            page.getByRole("heading", { name: /Prepared board/ })
+            page.getByRole("heading", { name: /Demo board/ })
         ).toBeVisible();
 
         network.assertClean();

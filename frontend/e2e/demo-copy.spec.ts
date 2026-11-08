@@ -103,15 +103,15 @@ test.describe("concise demo copy", () => {
 
         await page.goto(`/demo/meetings/${MEETING_ID}?tab=chat`);
         await expect(
-            page.getByRole("heading", { name: /Review HDFC Ltd/ })
+            page.getByRole("heading", { name: /A HDFC Bond Review Demo/ })
         ).toBeVisible({ timeout: 30_000 });
         await expect(
-            page.getByText(/Prepared historical committee review/)
+            page.getByText(/Historical committee review/)
         ).toBeVisible();
         await page.getByRole("button", { name: "Details" }).click();
         const details = page.getByRole("dialog");
         await expect(details).toBeVisible();
-        await expect(details.getByText("Recorded", { exact: true })).toBeVisible();
+        await expect(details.getByText("Demo", { exact: true })).toBeVisible();
         await expect(details.getByText("Status", { exact: true })).toBeVisible();
         await page.keyboard.press("Escape");
         await expectNoBannedCopy(page);

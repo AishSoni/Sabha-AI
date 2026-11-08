@@ -47,7 +47,7 @@ async function startRecording(page: Page) {
     await expect(hud.getByText("Create meeting")).toBeVisible();
 
     await page.getByRole("button", { name: "Create meeting" }).click();
-    await expect(page.getByText("Meeting created")).toBeVisible();
+    await expect(page.getByRole("heading", { name: "Meeting created" })).toBeVisible();
     await expect(hud.getByText("Open the meeting room")).toBeVisible();
 
     await page.getByRole("link", { name: "Open the meeting room" }).click();

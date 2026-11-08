@@ -18,7 +18,7 @@ const PACKAGE_ROOT = join(
     "..",
     "backend",
     "replay_packages",
-    "hdfc-ine001a07rw5"
+    "hdfc-ine001a07rw5-v10"
 );
 
 interface PackageAsset {
@@ -60,7 +60,7 @@ async function openRecordedRoom(page: Page) {
     await page.goto("/demo/meetings/a0000000-0000-4000-8000-000000000001");
     await expect(
         page.getByRole("heading", {
-            name: /Review HDFC Ltd's 7\.87% 2022 debenture/,
+            name: /A HDFC Bond Review Demo/,
         })
     ).toBeVisible({ timeout: 30_000 });
 }
@@ -98,7 +98,7 @@ test.describe("recorded evidence previews", () => {
         await openRecordedRoom(page);
         await page.getByRole("tab", { name: "Files" }).click();
 
-        await expect(page.getByRole("heading", { name: "Files" })).toBeVisible();
+        await expect(page.getByRole("heading", { name: "Documents", exact: true })).toBeVisible();
         await expect(
             page.getByRole("heading", { name: "Retained source material" })
         ).toBeVisible();
