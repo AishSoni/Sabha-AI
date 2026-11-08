@@ -13,6 +13,7 @@ import {
     beginOperation,
     captureSentDraft,
     editDraft,
+    findPendingSend,
     initialDraft,
     isCurrent,
     isSameDraftInFlight,
@@ -58,16 +59,35 @@ describe('drafts', () => {
         expect(editDraft(draft, 'hello')).toEqual({ text: 'hello', revision: 1 });
     });
 
-    it('captures the sent snapshot (meeting + revision + text)', () => {
+    it('captures the sent snapshot (meeting + revision + text + request key)', () => {
         const draft = editDraft(initialDraft(), 'hello');
-        const sent = captureSentDraft('meeting-1', draft);
-        expect(sent).toEqual({ meetingId: 'meeting-1', revision: 1, text: 'hello' });
+        const sent = captureSentDraft('meeting-1', draft, 'key-1');
+        expect(sent).toEqual({
+            meetingId: 'meeting-1',
+            revision: 1,
+            text: 'hello',
+            requestKey: 'key-1',
+        });
+    });
+
+    it('reuses an identity only for the exact same draft and meeting', () => {
+        const draft = editDraft(initialDraft(), 'hello');
+        const sent = captureSentDraft('meeting-1', draft, 'key-1');
+        expect(findPendingSend([sent], 'meeting-1', draft)?.requestKey).toBe('key-1');
+        expect(
+            findPendingSend([sent], 'meeting-1', editDraft(draft, 'hello again'))
+        ).toBeNull();
+        expect(findPendingSend([sent], 'meeting-2', draft)).toBeNull();
     });
 });
 
 describe('duplicate-send guard', () => {
     it('blocks only when the same meeting has the same revision still in flight', () => {
-        const sent = captureSentDraft('meeting-1', editDraft(initialDraft(), 'hello'));
+        const sent = captureSentDraft(
+            'meeting-1',
+            editDraft(initialDraft(), 'hello'),
+            'key-1'
+        );
         const inFlightDraft = editDraft(initialDraft(), 'hello');
 
         expect(isSameDraftInFlight(sent, 'meeting-1', inFlightDraft)).toBe(true);
@@ -83,7 +103,11 @@ describe('duplicate-send guard', () => {
 });
 
 describe('after-send clearing', () => {
-    const sent = captureSentDraft('meeting-1', editDraft(initialDraft(), 'hello'));
+    const sent = captureSentDraft(
+        'meeting-1',
+        editDraft(initialDraft(), 'hello'),
+        'key-1'
+    );
 
     it('clears on confirmed success with unchanged revision in the same meeting', () => {
         expect(

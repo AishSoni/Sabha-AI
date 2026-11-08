@@ -59,8 +59,8 @@ export function createLiveMeetingsRuntime(): MeetingsRuntime {
                 turnClient.cancel(meetingId, operationId, { signal }),
         },
         commands: {
-            sendMessage: (meetingId, content, signal) =>
-                meetingClient.sendMessage(meetingId, content, { signal }),
+            sendMessage: (meetingId, content, options) =>
+                meetingClient.sendMessage(meetingId, content, options),
             requestClosing: (meetingId, input) =>
                 closingClient.request(meetingId, input),
             retryClosing: (meetingId, signal) =>

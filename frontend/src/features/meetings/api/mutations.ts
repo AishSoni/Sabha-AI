@@ -17,6 +17,7 @@ import type { MeetingWithParticipants, Message } from './decoders';
 import { meetingClient, type MeetingCreateInput } from './client';
 import { meetingKeys } from './keys';
 import type { TurnGenerationSettings } from './generation-settings';
+import { upsertMessageById } from '../model/messages';
 
 export function useCreateMeeting() {
     const queryClient = useQueryClient();
@@ -72,7 +73,13 @@ export function useSendMessage() {
                 meetingKeys.detail(meetingId),
                 (cached) =>
                     cached
-                        ? { ...cached, messages: [...(cached.messages ?? []), message] }
+                        ? {
+                              ...cached,
+                              messages: upsertMessageById(
+                                  cached.messages ?? [],
+                                  message
+                              ),
+                          }
                         : cached
             );
             void queryClient.invalidateQueries({

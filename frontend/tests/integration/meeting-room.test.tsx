@@ -6,7 +6,7 @@
  * own confirmed revision.
  */
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
-import { fireEvent, render, screen, waitFor, within } from '@testing-library/react';
+import { act, fireEvent, render, screen, waitFor, within } from '@testing-library/react';
 import { Providers, getQueryClient } from '@/app/providers';
 import { MeetingRoom, meetingKeys } from '@/features/meetings';
 import { LiveMeetingsRuntimeProvider } from '@/features/meetings/runtime/live';
@@ -53,7 +53,7 @@ function meetingWire() {
     };
 }
 
-function messageWire(content: string) {
+function messageWire(content: string, overrides: Record<string, unknown> = {}) {
     return {
         id: '33333333-3333-4333-8333-333333333333',
         meeting_id: MEETING_ID,
@@ -66,10 +66,14 @@ function messageWire(content: string) {
         thinking_content: null,
         estimated_cost: 0,
         created_at: '2026-10-20T10:01:00.000000Z',
+        request_key: null,
+        ...overrides,
     };
 }
 
-function installRouter(overrides: Record<string, () => Response> = {}) {
+function installRouter(
+    overrides: Record<string, () => Response | Promise<Response>> = {}
+) {
     const calls: Call[] = [];
     vi.stubGlobal(
         'fetch',
@@ -181,7 +185,11 @@ describe('MeetingRoom', () => {
         const send = calls.filter((call) => call.url.endsWith('/message'));
         expect(send).toHaveLength(1);
         expect(send[0]!.method).toBe('POST');
-        expect(send[0]!.body).toEqual({ content: 'Ship on Friday' });
+        expect(send[0]!.body).toMatchObject({
+            content: 'Ship on Friday',
+            request_key: expect.any(String),
+        });
+        expect((send[0]!.body as { request_key: string }).request_key.length).toBeGreaterThan(0);
         expect(input).toHaveValue('');
     });
 
@@ -263,8 +271,188 @@ describe('MeetingRoom', () => {
         fireEvent.click(screen.getByRole('button', { name: 'Send message' }));
 
         expect(
-            await screen.findByText('The message was not saved. Your draft is still here; try again.')
+            await screen.findByText(
+                "We couldn't confirm whether this message was saved. Your draft is still here; retrying is safe."
+            )
         ).toBeInTheDocument();
+        expect(input).toHaveValue('Do not lose me');
+    });
+
+    it('reuses one request key after a lost response and saves once', async () => {
+        let posts = 0;
+        const calls = installRouter({
+            '/message': () => {
+                posts += 1;
+                if (posts === 1) throw new TypeError('Failed to fetch');
+                return json(200, messageWire('Retry me', { request_key: 'response-key' }));
+            },
+        });
+        renderRoom();
+
+        const input = await screen.findByPlaceholderText('Type your message...');
+        fireEvent.change(input, { target: { value: 'Retry me' } });
+        fireEvent.click(screen.getByRole('button', { name: 'Send message' }));
+
+        expect(
+            await screen.findByText(
+                "We couldn't confirm whether this message was saved. Your draft is still here; retrying is safe."
+            )
+        ).toBeInTheDocument();
+        expect(input).toHaveValue('Retry me');
+
+        fireEvent.click(screen.getByRole('button', { name: 'Send message' }));
+        await waitFor(() => expect(input).toHaveValue(''));
+
+        const sends = calls.filter((call) => call.url.endsWith('/message'));
+        expect(sends).toHaveLength(2);
+        const keys = sends.map(
+            (call) => (call.body as { request_key: string }).request_key
+        );
+        expect(keys[0]).toBe(keys[1]);
+        expect(screen.getAllByText('Retry me')).toHaveLength(1);
+    });
+
+    it('uses a new request key after a deterministic rejection', async () => {
+        let posts = 0;
+        const calls = installRouter({
+            '/message': () => {
+                posts += 1;
+                if (posts === 1) return json(422, { detail: 'Invalid message' });
+                return json(200, messageWire('Corrected'));
+            },
+        });
+        renderRoom();
+
+        const input = await screen.findByPlaceholderText('Type your message...');
+        fireEvent.change(input, { target: { value: 'Corrected' } });
+        fireEvent.click(screen.getByRole('button', { name: 'Send message' }));
+
+        expect(
+            await screen.findByText("This message wasn't accepted. Your draft is still here.")
+        ).toBeInTheDocument();
+        expect(input).toHaveValue('Corrected');
+
+        fireEvent.click(screen.getByRole('button', { name: 'Send message' }));
+        await waitFor(() => expect(input).toHaveValue(''));
+
+        const sends = calls.filter((call) => call.url.endsWith('/message'));
+        const keys = sends.map(
+            (call) => (call.body as { request_key: string }).request_key
+        );
+        expect(keys).toHaveLength(2);
+        expect(keys[0]).not.toBe(keys[1]);
+    });
+
+    it('keeps one cached message when a GET wins the race with the POST response', async () => {
+        let resolvePost: ((response: Response) => void) | null = null;
+        let posts = 0;
+        const calls = installRouter({
+            '/message': () => {
+                posts += 1;
+                return new Promise<Response>((resolve) => {
+                    resolvePost = resolve;
+                });
+            },
+        });
+        renderRoom();
+
+        const input = await screen.findByPlaceholderText('Type your message...');
+        fireEvent.change(input, { target: { value: 'Saved once' } });
+        fireEvent.click(screen.getByRole('button', { name: 'Send message' }));
+        await waitFor(() => expect(posts).toBe(1));
+
+        const requestKey = (
+            calls.find((call) => call.url.endsWith('/message'))!.body as {
+                request_key: string;
+            }
+        ).request_key;
+        const saved = messageWire('Saved once', {
+            id: '66666666-6666-4666-8666-666666666666',
+            request_key: requestKey,
+        });
+
+        act(() => {
+            getQueryClient().setQueryData(meetingKeys.detail(MEETING_ID), {
+                ...meetingWire(),
+                messages: [saved],
+            });
+        });
+
+        await waitFor(() => expect(input).toHaveValue(''));
+        expect(screen.getAllByText('Saved once')).toHaveLength(1);
+
+        await act(async () => {
+            resolvePost?.(json(200, saved));
+        });
+
+        expect(screen.getAllByText('Saved once')).toHaveLength(1);
+    });
+
+    it('gives a deliberately identical new message a new identity', async () => {
+        let posts = 0;
+        const calls = installRouter({
+            '/message': () => {
+                posts += 1;
+                return json(
+                    200,
+                    messageWire('Same words', {
+                        id: `message-${posts}`,
+                        request_key: `response-${posts}`,
+                    })
+                );
+            },
+        });
+        renderRoom();
+
+        const input = await screen.findByPlaceholderText('Type your message...');
+        fireEvent.change(input, { target: { value: 'Same words' } });
+        fireEvent.click(screen.getByRole('button', { name: 'Send message' }));
+        await waitFor(() => expect(input).toHaveValue(''));
+
+        fireEvent.change(input, { target: { value: 'Same words' } });
+        fireEvent.click(screen.getByRole('button', { name: 'Send message' }));
+        await waitFor(() =>
+            expect(screen.getAllByText('Same words')).toHaveLength(2)
+        );
+
+        const sends = calls.filter((call) => call.url.endsWith('/message'));
+        const keys = sends.map(
+            (call) => (call.body as { request_key: string }).request_key
+        );
+        expect(keys).toHaveLength(2);
+        expect(keys[0]).not.toBe(keys[1]);
+    });
+
+    it('keeps the draft and names access loss without claiming a save', async () => {
+        installRouter({
+            '/message': () => json(403, { detail: 'Forbidden' }),
+        });
+        renderRoom();
+
+        const input = await screen.findByPlaceholderText('Type your message...');
+        fireEvent.change(input, { target: { value: 'Needs access' } });
+        fireEvent.click(screen.getByRole('button', { name: 'Send message' }));
+
+        expect(
+            await screen.findByText(
+                "Your session can't send this message right now. Your draft is still here."
+            )
+        ).toBeInTheDocument();
+        expect(input).toHaveValue('Needs access');
+    });
+
+    it('keeps the composer draft across room tab navigation', async () => {
+        installRouter();
+        renderRoom();
+
+        const input = await screen.findByPlaceholderText('Type your message...');
+        fireEvent.change(input, { target: { value: 'Do not lose me' } });
+
+        fireEvent.mouseDown(screen.getByRole('tab', { name: /Personas/ }));
+        expect(await screen.findByText('Knowledge assignments')).toBeInTheDocument();
+        expect(input).toHaveValue('Do not lose me');
+
+        fireEvent.mouseDown(screen.getByRole('tab', { name: /Chat/ }));
         expect(input).toHaveValue('Do not lose me');
     });
 

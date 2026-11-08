@@ -316,7 +316,7 @@ export interface MeetingsCommandsApi {
     sendMessage(
         meetingId: string,
         content: string,
-        signal?: AbortSignal
+        options?: { signal?: AbortSignal; requestKey?: string }
     ): Promise<Message>;
     requestClosing(
         meetingId: string,

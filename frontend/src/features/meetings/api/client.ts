@@ -33,6 +33,11 @@ export interface RequestInitOptional {
     signal?: AbortSignal;
 }
 
+export interface SendMessageOptions extends RequestInitOptional {
+    /** One identity per deliberate message; retries reuse it. */
+    requestKey?: string;
+}
+
 export const meetingClient = {
     /** Canonical list of meetings (GET /api/meetings). */
     async list(): Promise<Meeting[]> {
@@ -90,11 +95,13 @@ export const meetingClient = {
     async sendMessage(
         meetingId: string,
         content: string,
-        init: RequestInitOptional = {}
+        options: SendMessageOptions = {}
     ): Promise<Message> {
+        const body: { content: string; request_key?: string } = { content };
+        if (options.requestKey) body.request_key = options.requestKey;
         const payload = await requestLiveJson<unknown>(
             `/meetings/${encodeURIComponent(meetingId)}/message`,
-            { method: 'POST', body: { content }, signal: init.signal }
+            { method: 'POST', body, signal: options.signal }
         );
         return decodeMessage(payload, 'POST /meetings/:id/message');
     },

@@ -107,6 +107,7 @@ export function decodeMessage(value: unknown, path: string): Message {
         thinking_content: optionalString(record.thinking_content, `${path}.thinking_content`) ?? null,
         estimated_cost: requireNumber(record.estimated_cost, `${path}.estimated_cost`),
         created_at: requireString(record.created_at, `${path}.created_at`),
+        request_key: optionalString(record.request_key, `${path}.request_key`) ?? null,
     };
 }
 

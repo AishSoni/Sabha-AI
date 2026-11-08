@@ -47,6 +47,11 @@ export interface SentDraft {
     revision: number;
     /** Text at send time; guards against coincidental revision matches. */
     text: string;
+    /**
+     * Submission identity. It survives an ambiguous delivery failure so a
+     * retry reconciles with the original append instead of saving twice.
+     */
+    requestKey: string;
 }
 
 export function initialDraft(): Draft {
@@ -62,8 +67,27 @@ export function editDraft(draft: Draft, text: string): Draft {
 }
 
 /** Snapshot captured when a send is accepted for flight. */
-export function captureSentDraft(meetingId: string, draft: Draft): SentDraft {
-    return { meetingId, revision: draft.revision, text: draft.text };
+export function captureSentDraft(
+    meetingId: string,
+    draft: Draft,
+    requestKey: string
+): SentDraft {
+    return { meetingId, revision: draft.revision, text: draft.text, requestKey };
+}
+
+/**
+ * Find the submission identity for this exact draft. A deliberately edited
+ * draft, or the same text in another meeting, is a new message with a new key.
+ */
+export function findPendingSend(
+    intents: Iterable<SentDraft>,
+    meetingId: string,
+    draft: Draft
+): SentDraft | null {
+    for (const intent of intents) {
+        if (isSameDraftInFlight(intent, meetingId, draft)) return intent;
+    }
+    return null;
 }
 
 /**

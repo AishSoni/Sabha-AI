@@ -19,6 +19,7 @@ import { useMeetingTurns, useTurnOperation } from '../api/turn-queries';
 import { useTurnObservation } from '../api/use-turn-observation';
 import type { MeetingsRuntime } from '../runtime/contract';
 import { isApiError } from '@/shared/api/errors';
+import { createRequestKey as newRequestKey } from '@/shared/api/request-key';
 
 export interface MeetingTurnControllerOptions {
     meetingId: string;
@@ -56,11 +57,7 @@ export interface MeetingTurnController {
 }
 
 export function createTurnRequestKey(): string {
-    const withCrypto = globalThis.crypto as Crypto | undefined;
-    if (withCrypto && typeof withCrypto.randomUUID === 'function') {
-        return withCrypto.randomUUID();
-    }
-    return `turn-${Date.now().toString(36)}-${Math.random().toString(36).slice(2)}`;
+    return newRequestKey('turn');
 }
 
 /**

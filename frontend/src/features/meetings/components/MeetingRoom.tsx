@@ -75,12 +75,15 @@ import {
 import {
     captureSentDraft,
     editDraft,
+    findPendingSend,
     initialDraft,
-    isSameDraftInFlight,
     shouldClearAfterSend,
     type Draft,
     type SentDraft,
 } from '../model/draft';
+import { upsertMessageById } from '../model/messages';
+import { isApiError } from '@/shared/api/errors';
+import { createRequestKey } from '@/shared/api/request-key';
 import { ThinkingBlock } from './ThinkingBlock';
 import { ToolUseBlock } from './ToolUseBlock';
 import { CitationsBlock, type CitationView } from './CitationsBlock';
@@ -1053,7 +1056,7 @@ function RoomControls({ meeting, turns }: RoomControlsProps) {
             )}
 
             {runtime.capabilities.sendMessage && (
-                <MessageComposer meetingId={meeting.id} />
+                <MessageComposer meeting={meeting} />
             )}
         </div>
     );
@@ -1124,24 +1127,57 @@ function QueueRow({
     );
 }
 
-function MessageComposer({ meetingId }: { meetingId: string }) {
+type MessageSendFailure = 'ambiguous' | 'access' | 'rejected';
+
+function classifyMessageSendFailure(error: unknown): MessageSendFailure {
+    if (!isApiError(error)) return 'ambiguous';
+    if (error.kind === 'network' || error.kind === 'aborted') return 'ambiguous';
+    if (error.status === 401 || error.status === 403) return 'access';
+    if (error.status !== null && error.status >= 500) return 'ambiguous';
+    return 'rejected';
+}
+
+const MESSAGE_SEND_FAILURE_COPY: Record<MessageSendFailure, string> = {
+    ambiguous:
+        "We couldn't confirm whether this message was saved. Your draft is still here; retrying is safe.",
+    access: "Your session can't send this message right now. Your draft is still here.",
+    rejected: "This message wasn't accepted. Your draft is still here.",
+};
+
+function MessageComposer({ meeting }: { meeting: MeetingWithParticipants }) {
+    const meetingId = meeting.id;
     const runtime = useMeetingsRuntime();
     const queryClient = useQueryClient();
+    const [inputValue, setInputValue] = useState('');
+    const [sendFailure, setSendFailure] = useState<MessageSendFailure | null>(null);
+    const draftRef = useRef<Draft>(initialDraft());
+    const pendingIntentsRef = useRef<Map<string, SentDraft>>(new Map());
+    const inFlightKeyRef = useRef<string | null>(null);
+
     const sendMessage = useMutation({
-        mutationFn: (content: string) =>
-            runtime.commands.sendMessage(
-                meetingId,
-                content,
-                runtime.signal
-            ),
-        onSuccess: (message: Message) => {
+        mutationFn: ({
+            content,
+            requestKey,
+        }: {
+            content: string;
+            requestKey: string;
+        }) =>
+            runtime.commands.sendMessage(meetingId, content, {
+                signal: runtime.signal,
+                requestKey,
+            }),
+        onSuccess: (message: Message, { requestKey }) => {
+            pendingIntentsRef.current.delete(requestKey);
             queryClient.setQueryData<MeetingWithParticipants>(
                 runtime.keys.meetingDetail(meetingId),
                 (cached) =>
                     cached
                         ? {
                               ...cached,
-                              messages: [...(cached.messages ?? []), message],
+                              messages: upsertMessageById(
+                                  cached.messages ?? [],
+                                  message
+                              ),
                           }
                         : cached
             );
@@ -1150,9 +1186,25 @@ function MessageComposer({ meetingId }: { meetingId: string }) {
             });
         },
     });
-    const [inputValue, setInputValue] = useState('');
-    const draftRef = useRef<Draft>(initialDraft());
-    const sentRef = useRef<SentDraft | null>(null);
+
+    // A lost POST response can still have committed. Reconcile by the request
+    // key carried on the canonical message before offering the draft again.
+    useEffect(() => {
+        let reconciled = false;
+        for (const message of meeting.messages ?? []) {
+            const requestKey = message.request_key;
+            if (!requestKey) continue;
+            const intent = pendingIntentsRef.current.get(requestKey);
+            if (!intent) continue;
+            pendingIntentsRef.current.delete(requestKey);
+            reconciled = true;
+            if (shouldClearAfterSend(intent, 'confirmed', meetingId, draftRef.current)) {
+                draftRef.current = initialDraft();
+                setInputValue('');
+            }
+        }
+        if (reconciled) setSendFailure(null);
+    }, [meeting.messages, meetingId]);
 
     const input = (text: string) => {
         draftRef.current = editDraft(draftRef.current, text);
@@ -1163,22 +1215,36 @@ function MessageComposer({ meetingId }: { meetingId: string }) {
         const draftNow = draftRef.current;
         const content = draftNow.text.trim();
         if (!content) return;
-        if (isSameDraftInFlight(sentRef.current, meetingId, draftNow)) return;
+        if (inFlightKeyRef.current !== null) return;
 
-        const sent = captureSentDraft(meetingId, draftNow);
-        sentRef.current = sent;
-        let outcome: 'confirmed' | 'failed' = 'failed';
+        const intent =
+            findPendingSend(pendingIntentsRef.current.values(), meetingId, draftNow) ??
+            captureSentDraft(
+                meetingId,
+                draftNow,
+                createRequestKey('message')
+            );
+        pendingIntentsRef.current.set(intent.requestKey, intent);
+        inFlightKeyRef.current = intent.requestKey;
+        setSendFailure(null);
+
         try {
-            await sendMessage.mutateAsync(content);
-            outcome = 'confirmed';
-        } catch {
-            outcome = 'failed';
-        } finally {
-            if (shouldClearAfterSend(sent, outcome, meetingId, draftRef.current)) {
+            await sendMessage.mutateAsync({
+                content,
+                requestKey: intent.requestKey,
+            });
+            if (shouldClearAfterSend(intent, 'confirmed', meetingId, draftRef.current)) {
                 draftRef.current = initialDraft();
                 setInputValue('');
             }
-            sentRef.current = null;
+        } catch (error) {
+            const failure = classifyMessageSendFailure(error);
+            if (failure === 'rejected') {
+                pendingIntentsRef.current.delete(intent.requestKey);
+            }
+            setSendFailure(failure);
+        } finally {
+            inFlightKeyRef.current = null;
         }
     };
 
@@ -1210,9 +1276,9 @@ function MessageComposer({ meetingId }: { meetingId: string }) {
                     )}
                 </Button>
             </div>
-            {sendMessage.isError && (
-                <p className="mt-2 text-xs text-danger">
-                    The message was not saved. Your draft is still here; try again.
+            {sendFailure && (
+                <p className="mt-2 text-xs text-danger" role="status">
+                    {MESSAGE_SEND_FAILURE_COPY[sendFailure]}
                 </p>
             )}
         </div>
