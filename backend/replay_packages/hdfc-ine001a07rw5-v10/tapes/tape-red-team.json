@@ -1,0 +1,146 @@
+{
+  "tape_id": "tape-red-team",
+  "meeting_id": "a0000000-0000-4000-8000-000000000001",
+  "operation_id": "a0000000-0000-4000-8000-000000000315",
+  "participant_id": "a0000000-0000-4000-8000-000000000101",
+  "request_key": "turn-retrieval-red-team",
+  "initial_checkpoint": "checkpoint-portfolio",
+  "completed_checkpoint": "checkpoint-red-team",
+  "events": [
+    {
+      "event_id": "tape-red-team-1",
+      "sequence": 1,
+      "type": "thinking",
+      "delay_ms": 60,
+      "payload": {
+        "content": "Test whether the checklist overstates the retained evidence."
+      }
+    },
+    {
+      "event_id": "tape-red-team-2",
+      "sequence": 2,
+      "type": "tool_call",
+      "delay_ms": 100,
+      "payload": {
+        "invocation_id": "inv-retrieval-red-team",
+        "call_id": "call-retrieval-red-team",
+        "tool_name": "search_knowledge_base",
+        "arguments": {
+          "query": "retrieval red team"
+        }
+      }
+    },
+    {
+      "event_id": "tape-red-team-3",
+      "sequence": 3,
+      "type": "tool_result",
+      "delay_ms": 120,
+      "payload": {
+        "invocation_id": "inv-retrieval-red-team",
+        "call_id": "call-retrieval-red-team",
+        "result": {
+          "retrieval_key": "retrieval-red-team",
+          "hits": 3
+        },
+        "is_error": false
+      }
+    },
+    {
+      "event_id": "tape-red-team-4",
+      "sequence": 4,
+      "type": "citation",
+      "delay_ms": 60,
+      "payload": {
+        "source": "CRISIL rating rationale",
+        "title": "CRISIL Rating Rationale, 31 July 2020",
+        "url": "https://www.crisil.com/mnt/winshare/Ratings/RatingList/RatingDocs/Housing_Development_Finance_Corporation_Limited_July_31_2020_RR.html",
+        "snippet": "CRISIL's annexure row for ISIN INE001A07RW5 lists a 7.87% coupon, allotment on 18 July 2019, scheduled maturity on 18 July 2022, and an issue size of Rs 5,000 crore.",
+        "claim_id": "C1",
+        "locator": "S1 annexure row for ISIN INE001A07RW5"
+      }
+    },
+    {
+      "event_id": "tape-red-team-5",
+      "sequence": 5,
+      "type": "citation",
+      "delay_ms": 60,
+      "payload": {
+        "source": "CRISIL rating rationale",
+        "title": "CRISIL Rating Rationale, 31 July 2020",
+        "url": "https://www.crisil.com/mnt/winshare/Ratings/RatingList/RatingDocs/Housing_Development_Finance_Corporation_Limited_July_31_2020_RR.html",
+        "snippet": "CRISIL assigned AAA/Stable on 31 July 2020.",
+        "claim_id": "C2",
+        "locator": "S1 rating action"
+      }
+    },
+    {
+      "event_id": "tape-red-team-6",
+      "sequence": 6,
+      "type": "citation",
+      "delay_ms": 60,
+      "payload": {
+        "source": "Record evidence",
+        "title": "Shared fact sheet, What is not established",
+        "url": null,
+        "snippet": "The meeting record contains no executable price, yield, or secondary-market liquidity data for the series.",
+        "claim_id": "C10",
+        "locator": "Shared fact sheet, What is not established"
+      }
+    },
+    {
+      "event_id": "tape-red-team-7",
+      "sequence": 7,
+      "type": "citation",
+      "delay_ms": 60,
+      "payload": {
+        "source": "Committee judgment",
+        "title": "Shared fact sheet, Outcome and limitations",
+        "url": null,
+        "snippet": "The outcome is a research checklist, not a buy/sell recommendation or investment approval.",
+        "claim_id": "C13",
+        "locator": "Shared fact sheet, Outcome and limitations"
+      }
+    },
+    {
+      "event_id": "tape-red-team-8",
+      "sequence": 8,
+      "type": "citation",
+      "delay_ms": 60,
+      "payload": {
+        "source": "Included in this demo",
+        "title": "Branch note, red team",
+        "url": null,
+        "snippet": "The red-team turn tests whether the research checklist claims more than the retained evidence supports.",
+        "claim_id": "C18",
+        "locator": "Branch note, red team"
+      }
+    },
+    {
+      "event_id": "tape-red-team-9",
+      "sequence": 9,
+      "type": "text",
+      "delay_ms": 60,
+      "payload": {
+        "content": "The checklist does not overstate the evidence. It records the terms and the dated rating, labels the scenarios illustrative, and keeps price, yield, "
+      }
+    },
+    {
+      "event_id": "tape-red-team-10",
+      "sequence": 10,
+      "type": "text",
+      "delay_ms": 60,
+      "payload": {
+        "content": "liquidity, security, and payment outcome as unknowns. That is the correct boundary."
+      }
+    },
+    {
+      "event_id": "tape-red-team-11",
+      "sequence": 11,
+      "type": "done",
+      "delay_ms": 80,
+      "payload": {
+        "message_id": "a0000000-0000-4000-8000-000000000418"
+      }
+    }
+  ]
+}

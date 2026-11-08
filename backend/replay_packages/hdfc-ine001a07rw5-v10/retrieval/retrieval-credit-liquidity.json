@@ -1,0 +1,76 @@
+{
+  "retrieval_key": "retrieval-credit-liquidity",
+  "meeting_id": "a0000000-0000-4000-8000-000000000001",
+  "participant_id": "a0000000-0000-4000-8000-000000000101",
+  "scope": "shared",
+  "stack_id": null,
+  "query": "liquidity before maturity",
+  "hits": [
+    {
+      "rank": 1,
+      "document_id": "a0000000-0000-4000-8000-000000000201",
+      "revision_id": "a0000000-0000-4000-8000-000000000202",
+      "chunk_id": "listing",
+      "content_sha256": "6d4a95f91561344d0e43b149273486fbdfcd323d34b07497a40e72373cf24581",
+      "passage": "NCDs listed on the NSE/BSE wholesale debt market.",
+      "score": 0.9,
+      "file_name": "hdfc-v007-shared-fact-sheet.md",
+      "page_number": 1,
+      "locator": {
+        "section": "listing"
+      },
+      "citation": {
+        "source": "HDFC Ltd FY20 MD&A",
+        "title": "HDFC Ltd Annual Report 2019-20, MD&A",
+        "url": "https://homeloans.hdfc.bank.in/digital-annual-report-2019-2020/mda",
+        "snippet": "The FY20 MD&A states the NCDs are listed on the NSE/BSE wholesale debt market.",
+        "claim_id": "C6",
+        "locator": "S4 MD&A, borrowings"
+      }
+    },
+    {
+      "rank": 2,
+      "document_id": "a0000000-0000-4000-8000-000000000201",
+      "revision_id": "a0000000-0000-4000-8000-000000000202",
+      "chunk_id": "liquidity",
+      "content_sha256": "6d4a95f91561344d0e43b149273486fbdfcd323d34b07497a40e72373cf24581",
+      "passage": "Listing is not executable liquidity.",
+      "score": 0.88,
+      "file_name": "hdfc-v007-shared-fact-sheet.md",
+      "page_number": 1,
+      "locator": {
+        "section": "liquidity"
+      },
+      "citation": {
+        "source": "Committee judgment",
+        "title": "Downside worksheet, Liquidity test",
+        "url": null,
+        "snippet": "Listing is not the same as executable secondary liquidity; the record contains no price, yield, or liquidity data.",
+        "claim_id": "C7",
+        "locator": "Downside worksheet, Liquidity test"
+      }
+    },
+    {
+      "rank": 3,
+      "document_id": "a0000000-0000-4000-8000-000000000201",
+      "revision_id": "a0000000-0000-4000-8000-000000000202",
+      "chunk_id": "limits",
+      "content_sha256": "6d4a95f91561344d0e43b149273486fbdfcd323d34b07497a40e72373cf24581",
+      "passage": "No executable price, yield, or secondary-market liquidity.",
+      "score": 0.84,
+      "file_name": "hdfc-v007-shared-fact-sheet.md",
+      "page_number": 1,
+      "locator": {
+        "section": "limits"
+      },
+      "citation": {
+        "source": "Record evidence",
+        "title": "Shared fact sheet, What is not established",
+        "url": null,
+        "snippet": "The meeting record contains no executable price, yield, or secondary-market liquidity data for the series.",
+        "claim_id": "C10",
+        "locator": "Shared fact sheet, What is not established"
+      }
+    }
+  ]
+}

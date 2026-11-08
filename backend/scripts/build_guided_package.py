@@ -71,13 +71,13 @@ AS_OF = "2020-07-31"
 CREATED_AT = "2020-07-31T09:00:24Z"
 SOURCE_DATE = "2026-10-16"
 DISCLOSURE = (
-    "Prepared historical educational content. No live research, current pricing, "
+    "Demo · historical educational content. No live research, current pricing, "
     "or investment advice. No fresh model charge."
 )
 
 FACT_SHEET = """# HDFC Ltd 7.87% 2022 Debenture - Shared Fact Sheet
 
-Prepared historical information as of 31 July 2020. This is an educational replay,
+Historical information as of 31 July 2020. This is educational demo material,
 not investment advice.
 
 ## Terms
@@ -155,7 +155,7 @@ debt market.
 
 CREDIT_EVIDENCE = """# Credit evidence - private to The Credit Analyst
 
-Prepared evidence for this replay. It collects the recorded terms, rating action,
+Retained evidence for this demo. It collects the recorded terms, rating action,
 issuer context, and open items. It is not a current credit opinion.
 
 - The annexure row supports the coupon, allocation, scheduled maturity, issue size,
@@ -168,7 +168,7 @@ issuer context, and open items. It is not a current credit opinion.
 
 DOWNSIDE_WORKSHEET = """# Downside worksheet - demo-authored
 
-Prepared for this replay; not issuer research, a forecast, or investment advice.
+Authored for this demo; not issuer research, a forecast, or investment advice.
 
 ## Scenario
 
@@ -188,7 +188,7 @@ rating alone is insufficient for a market conclusion.
 
 PORTFOLIO_MANDATE = """# Portfolio mandate - demo-authored and fictional
 
-This mandate is fictional and prepared for this replay. It is not a client
+This mandate is fictional and authored for this demo. It is not a client
 instruction or an investment recommendation.
 
 ## Mandate
@@ -241,7 +241,7 @@ CLAIM_TEXT = {
     "C6": "The FY20 MD&A states the NCDs are listed on the NSE/BSE wholesale debt market.",
     "C7": "Listing is not the same as executable secondary liquidity; the record contains no price, yield, or liquidity data.",
     "C8": "AAA/Stable is a rating opinion dated 31 July 2020, not a guarantee and not a current rating.",
-    "C9": "The +200bp rate move and risk-off secondary-market scenario is demo-authored for this replay; it is not a forecast or issuer guidance.",
+    "C9": "The +200bp rate move and risk-off secondary-market scenario is demo-authored for this demo; it is not a forecast or issuer guidance.",
     "C10": "The meeting record contains no executable price, yield, or secondary-market liquidity data for the series.",
     "C11": "Scheduled maturity is 18 July 2022; the meeting does not assert that payment occurred.",
     "C12": "The rating annexure describes the instrument as a debenture; the retained excerpt does not establish series-level secured or unsecured status.",
@@ -369,20 +369,20 @@ CLAIMS = [
         "claim_id": "C14",
         "kind": "demo_authored",
         "text": (
-            "A prepared path may open with a downside review before the credit fact pack; "
+            "A demo path may open with a downside review before the credit fact pack; "
             "the evidence set does not change."
         ),
-        "locator": "Prepared branch note, downside first",
+        "locator": "Branch note, downside first",
         "evidence_asset_id": "downside-worksheet",
     },
     {
         "claim_id": "C15",
         "kind": "demo_authored",
         "text": (
-            "A prepared path may open with the portfolio mandate so the missing market "
+            "A demo path may open with the portfolio mandate so the missing market "
             "inputs are visible before the credit discussion."
         ),
-        "locator": "Prepared branch note, mandate first",
+        "locator": "Branch note, mandate first",
         "evidence_asset_id": "portfolio-mandate",
     },
     {
@@ -392,7 +392,7 @@ CLAIMS = [
             "The liquidity follow-up asks whether the listed debenture can be sold before "
             "maturity without assuming a price or a buyer."
         ),
-        "locator": "Prepared follow-up, liquidity",
+        "locator": "Follow-up, liquidity",
         "evidence_asset_id": "downside-worksheet",
     },
     {
@@ -402,7 +402,7 @@ CLAIMS = [
             "The covenant follow-up asks which contractual protections would survive a "
             "rating downgrade; the record does not supply the covenant package."
         ),
-        "locator": "Prepared follow-up, covenants",
+        "locator": "Follow-up, covenants",
         "evidence_asset_id": "shared-fact-sheet",
     },
     {
@@ -412,7 +412,7 @@ CLAIMS = [
             "The red-team turn tests whether the research checklist claims more than the "
             "retained evidence supports."
         ),
-        "locator": "Prepared branch note, red team",
+        "locator": "Branch note, red team",
         "evidence_asset_id": "shared-fact-sheet",
     },
 ]
@@ -620,7 +620,7 @@ def citation(claim_id: str) -> dict[str, Any]:
         "derived": "Derived from the recorded terms",
         "judgment": "Committee judgment",
         "unknown": "Record evidence",
-        "demo_authored": "Prepared for this replay",
+        "demo_authored": "Included in this demo",
     }[claim["kind"]]
     if claim_id in {"C1", "C2", "C12"}:
         source = "CRISIL rating rationale"
@@ -762,7 +762,7 @@ def workspace_seed() -> dict[str, Any]:
             (
                 "rev-credit-3",
                 PARTICIPANT_BY_ID[CREDIT]["system_prompt"],
-                "Aligns the practice template with the recorded participant prompt.",
+                "Aligns the persona template with the participant prompt.",
                 "2026-10-30",
             ),
         ],
@@ -776,7 +776,7 @@ def workspace_seed() -> dict[str, Any]:
             (
                 "rev-downside-2",
                 PARTICIPANT_BY_ID[DOWNSIDE]["system_prompt"],
-                "Aligns the practice template with the recorded participant prompt.",
+                "Aligns the persona template with the participant prompt.",
                 "2026-10-30",
             ),
         ],
@@ -790,7 +790,7 @@ def workspace_seed() -> dict[str, Any]:
             (
                 "rev-portfolio-2",
                 PARTICIPANT_BY_ID[PORTFOLIO]["system_prompt"],
-                "Aligns the practice template with the recorded participant prompt.",
+                "Aligns the persona template with the participant prompt.",
                 "2026-10-30",
             ),
         ],
@@ -837,9 +837,9 @@ def workspace_seed() -> dict[str, Any]:
             "label": label,
             "scope": "shared" if stack_id == "shared-meeting-documents" else "private",
             "description": (
-                "Shared reference material for the recorded board."
+                "Shared reference material for the demo board."
                 if stack_id == "shared-meeting-documents"
-                else "Private working papers for the recorded participant."
+                else "Private working papers for the participant."
             ),
         }
         for stack_id, label in STACK_LABELS.items()
@@ -854,10 +854,10 @@ def workspace_seed() -> dict[str, Any]:
             role="shared-research",
             destinations=["meeting", "stack"],
             description=(
-                "Prepared historical terms, rating, and stated limits for the "
+                "Historical terms, rating, and stated limits for the "
                 "HDFC debenture. Shared reference material."
             ),
-            accessible_label="Shared HDFC fact sheet, Markdown, four prepared chunks",
+            accessible_label="Shared HDFC fact sheet, Markdown, four chunks",
             scenario_id="ready-after-indexing",
             chunks=4,
         ),
@@ -870,9 +870,9 @@ def workspace_seed() -> dict[str, Any]:
             destinations=["stack"],
             description=(
                 "Private credit working notes. Only the Credit Analyst is "
-                "assigned to this practice stack."
+                "assigned to this knowledge stack."
             ),
-            accessible_label="Credit analyst notes, Markdown, two prepared chunks",
+            accessible_label="Credit analyst notes, Markdown, two chunks",
             scenario_id="ready-after-indexing",
             chunks=2,
         ),
@@ -884,10 +884,10 @@ def workspace_seed() -> dict[str, Any]:
             role="mandate-material",
             destinations=["stack"],
             description=(
-                "Fictional portfolio mandate for the Portfolio Analyst practice "
+                "Fictional portfolio mandate for the Portfolio Analyst knowledge "
                 "stack, with explicit record limits."
             ),
-            accessible_label="Portfolio mandate, Markdown, three prepared chunks",
+            accessible_label="Portfolio mandate, Markdown, three chunks",
             scenario_id="ready-after-indexing",
             chunks=3,
         ),
@@ -906,7 +906,7 @@ def workspace_seed() -> dict[str, Any]:
             scenario_id="fail-once",
             chunks=3,
             failure_message=(
-                "Prepared simulation: the first ingestion attempt stopped before "
+                "Simulation: the first ingestion attempt stopped before "
                 "indexing. Retry reuses this same document and operation."
             ),
         ),
@@ -923,7 +923,7 @@ def workspace_seed() -> dict[str, Any]:
             ),
             "recording": (
                 "Participant replies, retrieval, and evidence come from the "
-                "prepared recording; practice edits never change recorded content."
+                "demo; browser edits never change recorded content."
             ),
         },
         "personas": personas,
@@ -1203,9 +1203,9 @@ SUMMARY_MESSAGE = message(
 def meeting(status: str, messages: list[dict[str, Any]]) -> dict[str, Any]:
     return {
         "id": MEETING,
-        "name": "Review HDFC Ltd's 7.87% 2022 debenture (ISIN INE001A07RW5) as of 31 July 2020",
+        "name": "A HDFC Bond Review Demo",
         "agenda": (
-            "Prepared historical committee review. Establish the terms and rating, "
+            "Historical committee review. Establish the terms and rating, "
             "test the downside, apply a fictional mandate, and close with a research "
             "checklist. Not investment advice."
         ),
@@ -1393,7 +1393,7 @@ def consensus() -> dict[str, Any]:
 def board_safe_config() -> dict[str, Any]:
     return {
         "board": {
-            "title": "Prepared board for the recorded meeting",
+            "title": "Demo board",
             "participants": [
                 {
                     "participant_id": item["id"],
@@ -1426,11 +1426,11 @@ def board_safe_config() -> dict[str, Any]:
                 {"key": "indexed", "label": "Indexed", "at": "2020-07-31T09:00:20Z"},
                 {"key": "ready", "label": "Ready", "at": "2020-07-31T09:00:24Z"},
             ],
-            "note": "Recorded intake. No filesystem write or live parser ran during playback.",
+            "note": "Meeting created. No filesystem write or live parser ran.",
         },
         "disclosure": DISCLOSURE,
         "as_of": "Information as of 31 July 2020 - sources captured 16 October 2026.",
-        "settings": {"runtime": "recorded", "notice": "Guided replay; not live research."},
+        "settings": {"runtime": "recorded", "notice": "Demo; not live research."},
     }
 
 
@@ -2623,7 +2623,7 @@ def exploration_content(
             "canonical": False,
             "prerequisites": prerequisites or [],
             "label": label,
-            "explanation": "Prepared exploration path; validated separately from canonical beats.",
+            "explanation": "Demo exploration path; validated separately from the guided path.",
         }
 
     transitions.extend(
@@ -2826,122 +2826,122 @@ def exploration_content(
     chapters = [
         {
             "chapter_id": "chapter-board",
-            "title": "Prepared board",
+            "title": "Board",
             "objective": "Inspect the three participants and their knowledge assignments.",
             "checkpoint": "checkpoint-created",
             "route": "board",
             "tab": "roster",
             "mode": "inspection",
-            "disclosure": "Prepared board; inspection does not complete a guide step.",
+            "disclosure": "The board is read-only; inspection does not complete a guide step.",
             "claim_ids": [],
             "input_asset_ids": ["shared-fact-sheet"],
         },
         {
             "chapter_id": "chapter-setup",
-            "title": "Board setup",
-            "objective": "Inspect the prepared setup, roster, and practice-safe configuration.",
+            "title": "Meeting setup",
+            "objective": "Inspect the setup, roster, and demo configuration.",
             "checkpoint": "checkpoint-created",
             "route": "new",
             "tab": "roster",
             "mode": "inspection",
-            "disclosure": "Prepared setup; editing practice settings does not change the recording.",
+            "disclosure": "Setup is read-only; editing in this browser does not change the demo.",
             "claim_ids": [],
             "input_asset_ids": [],
         },
         {
             "chapter_id": "chapter-files",
-            "title": "Files and sources",
+            "title": "Documents and sources",
             "objective": "Inspect the meeting documents and retained source assets.",
             "checkpoint": "checkpoint-credit",
             "route": "meeting",
             "tab": "documents",
             "mode": "inspection",
-            "disclosure": "Recorded sources; inspection does not add or retrieve live documents.",
+            "disclosure": "Documents and sources are retained; inspection does not add or retrieve live documents.",
             "claim_ids": ["C1", "C2", "C10"],
             "input_asset_ids": ["shared-fact-sheet", "credit-evidence"],
         },
         {
             "chapter_id": "chapter-facts",
-            "title": "Recorded facts",
+            "title": "Facts and citations",
             "objective": "Inspect the Credit Analyst turn and its citations.",
             "checkpoint": "checkpoint-credit",
             "route": "meeting",
             "tab": "chat",
             "mode": "inspection",
-            "disclosure": "Recorded turn; no new model call.",
+            "disclosure": "Retained turn; no new model call.",
             "claim_ids": ["C1", "C2", "C3", "C10", "C12"],
             "input_asset_ids": ["shared-fact-sheet", "credit-evidence"],
         },
         {
             "chapter_id": "chapter-disagreement",
-            "title": "Recorded disagreement",
+            "title": "Disagreement",
             "objective": "Inspect the Downside Reviewer's logged disagreement.",
             "checkpoint": "checkpoint-downside",
             "route": "meeting",
             "tab": "disagreements",
             "mode": "inspection",
-            "disclosure": "Recorded disagreement; inspection is not a new action.",
+            "disclosure": "Retained disagreement; inspection is not a new action.",
             "claim_ids": ["C6", "C7", "C8", "C9", "C10"],
             "input_asset_ids": ["downside-worksheet"],
         },
         {
             "chapter_id": "chapter-followup",
-            "title": "Recorded follow-up",
-            "objective": "Inspect the supported Director follow-up.",
+            "title": "Follow-up",
+            "objective": "Inspect the supported follow-up.",
             "checkpoint": "checkpoint-followup",
             "route": "meeting",
             "tab": "chat",
             "mode": "inspection",
-            "disclosure": "Recorded follow-up; inspection does not resend it.",
+            "disclosure": "Retained follow-up; inspection does not resend it.",
             "claim_ids": ["C10", "C11", "C13"],
             "input_asset_ids": ["shared-fact-sheet"],
         },
         {
             "chapter_id": "chapter-consensus",
-            "title": "Recorded consensus",
+            "title": "Consensus",
             "objective": "Inspect the formal consensus and its claims.",
             "checkpoint": "checkpoint-consensus",
             "route": "meeting",
             "tab": "consensus",
             "mode": "inspection",
-            "disclosure": "Recorded consensus; inspection is not a new vote.",
+            "disclosure": "Retained consensus; inspection is not a new vote.",
             "claim_ids": ["C1", "C2", "C10", "C13"],
             "input_asset_ids": ["shared-fact-sheet"],
         },
         {
             "chapter_id": "chapter-closing",
-            "title": "Completed closing",
-            "objective": "Inspect the recorded ballots and closing brief.",
+            "title": "Closing",
+            "objective": "Inspect the ballots and closing brief.",
             "checkpoint": "checkpoint-closed",
             "route": "meeting",
             "tab": "closing",
             "mode": "inspection",
-            "disclosure": "Recorded closing; no live vote or model call.",
+            "disclosure": "Retained closing; no live vote or model call.",
             "claim_ids": ["C1", "C2", "C10", "C11", "C13"],
             "input_asset_ids": ["shared-fact-sheet"],
         },
         {
             "chapter_id": "chapter-summary",
-            "title": "Recorded summary",
-            "objective": "Inspect the approved recorded system summary in its completed context.",
+            "title": "Summary",
+            "objective": "Inspect the approved summary in its completed context.",
             "checkpoint": "checkpoint-archived",
             "route": "meeting",
             "tab": "summary",
             "mode": "inspection",
-            "disclosure": "Recorded summary from the archived meeting; not a fresh generation.",
+            "disclosure": "Summary from the archived meeting; not a fresh generation.",
             "summary_message_id": SUMMARY_MSG,
             "claim_ids": ["C1", "C2", "C10", "C11", "C13"],
             "input_asset_ids": ["shared-fact-sheet"],
         },
         {
             "chapter_id": "chapter-archive",
-            "title": "Archived result",
-            "objective": "Inspect the archived meeting overlay.",
+            "title": "Archived meeting",
+            "objective": "Inspect the archived meeting.",
             "checkpoint": "checkpoint-archived",
             "route": "list",
             "tab": "chat",
             "mode": "inspection",
-            "disclosure": "Archived overlay; the recording remains ended.",
+            "disclosure": "Archive keeps the meeting ended.",
             "claim_ids": ["C13"],
             "input_asset_ids": ["shared-fact-sheet"],
         },
@@ -2953,7 +2953,7 @@ def exploration_content(
             "route": "meeting",
             "tab": "chat",
             "mode": "inspection",
-            "disclosure": "Prepared branch; inspection does not complete the canonical guide.",
+            "disclosure": "Alternative branch; inspection does not complete the guided path.",
             "claim_ids": ["C6", "C7", "C8", "C10", "C14"],
             "input_asset_ids": ["downside-worksheet"],
         },
@@ -2965,7 +2965,7 @@ def exploration_content(
             "route": "meeting",
             "tab": "closing",
             "mode": "inspection",
-            "disclosure": "Recorded branch closing; no live vote.",
+            "disclosure": "Branch closing; no live vote.",
             "claim_ids": ["C1", "C2", "C10", "C11", "C13"],
             "input_asset_ids": ["shared-fact-sheet"],
         },
@@ -2977,7 +2977,7 @@ def exploration_content(
             "route": "meeting",
             "tab": "closing",
             "mode": "inspection",
-            "disclosure": "Recorded branch closing; no live vote.",
+            "disclosure": "Branch closing; no live vote.",
             "claim_ids": ["C6", "C7", "C10", "C16"],
             "input_asset_ids": ["downside-worksheet"],
         },
@@ -2989,7 +2989,7 @@ def exploration_content(
             "route": "meeting",
             "tab": "chat",
             "mode": "inspection",
-            "disclosure": "Prepared branch; inspection does not complete the canonical guide.",
+            "disclosure": "Alternative branch; inspection does not complete the guided path.",
             "claim_ids": ["C1", "C2", "C10", "C13", "C18"],
             "input_asset_ids": ["shared-fact-sheet"],
         },
@@ -3235,9 +3235,9 @@ def build(
             "sha256": sha256(FACT_SHEET),
             "size": len(FACT_SHEET.encode("utf-8")),
             "locator": "package:shared/hdfc-v007-shared-fact-sheet.md",
-            "source": "Prepared for this replay",
+            "source": "Included in this demo",
             "capture_date": AS_OF,
-            "rights": "Authored historical fact sheet for this replay",
+            "rights": "Authored historical fact sheet for this demo",
             "authored": True,
             "public_demo": True,
             "upload_approved": True,
@@ -3278,9 +3278,9 @@ def build(
             "sha256": sha256(SOURCE_REGISTER),
             "size": len(SOURCE_REGISTER.encode("utf-8")),
             "locator": "package:evidence/source-register.md",
-            "source": "Prepared for this replay",
+            "source": "Included in this demo",
             "capture_date": SOURCE_DATE,
-            "rights": "Authored provenance record for this replay",
+            "rights": "Authored provenance record for this demo",
             "authored": True,
             "public_demo": True,
             "extraction": "offline markdown",
@@ -3292,7 +3292,7 @@ def build(
             "sha256": sha256(CREDIT_EVIDENCE),
             "size": len(CREDIT_EVIDENCE.encode("utf-8")),
             "locator": "package:private/credit-evidence.md",
-            "source": "Prepared for this replay",
+            "source": "Included in this demo",
             "capture_date": AS_OF,
             "rights": "Demo-authored private input",
             "authored": True,
@@ -3307,7 +3307,7 @@ def build(
             "sha256": sha256(DOWNSIDE_WORKSHEET),
             "size": len(DOWNSIDE_WORKSHEET.encode("utf-8")),
             "locator": "package:private/downside-worksheet.md",
-            "source": "Demo-authored for this replay",
+            "source": "Demo-authored for this demo",
             "capture_date": AS_OF,
             "rights": "Demo-authored private input",
             "authored": True,
@@ -3322,7 +3322,7 @@ def build(
             "sha256": sha256(PORTFOLIO_MANDATE),
             "size": len(PORTFOLIO_MANDATE.encode("utf-8")),
             "locator": "package:private/portfolio-mandate.md",
-            "source": "Demo-authored for this replay",
+            "source": "Demo-authored for this demo",
             "capture_date": AS_OF,
             "rights": "Demo-authored private input",
             "authored": True,
@@ -3771,7 +3771,7 @@ def build(
             "checkpoint": "checkpoint-initial",
             "start_checkpoint": "checkpoint-initial",
             "completed_checkpoint": "checkpoint-initial",
-            "disclosure": "Prepared board for the recorded meeting.",
+            "disclosure": "The board is read-only; inspection does not complete a guide step.",
             "steps": [
                 {
                     "step_id": "inspect-board",
@@ -3792,17 +3792,17 @@ def build(
             "beat_id": "start-the-meeting",
             "ordinal": 2,
             "title": "Start the meeting",
-            "objective": "Complete the prepared creation form and confirm the supplied historical document.",
+            "objective": "Complete the creation form and confirm the supplied historical document.",
             "anchor": "creation-form",
             "route": "new",
             "checkpoint": "checkpoint-initial",
             "start_checkpoint": "checkpoint-initial",
             "completed_checkpoint": "checkpoint-created",
-            "disclosure": "No upload or write occurs; the intake receipt is recorded.",
+            "disclosure": "No upload or write occurs; the intake receipt is part of the demo.",
             "steps": [
                 {
                     "step_id": "create-meeting",
-                    "label": "Confirm the prepared preset and supplied document",
+                    "label": "Confirm the preset and supplied document",
                     "intent_id": "create-meeting",
                     "completion": "checkpoint",
                 }
@@ -3821,7 +3821,7 @@ def build(
             "checkpoint": "checkpoint-created",
             "start_checkpoint": "checkpoint-created",
             "completed_checkpoint": "checkpoint-credit",
-            "disclosure": "Prepared retrieval; no live search or model call.",
+            "disclosure": "Retained retrieval; no live search or model call.",
             "steps": [
                 {
                     "step_id": "ask-credit",
@@ -3879,7 +3879,7 @@ def build(
             "steps": [
                 {
                     "step_id": "send-follow-up",
-                    "label": "Send the supported Director follow-up",
+                    "label": "Send the supported follow-up",
                     "intent_id": "director-follow-up",
                     "completion": "checkpoint",
                     "requires_tab": "chat",
@@ -3929,14 +3929,14 @@ def build(
             "beat_id": "close-the-meeting",
             "ordinal": 7,
             "title": "Close the meeting",
-            "objective": "Use the real close entry and review the recorded ballots and final brief.",
+            "objective": "Use the real close entry and review the ballots and closing brief.",
             "anchor": "closing-entry",
             "route": "meeting",
             "tab": "closing",
             "checkpoint": "checkpoint-consensus",
             "start_checkpoint": "checkpoint-consensus",
             "completed_checkpoint": "checkpoint-closed",
-            "disclosure": "Recorded closing. No live vote or model call occurs.",
+            "disclosure": "Retained closing. No live vote or model call occurs.",
             "steps": [
                 {
                     "step_id": "close-meeting",
@@ -3959,7 +3959,7 @@ def build(
             "checkpoint": "checkpoint-closed",
             "start_checkpoint": "checkpoint-closed",
             "completed_checkpoint": "checkpoint-archived",
-            "disclosure": "Archiving is an overlay. The meeting remains ended and cannot be reopened in this replay.",
+            "disclosure": "Archiving is an overlay. The meeting remains ended and cannot be reopened in this demo.",
             "steps": [
                 {
                     "step_id": "archive-meeting",
@@ -3986,7 +3986,7 @@ def build(
             safe_config = checkpoint_payload["reads"].get("safe_config") or {}
             intake = safe_config.get("intake") or {}
             if intake.get("note"):
-                intake["note"] = "Recorded intake."
+                intake["note"] = "Meeting created."
             meeting_read = checkpoint_payload["reads"].get("meeting") or {}
             for message in meeting_read.get("messages") or []:
                 if message.get("sender_type") == "user":
@@ -4033,7 +4033,7 @@ def build(
         "schema_version": schema_version,
         "read_version": 1,
         "event_version": 1,
-        "title": "HDFC Ltd 7.87% 2022 debenture - guided replay",
+        "title": "A HDFC Bond Review Demo",
         "as_of": AS_OF,
         "content_sha256": "0" * 64,
         "meeting_id": MEETING,
@@ -4052,9 +4052,9 @@ def build(
             "model_run": "none",
             "source_capture_date": SOURCE_DATE,
             "prepared_date": "2026-10-30",
-            "note": "Authored historical educational replay; no live model run or current-market lookup.",
+            "note": "Authored historical educational demo; no live model run or current-market lookup.",
         },
-        "label": "Guided replay",
+        "label": "Demo",
         "disclosure": DISCLOSURE,
         "stack_labels": STACK_LABELS,
         "intents": intents,
@@ -4067,10 +4067,10 @@ def build(
     }
     if deck:
         manifest.update(deck)
-        manifest["title"] = "HDFC Ltd 7.87% 2022 debenture - prepared demo"
-        manifest["label"] = "Prepared demo"
+        manifest["title"] = "A HDFC Bond Review Demo"
+        manifest["label"] = "Demo"
         manifest["disclosure"] = (
-            "Prepared demo · recorded responses, not live AI generation."
+            "Demo · responses were recorded, not live AI generation."
         )
     write_json(root / "manifest.json", manifest)
 
