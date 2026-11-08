@@ -58,7 +58,7 @@ function Wrapper({ children }: { children: ReactNode }) {
 }
 
 const CREATE_INPUT = {
-    agenda: 'Pricing committee kickoff',
+    title: 'Pricing committee kickoff',
     context: '',
     personaIds: ['persona-1'],
 };

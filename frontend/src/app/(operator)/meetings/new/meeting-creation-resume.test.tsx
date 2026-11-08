@@ -71,9 +71,8 @@ function resetPipeline() {
     mocks.personaView.refetch = mocks.refetch;
 }
 
-/** The header link and the footer submit both read "Create Meeting Room"; the footer one is the action under test. */
 function createButton() {
-    const buttons = screen.getAllByRole('button', { name: /create meeting room/i });
+    const buttons = screen.getAllByRole('button', { name: /^create meeting$/i });
     return buttons[buttons.length - 1]!;
 }
 
@@ -104,7 +103,7 @@ describe('create flow page wiring', () => {
         render(<NewMeetingPage />);
         await screen.findByText('The Investor');
 
-        fireEvent.input(screen.getByLabelText(/Meeting Agenda/i), {
+        fireEvent.input(screen.getByLabelText(/Meeting title/i), {
             target: { value: 'Pricing committee kickoff' },
         });
         await waitFor(() => expect(createButton()).toBeEnabled());
@@ -117,7 +116,7 @@ describe('create flow page wiring', () => {
         fireEvent.click(createButton());
         await waitFor(() =>
             expect(mocks.pipeline.createMeeting).toHaveBeenCalledWith({
-                agenda: 'Pricing committee kickoff',
+                title: 'Pricing committee kickoff',
                 context: '',
                 personaIds: ['persona-1'],
             })
@@ -159,8 +158,8 @@ describe('create flow page wiring', () => {
         mocks.pipeline.isCreating = true;
         const view = render(<NewMeetingPage />);
         await screen.findByText('The Investor');
-        // While busy the submit reads "Creating..." instead of its idle label.
-        expect(screen.getByRole('button', { name: 'Creating...' })).toBeDisabled();
+        // While busy the submit reports the actual creation state.
+        expect(screen.getByRole('button', { name: 'Creating meeting…' })).toBeDisabled();
         view.unmount();
 
         mocks.pipeline.isCreating = false;

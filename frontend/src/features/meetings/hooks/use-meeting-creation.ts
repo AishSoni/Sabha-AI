@@ -26,7 +26,7 @@ export interface MeetingUploadDraft {
 }
 
 export interface MeetingCreationInput {
-    agenda: string;
+    title: string;
     context: string;
     personaIds: string[];
 }
@@ -153,7 +153,7 @@ export function useMeetingCreation() {
             let meetingId = createdMeetingId ?? retainedMeetingId.current;
             if (!meetingId) {
                 const meeting = await createMeetingMutation.mutateAsync({
-                    name: input.agenda,
+                    name: input.title,
                     agenda: input.context,
                     personaIds: input.personaIds,
                 });

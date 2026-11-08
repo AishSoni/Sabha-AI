@@ -98,12 +98,12 @@ function refreshButton(): HTMLButtonElement {
 }
 
 function createButton(): HTMLButtonElement {
-    const buttons = screen.getAllByRole('button', { name: /create meeting room/i });
+    const buttons = screen.getAllByRole('button', { name: /^create meeting$/i });
     return buttons[buttons.length - 1] as HTMLButtonElement;
 }
 
 function selectionSummary(): HTMLElement {
-    return screen.getByText(/advisors should participate/i);
+    return screen.getByText(/participants should join/i);
 }
 
 describe('create meeting roster reconciliation', () => {
@@ -168,7 +168,7 @@ describe('create meeting roster reconciliation', () => {
         const checkbox = screen.getAllByRole('checkbox')[0]!;
         expect(checkbox).toBeChecked();
 
-        fireEvent.input(screen.getByLabelText(/Meeting Agenda/i), {
+        fireEvent.input(screen.getByLabelText(/Meeting title/i), {
             target: { value: 'Pricing committee kickoff' },
         });
         await waitFor(() => expect(createButton()).toBeEnabled());
@@ -196,10 +196,10 @@ describe('create meeting roster reconciliation', () => {
         await screen.findByText('The Investor');
         fireEvent.click(screen.getAllByRole('checkbox')[0]!);
 
-        fireEvent.input(screen.getByLabelText(/Meeting Agenda/i), {
+        fireEvent.input(screen.getByLabelText(/Meeting title/i), {
             target: { value: 'Pricing committee kickoff' },
         });
-        fireEvent.input(screen.getByLabelText(/Meeting Context/i), {
+        fireEvent.input(screen.getByLabelText(/^Context$/i), {
             target: { value: 'Unit economics review' },
         });
 
@@ -259,7 +259,7 @@ describe('create meeting roster reconciliation', () => {
             </Wrapper>
         );
         await screen.findByText('The Investor');
-        fireEvent.input(screen.getByLabelText(/Meeting Agenda/i), {
+        fireEvent.input(screen.getByLabelText(/Meeting title/i), {
             target: { value: 'Pricing committee kickoff' },
         });
 
@@ -302,10 +302,10 @@ describe('create meeting roster reconciliation', () => {
         );
         await screen.findByText('The Investor');
         fireEvent.click(screen.getAllByRole('checkbox')[0]!);
-        fireEvent.input(screen.getByLabelText(/Meeting Agenda/i), {
+        fireEvent.input(screen.getByLabelText(/Meeting title/i), {
             target: { value: 'Pricing committee kickoff' },
         });
-        fireEvent.input(screen.getByLabelText(/Meeting Context/i), {
+        fireEvent.input(screen.getByLabelText(/^Context$/i), {
             target: { value: 'Unit economics review' },
         });
 
@@ -318,8 +318,8 @@ describe('create meeting roster reconciliation', () => {
         );
 
         expect(selectionSummary()).toHaveTextContent('1 selected');
-        expect(screen.getByLabelText(/Meeting Agenda/i)).toHaveValue('Pricing committee kickoff');
-        expect(screen.getByLabelText(/Meeting Context/i)).toHaveValue('Unit economics review');
+        expect(screen.getByLabelText(/Meeting title/i)).toHaveValue('Pricing committee kickoff');
+        expect(screen.getByLabelText(/^Context$/i)).toHaveValue('Unit economics review');
         expect(screen.getAllByRole('checkbox')[0]).not.toBeChecked();
 
         scripted.enqueueJson(
@@ -333,8 +333,8 @@ describe('create meeting roster reconciliation', () => {
         await screen.findByText('Unit economics, recovered');
 
         expect(selectionSummary()).toHaveTextContent('1 selected');
-        expect(screen.getByLabelText(/Meeting Agenda/i)).toHaveValue('Pricing committee kickoff');
-        expect(screen.getByLabelText(/Meeting Context/i)).toHaveValue('Unit economics review');
+        expect(screen.getByLabelText(/Meeting title/i)).toHaveValue('Pricing committee kickoff');
+        expect(screen.getByLabelText(/^Context$/i)).toHaveValue('Unit economics review');
         expect(screen.getAllByRole('checkbox')[0]).not.toBeChecked();
     });
 
@@ -346,7 +346,7 @@ describe('create meeting roster reconciliation', () => {
             </Wrapper>
         );
         await screen.findByText('No personas available');
-        fireEvent.input(screen.getByLabelText(/Meeting Agenda/i), {
+        fireEvent.input(screen.getByLabelText(/Meeting title/i), {
             target: { value: 'Pricing committee kickoff' },
         });
         expect(createButton()).toBeDisabled();
@@ -361,10 +361,10 @@ describe('create meeting roster reconciliation', () => {
         await screen.findByText('The Investor');
         expect(createButton()).toBeDisabled();
 
-        fireEvent.input(screen.getByLabelText(/Meeting Agenda/i), { target: { value: '   ' } });
+        fireEvent.input(screen.getByLabelText(/Meeting title/i), { target: { value: '   ' } });
         expect(createButton()).toBeDisabled();
 
-        fireEvent.input(screen.getByLabelText(/Meeting Agenda/i), {
+        fireEvent.input(screen.getByLabelText(/Meeting title/i), {
             target: { value: 'Pricing committee kickoff' },
         });
         await waitFor(() => expect(createButton()).toBeEnabled());

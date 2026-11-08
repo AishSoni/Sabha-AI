@@ -101,9 +101,9 @@ export function PracticeSetupScreen({
     return (
         <>
             <MeetingCreationScreen
-                agenda={agenda}
+                title={agenda}
                 context={context}
-                onAgendaChange={setAgenda}
+                onTitleChange={setAgenda}
                 onContextChange={setContext}
                 roster={roster}
                 loadingRoster={false}
@@ -194,7 +194,7 @@ export function PracticeSetupScreen({
                         });
                 }}
                 onCancel={onExit}
-                title="Practice setup"
+                heading="Practice setup"
                 description="Saved in this browser; the recorded meeting is unchanged."
                 backHref="/demo"
                 createLabel="Create practice setup"

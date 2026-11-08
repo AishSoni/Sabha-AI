@@ -15,7 +15,7 @@ interface RosterItem {
 
 export default function NewMeetingPage() {
     const router = useRouter();
-    const [agenda, setAgenda] = useState('');
+    const [title, setTitle] = useState('');
     const [context, setContext] = useState('');
     const [selectedIds, setSelectedIds] = useState<Set<string> | null>(null);
 
@@ -82,15 +82,15 @@ export default function NewMeetingPage() {
         setSelectedIds(allSelected ? new Set() : new Set(roster.map(p => p.id)));
     };
 
-    /** The creation payload goes through the feature capability: agenda becomes the meeting name, context becomes the agenda. */
+    /** The view model is title/context; the feature adapter maps them to the meeting name/agenda wire fields. */
     const handleCreate = async () => {
-        if (!agenda.trim()) return;
+        if (!title.trim()) return;
 
         const selectedPersonaIds = roster.filter(p => p.selected).map(p => p.id);
         if (selectedPersonaIds.length === 0) return;
 
         await createMeeting({
-            agenda: agenda.trim(),
+            title: title.trim(),
             context: context.trim(),
             personaIds: selectedPersonaIds,
         });
@@ -98,9 +98,9 @@ export default function NewMeetingPage() {
 
     return (
         <MeetingCreationScreen
-            agenda={agenda}
+            title={title}
             context={context}
-            onAgendaChange={setAgenda}
+            onTitleChange={setTitle}
             onContextChange={setContext}
             roster={roster}
             loadingRoster={loadingRoster}

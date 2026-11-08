@@ -84,7 +84,7 @@ export default function MeetingSpacePage() {
                     <Link href="/meetings/new">
                         <Button>
                             <Plus className="h-4 w-4" />
-                            Create Meeting Room
+                            Create meeting
                         </Button>
                     </Link>
                 </div>
@@ -206,7 +206,7 @@ function EmptyState() {
             <Link href="/meetings/new">
                 <Button>
                     <Plus className="h-4 w-4" />
-                    Create Meeting Room
+                    Create meeting
                 </Button>
             </Link>
         </div>

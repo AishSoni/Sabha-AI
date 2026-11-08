@@ -44,9 +44,9 @@ export interface MeetingCreationStagedItem {
 }
 
 export interface MeetingCreationScreenProps {
-    agenda: string;
+    title: string;
     context: string;
-    onAgendaChange: (value: string) => void;
+    onTitleChange: (value: string) => void;
     onContextChange: (value: string) => void;
     roster: readonly MeetingCreationRosterItem[];
     loadingRoster: boolean;
@@ -67,7 +67,7 @@ export interface MeetingCreationScreenProps {
     onCreate: () => void;
     onCancel?: () => void;
     canCreate?: boolean;
-    title?: string;
+    heading?: string;
     description?: string;
     backHref?: string;
     createLabel?: string;
@@ -77,9 +77,9 @@ export interface MeetingCreationScreenProps {
 }
 
 export function MeetingCreationScreen({
-    agenda,
+    title,
     context,
-    onAgendaChange,
+    onTitleChange,
     onContextChange,
     roster,
     loadingRoster,
@@ -100,11 +100,11 @@ export function MeetingCreationScreen({
     onCreate,
     onCancel,
     canCreate,
-    title = 'Create Meeting Room',
-    description = 'Set up a new AI advisory session',
+    heading = 'Create meeting',
+    description = 'Set up a new AI advisory meeting',
     backHref = '/',
-    createLabel = 'Create Meeting Room',
-    busyLabel = 'Creating...',
+    createLabel = 'Create meeting',
+    busyLabel = 'Creating meeting…',
     footerNote,
     disclosure,
 }: MeetingCreationScreenProps) {
@@ -112,7 +112,7 @@ export function MeetingCreationScreen({
     const everySelected = roster.length > 0 && roster.every((persona) => persona.selected);
     const ctaEnabled =
         canCreate ??
-        (agenda.trim().length > 0 &&
+        (title.trim().length > 0 &&
             !isCreating &&
             !navigationDone &&
             selectedCount > 0);
@@ -126,7 +126,7 @@ export function MeetingCreationScreen({
                             <ArrowLeft className="w-5 h-5" />
                         </Link>
                         <div>
-                            <h1 className="text-xl font-bold text-ink">{title}</h1>
+                            <h1 className="text-xl font-bold text-ink">{heading}</h1>
                             <p className="text-xs text-ink-muted">{description}</p>
                         </div>
                     </div>
@@ -140,18 +140,18 @@ export function MeetingCreationScreen({
                     <div className="space-y-8">
                         <section className="space-y-4">
                             <div>
-                                <Label htmlFor="agenda" className="text-lg font-semibold text-ink">
-                                    Meeting Agenda <span className="text-danger">*</span>
+                                <Label htmlFor="meeting-title" className="text-lg font-semibold text-ink">
+                                    Meeting title <span className="text-danger">*</span>
                                 </Label>
                                 <p className="text-sm text-ink-muted mt-1">
-                                    A concise title describing what this meeting is about
+                                    A concise name for this meeting
                                 </p>
                             </div>
                             <Input
-                                id="agenda"
+                                id="meeting-title"
                                 placeholder="e.g., Product launch strategy for Q2"
-                                value={agenda}
-                                onChange={(event) => onAgendaChange(event.target.value)}
+                                value={title}
+                                onChange={(event) => onTitleChange(event.target.value)}
                                 className="h-12 text-lg"
                             />
                         </section>
@@ -159,10 +159,10 @@ export function MeetingCreationScreen({
                         <section className="space-y-4">
                             <div>
                                 <Label htmlFor="context" className="text-lg font-semibold text-ink">
-                                    Meeting Context
+                                    Context
                                 </Label>
                                 <p className="text-sm text-ink-muted mt-1">
-                                    Extra details to help the AI advisors understand the situation
+                                    Background, constraints, or questions for the participants
                                 </p>
                             </div>
                             <Textarea
@@ -177,10 +177,10 @@ export function MeetingCreationScreen({
                         <section className="space-y-4">
                             <div>
                                 <Label className="text-lg font-semibold text-ink">
-                                    Shared Documents
+                                    Documents
                                 </Label>
                                 <p className="text-sm text-ink-muted mt-1">
-                                    Documents will be available for RAG search by all AI advisors
+                                    Documents will be available for search by all participants
                                 </p>
                             </div>
                             {uploadControl ?? (
@@ -280,7 +280,7 @@ export function MeetingCreationScreen({
                                     <div className="flex items-center gap-2">
                                         <Users className="w-5 h-5 text-action" />
                                         <Label className="text-ink font-semibold">
-                                            AI Roster
+                                            Participants
                                         </Label>
                                     </div>
                                     <div className="flex items-center gap-2">
@@ -307,7 +307,7 @@ export function MeetingCreationScreen({
                                 </div>
 
                                 <p className="text-xs text-ink-muted">
-                                    Select which AI advisors should participate ({selectedCount} selected)
+                                    Select which participants should join ({selectedCount} selected)
                                 </p>
 
                                 {loadingRoster ? (
