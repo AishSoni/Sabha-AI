@@ -38,7 +38,7 @@ const DESTINATIONS: readonly Destination[] = [
         anchor: "nav.knowledge",
     },
     { href: "/demo/meetings", label: "Meetings", exact: false },
-    { href: "/demo/settings", label: "Demo settings", exact: true },
+    { href: "/demo/settings", label: "Settings", exact: true },
 ];
 
 function DestinationLink({
@@ -131,8 +131,8 @@ export function DemoNav() {
                 <div className="border-t border-warning/40 bg-warning-soft px-4 py-3">
                     <div className="mx-auto flex max-w-6xl flex-wrap items-center gap-3 type-body text-warning">
                         <p className="flex-1">
-                            Reset the demo workspace? Practice edits will be lost
-                            and the recording will return to its first step.
+                            Reset the demo? Browser changes will be lost and the
+                            demo will return to its first step.
                         </p>
                         <Button
                             type="button"
@@ -140,7 +140,7 @@ export function DemoNav() {
                             size="sm"
                             onClick={confirmReset}
                         >
-                            Reset and discard edits
+                            Reset and discard changes
                         </Button>
                         <Button
                             type="button"
@@ -148,7 +148,7 @@ export function DemoNav() {
                             size="sm"
                             onClick={() => setConfirmingReset(false)}
                         >
-                            Keep editing
+                            Keep changes
                         </Button>
                     </div>
                 </div>

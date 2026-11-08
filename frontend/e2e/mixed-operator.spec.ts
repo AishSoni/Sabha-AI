@@ -90,7 +90,7 @@ test.describe("mixed operator and demo isolation", () => {
         // Reset the demo; the operator page is still mounted and unchanged.
         await demo.getByRole("button", { name: "Reset demo" }).click();
         await demo
-            .getByRole("button", { name: "Reset and discard edits" })
+            .getByRole("button", { name: "Reset and discard changes" })
             .click();
         await expect(operator.getByText("Operator", { exact: true })).toBeVisible();
         expect(

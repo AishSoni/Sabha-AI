@@ -63,7 +63,7 @@ test.describe("version-5 package compatibility", () => {
             await knowledge.nth(index).click();
         }
 
-        await page.getByRole("link", { name: "Start the meeting" }).click();
+        await page.getByRole("link", { name: "Start meeting" }).click();
         await expect(page).toHaveURL(/\/demo\/new$/);
         await expect(
             page.getByRole("button", { name: "Try editing this setup" })

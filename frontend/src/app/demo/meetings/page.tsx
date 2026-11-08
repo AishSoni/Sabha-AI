@@ -48,7 +48,7 @@ export default function DemoMeetingListPage() {
             } else if (archiveIntent) {
                 await run.startIntent(archiveIntent.intent_id);
             } else {
-                throw new Error("This recording has no archive step.");
+                throw new Error("This demo has no archive step.");
             }
             await meetings.refetch();
             setTab("archived");
@@ -56,7 +56,7 @@ export default function DemoMeetingListPage() {
             setError(
                 cause instanceof Error
                     ? cause.message
-                    : "The recorded archive step could not be loaded."
+                    : "The demo archive step could not be loaded."
             );
         } finally {
             setBusy(false);
@@ -68,14 +68,14 @@ export default function DemoMeetingListPage() {
             <div className="mb-6 flex flex-wrap items-start justify-between gap-3">
                 <div>
                     <div className="mb-2 flex flex-wrap items-center gap-2">
-                        <Badge>Prepared demo</Badge>
+                        <Badge>Demo</Badge>
                         <span className="text-xs text-ink-muted">
-                            Recorded meeting list
+                            Meeting list
                         </span>
                     </div>
                     <h1 className="text-2xl font-semibold text-ink">Meetings</h1>
                     <p className="mt-2 text-sm text-ink-secondary">
-                        Open the recorded meeting or archive the ended record.
+                        Open the meeting or archive the ended record.
                     </p>
                 </div>
                 <Link
@@ -99,7 +99,7 @@ export default function DemoMeetingListPage() {
                             <p className="mt-1 text-sm text-ink-secondary">
                                 Temporary browser-memory setups you created by
                                 editing the prepared intake. They are separate
-                                from the recorded meeting below.
+                                from the demo meeting below.
                             </p>
                         </div>
                         <Badge
@@ -225,7 +225,7 @@ export default function DemoMeetingListPage() {
             ) : null}
 
             {meetings.isLoading ? (
-                <p role="status" className="type-body text-ink-muted">Loading recorded meetings…</p>
+                <p role="status" className="type-body text-ink-muted">Loading demo meetings…</p>
             ) : meetings.error ? (
                 <p role="alert" className="rounded-group border border-warning/60 bg-warning-soft p-3 type-body text-warning">
                     {meetings.error.message}
@@ -235,8 +235,8 @@ export default function DemoMeetingListPage() {
                     <Users className="mx-auto mb-3 h-8 w-8 text-ink-muted" />
                     <p className="type-body text-ink-secondary">
                         {shownTab === "active"
-                            ? "No active or ended recorded meeting yet."
-                            : "No archived recorded meeting yet."}
+                            ? "No active or ended demo meeting yet."
+                            : "No archived demo meeting yet."}
                     </p>
                 </Card>
             ) : (
@@ -280,7 +280,7 @@ export default function DemoMeetingListPage() {
                                         href={`/demo/meetings/${meeting.id}`}
                                         className="m-control inline-flex items-center gap-2 rounded-control border border-control bg-surface px-3 py-2 type-control text-ink hover:bg-surface-raised"
                                     >
-                                        Open record
+                                        Open meeting
                                         <ArrowRight className="h-4 w-4" />
                                     </Link>
                                     {isEnded && !isArchived ? (
@@ -294,8 +294,8 @@ export default function DemoMeetingListPage() {
                                             onClick={() => void archive()}
                                             title={
                                                 canArchive
-                                                    ? "Archive the recorded meeting"
-                                                    : "This recording has no archive step"
+                                                    ? "Archive the demo meeting"
+                                                    : "This demo has no archive step"
                                             }
                                         >
                                             <Archive className="mr-2 h-4 w-4" />

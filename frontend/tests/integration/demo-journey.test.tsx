@@ -242,7 +242,7 @@ describe("canonical guided demo journey", () => {
             screen.queryByRole("button", { name: /Continue/ })
         ).not.toBeInTheDocument();
 
-        fireEvent.click(screen.getByRole("link", { name: "Start the meeting" }));
+        fireEvent.click(screen.getByRole("link", { name: "Start meeting" }));
         await waitFor(() =>
             expect(demoLocation.getPathname()).toBe("/demo/new")
         );
@@ -348,11 +348,11 @@ describe("canonical guided demo journey", () => {
         );
 
         await screen.findByTestId("tutorial-hud");
-        fireEvent.click(screen.getByRole("link", { name: "Demo settings" }));
+        fireEvent.click(screen.getByRole("link", { name: "Settings" }));
 
         expect(
             await screen.findByRole("heading", {
-                name: "Settings in the public demo",
+                name: "Demo settings",
             })
         ).toBeInTheDocument();
         // The board objective has no anchor on this screen, so the HUD

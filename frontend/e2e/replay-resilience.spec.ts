@@ -26,7 +26,7 @@ function trackLiveRequests(page: Page) {
 
 async function startRecording(page: Page) {
     await page.goto(`${BASE}/demo`);
-    await page.getByRole("link", { name: "Start the meeting" }).click();
+    await page.getByRole("link", { name: "Start meeting" }).click();
     await expect(page).toHaveURL(/\/demo\/new$/);
     await page.getByRole("button", { name: "Create recorded meeting" }).click();
     await expect(page.getByText("Recorded intake ready")).toBeVisible();

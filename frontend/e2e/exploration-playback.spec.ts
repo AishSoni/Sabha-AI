@@ -11,7 +11,7 @@ const DOWNSIDE_MESSAGE = "a0000000-0000-4000-8000-000000000403";
 
 async function startRecording(page: Page) {
     await page.goto("/demo");
-    await page.getByRole("link", { name: "Start the meeting" }).click();
+    await page.getByRole("link", { name: "Start meeting" }).click();
     await expect(page).toHaveURL(/\/demo\/new$/);
     await page.getByRole("button", { name: "Create recorded meeting" }).click();
     await expect(page.getByText("Recorded intake ready")).toBeVisible();

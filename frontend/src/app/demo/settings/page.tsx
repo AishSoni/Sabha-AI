@@ -13,11 +13,11 @@ export default function DemoSettingsPage() {
                         Demo workspace
                     </p>
                     <h1 className="type-page-title">
-                        Settings in the public demo
+                        Demo settings
                     </h1>
                     <p className="type-body text-ink-secondary">
-                        Recorded demo settings, without operator credentials or
-                        provider connections.
+                        Settings for the public demo, without operator
+                        credentials or provider connections.
                     </p>
                 </header>
 
@@ -37,14 +37,14 @@ export default function DemoSettingsPage() {
                     </h2>
                     <ul className="list-disc space-y-2 pl-5 type-body text-ink-secondary">
                         <li>
-                            Practice edits live in this browser tab and disappear on
-                            refresh or <strong>Reset demo</strong>.
+                            Changes made in this browser tab disappear on refresh
+                            or <strong>Reset demo</strong>.
                         </li>
                         <li>
-                            <strong>Restart recording</strong> resets playback only.
+                            <strong>Restart demo</strong> resets playback only.
                         </li>
                         <li>
-                            Recorded content is historical: information as of 31 July
+                            Demo content is historical: information as of 31 July
                             2020.
                         </li>
                     </ul>
@@ -61,7 +61,7 @@ export default function DemoSettingsPage() {
                         href="/demo/new"
                         className="m-control inline-flex min-h-10 items-center rounded-control border border-control bg-surface px-4 type-control text-ink hover:bg-surface-raised focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-focus-ring"
                     >
-                        Start the recorded meeting
+                        Open the demo
                     </Link>
                 </div>
             </div>

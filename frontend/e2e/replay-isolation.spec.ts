@@ -38,7 +38,7 @@ async function openBoard(page: Page) {
 }
 
 async function startRecording(page: Page) {
-    await page.getByRole("link", { name: "Start the meeting" }).click();
+    await page.getByRole("link", { name: "Start meeting" }).click();
     await expect(page).toHaveURL(/\/demo\/new$/);
     await page.getByRole("button", { name: "Create recorded meeting" }).click();
     await expect(page.getByText("Recorded intake ready")).toBeVisible();
@@ -87,7 +87,7 @@ test.describe("recorded visitor isolation", () => {
             expect(sessionB.package_version).toBe("9");
 
             // B moves to the recorded setup and stays there.
-            await pageB.getByRole("link", { name: "Start the meeting" }).click();
+            await pageB.getByRole("link", { name: "Start meeting" }).click();
             await expect(pageB).toHaveURL(/\/demo\/new$/);
             await expect(
                 pageB.getByTestId("tutorial-hud").getByText(
@@ -96,7 +96,7 @@ test.describe("recorded visitor isolation", () => {
             ).toBeVisible();
 
             // A moves the same distance, restarts the recording, and reloads.
-            await pageA.getByRole("link", { name: "Start the meeting" }).click();
+            await pageA.getByRole("link", { name: "Start meeting" }).click();
             await expect(pageA).toHaveURL(/\/demo\/new$/);
             await openExploreMenu(pageA);
             await pageA
@@ -342,7 +342,7 @@ test.describe("recorded visitor isolation", () => {
 
             await pageA.getByRole("button", { name: "Reset demo" }).click();
             await pageA
-                .getByRole("button", { name: "Reset and discard edits" })
+                .getByRole("button", { name: "Reset and discard changes" })
                 .click();
             await expect(
                 pageA.getByText("This practice setup is not available")
@@ -382,7 +382,7 @@ test.describe("recorded visitor isolation", () => {
             // A full reset removes the remaining practice edit.
             await pageA.getByRole("button", { name: "Reset demo" }).click();
             await pageA
-                .getByRole("button", { name: "Reset and discard edits" })
+                .getByRole("button", { name: "Reset and discard changes" })
                 .click();
             await openPromptHistory(pageA, "The Credit Analyst");
             await expect(pageA.getByPlaceholder(PROMPT)).not.toHaveValue(

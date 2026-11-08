@@ -8,7 +8,7 @@ import { test, expect, type Page } from "@playwright/test";
  */
 async function enterRecordedRoom(page: Page) {
     await page.goto("/demo");
-    await page.getByRole("link", { name: "Start the meeting" }).click();
+    await page.getByRole("link", { name: "Start meeting" }).click();
     await page.getByRole("button", { name: "Create recorded meeting" }).click();
     await page.getByRole("link", { name: "Open the meeting room" }).click();
     await expect(page.getByTestId("room-work-area")).toBeVisible({

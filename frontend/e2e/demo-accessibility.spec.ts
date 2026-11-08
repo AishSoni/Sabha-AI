@@ -125,7 +125,7 @@ test.describe("demo keyboard and narrow-screen accessibility", () => {
         await page.keyboard.press("Enter");
         await expect(hud.getByText("Start the meeting")).toBeVisible();
 
-        await page.getByRole("link", { name: "Start the meeting" }).focus();
+        await page.getByRole("link", { name: "Start meeting" }).focus();
         await page.keyboard.press("Enter");
         await expect(page).toHaveURL(/\/demo\/new$/);
         const create = page.getByRole("button", { name: "Create recorded meeting" });
@@ -238,7 +238,7 @@ test.describe("demo keyboard and narrow-screen accessibility", () => {
         await page.setViewportSize({ width: 640, height: 360 });
         await page.goto("/demo");
 
-        const start = page.getByRole("link", { name: "Start the meeting" });
+        const start = page.getByRole("link", { name: "Start meeting" });
         await start.scrollIntoViewIfNeeded();
         const hud = page.getByTestId("tutorial-hud");
         await expect(hud.getByText("Start the meeting")).toBeVisible();
@@ -277,7 +277,7 @@ test.describe("demo keyboard and narrow-screen accessibility", () => {
         await page.goto("/demo/settings");
 
         await expect(
-            page.getByRole("heading", { name: "Settings in the public demo" })
+            page.getByRole("heading", { name: "Demo settings" })
         ).toBeVisible();
         // The tutorial objective has no anchor on this screen, so the card
         // stays collapsed instead of guessing a position.

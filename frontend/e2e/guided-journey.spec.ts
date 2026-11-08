@@ -42,7 +42,7 @@ async function startRecording(page: Page) {
         page.getByText(/Recorded responses, not live AI generation/)
     ).toHaveCount(1);
 
-    await page.getByRole("link", { name: "Start the meeting" }).click();
+    await page.getByRole("link", { name: "Start meeting" }).click();
     await expect(page).toHaveURL(/\/demo\/new$/);
     await expect(hud.getByText("Create the recorded meeting")).toBeVisible();
 

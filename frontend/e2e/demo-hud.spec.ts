@@ -43,7 +43,7 @@ async function startRecording(page: Page) {
     expect(progressBounds!.width).toBeLessThanOrEqual(cardBounds!.width - 1.5);
     await expect(page.getByRole("button", { name: /Continue/ })).toHaveCount(0);
 
-    await page.getByRole("link", { name: "Start the meeting" }).click();
+    await page.getByRole("link", { name: "Start meeting" }).click();
     await expect(page).toHaveURL(/\/demo\/new$/);
     await expect(hud.getByText("Create the recorded meeting")).toBeVisible();
     await expect(progress).toHaveAttribute("aria-valuetext", "Step 2 of 10");
@@ -222,7 +222,7 @@ test.describe("contextual demo tutorial", () => {
         expect(card!.x + card!.width).toBeLessThanOrEqual(390);
 
         const target = await page
-            .getByRole("link", { name: "Start the meeting" })
+            .getByRole("link", { name: "Start meeting" })
             .boundingBox();
         expect(target).not.toBeNull();
         const overlaps =

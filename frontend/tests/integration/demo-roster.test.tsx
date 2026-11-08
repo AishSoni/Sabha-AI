@@ -381,7 +381,7 @@ describe("demo persona catalog", () => {
 
         fireEvent.click(screen.getByRole("button", { name: "Reset demo" }));
         fireEvent.click(
-            await screen.findByRole("button", { name: "Reset and discard edits" })
+            await screen.findByRole("button", { name: "Reset and discard changes" })
         );
 
         await waitFor(() =>
