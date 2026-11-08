@@ -55,7 +55,7 @@ test.describe("homepage composition", () => {
 
     const demo = page
       .locator(".home-hero")
-      .getByRole("link", { name: "Try the recorded demo" });
+      .getByRole("link", { name: "Try the demo" });
     await expect(demo).toHaveAttribute("href", "/demo");
     await expect(demo.locator(".home-demo-cta__badge")).toHaveCount(1);
     await expect(
@@ -81,7 +81,7 @@ test.describe("homepage composition", () => {
     ).toBeVisible();
     await expect(
       page.getByText(
-        "Illustrative view of the prepared demo · not a live retrieval record",
+        "Illustrative view of the demo · not a live retrieval record",
       ),
     ).toBeVisible();
     await expect(
@@ -89,7 +89,7 @@ test.describe("homepage composition", () => {
     ).toHaveAttribute("href", "/demo");
     await expect(page.getByText("Director")).toHaveCount(0);
     await expect(
-      page.getByRole("link", { name: "Explore the recorded demo" }).last(),
+      page.getByRole("link", { name: "Explore the demo" }).last(),
     ).toHaveAttribute("href", "/demo");
 
     network.assertClean();
@@ -295,7 +295,7 @@ test.describe("homepage fallback", () => {
     await expect(
       page
         .locator(".home-hero")
-        .getByRole("link", { name: "Try the recorded demo" }),
+        .getByRole("link", { name: "Try the demo" }),
     ).toHaveAttribute("href", "/demo");
   });
 
@@ -314,7 +314,7 @@ test.describe("homepage fallback", () => {
     await expect(
       page
         .locator(".home-hero")
-        .getByRole("link", { name: "Try the recorded demo" }),
+        .getByRole("link", { name: "Try the demo" }),
     ).toBeVisible();
     await expect(page.locator(".home-chrome__brand .sabha-logo")).toBeVisible();
   });
@@ -449,7 +449,7 @@ test.describe("homepage reduced motion", () => {
     await expect(
       page
         .locator(".home-hero")
-        .getByRole("link", { name: "Try the recorded demo" }),
+        .getByRole("link", { name: "Try the demo" }),
     ).toBeVisible();
 
     const phrase = page.locator(".home-headline__tail-text");
@@ -474,7 +474,7 @@ test.describe("homepage without JavaScript", () => {
     await expect(
       page
         .locator(".home-hero")
-        .getByRole("link", { name: "Try the recorded demo" }),
+        .getByRole("link", { name: "Try the demo" }),
     ).toHaveAttribute("href", "/demo");
     await expect(
       page.getByText("Prepared demo · recorded responses, not live generation."),

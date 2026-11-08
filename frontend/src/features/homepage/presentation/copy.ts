@@ -5,13 +5,13 @@ export const HOME_COPY = {
     lead: "Bring more minds",
     tail: "to your next decision.",
   },
-  demoCta: "Try the recorded demo",
+  demoCta: "Try the demo",
   operatorCta: "Operator sign-in",
   evidenceAnchor: "Explore the evidence constellation",
   evidence: {
     heading: "Different perspectives. Traceable sources.",
-    body: "The prepared demo gives every role the same shared material, then a private working set. Dashed lines show what was assigned; solid lines show an example citation from a prepared turn.",
-    illustrative: "Illustrative view of the prepared demo · not a live retrieval record",
+    body: "The demo gives every participant the same shared material, then a private working set. Dashed lines show what was assigned; solid lines show an example citation from a recorded turn.",
+    illustrative: "Illustrative view of the demo · not a live retrieval record",
     legend: {
       assignment: "Assigned / available",
       citation: "Example citation",
@@ -23,8 +23,8 @@ export const HOME_COPY = {
   },
   footer: {
     description:
-      "A prepared advisory meeting you can inspect — roles, shared material, and cited sources in one recorded session.",
-    demoLink: "Explore the recorded demo",
+      "A demo advisory meeting you can inspect — participants, shared material, and cited sources in one meeting.",
+    demoLink: "Explore the demo",
     operatorLink: "Operator sign-in",
   },
 } as const;

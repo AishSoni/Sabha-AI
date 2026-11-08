@@ -29,7 +29,7 @@ describe("homepage copy", () => {
       lead: "Bring more minds",
       tail: "to your next decision.",
     });
-    expect(HOME_COPY.demoCta).toBe("Try the recorded demo");
+    expect(HOME_COPY.demoCta).toBe("Try the demo");
     expect(HOME_COPY.operatorCta).toBe("Operator sign-in");
     expect("disclosure" in HOME_COPY.evidence).toBe(false);
   });
@@ -163,7 +163,7 @@ describe("homepage evidence graph", () => {
       expect(edge.note).toMatch(/available/i);
     }
     for (const edge of citations) {
-      expect(edge.note).toMatch(/prepared|support/i);
+      expect(edge.note).toMatch(/recorded|support/i);
     }
   });
 

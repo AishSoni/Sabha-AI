@@ -41,7 +41,7 @@ export const EVIDENCE_NODES: readonly EvidenceNode[] = [
     kind: "persona",
     kindLabel: "AI role in the example",
     description:
-      "Presents the strongest failure case and labels demo-authored scenarios as authored.",
+      "Presents the strongest failure case and labels authored scenario material as authored.",
     x: 170,
     y: 300,
     color: "#f59e0b",
@@ -64,7 +64,7 @@ export const EVIDENCE_NODES: readonly EvidenceNode[] = [
     scope: "shared",
     kindLabel: "Shared document",
     description:
-      "Prepared historical terms, rating, and stated limits for the HDFC debenture. Shared reference material.",
+      "Historical terms, rating, and stated limits for the HDFC debenture. Shared reference material.",
     x: 500,
     y: 300,
   },
@@ -75,7 +75,7 @@ export const EVIDENCE_NODES: readonly EvidenceNode[] = [
     scope: "private",
     kindLabel: "Private working set",
     description:
-      "Private credit working notes. Only the Credit Analyst is assigned to this practice stack.",
+      "Private credit working notes. Only the Credit Analyst is assigned to this knowledge stack.",
     x: 830,
     y: 80,
   },
@@ -86,7 +86,7 @@ export const EVIDENCE_NODES: readonly EvidenceNode[] = [
     scope: "private",
     kindLabel: "Private working set",
     description:
-      "Demo-authored downside worksheet. Fails once on purpose so the retry path can be practised safely.",
+      "Authored downside worksheet. Fails once on purpose so the retry path can be practised safely.",
     x: 830,
     y: 220,
   },
@@ -97,7 +97,7 @@ export const EVIDENCE_NODES: readonly EvidenceNode[] = [
     scope: "private",
     kindLabel: "Private working set",
     description:
-      "Fictional portfolio mandate for the Portfolio Analyst practice stack, with explicit record limits.",
+      "Fictional portfolio mandate for the Portfolio Analyst knowledge stack, with explicit record limits.",
     x: 830,
     y: 360,
   },
@@ -177,7 +177,7 @@ export const EVIDENCE_EDGES: readonly EvidenceEdge[] = [
     from: "credit-analyst",
     to: "shared-fact-sheet",
     kind: "citation",
-    note: "C10 in the prepared Credit Analyst response.",
+    note: "C10 in the recorded Credit Analyst response.",
     curve: 14,
   },
   {
@@ -185,7 +185,7 @@ export const EVIDENCE_EDGES: readonly EvidenceEdge[] = [
     from: "downside-reviewer",
     to: "shared-fact-sheet",
     kind: "citation",
-    note: "C10 in the prepared Downside Reviewer response.",
+    note: "C10 in the recorded Downside Reviewer response.",
     curve: 14,
   },
   {
@@ -193,7 +193,7 @@ export const EVIDENCE_EDGES: readonly EvidenceEdge[] = [
     from: "portfolio-analyst",
     to: "shared-fact-sheet",
     kind: "citation",
-    note: "C10, C11, and C13 support the prepared Portfolio Analyst response.",
+    note: "C10, C11, and C13 support the recorded Portfolio Analyst response.",
     curve: 14,
   },
   {
@@ -201,28 +201,28 @@ export const EVIDENCE_EDGES: readonly EvidenceEdge[] = [
     from: "credit-analyst",
     to: "crisil-annexure",
     kind: "citation",
-    note: "C1, C2, and C12 support the prepared Credit Analyst response.",
+    note: "C1, C2, and C12 support the recorded Credit Analyst response.",
   },
   {
     id: "credit-mda-citation",
     from: "credit-analyst",
     to: "hdfc-fy20-mda",
     kind: "citation",
-    note: "C3 supports the prepared Credit Analyst response.",
+    note: "C3 supports the recorded Credit Analyst response.",
   },
   {
     id: "downside-mda-citation",
     from: "downside-reviewer",
     to: "hdfc-fy20-mda",
     kind: "citation",
-    note: "C6 supports the prepared Downside Reviewer response.",
+    note: "C6 supports the recorded Downside Reviewer response.",
   },
   {
     id: "downside-worksheet-citation",
     from: "downside-reviewer",
     to: "downside-worksheet",
     kind: "citation",
-    note: "C7, C8, and C9 support the prepared Downside Reviewer response.",
+    note: "C7, C8, and C9 support the recorded Downside Reviewer response.",
     curve: 10,
   },
 ];

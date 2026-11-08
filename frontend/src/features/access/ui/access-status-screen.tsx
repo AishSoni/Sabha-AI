@@ -35,13 +35,13 @@ export function AccessStatusScreen({
                     <h1 className="type-item-title">Live workspace unavailable</h1>
                     <p className="type-body text-ink-secondary">
                         Operator sign-in is not configured for this deployment. The
-                        guided replay remains available without an account.
+                        demo remains available without an account.
                     </p>
                     <a
                         href="/demo"
                         className="m-control inline-flex min-h-10 items-center rounded-control border border-control bg-surface px-4 type-control text-ink hover:bg-surface-raised focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-focus-ring"
                     >
-                        Open guided replay
+                        Open the demo
                     </a>
                 </div>
             </main>

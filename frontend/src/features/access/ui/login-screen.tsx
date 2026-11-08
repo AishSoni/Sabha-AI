@@ -174,7 +174,7 @@ export function LoginScreen() {
                     </p>
                     <h1 className="type-page-title">Sign in to Sabha</h1>
                     <p className="type-body text-ink-secondary">
-                        Public visitors can still open the guided replay without an
+                        Public visitors can still open the demo without an
                         account.
                     </p>
                 </div>
@@ -235,7 +235,7 @@ export function LoginScreen() {
                     <div className="space-y-3 rounded-group border border-separator bg-surface-raised p-4 type-body text-ink-secondary">
                         <p>Operator sign-in is not configured for this deployment.</p>
                         <a href="/demo" className="text-action hover:text-action-hover">
-                            Open guided replay
+                            Open the demo
                         </a>
                     </div>
                 )}
@@ -284,7 +284,7 @@ export function LoginScreen() {
 
                 <div className="text-center type-meta text-ink-muted">
                     <a href="/demo" className="hover:text-ink-secondary">
-                        Return to guided replay
+                        Return to the demo
                     </a>
                 </div>
             </div>
