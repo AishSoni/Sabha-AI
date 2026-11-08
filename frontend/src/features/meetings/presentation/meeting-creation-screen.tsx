@@ -349,7 +349,7 @@ export function MeetingCreationScreen({
                                                 <div className="flex-1 min-w-0">
                                                     <p className="text-sm font-medium text-ink truncate">{persona.name}</p>
                                                     {persona.subtitle && (
-                                                        <p className="text-xs text-ink-muted truncate">{persona.subtitle}</p>
+                                                        <p className="text-xs text-ink-muted truncate">Role: {persona.subtitle}</p>
                                                     )}
                                                 </div>
                                             </div>

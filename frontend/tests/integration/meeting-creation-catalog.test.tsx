@@ -151,7 +151,7 @@ describe('create meeting roster reconciliation', () => {
         );
         fireEvent.click(refreshButton());
 
-        await screen.findByText('Unit economics, updated');
+        await screen.findByText('Role: Unit economics, updated');
         expect(selectionSummary()).toHaveTextContent('1 selected');
         expect(screen.getAllByRole('checkbox')[0]).not.toBeChecked();
     });
@@ -212,7 +212,7 @@ describe('create meeting roster reconciliation', () => {
             ])
         );
         fireEvent.click(refreshButton());
-        await screen.findByText('Unit economics, updated');
+        await screen.findByText('Role: Unit economics, updated');
 
         const names = screen.getAllByText(/^The (Investor|CTO|Analyst)$/).map((node) => node.textContent);
         expect(names).toEqual(['The CTO', 'The Investor', 'The Analyst']);
@@ -265,7 +265,7 @@ describe('create meeting roster reconciliation', () => {
 
         scripted.enqueueJson(200, catalog([persona({ subtitle: 'Unit economics, updated' })]));
         fireEvent.click(refreshButton());
-        await screen.findByText('Unit economics, updated');
+        await screen.findByText('Role: Unit economics, updated');
 
         expect(screen.queryByText('The CTO')).toBeNull();
         expect(selectionSummary()).toHaveTextContent('1 selected');
@@ -330,7 +330,7 @@ describe('create meeting roster reconciliation', () => {
             ])
         );
         fireEvent.click(refreshButton());
-        await screen.findByText('Unit economics, recovered');
+        await screen.findByText('Role: Unit economics, recovered');
 
         expect(selectionSummary()).toHaveTextContent('1 selected');
         expect(screen.getByLabelText(/Meeting title/i)).toHaveValue('Pricing committee kickoff');

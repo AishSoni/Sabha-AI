@@ -354,6 +354,10 @@ export function PersonaEditorScreen({
                     </div>
                 )}
 
+                <p className="mb-6 rounded-control border border-separator bg-surface-raised p-4 text-sm text-ink-secondary">
+                    Changes apply when this persona is added to a new meeting. Existing meeting participants are unchanged; their captured identity, prompt, policy, and knowledge-stack assignments stay fixed. Eligible contents of an assigned knowledge stack may change future searches.
+                </p>
+
                 <p role="status" aria-live="polite" className="text-xs text-success min-h-4 mb-4">
                     {announcement}
                 </p>
@@ -446,12 +450,15 @@ export function PersonaEditorScreen({
                                 </div>
 
                                 <div className="space-y-2">
-                                    <Label htmlFor="edit-subtitle">Role / Subtitle</Label>
+                                    <Label htmlFor="edit-subtitle">Role</Label>
                                     <Input
                                         id="edit-subtitle"
                                         value={subtitle}
                                         onChange={(e) => setSubtitle(e.target.value)}
                                     />
+                                    <p className="text-xs text-ink-muted">
+                                        Shown as the participant&apos;s role in a meeting.
+                                    </p>
                                 </div>
 
                                 <div className="space-y-2">

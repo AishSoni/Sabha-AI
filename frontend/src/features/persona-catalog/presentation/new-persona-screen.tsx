@@ -137,6 +137,10 @@ export function NewPersonaScreen({ client, loadStacks, routes, stacksHint }: New
                     </div>
                 )}
 
+                <p className="mb-8 rounded-control border border-separator bg-surface-raised p-4 text-sm text-ink-secondary">
+                    Changes apply when this persona is added to a new meeting. Existing meeting participants are unchanged; their captured identity, prompt, policy, and knowledge-stack assignments stay fixed. Eligible contents of an assigned knowledge stack may change future searches.
+                </p>
+
                 <div className="grid lg:grid-cols-[1fr,300px] gap-8">
                     {/* Left Column - Main Form */}
                     <div className="space-y-8">
@@ -158,7 +162,7 @@ export function NewPersonaScreen({ client, loadStacks, routes, stacksHint }: New
                                             {persona.name || 'Persona Name'}
                                         </h2>
                                         <p className="type-body text-ink-secondary">
-                                            {persona.subtitle || 'Role / Subtitle'}
+                                            {persona.subtitle || 'Role'}
                                         </p>
                                     </div>
                                 </div>
@@ -182,7 +186,7 @@ export function NewPersonaScreen({ client, loadStacks, routes, stacksHint }: New
                         {/* Subtitle Input */}
                         <section className="space-y-3">
                             <Label htmlFor="subtitle" className="text-lg font-semibold text-ink">
-                                Role / Subtitle
+                                Role
                             </Label>
                             <Input
                                 id="subtitle"
@@ -191,6 +195,9 @@ export function NewPersonaScreen({ client, loadStacks, routes, stacksHint }: New
                                 onChange={(e) => setPersona({ ...persona, subtitle: e.target.value })}
                                 className="h-11"
                             />
+                            <p className="text-xs text-ink-muted">
+                                Shown as the participant&apos;s role in a meeting.
+                            </p>
                         </section>
 
                         {/* Color Picker */}
