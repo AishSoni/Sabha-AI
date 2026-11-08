@@ -1004,7 +1004,7 @@ class Manifest(StrictModel):
     closing_tapes: list[str] = Field(default_factory=list)
     retrieval: list[str] = Field(default_factory=list)
     provenance: dict[str, Any] = Field(default_factory=dict)
-    label: str = "Recorded session"
+    label: str = "Demo"
     disclosure: str = ""
     stack_labels: dict[str, str] = Field(default_factory=dict)
     intents: list[IntentRecord] = Field(default_factory=list)

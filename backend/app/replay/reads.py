@@ -73,14 +73,14 @@ class ReplayReads:
     async def _read(self, key: str) -> Any:
         reads = await self._reads()
         if key not in reads:
-            raise ReplayNotFound(f"recorded read {key!r} is not available here")
+            raise ReplayNotFound(f"demo read {key!r} is not available here")
         return reads[key]
 
     def _parse(self, model, value: Any):
         try:
             return model.model_validate(value)
         except ValidationError as exc:
-            raise ReplayPackageUnavailable("a recorded read is corrupt") from exc
+            raise ReplayPackageUnavailable("a demo read is corrupt") from exc
 
     async def get_meeting(self, meeting_id: str) -> MeetingWithParticipants | None:
         if meeting_id != self._published.meeting_id:
@@ -88,7 +88,7 @@ class ReplayReads:
         value = await self._read("meeting")
         meeting = self._parse(MeetingWithParticipants, value)
         if str(meeting.id) != meeting_id:
-            raise ReplayPackageUnavailable("the recorded meeting identity differs")
+            raise ReplayPackageUnavailable("the demo meeting identity differs")
         return meeting
 
     async def list_meetings(self) -> list[Meeting]:
@@ -96,14 +96,14 @@ class ReplayReads:
         try:
             return TypeAdapter(list[Meeting]).validate_python(value)
         except ValidationError as exc:
-            raise ReplayPackageUnavailable("the recorded meeting list is corrupt") from exc
+            raise ReplayPackageUnavailable("the demo meeting list is corrupt") from exc
 
     async def get_disagreements(self, meeting_id: str) -> list[Disagreement]:
         value = await self._read("disagreements")
         try:
             result = TypeAdapter(list[Disagreement]).validate_python(value)
         except ValidationError as exc:
-            raise ReplayPackageUnavailable("recorded disagreements are corrupt") from exc
+            raise ReplayPackageUnavailable("demo disagreements are corrupt") from exc
         return [item for item in result if str(item.meeting_id) == meeting_id]
 
     async def get_consensus_list(self, meeting_id: str) -> list[Consensus]:
@@ -111,13 +111,13 @@ class ReplayReads:
         try:
             result = TypeAdapter(list[Consensus]).validate_python(value)
         except ValidationError as exc:
-            raise ReplayPackageUnavailable("recorded consensus is corrupt") from exc
+            raise ReplayPackageUnavailable("demo consensus is corrupt") from exc
         return [item for item in result if str(item.meeting_id) == meeting_id]
 
     async def context_stats(self, meeting_id: str) -> dict[str, Any]:
         value = await self._read("context_stats")
         if not isinstance(value, dict):
-            raise ReplayPackageUnavailable("recorded context stats are corrupt")
+            raise ReplayPackageUnavailable("demo context stats are corrupt")
         return value
 
     async def documents(self, meeting_id: str) -> list[DocumentResponse]:
@@ -125,7 +125,7 @@ class ReplayReads:
         try:
             result = TypeAdapter(list[DocumentResponse]).validate_python(value)
         except ValidationError as exc:
-            raise ReplayPackageUnavailable("recorded documents are corrupt") from exc
+            raise ReplayPackageUnavailable("demo documents are corrupt") from exc
         return [
             item
             for item in result
@@ -136,13 +136,13 @@ class ReplayReads:
         value = await self._read("closing")
         closing = self._parse(ClosingView, value)
         if closing.meeting_id != meeting_id:
-            raise ReplayPackageUnavailable("the recorded closing belongs to another meeting")
+            raise ReplayPackageUnavailable("the demo closing belongs to another meeting")
         return closing
 
     async def operations(self, meeting_id: str) -> list[dict[str, Any]]:
         value = await self._read("operations")
         if not isinstance(value, list):
-            raise ReplayPackageUnavailable("recorded operations are corrupt")
+            raise ReplayPackageUnavailable("demo operations are corrupt")
         return [
             operation_row(item)
             for item in value
@@ -152,7 +152,7 @@ class ReplayReads:
     async def safe_config(self, meeting_id: str) -> dict[str, Any]:
         value = await self._read("safe_config")
         if not isinstance(value, dict):
-            raise ReplayPackageUnavailable("the recorded safe config is corrupt")
+            raise ReplayPackageUnavailable("the demo safe config is corrupt")
         return value
 
 
@@ -171,12 +171,12 @@ class ReplayObservation:
     async def status(self, meeting_id: str, operation_id: str) -> dict:
         allowed = prepared_operation_ids(self._published)
         if allowed is not None and operation_id not in allowed:
-            raise ReplayNotFound("Recorded turn not found")
+            raise ReplayNotFound("Turn not found in the demo")
         operations = await self._reads.operations(meeting_id)
         for row in operations:
             if str(row["id"]) == operation_id:
                 return row
-        raise ReplayNotFound("Recorded turn not found")
+        raise ReplayNotFound("Turn not found in the demo")
 
     async def list_operations(
         self, meeting_id: str, limit: int = TURN_LIST_LIMIT
@@ -193,7 +193,7 @@ class ReplayObservation:
     ) -> list[dict]:
         allowed = prepared_operation_ids(self._published)
         if allowed is not None and operation_id not in allowed:
-            raise ReplayNotFound("Recorded turn not found")
+            raise ReplayNotFound("Turn not found in the demo")
         try:
             tape = await self._source.read_tape(
                 self._published.package_id,
@@ -201,9 +201,9 @@ class ReplayObservation:
                 operation_id,
             )
         except ReplayPackageUnavailable as exc:
-            raise ReplayNotFound("Recorded turn not found") from exc
+            raise ReplayNotFound("Turn not found in the demo") from exc
         if tape.meeting_id != meeting_id:
-            raise ReplayNotFound("Recorded turn not found")
+            raise ReplayNotFound("Turn not found in the demo")
         return [
             event
             for event in tape.events

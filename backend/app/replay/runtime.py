@@ -88,7 +88,7 @@ class ReplayRuntime:
         the first real request retries through the same source.
         """
         if not self.package_id:
-            raise ReplayNotConfigured("replay package is not configured")
+            raise ReplayNotConfigured("the demo package is not configured")
         await self.source.resolve_package(self.package_id, self.version)
 
     async def for_request(
@@ -98,7 +98,7 @@ class ReplayRuntime:
         checkpoint_id: str | None = None,
     ) -> ReplayContainer:
         if not self.package_id:
-            raise ReplayNotConfigured("replay package is not configured")
+            raise ReplayNotConfigured("the demo package is not configured")
         if package_id is not None and package_id != self.package_id:
             raise ReplaySelectorInvalid("the requested package is not served here")
         if version is not None and self.version is not None and version != self.version:

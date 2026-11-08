@@ -64,7 +64,7 @@ class ReplaySession:
     run_id: str
     package_version: str
     meeting_id: str
-    label: str = "Recorded session"
+    label: str = "Demo"
     title: str = ""
     as_of: str = ""
     disclosure: str = ""

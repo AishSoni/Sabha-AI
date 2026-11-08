@@ -144,7 +144,7 @@ async def get_replay(
 
 def _require_recorded_meeting(replay: ReplayContainer, meeting_id: str) -> None:
     if meeting_id != replay.session.meeting_id:
-        raise HTTPException(status_code=404, detail="Recorded meeting not found")
+        raise HTTPException(status_code=404, detail="Demo meeting not found")
 
 
 def _recorded_method(reads: Any, name: str):
@@ -253,7 +253,7 @@ async def read_meeting(
     _require_recorded_meeting(replay, meeting_id)
     meeting = await replay.reads.get_meeting(meeting_id)
     if meeting is None:
-        raise HTTPException(status_code=404, detail="Recorded meeting not found")
+        raise HTTPException(status_code=404, detail="Demo meeting not found")
     return meeting
 
 
@@ -344,7 +344,7 @@ async def read_turn(
     try:
         row = await replay.observation.status(meeting_id, operation_id)
     except ReplayNotFound as exc:
-        raise HTTPException(status_code=404, detail=str(exc) or "Recorded turn not found")
+        raise HTTPException(status_code=404, detail=str(exc) or "Turn not found in the demo")
     return operation_dto(row)
 
 
@@ -361,7 +361,7 @@ async def observe_turn(
     try:
         await replay.observation.status(meeting_id, operation_id)
     except ReplayNotFound as exc:
-        raise HTTPException(status_code=404, detail=str(exc) or "Recorded turn not found")
+        raise HTTPException(status_code=404, detail=str(exc) or "Turn not found in the demo")
 
     stream = getattr(replay, "stream", None)
     if stream is None:
@@ -402,7 +402,7 @@ async def observe_closing(
     closing = await _recorded_method(replay.reads, "closing")(meeting_id)
     closing_id = getattr(closing, "closing_id", None)
     if not closing_id:
-        raise HTTPException(status_code=404, detail="Recorded closing not found")
+        raise HTTPException(status_code=404, detail="Closing not found in the demo")
 
     stream = getattr(replay, "closing_events", None)
     if stream is None:
@@ -430,7 +430,7 @@ async def read_asset(
     for asset in replay.session.assets:
         if str(asset.get("asset_id")) == asset_id:
             return asset
-    raise HTTPException(status_code=404, detail="Recorded asset not found")
+    raise HTTPException(status_code=404, detail="Source file not found")
 
 
 @router.api_route(

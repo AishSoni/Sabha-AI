@@ -53,7 +53,7 @@ class StreamLimiter:
             current = self._counts.get(client, 0)
             if current >= self._max_per_client:
                 self._global.release()
-                raise ReplayStreamLimit("too many concurrent replay streams")
+                raise ReplayStreamLimit("too many concurrent demo streams")
             self._counts[client] = current + 1
 
     def release(self, client: str) -> None:

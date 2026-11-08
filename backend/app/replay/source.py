@@ -306,13 +306,13 @@ class ReplaySource:
             raise ReplayPackageUnavailable(str(exc)) from exc
         except psycopg.Error as exc:
             raise ReplayPackageUnavailable(
-                "the replay package store is unavailable"
+                "the demo package store is unavailable"
             ) from exc
         try:
             return operation(connection)
         except psycopg.Error as exc:
             raise ReplayPackageUnavailable(
-                "the replay package store is unavailable"
+                "the demo package store is unavailable"
             ) from exc
         finally:
             connection.close()
@@ -557,7 +557,7 @@ class ReplaySource:
             "tape", (package_id, version, operation_id), load
         )
         if result is None:
-            raise ReplayPackageUnavailable("the requested turn is not recorded")
+            raise ReplayPackageUnavailable("the requested turn is not recorded in this demo")
         tape, events = result
         return TapeRecord(
             tape_id=tape[0],
@@ -619,7 +619,7 @@ class ReplaySource:
             "closing_tape", (package_id, version, closing_id), load
         )
         if result is None:
-            raise ReplayPackageUnavailable("the requested closing is not recorded")
+            raise ReplayPackageUnavailable("the requested closing is not recorded in this demo")
         tape, events = result
         return ClosingTapeRecord(
             tape_id=tape[0],
