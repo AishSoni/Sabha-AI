@@ -94,7 +94,7 @@ export function useMeetingTurnController({
     const pendingKey = useRef<{ participantId: string; requestKey: string } | null>(null);
     const submitInFlight = useRef(false);
 
-    const operations = turns.data ?? [];
+    const operations = useMemo(() => turns.data ?? [], [turns.data]);
 
     const activeOperation = useMemo(
         () => operations.find((operation) => !isTerminalTurnStatus(operation.status)) ?? null,

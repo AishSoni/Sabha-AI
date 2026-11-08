@@ -72,7 +72,6 @@ afterEach(() => {
 describe('meeting turn controller and observer', () => {
     it('reconciles a lost stream from the status read before watching the next turn', async () => {
         const first = operation({ status: 'executing', queue_position: null });
-        const second = operation({ operation_id: 'operation-2', admission: 2 });
         let listState: TurnOperation[] = [first];
         let detailState: TurnOperation = first;
         const observed: string[] = [];
