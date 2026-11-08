@@ -248,14 +248,14 @@ describe("canonical guided demo journey", () => {
         );
         expect(
             within(await screen.findByTestId("tutorial-hud")).getByText(
-                "Create the recorded meeting"
+                "Create meeting"
             )
         ).toBeInTheDocument();
 
         fireEvent.click(
-            screen.getByRole("button", { name: "Create recorded meeting" })
+            screen.getByRole("button", { name: "Create meeting" })
         );
-        expect(await screen.findByText("Recorded intake ready")).toBeInTheDocument();
+        expect(await screen.findByText("Meeting created")).toBeInTheDocument();
         expect(
             within(await screen.findByTestId("tutorial-hud")).getByText(
                 "Open the meeting room"
@@ -325,9 +325,9 @@ describe("canonical guided demo journey", () => {
                 "shown"
             )
         );
-        fireEvent.click(screen.getByLabelText("Explore recording"));
+        fireEvent.click(screen.getByLabelText("Explore demo"));
         fireEvent.click(
-            screen.getByRole("button", { name: "Restart recording" })
+            screen.getByRole("button", { name: "Restart demo" })
         );
 
         await screen.findByTestId("tutorial-hud");
@@ -383,7 +383,7 @@ describe("canonical guided demo journey", () => {
         const card = await screen.findByTestId("tutorial-hud");
         await waitFor(() => expect(card).toHaveAttribute("data-state", "shown"));
         expect(within(card).getByText("Meet the board")).toBeInTheDocument();
-        fireEvent.click(within(card).getByLabelText("Explore recording"));
+        fireEvent.click(within(card).getByLabelText("Explore demo"));
         fireEvent.click(screen.getByRole("button", { name: "Hide" }));
 
         expect(screen.queryByTestId("tutorial-hud")).not.toBeInTheDocument();

@@ -44,15 +44,15 @@ async function startRecording(page: Page) {
 
     await page.getByRole("link", { name: "Start meeting" }).click();
     await expect(page).toHaveURL(/\/demo\/new$/);
-    await expect(hud.getByText("Create the recorded meeting")).toBeVisible();
+    await expect(hud.getByText("Create meeting")).toBeVisible();
 
-    await page.getByRole("button", { name: "Create recorded meeting" }).click();
-    await expect(page.getByText("Recorded intake ready")).toBeVisible();
+    await page.getByRole("button", { name: "Create meeting" }).click();
+    await expect(page.getByText("Meeting created")).toBeVisible();
     await expect(hud.getByText("Open the meeting room")).toBeVisible();
 
     await page.getByRole("link", { name: "Open the meeting room" }).click();
     await expect(page).toHaveURL(/\/demo\/meetings\/[^/]+/);
-    await expect(hud.getByText("Choose a recorded reply")).toBeVisible();
+    await expect(hud.getByText("Choose who speaks next")).toBeVisible();
     return { hud, network };
 }
 

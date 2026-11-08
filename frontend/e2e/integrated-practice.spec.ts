@@ -37,7 +37,7 @@ async function openPromptHistory(page: Page, name: string) {
 }
 
 async function openExploreMenu(page: Page) {
-    await page.locator('summary[aria-label="Explore recording"]:visible').click();
+    await page.locator('summary[aria-label="Explore demo"]:visible').click();
 }
 
 test.describe("integrated practice exploration", () => {
@@ -81,7 +81,7 @@ test.describe("integrated practice exploration", () => {
         // The prepared participant shown beside the template is unchanged.
         await expect(
             page.getByRole("heading", {
-                name: "Prepared participant vs practice template",
+                name: "Participant vs persona template",
             })
         ).toBeVisible();
 

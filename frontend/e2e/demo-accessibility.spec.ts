@@ -114,7 +114,7 @@ test.describe("demo keyboard and narrow-screen accessibility", () => {
         await expect(hud).toHaveAttribute("role", "region");
         await expect(page.getByRole("dialog")).toHaveCount(0);
 
-        await hud.getByLabel("Explore recording").click();
+        await hud.getByLabel("Explore demo").click();
         await page
             .getByRole("button", { name: "Hide", exact: true })
             .focus();
@@ -128,7 +128,7 @@ test.describe("demo keyboard and narrow-screen accessibility", () => {
         await page.getByRole("link", { name: "Start meeting" }).focus();
         await page.keyboard.press("Enter");
         await expect(page).toHaveURL(/\/demo\/new$/);
-        const create = page.getByRole("button", { name: "Create recorded meeting" });
+        const create = page.getByRole("button", { name: "Create meeting" });
         await create.focus();
         await page.keyboard.press("Enter");
         const open = page.getByRole("link", { name: "Open the meeting room" });
@@ -158,8 +158,8 @@ test.describe("demo keyboard and narrow-screen accessibility", () => {
         await page.getByRole("tab", { name: "Chat" }).click();
 
         const expectedProgress = [
-            { value: "45", instruction: "Choose a recorded reply" },
-            { value: "48", instruction: "Choose a recorded reply" },
+            { value: "45", instruction: "Choose who speaks next" },
+            { value: "48", instruction: "Choose who speaks next" },
             { value: "50", instruction: "Send your follow-up" },
         ];
         for (const [index, name] of [
@@ -253,10 +253,10 @@ test.describe("demo keyboard and narrow-screen accessibility", () => {
         await start.click();
         await expect(page).toHaveURL(/\/demo\/new$/);
         const create = page.getByRole("button", {
-            name: "Create recorded meeting",
+            name: "Create meeting",
         });
         await create.scrollIntoViewIfNeeded();
-        await expect(hud.getByText("Create the recorded meeting")).toBeVisible();
+        await expect(hud.getByText("Create meeting")).toBeVisible();
         expect(
             await page.evaluate(
                 () =>

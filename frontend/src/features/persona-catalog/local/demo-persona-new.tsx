@@ -23,7 +23,7 @@ function Content() {
         <NewPersonaScreen
             client={client}
             loadStacks={loadStacks}
-            stacksHint="These defaults apply to new practice participant snapshots. They do not change the prepared board; document management arrives with the next demo chapter."
+            stacksHint="These defaults apply to new participant snapshots. They do not change the demo board."
             routes={{
                 roster: '/demo/roster',
                 persona: (id) => `/demo/roster/${id}`,

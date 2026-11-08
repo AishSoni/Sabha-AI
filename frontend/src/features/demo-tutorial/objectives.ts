@@ -115,7 +115,7 @@ function deckMiddlePrompt(journey: TutorialJourney): TutorialPrompt | null {
     if (journey.replyCount < journey.requiredReplyCount) {
         return {
             id: "main-speaker",
-            instruction: "Choose a recorded reply",
+            instruction: "Choose who speaks next",
             anchor: "room.speaker",
             progress: `${journey.replyCount} of ${journey.requiredReplyCount} replies`,
         };
@@ -185,7 +185,7 @@ export function selectPrompt(journey: TutorialJourney): TutorialPrompt | null {
                   }
                 : {
                       id: "main-create",
-                      instruction: "Create the recorded meeting",
+                      instruction: "Create meeting",
                       anchor: "demo.create",
                   };
         }
@@ -235,7 +235,7 @@ export function refineOnRoute(
     if (prompt.id === "main-start" && pathname === "/demo/new") {
         return {
             id: "main-create",
-            instruction: "Create the recorded meeting",
+            instruction: "Create meeting",
             anchor: "demo.create",
         };
     }

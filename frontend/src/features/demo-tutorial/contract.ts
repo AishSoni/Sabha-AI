@@ -92,7 +92,7 @@ export const LEGACY_BEAT_ANCHORS: Record<string, TutorialAnchorId> = {
 /** Short imperatives for the frozen v5 beat titles. */
 export const LEGACY_BEAT_COPY: Record<string, string> = {
     "meet-the-board": "Meet the board",
-    "start-the-meeting": "Create the recorded meeting",
+    "start-the-meeting": "Create meeting",
     "establish-facts": "Ask the Credit Analyst",
     "challenge-the-case": "Ask the Downside Reviewer",
     "address-uncertainty": "Send your follow-up",
@@ -107,7 +107,7 @@ export const LEGACY_BEAT_COPY: Record<string, string> = {
  * with the beat title only as a fallback.
  */
 export const LEGACY_STEP_COPY: Record<string, string> = {
-    "create-meeting": "Create the recorded meeting",
+    "create-meeting": "Create meeting",
     "credit-analyst": "Ask the Credit Analyst",
     "downside-reviewer": "Ask the Downside Reviewer",
     "portfolio-analyst": "Ask the Portfolio Analyst",

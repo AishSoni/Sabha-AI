@@ -18,8 +18,8 @@ async function startRecording(page: Page) {
     await expect(hud.getByText("Start the meeting")).toBeVisible();
     await page.getByRole("link", { name: "Start meeting" }).click();
     await expect(page).toHaveURL(/\/demo\/new$/);
-    await page.getByRole("button", { name: "Create recorded meeting" }).click();
-    await expect(page.getByText("Recorded intake ready")).toBeVisible();
+    await page.getByRole("button", { name: "Create meeting" }).click();
+    await expect(page.getByText("Meeting created")).toBeVisible();
     await page.getByRole("link", { name: "Open the meeting room" }).click();
     await expect(page).toHaveURL(/\/demo\/meetings\/[^/]+/);
     return { hud, network };
@@ -45,7 +45,7 @@ test.describe("recorded log notices", () => {
         // The two decisions stay independent: the notice does not unlock the
         // close action and does not replace the current tip.
         await expect(close).toBeDisabled();
-        await expect(hud.getByText("Choose a recorded reply")).toBeVisible();
+        await expect(hud.getByText("Choose who speaks next")).toBeVisible();
         await expect(page.getByRole("button", { name: /Continue/ })).toHaveCount(0);
 
         await page.getByRole("button", { name: "Credit Analyst opening facts" }).click();
@@ -96,7 +96,7 @@ test.describe("recorded log notices", () => {
 
         // A recorded chapter is inspection, not a new event stream: returning
         // to the consensus snapshot cannot replay the notice.
-        await page.locator('summary[aria-label="Explore recording"]:visible').click();
+        await page.locator('summary[aria-label="Explore demo"]:visible').click();
         await page.getByRole("link", { name: "Recorded consensus" }).click();
         await expect(page).toHaveURL(/chapter=chapter-consensus/);
         await expect(

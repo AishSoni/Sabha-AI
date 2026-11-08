@@ -218,7 +218,7 @@ export function TutorialNotices() {
         <div
             data-testid="tutorial-notices"
             role="status"
-            aria-label="Recorded updates"
+            aria-label="Demo updates"
             className="pointer-events-none fixed z-notice flex w-[min(20rem,calc(100vw-2rem))] flex-col gap-2"
             style={{
                 bottom: "calc(env(safe-area-inset-bottom, 0px) + 1rem)",

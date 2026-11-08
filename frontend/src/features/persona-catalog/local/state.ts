@@ -125,7 +125,7 @@ export function createPersona(
     if (state.personas.length >= WORKSPACE_LIMITS.personas) {
         return failure(
             'limit_reached',
-            `The practice catalog already holds ${WORKSPACE_LIMITS.personas} personas.`,
+            `The demo catalog already holds ${WORKSPACE_LIMITS.personas} personas.`,
             409
         );
     }
@@ -135,12 +135,12 @@ export function createPersona(
 
     const prompt = input.system_prompt ?? '';
     if (prompt.length > WORKSPACE_LIMITS.promptChars) {
-        return failure('invalid', 'The system prompt exceeds the practice ceiling.', 400);
+        return failure('invalid', 'The system prompt exceeds the demo limit.', 400);
     }
     if (totalPromptChars(state) + prompt.length > WORKSPACE_LIMITS.totalPromptChars) {
         return failure(
             'limit_reached',
-            'The practice workspace prompt budget is full.',
+            'The demo prompt budget is full.',
             409
         );
     }
@@ -293,12 +293,12 @@ export function saveRevision(
         );
     }
     if (content.length > WORKSPACE_LIMITS.promptChars) {
-        return failure('invalid', 'The system prompt exceeds the practice ceiling.', 400);
+        return failure('invalid', 'The system prompt exceeds the demo limit.', 400);
     }
     if (totalPromptChars(state) + content.length > WORKSPACE_LIMITS.totalPromptChars) {
         return failure(
             'limit_reached',
-            'The practice workspace prompt budget is full.',
+            'The demo prompt budget is full.',
             409
         );
     }
@@ -363,7 +363,7 @@ export function captureSnapshot(
     if (!baseInstructions || baseInstructions.trim().length === 0) {
         return failure(
             'invalid',
-            'The approved base instructions are unavailable for this recording.',
+            'The approved base instructions are unavailable for this demo.',
             409
         );
     }

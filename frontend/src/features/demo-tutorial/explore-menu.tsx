@@ -34,7 +34,7 @@ export function ExploreRecordingMenu({
             onToggle={(event) => setOpen(event.currentTarget.open)}
         >
             <summary
-                aria-label="Explore recording"
+                aria-label="Explore demo"
                 className={`m-control flex min-h-8 cursor-pointer list-none items-center gap-1 rounded-full type-meta font-medium text-ink-secondary hover:bg-surface-raised hover:text-ink focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-focus-ring [&::-webkit-details-marker]:hidden ${
                     iconOnly ? "min-w-8 justify-center p-1" : "px-2 py-1"
                 }`}
@@ -42,7 +42,7 @@ export function ExploreRecordingMenu({
                 <Compass className="size-4" aria-hidden="true" />
                 {iconOnly ? null : (
                     <>
-                        Explore recording
+                        Explore demo
                         <ChevronDown className="size-3.5" aria-hidden="true" />
                     </>
                 )}
@@ -97,7 +97,7 @@ export function ExploreRecordingMenu({
                               onClick={tutorial.restart}
                               className="m-control block w-full rounded px-2 py-1 text-left type-meta text-ink-secondary hover:bg-surface-raised"
                           >
-                              Restart recording
+                              Restart demo
                           </button>
                           {!tutorial.hidden ? (
                               <div className="mt-1 border-t border-separator pt-1">

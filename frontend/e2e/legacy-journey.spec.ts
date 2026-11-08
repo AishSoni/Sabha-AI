@@ -68,10 +68,10 @@ test.describe("version-5 package compatibility", () => {
         await expect(
             page.getByRole("button", { name: "Try editing this setup" })
         ).toBeVisible();
-        await expect(hud.getByText("Create the recorded meeting")).toBeVisible();
+        await expect(hud.getByText("Create meeting")).toBeVisible();
 
-        await page.getByRole("button", { name: "Create recorded meeting" }).click();
-        await expect(page.getByText("Recorded intake ready")).toBeVisible();
+        await page.getByRole("button", { name: "Create meeting" }).click();
+        await expect(page.getByText("Meeting created")).toBeVisible();
         await expect(hud.getByText("Open the meeting room")).toBeVisible({
             timeout: 30_000,
         });

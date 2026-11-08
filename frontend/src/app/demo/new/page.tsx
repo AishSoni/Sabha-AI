@@ -79,7 +79,7 @@ export default function DemoNewMeetingPage() {
             (item) => item.kind === "create_meeting"
         );
         if (!intent) {
-            setError("This recording has no supported creation step.");
+            setError("This demo has no supported creation step.");
             return;
         }
         setBusy(true);
@@ -91,7 +91,7 @@ export default function DemoNewMeetingPage() {
             setError(
                 cause instanceof Error
                     ? cause.message
-                    : "The recorded creation step could not be loaded."
+                    : "The demo creation step could not be loaded."
             );
         } finally {
             setBusy(false);
@@ -102,12 +102,12 @@ export default function DemoNewMeetingPage() {
         <main id="main-content" className="mx-auto max-w-4xl px-4 py-8" tabIndex={-1}>
             <div className="mb-6">
                 <div className="mb-2 flex flex-wrap items-center gap-2">
-                    <Badge>Prepared demo</Badge>
-                    <span className="text-xs text-ink-muted">Recorded creation record</span>
+                    <Badge>Demo</Badge>
+                    <span className="text-xs text-ink-muted">Creation record</span>
                 </div>
-                <h1 className="text-2xl font-semibold text-ink">Start the meeting</h1>
+                <h1 className="text-2xl font-semibold text-ink">Create meeting</h1>
                 <p className="mt-2 text-sm text-ink-secondary">
-                    This is the recorded creation record for the prepared meeting.
+                    This is the creation record for the demo meeting.
                 </p>
                 <div className="mt-4 flex flex-wrap items-center gap-2">
                     <Button
@@ -142,7 +142,7 @@ export default function DemoNewMeetingPage() {
                 <Card className="mb-4 border-success/50 bg-success-soft p-5">
                     <div className="flex items-center gap-2 text-success">
                         <ShieldCheck className="h-5 w-5" />
-                        <h2 className="font-medium">Recorded intake ready</h2>
+                        <h2 className="font-medium">Meeting created</h2>
                     </div>
                     <ol className="mt-4 grid gap-2 sm:grid-cols-5">
                         {(intake?.stages ?? []).map((stage) => (
@@ -176,10 +176,10 @@ export default function DemoNewMeetingPage() {
                     ref={createRef}
                     onClick={() => void create()}
                     busy={busy}
-                    busyLabel="Recording creation"
+                    busyLabel="Creating meeting"
                     className="mb-4"
                 >
-                    Create recorded meeting
+                    Create meeting
                 </Button>
             )}
 
@@ -187,11 +187,11 @@ export default function DemoNewMeetingPage() {
                 <Card className="p-5">
                     <div className="flex items-center gap-2 type-meta font-medium uppercase tracking-wide text-warning">
                         <Lock className="h-4 w-4" />
-                        Recorded setup
+                        Meeting setup
                     </div>
                     <div className="mt-3 grid gap-4">
                         <label className="grid gap-1">
-                            <span className="type-control text-ink-secondary">Agenda</span>
+                            <span className="type-control text-ink-secondary">Meeting title</span>
                             <input
                                 readOnly
                                 value={preset?.agenda ?? ""}
@@ -211,7 +211,7 @@ export default function DemoNewMeetingPage() {
                 </Card>
 
                 <Card className="p-5">
-                    <h2 className="type-control font-semibold text-ink-secondary">Board</h2>
+                    <h2 className="type-control font-semibold text-ink-secondary">Participants</h2>
                     <div className="mt-3 grid gap-2 sm:grid-cols-3">
                         {participants.map((participant) => (
                             <div
@@ -231,15 +231,15 @@ export default function DemoNewMeetingPage() {
                 </Card>
 
                 <Card className="p-5">
-                    <h2 className="type-control font-semibold text-ink-secondary">Supplied document</h2>
+                    <h2 className="type-control font-semibold text-ink-secondary">Document</h2>
                     <div className="mt-3 flex items-start gap-3 rounded-control border border-separator bg-surface-raised/50 p-3">
                         <FileText className="mt-0.5 h-5 w-5 text-action" />
                         <div>
                             <p className="text-sm font-medium text-ink">
-                                {preset?.document_label ?? "Prepared historical document"}
+                                {preset?.document_label ?? "Historical document"}
                             </p>
                             <p className="mt-1 text-xs text-ink-muted">
-                                Prepared document supplied with the recording.
+                                Document supplied with the demo.
                             </p>
                         </div>
                     </div>

@@ -80,13 +80,13 @@ export function DemoSnapshotPanel({
             setError(null);
             const snapshot = await onCapture(personaId);
             setAnnouncement(
-                `Captured a practice participant from version ${snapshot.sourceRevisionNumber}.`
+                `Captured a participant from version ${snapshot.sourceRevisionNumber}.`
             );
         } catch (err) {
             setError(
                 err instanceof Error
                     ? err.message
-                    : 'Failed to capture the practice participant.'
+                    : 'Failed to capture the participant.'
             );
         } finally {
             setCapturing(false);
@@ -97,17 +97,17 @@ export function DemoSnapshotPanel({
 
     return (
         <section
-            aria-labelledby="practice-snapshot-heading"
+            aria-labelledby="participant-snapshot-heading"
             className="mx-auto max-w-4xl px-6 pb-16"
         >
             <Card>
                 <CardHeader>
                     <CardTitle
-                        id="practice-snapshot-heading"
+                        id="participant-snapshot-heading"
                         className="flex items-center gap-2"
                     >
                         <Camera className="h-5 w-5 text-action" />
-                        Practice participant snapshot
+                        Participant snapshot
                     </CardTitle>
                 </CardHeader>
                 <CardContent className="space-y-6">
@@ -181,7 +181,7 @@ export function DemoSnapshotPanel({
                                 className="mt-4"
                             >
                                 <Camera className="mr-2 size-4" />
-                                Capture practice snapshot
+                                Capture participant snapshot
                             </Button>
                         </div>
 
@@ -190,7 +190,7 @@ export function DemoSnapshotPanel({
                                 <div className="flex items-center gap-2">
                                     <History className="h-4 w-4 text-ink-secondary" />
                                     <h3 className="font-medium text-ink">
-                                        Prepared participant vs practice template
+                                        Participant vs persona template
                                     </h3>
                                 </div>
                                 <div className="mt-3 space-y-4 text-xs">
@@ -199,11 +199,11 @@ export function DemoSnapshotPanel({
                                             {recordedParticipant.name}
                                         </p>
                                         <p className="text-ink-muted">
-                                            {recordedParticipant.role} · recorded snapshot
+                                            {recordedParticipant.role} · meeting snapshot
                                         </p>
                                         <p className="mt-1 text-ink-muted">
                                             No source prompt version was stored for the
-                                            prepared participant.
+                                            meeting participant.
                                         </p>
                                         <p className="mt-2 text-ink-secondary">
                                             {recordedParticipant.persona_summary}
@@ -226,7 +226,7 @@ export function DemoSnapshotPanel({
                                             {persona.name}
                                         </p>
                                         <p className="text-ink-muted">
-                                            {persona.role} · practice template, active v
+                                            {persona.role} · persona template, active v
                                             {activeVersion}
                                         </p>
                                         <p className="mt-2 text-ink-secondary">
@@ -243,12 +243,12 @@ export function DemoSnapshotPanel({
                         ) : (
                             <div className="rounded-group border border-separator bg-canvas/40 p-4 text-sm text-ink-secondary">
                                 <h3 className="font-medium text-ink">
-                                    No prepared participant link
+                                    No meeting participant link
                                 </h3>
                                 <p className="mt-2">
-                                    This practice template has no recorded
+                                    This persona template has no meeting
                                     counterpart, so it can only preview and
-                                    capture new practice snapshots.
+                                    capture new participant snapshots.
                                 </p>
                             </div>
                         )}
@@ -257,11 +257,11 @@ export function DemoSnapshotPanel({
                     <div>
                         <h3 className="flex items-center gap-2 text-sm font-medium text-ink">
                             <CheckCircle2 className="h-4 w-4 text-success" />
-                            Captured practice snapshots ({snapshots.length})
+                            Captured participant snapshots ({snapshots.length})
                         </h3>
                         {snapshots.length === 0 ? (
                             <p className="mt-2 text-sm text-ink-muted">
-                                No practice snapshots captured yet.
+                                No participant snapshots captured yet.
                             </p>
                         ) : (
                             <ul className="mt-3 space-y-2">

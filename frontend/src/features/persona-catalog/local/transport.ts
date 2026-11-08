@@ -59,7 +59,7 @@ function defaultClock(): string {
 
 function resetError(): LocalPersonaError {
     return new LocalPersonaError(
-        'This workspace was reset; the practice change was discarded.',
+        'This workspace was reset; the change was discarded.',
         409,
         'workspace_reset'
     );

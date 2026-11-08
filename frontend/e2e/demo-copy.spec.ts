@@ -67,7 +67,7 @@ test.describe("concise demo copy", () => {
 
         await page.goto("/demo/new");
         await expect(
-            page.getByText("Prepared document supplied with the recording.")
+            page.getByText("Document supplied with the demo.")
         ).toBeVisible();
         await page.getByRole("button", { name: "Try editing this setup" }).click();
         await expect(
@@ -165,7 +165,7 @@ test.describe("concise demo copy", () => {
             page.getByRole("heading", { name: "The Credit Analyst" })
         ).toBeVisible({ timeout: 30_000 });
         await expect(
-            page.getByText(/Prepared participant vs practice template/)
+            page.getByText(/Participant vs persona template/)
         ).toBeVisible();
         await expectNoBannedCopy(page);
 

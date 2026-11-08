@@ -26,8 +26,8 @@ function Content() {
                 create: '/demo/roster/new',
                 persona: (id) => `/demo/roster/${id}`,
             }}
-            heading="Practice personas"
-            description="Temporary templates for this browser tab. They never rename, replace, or rerun the prepared participants."
+            heading="Personas"
+            description="Temporary persona templates for this browser tab. They never rename, replace, or rerun the meeting participants."
             markIdFor={(persona) =>
                 seed?.personas.find(
                     (template) => template.personaId === persona.id
@@ -35,7 +35,7 @@ function Content() {
             }
             confirmDelete={(persona) =>
                 window.confirm(
-                    `Delete ${persona.name} and its practice prompt history? Captured practice snapshots and the recorded participants are not affected.`
+                    `Delete ${persona.name} and its prompt history? Captured participant snapshots and the meeting participants are not affected.`
                 )
             }
         />

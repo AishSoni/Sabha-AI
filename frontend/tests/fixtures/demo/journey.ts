@@ -203,7 +203,7 @@ export const DEMO_BEATS = [
         steps: [
             {
                 step_id: "create-meeting",
-                label: "Create the recorded meeting",
+                label: "Create meeting",
                 intent_id: "create-meeting",
                 completion: "checkpoint",
             },

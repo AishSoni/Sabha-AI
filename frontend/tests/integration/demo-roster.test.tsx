@@ -218,7 +218,9 @@ describe("demo persona catalog", () => {
             })
         );
 
-        expect(await screen.findByText("Practice personas")).toBeInTheDocument();
+        expect(
+            await screen.findByRole("heading", { name: "Personas" })
+        ).toBeInTheDocument();
         expect(await screen.findByText("The Credit Analyst")).toBeInTheDocument();
         expect(screen.getByText("Start here")).toBeInTheDocument();
         expect(screen.getByText("The Downside Reviewer")).toBeInTheDocument();
@@ -279,19 +281,19 @@ describe("demo persona catalog", () => {
         await screen.findByRole("heading", { name: "The Credit Analyst" });
 
         const panel = await screen.findByRole("region", {
-            name: "Practice participant snapshot",
+            name: "Participant snapshot",
         });
         expect(
             within(panel).getByText(/No source prompt version was stored/)
         ).toBeInTheDocument();
         fireEvent.click(
             within(panel).getByRole("button", {
-                name: "Capture practice snapshot",
+                name: "Capture participant snapshot",
             })
         );
 
         expect(
-            await within(panel).findByText(/Captured practice snapshots \(1\)/)
+            await within(panel).findByText(/Captured participant snapshots \(1\)/)
         ).toBeInTheDocument();
         const capturedItem = () =>
             within(panel).getByText(/from v3/).closest("li")!;
@@ -325,7 +327,7 @@ describe("demo persona catalog", () => {
         const calls = installDemoRouter();
         const confirm = vi.spyOn(window, "confirm").mockReturnValue(true);
         await renderAt("/demo/roster");
-        await screen.findByText("Practice personas");
+        await screen.findByText("Personas");
         await screen.findByText("The Credit Analyst");
 
         fireEvent.pointerDown(
@@ -348,7 +350,7 @@ describe("demo persona catalog", () => {
             ).not.toBeInTheDocument()
         );
         expect(confirm).toHaveBeenCalledWith(
-            expect.stringMatching(/recorded participants are not affected/i)
+            expect.stringMatching(/meeting participants are not affected/i)
         );
         expect(screen.getByText("The Credit Analyst")).toBeInTheDocument();
         expect(calls.every((call) => call.url.startsWith(`${API}/replay/`))).toBe(true);
@@ -424,11 +426,11 @@ describe("demo persona catalog", () => {
         await renderAt("/demo/roster");
         expect(
             await screen.findByRole("heading", {
-                name: "Practice personas are unavailable",
+                name: "Personas unavailable",
             })
         ).toBeInTheDocument();
         expect(
-            screen.getByRole("link", { name: "Back to the prepared board" })
+            screen.getByRole("link", { name: "Back to the demo board" })
         ).toHaveAttribute("href", "/demo");
     });
 });

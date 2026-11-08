@@ -28,12 +28,12 @@ async function startRecording(page: Page) {
     await page.goto(`${BASE}/demo`);
     await page.getByRole("link", { name: "Start meeting" }).click();
     await expect(page).toHaveURL(/\/demo\/new$/);
-    await page.getByRole("button", { name: "Create recorded meeting" }).click();
-    await expect(page.getByText("Recorded intake ready")).toBeVisible();
+    await page.getByRole("button", { name: "Create meeting" }).click();
+    await expect(page.getByText("Meeting created")).toBeVisible();
     await page.getByRole("link", { name: "Open the meeting room" }).click();
     await expect(page).toHaveURL(/\/demo\/meetings\/[^/]+\?tab=chat$/);
     await expect(
-        page.getByTestId("tutorial-hud").getByText("Choose a recorded reply")
+        page.getByTestId("tutorial-hud").getByText("Choose who speaks next")
     ).toBeVisible();
 }
 

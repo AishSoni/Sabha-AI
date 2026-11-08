@@ -72,14 +72,14 @@ function Content({
             <div className="border-b border-separator bg-surface/40 px-4 py-3">
                 <div className="mx-auto flex max-w-4xl flex-wrap items-center justify-between gap-2 text-xs text-ink-secondary">
                     <p>
-                        Practice template from the prepared board. The recorded
+                        Persona template from the demo board. The meeting
                         participants and their replies are unchanged.
                     </p>
                     <Link
                         href="/demo"
                         className="rounded-md border border-control px-3 py-1.5 text-ink hover:bg-surface-raised"
                     >
-                        Back to the recorded meeting
+                        Back to the demo
                     </Link>
                 </div>
             </div>
@@ -93,7 +93,7 @@ function Content({
                 description={template?.description}
                 revisionNotes={revisionNotes}
                 revisionBadges={revisionBadges}
-                historyNote="Seeded dates are authored practice history, not model runs. Revisions captured in this tab are temporary."
+                historyNote="Seeded dates are authored history, not model runs. Revisions captured in this tab are temporary."
                 onTabChange={(tab) => {
                     if (tab === 'prompt') markTutorialFact('persona.prompt');
                 }}

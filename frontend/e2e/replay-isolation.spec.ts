@@ -40,12 +40,12 @@ async function openBoard(page: Page) {
 async function startRecording(page: Page) {
     await page.getByRole("link", { name: "Start meeting" }).click();
     await expect(page).toHaveURL(/\/demo\/new$/);
-    await page.getByRole("button", { name: "Create recorded meeting" }).click();
-    await expect(page.getByText("Recorded intake ready")).toBeVisible();
+    await page.getByRole("button", { name: "Create meeting" }).click();
+    await expect(page.getByText("Meeting created")).toBeVisible();
     await page.getByRole("link", { name: "Open the meeting room" }).click();
     await expect(page).toHaveURL(/\/demo\/meetings\/[^/]+/);
     await expect(
-        page.getByTestId("tutorial-hud").getByText("Choose a recorded reply")
+        page.getByTestId("tutorial-hud").getByText("Choose who speaks next")
     ).toBeVisible();
 }
 
@@ -54,7 +54,7 @@ function message(page: Page, id: string) {
 }
 
 async function openExploreMenu(page: Page) {
-    await page.locator('summary[aria-label="Explore recording"]:visible').click();
+    await page.locator('summary[aria-label="Explore demo"]:visible').click();
 }
 
 async function openPromptHistory(page: Page, name: string) {
@@ -91,7 +91,7 @@ test.describe("recorded visitor isolation", () => {
             await expect(pageB).toHaveURL(/\/demo\/new$/);
             await expect(
                 pageB.getByTestId("tutorial-hud").getByText(
-                    "Create the recorded meeting"
+                    "Create meeting"
                 )
             ).toBeVisible();
 
@@ -100,7 +100,7 @@ test.describe("recorded visitor isolation", () => {
             await expect(pageA).toHaveURL(/\/demo\/new$/);
             await openExploreMenu(pageA);
             await pageA
-                .getByRole("button", { name: "Restart recording" })
+                .getByRole("button", { name: "Restart demo" })
                 .click();
             await expect(pageA).toHaveURL(/\/demo$/);
             await expect(
@@ -115,11 +115,11 @@ test.describe("recorded visitor isolation", () => {
             await expect(pageB).toHaveURL(/\/demo\/new$/);
             await expect(
                 pageB.getByTestId("tutorial-hud").getByText(
-                    "Create the recorded meeting"
+                    "Create meeting"
                 )
             ).toBeVisible();
             await expect(
-                pageB.getByRole("button", { name: "Create recorded meeting" })
+                pageB.getByRole("button", { name: "Create meeting" })
             ).toBeVisible();
 
             await expectNoPublicPersistence(contextA, pageA);
@@ -243,7 +243,7 @@ test.describe("recorded visitor isolation", () => {
 
             await openExploreMenu(pageA);
             await pageA
-                .getByRole("button", { name: "Restart recording" })
+                .getByRole("button", { name: "Restart demo" })
                 .click();
             await expect(pageA).toHaveURL(/\/demo$/);
             await expect(
@@ -371,7 +371,7 @@ test.describe("recorded visitor isolation", () => {
             ).toBeVisible();
             await openExploreMenu(pageA);
             await pageA
-                .getByRole("button", { name: "Restart recording" })
+                .getByRole("button", { name: "Restart demo" })
                 .click();
             await expect(pageA).toHaveURL(/\/demo$/);
             await openPromptHistory(pageA, "The Credit Analyst");

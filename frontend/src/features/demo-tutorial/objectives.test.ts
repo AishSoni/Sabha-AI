@@ -178,7 +178,7 @@ describe("selectPrompt", () => {
         expect(refineOnRoute(selectPrompt(journey()), "/demo/new")).toMatchObject(
             {
                 id: "main-create",
-                instruction: "Create the recorded meeting",
+                instruction: "Create meeting",
                 anchor: "demo.create",
             }
         );
@@ -216,7 +216,7 @@ describe("selectPrompt", () => {
             )
         ).toMatchObject({
             id: "main-speaker",
-            instruction: "Choose a recorded reply",
+            instruction: "Choose who speaks next",
             anchor: "room.speaker",
             progress: "2 of 4 replies",
         });

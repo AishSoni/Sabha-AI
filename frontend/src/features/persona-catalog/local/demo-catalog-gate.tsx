@@ -14,7 +14,7 @@ export function DemoCatalogGate({ children }: { children: ReactNode }) {
     if (workspace.status === 'loading') {
         return (
             <main id="main-content" className="mx-auto max-w-4xl px-4 py-16 text-sm text-ink-secondary" tabIndex={-1}>
-                Loading the practice workspaceâ€¦
+                Loading the demo workspace...
             </main>
         );
     }
@@ -23,17 +23,17 @@ export function DemoCatalogGate({ children }: { children: ReactNode }) {
         return (
             <main id="main-content" className="mx-auto max-w-4xl px-4 py-16" tabIndex={-1}>
                 <h1 className="text-xl font-semibold text-ink">
-                    Practice personas are unavailable
+                    Personas unavailable
                 </h1>
                 <p className="mt-3 max-w-2xl text-sm leading-6 text-ink-secondary">
                     {workspace.error ??
-                        'This recording has no practice workspace. The prepared board and the recorded journey are unchanged.'}
+                        'This demo has no browser workspace. The board remains available.'}
                 </p>
                 <Link
                     href="/demo"
                     className="mt-6 inline-flex rounded-control border border-control px-4 py-2 text-sm text-ink hover:bg-surface-raised"
                 >
-                    Back to the prepared board
+                    Back to the demo board
                 </Link>
             </main>
         );

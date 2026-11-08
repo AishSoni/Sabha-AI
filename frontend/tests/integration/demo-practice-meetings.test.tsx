@@ -195,7 +195,7 @@ async function renderAt(pathname: string) {
 
 async function openEditor() {
     await renderAt("/demo/new");
-    await screen.findByRole("heading", { name: "Start the meeting" });
+    await screen.findByRole("heading", { name: "Create meeting" });
     await waitFor(() =>
         expect(
             screen.getByRole("button", { name: "Try editing this setup" })
@@ -339,11 +339,11 @@ describe("demo practice meetings", () => {
         fireEvent.click(screen.getByRole("button", { name: "Cancel" }));
 
         fireEvent.click(
-            screen.getByRole("button", { name: "Create recorded meeting" })
+            screen.getByRole("button", { name: "Create meeting" })
         );
 
         expect(
-            await screen.findByText("Recorded intake ready")
+            await screen.findByText("Meeting created")
         ).toBeInTheDocument();
         expect(
             screen.getByRole("link", { name: /Open the meeting room/ })

@@ -62,8 +62,8 @@ export function TutorialGuide({
                 {prompt.complete ? (
                     <p className="mt-1 type-meta text-ink-secondary">
                         {prompt.id === "main-complete"
-                            ? "The recorded meeting is archived. Practice edits stay in this browser. Both tours are optional."
-                            : "Nothing was saved or activated. The recording is unchanged."}
+                            ? "The demo meeting is archived. Changes made in this browser stay here. Both tours are optional."
+                            : "Nothing was saved or activated. The demo is unchanged."}
                     </p>
                 ) : null}
                 {prompt.id === "tour-prompt-4" ||

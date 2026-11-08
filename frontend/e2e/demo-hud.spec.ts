@@ -12,7 +12,7 @@ import { serveRecordedAssets } from "./support/recorded-assets";
  * the recorded outcomes the room accepts.
  */
 async function hideTutorial(page: Page, hud: ReturnType<Page["getByTestId"]>) {
-    await hud.getByLabel("Explore recording").click();
+    await hud.getByLabel("Explore demo").click();
     await page.getByRole("button", { name: "Hide", exact: true }).click();
 }
 
@@ -45,11 +45,11 @@ async function startRecording(page: Page) {
 
     await page.getByRole("link", { name: "Start meeting" }).click();
     await expect(page).toHaveURL(/\/demo\/new$/);
-    await expect(hud.getByText("Create the recorded meeting")).toBeVisible();
+    await expect(hud.getByText("Create meeting")).toBeVisible();
     await expect(progress).toHaveAttribute("aria-valuetext", "Step 2 of 10");
 
-    await page.getByRole("button", { name: "Create recorded meeting" }).click();
-    await expect(page.getByText("Recorded intake ready")).toBeVisible();
+    await page.getByRole("button", { name: "Create meeting" }).click();
+    await expect(page.getByText("Meeting created")).toBeVisible();
     await expect(hud.getByText("Open the meeting room")).toBeVisible();
     await expect(progress).toHaveAttribute("aria-valuenow", "30");
 
@@ -89,7 +89,7 @@ test.describe("contextual demo tutorial", () => {
         test.setTimeout(180_000);
         const { hud, network } = await startRecording(page);
 
-        await expect(hud.getByText("Choose a recorded reply")).toBeVisible();
+        await expect(hud.getByText("Choose who speaks next")).toBeVisible();
         const progress = hud.getByRole("progressbar", {
             name: "Demo progress",
         });
@@ -97,7 +97,7 @@ test.describe("contextual demo tutorial", () => {
         await expect(
             hud.getByRole("button", { name: "Hide", exact: true })
         ).toHaveCount(0);
-        await expect(hud.getByLabel("Explore recording")).toBeVisible();
+        await expect(hud.getByLabel("Explore demo")).toBeVisible();
         await hud.evaluate((element) =>
             Promise.all(
                 element.getAnimations().map((animation) => animation.finished)
@@ -137,12 +137,12 @@ test.describe("contextual demo tutorial", () => {
         await expect(progress).toHaveAttribute("aria-valuenow", "43", {
             timeout: 30_000,
         });
-        await expect(hud.getByText("Choose a recorded reply")).toBeVisible();
+        await expect(hud.getByText("Choose who speaks next")).toBeVisible();
 
         await hideTutorial(page, hud);
         await expect(page.getByTestId("tutorial-hud")).toHaveCount(0);
         await page.getByRole("button", { name: "Show tips" }).click();
-        await expect(hud.getByText("Choose a recorded reply")).toBeVisible();
+        await expect(hud.getByText("Choose who speaks next")).toBeVisible();
         await expect(
             hud.getByRole("progressbar", { name: "Demo progress" })
         ).toHaveAttribute("aria-valuenow", "43");
@@ -212,7 +212,7 @@ test.describe("contextual demo tutorial", () => {
         const hud = page.getByTestId("tutorial-hud");
         await expect(hud).toBeVisible();
         await expect(
-            hud.getByLabel("Explore recording")
+            hud.getByLabel("Explore demo")
         ).toBeVisible();
         await expect(page.getByTestId("tutorial-hud-compact")).toHaveCount(0);
 
@@ -235,7 +235,7 @@ test.describe("contextual demo tutorial", () => {
         await expect(hud).toHaveCSS("animation-name", "none");
         await expect(hud).toHaveCSS("transition-duration", "0s");
 
-        await hud.getByLabel("Explore recording").click();
+        await hud.getByLabel("Explore demo").click();
         await page
             .getByRole("button", { name: "Hide", exact: true })
             .focus();
@@ -339,7 +339,7 @@ test.describe("contextual demo tutorial", () => {
         await expect(page.getByTestId("tutorial-hud")).toHaveCount(0);
 
         await page.getByRole("button", { name: "Show tips" }).click();
-        await expect(hud.getByText("Choose a recorded reply")).toBeVisible();
+        await expect(hud.getByText("Choose who speaks next")).toBeVisible();
         await expect(
             hud.getByRole("progressbar", { name: "Demo progress" })
         ).toHaveAttribute("aria-valuenow", "43");
@@ -396,7 +396,7 @@ test.describe("contextual demo tutorial", () => {
 
         await page.keyboard.press("Escape");
         await expect(dialog).toBeHidden();
-        await expect(hud.getByText("Choose a recorded reply")).toBeVisible();
+        await expect(hud.getByText("Choose who speaks next")).toBeVisible();
         await expect(
             hud.getByRole("progressbar", { name: "Demo progress" })
         ).toHaveAttribute("aria-valuenow", "43");
