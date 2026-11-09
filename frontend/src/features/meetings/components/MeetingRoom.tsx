@@ -1948,7 +1948,7 @@ function TurnProjectionBubble({
 }: {
     operation: TurnOperation;
     projection: TurnProjection | undefined;
-    participant?: { name: string; color: string };
+    participant?: AIParticipant;
     isObserving: boolean;
     onResume: () => void;
 }) {
@@ -1960,16 +1960,15 @@ function TurnProjectionBubble({
         Boolean(projection?.text) ||
         Boolean(projection?.thinking) ||
         (projection?.toolCalls.length ?? 0) > 0;
+    const markParticipant = participant ?? {
+        id: operation.participant_id ?? name,
+        name,
+        color,
+    };
 
     return (
         <div className="flex gap-3">
-            <ParticipantMark
-                participant={{
-                    id: operation.participant_id ?? name,
-                    name,
-                    color,
-                }}
-            />
+            <ParticipantMark participant={markParticipant} />
             <div className="min-w-0 flex-1">
                 <div className="mb-1 flex flex-wrap items-center gap-2">
                     <span className="type-room-attribution text-ink">{name}</span>

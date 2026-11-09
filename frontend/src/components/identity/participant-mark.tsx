@@ -4,6 +4,28 @@ import { dynamiteMarkFor } from "./dynamite-marks";
 
 type MarkSize = "sm" | "md" | "lg";
 
+export interface ParticipantMarkIdentity {
+  id: string;
+  name: string;
+  color: string;
+  persona_id?: string | null;
+  markId?: string | null;
+}
+
+/**
+ * The mark follows an explicit demo override first, then the originating
+ * persona, and finally the participant's own immutable id. Keeping the
+ * participant id separate preserves meeting-specific identity while the
+ * visible mark stays stable across fresh participant rows.
+ */
+export function participantMarkId(participant: {
+  id: string;
+  persona_id?: string | null;
+  markId?: string | null;
+}): string {
+  return participant.markId || participant.persona_id || participant.id;
+}
+
 const SIZE_CLASS: Record<MarkSize, string> = {
   sm: "h-9 w-9",
   md: "h-10 w-10",
@@ -18,17 +40,17 @@ const GLYPH_CLASS: Record<MarkSize, string> = {
 
 /**
  * The visible name and role carry identity. The mark is a stable, decorative
- * companion derived from the immutable participant id, never a replacement for
- * the name or a claim about the participant's status.
+ * companion derived from the stable mark identity, never a replacement for the
+ * name or a claim about the participant's status.
  */
 export function ParticipantMark({
   participant,
   size = "md",
 }: {
-  participant: { id: string; name: string; color: string };
+  participant: ParticipantMarkIdentity;
   size?: MarkSize;
 }) {
-  const mark = dynamiteMarkFor(participant.id);
+  const mark = dynamiteMarkFor(participantMarkId(participant));
   return (
     <span
       aria-hidden="true"

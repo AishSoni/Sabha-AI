@@ -2,7 +2,11 @@ import { render } from "@testing-library/react";
 import { describe, expect, it } from "vitest";
 
 import { DYNAMITE_MARKS, dynamiteMarkFor } from "./dynamite-marks";
-import { DirectorMark, ParticipantMark } from "./participant-mark";
+import {
+  DirectorMark,
+  ParticipantMark,
+  participantMarkId,
+} from "./participant-mark";
 
 describe("dddynamite participant identity", () => {
   it("keeps a curated, distinct star/spark family", () => {
@@ -44,6 +48,111 @@ describe("dddynamite participant identity", () => {
     expect(mark?.querySelector("svg path")).not.toBeNull();
     expect(mark?.textContent).toBe("");
     expect(mark?.getAttribute("aria-hidden")).toBe("true");
+  });
+
+  it("prefers an explicit demo mark, then the originating persona, then the participant id", () => {
+    expect(
+      participantMarkId({
+        id: "participant-1",
+        persona_id: "persona-1",
+        markId: "recorded-participant-1",
+      }),
+    ).toBe("recorded-participant-1");
+    expect(
+      participantMarkId({ id: "participant-1", persona_id: "persona-1" }),
+    ).toBe("persona-1");
+    expect(
+      participantMarkId({ id: "participant-1", persona_id: null }),
+    ).toBe("participant-1");
+  });
+
+  it("keeps the originating persona mark across fresh participant rows", () => {
+    const first = render(
+      <ParticipantMark
+        participant={{
+          id: "participant-1",
+          persona_id: "persona-1",
+          name: "Mira",
+          color: "#6366f1",
+        }}
+      />,
+    );
+    const second = render(
+      <ParticipantMark
+        participant={{
+          id: "participant-2",
+          persona_id: "persona-1",
+          name: "Mira",
+          color: "#6366f1",
+        }}
+      />,
+    );
+
+    expect(
+      first.container
+        .querySelector("[data-participant-mark]")
+        ?.getAttribute("data-participant-mark"),
+    ).toBe(
+      second.container
+        .querySelector("[data-participant-mark]")
+        ?.getAttribute("data-participant-mark"),
+    );
+  });
+
+  it("falls back to the participant id for non-persona participants", () => {
+    const first = render(
+      <ParticipantMark
+        participant={{ id: "participant-1", name: "Guest", color: "#71717a" }}
+      />,
+    );
+    const second = render(
+      <ParticipantMark
+        participant={{ id: "participant-2", name: "Guest", color: "#71717a" }}
+      />,
+    );
+
+    expect(
+      first.container
+        .querySelector("[data-participant-mark]")
+        ?.getAttribute("data-participant-mark"),
+    ).not.toBe(
+      second.container
+        .querySelector("[data-participant-mark]")
+        ?.getAttribute("data-participant-mark"),
+    );
+  });
+
+  it("keeps the mark stable when the participant is renamed or recoloured", () => {
+    const first = render(
+      <ParticipantMark
+        participant={{
+          id: "participant-1",
+          persona_id: "persona-1",
+          name: "Mira",
+          color: "#6366f1",
+        }}
+      />,
+    );
+    const second = render(
+      <ParticipantMark
+        participant={{
+          id: "participant-1",
+          persona_id: "persona-1",
+          name: "Mira Rao",
+          color: "#f59e0b",
+        }}
+      />,
+    );
+
+    expect(
+      first.container
+        .querySelector("[data-participant-mark]")
+        ?.getAttribute("data-participant-mark"),
+    ).toBe(
+      second.container
+        .querySelector("[data-participant-mark]")
+        ?.getAttribute("data-participant-mark"),
+    );
   });
 
   it("keeps marks legible at every container and glyph size", () => {

@@ -180,6 +180,7 @@ export function PracticeMeetingScreen({
                                 <ParticipantMark
                                     participant={{
                                         id: participant.participantId,
+                                        persona_id: participant.personaId,
                                         name: participant.name,
                                         color: participant.color,
                                     }}

@@ -63,11 +63,11 @@ class FakeCatalog:
         return self.snapshot
 
 
-def _use_case(catalog):
+def _use_case(catalog, id_factory=None):
     return ConstructParticipants(
         GetCreationSnapshot(catalog),
         lambda base: f"<base {base}>",
-        id_factory=lambda: "fixed-participant-id",
+        id_factory=id_factory or (lambda: "fixed-participant-id"),
     )
 
 
@@ -103,6 +103,25 @@ async def test_two_participants_from_one_shared_template_construct_independently
         == "<base poke holes>"
     )
     assert catalog.reads == [PERSONA_ID, PERSONA_ID]
+
+
+async def test_fresh_participant_ids_keep_the_same_persona_provenance():
+    ids = iter(("participant-1", "participant-2"))
+    catalog = FakeCatalog()
+    id_factory = lambda: next(ids)
+    first = (
+        await _use_case(catalog, id_factory).execute(
+            "meeting-A", [PERSONA_ID], "t1"
+        )
+    )[0]
+    second = (
+        await _use_case(catalog, id_factory).execute(
+            "meeting-B", [PERSONA_ID], "t2"
+        )
+    )[0]
+
+    assert first.id != second.id
+    assert first.persona_id == second.persona_id == PERSONA_ID
 
 
 async def test_a_recorded_carrier_passes_through_verbatim():

@@ -152,6 +152,7 @@ export function NewPersonaScreen({ client, loadStacks, routes, stacksHint }: New
                                     <ParticipantMark
                                         participant={{
                                             id: persona.name || 'preview-persona',
+                                            markId: 'new-persona-preview',
                                             name: persona.name || 'Persona Name',
                                             color: persona.color ?? '#6366f1',
                                         }}
