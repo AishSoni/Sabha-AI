@@ -53,7 +53,7 @@ def test_clean_archive_has_only_tracked_runtime_files(checkout_root: Path) -> No
 def test_clean_checkout_imports_final_entry_points(checkout_root: Path) -> None:
     result = backend_smoke(checkout_root, python=sys.executable)
 
-    assert result == {"paths": 58, "worker_main": True}
+    assert result == {"paths": 60, "worker_main": True}
 
 
 def test_clean_checkout_serves_the_health_endpoint(checkout_root: Path) -> None:

@@ -60,7 +60,10 @@ def workspace(disposable_db, monkeypatch, runtime_mode):
         build_meeting_service,
     )
     from app.modules.meetings.infrastructure.turns import TurnQueueService
-    from app.modules.settings.infrastructure.system_ai import load_system_ai_config
+    from app.modules.settings.infrastructure.system_ai import (
+        load_system_ai_config,
+        load_system_ai_policy,
+    )
 
     service = build_meeting_service(stub)
     queue = TurnQueueService(service)
@@ -75,6 +78,7 @@ def workspace(disposable_db, monkeypatch, runtime_mode):
         turn_runner=None,
         knowledge_lifecycle=lifecycle,
         system_ai_reader=load_system_ai_config,
+        system_ai_policy_reader=load_system_ai_policy,
     )
 
     try:
