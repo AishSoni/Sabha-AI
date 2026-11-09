@@ -246,6 +246,9 @@ class MeetingCreate(MeetingBase):
     """Create a new meeting."""
     user_id: Optional[str] = None
     persona_ids: Optional[List[str]] = None  # If provided, use these personas instead of defaults
+    # Spec 36 / T04: stable identity for one creation intent. Replaying the
+    # same key returns the committed meeting; a different payload conflicts.
+    request_key: Optional[str] = None
 
 
 class Meeting(MeetingBase):

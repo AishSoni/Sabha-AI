@@ -24,6 +24,12 @@ class MeetingClosedError(MeetingsError):
     code = "meeting_closed"
 
 
+class MeetingRequestConflict(MeetingsError):
+    """A request key was reused for a different creation payload."""
+
+    code = "meeting_request_conflict"
+
+
 class ClosingConflictError(MeetingsError):
     """Another closing operation or lifecycle state conflicts with the command."""
 

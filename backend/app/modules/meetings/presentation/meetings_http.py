@@ -10,6 +10,7 @@ from __future__ import annotations
 from fastapi import APIRouter, Depends, HTTPException
 
 from app.modules.knowledge.domain.errors import KnowledgeUnavailable
+from app.modules.meetings.domain.errors import MeetingRequestConflict
 from app.modules.meetings.domain.models import (
     Consensus,
     Disagreement,
@@ -39,6 +40,8 @@ async def create_meeting(
     """Create a new meeting with default AI participants."""
     try:
         meeting = await manager.create_meeting(data)
+    except MeetingRequestConflict as exc:
+        raise HTTPException(status_code=409, detail=str(exc))
     except ValueError as exc:
         # Validation happens before any write (e.g. unknown personas).
         raise HTTPException(status_code=422, detail=str(exc))

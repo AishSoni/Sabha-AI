@@ -5,8 +5,11 @@ Meeting manager service - handles meeting lifecycle and persistence.
 from typing import Optional, List
 from datetime import datetime, timezone
 import asyncio
+import hashlib
+import json
 import uuid
 
+from app.modules.meetings.domain.errors import MeetingRequestConflict
 from app.modules.meetings.domain.models import (
     AIParticipant,
     AIParticipantCreate,
@@ -68,6 +71,37 @@ def _present_meeting_row(row: dict) -> dict:
     return data
 
 
+def _meeting_fingerprint(data: MeetingCreate) -> str:
+    """Identify the committed payload behind one meeting request key.
+
+    Persona order is presentation, not intent: the same selection submitted in
+    a different order must recover the same meeting rather than conflict.
+    """
+    payload = {
+        "name": data.name,
+        "agenda": data.agenda,
+        "user_id": data.user_id,
+        "persona_ids": sorted(data.persona_ids or []),
+    }
+    encoded = json.dumps(payload, sort_keys=True, separators=(",", ":")).encode()
+    return hashlib.sha256(encoded).hexdigest()
+
+
+def _require_same_intent(
+    existing: dict, data: MeetingCreate, fingerprint: Optional[str]
+) -> None:
+    """Reject a request key reused for a different creation payload."""
+    stored_user = existing.get("user_id")
+    stored_user = str(stored_user) if stored_user is not None else None
+    if (
+        existing.get("request_fingerprint") != fingerprint
+        or stored_user != data.user_id
+    ):
+        raise MeetingRequestConflict(
+            "A different meeting was already created with this request key"
+        )
+
+
 class MeetingService:
     """Manages meeting lifecycle and database operations."""
 
@@ -97,13 +131,28 @@ class MeetingService:
         data: MeetingCreate,
         add_default_roster: bool = True
     ) -> MeetingWithParticipants:
-        """Create a new meeting with optional default participants.
+        """Create a meeting exactly once per request key.
 
+        A lost response is recovered by replaying the same key: the committed
+        meeting and participants are returned without re-reading personas.
         Personas are validated BEFORE any write, and the meeting row plus all
         participants are persisted in one transactional write: a failure
         anywhere rolls the whole creation back instead of leaving an orphan
         meeting behind.
         """
+
+        request_key = (data.request_key or "").strip() or None
+        fingerprint = _meeting_fingerprint(data) if request_key else None
+
+        if request_key:
+            existing = await self._find_meeting_by_request_key(request_key)
+            if existing is not None:
+                _require_same_intent(existing, data, fingerprint)
+                recovered = await self.get_meeting(str(existing["id"]))
+                if recovered is not None:
+                    return recovered
+                # The row vanished between lookup and read; fall through to a
+                # fresh transactional write under the same retained key.
 
         meeting_id = str(uuid.uuid4())
         now = _now_iso()
@@ -116,6 +165,8 @@ class MeetingService:
             "status": "active",
             "total_cost": 0.0,
             "created_at": now,
+            "request_key": request_key,
+            "request_fingerprint": fingerprint,
         }
 
         participants_payload: List[dict] = []
@@ -148,14 +199,37 @@ class MeetingService:
                 {"p_meeting": meeting_data, "p_participants": participants_payload},
             ).execute()
         )
-        payload = result.data
+        payload = result.data or {}
 
-        participants = [AIParticipant(**row) for row in payload["participants"]]
+        if payload.get("outcome") == "conflict":
+            raise MeetingRequestConflict(
+                "A different meeting was already created with this request key"
+            )
+        meeting_row = payload.get("meeting")
+        if not meeting_row:
+            raise ValueError("meeting creation did not return a meeting")
 
-        return MeetingWithParticipants(            **payload["meeting"],
+        participants = [
+            AIParticipant(**row) for row in (payload.get("participants") or [])
+        ]
+
+        return MeetingWithParticipants(
+            **meeting_row,
             participants=participants,
             messages=[]
         )
+
+    async def _find_meeting_by_request_key(self, request_key: str) -> Optional[dict]:
+        """Look up the committed meeting for one creation intent."""
+        result = await self._run(
+            lambda: self.db.table("meetings")
+            .select("id,user_id,request_fingerprint")
+            .eq("request_key", request_key)
+            .limit(1)
+            .execute()
+        )
+        rows = result.data or []
+        return rows[0] if rows else None
     
     async def get_meeting(self, meeting_id: str) -> Optional[MeetingWithParticipants]:
         """Read the meeting, participants and messages in one round trip.
