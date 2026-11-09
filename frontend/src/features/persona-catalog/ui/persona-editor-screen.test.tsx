@@ -166,9 +166,15 @@ describe("persona editor", () => {
         await screen.findByText("The Analyst");
         await loadedVersionRows();
 
-        fireEvent.click(screen.getByRole("button", { name: "View version 1" }));
+        const row = screen.getByRole("button", { name: "View version 1" });
+        expect(row.tagName).toBe("BUTTON");
+        expect(row).toHaveAttribute("aria-pressed", "false");
+        expect(screen.queryByRole("button", { name: /View revision/i })).not.toBeInTheDocument();
+
+        fireEvent.click(screen.getByText("Version 1"));
 
         expect(await screen.findByLabelText("Version 1 content")).toBeInTheDocument();
+        expect(row).toHaveAttribute("aria-pressed", "true");
         expect(screen.getByText("First revision directive")).toBeInTheDocument();
         expect((screen.getByRole("textbox") as HTMLTextAreaElement).value).toBe(
             "Second revision directive"
@@ -176,6 +182,23 @@ describe("persona editor", () => {
         expect(mocks.activatePromptVersion).not.toHaveBeenCalled();
         expect(screen.getAllByText("Active")).toHaveLength(1);
         expect(screen.getByRole("status")).toHaveTextContent("Viewing version 1");
+    });
+
+    it("keeps the active revision inspectable without activating it again", async () => {
+        renderRosterPage();
+        await screen.findByText("The Analyst");
+        await loadedVersionRows();
+
+        const activeRow = screen.getByRole("button", {
+            name: "View version 2, active",
+        });
+        activeRow.focus();
+        expect(activeRow).toHaveFocus();
+        fireEvent.click(activeRow);
+
+        expect(await screen.findByLabelText("Version 2 content")).toBeInTheDocument();
+        expect(mocks.activatePromptVersion).not.toHaveBeenCalled();
+        expect(activeRow).toHaveAttribute("aria-pressed", "true");
     });
 
     it("asks before replacing an unsaved draft with an activation", async () => {

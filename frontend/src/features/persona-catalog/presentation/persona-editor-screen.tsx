@@ -9,7 +9,7 @@
  */
 import { useEffect, useRef, useState } from 'react';
 import Link from 'next/link';
-import { ArrowLeft, Eye, Loader2, Save, History, Settings2, BookOpen } from 'lucide-react';
+import { ArrowLeft, Loader2, Save, History, Settings2, BookOpen } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
@@ -746,54 +746,55 @@ export function PersonaEditorScreen({
                                     {promptVersions.length === 0 ? (
                                         <p className="text-sm text-ink-muted">No versions yet</p>
                                     ) : (
-                                        promptVersions.map((v, index) => (
-                                            <div
-                                                key={v.id}
-                                                className={`m-control w-full rounded-control border p-3 ${v.is_active
-                                                    ? 'border-success/40 bg-success-soft'
-                                                    : 'border-transparent bg-surface-raised/50'
-                                                    }`}
-                                            >
-                                                <div className="flex items-center justify-between mb-1">
-                                                    <span className="text-sm font-medium text-ink">
-                                                        Version {v.version}
-                                                    </span>
-                                                    {v.is_active && (
-                                                        <span className="text-xs text-success">Active</span>
-                                                    )}
-                                                </div>
-                                                {revisionNotes?.[v.id] && (
-                                                    <p className="text-xs text-ink-secondary mb-1">
-                                                        {revisionNotes[v.id]}
-                                                    </p>
-                                                )}
-                                                {revisionBadges?.[v.id] && (
-                                                    <p className="type-meta uppercase tracking-wide text-warning/80 mb-1">
-                                                        {revisionBadges[v.id]}
-                                                    </p>
-                                                )}
-                                                <span className="text-xs text-ink-muted">
-                                                    {new Date(v.created_at).toLocaleDateString()}
-                                                </span>
-                                                <div className="flex flex-wrap items-center gap-2 mt-2">
-                                                    <Button
+                                        promptVersions.map((v, index) => {
+                                            const isViewed = viewedVersion === v.version;
+                                            return (
+                                                <div
+                                                    key={v.id}
+                                                    className={`relative w-full rounded-control border ${v.is_active
+                                                        ? 'border-success/40 bg-success-soft'
+                                                        : isViewed
+                                                            ? 'border-action/50 bg-accent-soft/40'
+                                                            : 'border-transparent bg-surface-raised/50'
+                                                        }`}
+                                                >
+                                                    <button
+                                                        type="button"
                                                         ref={index === 0 ? viewRevisionAnchor : undefined}
-                                                        variant="ghost"
-                                                        size="sm"
-                                                        className="h-7 px-2 text-ink-secondary"
-                                                        aria-label={`View version ${v.version}`}
+                                                        className="m-control block w-full rounded-control p-3 text-left outline-none transition-colors hover:bg-accent-soft/20 focus-visible:ring-2 focus-visible:ring-action focus-visible:ring-offset-2 focus-visible:ring-offset-surface"
+                                                        aria-label={`View version ${v.version}${v.is_active ? ', active' : ''}`}
+                                                        aria-pressed={isViewed}
                                                         onClick={() => {
                                                             onViewRevision?.();
                                                             viewRevision(v.version);
                                                         }}
                                                     >
-                                                        <Eye className="w-3.5 h-3.5 mr-1" />
-                                                        View revision
-                                                    </Button>
+                                                        <div className="mb-1 flex items-center justify-between gap-2 pr-24">
+                                                            <span className="text-sm font-medium text-ink">
+                                                                Version {v.version}
+                                                            </span>
+                                                            {v.is_active && (
+                                                                <span className="text-xs text-success">Active</span>
+                                                            )}
+                                                        </div>
+                                                        {revisionNotes?.[v.id] && (
+                                                            <p className="text-xs text-ink-secondary mb-1">
+                                                                {revisionNotes[v.id]}
+                                                            </p>
+                                                        )}
+                                                        {revisionBadges?.[v.id] && (
+                                                            <p className="type-meta uppercase tracking-wide text-warning/80 mb-1">
+                                                                {revisionBadges[v.id]}
+                                                            </p>
+                                                        )}
+                                                        <span className="text-xs text-ink-muted">
+                                                            {new Date(v.created_at).toLocaleDateString()}
+                                                        </span>
+                                                    </button>
                                                     <Button
                                                         variant="outline"
                                                         size="sm"
-                                                        className="h-7 px-2"
+                                                        className="absolute right-3 top-3 h-7 px-2"
                                                         aria-label={`Make version ${v.version} active`}
                                                         disabled={v.is_active || saving}
                                                         onClick={() => requestActivation(v.version)}
@@ -801,8 +802,8 @@ export function PersonaEditorScreen({
                                                         Make active
                                                     </Button>
                                                 </div>
-                                            </div>
-                                        ))
+                                            );
+                                        })
                                     )}
                                 </CardContent>
                             </Card>
