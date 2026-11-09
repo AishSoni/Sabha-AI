@@ -130,7 +130,7 @@ describe("shared feature presentations", () => {
         );
 
         expect(screen.getByText("Indexing failed")).toBeInTheDocument();
-        fireEvent.click(screen.getByRole("button", { name: "Retry" }));
+        fireEvent.click(screen.getByRole("button", { name: "Retry ingestion" }));
         expect(retry).toHaveBeenCalledWith("op-2");
 
         expect(screen.getByText("Issuer fact sheet")).toBeInTheDocument();

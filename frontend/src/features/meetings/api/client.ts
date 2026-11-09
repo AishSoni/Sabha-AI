@@ -63,7 +63,7 @@ export const meetingClient = {
                 name: input.name,
                 agenda: input.agenda,
                 persona_ids: input.personaIds,
-                request_key: input.requestKey ?? null,
+                ...(input.requestKey ? { request_key: input.requestKey } : {}),
             },
             signal: init.signal,
         });

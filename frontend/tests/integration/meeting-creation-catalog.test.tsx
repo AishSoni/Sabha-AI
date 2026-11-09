@@ -236,11 +236,15 @@ describe('create meeting roster reconciliation', () => {
         const createCall = scripted.calls.find(
             (call) => call.input === `${resolveApiBaseUrl()}/meetings` && call.init?.method === 'POST'
         );
-        expect(JSON.parse(String(createCall?.init?.body))).toEqual({
-            name: 'Pricing committee kickoff',
-            agenda: 'Unit economics review',
-            persona_ids: ['persona-2'],
-        });
+        const body = JSON.parse(String(createCall?.init?.body));
+        expect(body).toEqual(
+            expect.objectContaining({
+                name: 'Pricing committee kickoff',
+                agenda: 'Unit economics review',
+                persona_ids: ['persona-2'],
+            })
+        );
+        expect(body.request_key).toEqual(expect.any(String));
         await waitFor(() => expect(push).toHaveBeenCalledWith('/meetings/meeting-new-1'));
     });
 

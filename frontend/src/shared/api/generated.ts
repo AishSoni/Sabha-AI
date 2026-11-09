@@ -627,6 +627,30 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/documents/requests/{request_key}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Get Upload Request
+         * @description Recover a retained upload receipt by its submission key.
+         *
+         *     The browser calls this before re-uploading after a lost response. A miss
+         *     means no admission is retained for this intent; it is not a failure of an
+         *     existing document.
+         */
+        get: operations["get_upload_request_api_documents_requests__request_key__get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/documents/operations/{operation_id}/retry": {
         parameters: {
             query?: never;
@@ -639,6 +663,11 @@ export interface paths {
         /**
          * Retry Ingestion
          * @description Re-run a failed ingestion without changing its document/operation ids.
+         *
+         *     A pending or processing operation is already owned by a worker (or is
+         *     waiting for one) and retrying it would not be a recovery action. Only a
+         *     recorded failure is restartable; observation failures must be handled by
+         *     re-reading the operation status instead.
          */
         post: operations["retry_ingestion_api_documents_operations__operation_id__retry_post"];
         delete?: never;
@@ -1209,6 +1238,8 @@ export interface components {
             persona_id?: string | null;
             /** Stack Id */
             stack_id?: string | null;
+            /** Request Key */
+            request_key?: string | null;
         };
         /**
          * Citation
@@ -1710,6 +1741,8 @@ export interface components {
             user_id?: string | null;
             /** Persona Ids */
             persona_ids?: string[] | null;
+            /** Request Key */
+            request_key?: string | null;
         };
         /**
          * MeetingStatus
@@ -5125,6 +5158,83 @@ export interface operations {
             header?: never;
             path: {
                 operation_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["IngestionStatusResponse"];
+                };
+            };
+            /** @description Missing, malformed, expired, tampered or wrong-project token */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    /**
+                     * @example {
+                     *       "detail": "Operator authentication required"
+                     *     }
+                     */
+                    "application/json": unknown;
+                };
+            };
+            /** @description A valid account that is not the configured operator */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    /**
+                     * @example {
+                     *       "detail": "Operator access denied"
+                     *     }
+                     */
+                    "application/json": unknown;
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+            /** @description Auth verification could not be completed safely */
+            503: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    /**
+                     * @example {
+                     *       "detail": "Access verification unavailable"
+                     *     }
+                     */
+                    "application/json": unknown;
+                };
+            };
+        };
+    };
+    get_upload_request_api_documents_requests__request_key__get: {
+        parameters: {
+            query?: {
+                meeting_id?: string | null;
+                persona_id?: string | null;
+                stack_id?: string | null;
+            };
+            header?: never;
+            path: {
+                request_key: string;
             };
             cookie?: never;
         };

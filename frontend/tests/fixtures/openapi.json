@@ -2993,13 +2993,139 @@
         }
       }
     },
+    "/api/documents/requests/{request_key}": {
+      "get": {
+        "tags": [
+          "documents"
+        ],
+        "summary": "Get Upload Request",
+        "description": "Recover a retained upload receipt by its submission key.\n\nThe browser calls this before re-uploading after a lost response. A miss\nmeans no admission is retained for this intent; it is not a failure of an\nexisting document.",
+        "operationId": "get_upload_request_api_documents_requests__request_key__get",
+        "security": [
+          {
+            "OperatorBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "request_key",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Request Key"
+            }
+          },
+          {
+            "name": "meeting_id",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Meeting Id"
+            }
+          },
+          {
+            "name": "persona_id",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Persona Id"
+            }
+          },
+          {
+            "name": "stack_id",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Stack Id"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/IngestionStatusResponse"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Missing, malformed, expired, tampered or wrong-project token",
+            "content": {
+              "application/json": {
+                "example": {
+                  "detail": "Operator authentication required"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "A valid account that is not the configured operator",
+            "content": {
+              "application/json": {
+                "example": {
+                  "detail": "Operator access denied"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "Auth verification could not be completed safely",
+            "content": {
+              "application/json": {
+                "example": {
+                  "detail": "Access verification unavailable"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/api/documents/operations/{operation_id}/retry": {
       "post": {
         "tags": [
           "documents"
         ],
         "summary": "Retry Ingestion",
-        "description": "Re-run a failed ingestion without changing its document/operation ids.",
+        "description": "Re-run a failed ingestion without changing its document/operation ids.\n\nA pending or processing operation is already owned by a worker (or is\nwaiting for one) and retrying it would not be a recovery action. Only a\nrecorded failure is restartable; observation failures must be handled by\nre-reading the operation status instead.",
         "operationId": "retry_ingestion_api_documents_operations__operation_id__retry_post",
         "security": [
           {
@@ -5702,6 +5828,17 @@
               }
             ],
             "title": "Stack Id"
+          },
+          "request_key": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Request Key"
           }
         },
         "type": "object",
@@ -7044,6 +7181,17 @@
               }
             ],
             "title": "Persona Ids"
+          },
+          "request_key": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Request Key"
           }
         },
         "type": "object",
