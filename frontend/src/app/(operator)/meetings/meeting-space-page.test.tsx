@@ -1,4 +1,5 @@
-import { fireEvent, render, screen } from '@testing-library/react';
+import { fireEvent, render, screen, within } from '@testing-library/react';
+import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
 import { ApiError } from '@/shared/api/errors';
@@ -17,12 +18,22 @@ vi.mock('@/features/meetings', () => ({
     useArchiveMeeting: () => ({ mutate }),
     useUnarchiveMeeting: () => ({ mutate }),
     useDeleteMeeting: () => ({ mutate }),
+    meetingKeys: {
+        detail: (meetingId: string) => ['meetings', 'detail', meetingId],
+    },
 }));
 
 import MeetingSpacePage from './page';
 
 function renderPage() {
-    return render(<MeetingSpacePage />);
+    const queryClient = new QueryClient({
+        defaultOptions: { queries: { retry: false }, mutations: { retry: false } },
+    });
+    return render(
+        <QueryClientProvider client={queryClient}>
+            <MeetingSpacePage />
+        </QueryClientProvider>
+    );
 }
 
 describe('meeting space reads', () => {
@@ -91,5 +102,83 @@ describe('meeting space reads', () => {
 
         expect(screen.getByText('No meeting rooms yet')).toBeInTheDocument();
         expect(screen.queryByRole('alert')).not.toBeInTheDocument();
+    });
+
+    it('reports a failed archive instead of dismissing it as success', async () => {
+        listState.data = [
+            {
+                id: 'meeting-1',
+                name: 'Existing meeting',
+                status: 'active',
+                agenda: 'Keep working',
+                created_at: '2026-11-01T10:00:00Z',
+                total_cost: 0,
+            },
+        ];
+        listState.isLoading = false;
+        listState.isError = false;
+        listState.error = null;
+        mutate.mockImplementation(
+            (_meetingId: string, options: { onError?: (error: Error) => void; onSettled?: () => void }) => {
+                options.onError?.(new ApiError('http', 409, 'Meeting is closing'));
+                options.onSettled?.();
+            }
+        );
+
+        renderPage();
+
+        fireEvent.pointerDown(
+            screen.getByRole('button', { name: 'Actions for Existing meeting' }),
+            { button: 0 }
+        );
+        fireEvent.click(await screen.findByRole('menuitem', { name: 'Archive' }));
+
+        expect(await screen.findByText(
+            'This meeting is still closing. Archive it after the close finishes.'
+        )).toBeInTheDocument();
+        expect(screen.getByText('Existing meeting')).toBeInTheDocument();
+        expect(refetch).toHaveBeenCalled();
+    });
+
+    it('keeps the delete confirmation open when deletion fails', async () => {
+        listState.data = [
+            {
+                id: 'meeting-1',
+                name: 'Existing meeting',
+                status: 'active',
+                agenda: 'Keep working',
+                created_at: '2026-11-01T10:00:00Z',
+                total_cost: 0,
+            },
+        ];
+        listState.isLoading = false;
+        listState.isError = false;
+        listState.error = null;
+        mutate.mockImplementation(
+            (_meetingId: string, options: { onError?: (error: Error) => void; onSettled?: () => void }) => {
+                options.onError?.(
+                    new ApiError('http', 503, 'Knowledge cleanup unavailable')
+                );
+                options.onSettled?.();
+            }
+        );
+
+        renderPage();
+
+        fireEvent.pointerDown(
+            screen.getByRole('button', { name: 'Actions for Existing meeting' }),
+            { button: 0 }
+        );
+        fireEvent.click(await screen.findByRole('menuitem', { name: 'Delete' }));
+
+        const dialog = await screen.findByRole('alertdialog');
+        fireEvent.click(within(dialog).getByRole('button', { name: 'Delete' }));
+
+        expect(
+            await within(dialog).findByText(
+                'The meeting was not deleted because its knowledge files could not be cleaned up. Try again.'
+            )
+        ).toBeInTheDocument();
+        expect(screen.getByText('Delete Meeting?')).toBeInTheDocument();
     });
 });

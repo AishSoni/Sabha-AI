@@ -1,8 +1,9 @@
 'use client';
 
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import Link from 'next/link';
-import { Plus, MessageSquare, Calendar, ArrowLeft, Loader2, Archive, Trash2, MoreVertical, ArchiveRestore, AlertTriangle, RefreshCw } from 'lucide-react';
+import { useQueryClient } from '@tanstack/react-query';
+import { Plus, MessageSquare, Calendar, ArrowLeft, Loader2, Archive, Trash2, MoreVertical, ArchiveRestore, AlertTriangle, RefreshCw, CheckCircle2, X } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { StatusBadge } from '@/components/ui/status-badge';
@@ -16,7 +17,6 @@ import {
 } from '@/components/ui/dropdown-menu';
 import {
     AlertDialog,
-    AlertDialogAction,
     AlertDialogCancel,
     AlertDialogContent,
     AlertDialogDescription,
@@ -24,10 +24,18 @@ import {
     AlertDialogHeader,
     AlertDialogTitle,
 } from '@/components/ui/alert-dialog';
-import { useMeetingList, useArchiveMeeting, useUnarchiveMeeting, useDeleteMeeting, type Meeting } from '@/features/meetings';
+import { useMeetingList, useArchiveMeeting, useUnarchiveMeeting, useDeleteMeeting, meetingKeys, type Meeting } from '@/features/meetings';
 import { isApiError } from '@/shared/api/errors';
 import { formatRelativeTime } from '@/lib/utils';
 
+
+type MeetingAction = 'archive' | 'unarchive' | 'delete';
+
+interface ActionNotice {
+    tone: 'success' | 'error';
+    message: string;
+    meetingId: string;
+}
 
 export default function MeetingSpacePage() {
     const { data, isLoading, isError, error, refetch } = useMeetingList();
@@ -36,28 +44,96 @@ export default function MeetingSpacePage() {
     const archiveMeeting = useArchiveMeeting();
     const unarchiveMeeting = useUnarchiveMeeting();
     const deleteMeeting = useDeleteMeeting();
+    const queryClient = useQueryClient();
 
     const [activeTab, setActiveTab] = useState('active');
     const [deleteConfirmId, setDeleteConfirmId] = useState<string | null>(null);
     const [actionLoading, setActionLoading] = useState<string | null>(null);
+    const [actionNotice, setActionNotice] = useState<ActionNotice | null>(null);
+
+    useEffect(() => {
+        if (actionNotice?.tone !== 'success') return;
+        const timeout = window.setTimeout(() => setActionNotice(null), 6000);
+        return () => window.clearTimeout(timeout);
+    }, [actionNotice]);
+
+    const meetingName = (meetingId: string) =>
+        list.find((meeting) => meeting.id === meetingId)?.name ?? 'This meeting';
+
+    const reconcileAfterFailure = (meetingId: string) => {
+        void refetch();
+        void queryClient.invalidateQueries({
+            queryKey: meetingKeys.detail(meetingId),
+        });
+    };
 
     const handleArchive = (meetingId: string) => {
         setActionLoading(meetingId);
-        archiveMeeting.mutate(meetingId, { onSettled: () => setActionLoading(null) });
+        setActionNotice(null);
+        archiveMeeting.mutate(meetingId, {
+            onSuccess: () => {
+                setActionNotice({
+                    tone: 'success',
+                    message: `“${meetingName(meetingId)}” was archived. You can find it in Archived.`,
+                    meetingId,
+                });
+            },
+            onError: (mutationError) => {
+                setActionNotice({
+                    tone: 'error',
+                    message: actionFailureMessage('archive', mutationError),
+                    meetingId,
+                });
+                reconcileAfterFailure(meetingId);
+            },
+            onSettled: () => setActionLoading(null),
+        });
     };
 
     const handleUnarchive = (meetingId: string) => {
         setActionLoading(meetingId);
-        unarchiveMeeting.mutate(meetingId, { onSettled: () => setActionLoading(null) });
+        setActionNotice(null);
+        unarchiveMeeting.mutate(meetingId, {
+            onSuccess: () => {
+                setActionNotice({
+                    tone: 'success',
+                    message: `“${meetingName(meetingId)}” was restored to its lifecycle state. Unarchiving does not reopen an ended meeting.`,
+                    meetingId,
+                });
+            },
+            onError: (mutationError) => {
+                setActionNotice({
+                    tone: 'error',
+                    message: actionFailureMessage('unarchive', mutationError),
+                    meetingId,
+                });
+                reconcileAfterFailure(meetingId);
+            },
+            onSettled: () => setActionLoading(null),
+        });
     };
 
     const handleDelete = (meetingId: string) => {
         setActionLoading(meetingId);
+        setActionNotice(null);
         deleteMeeting.mutate(meetingId, {
-            onSettled: () => {
-                setActionLoading(null);
+            onSuccess: () => {
                 setDeleteConfirmId(null);
+                setActionNotice({
+                    tone: 'success',
+                    message: `“${meetingName(meetingId)}” was deleted.`,
+                    meetingId,
+                });
             },
+            onError: (mutationError) => {
+                setActionNotice({
+                    tone: 'error',
+                    message: actionFailureMessage('delete', mutationError),
+                    meetingId,
+                });
+                reconcileAfterFailure(meetingId);
+            },
+            onSettled: () => setActionLoading(null),
         });
     };
 
@@ -105,6 +181,12 @@ export default function MeetingSpacePage() {
                             <StaleListNotice
                                 message={readFailureMessage(error)}
                                 onRetry={() => void refetch()}
+                            />
+                        )}
+                        {actionNotice && (
+                            <ActionFeedback
+                                notice={actionNotice}
+                                onDismiss={() => setActionNotice(null)}
                             />
                         )}
                         <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
@@ -174,7 +256,14 @@ export default function MeetingSpacePage() {
 
 
             {/* Delete Confirmation Dialog */}
-            <AlertDialog open={!!deleteConfirmId} onOpenChange={(open) => !open && setDeleteConfirmId(null)}>
+            <AlertDialog
+                open={!!deleteConfirmId}
+                onOpenChange={(open) => {
+                    if (open) return;
+                    if (deleteConfirmId && actionLoading === deleteConfirmId) return;
+                    setDeleteConfirmId(null);
+                }}
+            >
                 <AlertDialogContent>
                     <AlertDialogHeader>
                         <AlertDialogTitle>Delete Meeting?</AlertDialogTitle>
@@ -183,10 +272,23 @@ export default function MeetingSpacePage() {
                             and all its messages, participants, and data.
                         </AlertDialogDescription>
                     </AlertDialogHeader>
+                    {actionNotice?.tone === 'error' &&
+                        actionNotice.meetingId === deleteConfirmId && (
+                            <p
+                                role="alert"
+                                className="rounded-control border border-danger/40 bg-danger-soft px-3 py-2 type-body text-danger"
+                            >
+                                {actionNotice.message}
+                            </p>
+                        )}
                     <AlertDialogFooter>
-                        <AlertDialogCancel>Cancel</AlertDialogCancel>
-                        <AlertDialogAction
+                        <AlertDialogCancel disabled={actionLoading === deleteConfirmId}>
+                            Cancel
+                        </AlertDialogCancel>
+                        <Button
+                            type="button"
                             onClick={() => deleteConfirmId && handleDelete(deleteConfirmId)}
+                            disabled={actionLoading === deleteConfirmId}
                             className="bg-danger text-on-danger hover:bg-danger-hover"
                         >
                             {actionLoading === deleteConfirmId ? (
@@ -195,7 +297,7 @@ export default function MeetingSpacePage() {
                                 <Trash2 className="mr-2 h-4 w-4" />
                             )}
                             Delete
-                        </AlertDialogAction>
+                        </Button>
                     </AlertDialogFooter>
                 </AlertDialogContent>
             </AlertDialog>
@@ -268,6 +370,79 @@ function StaleListNotice({
                 <RefreshCw className="mr-2 h-4 w-4" />
                 Refresh
             </Button>
+        </div>
+    );
+}
+
+function actionFailureMessage(action: MeetingAction, error: Error): string {
+    const label =
+        action === 'archive' ? 'Archive' : action === 'unarchive' ? 'Unarchive' : 'Delete';
+
+    if (isApiError(error)) {
+        if (error.status === 404) {
+            return `${label} failed because this meeting no longer exists. The list has been refreshed.`;
+        }
+        if (error.status === 401 || error.status === 403) {
+            return `${label} failed because meeting access is unavailable. Refresh and try again.`;
+        }
+        if (action === 'archive' && error.status === 409) {
+            return 'This meeting is still closing. Archive it after the close finishes.';
+        }
+        if (action === 'archive' && error.status === 400) {
+            return 'This meeting was already archived. The list has been refreshed.';
+        }
+        if (action === 'unarchive' && error.status === 400) {
+            return 'This meeting is no longer archived. The list has been refreshed.';
+        }
+        if (action !== 'delete' && error.status === 409) {
+            return 'This meeting is still closing. Try again after the close finishes.';
+        }
+        if (action === 'delete' && error.status === 503) {
+            return 'The meeting was not deleted because its knowledge files could not be cleaned up. Try again.';
+        }
+        if (error.kind === 'network') {
+            return `${label} failed because the server could not be reached. The meeting was not changed.`;
+        }
+        if (error.detail && error.detail !== 'Unknown error') {
+            return `${label} failed: ${error.detail}. The meeting was not changed.`;
+        }
+    }
+
+    return `${label} failed. The meeting was not changed. Try again.`;
+}
+
+function ActionFeedback({
+    notice,
+    onDismiss,
+}: {
+    notice: ActionNotice;
+    onDismiss: () => void;
+}) {
+    const isError = notice.tone === 'error';
+    return (
+        <div
+            role={isError ? 'alert' : 'status'}
+            aria-live={isError ? 'assertive' : 'polite'}
+            className={`mb-6 flex items-start gap-3 rounded-control border px-4 py-3 type-body ${
+                isError
+                    ? 'border-danger/40 bg-danger-soft text-danger'
+                    : 'border-success/40 bg-success-soft text-ink'
+            }`}
+        >
+            {isError ? (
+                <AlertTriangle className="mt-0.5 h-4 w-4 shrink-0" />
+            ) : (
+                <CheckCircle2 className="mt-0.5 h-4 w-4 shrink-0 text-success" />
+            )}
+            <p className="min-w-0 flex-1">{notice.message}</p>
+            <button
+                type="button"
+                onClick={onDismiss}
+                aria-label="Dismiss action message"
+                className="m-control shrink-0 text-ink-muted hover:text-ink"
+            >
+                <X className="h-4 w-4" />
+            </button>
         </div>
     );
 }
@@ -368,6 +543,7 @@ function MeetingGrid({ meetings, onArchive, onUnarchive, onDelete, actionLoading
                                     size="icon-xs"
                                     aria-label={`Actions for ${meeting.name}`}
                                     className="border border-separator bg-surface/80"
+                                    disabled={actionLoading === meeting.id}
                                     onClick={(e) => e.preventDefault()}
                                 >
                                     {actionLoading === meeting.id ? (
