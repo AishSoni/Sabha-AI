@@ -62,3 +62,53 @@ Preserve intentional separate uploads and the existing operation retry contract.
   once per intent, with truthful unknown-outcome recovery and separate new intents.
 - Preserve shared presentation boundaries, private access, and existing ingestion
   safety. Update tests that currently encode retry of merely queued work.
+
+## Implementation record (2026-11-09)
+
+Status remains a working draft: T01–T04 are implemented and covered by focused,
+integration, and regression tests. Spec 46 still owns integrated acceptance.
+
+### Dispositions
+
+- **T01 canonical progress.** The live document adapter now watches
+  `useDocumentOperation` for the retained receipt operation and injects the
+  canonical progress, read-error, and refresh state into the pure presentation.
+  The banner and the matching document row merge the observed state, so a stale
+  list read cannot show Queued beside a ready receipt. Receipt identity and
+  file name are retained in session storage across remounts; a pending receipt
+  with no stored response is reconciled through the owner-scoped request key
+  before any bytes are uploaded again. Observation failure is rendered as
+  `Status unavailable` with a refetch-only action, preserving prior useful
+  state; terminal success/failure/revocation invalidates the document list.
+- **T02 distinct retries.** `GET /documents/operations/{id}` remains the
+  observation read. `POST /documents/operations/{id}/retry` now returns the
+  retained receipt idempotently for a ready operation, rejects queued,
+  processing, revoked, and unavailable operations with `409`, and schedules a
+  new worker attempt only for `failed`. The document row offers retry only for
+  failed rows; pending rows are never presented as failures. The progress banner
+  separates `Refresh status` from `Retry ingestion`, so a failed GET can no
+  longer restart ingestion.
+- **T03 partial creation.** Meeting creation freezes the first submitted
+  title/context/participant intent. While a meeting may exist the visible
+  configuration is read-only, so retries reuse the committed request rather than
+  silently applying edits. The screen states “Meeting created — X of Y files
+  accepted, N need attention”, retains the created identity, receipts, and
+  actionable failures, and blocks automatic navigation while any intended file
+  is pending. Files added mid-flight join the same pump and are accounted for
+  before navigation. Only never-submitted (`pending`) rows are removable;
+  uploading, accepted, and failed rows cannot pretend to cancel admitted server
+  work. `Continue to meeting` is available only when nothing is in flight, and
+  navigation follows accepted receipts rather than indexing readiness.
+- **T04 ambiguous admission.** Meeting creation sends a stable `request_key`
+  with a canonical payload fingerprint. Migration `039_meeting_request_identity.sql`
+  retains the key and fingerprint, makes a same-key replay return the original
+  meeting and participants, and returns a conflict for a different payload;
+  deduplication never uses the meeting title or content. Uploads send a stable
+  per-file `request_key`. Migration `040_upload_request_identity.sql` retains it
+  with a unique partial index, makes a same-key/same-payload replay return the
+  existing document operation, and returns a conflict when the owner or bytes
+  differ. The browser looks up the retained receipt by key before re-uploading,
+  while a deliberate new file receives a new key and the existing operation
+  retry contract is preserved.
+
+### Verification performed
