@@ -96,6 +96,26 @@ test.describe("mixed operator and demo isolation", () => {
         await expect(page).toHaveURL(/\/meetings$/);
         await expect(trigger).toBeVisible();
 
+        await trigger.click();
+        await page
+            .getByRole("dialog", { name: "Live" })
+            .getByRole("button", { name: "Appearance: System" })
+            .click();
+        await page.getByRole("menuitemradio", { name: "Dark" }).click();
+        await expect(page.locator("html")).toHaveAttribute("data-theme", "dark");
+        await expect(dialog).toBeVisible();
+        await page.keyboard.press("Escape");
+        await expect(dialog).toBeHidden();
+
+        await page.setViewportSize({ width: 320, height: 720 });
+        await expect(trigger).toBeVisible();
+        await trigger.click();
+        await expect(dialog).toBeVisible();
+        const box = await dialog.boundingBox();
+        expect(box).not.toBeNull();
+        expect(box!.x).toBeGreaterThanOrEqual(0);
+        expect(box!.x + box!.width).toBeLessThanOrEqual(320);
+
         await context.close();
     });
 
