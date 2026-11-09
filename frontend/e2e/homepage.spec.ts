@@ -327,7 +327,7 @@ test.describe("homepage evidence graph", () => {
 
     const credit = page
       .locator(".home-graph__map .home-graph__node")
-      .filter({ hasText: "The Credit Analyst" });
+      .filter({ hasText: "Mira" });
     const crisil = page
       .locator(".home-graph__map .home-graph__node")
       .filter({ hasText: "Crisil annexure" });
@@ -366,10 +366,10 @@ test.describe("homepage evidence graph", () => {
 
     const credit = page
       .locator(".home-graph__map .home-graph__node")
-      .filter({ hasText: "The Credit Analyst" });
+      .filter({ hasText: "Mira" });
     await credit.hover();
     await expect(overlay).toBeVisible();
-    await expect(overlay.locator("h3")).toHaveText("The Credit Analyst");
+    await expect(overlay.locator("h3")).toHaveText("Mira");
     await expect(overlay).toHaveAttribute("data-pinned", "false");
     await expect
       .poll(() =>
@@ -404,7 +404,7 @@ test.describe("homepage evidence graph", () => {
     await reading.locator("summary").click();
     await expect(reading).toHaveAttribute("open", "");
     await expect(
-      reading.getByText("The Credit Analyst → Crisil annexure"),
+      reading.getByText("Mira → Crisil annexure"),
     ).toBeVisible();
     await expect(reading.getByText("Assigned / available").first()).toBeVisible();
     await expect(reading.getByText("Example citation").first()).toBeVisible();

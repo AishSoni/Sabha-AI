@@ -294,7 +294,7 @@ test.describe("recorded visitor isolation", () => {
             await serveRecordedAssets(pageA);
             await Promise.all([openBoard(pageA), openBoard(pageB)]);
 
-            await openPromptHistory(pageA, "The Credit Analyst");
+            await openPromptHistory(pageA, "Mira");
             await pageA.getByPlaceholder(PROMPT).fill("Visitor A practice marker.");
             await pageA
                 .getByRole("button", { name: "Save as New Version" })
@@ -303,7 +303,7 @@ test.describe("recorded visitor isolation", () => {
                 pageA.getByText(/Saved version 4 and made it active\./)
             ).toBeVisible();
 
-            await openPromptHistory(pageB, "The Downside Reviewer");
+            await openPromptHistory(pageB, "Arjun");
             await pageB.getByPlaceholder(PROMPT).fill("Visitor B practice marker.");
             await pageB
                 .getByRole("button", { name: "Save as New Version" })
@@ -354,7 +354,7 @@ test.describe("recorded visitor isolation", () => {
             );
 
             // A's reset removed its own prompt edit.
-            await openPromptHistory(pageA, "The Credit Analyst");
+            await openPromptHistory(pageA, "Mira");
             await expect(pageA.getByPlaceholder(PROMPT)).not.toHaveValue(
                 "Visitor A practice marker."
             );
@@ -374,7 +374,7 @@ test.describe("recorded visitor isolation", () => {
                 .getByRole("button", { name: "Restart demo" })
                 .click();
             await expect(pageA).toHaveURL(/\/demo$/);
-            await openPromptHistory(pageA, "The Credit Analyst");
+            await openPromptHistory(pageA, "Mira");
             await expect(pageA.getByPlaceholder(PROMPT)).toHaveValue(
                 "Visitor A restart marker."
             );
@@ -384,7 +384,7 @@ test.describe("recorded visitor isolation", () => {
             await pageA
                 .getByRole("button", { name: "Reset and discard changes" })
                 .click();
-            await openPromptHistory(pageA, "The Credit Analyst");
+            await openPromptHistory(pageA, "Mira");
             await expect(pageA.getByPlaceholder(PROMPT)).not.toHaveValue(
                 "Visitor A restart marker."
             );

@@ -22,7 +22,7 @@ function seed(): WorkspaceSeed {
         personas: [
             {
                 personaId: "persona-credit",
-                name: "The Credit Analyst",
+                name: "Mira",
                 role: "Credit Analyst",
                 description: "Credit.",
                 color: "#2563eb",
@@ -39,7 +39,7 @@ function seed(): WorkspaceSeed {
             },
             {
                 personaId: "persona-downside",
-                name: "The Downside Reviewer",
+                name: "Arjun",
                 role: "Risk Reviewer",
                 description: "Risk.",
                 color: "#b45309",
@@ -162,8 +162,8 @@ describe("practice knowledge stack state", () => {
             ready: 1,
         });
         expect(assignedPersonas(counted, "credit-stack")).toEqual([
-            "The Credit Analyst",
-            "The Downside Reviewer",
+            "Mira",
+            "Arjun",
         ]);
     });
 
@@ -175,7 +175,7 @@ describe("practice knowledge stack state", () => {
                 {
                     snapshotId: "snapshot-credit",
                     personaId: "persona-credit",
-                    name: "The Credit Analyst",
+                    name: "Mira",
                     role: "Credit Analyst",
                     color: "#2563eb",
                     composedPrompt: "Credit prompt.",
@@ -188,11 +188,11 @@ describe("practice knowledge stack state", () => {
         };
 
         expect(stackParticipants(withSnapshot, "credit-stack")).toEqual({
-            templateDefaults: ["The Credit Analyst", "The Downside Reviewer"],
-            savedParticipants: ["The Credit Analyst"],
+            templateDefaults: ["Mira", "Arjun"],
+            savedParticipants: ["Mira"],
         });
         expect(stackParticipants(withSnapshot, "shared-stack")).toEqual({
-            templateDefaults: ["The Credit Analyst"],
+            templateDefaults: ["Mira"],
             savedParticipants: [],
         });
     });
@@ -210,7 +210,7 @@ describe("practice knowledge stack state", () => {
                 {
                     snapshotId: "snapshot-credit",
                     personaId: "persona-credit",
-                    name: "The Credit Analyst",
+                    name: "Mira",
                     role: "Credit Analyst",
                     color: "#2563eb",
                     composedPrompt: "Credit prompt.",

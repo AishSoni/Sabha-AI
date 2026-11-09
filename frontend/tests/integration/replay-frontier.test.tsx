@@ -44,7 +44,7 @@ function meeting(checkpoint: 'initial' | 'active' | 'completed') {
             {
                 id: PARTICIPANT_ID,
                 meeting_id: MEETING_ID,
-                name: 'The Credit Analyst',
+                name: 'Mira',
                 role: 'Credit Analyst',
                 system_prompt: 'Recorded placeholder.',
                 provider_config: { provider: 'recorded', model: 'recorded' },
@@ -62,7 +62,7 @@ function meeting(checkpoint: 'initial' | 'active' | 'completed') {
                           meeting_id: MEETING_ID,
                           sender_type: 'ai',
                           sender_id: PARTICIPANT_ID,
-                          sender_name: 'The Credit Analyst',
+                          sender_name: 'Mira',
                           content: FINAL_TEXT,
                           citations: [],
                           tool_artifacts: null,

@@ -15,7 +15,7 @@ function workspace(): WorkspaceLocalState {
         personas: [
             {
                 personaId: "persona-1",
-                name: "The Credit Analyst",
+                name: "Mira",
                 role: "Credit Analyst",
                 description: "Tests the record.",
                 color: "#2563eb",
@@ -168,7 +168,7 @@ describe("local persona catalog state", () => {
         expect(result.ok).toBe(true);
         if (!result.ok) return;
         const persona = result.value.persona;
-        expect(persona.name).toBe("The Credit Analyst (Copy)");
+        expect(persona.name).toBe("Mira (Copy)");
         expect(persona.stackIds).toEqual([]);
         expect(persona.revisions).toHaveLength(1);
         expect(persona.revisions[0]?.prompt).toBe("Second prompt");

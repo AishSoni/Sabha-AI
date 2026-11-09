@@ -449,7 +449,7 @@ function completedMeetingWire() {
                 meeting_id: MEETING_ID,
                 sender_type: "ai",
                 sender_id: "participant-1",
-                sender_name: "The Credit Analyst",
+                sender_name: "Mira",
                 content: "Recorded credit answer",
                 citations: [],
                 tool_artifacts: null,

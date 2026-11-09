@@ -52,14 +52,14 @@ test.describe("integrated practice exploration", () => {
         await openBoard(page);
 
         const recordedSummary = page.getByText(
-            /You are The Credit Analyst\. Test the record/
+            /You are Mira\. Test the record/
         );
         await expect(recordedSummary.first()).toBeVisible();
 
         // Detour into the persona template history.
-        await openPromptHistory(page, "The Credit Analyst");
+        await openPromptHistory(page, "Mira");
         await expect(
-            page.getByRole("heading", { name: "The Credit Analyst" })
+            page.getByRole("heading", { name: "Mira" })
         ).toBeVisible();
 
         await page.getByRole("button", { name: "View version 1" }).click();
@@ -95,7 +95,7 @@ test.describe("integrated practice exploration", () => {
             .click();
         await expect(
             page.getByRole("heading", {
-                name: "Credit evidence (private to The Credit Analyst)",
+                name: "Credit evidence (private to Mira)",
             })
         ).toBeVisible();
 
@@ -104,7 +104,7 @@ test.describe("integrated practice exploration", () => {
             timeout: 30_000,
         });
         await expect(page.getByText("Saved participants")).toBeVisible();
-        await expect(page.getByText("The Credit Analyst").first()).toBeVisible();
+        await expect(page.getByText("Mira").first()).toBeVisible();
 
         // The ready document previews real recorded bytes, not a mock.
         await page

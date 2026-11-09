@@ -26,7 +26,7 @@ export interface EvidenceEdge {
 export const EVIDENCE_NODES: readonly EvidenceNode[] = [
   {
     id: "credit-analyst",
-    name: "The Credit Analyst",
+    name: "Mira",
     kind: "persona",
     kindLabel: "AI role in the example",
     description:
@@ -37,7 +37,7 @@ export const EVIDENCE_NODES: readonly EvidenceNode[] = [
   },
   {
     id: "downside-reviewer",
-    name: "The Downside Reviewer",
+    name: "Arjun",
     kind: "persona",
     kindLabel: "AI role in the example",
     description:
@@ -48,7 +48,7 @@ export const EVIDENCE_NODES: readonly EvidenceNode[] = [
   },
   {
     id: "portfolio-analyst",
-    name: "The Portfolio Analyst",
+    name: "Leena",
     kind: "persona",
     kindLabel: "AI role in the example",
     description:
@@ -75,7 +75,7 @@ export const EVIDENCE_NODES: readonly EvidenceNode[] = [
     scope: "private",
     kindLabel: "Private working set",
     description:
-      "Private credit working notes. Only the Credit Analyst is assigned to this knowledge stack.",
+      "Private credit working notes. Only Mira is assigned to this knowledge stack.",
     x: 830,
     y: 80,
   },
@@ -97,7 +97,7 @@ export const EVIDENCE_NODES: readonly EvidenceNode[] = [
     scope: "private",
     kindLabel: "Private working set",
     description:
-      "Fictional portfolio mandate for the Portfolio Analyst knowledge stack, with explicit record limits.",
+      "Fictional portfolio mandate for Leena's knowledge stack, with explicit record limits.",
     x: 830,
     y: 360,
   },
@@ -155,14 +155,14 @@ export const EVIDENCE_EDGES: readonly EvidenceEdge[] = [
     from: "credit-analyst",
     to: "credit-evidence",
     kind: "assignment",
-    note: "Available through the Credit Analyst's private stack.",
+    note: "Available through Mira's private stack.",
   },
   {
     id: "downside-worksheet-assignment",
     from: "downside-reviewer",
     to: "downside-worksheet",
     kind: "assignment",
-    note: "Available through the Downside Reviewer's private stack.",
+    note: "Available through Arjun's private stack.",
     curve: -10,
   },
   {
@@ -170,7 +170,7 @@ export const EVIDENCE_EDGES: readonly EvidenceEdge[] = [
     from: "portfolio-analyst",
     to: "portfolio-mandate",
     kind: "assignment",
-    note: "Available through the Portfolio Analyst's private stack.",
+    note: "Available through Leena's private stack.",
   },
   {
     id: "credit-shared-citation",

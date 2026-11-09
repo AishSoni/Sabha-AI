@@ -221,10 +221,10 @@ describe("demo persona catalog", () => {
         expect(
             await screen.findByRole("heading", { name: "Personas" })
         ).toBeInTheDocument();
-        expect(await screen.findByText("The Credit Analyst")).toBeInTheDocument();
+        expect(await screen.findByText("Mira")).toBeInTheDocument();
         expect(screen.getByText("Start here")).toBeInTheDocument();
-        expect(screen.getByText("The Downside Reviewer")).toBeInTheDocument();
-        expect(screen.getByText("The Portfolio Analyst")).toBeInTheDocument();
+        expect(screen.getByText("Arjun")).toBeInTheDocument();
+        expect(screen.getByText("Leena")).toBeInTheDocument();
         expect(screen.getAllByText(/Prompt v/).length).toBeGreaterThan(0);
         expect(calls.every((call) => call.url.startsWith(`${API}/replay/`))).toBe(true);
     });
@@ -234,7 +234,7 @@ describe("demo persona catalog", () => {
         await renderAt("/demo/roster/persona-credit");
 
         expect(
-            await screen.findByRole("heading", { name: "The Credit Analyst" })
+            await screen.findByRole("heading", { name: "Mira" })
         ).toBeInTheDocument();
         await openPromptTab();
 
@@ -245,7 +245,7 @@ describe("demo persona catalog", () => {
 
         fireEvent.click(screen.getByRole("button", { name: "View version 1" }));
         expect(await screen.findByLabelText("Version 1 content")).toBeInTheDocument();
-        expect(screen.getByText("You are the Credit Analyst.")).toBeInTheDocument();
+        expect(screen.getByText("You are Mira.")).toBeInTheDocument();
         expect((textarea as HTMLTextAreaElement).value).toContain(
             "flag unsupported assumptions"
         );
@@ -263,7 +263,7 @@ describe("demo persona catalog", () => {
         fireEvent.click(screen.getByRole("button", { name: "Make version 1 active" }));
         await waitFor(() =>
             expect((screen.getByRole("textbox") as HTMLTextAreaElement).value).toBe(
-                "You are the Credit Analyst."
+                "You are Mira."
             )
         );
         await waitFor(() => expect(screen.getAllByText("Active")).toHaveLength(1));
@@ -278,7 +278,7 @@ describe("demo persona catalog", () => {
     it("captures a practice participant snapshot that later template edits do not rewrite", async () => {
         installDemoRouter();
         await renderAt("/demo/roster/persona-credit");
-        await screen.findByRole("heading", { name: "The Credit Analyst" });
+        await screen.findByRole("heading", { name: "Mira" });
 
         const panel = await screen.findByRole("region", {
             name: "Participant snapshot",
@@ -328,31 +328,31 @@ describe("demo persona catalog", () => {
         const confirm = vi.spyOn(window, "confirm").mockReturnValue(true);
         await renderAt("/demo/roster");
         await screen.findByText("Personas");
-        await screen.findByText("The Credit Analyst");
+        await screen.findByText("Mira");
 
         fireEvent.pointerDown(
-            screen.getByRole("button", { name: "Actions for The Credit Analyst" })
+            screen.getByRole("button", { name: "Actions for Mira" })
         );
         fireEvent.click(await screen.findByText("Duplicate"));
         expect(
-            await screen.findByText("The Credit Analyst (Copy)")
+            await screen.findByText("Mira (Copy)")
         ).toBeInTheDocument();
 
         fireEvent.pointerDown(
             screen.getByRole("button", {
-                name: "Actions for The Credit Analyst (Copy)",
+                name: "Actions for Mira (Copy)",
             })
         );
         fireEvent.click(await screen.findByText("Delete"));
         await waitFor(() =>
             expect(
-                screen.queryByText("The Credit Analyst (Copy)")
+                screen.queryByText("Mira (Copy)")
             ).not.toBeInTheDocument()
         );
         expect(confirm).toHaveBeenCalledWith(
             expect.stringMatching(/meeting participants are not affected/i)
         );
-        expect(screen.getByText("The Credit Analyst")).toBeInTheDocument();
+        expect(screen.getByText("Mira")).toBeInTheDocument();
         expect(calls.every((call) => call.url.startsWith(`${API}/replay/`))).toBe(true);
     });
 
@@ -389,13 +389,13 @@ describe("demo persona catalog", () => {
         await waitFor(() =>
             expect(screen.queryByText("The Demo Analyst")).not.toBeInTheDocument()
         );
-        expect(screen.getByText("The Credit Analyst")).toBeInTheDocument();
+        expect(screen.getByText("Mira")).toBeInTheDocument();
     });
 
     it("leaves the prepared board prompts unchanged after catalog edits", async () => {
         installDemoRouter();
         await renderAt("/demo/roster/persona-credit");
-        await screen.findByRole("heading", { name: "The Credit Analyst" });
+        await screen.findByRole("heading", { name: "Mira" });
         await openPromptTab();
         fireEvent.change(screen.getByRole("textbox"), {
             target: { value: "A temporary practice prompt." },

@@ -14,7 +14,7 @@ import {
 
 const persona: RosterPersonaView = {
     id: "persona-credit",
-    name: "The Credit Analyst",
+    name: "Mira",
     subtitle: "Credit Analyst",
     color: "#2563eb",
     activePrompt: "Ground every claim in the issuer evidence.",
@@ -40,7 +40,7 @@ describe("shared feature presentations", () => {
             />
         );
 
-        expect(screen.getByText("The Credit Analyst")).toBeInTheDocument();
+        expect(screen.getByText("Mira")).toBeInTheDocument();
         expect(screen.getByText("Prompt v3")).toBeInTheDocument();
         expect(screen.getByRole("link", { name: /Create Persona/i })).toHaveAttribute(
             "href",

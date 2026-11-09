@@ -52,7 +52,7 @@ export function demoWorkspaceSeedWire() {
         personas: [
             {
                 persona_id: "persona-credit",
-                name: "The Credit Analyst",
+                name: "Mira",
                 role: "Credit Analyst",
                 description: "Tests issuer coverage and evidence quality.",
                 color: "#2563eb",
@@ -62,24 +62,24 @@ export function demoWorkspaceSeedWire() {
                 revisions: [
                     revision(
                         "rev-credit-1",
-                        "You are the Credit Analyst.",
+                        "You are Mira.",
                         "Initial authored role."
                     ),
                     revision(
                         "rev-credit-2",
-                        "You are the Credit Analyst. State covenant headroom.",
+                        "You are Mira. State covenant headroom.",
                         "Adds covenant-headroom discipline."
                     ),
                     revision(
                         "rev-credit-3",
-                        "You are the Credit Analyst. State covenant headroom and flag unsupported assumptions.",
+                        "You are Mira. State covenant headroom and flag unsupported assumptions.",
                         "Tightens the evidence standard."
                     ),
                 ],
             },
             {
                 persona_id: "persona-downside",
-                name: "The Downside Reviewer",
+                name: "Arjun",
                 role: "Risk Reviewer",
                 description: "Presents the strongest failure case.",
                 color: "#b45309",
@@ -89,14 +89,14 @@ export function demoWorkspaceSeedWire() {
                 revisions: [
                     revision(
                         "rev-downside-1",
-                        "You are the Downside Reviewer.",
+                        "You are Arjun.",
                         "Initial authored role."
                     ),
                 ],
             },
             {
                 persona_id: "persona-portfolio",
-                name: "The Portfolio Analyst",
+                name: "Leena",
                 role: "Portfolio Analyst",
                 description: "Checks the fictional mandate fit.",
                 color: "#047857",
@@ -106,7 +106,7 @@ export function demoWorkspaceSeedWire() {
                 revisions: [
                     revision(
                         "rev-portfolio-1",
-                        "You are the Portfolio Analyst.",
+                        "You are Leena.",
                         "Initial authored role."
                     ),
                 ],
@@ -145,7 +145,7 @@ export function demoWorkspaceSeedWire() {
                 role: "participant-notes",
                 destination_kinds: ["stack"],
                 description:
-                    "Private credit working notes. Only the Credit Analyst is assigned to this knowledge stack.",
+                    "Private credit working notes. Only Mira is assigned to this knowledge stack.",
                 accessible_label: "Credit analyst notes, Markdown, two chunks",
                 provenance: "demo-authored",
                 rights_status: "approved-for-upload",
@@ -166,7 +166,7 @@ export function demoWorkspaceSeedWire() {
                 role: "mandate-material",
                 destination_kinds: ["stack"],
                 description:
-                    "Fictional portfolio mandate for the Portfolio Analyst knowledge stack, with explicit record limits.",
+                    "Fictional portfolio mandate for Leena's knowledge stack, with explicit record limits.",
                 accessible_label: "Portfolio mandate, Markdown, three chunks",
                 provenance: "demo-authored",
                 rights_status: "approved-for-upload",

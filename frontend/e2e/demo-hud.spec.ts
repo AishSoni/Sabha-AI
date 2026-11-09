@@ -275,7 +275,7 @@ test.describe("contextual demo tutorial", () => {
 
         await page.getByRole("link", { name: "Personas" }).click();
         await expect(hud.getByText("Open a persona")).toBeVisible();
-        await page.getByRole("link", { name: /The Credit Analyst/ }).click();
+        await page.getByRole("link", { name: /Mira/ }).click();
         await expect(hud.getByText("Open its prompt versions")).toBeVisible();
         await page.getByRole("tab", { name: /System Prompt/ }).click();
         await expect(hud.getByText("View an earlier version")).toBeVisible();

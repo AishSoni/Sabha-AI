@@ -59,7 +59,7 @@ function Harness({
                 onOpenChange={setOpen}
                 samples={[SHARED, MANDATE]}
                 destinationLabel="Credit evidence stack"
-                audienceLabel="Who can retrieve: The Credit Analyst and The Downside Reviewer."
+                audienceLabel="Who can retrieve: Mira and Arjun."
                 isAlreadyAdded={(sample) => added.includes(sample.sampleId)}
                 onConfirm={onConfirm}
                 renderPreviewAction={(sample) => (
@@ -83,7 +83,7 @@ describe("sample picker", () => {
         expect(screen.getByText("1 KB")).toBeTruthy();
         expect(screen.getByText(/Credit evidence stack/)).toBeTruthy();
         expect(
-            screen.getByText(/The Credit Analyst and The Downside Reviewer/)
+            screen.getByText(/Mira and Arjun/)
         ).toBeTruthy();
         expect(
             screen.getByText(/Your own files are never opened/)

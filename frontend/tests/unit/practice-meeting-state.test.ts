@@ -48,9 +48,9 @@ describe("local practice meeting state", () => {
         expect(meeting.name).toBe("Temporary downside review");
         expect(meeting.agenda).toBe("Review the down case.");
         expect(meeting.participants).toHaveLength(2);
-        expect(meeting.participants[0].name).toBe("The Credit Analyst");
+        expect(meeting.participants[0].name).toBe("Mira");
         expect(meeting.participants[0].composedPrompt).toContain(
-            "You are the Credit Analyst."
+            "You are Mira."
         );
         expect(meeting.participants[0].stackIds).toEqual([
             "shared-fact-sheet",

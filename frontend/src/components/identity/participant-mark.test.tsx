@@ -34,7 +34,7 @@ describe("dddynamite participant identity", () => {
       <ParticipantMark
         participant={{
           id: "credit-analyst",
-          name: "The Credit Analyst",
+          name: "Mira",
           color: "#6366f1",
         }}
       />,

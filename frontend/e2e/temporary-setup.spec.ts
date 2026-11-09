@@ -81,15 +81,15 @@ test.describe("temporary practice setup", () => {
         }).first();
         await captured.locator("summary").click();
         const capturedPrompt = await captured.locator("pre").innerText();
-        expect(capturedPrompt).toContain("You are The Credit Analyst");
+        expect(capturedPrompt).toContain("You are Mira");
         expect(capturedPrompt).not.toContain("Practice template changed after setup");
         await expect(page.getByText(/Saved stacks:/).first()).toBeVisible();
 
         // Change the originating template after the setup was captured.
         await page.getByRole("link", { name: "Personas", exact: true }).click();
-        await page.getByRole("link", { name: "The Credit Analyst" }).click();
+        await page.getByRole("link", { name: "Mira" }).click();
         await expect(
-            page.getByRole("heading", { name: "The Credit Analyst" })
+            page.getByRole("heading", { name: "Mira" })
         ).toBeVisible();
         await page.getByRole("tab", { name: "System Prompt" }).click();
         const prompt = page.getByPlaceholder(
@@ -119,7 +119,7 @@ test.describe("temporary practice setup", () => {
             .click();
         await expect(
             page.getByRole("heading", {
-                name: "Credit evidence (private to The Credit Analyst)",
+                name: "Credit evidence (private to Mira)",
             })
         ).toBeVisible();
         await page.getByRole("button", { name: "Add sample" }).click();

@@ -63,7 +63,7 @@ test.describe("mixed operator and demo isolation", () => {
         const network = guardNetwork(demo);
         await demo.goto("/demo");
         await demo.getByRole("link", { name: "Personas" }).click();
-        await demo.getByRole("link", { name: "The Credit Analyst" }).click();
+        await demo.getByRole("link", { name: "Mira" }).click();
         await demo.getByRole("tab", { name: "System Prompt" }).click();
         const prompt = demo.getByPlaceholder(
             "Define this persona's personality, expertise, and behavior..."
@@ -101,7 +101,7 @@ test.describe("mixed operator and demo isolation", () => {
 
         // A new demo edit survives the operator losing its local session.
         await demo.getByRole("link", { name: "Personas" }).click();
-        await demo.getByRole("link", { name: "The Credit Analyst" }).click();
+        await demo.getByRole("link", { name: "Mira" }).click();
         await demo.getByRole("tab", { name: "System Prompt" }).click();
         await demo
             .getByPlaceholder(
@@ -120,7 +120,7 @@ test.describe("mixed operator and demo isolation", () => {
         await operatorContext.close();
 
         await demo.getByRole("link", { name: "Personas" }).click();
-        await demo.getByRole("link", { name: "The Credit Analyst" }).click();
+        await demo.getByRole("link", { name: "Mira" }).click();
         await demo.getByRole("tab", { name: "System Prompt" }).click();
         await expect(
             demo.getByPlaceholder(

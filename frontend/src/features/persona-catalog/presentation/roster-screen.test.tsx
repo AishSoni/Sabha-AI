@@ -13,7 +13,7 @@ import { RosterScreen } from "./roster-screen";
 
 const persona: Persona = {
     id: "persona-1",
-    name: "The Credit Analyst",
+    name: "Mira",
     subtitle: "Credit Analyst",
     color: "#2563eb",
     avatar_url: null,
@@ -34,7 +34,7 @@ function fakeClient(): PersonaCatalogClient {
         create: vi.fn().mockResolvedValue({
             ...persona,
             id: "persona-2",
-            name: "The Credit Analyst (Copy)",
+            name: "Mira (Copy)",
         }),
         update: vi.fn(),
         delete: vi.fn().mockResolvedValue(undefined),
@@ -59,13 +59,13 @@ describe("shared roster command flow", () => {
                 hrefs={{ home: "/", create: "/roster/new", persona: (id) => `/roster/${id}` }}
             />
         );
-        await screen.findByText("The Credit Analyst");
+        await screen.findByText("Mira");
 
-        await openActions("The Credit Analyst");
+        await openActions("Mira");
         fireEvent.click(await screen.findByText("Duplicate"));
 
         expect(client.create).toHaveBeenCalledWith({
-            name: "The Credit Analyst (Copy)",
+            name: "Mira (Copy)",
             subtitle: "Credit Analyst",
             color: "#2563eb",
             system_prompt: "Prompt v3",
@@ -74,7 +74,7 @@ describe("shared roster command flow", () => {
             expect.objectContaining({ stack_ids: expect.anything() })
         );
         expect(
-            await screen.findByText("The Credit Analyst (Copy)")
+            await screen.findByText("Mira (Copy)")
         ).toBeInTheDocument();
     });
 
@@ -87,16 +87,16 @@ describe("shared roster command flow", () => {
                 confirmDelete={() => true}
             />
         );
-        await screen.findByText("The Credit Analyst");
+        await screen.findByText("Mira");
 
-        await openActions("The Credit Analyst");
+        await openActions("Mira");
         fireEvent.click(await screen.findByText("Delete"));
 
         await waitFor(() =>
             expect(client.delete).toHaveBeenCalledWith("persona-1")
         );
         expect(
-            screen.queryByText("The Credit Analyst")
+            screen.queryByText("Mira")
         ).not.toBeInTheDocument();
     });
 });

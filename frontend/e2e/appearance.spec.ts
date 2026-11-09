@@ -96,7 +96,7 @@ test.describe("appearance lifecycle", () => {
         await page.emulateMedia({ colorScheme: "dark" });
         await page.goto("/demo/roster/persona-credit/history");
         await expect(
-            page.getByRole("heading", { name: "The Credit Analyst" })
+            page.getByRole("heading", { name: "Mira" })
         ).toBeVisible();
 
         const prompt = page.getByPlaceholder(

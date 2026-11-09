@@ -175,7 +175,7 @@ test.describe("recorded replay resilience", () => {
         await page.goto("/demo/knowledge-stacks/credit-private");
         await expect(
             page.getByRole("heading", {
-                name: "Credit evidence (private to The Credit Analyst)",
+                name: "Credit evidence (private to Mira)",
             })
         ).toBeVisible();
 

@@ -262,9 +262,9 @@ describe("demo practice meetings", () => {
                 ).toBeInTheDocument(),
             { timeout: 3000 }
         );
-        expect(screen.getByText("The Credit Analyst")).toBeInTheDocument();
-        expect(screen.getByText("The Downside Reviewer")).toBeInTheDocument();
-        expect(screen.getByText("The Portfolio Analyst")).toBeInTheDocument();
+        expect(screen.getByText("Mira")).toBeInTheDocument();
+        expect(screen.getByText("Arjun")).toBeInTheDocument();
+        expect(screen.getByText("Leena")).toBeInTheDocument();
         expect(
             screen.getByRole("button", { name: /Discard practice setup/ })
         ).toBeInTheDocument();

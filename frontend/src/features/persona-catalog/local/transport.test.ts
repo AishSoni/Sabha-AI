@@ -8,7 +8,7 @@ function workspace(): WorkspaceLocalState {
         personas: [
             {
                 personaId: "persona-1",
-                name: "The Credit Analyst",
+                name: "Mira",
                 role: "Credit Analyst",
                 description: "Tests the record.",
                 color: "#2563eb",
@@ -170,7 +170,7 @@ describe("local persona request transport", () => {
     it("matches the live duplicate request without copying stacks or history", async () => {
         const { client, getState } = harness();
         const created = await client.create({
-            name: "The Credit Analyst (Copy)",
+            name: "Mira (Copy)",
             subtitle: "Credit Analyst",
             color: "#2563eb",
             system_prompt: "Second prompt",

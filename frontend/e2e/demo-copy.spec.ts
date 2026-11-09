@@ -192,7 +192,7 @@ test.describe("concise demo copy", () => {
 
         await page.goto("/demo/roster/persona-credit");
         await expect(
-            page.getByRole("heading", { name: "The Credit Analyst" })
+            page.getByRole("heading", { name: "Mira" })
         ).toBeVisible({ timeout: 30_000 });
         await expect(
             page.getByText(/Participant vs persona template/)
@@ -202,7 +202,7 @@ test.describe("concise demo copy", () => {
         await page.goto("/demo/knowledge-stacks/credit-private");
         await expect(
             page.getByRole("heading", {
-                name: "Credit evidence (private to The Credit Analyst)",
+                name: "Credit evidence (private to Mira)",
             })
         ).toBeVisible({ timeout: 30_000 });
         await expect(page.getByText("Saved participants")).toBeVisible();

@@ -36,7 +36,7 @@ export const DEMO_STACK_LABELS: Record<string, string> = {
 export const DEMO_BOARD_PARTICIPANTS = [
     {
         participant_id: DEMO_PARTICIPANT_IDS.credit,
-        name: "The Credit Analyst",
+        name: "Mira",
         role: "credit",
         persona_summary:
             "Assess the issuer's credit quality and the evidence behind the coupon.",
@@ -45,7 +45,7 @@ export const DEMO_BOARD_PARTICIPANTS = [
     },
     {
         participant_id: DEMO_PARTICIPANT_IDS.downside,
-        name: "The Downside Reviewer",
+        name: "Arjun",
         role: "risk",
         persona_summary:
             "Stress the case and name the assumptions that would break it.",
@@ -54,7 +54,7 @@ export const DEMO_BOARD_PARTICIPANTS = [
     },
     {
         participant_id: DEMO_PARTICIPANT_IDS.portfolio,
-        name: "The Portfolio Analyst",
+        name: "Leena",
         role: "portfolio",
         persona_summary:
             "Test whether the mandate permits the position and how it fits the book.",

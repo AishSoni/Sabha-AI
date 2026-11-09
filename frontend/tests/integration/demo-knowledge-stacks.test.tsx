@@ -295,7 +295,7 @@ describe("demo knowledge stacks", () => {
         expect(screen.getAllByText(/1 document/)).toHaveLength(4);
         expect(screen.getAllByText(/1 ready/)).toHaveLength(4);
         expect(
-            screen.getAllByText(/Assigned to The Credit Analyst/).length
+            screen.getAllByText(/Assigned to Mira/).length
         ).toBeGreaterThan(0);
         expect(calls.every((call) => call.url.startsWith(`${API}/replay/`))).toBe(
             true
