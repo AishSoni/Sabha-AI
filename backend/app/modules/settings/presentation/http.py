@@ -5,6 +5,7 @@ Settings API endpoints for provider configuration and API key testing.
 from typing import List, Literal, Optional
 import asyncio
 import ipaddress
+import logging
 import socket
 from urllib.parse import urlsplit
 
@@ -25,6 +26,8 @@ from app.platform.config import settings
 from app.modules.settings.infrastructure.system_ai import save_system_ai_config
 from app.presentation.dependencies import get_system_ai_policy_reader
 
+logger = logging.getLogger(__name__)
+
 
 # --------------------------------------------------------------------------
 # Ollama destination trust gate (SSRF defense for settings probes).
@@ -38,15 +41,21 @@ def _ollama_client() -> httpx.AsyncClient:
     return httpx.AsyncClient(follow_redirects=False)
 
 
+UNTRUSTED_OLLAMA_MESSAGE = (
+    "The Ollama endpoint must use a trusted configured origin without "
+    "embedded credentials."
+)
+
+
 def _normalized_origin(url: str) -> str:
     """Normalize an origin to scheme://host:port for allowlist comparison."""
     parts = urlsplit(url.strip())
     scheme = (parts.scheme or "").lower()
     host = (parts.hostname or "").lower()
     if scheme not in ("http", "https") or not host:
-        raise ValueError(f"Ollama origin {url!r} is not a trusted configured destination")
+        raise ValueError(UNTRUSTED_OLLAMA_MESSAGE)
     if "@" in (parts.netloc or ""):
-        raise ValueError(f"Ollama origin {url!r} is not a trusted configured destination")
+        raise ValueError(UNTRUSTED_OLLAMA_MESSAGE)
     port = parts.port
     if port is None:
         port = 443 if scheme == "https" else 80
@@ -66,7 +75,7 @@ async def _ensure_trusted_ollama_destination(base_url: str) -> None:
     """Refuse to send Ollama probes anywhere outside the trusted origins."""
     origin = _normalized_origin(base_url)
     if origin not in _trusted_ollama_origins():
-        raise ValueError(f"Ollama origin {origin} is not a trusted configured destination")
+        raise ValueError(UNTRUSTED_OLLAMA_MESSAGE)
 
     parts = urlsplit(base_url)
     try:
@@ -75,13 +84,13 @@ async def _ensure_trusted_ollama_destination(base_url: str) -> None:
         )
     except socket.gaierror as exc:
         raise ValueError(
-            f"Ollama destination {origin} could not be resolved — not a trusted configured destination"
+            "The Ollama endpoint could not be resolved to a trusted configured destination."
         ) from exc
 
     addresses = {info[4][0] for info in infos if info[0] in (socket.AF_INET, socket.AF_INET6)}
     if not addresses:
         raise ValueError(
-            f"Ollama destination {origin} resolves to no usable address — refusing to probe"
+            "The Ollama endpoint resolves to no usable address; refusing to probe."
         )
 
     dangerous = []
@@ -96,8 +105,8 @@ async def _ensure_trusted_ollama_destination(base_url: str) -> None:
 
     if dangerous:
         raise ValueError(
-            f"Ollama destination {origin} resolves to protected networks {sorted(dangerous)}"
-            " — not a trusted configured destination"
+            "The Ollama endpoint resolves to a protected network; "
+            "not a trusted configured destination."
         )
 
     # Cross-class resolution (e.g. loopback + public in one answer set) is the
@@ -113,8 +122,8 @@ async def _ensure_trusted_ollama_destination(base_url: str) -> None:
             classes.add("other")
     if len(classes) > 1:
         raise ValueError(
-            f"Ollama destination {origin} resolves across {sorted(classes)} network classes"
-            " — DNS rebinding suspected"
+            "The Ollama endpoint resolves across network classes; "
+            "not a trusted configured destination."
         )
 
 
@@ -237,8 +246,39 @@ async def fetch_models(request: FetchModelsRequest):
         else:
             return FetchModelsResponse(success=False, message=f"Unknown provider: {request.provider}")
     
-    except Exception as e:
-        return FetchModelsResponse(success=False, message=str(e))
+    except httpx.HTTPStatusError as exc:
+        logger.warning(
+            "Model discovery failed for %s with HTTP %s",
+            request.provider,
+            exc.response.status_code,
+        )
+        return FetchModelsResponse(
+            success=False,
+            message=f"Model discovery failed with HTTP {exc.response.status_code}.",
+        )
+    except httpx.HTTPError as exc:
+        logger.warning(
+            "Model discovery transport failure for %s: %s",
+            request.provider,
+            type(exc).__name__,
+        )
+        return FetchModelsResponse(
+            success=False,
+            message="Model discovery failed because the provider could not be reached.",
+        )
+    except ValueError as exc:
+        # The Ollama trust gate raises only sanitized, actionable messages.
+        return FetchModelsResponse(success=False, message=str(exc))
+    except Exception as exc:  # noqa: BLE001 - never echo raw provider/storage errors
+        logger.warning(
+            "Model discovery failed for %s: %s",
+            request.provider,
+            type(exc).__name__,
+        )
+        return FetchModelsResponse(
+            success=False,
+            message="Model discovery failed for this provider.",
+        )
 
 
 async def _fetch_openrouter_models(api_key: str) -> FetchModelsResponse:
@@ -278,13 +318,13 @@ async def _fetch_gemini_models(api_key: str) -> FetchModelsResponse:
     """Fetch models from Gemini API."""
     async with httpx.AsyncClient() as client:
         response = await client.get(
-            f"https://generativelanguage.googleapis.com/v1beta/models?key={api_key}",
+            "https://generativelanguage.googleapis.com/v1beta/models",
+            headers={"x-goog-api-key": api_key},
             timeout=15.0,
         )
         
         if response.status_code in (400, 403):
-            error = response.json().get("error", {})
-            return FetchModelsResponse(success=False, message=error.get("message", "Invalid API key"))
+            return FetchModelsResponse(success=False, message="Invalid API key")
         
         response.raise_for_status()
         data = response.json()
@@ -343,7 +383,10 @@ async def _fetch_ollama_models(base_url: str) -> FetchModelsResponse:
         except httpx.ConnectError:
             return FetchModelsResponse(
                 success=False,
-                message=f"Cannot connect to Ollama at {base_url}. Is Ollama running?",
+                message=(
+                    "Cannot connect to the configured Ollama endpoint. "
+                    "Is Ollama running?"
+                ),
             )
 
 
@@ -361,11 +404,40 @@ async def test_api_key(request: TestKeyRequest):
         elif request.provider == "ollama":
             return await _test_ollama_connection(request.base_url or settings.ollama_base_url)
         else:
-            raise HTTPException(status_code=400, detail=f"Unknown provider: {request.provider}")
-    except httpx.HTTPError as e:
-        return TestKeyResponse(valid=False, message=f"Connection error: {str(e)}")
-    except Exception as e:
-        return TestKeyResponse(valid=False, message=f"Error: {str(e)}")
+            raise HTTPException(status_code=400, detail="Unknown provider")
+    except httpx.HTTPStatusError as exc:
+        logger.warning(
+            "Connection test failed for %s with HTTP %s",
+            request.provider,
+            exc.response.status_code,
+        )
+        return TestKeyResponse(
+            valid=False,
+            message=f"Connection test failed with HTTP {exc.response.status_code}.",
+        )
+    except httpx.HTTPError as exc:
+        logger.warning(
+            "Connection test transport failure for %s: %s",
+            request.provider,
+            type(exc).__name__,
+        )
+        return TestKeyResponse(
+            valid=False,
+            message="Connection test failed because the provider could not be reached.",
+        )
+    except ValueError as exc:
+        # The Ollama trust gate raises only sanitized, actionable messages.
+        return TestKeyResponse(valid=False, message=str(exc))
+    except Exception as exc:  # noqa: BLE001 - never echo raw provider/storage errors
+        logger.warning(
+            "Connection test failed for %s: %s",
+            request.provider,
+            type(exc).__name__,
+        )
+        return TestKeyResponse(
+            valid=False,
+            message="Connection test failed for this provider.",
+        )
 
 
 async def _test_openrouter_key(api_key: str) -> TestKeyResponse:
@@ -397,13 +469,13 @@ async def _test_gemini_key(api_key: str) -> TestKeyResponse:
     """Test Gemini API key by listing models."""
     async with httpx.AsyncClient() as client:
         response = await client.get(
-            f"https://generativelanguage.googleapis.com/v1beta/models?key={api_key}",
+            "https://generativelanguage.googleapis.com/v1beta/models",
+            headers={"x-goog-api-key": api_key},
             timeout=10.0,
         )
         
         if response.status_code == 400 or response.status_code == 403:
-            error = response.json().get("error", {})
-            return TestKeyResponse(valid=False, message=error.get("message", "Invalid API key"))
+            return TestKeyResponse(valid=False, message="Invalid API key")
         
         response.raise_for_status()
         data = response.json()
@@ -435,11 +507,14 @@ async def _test_ollama_connection(base_url: str) -> TestKeyResponse:
             
             return TestKeyResponse(
                 valid=True,
-                message=f"Connected to Ollama at {base_url}",
+                message="Connected to the configured Ollama endpoint.",
                 models=models if models else ["No models installed"],
             )
         except httpx.ConnectError:
             return TestKeyResponse(
                 valid=False,
-                message=f"Cannot connect to Ollama at {base_url}. Is Ollama running?",
+                message=(
+                    "Cannot connect to the configured Ollama endpoint. "
+                    "Is Ollama running?"
+                ),
             )
