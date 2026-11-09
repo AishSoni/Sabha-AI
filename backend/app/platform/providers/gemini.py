@@ -117,11 +117,12 @@ class GeminiProvider(LLMProvider):
         if tools:
             payload["tools"] = self._convert_tools(tools)
         
-        url = f"{self.base_url}/models/{self.model}:generateContent?key={self.api_key}"
+        url = f"{self.base_url}/models/{self.model}:generateContent"
         
         async with httpx.AsyncClient() as client:
             response = await client.post(
                 url,
+                headers={"x-goog-api-key": self.api_key},
                 json=payload,
                 timeout=60.0
             )
@@ -206,12 +207,13 @@ class GeminiProvider(LLMProvider):
             payload["tools"] = self._convert_tools(tools)
         
         # Use streamGenerateContent for streaming
-        url = f"{self.base_url}/models/{self.model}:streamGenerateContent?key={self.api_key}&alt=sse"
+        url = f"{self.base_url}/models/{self.model}:streamGenerateContent?alt=sse"
         
         async with httpx.AsyncClient() as client:
             async with client.stream(
                 "POST",
                 url,
+                headers={"x-goog-api-key": self.api_key},
                 json=payload,
                 timeout=120.0
             ) as response:
