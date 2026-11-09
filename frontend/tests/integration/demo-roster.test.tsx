@@ -361,6 +361,9 @@ describe("demo persona catalog", () => {
         await renderAt("/demo/roster/new");
 
         await screen.findByRole("heading", { name: "Create AI Persona" });
+        expect(
+            screen.getByRole("link", { name: "Back to roster" })
+        ).toHaveAttribute("href", "/demo/roster");
         fireEvent.change(screen.getByLabelText(/^Name/), {
             target: { value: "The Demo Analyst" },
         });

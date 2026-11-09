@@ -79,6 +79,7 @@ export interface MeetingCreationScreenProps {
     heading?: string;
     description?: string;
     backHref?: string;
+    backLabel?: string;
     createLabel?: string;
     busyLabel?: string;
     footerNote?: string;
@@ -118,6 +119,7 @@ export function MeetingCreationScreen({
     heading = 'Create meeting',
     description = 'Set up a new AI advisory meeting',
     backHref = '/',
+    backLabel = 'Back to home',
     createLabel = 'Create meeting',
     busyLabel = 'Creating meeting…',
     footerNote,
@@ -138,7 +140,11 @@ export function MeetingCreationScreen({
             <header className="material-chrome sticky top-0 z-chrome border-b border-separator">
                 <div className="max-w-4xl mx-auto px-6 py-4 flex items-center justify-between">
                     <div className="flex items-center gap-4">
-                        <Link href={backHref} className="text-ink-secondary hover:text-ink transition-colors">
+                        <Link
+                            href={backHref}
+                            className="text-ink-secondary hover:text-ink transition-colors"
+                            aria-label={backLabel}
+                        >
                             <ArrowLeft className="w-5 h-5" />
                         </Link>
                         <div>
@@ -332,6 +338,8 @@ export function MeetingCreationScreen({
                                                 size="sm"
                                                 onClick={onRefreshRoster}
                                                 disabled={loadingRoster}
+                                                aria-label="Refresh participant roster"
+                                                aria-busy={loadingRoster}
                                                 className="text-ink-secondary hover:text-ink h-7 px-2"
                                             >
                                                 <RefreshCw className={`w-3 h-3 ${loadingRoster ? 'animate-spin motion-reduce:animate-none' : ''}`} />
@@ -359,21 +367,17 @@ export function MeetingCreationScreen({
                                 ) : (
                                     <div className="space-y-2 max-h-[400px] overflow-y-auto pr-1">
                                         {roster.map((persona) => (
-                                            <div
+                                            <label
                                                 key={persona.id}
                                                 className={`m-state flex items-center gap-3 rounded-control border p-3 ${configLocked ? 'cursor-not-allowed opacity-70' : 'cursor-pointer'} ${persona.selected
                                                     ? 'border-action bg-surface-selected'
                                                     : 'border-separator bg-surface/50'
                                                     }`}
-                                                onClick={() => {
-                                                    if (!configLocked) onToggleRoster(persona.id);
-                                                }}
                                                 aria-disabled={configLocked}
                                             >
                                                 <Checkbox
                                                     checked={persona.selected}
                                                     disabled={configLocked}
-                                                    onClick={(event) => event.stopPropagation()}
                                                     onCheckedChange={() => onToggleRoster(persona.id)}
                                                 />
                                                 <ParticipantMark
@@ -390,7 +394,7 @@ export function MeetingCreationScreen({
                                                         <p className="text-xs text-ink-muted truncate">Role: {persona.subtitle}</p>
                                                     )}
                                                 </div>
-                                            </div>
+                                            </label>
                                         ))}
                                     </div>
                                 )}

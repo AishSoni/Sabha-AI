@@ -342,6 +342,27 @@ describe('create meeting roster reconciliation', () => {
         expect(screen.getAllByRole('checkbox')[0]).not.toBeChecked();
     });
 
+    it('names navigation and roster controls and toggles from the row label', async () => {
+        scripted.enqueueJson(200, catalog([persona()]));
+
+        render(
+            <Wrapper>
+                <NewMeetingPage />
+            </Wrapper>
+        );
+        await screen.findByText('The Investor');
+
+        expect(screen.getByRole('link', { name: 'Back to home' })).toHaveAttribute('href', '/');
+        expect(
+            screen.getByRole('button', { name: 'Refresh participant roster' })
+        ).toBeEnabled();
+
+        const checkbox = screen.getByRole('checkbox', { name: /The Investor/ });
+        expect(checkbox).toBeChecked();
+        fireEvent.click(screen.getByText('The Investor'));
+        expect(checkbox).not.toBeChecked();
+    });
+
     it('keeps submission disabled without an agenda or a selectable roster', async () => {
         scripted.enqueueJson(200, catalog([]));
         const first = render(

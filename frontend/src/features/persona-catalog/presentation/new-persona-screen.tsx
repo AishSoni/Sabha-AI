@@ -118,7 +118,11 @@ export function NewPersonaScreen({ client, loadStacks, routes, stacksHint }: New
             <header className="material-chrome sticky top-0 z-chrome border-b border-separator">
                 <div className="max-w-4xl mx-auto px-6 py-4 flex items-center justify-between">
                     <div className="flex items-center gap-4">
-                        <Link href={routes.roster} className="text-ink-secondary hover:text-ink m-control">
+                        <Link
+                            href={routes.roster}
+                            className="text-ink-secondary hover:text-ink m-control"
+                            aria-label="Back to roster"
+                        >
                             <ArrowLeft className="w-5 h-5" />
                         </Link>
                         <div>
