@@ -366,7 +366,10 @@ export interface ParticipantActionProps {
 
 export interface MeetingsRuntimeSlots {
     documentPanel?: ComponentType<{ meetingId: string }>;
-    summaryPanel?: ComponentType<{ meeting: MeetingWithParticipants }>;
+    summaryPanel?: ComponentType<{
+        meeting: MeetingWithParticipants;
+        closed?: boolean;
+    }>;
     participantAction?: ComponentType<ParticipantActionProps>;
     directorAction?: ComponentType;
     /** Live supplies vault-aware preflight; replay uses the shared panel. */

@@ -168,7 +168,7 @@ describe('MeetingRoom', () => {
         renderRoom();
         expect(await screen.findByText('Product review')).toBeInTheDocument();
         expect(screen.getByText('Decide the launch date')).toBeInTheDocument();
-        expect(screen.getByRole('button', { name: /Investor/ })).toBeInTheDocument();
+        expect(await screen.findByRole('button', { name: /Investor/ })).toBeInTheDocument();
     });
 
     it('sends a user message through the canonical mutation and appends it', async () => {
@@ -683,6 +683,64 @@ describe('MeetingRoom', () => {
                 (call) => call.method === 'POST' && call.url.includes('/closing')
             )
         ).toHaveLength(0);
+    });
+
+    it('disables summary generation when the meeting closes while the panel is open', async () => {
+        const transcript = messageWire('Opening remarks');
+        const savedSummary = {
+            ...messageWire('Interim summary'),
+            id: '44444444-4444-4444-8444-444444444444',
+            sender_type: 'system',
+            sender_name: 'System AI',
+            content: 'Interim summary',
+        };
+        installRouter({
+            '/settings/providers': () =>
+                json(200, {
+                    providers: [],
+                    environment: {
+                        is_production: false,
+                        configured_providers: [],
+                        default_provider: '',
+                        default_models: {},
+                    },
+                    system_ai: {
+                        provider: 'ollama',
+                        model: 'llama3.2',
+                        temperature: 0.5,
+                        max_tokens: 2048,
+                    },
+                }),
+            [`/meetings/${MEETING_ID}`]: () =>
+                json(200, {
+                    ...meetingWire(),
+                    messages: [transcript, savedSummary],
+                }),
+        });
+        renderRoom();
+        await screen.findByText('Product review');
+
+        fireEvent.mouseDown(screen.getByRole('tab', { name: /Summary/ }));
+        const generate = await screen.findByRole('button', {
+            name: /Generate summary/,
+        });
+        expect(generate).toBeEnabled();
+
+        act(() => {
+            getQueryClient().setQueryData(meetingKeys.detail(MEETING_ID), {
+                ...meetingWire(),
+                status: 'ended',
+                messages: [transcript, savedSummary],
+            });
+        });
+
+        await waitFor(() => expect(generate).toBeDisabled());
+        expect(
+            screen.getByText(
+                'This meeting is closed. Saved summaries remain readable, but new summaries cannot be generated.'
+            )
+        ).toBeInTheDocument();
+        expect(screen.getByText('Interim summary')).toBeInTheDocument();
     });
 
     it('does not render fabricated private knowledge files', async () => {

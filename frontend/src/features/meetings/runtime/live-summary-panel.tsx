@@ -21,8 +21,10 @@ import { useGenerateSummary } from "../api/mutations";
  */
 export function LiveSummaryPanel({
     meeting,
+    closed = false,
 }: {
     meeting: MeetingWithParticipants;
+    closed?: boolean;
 }) {
     const providersQuery = useProvidersEnvironment();
     const getProviderApiKey = useSettingsStore((state) => state.getProviderApiKey);
@@ -31,6 +33,14 @@ export function LiveSummaryPanel({
         .filter((message) => message.sender_type === "system")
         .slice()
         .reverse();
+    const hasTranscript = (meeting.messages ?? []).some(
+        (message) => message.sender_type !== "system"
+    );
+    const restriction = closed
+        ? "This meeting is closed. Saved summaries remain readable, but new summaries cannot be generated."
+        : hasTranscript
+          ? null
+          : "Send at least one message before generating a summary.";
 
     const systemAiProvider =
         providersQuery.data?.systemAI.provider ||
@@ -54,14 +64,15 @@ export function LiveSummaryPanel({
                     <div>
                         <h3 className="type-section-title">Meeting Summary</h3>
                         <p className="type-body text-ink-secondary">
-                            Summaries are generated on demand and saved to the transcript.
+                            {restriction ??
+                                "Summaries are generated on demand and saved to the transcript."}
                         </p>
                     </div>
                     <Button
                         onClick={generate}
                         busy={generateSummary.isPending}
                         busyLabel="Generating summary"
-                        disabled={(meeting.messages ?? []).length === 0}
+                        disabled={closed || !hasTranscript}
                         className="shrink-0"
                     >
                         <Scroll className="mr-2 size-4" />

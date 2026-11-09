@@ -594,7 +594,7 @@ function MeetingConversation({
 
                     {capabilities.summary && SummaryPanel && (
                         <TabsContent value="summary" className="m-0 min-h-0 flex-1 bg-surface">
-                            <SummaryPanel meeting={meeting} />
+                            <SummaryPanel meeting={meeting} closed={ended} />
                         </TabsContent>
                     )}
 
