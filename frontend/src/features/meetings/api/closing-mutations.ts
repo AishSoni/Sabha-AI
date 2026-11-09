@@ -12,11 +12,31 @@
 import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { combineSignals } from '@/shared/runtime/scope';
 import type { MeetingsRuntime } from '../runtime/contract';
-import type { RequestClosingInput } from './closing-decoders';
+import type {
+    ClosingProviderKeys,
+    RequestClosingInput,
+} from './closing-decoders';
 import type { ClosingReceipt, ClosingView } from './closing-decoders';
 
 export interface RequestClosingVariables extends RequestClosingInput {
     meetingId: string;
+    /** Providers whose browser keys should be resolved at command time. */
+    providersToResolve?: string[];
+}
+
+export type RetryClosingVariables =
+    | string
+    | {
+          meetingId: string;
+          providersToResolve?: string[];
+      };
+
+export interface ClosingCommandHooks {
+    /**
+     * Invoked inside the mutation, never stored in mutation variables. The
+     * returned map exists only for the duration of the HTTP call.
+     */
+    resolveProviderKeys?: (providers: string[]) => ClosingProviderKeys;
 }
 
 export function createClosingRequestKey(): string {
@@ -39,16 +59,35 @@ function refreshAfterStateChange(
     void queryClient.invalidateQueries({
         queryKey: runtime.keys.turnList(meetingId),
     });
+    const capabilityKey = runtime.keys.closingCapability?.(meetingId);
+    if (capabilityKey) {
+        void queryClient.invalidateQueries({ queryKey: capabilityKey });
+    }
 }
 
-export function useRequestClosing(runtime: MeetingsRuntime) {
+export function useRequestClosing(
+    runtime: MeetingsRuntime,
+    hooks: ClosingCommandHooks = {}
+) {
     const queryClient = useQueryClient();
     return useMutation({
-        mutationFn: async ({ meetingId, ...input }: RequestClosingVariables) =>
-            runtime.commands.requestClosing(meetingId, {
-                ...input,
-                signal: combineSignals(runtime.signal, input.signal),
-            }),
+        mutationFn: async ({
+            meetingId,
+            providersToResolve,
+            ...input
+        }: RequestClosingVariables) => {
+            const providerKeys = hooks.resolveProviderKeys?.(
+                providersToResolve ?? []
+            );
+            return runtime.commands.requestClosing(
+                meetingId,
+                {
+                    ...input,
+                    signal: combineSignals(runtime.signal, input.signal),
+                },
+                { providerKeys }
+            );
+        },
         onSuccess: (_receipt: ClosingReceipt, variables: RequestClosingVariables) => {
             refreshAfterStateChange(queryClient, variables.meetingId, runtime);
             void queryClient.invalidateQueries({
@@ -58,11 +97,24 @@ export function useRequestClosing(runtime: MeetingsRuntime) {
     });
 }
 
-export function useRetryClosing(runtime: MeetingsRuntime) {
+export function useRetryClosing(
+    runtime: MeetingsRuntime,
+    hooks: ClosingCommandHooks = {}
+) {
     const queryClient = useQueryClient();
     return useMutation({
-        mutationFn: async (meetingId: string) =>
-            runtime.commands.retryClosing(meetingId, runtime.signal),
+        mutationFn: async (variables: RetryClosingVariables) => {
+            const meetingId =
+                typeof variables === 'string' ? variables : variables.meetingId;
+            const providers =
+                typeof variables === 'string'
+                    ? []
+                    : (variables.providersToResolve ?? []);
+            const providerKeys = hooks.resolveProviderKeys?.(providers);
+            return runtime.commands.retryClosing(meetingId, runtime.signal, {
+                providerKeys,
+            });
+        },
         onSuccess: (view: ClosingView) => {
             queryClient.setQueryData(runtime.keys.closing(view.meeting_id), view);
             refreshAfterStateChange(queryClient, view.meeting_id, runtime);

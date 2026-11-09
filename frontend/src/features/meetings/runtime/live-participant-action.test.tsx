@@ -21,7 +21,7 @@ vi.mock('@/components/ui/rate-limited-button', () => ({
 }));
 
 import { LiveParticipantAction } from './live-participant-action';
-import { useSettingsStore } from '@/features/settings/state/settings-store';
+import { useSettingsStore } from '@/features/settings';
 import type { AIParticipant } from '../api/decoders';
 
 const baseParticipant = {

@@ -290,6 +290,7 @@ function MeetingConversation({
 }: ConversationProps) {
     const runtime = useMeetingsRuntime();
     const { capabilities, slots } = runtime;
+    const ClosingPanelSlot = slots.closingPanel ?? ClosingPanel;
     const turns = useMeetingTurnController({
         meetingId: meeting.id,
         runtime,
@@ -593,7 +594,7 @@ function MeetingConversation({
                         <TabsContent value="closing" className="m-0 min-h-0 flex-1 bg-surface">
                             <div className="h-full overflow-y-auto p-4">
                                 <div className="mx-auto max-w-3xl">
-                                    <ClosingPanel
+                                    <ClosingPanelSlot
                                         meetingId={meeting.id}
                                         meetingStatus={meeting.status}
                                         textProjection={

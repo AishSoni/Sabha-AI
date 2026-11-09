@@ -14,8 +14,9 @@ import { LiveDocumentsPanel } from "./live-documents-panel";
 import { createLiveEvidence } from "./live-evidence";
 import { LiveParticipantAction } from "./live-participant-action";
 import { LiveSummaryPanel } from "./live-summary-panel";
+import { LiveClosingPanel } from "./live-closing-panel";
 import { generationSummary, resolveEffectiveGeneration } from "./effective-generation";
-import { useSettingsStore } from "@/features/settings/state/settings-store";
+import { useSettingsStore } from '@/features/settings';
 import {
     LIVE_RUNTIME_SCOPE,
     RuntimeScopeProvider,
@@ -28,6 +29,7 @@ const liveKeys = {
     consensus: (meetingId: string) => meetingKeys.consensus(meetingId),
     contextStats: (meetingId: string) => meetingKeys.contextStats(meetingId),
     closing: (meetingId: string) => closingKeys.detail(meetingId),
+    closingCapability: (meetingId: string) => closingKeys.capability(meetingId),
     documents: (meetingId: string) => [...meetingKeys.detail(meetingId), 'documents'] as const,
     turnList: (meetingId: string) => turnKeys.list(meetingId),
     turnDetail: (meetingId: string, operationId: string) =>
@@ -49,6 +51,8 @@ export function createLiveMeetingsRuntime(): MeetingsRuntime {
                 meetingClient.contextStats(meetingId, { signal }),
             closing: (meetingId, signal) =>
                 closingClient.get(meetingId, { signal }),
+            closingCapability: (meetingId, signal) =>
+                closingClient.capability(meetingId, { signal }),
         },
         turns: {
             list: (meetingId, signal) => turnClient.list(meetingId, 100, { signal }),
@@ -63,10 +67,10 @@ export function createLiveMeetingsRuntime(): MeetingsRuntime {
         commands: {
             sendMessage: (meetingId, content, options) =>
                 meetingClient.sendMessage(meetingId, content, options),
-            requestClosing: (meetingId, input) =>
-                closingClient.request(meetingId, input),
-            retryClosing: (meetingId, signal) =>
-                closingClient.retry(meetingId, { signal }),
+            requestClosing: (meetingId, input, options) =>
+                closingClient.request(meetingId, input, options),
+            retryClosing: (meetingId, signal, options) =>
+                closingClient.retry(meetingId, { signal, ...options }),
             abortClosing: (meetingId, signal) =>
                 closingClient.abort(meetingId, { signal }),
         },
@@ -81,6 +85,7 @@ export function createLiveMeetingsRuntime(): MeetingsRuntime {
             documentPanel: LiveDocumentsPanel,
             summaryPanel: LiveSummaryPanel,
             participantAction: LiveParticipantAction,
+            closingPanel: LiveClosingPanel,
         },
         evidence: createLiveEvidence(),
         describeGeneration: (participant) => {

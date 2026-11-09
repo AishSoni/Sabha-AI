@@ -30,6 +30,34 @@ export interface ClosingSummarySettings {
     baseUrl?: string;
 }
 
+/** Request-scoped browser keys selected for the resolved providers only. */
+export type ClosingProviderKeys = Record<string, string>;
+
+export interface ClosingCommandOptions {
+    providerKeys?: ClosingProviderKeys;
+}
+
+/** One vote or summary invocation and its credential requirement. */
+export interface ClosingCredentialRequirement {
+    scope: 'vote' | 'summary';
+    participant_id: string | null;
+    participant_name: string | null;
+    provider: string;
+    model: string;
+    server_configured: boolean;
+    needs_browser_key: boolean;
+    needed: boolean;
+    code: string;
+    message: string;
+}
+
+export interface ClosingCapability {
+    meeting_id: string;
+    ready_for_vote: boolean;
+    ready_for_force: boolean;
+    requirements: ClosingCredentialRequirement[];
+}
+
 /** Stable close intent; a retry must reuse the same request key. */
 export interface RequestClosingInput {
     mode: ClosingMode;
@@ -171,6 +199,67 @@ export function decodeClosingView(value: unknown, path: string): ClosingView {
         created_at: optionalString(record.created_at, `${path}.created_at`) ?? null,
         updated_at: optionalString(record.updated_at, `${path}.updated_at`) ?? null,
         completed_at: optionalString(record.completed_at, `${path}.completed_at`) ?? null,
+    };
+}
+
+export function decodeClosingCapability(
+    value: unknown,
+    path: string,
+): ClosingCapability {
+    const record = decodeObject(value, path);
+    const requirements = requireArray(
+        record.requirements,
+        `${path}.requirements`,
+        (item, childPath) => {
+            const requirement = decodeObject(item, childPath);
+            const scope = requireString(requirement.scope, `${childPath}.scope`);
+            if (scope !== 'vote' && scope !== 'summary') {
+                throw new DecodeError(
+                    `${childPath}.scope: expected vote or summary`,
+                );
+            }
+            const normalizedScope: ClosingCredentialRequirement['scope'] =
+                scope === 'vote' ? 'vote' : 'summary';
+            return {
+                scope: normalizedScope,
+                participant_id:
+                    optionalString(
+                        requirement.participant_id,
+                        `${childPath}.participant_id`,
+                    ) ?? null,
+                participant_name:
+                    optionalString(
+                        requirement.participant_name,
+                        `${childPath}.participant_name`,
+                    ) ?? null,
+                provider: requireString(requirement.provider, `${childPath}.provider`),
+                model: requireString(requirement.model, `${childPath}.model`),
+                server_configured: requireBoolean(
+                    requirement.server_configured,
+                    `${childPath}.server_configured`,
+                ),
+                needs_browser_key: requireBoolean(
+                    requirement.needs_browser_key,
+                    `${childPath}.needs_browser_key`,
+                ),
+                needed: requireBoolean(requirement.needed, `${childPath}.needed`),
+                code: requireString(requirement.code, `${childPath}.code`),
+                message: requireString(requirement.message, `${childPath}.message`),
+            };
+        },
+    );
+
+    return {
+        meeting_id: requireString(record.meeting_id, `${path}.meeting_id`),
+        ready_for_vote: requireBoolean(
+            record.ready_for_vote,
+            `${path}.ready_for_vote`,
+        ),
+        ready_for_force: requireBoolean(
+            record.ready_for_force,
+            `${path}.ready_for_force`,
+        ),
+        requirements,
     };
 }
 

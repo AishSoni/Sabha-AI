@@ -7,6 +7,7 @@
 import { describe, expect, it } from 'vitest';
 import { DecodeError } from '@/shared/api/decode';
 import {
+    decodeClosingCapability,
     decodeClosingReceipt,
     decodeClosingView,
     isPollingClosingStage,
@@ -92,7 +93,8 @@ describe('decodeClosingView', () => {
     });
 
     it('requires the full closing record shape', () => {
-        const { archived: _archived, ...missing } = viewJson;
+        const missing = { ...viewJson } as Record<string, unknown>;
+        delete missing.archived;
         expect(() => decodeClosingView(missing, 'view')).toThrow(
             /view\.archived: expected a boolean/
         );
@@ -135,5 +137,52 @@ describe('stage classification', () => {
         expect(isSettledClosingStage('failed')).toBe(true);
         expect(isSettledClosingStage('completed')).toBe(true);
         expect(isSettledClosingStage('voting')).toBe(false);
+    });
+});
+
+describe('decodeClosingCapability', () => {
+    it('decodes required vote and summary credentials without key material', () => {
+        const capability = decodeClosingCapability(
+            {
+                meeting_id: 'm-1',
+                ready_for_vote: false,
+                ready_for_force: true,
+                requirements: [
+                    {
+                        scope: 'vote',
+                        participant_id: 'p-1',
+                        participant_name: 'The CTO',
+                        provider: 'gemini',
+                        model: 'gemini-2.0-flash',
+                        server_configured: false,
+                        needs_browser_key: true,
+                        needed: true,
+                        code: 'browser_key_required',
+                        message: 'Provide a browser gemini key.',
+                    },
+                    {
+                        scope: 'summary',
+                        participant_id: null,
+                        participant_name: 'System AI',
+                        provider: 'openrouter',
+                        model: 'anthropic/claude',
+                        server_configured: true,
+                        needs_browser_key: false,
+                        needed: true,
+                        code: 'ready',
+                        message: 'Uses the server openrouter key.',
+                    },
+                ],
+            },
+            'capability'
+        );
+
+        expect(capability.ready_for_vote).toBe(false);
+        expect(capability.requirements[0]).toMatchObject({
+            scope: 'vote',
+            provider: 'gemini',
+            needs_browser_key: true,
+        });
+        expect(JSON.stringify(capability)).not.toContain('sk-');
     });
 });

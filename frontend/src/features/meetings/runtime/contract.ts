@@ -20,7 +20,13 @@ import type {
     Message,
 } from "../api/decoders";
 import type { RequestClosingInput } from "../api/closing-decoders";
-import type { ClosingReceipt, ClosingView } from "../api/closing-decoders";
+import type {
+    ClosingCapability,
+    ClosingCommandOptions,
+    ClosingReceipt,
+    ClosingView,
+} from "../api/closing-decoders";
+import type { ClosingPanelProps } from "../components/ClosingPanel";
 import type { TurnGenerationSettings } from "../api/generation-settings";
 import type { TurnCancelResult, TurnOperation } from "../api/turn-decoders";
 import type { TurnEvent } from "../api/turn-events";
@@ -282,6 +288,11 @@ export interface MeetingsReadsApi {
     consensus(meetingId: string, signal?: AbortSignal): Promise<Consensus[]>;
     contextStats(meetingId: string, signal?: AbortSignal): Promise<ContextStats>;
     closing(meetingId: string, signal?: AbortSignal): Promise<ClosingView>;
+    /** Live-only credential preflight; replay never calls it. */
+    closingCapability?: (
+        meetingId: string,
+        signal?: AbortSignal,
+    ) => Promise<ClosingCapability>;
     documents?(meetingId: string, signal?: AbortSignal): Promise<RecordedDocumentRecord[]>;
 }
 
@@ -321,9 +332,14 @@ export interface MeetingsCommandsApi {
     ): Promise<Message>;
     requestClosing(
         meetingId: string,
-        input: RequestClosingInput
+        input: RequestClosingInput,
+        options?: ClosingCommandOptions,
     ): Promise<ClosingReceipt>;
-    retryClosing(meetingId: string, signal?: AbortSignal): Promise<ClosingView>;
+    retryClosing(
+        meetingId: string,
+        signal?: AbortSignal,
+        options?: ClosingCommandOptions,
+    ): Promise<ClosingView>;
     abortClosing(meetingId: string, signal?: AbortSignal): Promise<ClosingView>;
 }
 
@@ -334,6 +350,7 @@ export interface MeetingsRuntimeKeys {
     consensus(meetingId: string): QueryKey;
     contextStats(meetingId: string): QueryKey;
     closing(meetingId: string): QueryKey;
+    closingCapability?: (meetingId: string) => QueryKey;
     documents(meetingId: string): QueryKey;
     turnList(meetingId: string): QueryKey;
     turnDetail(meetingId: string, operationId: string): QueryKey;
@@ -352,6 +369,8 @@ export interface MeetingsRuntimeSlots {
     summaryPanel?: ComponentType<{ meeting: MeetingWithParticipants }>;
     participantAction?: ComponentType<ParticipantActionProps>;
     directorAction?: ComponentType;
+    /** Live supplies vault-aware preflight; replay uses the shared panel. */
+    closingPanel?: ComponentType<ClosingPanelProps>;
 }
 
 export interface MeetingsPresentation {

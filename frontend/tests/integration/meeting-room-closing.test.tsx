@@ -119,6 +119,14 @@ function installClosingRouter(initial: Partial<ClosingState> = {}) {
                 typeof init?.body === 'string' ? JSON.parse(init.body) : undefined;
             calls.push({ url, method, body });
 
+            if (url.endsWith(`/meetings/${MEETING_ID}/closing/capability`)) {
+                return json(200, {
+                    meeting_id: MEETING_ID,
+                    ready_for_vote: true,
+                    ready_for_force: true,
+                    requirements: [],
+                });
+            }
             if (url.endsWith(`/meetings/${MEETING_ID}/closing`)) {
                 if (method === 'POST') {
                     state.status = 'voting';
@@ -201,8 +209,12 @@ describe('MeetingRoom closing workflow', () => {
 
         expect(await screen.findByRole('heading', { name: 'Close Meeting' })).toBeInTheDocument();
 
-        fireEvent.click(screen.getByRole('button', { name: /Vote to End/i }));
-        fireEvent.click(screen.getByRole('button', { name: /Start Vote/i }));
+        const vote = await screen.findByRole('button', { name: /Vote to End/i });
+        await waitFor(() => expect(vote).toBeEnabled());
+        fireEvent.click(vote);
+        const startVote = await screen.findByRole('button', { name: /Start Vote/i });
+        await waitFor(() => expect(startVote).toBeEnabled());
+        fireEvent.click(startVote);
 
         await waitFor(() => {
             expect(
@@ -323,8 +335,11 @@ describe('MeetingRoom closing workflow', () => {
         renderRoom();
 
         fireEvent.click(await screen.findByRole('button', { name: /Close meeting/i }));
-        fireEvent.click(await screen.findByRole('button', { name: /Force End/ }));
+        const force = await screen.findByRole('button', { name: /Force End/ });
+        await waitFor(() => expect(force).toBeEnabled());
+        fireEvent.click(force);
         const confirm = await screen.findByRole('button', { name: /^Force End$/ });
+        await waitFor(() => expect(confirm).toBeEnabled());
         fireEvent.click(confirm);
 
         await waitFor(() => {

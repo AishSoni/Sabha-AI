@@ -11,7 +11,7 @@ import { QueryClientProvider } from '@tanstack/react-query';
 import { makeQueryClient } from '@/app/providers';
 import { createScriptedFetch, type ScriptedFetch } from '../../../../tests/fixtures/transport';
 import { closingKeys } from './closing-keys';
-import { useClosing } from './closing-queries';
+import { useClosing, useClosingCapability } from './closing-queries';
 import { useAbortClosing, useRequestClosing, useRetryClosing } from './closing-mutations';
 import { useClosingObservation } from './use-closing-observation';
 import { meetingKeys } from './keys';
@@ -45,6 +45,38 @@ const receiptJson = {
     closing_id: 'closing-1',
     stage: 'draining',
     meeting_status: 'voting',
+};
+
+const capabilityJson = {
+    meeting_id: 'meeting-1',
+    ready_for_vote: false,
+    ready_for_force: true,
+    requirements: [
+        {
+            scope: 'vote',
+            participant_id: 'participant-1',
+            participant_name: 'The CTO',
+            provider: 'gemini',
+            model: 'gemini-2.0-flash',
+            server_configured: false,
+            needs_browser_key: true,
+            needed: true,
+            code: 'browser_key_required',
+            message: 'Provide a browser gemini key.',
+        },
+        {
+            scope: 'summary',
+            participant_id: null,
+            participant_name: 'System AI',
+            provider: 'openrouter',
+            model: 'anthropic/claude',
+            server_configured: true,
+            needs_browser_key: false,
+            needed: true,
+            code: 'ready',
+            message: 'Uses the server openrouter key.',
+        },
+    ],
 };
 
 let scripted: ScriptedFetch;
@@ -104,6 +136,22 @@ describe('closing reads', () => {
         );
         expect(scripted.calls[0]?.init?.signal).toBeInstanceOf(AbortSignal);
     });
+
+    it('loads the credential preflight without calling a provider', async () => {
+        scripted.install();
+        scripted.enqueueJson(200, capabilityJson);
+
+        const { result } = renderHook(
+            () => useClosingCapability('meeting-1', true, runtime),
+            { wrapper }
+        );
+
+        await waitFor(() => expect(result.current.data?.ready_for_vote).toBe(false));
+        expect(result.current.data?.requirements[0]?.needs_browser_key).toBe(true);
+        expect(scripted.calls[0]?.input).toBe(
+            'http://localhost:8000/api/meetings/meeting-1/closing/capability'
+        );
+    });
 });
 
 describe('closing commands', () => {
@@ -146,6 +194,55 @@ describe('closing commands', () => {
         expect(invalidated).toContainEqual(closingKeys.detail('meeting-1'));
         expect(invalidated).toContainEqual(meetingKeys.detail('meeting-1'));
         expect(invalidated).toContainEqual(turnKeys.list('meeting-1'));
+    });
+
+    it('resolves only requested provider keys and sends them as headers', async () => {
+        scripted.install();
+        scripted.enqueueJson(202, receiptJson);
+        const resolveProviderKeys = vi.fn(() => ({ gemini: 'sk-synthetic-browser' }));
+        const { result } = renderHook(
+            () => useRequestClosing(runtime, { resolveProviderKeys }),
+            { wrapper }
+        );
+
+        await act(async () => {
+            await result.current.mutateAsync({
+                meetingId: 'meeting-1',
+                mode: 'vote',
+                requestKey: 'request-keyed',
+                providersToResolve: ['gemini'],
+            });
+        });
+
+        expect(resolveProviderKeys).toHaveBeenCalledWith(['gemini']);
+        const headers = new Headers(scripted.calls[0]?.init?.headers);
+        expect(headers.get('x-provider-key-gemini')).toBe('sk-synthetic-browser');
+        expect(String(scripted.calls[0]?.init?.body)).not.toContain(
+            'sk-synthetic-browser'
+        );
+    });
+
+    it('re-supplies keys for a retry without a new close request', async () => {
+        scripted.install();
+        scripted.enqueueJson(202, viewJson({ stage: 'summarizing' }));
+        const resolveProviderKeys = vi.fn(() => ({ gemini: 'sk-retry-browser' }));
+        const { result } = renderHook(
+            () => useRetryClosing(runtime, { resolveProviderKeys }),
+            { wrapper }
+        );
+
+        await act(async () => {
+            await result.current.mutateAsync({
+                meetingId: 'meeting-1',
+                providersToResolve: ['gemini'],
+            });
+        });
+
+        const headers = new Headers(scripted.calls[0]?.init?.headers);
+        expect(headers.get('x-provider-key-gemini')).toBe('sk-retry-browser');
+        expect(scripted.calls[0]?.input).toBe(
+            'http://localhost:8000/api/meetings/meeting-1/closing/retry'
+        );
     });
 
     it('seeds retry and abort snapshots without replaying the request', async () => {

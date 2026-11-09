@@ -9,4 +9,7 @@ export const closingKeys = {
     all: ['closings'] as const,
     /** Progress plus committed result for one meeting. */
     detail: (meetingId: string) => ['closings', 'meeting', meetingId] as const,
+    /** Credential preflight for one meeting (never contains key material). */
+    capability: (meetingId: string) =>
+        ['closings', 'meeting', meetingId, 'capability'] as const,
 };

@@ -26,7 +26,7 @@ import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
 import { isApiError } from '@/shared/api/errors';
 import { useAnchorRef } from '@/features/demo-tutorial';
-import { useClosing } from '../api/closing-queries';
+import { useClosing, useClosingCapability } from '../api/closing-queries';
 import {
     createClosingRequestKey,
     useAbortClosing,
@@ -34,6 +34,7 @@ import {
     useRetryClosing,
 } from '../api/closing-mutations';
 import type {
+    ClosingCredentialRequirement,
     ClosingMode,
     ClosingStage,
     ClosingSummarySettings,
@@ -50,10 +51,17 @@ import {
 import { useMeetingsRuntime } from '../runtime/context';
 import { ClosingGeneratedText } from './ClosingGeneratedText';
 
+export interface ClosingCredentialsApi {
+    status(provider: string): { stored: boolean; unlocked: boolean };
+    resolve(providers: string[]): Record<string, string>;
+}
+
 export interface ClosingPanelProps {
     meetingId: string;
     meetingStatus: MeetingStatus;
     summarySettings?: ClosingSummarySettings;
+    /** Live-only vault capability. Replay omits it and skips preflight. */
+    credentials?: ClosingCredentialsApi;
     /**
      * Spec 17 supplies recorded stream items here. When omitted, live polling
      * keeps projecting the canonical snapshot; an explicit projection never
@@ -94,6 +102,67 @@ function errorMessage(error: unknown): string {
 
 function isAdvancing(stage: ClosingStage | null | undefined): boolean {
     return stage === 'draining' || stage === 'voting' || stage === 'summarizing';
+}
+
+type RequirementState =
+    | 'done'
+    | 'server'
+    | 'browser'
+    | 'locked'
+    | 'missing'
+    | 'none'
+    | 'error';
+
+function requirementState(
+    requirement: ClosingCredentialRequirement,
+    credentials: ClosingCredentialsApi
+): RequirementState {
+    if (!requirement.needed) return 'done';
+    if (requirement.code !== 'ready' && requirement.code !== 'browser_key_required') {
+        return 'error';
+    }
+    if (requirement.server_configured) return 'server';
+    if (!requirement.needs_browser_key) return 'none';
+
+    const status = credentials.status(requirement.provider);
+    if (!status.stored) return 'missing';
+    if (!status.unlocked) return 'locked';
+    return 'browser';
+}
+
+function requirementReady(
+    requirement: ClosingCredentialRequirement,
+    credentials: ClosingCredentialsApi
+): boolean {
+    const state = requirementState(requirement, credentials);
+    return state !== 'error' && state !== 'missing' && state !== 'locked';
+}
+
+function requirementLabel(requirement: ClosingCredentialRequirement): string {
+    if (requirement.participant_name) return requirement.participant_name;
+    return requirement.scope === 'summary' ? 'Final summary' : 'Participant';
+}
+
+function requirementStatusText(
+    requirement: ClosingCredentialRequirement,
+    credentials: ClosingCredentialsApi
+): string {
+    switch (requirementState(requirement, credentials)) {
+        case 'server':
+            return 'Server key ready';
+        case 'browser':
+            return 'Browser key ready';
+        case 'locked':
+            return 'Unlock the key vault in Settings';
+        case 'missing':
+            return `Add a ${requirement.provider} browser key in Settings`;
+        case 'none':
+            return 'No credential needed';
+        case 'done':
+            return 'Completed';
+        case 'error':
+            return requirement.message || 'Configuration error';
+    }
 }
 
 function voteLabel(vote: ClosingVote): string {
@@ -226,6 +295,7 @@ export function ClosingPanel({
     meetingId,
     meetingStatus,
     summarySettings,
+    credentials,
     textProjection,
     onSkipText,
     onReplayClosing,
@@ -239,8 +309,21 @@ export function ClosingPanel({
     const pendingIntent = useRef<PendingIntent | null>(null);
 
     const closingQuery = useClosing(meetingId, true, runtime);
-    const request = useRequestClosing(runtime);
-    const retry = useRetryClosing(runtime);
+    const capabilityQuery = useClosingCapability(
+        meetingId,
+        Boolean(credentials),
+        runtime
+    );
+    const request = useRequestClosing(runtime, {
+        resolveProviderKeys: credentials
+            ? (providers) => credentials.resolve(providers)
+            : undefined,
+    });
+    const retry = useRetryClosing(runtime, {
+        resolveProviderKeys: credentials
+            ? (providers) => credentials.resolve(providers)
+            : undefined,
+    });
     const abort = useAbortClosing(runtime);
 
     const closing = closingQuery.data;
@@ -298,6 +381,61 @@ export function ClosingPanel({
         stage !== 'rejected' &&
         stage !== 'aborted';
 
+    const capability = capabilityQuery.data;
+    const preflightLoading = Boolean(credentials) && capabilityQuery.isLoading;
+    const voteReady = !credentials || Boolean(capability?.ready_for_vote);
+    const forceReady = !credentials || Boolean(capability?.ready_for_force);
+    const retryReady =
+        !credentials ||
+        (closing?.mode === 'force' ? forceReady : voteReady);
+    const neededRequirements = (capability?.requirements ?? []).filter(
+        (requirement) => requirement.needed
+    );
+
+    const requirementsForMode = (mode: ClosingMode): ClosingCredentialRequirement[] => {
+        const requirements = capability?.requirements ?? [];
+        const scoped =
+            mode === 'force'
+                ? requirements.filter((requirement) => requirement.scope === 'summary')
+                : requirements;
+        return scoped.filter((requirement) => requirement.needed);
+    };
+
+    const providersForMode = (mode: ClosingMode): string[] => {
+        if (!credentials) return [];
+        return Array.from(
+            new Set(
+                requirementsForMode(mode)
+                    .filter(
+                        (requirement) =>
+                            (requirement.code === 'ready' ||
+                                requirement.code === 'browser_key_required') &&
+                            requirement.needs_browser_key &&
+                            !requirement.server_configured &&
+                            requirement.provider
+                    )
+                    .map((requirement) => requirement.provider)
+            )
+        );
+    };
+
+    const missingCredentialMessage = (mode: ClosingMode): string | null => {
+        if (!credentials) return null;
+        const missing = requirementsForMode(mode).filter(
+            (requirement) => !requirementReady(requirement, credentials)
+        );
+        if (missing.length === 0) return null;
+        return `The close cannot start yet: ${missing
+            .map(
+                (requirement) =>
+                    `${requirementLabel(requirement)} — ${requirementStatusText(
+                        requirement,
+                        credentials
+                    )}`
+            )
+            .join('; ')}.`;
+    };
+
     const startClose = async (mode: ClosingMode) => {
         setConfirmMode(null);
         setActionError(null);
@@ -326,14 +464,33 @@ export function ClosingPanel({
             previous?.mode === mode
                 ? previous
                 : { key: createClosingRequestKey(), mode };
-        pendingIntent.current = intent;
+
+        let providersToResolve: string[] = [];
+        if (credentials) {
+            const missing = missingCredentialMessage(mode);
+            if (missing) {
+                setActionError(missing);
+                void capabilityQuery.refetch();
+                return;
+            }
+            providersToResolve = providersForMode(mode);
+            const resolved = credentials.resolve(providersToResolve);
+            if (providersToResolve.some((provider) => !resolved[provider])) {
+                setActionError(
+                    'The key vault locked before the close started. Unlock it and try again.'
+                );
+                return;
+            }
+        }
 
         try {
+            pendingIntent.current = intent;
             await request.mutateAsync({
                 meetingId,
                 mode,
                 requestKey: intent.key,
                 summarySettings,
+                providersToResolve,
             });
             pendingIntent.current = null;
         } catch (error) {
@@ -342,15 +499,39 @@ export function ClosingPanel({
             if (!isAmbiguousFailure(error)) {
                 pendingIntent.current = null;
             }
+            if (isApiError(error) && error.status === 409) {
+                void capabilityQuery.refetch();
+            }
             setActionError(errorMessage(error));
         }
     };
 
     const retryClose = async () => {
         setActionError(null);
+        if (credentials) {
+            const mode = closing?.mode ?? 'vote';
+            const missing = missingCredentialMessage(mode);
+            if (missing) {
+                setActionError(missing);
+                void capabilityQuery.refetch();
+                return;
+            }
+        }
         try {
-            await retry.mutateAsync(meetingId);
+            await retry.mutateAsync(
+                credentials
+                    ? {
+                          meetingId,
+                          providersToResolve: providersForMode(
+                              closing?.mode ?? 'vote'
+                          ),
+                      }
+                    : meetingId
+            );
         } catch (error) {
+            if (isApiError(error) && error.status === 409) {
+                void capabilityQuery.refetch();
+            }
             setActionError(errorMessage(error));
         }
     };
@@ -370,6 +551,96 @@ export function ClosingPanel({
                 <LogOut className="h-4 w-4" />
                 Close Meeting
             </h4>
+
+            {credentials ? (
+                <Card
+                    id="closing-credential-preflight"
+                    className="border-separator bg-surface/50 p-4"
+                >
+                    <h5 className="mb-2 text-xs font-semibold uppercase tracking-wide text-ink-muted">
+                        Credential preflight
+                    </h5>
+                    {preflightLoading ? (
+                        <p className="flex items-center gap-2 text-sm text-ink-secondary">
+                            <Loader2 className="h-4 w-4 motion-safe:animate-spin" />
+                            Checking the credentials this close needs…
+                        </p>
+                    ) : capabilityQuery.error ? (
+                        <div className="flex items-center gap-2 text-sm text-warning">
+                            <AlertTriangle className="h-4 w-4 shrink-0" />
+                            <span className="flex-1">
+                                Credential requirements could not be read:{' '}
+                                {capabilityQuery.error.message}
+                            </span>
+                            <Button
+                                size="sm"
+                                variant="ghost"
+                                onClick={() => void capabilityQuery.refetch()}
+                                className="text-warning hover:text-ink"
+                            >
+                                Reconnect
+                            </Button>
+                        </div>
+                    ) : neededRequirements.length === 0 ? (
+                        <p className="text-sm text-ink-secondary">
+                            No remaining credentials are required.
+                        </p>
+                    ) : (
+                        <ul className="space-y-2">
+                            {neededRequirements.map((requirement) => {
+                                const state = requirementState(requirement, credentials);
+                                const ready =
+                                    state !== 'error' &&
+                                    state !== 'missing' &&
+                                    state !== 'locked';
+                                return (
+                                    <li
+                                        key={`${requirement.scope}-${requirement.participant_id ?? 'summary'}-${requirement.provider}`}
+                                        className="flex items-start gap-2"
+                                    >
+                                        {ready ? (
+                                            <CheckCircle2 className="mt-0.5 h-4 w-4 shrink-0 text-success" />
+                                        ) : (
+                                            <AlertTriangle className="mt-0.5 h-4 w-4 shrink-0 text-warning" />
+                                        )}
+                                        <div className="min-w-0 flex-1">
+                                            <div className="flex flex-wrap items-center gap-2">
+                                                <span className="text-sm font-medium text-ink">
+                                                    {requirementLabel(requirement)}
+                                                </span>
+                                                <span className="text-xs text-ink-muted">
+                                                    {requirement.provider || 'unknown provider'}
+                                                    {requirement.model
+                                                        ? ` · ${requirement.model}`
+                                                        : ''}
+                                                </span>
+                                            </div>
+                                            <p
+                                                className={`text-xs ${
+                                                    ready ? 'text-success' : 'text-warning'
+                                                }`}
+                                            >
+                                                {requirementStatusText(
+                                                    requirement,
+                                                    credentials
+                                                )}
+                                            </p>
+                                        </div>
+                                    </li>
+                                );
+                            })}
+                        </ul>
+                    )}
+                    {!preflightLoading &&
+                    !capabilityQuery.error &&
+                    (!voteReady || !forceReady) ? (
+                        <p className="mt-2 text-xs text-ink-muted">
+                            Unlock the key vault or add the missing provider key in
+                            Settings, then return to start the close.
+                        </p>
+                    ) : null}
+                </Card>
+            ) : null}
 
             {archived ? (
                 <StatusCard
@@ -484,7 +755,7 @@ export function ClosingPanel({
                                 id="closing-retry"
                                 size="sm"
                                 onClick={retryClose}
-                                disabled={busy}
+                                disabled={busy || !retryReady}
                                 className="bg-action hover:bg-action-hover"
                             >
                                 {retry.isPending ? (
@@ -680,7 +951,7 @@ export function ClosingPanel({
                                 id="closing-start-vote"
                                 variant="outline"
                                 onClick={() => setConfirmMode('vote')}
-                                disabled={busy}
+                                disabled={busy || !voteReady || preflightLoading}
                                 className="h-auto flex-col items-center border-control py-3 hover:bg-surface-raised"
                             >
                                 <Vote className="mb-1 h-5 w-5 text-warning" />
@@ -694,7 +965,7 @@ export function ClosingPanel({
                                     id="closing-start-force"
                                     variant="outline"
                                     onClick={() => setConfirmMode('force')}
-                                    disabled={busy}
+                                    disabled={busy || !forceReady || preflightLoading}
                                     className="h-auto flex-col items-center border-danger/60 py-3 text-danger hover:bg-danger-soft"
                                 >
                                     <LogOut className="mb-1 h-5 w-5" />
@@ -728,7 +999,11 @@ export function ClosingPanel({
                                 ref={voteConfirmRef}
                                 id="closing-confirm"
                                 onClick={() => startClose(confirmMode)}
-                                disabled={busy}
+                                disabled={
+                                    busy ||
+                                    preflightLoading ||
+                                    !(confirmMode === 'force' ? forceReady : voteReady)
+                                }
                                 className={
                                     confirmMode === 'force'
                                         ? 'bg-danger text-on-danger hover:bg-danger-hover'

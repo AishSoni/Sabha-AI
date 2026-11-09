@@ -11,7 +11,12 @@
 import { useQuery, type UseQueryResult } from '@tanstack/react-query';
 import type { MeetingsRuntime } from '../runtime/contract';
 import { combineSignals } from '@/shared/runtime/scope';
-import { isPollingClosingStage, type ClosingView } from './closing-decoders';
+import {
+    isPollingClosingStage,
+    type ClosingCapability,
+    type ClosingView,
+} from './closing-decoders';
+import { closingKeys } from './closing-keys';
 
 const CLOSING_POLL_MS = 3_000;
 
@@ -30,5 +35,30 @@ export function useClosing(
         enabled: enabled && meetingId.length > 0,
         refetchInterval: (query) =>
             isPollingClosingStage(query.state.data?.stage) ? CLOSING_POLL_MS : false,
+    });
+}
+
+export function useClosingCapability(
+    meetingId: string,
+    enabled: boolean,
+    runtime: MeetingsRuntime
+): UseQueryResult<ClosingCapability, Error> {
+    return useQuery({
+        queryKey:
+            runtime.keys.closingCapability?.(meetingId) ??
+            closingKeys.capability(meetingId),
+        queryFn: async ({ signal }) => {
+            if (!runtime.reads.closingCapability) {
+                throw new Error('Closing credential preflight is unavailable.');
+            }
+            return runtime.reads.closingCapability(
+                meetingId,
+                combineSignals(runtime.signal, signal)
+            );
+        },
+        enabled:
+            enabled &&
+            meetingId.length > 0 &&
+            Boolean(runtime.reads.closingCapability),
     });
 }

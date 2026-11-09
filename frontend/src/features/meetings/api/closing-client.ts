@@ -8,8 +8,12 @@
  */
 import { requestLiveJson } from '@/shared/access';
 import {
+    decodeClosingCapability,
     decodeClosingReceipt,
     decodeClosingView,
+    type ClosingCapability,
+    type ClosingCommandOptions,
+    type ClosingProviderKeys,
     type ClosingReceipt,
     type ClosingSummarySettings,
     type ClosingView,
@@ -18,6 +22,25 @@ import {
 
 export interface ClosingReadOptions {
     signal?: AbortSignal;
+}
+
+interface ClosingRetryOptions extends ClosingReadOptions, ClosingCommandOptions {}
+
+const PROVIDER_KEY_HEADERS: Record<string, string> = {
+    openrouter: 'X-Provider-Key-OpenRouter',
+    gemini: 'X-Provider-Key-Gemini',
+};
+
+function providerKeyHeaders(keys?: ClosingProviderKeys): Record<string, string> | undefined {
+    if (!keys) return undefined;
+    const headers: Record<string, string> = {};
+    for (const [provider, key] of Object.entries(keys)) {
+        const header = PROVIDER_KEY_HEADERS[provider];
+        if (header && key.trim()) {
+            headers[header] = key.trim();
+        }
+    }
+    return Object.keys(headers).length > 0 ? headers : undefined;
 }
 
 function summarySettingsPayload(settings?: ClosingSummarySettings) {
@@ -35,12 +58,14 @@ export const closingClient = {
     /** Admit one close intent (POST /meetings/:id/closing). */
     async request(
         meetingId: string,
-        input: RequestClosingInput
+        input: RequestClosingInput,
+        options: ClosingCommandOptions = {}
     ): Promise<ClosingReceipt> {
         const payload = await requestLiveJson<unknown>(
             `/meetings/${encodeURIComponent(meetingId)}/closing`,
             {
                 method: 'POST',
+                headers: providerKeyHeaders(options.providerKeys),
                 body: {
                     mode: input.mode,
                     request_key: input.requestKey,
@@ -50,6 +75,21 @@ export const closingClient = {
             }
         );
         return decodeClosingReceipt(payload, 'POST /meetings/:id/closing');
+    },
+
+    /** Credential preflight; never starts work or carries a browser key. */
+    async capability(
+        meetingId: string,
+        init: ClosingReadOptions = {}
+    ): Promise<ClosingCapability> {
+        const payload = await requestLiveJson<unknown>(
+            `/meetings/${encodeURIComponent(meetingId)}/closing/capability`,
+            { signal: init.signal }
+        );
+        return decodeClosingCapability(
+            payload,
+            'GET /meetings/:id/closing/capability'
+        );
     },
 
     /** Canonical progress for one meeting; never starts work. */
@@ -62,10 +102,17 @@ export const closingClient = {
     },
 
     /** Resume a recoverable failed close (POST /closing/retry). */
-    async retry(meetingId: string, init: ClosingReadOptions = {}): Promise<ClosingView> {
+    async retry(
+        meetingId: string,
+        init: ClosingRetryOptions = {}
+    ): Promise<ClosingView> {
         const payload = await requestLiveJson<unknown>(
             `/meetings/${encodeURIComponent(meetingId)}/closing/retry`,
-            { method: 'POST', signal: init.signal }
+            {
+                method: 'POST',
+                headers: providerKeyHeaders(init.providerKeys),
+                signal: init.signal,
+            }
         );
         return decodeClosingView(payload, 'POST /meetings/:id/closing/retry');
     },

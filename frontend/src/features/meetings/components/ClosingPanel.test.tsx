@@ -6,7 +6,7 @@
  * request key after an ambiguous failure, use a fresh key after a definitive
  * rejection, and never submit work just because progress was reloaded.
  */
-import { afterEach, beforeEach, describe, expect, it } from 'vitest';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { fireEvent, render, screen, waitFor } from '@testing-library/react';
 import { QueryClientProvider } from '@tanstack/react-query';
 import { makeQueryClient } from '@/app/providers';
@@ -15,8 +15,11 @@ import {
     type ScriptedFetch,
 } from '../../../../tests/fixtures/transport';
 import { LiveMeetingsRuntimeProvider } from '../runtime/live';
+import { createLiveMeetingsRuntime } from '../runtime/live';
+import { MeetingsRuntimeProvider } from '../runtime/context';
+import type { ClosingCapability, ClosingView } from '../api/closing-decoders';
 import type { ClosingTextView } from '../model/closing-text';
-import { ClosingPanel } from './ClosingPanel';
+import { ClosingPanel, type ClosingCredentialsApi } from './ClosingPanel';
 
 const MEETING_ID = 'meeting-close-1';
 
@@ -570,5 +573,154 @@ describe('closing commands', () => {
         ).toBeInTheDocument();
         expect(screen.getByRole('button', { name: /Vote to End/ })).toBeInTheDocument();
         expect(postBodies()).toHaveLength(0);
+    });
+});
+
+describe('closing credential preflight', () => {
+    it('blocks missing browser keys and sends only the requested provider key', async () => {
+        const runtime = createLiveMeetingsRuntime();
+        const view = viewJson({
+            meeting_status: 'active',
+            closing_id: null,
+            stage: null,
+        }) as unknown as ClosingView;
+        const capability: ClosingCapability = {
+            meeting_id: MEETING_ID,
+            ready_for_vote: true,
+            ready_for_force: true,
+            requirements: [
+                {
+                    scope: 'vote',
+                    participant_id: 'p-1',
+                    participant_name: 'The CTO',
+                    provider: 'gemini',
+                    model: 'gemini-2.0-flash',
+                    server_configured: false,
+                    needs_browser_key: true,
+                    needed: true,
+                    code: 'browser_key_required',
+                    message: 'Provide a browser gemini key.',
+                },
+                {
+                    scope: 'summary',
+                    participant_id: null,
+                    participant_name: 'System AI',
+                    provider: 'openrouter',
+                    model: 'anthropic/claude',
+                    server_configured: true,
+                    needs_browser_key: false,
+                    needed: true,
+                    code: 'ready',
+                    message: 'Uses the server openrouter key.',
+                },
+            ],
+        };
+        runtime.reads.closing = async () => view;
+        runtime.reads.closingCapability = async () => capability;
+        const requestClosing = vi.fn(async (meetingId: string) => ({
+            meeting_id: meetingId,
+            closing_id: 'closing-1',
+            stage: 'draining' as const,
+            meeting_status: 'voting' as const,
+        }));
+        runtime.commands.requestClosing =
+            requestClosing as typeof runtime.commands.requestClosing;
+        const resolve = vi.fn(() => ({ gemini: 'sk-synthetic-browser' }));
+        const credentials: ClosingCredentialsApi = {
+            status: () => ({ stored: true, unlocked: true }),
+            resolve,
+        };
+
+        render(
+            <QueryClientProvider client={queryClient}>
+                <MeetingsRuntimeProvider runtime={runtime}>
+                    <ClosingPanel
+                        meetingId={MEETING_ID}
+                        meetingStatus="active"
+                        credentials={credentials}
+                    />
+                </MeetingsRuntimeProvider>
+            </QueryClientProvider>
+        );
+
+        await screen.findByText('Credential preflight');
+        await screen.findByText('Browser key ready');
+        fireEvent.click(screen.getByRole('button', { name: /Vote to End/ }));
+        fireEvent.click(screen.getByRole('button', { name: /Start Vote/ }));
+
+        await waitFor(() => expect(requestClosing).toHaveBeenCalledTimes(1));
+        expect(resolve).toHaveBeenCalledWith(['gemini']);
+        const call = requestClosing.mock.calls[0] as unknown as [
+            string,
+            unknown,
+            { providerKeys?: Record<string, string> },
+        ];
+        expect(call[2].providerKeys).toEqual({
+            gemini: 'sk-synthetic-browser',
+        });
+    });
+
+    it('disables starting when the stored key is locked', async () => {
+        const runtime = createLiveMeetingsRuntime();
+        runtime.reads.closing = async () =>
+            viewJson({
+                meeting_status: 'active',
+                closing_id: null,
+                stage: null,
+            }) as unknown as ClosingView;
+        runtime.reads.closingCapability = async () => ({
+            meeting_id: MEETING_ID,
+            ready_for_vote: false,
+            ready_for_force: true,
+            requirements: [
+                {
+                    scope: 'vote',
+                    participant_id: 'p-1',
+                    participant_name: 'The CTO',
+                    provider: 'gemini',
+                    model: 'gemini-2.0-flash',
+                    server_configured: false,
+                    needs_browser_key: true,
+                    needed: true,
+                    code: 'browser_key_required',
+                    message: 'Provide a browser gemini key.',
+                },
+                {
+                    scope: 'summary',
+                    participant_id: null,
+                    participant_name: 'System AI',
+                    provider: 'openrouter',
+                    model: 'anthropic/claude',
+                    server_configured: true,
+                    needs_browser_key: false,
+                    needed: true,
+                    code: 'ready',
+                    message: 'Uses the server openrouter key.',
+                },
+            ],
+        });
+
+        render(
+            <QueryClientProvider client={queryClient}>
+                <MeetingsRuntimeProvider runtime={runtime}>
+                    <ClosingPanel
+                        meetingId={MEETING_ID}
+                        meetingStatus="active"
+                        credentials={{
+                            status: () => ({ stored: true, unlocked: false }),
+                            resolve: () => ({}),
+                        }}
+                    />
+                </MeetingsRuntimeProvider>
+            </QueryClientProvider>
+        );
+
+        await screen.findByText('Unlock the key vault in Settings');
+        expect(
+            screen.getByRole('button', { name: /Vote to End/ })
+        ).toBeDisabled();
+        expect(
+            screen.getByRole('button', { name: /Force End/ })
+        ).not.toBeDisabled();
     });
 });
