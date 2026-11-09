@@ -28,6 +28,9 @@ const decoder = new TextDecoder();
 const inMemoryKeys = new Map<string, string>();
 let vaultKey: CryptoKey | null = null;
 let vaultSalt: Uint8Array | null = null;
+// Bumped by lockVault. Async work captures it and refuses to publish results
+// after a lock (including access-loss locks) has intervened.
+let vaultGeneration = 0;
 
 async function deriveVaultKey(passphrase: string, salt: Uint8Array): Promise<CryptoKey> {
     const material = await crypto.subtle.importKey(
@@ -91,6 +94,7 @@ export async function openVault(
 ): Promise<VaultUnlockResult> {
     // Start clean: a previous session's key must never leak into this attempt.
     lockVault();
+    const generation = vaultGeneration;
 
     let saltBytes: Uint8Array = crypto.getRandomValues(new Uint8Array(SALT_BYTES));
     if (existingSalt) {
@@ -118,25 +122,28 @@ export async function openVault(
         }
     }
 
+    // A lock (explicit or access loss) may have happened while PBKDF2 ran.
+    // Never resurrect unlocked material after that point.
+    if (generation !== vaultGeneration) {
+        inMemoryKeys.clear();
+        return { ok: false, error: 'The key vault was locked during unlock.' };
+    }
+
     vaultKey = key;
     vaultSalt = saltBytes;
     return { ok: true, salt: bytesToBase64(saltBytes) };
 }
 
-/**
- * Seal a plaintext credential under the unlocked vault key as a versioned
- * envelope. Returns null while the vault is locked — callers must never
- * write ciphertext they cannot decrypt again, and the plaintext stays in
- * module memory only.
- */
-export async function sealIntoVault(id: string, plaintext: string): Promise<string | null> {
-    if (!vaultKey || !vaultSalt) return null;
-
+async function sealWithKey(
+    key: CryptoKey,
+    salt: Uint8Array,
+    plaintext: string,
+): Promise<string> {
     const iv = crypto.getRandomValues(new Uint8Array(IV_BYTES));
     const encrypted = new Uint8Array(
         await crypto.subtle.encrypt(
             { name: 'AES-GCM', iv: iv as unknown as BufferSource },
-            vaultKey,
+            key,
             encoder.encode(plaintext) as unknown as BufferSource,
         ),
     );
@@ -146,14 +153,69 @@ export async function sealIntoVault(id: string, plaintext: string): Promise<stri
             algorithm: 'PBKDF2',
             hash: 'SHA-256',
             iterations: PBKDF2_ITERATIONS,
-            salt: bytesToBase64(vaultSalt),
+            salt: bytesToBase64(salt),
         },
         cipher: { algorithm: 'AES-GCM', iv: bytesToBase64(iv) },
         ciphertext: bytesToBase64(encrypted),
     };
+    return serializeEnvelope(envelope);
+}
+
+/**
+ * Seal a plaintext credential under the unlocked vault key as a versioned
+ * envelope. Returns null while the vault is locked — callers must never
+ * write ciphertext they cannot decrypt again, and the plaintext stays in
+ * module memory only.
+ */
+export async function sealIntoVault(id: string, plaintext: string): Promise<string | null> {
+    const key = vaultKey;
+    const salt = vaultSalt;
+    if (!key || !salt) return null;
+    const generation = vaultGeneration;
+
+    const sealed = await sealWithKey(key, salt, plaintext);
+    if (generation !== vaultGeneration) return null;
 
     inMemoryKeys.set(id, plaintext);
-    return serializeEnvelope(envelope);
+    return sealed;
+}
+
+export interface VaultRekeyResult {
+    salt: string;
+    sealed: Record<string, string>;
+}
+
+/**
+ * Rotate the vault passphrase without ever exporting the derived key.
+ *
+ * Every plaintext already decrypted in memory is re-sealed under a freshly
+ * derived key and salt. The module state only swaps after every envelope has
+ * been produced and no lock intervened, so a crypto failure (or access loss)
+ * leaves the existing vault locked and untouched.
+ * Returns the replacement salt and ciphertext map, or null while locked.
+ */
+export async function rekeyVault(passphrase: string): Promise<VaultRekeyResult | null> {
+    if (!vaultKey || !vaultSalt) return null;
+
+    const generation = vaultGeneration;
+    const plaintexts = new Map(inMemoryKeys);
+    const nextSalt = crypto.getRandomValues(new Uint8Array(SALT_BYTES));
+
+    try {
+        const nextKey = await deriveVaultKey(passphrase, nextSalt);
+        const sealed: Record<string, string> = {};
+        for (const [id, plaintext] of plaintexts) {
+            sealed[id] = await sealWithKey(nextKey, nextSalt, plaintext);
+        }
+
+        if (generation !== vaultGeneration) return null;
+
+        vaultKey = nextKey;
+        vaultSalt = nextSalt;
+        return { salt: bytesToBase64(nextSalt), sealed };
+    } catch {
+        return null;
+    }
 }
 
 export const revealFromVault = (id: string): string | undefined => inMemoryKeys.get(id);
@@ -164,6 +226,7 @@ export const forgetInVault = (id: string): void => {
 
 /** Lock the vault: the derived key, the salt, and all plaintexts vanish. */
 export function lockVault(): void {
+    vaultGeneration += 1;
     vaultKey = null;
     vaultSalt = null;
     inMemoryKeys.clear();

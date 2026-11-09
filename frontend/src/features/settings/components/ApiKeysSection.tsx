@@ -12,8 +12,9 @@ import { Loader2, Cpu } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { ProviderCard } from './ProviderCard';
 import { SystemAiCard } from './SystemAiCard';
+import { VaultCard } from './VaultCard';
 import { useProvidersEnvironment } from '../api';
-import { useSettingsStore } from '../state/settings-store';
+import { useSettingsStore, type ProviderId } from '../state/settings-store';
 
 export function ApiKeysSection() {
     // Server-owned metadata read — TanStack Query owns this fetch; the
@@ -25,8 +26,14 @@ export function ApiKeysSection() {
         providers: providerConfigs,
         defaultProvider,
         isProduction,
+        vaultUnlocked,
+        vaultEpoch,
+        vaultCiphertexts,
         setProviderConfig,
         setDefaultProvider,
+        saveProviderKey,
+        removeProviderKey,
+        getProviderApiKey,
         initializeFromServer,
     } = useSettingsStore();
 
@@ -72,12 +79,12 @@ export function ApiKeysSection() {
             <div className="space-y-1">
                 <h2 className="type-section-title">API Keys & Providers</h2>
                 <p className="type-body text-ink-secondary">
-                    Configure your LLM providers.
-                    {isProduction
-                        ? ' API keys are configured on the server for security.'
-                        : ' Keys are stored locally in your browser.'}
+                    Configure your LLM providers. Browser keys are encrypted locally; server keys
+                    stay on the server.
                 </p>
             </div>
+
+            <VaultCard />
 
             {/* System AI Section */}
             {metadata && (
@@ -99,7 +106,7 @@ export function ApiKeysSection() {
                 <h3 className="type-item-title">LLM Providers</h3>
                 <div className="grid gap-4">
                     {providers.map((provider) => {
-                        const providerId = provider.id as keyof typeof providerConfigs;
+                        const providerId = provider.id as ProviderId;
                         const config = providerConfigs[providerId];
 
                         // A provider the client does not know how to configure
@@ -113,7 +120,13 @@ export function ApiKeysSection() {
                                 config={config}
                                 isDefault={defaultProvider === providerId}
                                 isProduction={isProduction}
+                                storedKey={vaultCiphertexts[providerId] !== undefined}
+                                vaultUnlocked={vaultUnlocked}
+                                vaultEpoch={vaultEpoch}
                                 onConfigChange={(updates) => setProviderConfig(providerId, updates)}
+                                onSaveKey={(key) => saveProviderKey(providerId, key)}
+                                onRemoveKey={() => removeProviderKey(providerId)}
+                                onResolveStoredKey={() => getProviderApiKey(providerId)}
                                 onSetDefault={() => setDefaultProvider(providerId)}
                             />
                         );
@@ -125,8 +138,13 @@ export function ApiKeysSection() {
                 <p className="mb-1 font-medium text-ink">🔒 Security Note</p>
                 <p>
                     {isProduction
-                        ? 'API keys are stored securely on the server and never exposed to the browser.'
-                        : "API keys are stored in your browser's local storage and only transmitted directly to the respective LLM provider APIs."}
+                        ? 'Server infrastructure keys are stored on the server and never sent to the browser. '
+                        : ''}
+                    Browser keys are encrypted in this browser’s local storage, decrypted only while
+                    the vault is unlocked for this tab, and may be forwarded over HTTPS to the Sabha
+                    backend for provider operations such as model discovery, key tests, meeting
+                    turns, votes, and summaries. They are not sent only to the provider directly.
+                    Login does not unlock the vault.
                 </p>
             </div>
         </div>

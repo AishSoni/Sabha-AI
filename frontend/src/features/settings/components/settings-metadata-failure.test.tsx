@@ -115,7 +115,7 @@ describe('settings metadata failure visibility', () => {
 
         await screen.findByTestId('system-ai-card');
         expect(screen.queryByText('Failed to load providers')).toBeNull();
-        await screen.findByText(/Keys are stored locally/);
+        await screen.findByText(/Browser keys are encrypted locally/);
 
         // The retry hydrates authoritative metadata into the store — even
         // though the section had already attempted this once.

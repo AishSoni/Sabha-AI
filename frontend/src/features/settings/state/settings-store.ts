@@ -4,6 +4,10 @@
  * Server-owned metadata (environment, System AI) lives in the settings query,
  * never here. This store persists only browser preferences and sealed key
  * envelopes; the System AI policy was removed in v2.
+ *
+ * Provider keys are never part of ProviderConfig: the card owns a transient
+ * draft, while stored presence is the sealed ciphertext map. That distinction
+ * is what lets a blank input mean "no draft" instead of "no stored key".
  */
 
 import { create } from 'zustand';
@@ -14,6 +18,7 @@ import {
     observeVaultStorage,
     openVault,
     revealFromVault,
+    rekeyVault,
     sealIntoVault,
 } from '@/shared/credentials/vault';
 
@@ -31,14 +36,20 @@ export interface GenerationSettings {
 // it and persists sealed envelopes (ciphertext + salt, never any plaintext).
 const SETTINGS_STORAGE_KEY = 'sabha-settings';
 
+export type ProviderId = 'openrouter' | 'gemini' | 'ollama';
+
 export interface ProviderConfig {
     enabled: boolean;
-    apiKey: string;
     model: string;
     temperature: number;
     maxTokens: number;
     baseUrl?: string; // For Ollama
     serverConfigured?: boolean; // True if key is configured on server
+}
+
+export interface ProviderKeySaveResult {
+    ok: boolean;
+    error?: string;
 }
 
 export interface SettingsState {
@@ -47,7 +58,7 @@ export interface SettingsState {
         gemini: ProviderConfig;
         ollama: ProviderConfig;
     };
-    defaultProvider: 'openrouter' | 'gemini' | 'ollama' | null;
+    defaultProvider: ProviderId | null;
 
     // Environment info (loaded from backend; always re-applied on hydration)
     isProduction: boolean;
@@ -58,15 +69,23 @@ export interface SettingsState {
     vaultSalt: string | null;
     vaultCiphertexts: Record<string, string>;
     vaultError: string | null;
+    // Increments whenever unlocked material appears or disappears. Async
+    // callers capture it before a request and discard late results if it moved.
+    vaultEpoch: number;
 
     // Actions
-    setProviderConfig: (providerId: keyof SettingsState['providers'], config: Partial<ProviderConfig>) => Promise<void>;
-    setDefaultProvider: (providerId: keyof SettingsState['providers'] | null) => void;
+    setProviderConfig: (providerId: ProviderId, config: Partial<ProviderConfig>) => void;
+    setDefaultProvider: (providerId: ProviderId | null) => void;
     getActiveProvider: () => { id: string; config: ProviderConfig } | null;
-    clearProviderConfig: (providerId: keyof SettingsState['providers']) => void;
+    clearProviderConfig: (providerId: ProviderId) => void;
     resetAllSettings: () => void;
+    createVault: (passphrase: string) => Promise<boolean>;
     unlockVault: (passphrase: string) => Promise<boolean>;
     lockVault: () => void;
+    changeVaultPassphrase: (passphrase: string) => Promise<boolean>;
+    saveProviderKey: (providerId: ProviderId, plaintext: string) => Promise<ProviderKeySaveResult>;
+    removeProviderKey: (providerId: ProviderId) => void;
+    hasStoredKey: (providerId: ProviderId) => boolean;
     composeGenerationSettings: () => GenerationSettings | null;
     getProviderApiKey: (providerId: string) => string | undefined;
     initializeFromServer: (data: {
@@ -79,7 +98,6 @@ export interface SettingsState {
 
 const defaultProviderConfig: ProviderConfig = {
     enabled: false,
-    apiKey: '',
     model: '',
     temperature: 0.7,
     maxTokens: 2048,
@@ -92,13 +110,14 @@ const initialState = {
         gemini: { ...defaultProviderConfig, model: 'gemini-2.0-flash' },
         ollama: { ...defaultProviderConfig, model: 'llama3.2', baseUrl: 'http://localhost:11434', enabled: true },
     },
-    defaultProvider: null as SettingsState['defaultProvider'],
+    defaultProvider: null as ProviderId | null,
     isProduction: false,
     serverConfiguredProviders: [] as string[],
     vaultUnlocked: false,
     vaultSalt: null as string | null,
     vaultCiphertexts: {} as Record<string, string>,
     vaultError: null as string | null,
+    vaultEpoch: 0,
 };
 
 export const useSettingsStore = create<SettingsState>()(
@@ -106,63 +125,15 @@ export const useSettingsStore = create<SettingsState>()(
         (set, get) => ({
             ...initialState,
 
-            setProviderConfig: async (providerId, config) => {
-                const { apiKey, ...safeConfig } = config as Partial<ProviderConfig>;
-
-                if (apiKey !== undefined) {
-                    const key = apiKey.trim();
-                    if (key) {
-                        const sealed = await sealIntoVault(providerId, key);
-                        if (!sealed) {
-                            // Never write a secret (or its ciphertext) while locked.
-                            set({ vaultError: 'Unlock the key vault before saving a provider key.' });
-                            return;
-                        }
-                        set((state) => ({
-                            vaultError: null,
-                            vaultCiphertexts: {
-                                ...state.vaultCiphertexts,
-                                [providerId]: sealed,
-                            },
-                            providers: {
-                                ...state.providers,
-                                [providerId]: {
-                                    ...state.providers[providerId],
-                                    ...safeConfig,
-                                    // The stored config never carries the plaintext.
-                                    apiKey: '',
-                                },
-                            },
-                        }));
-                        return;
-                    }
-
-                    // Explicit clear: drop ciphertext + memory key too.
-                    forgetInVault(providerId);
-                    set((state) => {
-                        const { [providerId]: _dropped, ...remaining } = state.vaultCiphertexts;
-                        return {
-                            vaultError: null,
-                            vaultCiphertexts: remaining,
-                            providers: {
-                                ...state.providers,
-                                [providerId]: {
-                                    ...state.providers[providerId],
-                                    ...safeConfig,
-                                    apiKey: '',
-                                },
-                            },
-                        };
-                    });
-                    return;
-                }
-
+            setProviderConfig: (providerId, config) => {
+                // Non-secret edits always apply, even while the vault is
+                // locked. Keys go through saveProviderKey/removeProviderKey.
                 set((state) => ({
                     providers: {
                         ...state.providers,
                         [providerId]: {
                             ...state.providers[providerId],
-                            ...safeConfig,
+                            ...config,
                         },
                     },
                 }));
@@ -194,9 +165,11 @@ export const useSettingsStore = create<SettingsState>()(
             clearProviderConfig: (providerId) => {
                 forgetInVault(providerId);
                 set((state) => {
-                    const { [providerId]: _dropped, ...remaining } = state.vaultCiphertexts;
+                    const remaining = { ...state.vaultCiphertexts };
+                    delete remaining[providerId];
                     return {
                         vaultCiphertexts: remaining,
+                        vaultEpoch: state.vaultEpoch + 1,
                         providers: {
                             ...state.providers,
                             [providerId]: {
@@ -212,26 +185,147 @@ export const useSettingsStore = create<SettingsState>()(
 
             resetAllSettings: () => {
                 lockVaultMemory();
-                set({ ...initialState, vaultCiphertexts: {}, vaultSalt: null, vaultUnlocked: false, vaultError: null });
+                set((state) => ({
+                    ...initialState,
+                    vaultCiphertexts: {},
+                    vaultSalt: null,
+                    vaultUnlocked: false,
+                    vaultError: null,
+                    vaultEpoch: state.vaultEpoch + 1,
+                }));
+            },
+
+            createVault: async (passphrase) => {
+                if (get().vaultSalt !== null || Object.keys(get().vaultCiphertexts).length > 0) {
+                    set({ vaultError: 'A key vault already exists. Unlock it instead.' });
+                    return false;
+                }
+
+                set((state) => ({ vaultEpoch: state.vaultEpoch + 1, vaultError: null }));
+                const attemptEpoch = get().vaultEpoch;
+                const result = await openVault(passphrase, null, {});
+                if (get().vaultEpoch !== attemptEpoch) {
+                    return false;
+                }
+                if (!result.ok) {
+                    set((state) => ({
+                        vaultError: result.error,
+                        vaultEpoch: state.vaultEpoch + 1,
+                    }));
+                    return false;
+                }
+
+                set((state) => ({
+                    vaultUnlocked: true,
+                    vaultSalt: result.salt,
+                    vaultError: null,
+                    vaultEpoch: state.vaultEpoch + 1,
+                }));
+                return true;
             },
 
             unlockVault: async (passphrase) => {
                 // The vault proves the passphrase against existing ciphertext
                 // before unlocking; a wrong passphrase leaves it locked.
+                set((state) => ({ vaultEpoch: state.vaultEpoch + 1, vaultError: null }));
+                const attemptEpoch = get().vaultEpoch;
                 const result = await openVault(passphrase, get().vaultSalt, get().vaultCiphertexts);
+                if (get().vaultEpoch !== attemptEpoch) {
+                    return false;
+                }
                 if (!result.ok) {
-                    set({ vaultError: result.error });
+                    set((state) => ({
+                        vaultError: result.error,
+                        vaultEpoch: state.vaultEpoch + 1,
+                    }));
                     return false;
                 }
 
-                set({ vaultUnlocked: true, vaultError: null, vaultSalt: result.salt });
+                set((state) => ({
+                    vaultUnlocked: true,
+                    vaultError: null,
+                    vaultSalt: result.salt,
+                    vaultEpoch: state.vaultEpoch + 1,
+                }));
                 return true;
             },
 
             lockVault: () => {
                 lockVaultMemory();
-                set({ vaultUnlocked: false });
+                set((state) => ({
+                    vaultUnlocked: false,
+                    vaultError: null,
+                    vaultEpoch: state.vaultEpoch + 1,
+                }));
             },
+
+            changeVaultPassphrase: async (passphrase) => {
+                if (!get().vaultUnlocked) {
+                    set({ vaultError: 'Unlock the key vault before changing its passphrase.' });
+                    return false;
+                }
+
+                const attemptEpoch = get().vaultEpoch;
+                const sealed = await rekeyVault(passphrase);
+                if (!sealed || get().vaultEpoch !== attemptEpoch) {
+                    set({ vaultError: 'The key vault could not be re-encrypted in this browser.' });
+                    return false;
+                }
+
+                set((state) => ({
+                    vaultCiphertexts: sealed.sealed,
+                    vaultSalt: sealed.salt,
+                    vaultError: null,
+                    vaultEpoch: state.vaultEpoch + 1,
+                }));
+                return true;
+            },
+
+            saveProviderKey: async (providerId, plaintext) => {
+                const key = plaintext.trim();
+                if (!key) {
+                    return { ok: false, error: 'Enter an API key before saving.' };
+                }
+
+                const attemptEpoch = get().vaultEpoch;
+                const sealed = await sealIntoVault(providerId, key);
+                if (!sealed) {
+                    const error = 'Unlock or create the key vault before saving a provider key.';
+                    set({ vaultError: error });
+                    return { ok: false, error };
+                }
+                if (get().vaultEpoch !== attemptEpoch) {
+                    return {
+                        ok: false,
+                        error: 'The key vault changed before the key was saved. Try again.',
+                    };
+                }
+
+                set((state) => ({
+                    vaultError: null,
+                    vaultEpoch: state.vaultEpoch + 1,
+                    vaultCiphertexts: {
+                        ...state.vaultCiphertexts,
+                        [providerId]: sealed,
+                    },
+                }));
+                return { ok: true };
+            },
+
+            removeProviderKey: (providerId) => {
+                forgetInVault(providerId);
+                set((state) => {
+                    const remaining = { ...state.vaultCiphertexts };
+                    delete remaining[providerId];
+                    return {
+                        vaultError: null,
+                        vaultEpoch: state.vaultEpoch + 1,
+                        vaultCiphertexts: remaining,
+                    };
+                });
+            },
+
+            hasStoredKey: (providerId) => get().vaultCiphertexts[providerId] !== undefined,
 
             composeGenerationSettings: () => {
                 const active = get().getActiveProvider();
@@ -265,7 +359,7 @@ export const useSettingsStore = create<SettingsState>()(
                 // User choice wins: the server default applies only while
                 // none is set locally.
                 if (!state.defaultProvider && data.defaultProvider) {
-                    updates.defaultProvider = data.defaultProvider as SettingsState['defaultProvider'];
+                    updates.defaultProvider = data.defaultProvider as ProviderId;
                 }
 
                 // Auto-enable and set models for server-configured providers;
@@ -301,14 +395,25 @@ export const useSettingsStore = create<SettingsState>()(
         }),
         {
             name: SETTINGS_STORAGE_KEY,
-            // Version 2: Server AI became server-owned, and legacy payloads
-            // carried an `initialized` flag that gated hydration forever.
-            // Both are stripped; user preferences and vault data survive.
-            version: 2,
+            // Version 3: provider configs no longer carry an apiKey field at
+            // all. Stored keys are represented solely by vault ciphertexts.
+            version: 3,
             migrate: (persisted) => {
                 const legacy = persisted as Record<string, unknown> & Partial<SettingsState>;
                 delete legacy.initialized;
                 delete legacy.systemAI;
+
+                const providers = legacy.providers as
+                    | Record<string, Record<string, unknown>>
+                    | undefined;
+                if (providers && typeof providers === 'object') {
+                    for (const config of Object.values(providers)) {
+                        if (config && typeof config === 'object') {
+                            delete config.apiKey;
+                        }
+                    }
+                }
+
                 return legacy as SettingsState;
             },
             partialize: (state) => ({
@@ -328,6 +433,10 @@ export const useSettingsStore = create<SettingsState>()(
 if (typeof window !== 'undefined') {
     observeVaultStorage(window, SETTINGS_STORAGE_KEY, () => {
         lockVaultMemory();
-        useSettingsStore.setState({ vaultUnlocked: false });
+        useSettingsStore.setState((state) => ({
+            vaultUnlocked: false,
+            vaultEpoch: state.vaultEpoch + 1,
+            vaultError: 'The key vault changed in another tab. Unlock it again to continue.',
+        }));
     });
 }

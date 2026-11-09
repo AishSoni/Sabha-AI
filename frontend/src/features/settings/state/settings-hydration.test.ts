@@ -12,7 +12,7 @@
  * - the local defaultProvider choice survives hydration;
  * - server-owned System AI is not persisted or adopted as a local preference;
  * - legacy persisted payloads carrying `initialized` or `systemAI` migrate
- *   cleanly to v2.
+ *   cleanly to v3, and provider configs lose the retired apiKey field.
  */
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { useSettingsStore } from './settings-store';
@@ -72,11 +72,9 @@ describe('settings hydration (store)', () => {
 
     it('preserves locally-owned BYOK providers during reconciliation', async () => {
         const store = useSettingsStore.getState();
-        expect(await store.unlockVault('correct vault phrase')).toBe(true);
-        await store.setProviderConfig('ollama', {
-            apiKey: 'local-ollama-key',
-            enabled: true,
-        });
+        expect(await store.createVault('correct vault phrase')).toBe(true);
+        expect((await store.saveProviderKey('ollama', 'local-ollama-key')).ok).toBe(true);
+        store.setProviderConfig('ollama', { enabled: true });
 
         hydrateSecond(); // ollama IS configured by this server
         expect(useSettingsStore.getState().providers.ollama.enabled).toBe(true);
@@ -157,13 +155,15 @@ describe('legacy persisted payload migration', () => {
         expect((state as unknown as Record<string, unknown>).systemAI).toBeUndefined();
         expect((state as unknown as Record<string, unknown>).initialized).toBeUndefined();
         expect(state.isProduction).toBe(true); // carried through migration
+        expect(state.providers.openrouter).not.toHaveProperty('apiKey');
 
         // The next persist write stores the new version, without either field.
         migrated.useSettingsStore.getState().setDefaultProvider('gemini');
         const stored = JSON.parse(window.localStorage.getItem('sabha-settings') ?? '{}');
-        expect(stored.version).toBe(2);
+        expect(stored.version).toBe(3);
         expect(stored.state.initialized).toBeUndefined();
         expect(stored.state.systemAI).toBeUndefined();
+        expect(stored.state.providers.openrouter.apiKey).toBeUndefined();
         expect(stored.state.defaultProvider).toBe('gemini');
     });
 });
