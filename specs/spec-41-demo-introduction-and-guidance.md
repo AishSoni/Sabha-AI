@@ -210,3 +210,237 @@ check; no separate visual-regression baseline was added.
 `3c152ea` metadata recovery; `882d7ed` four-step introduction; `f7d4c30`
 workspace gate and revisit; `a911da4` screen guidance; `432a103` inline room
 geometry; `c7fa5d1` E2E and integration coverage.
+
+## Design addendum: a dark-first spatial introduction (2026-11-09)
+
+Status: approved design direction for subsequent implementation. This addendum
+is documentation only; the implementation and verification record above describes
+the earlier version, not completion or testing of this redesign.
+
+This section supersedes the earlier introduction's step order, wording, visible
+branding, static visual compositions, and standalone entry-loading presentation.
+It does not supersede the existing demo stages, recovery guarantees, guidance
+ownership, acknowledgement policy, or isolation of practice from meeting progress.
+
+### Primary reference and design intent
+
+Use [Cosmic Trail](https://cosmic-trail.vercel.app/) as the primary spatial and
+atmospheric reference, with [DepthGallery](https://tympanus.net/Tutorials/DepthGallery/)
+as the supporting reference for the flowing line and depth-linked transitions.
+Stay close to their spacious, continuous journey rather than putting a decorative
+background behind a conventional four-slide onboarding carousel.
+
+Preserve the references' negative space, deliberate depth placement, enveloping
+colour changes, and continuity between moments. Replace their photographs and tiny
+gallery captions with Sabha's participant/content cards and prominent, readable
+typography. No reference photographs, videos, site navigation, credits, analytics,
+or debug UI belong in the introduction. Retain applicable licence notices if
+reference source code is adapted.
+
+The governing hierarchy is **headline and cards first; colour second; stars and
+line third**. Atmosphere should be strong without becoming something the user
+must study. The user should understand each idea at a glance.
+
+### Art direction and typography
+
+- Design dark-first, beginning in the homepage's near-black violet world. Entry
+  should feel like going further into the homepage, not arriving at another site.
+  Dark-first applies to the whole journey, not merely the first screen.
+- Give each stop a distinct, rich, full-screen colour environment. Violet → deep
+  cobalt → muted rose → warm amber-violet is a starting palette study, not an
+  approved set of final colours. Art-direct endpoints and intermediate blends;
+  avoid muddy transitions, a cream/daylight opening, or almost-black screens with
+  only faint coloured corners. Harmonize these environments with existing Sabha
+  materials rather than inventing a replacement brand palette.
+- Dark-first is the primary design target, not permission to overwrite an explicit
+  appearance preference or change application-wide theme persistence. Preserve
+  existing appearance controls and provide a deliberately composed light
+  counterpart; the opening must match the homepage's effective appearance.
+- Use the established Satoshi family and weights: 700 for display headlines, 600
+  for meaningful card labels, and 400–500 for supporting text and controls. Follow
+  the homepage's approximately 34–72px responsive display scale, tight tracking
+  (around -0.04em), and compact leading (around 1.02), adapting for actual line
+  breaks and zoom. Do not simply retain the smaller intro page-title treatment.
+- Headlines should usually occupy one or two lines at desktop size. Supporting
+  copy is one short passage, not a second explanation of the visual. Never shrink
+  essential text into the reference's tiny caption treatment to preserve layout.
+- Our familiar sigils, distinct participant identities, and violet card materials
+  replace the reference's image planes. Cards are the content, not an enclosing
+  presentation panel. Avoid nested boxes, generic dashboard mockups, repeated
+  text-left/visual-right templates, and generated portraits.
+- No Sabha logo, brand header, tagline, competing workspace navigation, or tutorial
+  HUD is visible during the introduction. Necessary controls and progress remain
+  legible and subordinate at the lower composition edge, not hidden or hover-only.
+
+### Four moments and copy baseline
+
+The sequence is now **the idea → the value → what to try → the example**. The
+example is last, immediately before entry. Use the following concise copy baseline
+and communicate the remaining meaning through the card compositions.
+
+| Moment | Headline | Supporting copy | Visual job |
+| --- | --- | --- | --- |
+| 1. The idea | **One question. Different minds.** | You direct the meeting. Choose which AI speaks next. | Three distinct participant cards relate to one shared question; establish different AI perspectives and the user's ability to choose. |
+| 2. The value | **See where they disagree.** | Compare arguments. Inspect sources. Keep the outcome. | Relate two contrasting positions to a source and an outcome; make disagreement inspectable rather than presenting a feature list. |
+| 3. What to try | **Choose. Question. Explore.** | Choose who speaks, open a source, and ask a follow-up. | Compose a compact speaker/source/follow-up example, not another paragraph or numbered checklist page. |
+| 4. The example | **Clear facts. Different judgments.** | Explore an HDFC bond review from 2020. | Pair the dated fact sheet with three viewpoints, distinguishing checkable terms from judgments and open questions. |
+
+On the final moment, retain the small, readable qualifier **Historical example ·
+Not investment advice.** Use the contrast between dated facts and differing
+judgments to explain why this example is useful, without requiring finance
+expertise or suggesting Sabha is finance-only. Do not foreground coupon/ISIN/rating
+jargon or repeat investment disclaimers throughout the journey.
+
+Do not call the user a **director** or assign that title to a visual node. The
+plain-language explanation **you direct the meeting** is intentional. Do not
+introduce replay-package terminology or technical playback explanations into the
+intro or entry-status copy. This copy restriction does not authorize false claims
+of live generation or removal of necessary factual disclosures elsewhere.
+
+Visual snippets must use actual applicable meeting/source content when presented
+as quotations or facts. Otherwise make their illustrative nature clear. Do not
+invent participant quotations, citations, financial claims, consensus, or outcomes
+for visual effect. Existing contextual guidance continues to cover the shared fact
+sheet, disagreements, resulting research checklist, personas, prompt history,
+knowledge stacks, and settings; short intro copy does not remove that coverage or
+make optional exploration mandatory.
+
+### Continuous space, starfield, and flowing line
+
+The atmosphere is a **coded, colour-shifting starfield**, not a nebula. No cloud
+layers, smoke, dust lanes, procedural cloud generation, photographs, or video are
+required. Broad tonal variation is acceptable without recognizable cloud/blob
+shapes or elaborate background textures.
+
+- Place sparse stars at several stable depths. Perspective should produce gentle
+  differences in movement, apparent size, and brightness; avoid warp-speed streaks,
+  hyperspace effects, flashing, or large stars crossing the reading area.
+- Tie star positions and camera depth to journey position, not continuous forward
+  travel or random regeneration. Back retraces the same space. Fade/cull nearby
+  stars before they become large distracting discs.
+- Preserve the little animated line crossing the scene. It is one thin, softly
+  illuminated curve with a leading tip and tapered, fading tail, travelling through
+  open space around the cards rather than through readable text.
+- The line, starfield depth, card movement, and colour blend follow one shared
+  transition progress. The line responds to direction, reverses naturally with
+  Back, and remains continuous when motion is interrupted. It settles with the
+  scene instead of looping for attention.
+- The line expresses movement through the introduction, never AI thinking,
+  retrieval, loading progress, agreement, or an action performed in the meeting.
+- Use brief depth travel between four readable stops. Compositions resolve and
+  settle so users can read; no automatic advancement or idle forward camera drift.
+  Preserve continuity without giant outgoing cards obscuring incoming content.
+- Keep essential headings, card text, and controls as semantic HTML. They must not
+  become tiny receding labels or text rasterized into a canvas texture.
+
+Continue and Back provide dependable step navigation. Wheel/touch movement may
+support the spatial experience, but is not the only way to advance and must not
+copy the reference's unrestricted global input interception. It must not consume
+scrolling needed for small-screen/zoomed content or disrupt focus and native
+controls. All input methods address the same four moments; no second navigation
+or tutorial state machine is introduced.
+
+### Homepage departure and readiness handoff
+
+Remove both standalone pre-introduction loading screens: **Loading demo** and
+**Loading demo details**. Do not replace them with another interstitial spinner.
+
+For normal activation of the homepage **Try the demo** link:
+
+1. Start session acquisition immediately on activation. Once the session is
+   available, fetch and validate its required safe-config metadata using the same
+   pinned identity and initial checkpoint.
+2. Run the existing homepage CTA departure treatment while those requests proceed.
+   Extend it with a purposeful pending phase if necessary. Merely increasing the
+   existing 1050ms timeout is insufficient: its one-shot arrow disappears before
+   the timeout ends, leaving a blank glowing button.
+3. Hold the existing departure transition on the homepage until both results are
+   valid and ready. No generic spinner, fabricated percentage, simulated work, or
+   artificial minimum loading period. Finish the departure and navigate only once
+   readiness is achieved; do not navigate first and then perform those requests.
+4. Hand the ready session and metadata to the demo entry without refetching them,
+   selecting another session, or introducing an intermediate loading flash. Keep
+   this handoff ephemeral/in memory; do not add browser or server persistence.
+
+Keep recovery truthful and scoped. Session failure offers retry on the homepage;
+metadata-only failure retries metadata for the same pinned session rather than
+calling the session endpoint again. Restore usable interaction on failure, show a
+concise inline explanation, and do not leave the departure animation stuck
+indefinitely. Internal package/version/hash integrity remains mandatory even
+though technical package terminology is absent from product copy. Guard against
+duplicate activation, stale results, abandoned requests, and retry races.
+
+Reduced motion still gates navigation on API readiness, without requiring the
+departure animation. Preserve ordinary modified-click/new-tab link behavior.
+Direct URLs, new tabs, refresh, and deep links cannot rely on a homepage handoff:
+acquire the same required data inside an intentionally composed entry shell with
+the same atmosphere and stable geometry, honest pending/error status, and scoped
+retry. Do not resurrect the two standalone loading cards or expose incomplete
+workspace content. Intro acknowledgement, Skip, or Escape never bypasses readiness.
+The decorative renderer must not become another prerequisite for entry.
+
+### Implementation boundaries and retained behaviour
+
+The recommended lightweight structure is **CSS colour environments → transparent
+Canvas2D stars and line → HTML cards, wording, and controls**. No new Three.js,
+GSAP, Motion, shader framework, or rewrite of the homepage renderer is required by
+this design. Treat that as the preferred approach, not a verified performance
+claim. If a different renderer is proposed, justify it against the same result
+and constraints rather than importing the reference's entire application.
+
+Use stable seeded positions, timestamp-based animation, bounded pixel resolution
+and star density, and cached drawing primitives where useful. Avoid per-star
+expensive blur, unbounded device-pixel-ratio scaling, per-frame React state, or
+accumulated opaque canvas trails that mask the changing CSS background. A bounded
+redrawn tail and prepared colour layers are sufficient starting techniques.
+Pause hidden work, avoid jumps after resuming, release resources on unmount, and
+stop redrawing settled scenes. Provide the same readable composition if canvas
+is unavailable; rendering must never block the controls.
+
+Keep `DemoIntroProvider` authoritative for intro state; rendering interpolates
+presentation only. `DemoTutorialProvider` remains the sole contextual guidance
+owner. Keep the existing sessionStorage acknowledgement key and its exact
+refresh/soft-navigation/revisit/restart/reset semantics. A revisit must not remount
+the workspace or discard drafts/playback/practice state. Keep intended URLs,
+chapter deferral, focus restoration, modal isolation, and the existing
+overview → setup/create → open-room journey. **Enter the demo** does not jump
+directly into a meeting or complete any domain objective.
+
+Preserve Back, Continue, Skip introduction, Enter the demo, Escape behaviour, and
+understandable `Step N of 4` progress. No animation wait, forced reading duration,
+or transition lockout may delay usable controls. Reduced motion removes depth
+travel, parallax, and the travelling trail while preserving content and state;
+use static compositions or an appropriately restrained transition. Decorative
+canvas is non-interactive and hidden from assistive technology. Maintain readable
+contrast in every colour environment, keyboard operation, meaningful screen-reader
+order, focus handling, small-screen scrolling, and 200% zoom reflow.
+
+### Addendum acceptance and implementation handoff
+
+The subsequent implementation must demonstrate:
+
+- A continuous Cosmic Trail-like experience, not four conventional slides with a
+  starfield behind them; dark-first homepage continuity and strong full-screen
+  colour changes, with no visible logo/header or competing HUD.
+- Satoshi display typography and familiar Sabha cards visibly dominate; all four
+  moments follow the new order/copy baseline without dense explanations, director
+  titles, package jargon, fabricated evidence, or cloud/nebula effects.
+- Sparse perspective stars and the crossing, tapered line follow shared progress;
+  forward/backward and interrupted transitions remain coherent and settle to read.
+- Homepage success, slow-session, slow-metadata, failure, scoped retry, reduced
+  motion, and repeated-click cases: no early navigation, duplicate session,
+  refetch/loading flash after handoff, mixed identity, or permanently stuck CTA.
+- Direct entry, new tab, refresh, and deep-link pending/error recovery use the
+  composed entry shell, preserve the destination, and retain independent metadata
+  retry. Neither old loading screen returns.
+- All existing acknowledgement/reset/revisit and no-fake-progress guarantees still
+  hold; optional guidance remains under its existing owner.
+- Actual browser review on small laptop and mobile, both appearances, keyboard,
+  screen-reader order/focus, 200% zoom, reduced motion, and renderer fallback.
+  Profile motion and idle cost on representative devices; Canvas2D alone is not
+  evidence of acceptable performance. Review intermediate colour blends too.
+
+Update intro/loading tests and visual acceptance evidence to match this addendum
+when implementation occurs. The earlier passing test counts are historical and
+must not be cited as verification of this design. No implementation work or new
+verification is recorded by approval of this addendum.
