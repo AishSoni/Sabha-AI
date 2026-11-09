@@ -47,8 +47,15 @@ export function useUploadDocument(scope: DocumentScope) {
 export function useUploadMeetingDocument() {
     const queryClient = useQueryClient();
     return useMutation({
-        mutationFn: ({ file, meetingId }: { file: File; meetingId: string }) =>
-            documentClient.upload({ file, meetingId }),
+        mutationFn: ({
+            file,
+            meetingId,
+            requestKey,
+        }: {
+            file: File;
+            meetingId: string;
+            requestKey?: string;
+        }) => documentClient.upload({ file, meetingId, requestKey }),
         retry: false,
         onSuccess: (_data, variables) => {
             void queryClient

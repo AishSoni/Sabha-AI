@@ -19,7 +19,7 @@ export interface DocumentUploadState {
 }
 
 export interface UseDocumentUploadResult extends DocumentUploadState {
-    upload: (file: File) => Promise<UploadReceipt>;
+    upload: (file: File, requestKey?: string) => Promise<UploadReceipt>;
     reset: () => void;
 }
 
@@ -29,10 +29,10 @@ export function useDocumentUpload(scope: DocumentScope): UseDocumentUploadResult
     const [error, setError] = useState<Error | null>(null);
 
     const upload = useCallback(
-        async (file: File) => {
+        async (file: File, requestKey?: string) => {
             setError(null);
             try {
-                const next = await mutation.mutateAsync({ file, ...scope });
+                const next = await mutation.mutateAsync({ file, ...scope, requestKey });
                 setReceipt(next);
                 return next;
             } catch (cause) {

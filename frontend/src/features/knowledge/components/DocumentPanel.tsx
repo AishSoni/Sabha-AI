@@ -13,7 +13,9 @@
  */
 import { useEffect, useMemo, useState, type ReactNode } from 'react';
 import { useQueryClient } from '@tanstack/react-query';
+import { createRequestKey } from '@/shared/api/request-key';
 import {
+    documentClient,
     documentKeys,
     useDeleteDocument,
     useDocumentOperation,
@@ -21,7 +23,11 @@ import {
     useRetryIngestion,
     type DocumentScope,
 } from '../api';
-import type { Document, UploadReceipt } from '../api/decoders';
+import type {
+    Document,
+    IngestionProgress,
+    UploadReceipt,
+} from '../api/decoders';
 import { useDocumentUpload } from '../hooks/useDocumentUpload';
 import {
     DocumentPanelView,
@@ -54,38 +60,81 @@ function receiptStorageKey(scope: DocumentScope): string {
     return `${RECEIPT_STORAGE_PREFIX}${scopeIdentity(scope)}`;
 }
 
-function readStoredReceipt(scope: DocumentScope): UploadReceipt | null {
-    if (typeof window === 'undefined') return null;
-    try {
-        const raw = window.sessionStorage.getItem(receiptStorageKey(scope));
-        if (!raw) return null;
-        const value = JSON.parse(raw) as Partial<UploadReceipt> | null;
-        if (!value || (value.state !== 'pending' && value.state !== 'ready')) {
-            return null;
-        }
-        if (
-            typeof value.documentId !== 'string' ||
-            typeof value.file_name !== 'string'
-        ) {
-            return null;
-        }
-        if (value.state === 'pending' && typeof value.operationId !== 'string') {
-            return null;
-        }
-        return {
-            state: value.state,
-            documentId: value.documentId,
-            operationId: value.operationId ?? null,
-            revisionId: value.revisionId ?? null,
-            file_name: value.file_name,
-            status: typeof value.status === 'string' ? value.status : 'processing',
-            chunk_count:
-                typeof value.chunk_count === 'number' ? value.chunk_count : 0,
-            message: typeof value.message === 'string' ? value.message : '',
-        };
-    } catch {
+interface UploadIntent {
+    requestKey: string;
+    fileName: string;
+}
+
+interface StoredUpload {
+    intent: UploadIntent | null;
+    receipt: UploadReceipt | null;
+}
+
+function normalizeReceipt(value: unknown): UploadReceipt | null {
+    if (!value || typeof value !== 'object') return null;
+    const receipt = value as Partial<UploadReceipt>;
+    if (receipt.state !== 'pending' && receipt.state !== 'ready') {
         return null;
     }
+    if (
+        typeof receipt.documentId !== 'string' ||
+        typeof receipt.file_name !== 'string'
+    ) {
+        return null;
+    }
+    if (receipt.state === 'pending' && typeof receipt.operationId !== 'string') {
+        return null;
+    }
+    return {
+        state: receipt.state,
+        documentId: receipt.documentId,
+        operationId: receipt.operationId ?? null,
+        revisionId: receipt.revisionId ?? null,
+        file_name: receipt.file_name,
+        status: typeof receipt.status === 'string' ? receipt.status : 'processing',
+        chunk_count:
+            typeof receipt.chunk_count === 'number' ? receipt.chunk_count : 0,
+        message: typeof receipt.message === 'string' ? receipt.message : '',
+    };
+}
+
+function readStoredUpload(scope: DocumentScope): StoredUpload {
+    if (typeof window === 'undefined') return { intent: null, receipt: null };
+    try {
+        const raw = window.sessionStorage.getItem(receiptStorageKey(scope));
+        if (!raw) return { intent: null, receipt: null };
+        const value = JSON.parse(raw) as Record<string, unknown> | null;
+        if (!value) return { intent: null, receipt: null };
+        // Legacy entries stored the receipt object directly.
+        if (!('requestKey' in value) && !('receipt' in value)) {
+            return { intent: null, receipt: normalizeReceipt(value) };
+        }
+        const requestKey = value.requestKey;
+        const fileName = value.fileName;
+        const intent =
+            typeof requestKey === 'string' &&
+            requestKey.length > 0 &&
+            typeof fileName === 'string' &&
+            fileName.length > 0
+                ? { requestKey, fileName }
+                : null;
+        return { intent, receipt: normalizeReceipt(value.receipt) };
+    } catch {
+        return { intent: null, receipt: null };
+    }
+}
+
+function progressToReceipt(progress: IngestionProgress): UploadReceipt {
+    return {
+        state: progress.state === 'ready' ? 'ready' : 'pending',
+        documentId: progress.documentId,
+        operationId: progress.operationId,
+        revisionId: progress.revisionId,
+        file_name: progress.fileName,
+        status: progress.documentStatus ?? progress.state,
+        chunk_count: progress.chunkCount,
+        message: '',
+    };
 }
 
 function receiptView(receipt: UploadReceipt | null) {
@@ -108,9 +157,11 @@ export function DocumentPanel({
     const upload = useDocumentUpload(scope);
     const retry = useRetryIngestion(scope);
     const remove = useDeleteDocument(scope);
-    const [receipt, setReceipt] = useState<UploadReceipt | null>(() =>
-        readStoredReceipt(scope)
+    const [storedUpload, setStoredUpload] = useState<StoredUpload>(() =>
+        readStoredUpload(scope)
     );
+    const receipt = storedUpload.receipt;
+    const intent = storedUpload.intent;
     const [localError, setLocalError] = useState<string | null>(null);
     const [deleting, setDeleting] = useState<string | null>(null);
     const storageKey = receiptStorageKey(scope);
@@ -124,7 +175,30 @@ export function DocumentPanel({
     }, [scope]);
 
     useEffect(() => {
-        setReceipt(readStoredReceipt(scope));
+        setStoredUpload(readStoredUpload(scope));
+    }, [storageKey]); // eslint-disable-line react-hooks/exhaustive-deps
+
+    useEffect(() => {
+        if (!intent || receipt) return;
+        let cancelled = false;
+        documentClient
+            .findUpload(intent.requestKey, scope)
+            .then((progress) => {
+                if (!cancelled) {
+                    rememberUpload({
+                        intent,
+                        receipt: progressToReceipt(progress),
+                    });
+                }
+            })
+            .catch(() => {
+                // A miss means the original submission never reached
+                // admission. Keep the intent so choosing the file again
+                // reuses the same key instead of creating a second upload.
+            });
+        return () => {
+            cancelled = true;
+        };
     }, [storageKey]); // eslint-disable-line react-hooks/exhaustive-deps
 
     useEffect(() => {
@@ -136,12 +210,19 @@ export function DocumentPanel({
         });
     }, [progressState, queryClient, storageKey]); // eslint-disable-line react-hooks/exhaustive-deps
 
-    function rememberReceipt(next: UploadReceipt | null) {
-        setReceipt(next);
+    function rememberUpload(next: StoredUpload) {
+        setStoredUpload(next);
         if (typeof window === 'undefined') return;
         try {
-            if (next) {
-                window.sessionStorage.setItem(storageKey, JSON.stringify(next));
+            if (next.intent || next.receipt) {
+                window.sessionStorage.setItem(
+                    storageKey,
+                    JSON.stringify({
+                        requestKey: next.intent?.requestKey ?? null,
+                        fileName: next.intent?.fileName ?? null,
+                        receipt: next.receipt,
+                    })
+                );
             } else {
                 window.sessionStorage.removeItem(storageKey);
             }
@@ -154,10 +235,26 @@ export function DocumentPanel({
     async function handleFile(file: File | undefined) {
         if (!file) return;
         setLocalError(null);
+        const requestKey =
+            intent && intent.fileName === file.name
+                ? intent.requestKey
+                : createRequestKey('upload');
+        const nextIntent = { requestKey, fileName: file.name };
+        rememberUpload({ intent: nextIntent, receipt: null });
         try {
-            const next = await upload.upload(file);
-            rememberReceipt(next);
+            const next = await upload.upload(file, requestKey);
+            rememberUpload({ intent: nextIntent, receipt: next });
         } catch (cause) {
+            const recovered = await documentClient
+                .findUpload(requestKey, scope)
+                .catch(() => null);
+            if (recovered) {
+                rememberUpload({
+                    intent: nextIntent,
+                    receipt: progressToReceipt(recovered),
+                });
+                return;
+            }
             setLocalError(
                 cause instanceof Error ? cause.message : 'The upload failed.'
             );
@@ -177,7 +274,7 @@ export function DocumentPanel({
         try {
             await remove.mutateAsync(document.id);
             if (receipt?.documentId === document.id) {
-                rememberReceipt(null);
+                rememberUpload({ intent: null, receipt: null });
             }
         } catch (cause) {
             setLocalError(
@@ -194,7 +291,10 @@ export function DocumentPanel({
         setLocalError(null);
         try {
             const next = await retry.mutateAsync(operationId);
-            rememberReceipt(next);
+            rememberUpload({
+                intent,
+                receipt: next,
+            });
         } catch (cause) {
             setLocalError(
                 cause instanceof Error

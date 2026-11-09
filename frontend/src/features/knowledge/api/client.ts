@@ -24,6 +24,8 @@ export interface DocumentScope {
 
 export interface DocumentUploadInput extends DocumentScope {
     file: File;
+    /** Stable per-intent key so a retried submission is admitted once. */
+    requestKey?: string;
 }
 
 function scopeQuery(scope: DocumentScope): { key: 'meeting' | 'persona' | 'stack'; id: string } {
@@ -46,8 +48,21 @@ export const documentClient = {
         if (input.meetingId) form.append('meeting_id', input.meetingId);
         if (input.personaId) form.append('persona_id', input.personaId);
         if (input.stackId) form.append('stack_id', input.stackId);
+        if (input.requestKey) form.append('request_key', input.requestKey);
         return requestLiveForm('/documents/upload', form, init).then((body) =>
             decodeUploadReceipt(body, '/documents/upload')
+        );
+    },
+
+    findUpload(
+        requestKey: string,
+        scope: DocumentScope,
+        init?: { signal?: AbortSignal }
+    ): Promise<IngestionProgress> {
+        const { key, id } = scopeQuery(scope);
+        const path = `/documents/requests/${encodeURIComponent(requestKey)}?${key}_id=${encodeURIComponent(id)}`;
+        return requestLiveJson(path, init).then((body) =>
+            decodeIngestionProgress(body, path)
         );
     },
 
