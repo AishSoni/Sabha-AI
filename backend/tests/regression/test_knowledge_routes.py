@@ -67,12 +67,18 @@ class FakeLifecycle:
         self.purged = []
         self.upload_error = None
         self.delete_error = None
+        self.lookups = []
+        self.found = self.status
 
     async def upload(self, request):
         self.uploads.append(request)
         if self.upload_error is not None:
             raise self.upload_error
         return PendingReceipt(document_id=DOCUMENT_ID, operation_id=OPERATION_ID)
+
+    async def find_upload(self, request_key, *, owner):
+        self.lookups.append((request_key, owner))
+        return self.found
 
     async def process_ingestion(self, operation_id):
         self.processed.append(operation_id)
@@ -131,6 +137,15 @@ def test_upload_returns_a_pending_receipt_and_schedules_processing(route_env):
     assert body["status"] == "processing"
     assert lifecycle.uploads[0].owner.kind == "meeting"
     assert lifecycle.processed == [OPERATION_ID]
+
+
+def test_upload_carries_the_submission_request_key(route_env):
+    client, lifecycle = route_env
+
+    response = _upload(client, meeting_id=MEETING_ID, request_key="intent-1")
+
+    assert response.status_code == 202, response.text
+    assert lifecycle.uploads[0].request_key == "intent-1"
 
 
 def test_upload_reports_ready_without_scheduling(route_env):
@@ -253,6 +268,33 @@ def test_retry_of_a_revoked_operation_is_refused(route_env):
 
     assert response.status_code == 409, response.text
     assert lifecycle.retried == []
+
+
+def test_upload_request_lookup_returns_retained_receipt(route_env):
+    client, lifecycle = route_env
+
+    response = client.get(
+        "/api/documents/requests/intent-1", params={"meeting_id": MEETING_ID}
+    )
+
+    assert response.status_code == 200
+    assert response.json()["operationId"] == str(OPERATION_ID)
+    key, owner = lifecycle.lookups[0]
+    assert key == "intent-1"
+    assert owner.kind == "meeting"
+    assert str(owner.id) == MEETING_ID
+
+
+def test_upload_request_lookup_returns_404_when_unadmitted(route_env):
+    client, lifecycle = route_env
+    lifecycle.found = None
+
+    response = client.get(
+        "/api/documents/requests/never-seen", params={"meeting_id": MEETING_ID}
+    )
+
+    assert response.status_code == 404
+    assert response.json()["detail"] == "Upload request not found"
 
 
 def test_retry_of_a_ready_operation_returns_ready(route_env):

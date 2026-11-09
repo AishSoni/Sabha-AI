@@ -38,9 +38,11 @@ from app.modules.knowledge.application.ports import (
 from app.modules.knowledge.application.queries import (
     GetDocument,
     GetIngestionStatus,
+    GetUploadByRequest,
     IngestionStatusView,
     ListDocuments,
 )
+from app.modules.knowledge.domain.models import KnowledgeOwner
 from app.modules.knowledge.application.retrieval import (
     RetrievalRequest,
     RetrievedPassage,
@@ -116,6 +118,7 @@ class KnowledgeLifecycle:
             embedding=self.embedding,
         )
         self._status = GetIngestionStatus(self.persistence)
+        self._get_upload = GetUploadByRequest(self.persistence)
         self._list_documents = ListDocuments(self.persistence)
         self._get_document = GetDocument(self.persistence)
         self._read_revision = ReadRevisionContent(
@@ -152,6 +155,12 @@ class KnowledgeLifecycle:
         self, operation_id: UUID
     ) -> IngestionStatusView | None:
         return await self._status.execute(operation_id)
+
+    async def find_upload(
+        self, request_key: str, *, owner: KnowledgeOwner
+    ) -> IngestionStatusView | None:
+        """Recover a retained upload receipt without re-uploading bytes."""
+        return await self._get_upload.execute(request_key, owner=owner)
 
     async def list_documents(
         self, *, owner_kind: str, owner_id: UUID

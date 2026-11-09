@@ -34,6 +34,12 @@ class SourceTooLarge(UploadRejected):
     code = "source_too_large"
 
 
+class UploadRequestConflict(UploadRejected):
+    """A retained request key was reused for a different upload intent."""
+
+    code = "upload_request_conflict"
+
+
 class MissingSource(KnowledgeError):
     code = "missing_source"
 

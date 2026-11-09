@@ -28,12 +28,14 @@ from app.modules.knowledge.application.ports import (
 from app.modules.knowledge.domain.errors import (
     DocumentNotFound,
     KnowledgeUnavailable,
+    UploadRequestConflict,
 )
 from app.modules.knowledge.domain.models import (
     ChunkIdentity,
     CleanupIntent,
     EligibleRevision,
     IngestionState,
+    KnowledgeOwner,
     PassageEvidence,
     RevisionState,
     UploadAdmission,
@@ -119,9 +121,14 @@ class SupabaseKnowledgeRepository:
                 "p_embedding_provider": upload.embedding_provider,
                 "p_embedding_model": upload.embedding_model,
                 "p_embedding_dimension": upload.embedding_dimension,
+                "p_request_key": upload.request_key,
             },
         )
         outcome = row.get("outcome")
+        if outcome == "conflict":
+            raise UploadRequestConflict(
+                "this upload request key was already used for different content"
+            )
         if outcome not in ("admitted", "existing"):
             raise KnowledgeUnavailable(
                 f"knowledge admission returned unexpected outcome {outcome!r}"
@@ -143,6 +150,25 @@ class SupabaseKnowledgeRepository:
         body = self._rpc_value(
             "knowledge_read_ingestion", {"p_ingestion_id": str(ingestion_id)}
         )
+        return self._ingestion_record(body)
+
+    def get_upload_by_request_key(
+        self, request_key: str, owner: KnowledgeOwner
+    ) -> IngestionRecord | None:
+        """Recover the receipt admitted for one retained upload intent."""
+        body = self._rpc_value(
+            "knowledge_read_upload_request",
+            {
+                "p_request_key": request_key,
+                "p_meeting_id": str(owner.id) if owner.kind == "meeting" else None,
+                "p_persona_id": str(owner.id) if owner.kind == "persona" else None,
+                "p_stack_id": str(owner.id) if owner.kind == "stack" else None,
+            },
+        )
+        return self._ingestion_record(body)
+
+    @staticmethod
+    def _ingestion_record(body: Any) -> IngestionRecord | None:
         if not body:
             return None
 

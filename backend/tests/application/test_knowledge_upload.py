@@ -104,13 +104,16 @@ class RecordingPersistence:
         return self.records.get(ingestion_id)
 
 
-def _request(*, name="Plan.md", payload=b"# plan", owner=None) -> UploadRequest:
+def _request(
+    *, name="Plan.md", payload=b"# plan", owner=None, request_key=None
+) -> UploadRequest:
     return UploadRequest(
         file_name=name,
         size_bytes=len(payload),
         stream=io.BytesIO(payload),
         owner=owner or KnowledgeOwner(kind="stack", id=uuid4()),
         content_type="text/markdown",
+        request_key=request_key,
     )
 
 
@@ -149,6 +152,24 @@ async def test_upload_stages_finalizes_then_admits_and_returns_pending_receipt()
         "move",
     ]
     assert upload.source_key in store.objects
+
+
+@pytest.mark.asyncio
+async def test_request_key_makes_a_lost_receipt_replay_target_the_same_upload():
+    store = MemorySourceStore()
+    persistence = RecordingPersistence()
+    use_case = UploadDocument(
+        source_store=store, persistence=persistence, embedding=PROFILE
+    )
+    owner = KnowledgeOwner(kind="stack", id=uuid4())
+
+    first = await use_case.execute(_request(owner=owner, request_key="intent-1"))
+    second = await use_case.execute(_request(owner=owner, request_key="intent-1"))
+
+    assert first.document_id == second.document_id
+    assert first.operation_id == second.operation_id
+    assert [call[0] for call in store.calls].count("move") == 1
+    assert any(call[0] == "delete" for call in store.calls)
 
 
 @pytest.mark.asyncio

@@ -45,6 +45,19 @@ def ingestion_id_for(revision_id: UUID) -> UUID:
     return uuid5(NAMESPACE_URL, f"sabha:ingestion:{revision_id}")
 
 
+def document_id_for_request(owner: KnowledgeOwner, request_key: str) -> UUID:
+    """Derive one document identity from a retained upload intent.
+
+    A replay with the same key and owner targets the same revision even when
+    the first receipt never reached the browser; a different key (a separate
+    intent, even for identical bytes) keeps its own document identity.
+    """
+    return uuid5(
+        NAMESPACE_URL,
+        f"sabha:document-request:{owner.kind}:{owner.id}:{request_key}",
+    )
+
+
 def chunk_identities(
     revision_id: UUID, texts: Iterable[str], *, start_index: int = 0
 ) -> list[ChunkIdentity]:
@@ -95,10 +108,15 @@ def source_key_for(
     document_id: UUID,
     revision_id: UUID,
     file_name: str,
+    content_sha256: str | None = None,
 ) -> str:
+    # A keyed replay can arrive with different bytes for the same intent. The
+    # content hash keeps the refused attempt from overwriting the bytes the
+    # admitted revision still points at.
+    content_segment = f"{content_sha256}/" if content_sha256 else ""
     return (
         f"sources/{owner.kind}/{owner.id}/{document_id}/{revision_id}/"
-        f"{sanitize_file_name(file_name)}"
+        f"{content_segment}{sanitize_file_name(file_name)}"
     )
 
 

@@ -108,6 +108,7 @@ class NewUpload:
     embedding_provider: str
     embedding_model: str
     embedding_dimension: int
+    request_key: str | None = None
 
 
 @dataclass(frozen=True)
@@ -174,6 +175,11 @@ class KnowledgePersistence(Protocol):
 
     def get_ingestion(self, ingestion_id: UUID) -> IngestionRecord | None:
         """Read the durable receipt state, or None when it never existed."""
+
+    def get_upload_by_request_key(
+        self, request_key: str, owner: KnowledgeOwner
+    ) -> IngestionRecord | None:
+        """Read the retained ingestion admitted for one upload intent."""
 
     def claim_ingestion(
         self,

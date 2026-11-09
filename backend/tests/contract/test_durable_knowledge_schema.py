@@ -55,6 +55,8 @@ def _admit(
     file_name: str = "notes.txt",
     size_bytes: int = 42,
     status: str = "pending",
+    request_key: str | None = None,
+    source_sha256: str = SHA,
 ):
     document_id = document_id or _uuid()
     revision_id = revision_id or _uuid()
@@ -65,7 +67,7 @@ def _admit(
             """
             SELECT knowledge_admit_upload(
                 %s, %s, %s, %s, NULL, %s, %s, 'txt', %s, %s, %s, %s,
-                %s, %s, %s
+                %s, %s, %s, %s
             )
             """,
             (
@@ -80,10 +82,11 @@ def _admit(
                 SOURCE_KEY.format(
                     owner=owner, document=document_id, revision=revision_id
                 ),
-                SHA,
+                source_sha256,
                 "ollama",
                 "nomic-embed-text",
                 768,
+                request_key,
             ),
         ).fetchone()
     return document_id, revision_id, ingestion_id, result[0]
@@ -523,4 +526,86 @@ def test_legacy_indexed_rows_become_honestly_unavailable(legacy_db):
     assert "re-upload" in document[1]
     assert revision[0] == "unavailable" and revision[1] is not None
     assert eligible == 0
+
+
+def test_request_key_replays_the_same_upload_receipt(disposable_db):
+    db = disposable_db
+    meeting_id = _seed_meeting(db)
+    request_key = "upload-intent-1"
+
+    first = _admit(db, meeting_id=meeting_id, request_key=request_key)[3]
+    document_id = first["document_id"]
+    revision_id = first["revision_id"]
+    ingestion_id = first["ingestion_id"]
+    second = _admit(
+        db,
+        meeting_id=meeting_id,
+        request_key=request_key,
+        document_id=document_id,
+        revision_id=revision_id,
+        ingestion_id=ingestion_id,
+    )[3]
+
+    assert first["outcome"] == "admitted"
+    assert second["outcome"] == "existing"
+    assert second["ingestion_id"] == first["ingestion_id"]
+    with db.connect() as conn:
+        documents = conn.execute("SELECT count(*) FROM documents").fetchone()[0]
+        revisions = conn.execute("SELECT count(*) FROM document_revisions").fetchone()[0]
+        ingestions = conn.execute("SELECT count(*) FROM document_ingestions").fetchone()[0]
+    assert (documents, revisions, ingestions) == (1, 1, 1)
+
+
+def test_request_key_conflict_when_upload_identity_differs(disposable_db):
+    db = disposable_db
+    meeting_id = _seed_meeting(db)
+    request_key = "upload-intent-2"
+    document_id, revision_id, ingestion_id, _ = _admit(
+        db, meeting_id=meeting_id, request_key=request_key
+    )
+
+    conflict = _admit(
+        db,
+        meeting_id=meeting_id,
+        request_key=request_key,
+        document_id=document_id,
+        revision_id=revision_id,
+        ingestion_id=ingestion_id,
+        source_sha256="b" * 64,
+    )[3]
+
+    assert conflict["outcome"] == "conflict"
+    with db.connect() as conn:
+        count = conn.execute("SELECT count(*) FROM document_ingestions").fetchone()[0]
+    assert count == 1
+
+
+def test_read_upload_request_is_owner_scoped(disposable_db):
+    db = disposable_db
+    meeting_id = _seed_meeting(db)
+    stack_id = _seed_stack(db)
+    request_key = "upload-intent-3"
+    document_id, revision_id, ingestion_id, _ = _admit(
+        db, meeting_id=meeting_id, request_key=request_key
+    )
+
+    with db.connect() as conn:
+        body = conn.execute(
+            "SELECT knowledge_read_upload_request(%s, %s, NULL, NULL)",
+            (request_key, meeting_id),
+        ).fetchone()[0]
+        wrong_owner = conn.execute(
+            "SELECT knowledge_read_upload_request(%s, NULL, NULL, %s)",
+            (request_key, stack_id),
+        ).fetchone()[0]
+        missing = conn.execute(
+            "SELECT knowledge_read_upload_request('never-admitted', %s, NULL, NULL)",
+            (meeting_id,),
+        ).fetchone()[0]
+
+    assert str(body["ingestion"]["id"]) == ingestion_id
+    assert str(body["ingestion"]["document_id"]) == document_id
+    assert str(body["ingestion"]["revision_id"]) == revision_id
+    assert wrong_owner is None
+    assert missing is None
 

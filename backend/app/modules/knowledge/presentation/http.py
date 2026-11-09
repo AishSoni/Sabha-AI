@@ -178,6 +178,7 @@ async def upload_document(
     meeting_id: Optional[str] = Form(None),
     persona_id: Optional[str] = Form(None),
     stack_id: Optional[str] = Form(None),
+    request_key: Optional[str] = Form(None),
     lifecycle=Depends(get_knowledge_lifecycle),
 ):
     """Persist original bytes and admit a durable ingestion.
@@ -213,6 +214,7 @@ async def upload_document(
         stream=file.file,
         owner=owner,
         content_type=file.content_type or "application/octet-stream",
+        request_key=request_key,
     )
     try:
         receipt = await lifecycle.upload(upload_request)
@@ -276,6 +278,43 @@ async def get_ingestion_status(
         raise _unavailable(exc) from exc
     if status is None:
         raise HTTPException(status_code=404, detail="Upload operation not found")
+    return IngestionStatusResponse(
+        operationId=status.operation_id,
+        documentId=status.document_id,
+        revisionId=status.revision_id,
+        state=status.state.value,
+        revisionState=status.revision_state.value,
+        documentStatus=status.document_status,
+        fileName=status.file_name,
+        fileType=status.file_type,
+        chunkCount=status.chunk_count,
+        errorMessage=status.error_message,
+    )
+
+
+@router.get(
+    "/requests/{request_key}", response_model=IngestionStatusResponse
+)
+async def get_upload_request(
+    request_key: str,
+    meeting_id: Optional[str] = None,
+    persona_id: Optional[str] = None,
+    stack_id: Optional[str] = None,
+    lifecycle=Depends(get_knowledge_lifecycle),
+):
+    """Recover a retained upload receipt by its submission key.
+
+    The browser calls this before re-uploading after a lost response. A miss
+    means no admission is retained for this intent; it is not a failure of an
+    existing document.
+    """
+    owner = _owner(meeting_id, persona_id, stack_id)
+    try:
+        status = await lifecycle.find_upload(request_key, owner=owner)
+    except KnowledgeUnavailable as exc:
+        raise _unavailable(exc) from exc
+    if status is None:
+        raise HTTPException(status_code=404, detail="Upload request not found")
     return IngestionStatusResponse(
         operationId=status.operation_id,
         documentId=status.document_id,

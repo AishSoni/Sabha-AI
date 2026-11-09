@@ -87,6 +87,7 @@ SCHEMA_FILES = [
     BACKEND_ROOT / "migrations" / "037_turn_queue_active_window.sql",
     BACKEND_ROOT / "migrations" / "038_message_request_key_conflict.sql",
     BACKEND_ROOT / "migrations" / "039_meeting_request_identity.sql",
+    BACKEND_ROOT / "migrations" / "040_upload_request_identity.sql",
 ]
 
 # The chain immediately before Spec 12's isolation migration. Tests use this

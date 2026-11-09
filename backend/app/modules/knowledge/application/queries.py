@@ -11,7 +11,11 @@ from app.modules.knowledge.application.ports import (
     IngestionRecord,
     KnowledgePersistence,
 )
-from app.modules.knowledge.domain.models import IngestionState, RevisionState
+from app.modules.knowledge.domain.models import (
+    IngestionState,
+    KnowledgeOwner,
+    RevisionState,
+)
 
 
 @dataclass(frozen=True)
@@ -37,6 +41,23 @@ class GetIngestionStatus:
     async def execute(self, operation_id: UUID) -> IngestionStatusView | None:
         record = await asyncio.to_thread(
             self._persistence.get_ingestion, operation_id
+        )
+        return None if record is None else _view(record)
+
+
+class GetUploadByRequest:
+    """Recover the retained ingestion for one authorized upload intent."""
+
+    def __init__(self, persistence: KnowledgePersistence) -> None:
+        self._persistence = persistence
+
+    async def execute(
+        self, request_key: str, *, owner: KnowledgeOwner
+    ) -> IngestionStatusView | None:
+        record = await asyncio.to_thread(
+            self._persistence.get_upload_by_request_key,
+            request_key,
+            owner,
         )
         return None if record is None else _view(record)
 

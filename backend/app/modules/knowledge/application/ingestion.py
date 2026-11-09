@@ -34,6 +34,7 @@ from app.modules.knowledge.domain.models import (
 from app.modules.knowledge.domain.services import (
     MAX_SOURCE_BYTES,
     chunk_identities,
+    document_id_for_request,
     ingestion_id_for,
     revision_id_for,
     source_key_for,
@@ -64,6 +65,7 @@ class UploadRequest:
     stream: BinaryIO
     owner: KnowledgeOwner
     content_type: str = "application/octet-stream"
+    request_key: str | None = None
 
 
 @dataclass(frozen=True)
@@ -105,16 +107,17 @@ class UploadDocument:
     def _execute(self, request: UploadRequest) -> UploadReceipt:
         validate_upload(request.file_name, request.size_bytes)
 
-        document_id = uuid4()
+        request_key = (request.request_key or "").strip() or None
+        document_id = (
+            document_id_for_request(request.owner, request_key)
+            if request_key is not None
+            else uuid4()
+        )
         revision_id = revision_id_for(document_id)
         ingestion_id = ingestion_id_for(revision_id)
-        staging_key = staging_key_for(document_id, revision_id)
-        source_key = source_key_for(
-            request.owner,
-            document_id,
-            revision_id,
-            request.file_name,
-        )
+        # A unique staging key keeps concurrent replays of one intent from
+        # overwriting each other's spooled bytes.
+        staging_key = f"{staging_key_for(document_id, revision_id)}/{uuid4().hex}"
         file_type = (
             PurePosixPath(request.file_name.replace("\\", "/")).suffix.lower().lstrip(".")
         )
@@ -128,7 +131,22 @@ class UploadDocument:
         )
         if not stored.sha256:
             raise SourceStoreError("source adapter did not report a content hash")
-        self._source_store.move(staging_key, source_key)
+        source_key = source_key_for(
+            request.owner,
+            document_id,
+            revision_id,
+            request.file_name,
+            content_sha256=stored.sha256,
+        )
+
+        # Identical bytes may already be durable from an earlier attempt whose
+        # receipt was lost. Reuse them instead of rewriting the same object.
+        created_source = False
+        if self._source_store.exists(source_key):
+            self._source_store.delete(staging_key)
+        else:
+            self._source_store.move(staging_key, source_key)
+            created_source = True
 
         upload = NewUpload(
             document_id=document_id,
@@ -144,16 +162,18 @@ class UploadDocument:
             embedding_provider=self._embedding.provider,
             embedding_model=self._embedding.model,
             embedding_dimension=self._embedding.dimension,
+            request_key=request_key,
         )
         try:
             admission = self._persistence.admit_upload(upload)
         except Exception:
-            # The object has no SQL reference, so a best-effort delete avoids
-            # leaking bytes. A failure here is swept later as an orphan.
-            try:
-                self._source_store.delete(source_key)
-            except Exception:
-                pass
+            # Remove only bytes this attempt created; a refused conflicting
+            # replay must never delete the admitted revision's source object.
+            if created_source:
+                try:
+                    self._source_store.delete(source_key)
+                except Exception:
+                    pass
             raise
 
         return self._receipt(admission)
