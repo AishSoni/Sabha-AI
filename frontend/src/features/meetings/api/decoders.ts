@@ -117,6 +117,10 @@ export function decodeParticipant(value: unknown, path: string): AIParticipant {
         record.provider_config === undefined
             ? undefined
             : decodeObject(record.provider_config, `${path}.provider_config`);
+    const generationPolicy =
+        record.generation_policy === null || record.generation_policy === undefined
+            ? null
+            : decodeObject(record.generation_policy, `${path}.generation_policy`);
     return {
         id: requireString(record.id, `${path}.id`),
         meeting_id: requireString(record.meeting_id, `${path}.meeting_id`),
@@ -138,6 +142,7 @@ export function decodeParticipant(value: unknown, path: string): AIParticipant {
                       requireString(item, childPath)
                   ),
         created_at: requireString(record.created_at, `${path}.created_at`),
+        generation_policy: generationPolicy ? { ...generationPolicy } : null,
     };
 }
 

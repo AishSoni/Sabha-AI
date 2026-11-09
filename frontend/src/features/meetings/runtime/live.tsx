@@ -14,6 +14,8 @@ import { LiveDocumentsPanel } from "./live-documents-panel";
 import { createLiveEvidence } from "./live-evidence";
 import { LiveParticipantAction } from "./live-participant-action";
 import { LiveSummaryPanel } from "./live-summary-panel";
+import { generationSummary, resolveEffectiveGeneration } from "./effective-generation";
+import { useSettingsStore } from "@/features/settings/state/settings-store";
 import {
     LIVE_RUNTIME_SCOPE,
     RuntimeScopeProvider,
@@ -81,6 +83,16 @@ export function createLiveMeetingsRuntime(): MeetingsRuntime {
             participantAction: LiveParticipantAction,
         },
         evidence: createLiveEvidence(),
+        describeGeneration: (participant) => {
+            const state = useSettingsStore.getState();
+            return generationSummary(
+                resolveEffectiveGeneration(
+                    participant,
+                    state.composeGenerationSettings({ includeKey: false }),
+                    () => undefined,
+                ),
+            );
+        },
     };
 }
 

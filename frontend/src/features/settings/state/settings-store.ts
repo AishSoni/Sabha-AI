@@ -86,7 +86,7 @@ export interface SettingsState {
     saveProviderKey: (providerId: ProviderId, plaintext: string) => Promise<ProviderKeySaveResult>;
     removeProviderKey: (providerId: ProviderId) => void;
     hasStoredKey: (providerId: ProviderId) => boolean;
-    composeGenerationSettings: () => GenerationSettings | null;
+    composeGenerationSettings: (options?: { includeKey?: boolean }) => GenerationSettings | null;
     getProviderApiKey: (providerId: string) => string | undefined;
     initializeFromServer: (data: {
         isProduction: boolean;
@@ -327,7 +327,7 @@ export const useSettingsStore = create<SettingsState>()(
 
             hasStoredKey: (providerId) => get().vaultCiphertexts[providerId] !== undefined,
 
-            composeGenerationSettings: () => {
+            composeGenerationSettings: (options) => {
                 const active = get().getActiveProvider();
                 if (!active) return null;
                 const { id, config } = active;
@@ -337,8 +337,9 @@ export const useSettingsStore = create<SettingsState>()(
                     temperature: config.temperature,
                     maxTokens: config.maxTokens,
                     baseUrl: config.baseUrl || undefined,
-                    // Key exists in memory only while the vault is unlocked.
-                    apiKey: revealFromVault(id),
+                    // Key exists in memory only while the vault is unlocked,
+                    // and callers that only display policy opt out entirely.
+                    apiKey: options?.includeKey === false ? undefined : revealFromVault(id),
                 };
             },
 

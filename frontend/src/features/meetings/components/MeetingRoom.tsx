@@ -1580,6 +1580,21 @@ function ParticipantDetailCard({ participant }: { participant: AIParticipant }) 
     const [promptOpen, setPromptOpen] = useState(false);
     const [knowledgeOpen, setKnowledgeOpen] = useState(false);
     const stackCount = participant.stack_ids?.length ?? 0;
+    const generation = runtime.describeGeneration?.(participant);
+    const modelLabel = generation?.model || participant.provider_config?.model || 'Default';
+    const providerLabel = generation
+        ? generation.provider === 'default'
+            ? 'Default provider'
+            : generation.provider
+        : null;
+    const sourceLabel =
+        generation?.source === 'participant'
+            ? 'Participant policy'
+            : generation?.source === 'global'
+              ? 'Browser default'
+              : generation?.source === 'server'
+                ? 'Server default'
+                : null;
 
     return (
         <Card className="bg-surface/50 border-separator overflow-hidden">
@@ -1600,7 +1615,9 @@ function ParticipantDetailCard({ participant }: { participant: AIParticipant }) 
                         </Badge>
                     </div>
                     <p className="type-meta text-ink-muted">
-                        Model: {participant.provider_config?.model || 'Default'}
+                        {providerLabel ? `Provider: ${providerLabel} · ` : ''}
+                        Model: {modelLabel}
+                        {sourceLabel ? ` · ${sourceLabel}` : ''}
                     </p>
                 </div>
             </div>

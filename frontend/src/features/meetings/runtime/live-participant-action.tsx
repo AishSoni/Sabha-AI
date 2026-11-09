@@ -5,13 +5,16 @@ import { RateLimitedButton } from "@/components/ui/rate-limited-button";
 import { useSettingsStore } from "@/features/settings";
 import { cn } from "@/lib/utils";
 import type { ParticipantActionProps } from "./contract";
+import { resolveEffectiveGeneration } from "./effective-generation";
 
 /**
- * Live participant action (spec-14).
+ * Live participant action (spec-14, spec-37).
  *
  * BYOK composition and provider cooldowns stay in the live runtime slot. The
- * shared room only starts a turn with the settings this slot hands it, so the
- * replay graph never imports the vault or the live cooldown store.
+ * effective configuration is resolved once from the participant's policy and
+ * the browser-global choice, so execution, credential lookup, and cooldown
+ * cannot disagree about the provider. The shared room never imports the vault
+ * or the live cooldown store.
  */
 export function LiveParticipantAction({
     participant,
@@ -20,15 +23,29 @@ export function LiveParticipantAction({
     disabled,
     onStart,
 }: ParticipantActionProps) {
+    const settingsState = useSettingsStore();
+    const globalSettings = settingsState.composeGenerationSettings({ includeKey: false });
+    const effective = resolveEffectiveGeneration(
+        participant,
+        globalSettings,
+        (provider) => settingsState.getProviderApiKey(provider),
+    );
+
     const start = () => {
-        const settings =
-            useSettingsStore.getState().composeGenerationSettings() ?? undefined;
-        onStart(settings);
+        // Resolve again at click time: the vault may have locked or the user
+        // may have changed the global provider since this render.
+        const current = useSettingsStore.getState();
+        const atClick = resolveEffectiveGeneration(
+            participant,
+            current.composeGenerationSettings({ includeKey: false }),
+            (provider) => current.getProviderApiKey(provider),
+        );
+        onStart(atClick.settings);
     };
 
     return (
         <RateLimitedButton
-            provider={participant.provider_config?.provider || "default"}
+            provider={effective.provider}
             variant="outline"
             size="sm"
             disabled={disabled}
