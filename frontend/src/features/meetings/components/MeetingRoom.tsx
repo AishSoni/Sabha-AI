@@ -93,6 +93,7 @@ import { ThinkingBlock } from './ThinkingBlock';
 import { ToolUseBlock } from './ToolUseBlock';
 import { CitationsBlock, type CitationView } from './CitationsBlock';
 import { ClosingPanel } from './ClosingPanel';
+import { ContextEstimate } from './ContextEstimate';
 import { EvidenceCitationTrigger } from '../evidence/trigger';
 import { EvidencePreviewHost } from '../evidence/host';
 import { EvidencePreviewProvider } from '../evidence/provider';
@@ -1845,30 +1846,7 @@ function MeetingDetailsDialog({
                     </dl>
                 </section>
 
-                {contextStats && (
-                    <section className="mt-5">
-                        <h3 className="type-meta-strong text-ink-secondary">Context usage</h3>
-                        <div className="mt-2 h-2 overflow-hidden rounded-full bg-surface-raised">
-                            <div
-                                className={cn(
-                                    'h-full rounded-full',
-                                    contextStats.usage_percent > 80
-                                        ? 'bg-danger'
-                                        : contextStats.usage_percent > 60
-                                          ? 'bg-warning'
-                                          : 'bg-success'
-                                )}
-                                style={{
-                                    width: `${Math.min(contextStats.usage_percent, 100)}%`,
-                                }}
-                            />
-                        </div>
-                        <p className="mt-1 type-meta text-ink-muted">
-                            {contextStats.current_tokens.toLocaleString()} /{' '}
-                            {contextStats.max_tokens.toLocaleString()} tokens
-                        </p>
-                    </section>
-                )}
+                {contextStats && <ContextEstimate stats={contextStats} />}
 
                 <section className="mt-5">
                     <h3 className="type-meta-strong text-ink-secondary">Participants</h3>
