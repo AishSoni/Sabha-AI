@@ -60,16 +60,24 @@ vi.mock('./ProviderCard', () => ({
     ProviderCard: () => <div data-testid="provider-card" />,
 }));
 
-vi.mock('./SystemAiCard', () => ({
-    SystemAiCard: () => <div data-testid="system-ai-card" />,
-}));
-
 import { useEffect, useState } from 'react';
-import { ApiKeysSection } from './ApiKeysSection';
+import { ProvidersSection } from './ProvidersSection';
 import { useSettingsStore } from '../state/settings-store';
 
 const metadataView = {
-    providers: [],
+    providers: [
+        {
+            id: 'ollama',
+            name: 'Ollama (Local)',
+            description: 'Local models',
+            requires_api_key: false,
+            base_url: 'http://localhost:11434',
+            models: [],
+            default_model: 'llama3.2',
+            default_temperature: 0.7,
+            default_max_tokens: 2048,
+        },
+    ],
     environment: {
         isProduction: false,
         configuredProviders: ['ollama'],
@@ -81,6 +89,12 @@ const metadataView = {
         model: 'llama3.2',
         temperature: 0.5,
         maxTokens: 2048,
+    },
+    systemAIStatus: {
+        source: 'environment',
+        state: 'missing',
+        degraded: false,
+        message: 'No saved System AI policy is stored; environment defaults are in effect.',
     },
 };
 
@@ -99,7 +113,7 @@ describe('settings metadata failure visibility', () => {
     it('shows the failure with a retry, and retry hydrates the metadata', async () => {
         mocks.view.error = { message: 'boom' };
 
-        render(<ApiKeysSection />);
+        render(<ProvidersSection />);
 
         await screen.findByText('Failed to load providers');
         const retry = screen.getByRole('button', { name: /retry/i });
@@ -113,9 +127,8 @@ describe('settings metadata failure visibility', () => {
         };
         fireEvent.click(retry);
 
-        await screen.findByTestId('system-ai-card');
+        await screen.findByTestId('provider-card');
         expect(screen.queryByText('Failed to load providers')).toBeNull();
-        await screen.findByText(/Browser keys are encrypted locally/);
 
         // The retry hydrates authoritative metadata into the store — even
         // though the section had already attempted this once.
