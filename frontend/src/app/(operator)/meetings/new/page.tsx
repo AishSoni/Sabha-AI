@@ -58,14 +58,19 @@ export default function NewMeetingPage() {
     const {
         isCreating,
         uploads,
+        committedConfig,
+        configLocked,
         createdMeetingId,
         creationError,
         uploadError,
         navigationDone,
+        canContinue,
+        partialNotice,
         stageFiles,
         removeUpload,
         createMeeting,
         retryUploads,
+        continueToMeeting,
     } = useMeetingCreation();
 
     const handleRosterToggle = (id: string) => {
@@ -84,22 +89,24 @@ export default function NewMeetingPage() {
 
     /** The view model is title/context; the feature adapter maps them to the meeting name/agenda wire fields. */
     const handleCreate = async () => {
-        if (!title.trim()) return;
+        const effectiveTitle = (committedConfig?.title ?? title).trim();
+        if (!effectiveTitle) return;
 
-        const selectedPersonaIds = roster.filter(p => p.selected).map(p => p.id);
+        const selectedPersonaIds =
+            committedConfig?.personaIds ?? roster.filter(p => p.selected).map(p => p.id);
         if (selectedPersonaIds.length === 0) return;
 
         await createMeeting({
-            title: title.trim(),
-            context: context.trim(),
+            title: effectiveTitle,
+            context: (committedConfig?.context ?? context).trim(),
             personaIds: selectedPersonaIds,
         });
     };
 
     return (
         <MeetingCreationScreen
-            title={title}
-            context={context}
+            title={committedConfig?.title ?? title}
+            context={committedConfig?.context ?? context}
             onTitleChange={setTitle}
             onContextChange={setContext}
             roster={roster}
@@ -107,25 +114,38 @@ export default function NewMeetingPage() {
             onToggleRoster={handleRosterToggle}
             onSelectAll={handleSelectAll}
             onRefreshRoster={() => void personaList.refetch()}
-            stagedItems={uploads.map((item, index) => ({
-                key: `${item.file.name}-${index}`,
+            configLocked={configLocked}
+            stagedItems={uploads.map((item) => ({
+                key: item.requestKey,
                 label: item.file.name,
                 status: item.status,
                 statusLabel:
                     item.status === 'uploading'
                         ? 'Uploading…'
                         : item.status === 'uploaded'
-                          ? 'Uploaded'
+                          ? 'Accepted — indexing'
                           : item.status === 'failed'
                             ? `Failed: ${item.error ?? 'Upload failed'}`
-                            : '',
-                removable: item.status !== 'uploaded',
+                            : 'Queued',
+                removable: item.status === 'pending',
             }))}
             onRemoveStaged={removeUpload}
             onFilesSelected={stageFiles}
             uploadError={uploadError}
             onRetryUploads={retryUploads}
             showRetryUploads={Boolean(uploadError && createdMeetingId)}
+            partialNotice={partialNotice}
+            canContinue={canContinue}
+            onContinue={continueToMeeting}
+            showCreateAction={!createdMeetingId && !navigationDone}
+            canCreate={
+                !createdMeetingId &&
+                !isCreating &&
+                !navigationDone &&
+                (committedConfig?.title ?? title).trim().length > 0 &&
+                roster.some(persona => persona.selected)
+            }
+            createLabel={configLocked ? 'Retry meeting creation' : 'Create meeting'}
             isCreating={isCreating}
             creationError={creationError}
             navigationDone={navigationDone}

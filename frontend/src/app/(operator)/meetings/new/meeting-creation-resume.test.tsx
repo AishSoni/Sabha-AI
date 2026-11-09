@@ -13,15 +13,20 @@ import { fireEvent, render, screen, waitFor } from '@testing-library/react';
 const mocks = vi.hoisted(() => ({
     pipeline: {
         isCreating: false,
-        uploads: [] as Array<{ file: { name: string }; status: string; error: string | null }>,
+        uploads: [] as Array<{ requestKey: string; file: { name: string }; status: string; error: string | null }>,
+        committedConfig: null as { title: string; context: string; personaIds: string[] } | null,
+        configLocked: false,
         createdMeetingId: null as string | null,
         creationError: null as string | null,
         uploadError: null as string | null,
+        partialNotice: null as string | null,
+        canContinue: false,
         navigationDone: false,
         stageFiles: vi.fn(),
         removeUpload: vi.fn(),
         createMeeting: vi.fn(),
         retryUploads: vi.fn(),
+        continueToMeeting: vi.fn(),
     },
     refetch: vi.fn(),
     // Stable view object: the seeding effect depends on `data` identity, so a
@@ -59,14 +64,19 @@ const FILE_ONE = () => new File(['one'], 'market-scan.pdf', { type: 'application
 function resetPipeline() {
     mocks.pipeline.isCreating = false;
     mocks.pipeline.uploads = [];
+    mocks.pipeline.committedConfig = null;
+    mocks.pipeline.configLocked = false;
     mocks.pipeline.createdMeetingId = null;
     mocks.pipeline.creationError = null;
     mocks.pipeline.uploadError = null;
+    mocks.pipeline.partialNotice = null;
+    mocks.pipeline.canContinue = false;
     mocks.pipeline.navigationDone = false;
     mocks.pipeline.stageFiles.mockReset();
     mocks.pipeline.removeUpload.mockReset();
     mocks.pipeline.createMeeting.mockReset().mockResolvedValue(undefined);
     mocks.pipeline.retryUploads.mockReset().mockResolvedValue(undefined);
+    mocks.pipeline.continueToMeeting.mockReset();
     mocks.refetch.mockReset();
     mocks.personaView.refetch = mocks.refetch;
 }
@@ -123,35 +133,78 @@ describe('create flow page wiring', () => {
         );
     });
 
-    it('surfaces creation and upload failures and retries uploads through the hook', async () => {
+    it('surfaces partial creation and never pretends a failed upload can be cancelled', async () => {
         mocks.pipeline.creationError = 'Failed to create the meeting: database unreachable';
-        mocks.pipeline.uploadError = '1 of 2 files failed to upload. You can retry below; nothing was lost.';
+        mocks.pipeline.uploadError = '1 of 2 files need attention. The meeting was created; retry them or continue without them.';
+        mocks.pipeline.committedConfig = {
+            title: 'Committed title',
+            context: 'Committed context',
+            personaIds: ['persona-1'],
+        };
+        mocks.pipeline.configLocked = true;
         mocks.pipeline.createdMeetingId = 'meeting-new-1';
+        mocks.pipeline.partialNotice = 'Meeting created — 1 of 2 files accepted, 1 need attention.';
+        mocks.pipeline.canContinue = true;
         mocks.pipeline.uploads = [
-            { file: { name: 'market-scan.pdf' }, status: 'uploaded', error: null },
-            { file: { name: 'unit-economics.xlsx' }, status: 'failed', error: 'storage down' },
+            { requestKey: 'upload-1', file: { name: 'market-scan.pdf' }, status: 'uploaded', error: null },
+            { requestKey: 'upload-2', file: { name: 'unit-economics.xlsx' }, status: 'failed', error: 'storage down' },
         ];
         render(<NewMeetingPage />);
         await screen.findByText('The Investor');
 
         const alerts = screen.getAllByRole('alert');
         expect(alerts.some((node) => node.textContent?.includes('Failed to create the meeting'))).toBe(true);
-        expect(alerts.some((node) => node.textContent?.includes('1 of 2 files failed to upload'))).toBe(true);
-        expect(screen.getByText('market-scan.pdf').closest('div')?.textContent).toContain('Uploaded');
+        expect(alerts.some((node) => node.textContent?.includes('1 of 2 files need attention'))).toBe(true);
+        expect(screen.getByRole('status').textContent).toContain('Meeting created — 1 of 2 files accepted');
+        expect(screen.getByText('market-scan.pdf').closest('div')?.textContent).toContain('Accepted — indexing');
         expect(screen.getByText('unit-economics.xlsx').closest('div')?.textContent).toContain('Failed');
 
-        // The failed row keeps its remove affordance; the uploaded row does not.
-        const failedRemove = screen.getByRole("button", {
-            name: "Remove unit-economics.xlsx",
-        });
+        // Committed configuration is visible and frozen; failed uploads are
+        // already admitted work, so they cannot be removed as if cancelled.
+        expect(screen.getByLabelText(/Meeting title/i)).toHaveValue('Committed title');
+        expect(screen.getByLabelText(/Meeting title/i)).toBeDisabled();
+        expect(screen.getByLabelText(/^Context$/i)).toBeDisabled();
+        expect(
+            screen.queryByRole("button", { name: "Remove unit-economics.xlsx" })
+        ).toBeNull();
         expect(
             screen.queryByRole("button", { name: "Remove market-scan.pdf" })
         ).toBeNull();
-        fireEvent.click(failedRemove);
-        expect(mocks.pipeline.removeUpload).toHaveBeenCalledWith(1);
+        expect(mocks.pipeline.removeUpload).not.toHaveBeenCalled();
 
         fireEvent.click(screen.getByRole('button', { name: /retry uploads/i }));
         expect(mocks.pipeline.retryUploads).toHaveBeenCalledTimes(1);
+
+        // No auto-navigation while a failure remains; only the explicit
+        // continue action opens the created meeting.
+        fireEvent.click(screen.getByRole('button', { name: /continue to meeting/i }));
+        expect(mocks.pipeline.continueToMeeting).toHaveBeenCalledTimes(1);
+    });
+
+    it('keeps a committed intent locked after an ambiguous creation failure', async () => {
+        mocks.pipeline.committedConfig = {
+            title: 'Committed title',
+            context: 'Committed context',
+            personaIds: ['persona-1'],
+        };
+        mocks.pipeline.configLocked = true;
+        mocks.pipeline.creationError = 'Failed to create the meeting: network unavailable';
+        render(<NewMeetingPage />);
+        await screen.findByText('The Investor');
+
+        expect(screen.getByLabelText(/Meeting title/i)).toBeDisabled();
+        expect(screen.getByLabelText(/^Context$/i)).toBeDisabled();
+        expect(
+            screen.getByRole('button', { name: /deselect all/i })
+        ).toBeDisabled();
+
+        // Retrying resubmits the same frozen configuration, not a clone.
+        fireEvent.click(screen.getByRole('button', { name: /retry meeting creation/i }));
+        expect(mocks.pipeline.createMeeting).toHaveBeenCalledWith({
+            title: 'Committed title',
+            context: 'Committed context',
+            personaIds: ['persona-1'],
+        });
     });
 
     it('disables creation while the pipeline is busy, then again after navigation', async () => {
@@ -165,6 +218,8 @@ describe('create flow page wiring', () => {
         mocks.pipeline.isCreating = false;
         mocks.pipeline.navigationDone = true;
         render(<NewMeetingPage />);
-        expect(createButton()).toBeDisabled();
+        expect(
+            screen.queryByRole('button', { name: /^create meeting$/i })
+        ).toBeNull();
     });
 });
