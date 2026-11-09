@@ -129,7 +129,10 @@ NEXT_PUBLIC_RATE_LIMIT_OLLAMA=2
 NEXT_PUBLIC_RATE_LIMIT_DEFAULT=5
 ```
 
-`NEXT_PUBLIC_API_URL` falls back to `http://localhost:8000/api` when unset. The
+`NEXT_PUBLIC_API_URL` falls back to `http://localhost:8000/api` only for a local
+page. A hosted page whose live API base is still loopback is rejected with a
+configuration error before a credential is attached; set this variable to the
+public HTTPS API origin for every hosted frontend build. The
 Supabase variables are public; never put `SUPABASE_SERVICE_KEY` in a
 `NEXT_PUBLIC_*` variable. Public demo works without either Supabase variable.
 
