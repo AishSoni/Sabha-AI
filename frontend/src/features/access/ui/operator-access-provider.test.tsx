@@ -142,6 +142,9 @@ describe('operator access boundary', () => {
         );
 
         await act(async () => {
+            screen.getByRole('button', { name: /open live navigation/i }).click();
+        });
+        await act(async () => {
             screen.getByRole('button', { name: /sign out/i }).click();
         });
 

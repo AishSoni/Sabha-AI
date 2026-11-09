@@ -45,7 +45,9 @@ test.describe("mixed operator and demo isolation", () => {
         );
         const operator = await operatorContext.newPage();
         await operator.goto("/settings");
-        await expect(operator.getByText("Operator", { exact: true })).toBeVisible({
+        await expect(
+            operator.getByRole("button", { name: "Open Live navigation" })
+        ).toBeVisible({
             timeout: 30_000,
         });
 
@@ -75,7 +77,9 @@ test.describe("mixed operator and demo isolation", () => {
         ).toBeVisible();
 
         // The operator remains signed in and its vault envelope is untouched.
-        await expect(operator.getByText("Operator", { exact: true })).toBeVisible();
+        await expect(
+            operator.getByRole("button", { name: "Open Live navigation" })
+        ).toBeVisible();
         expect(
             await operator.evaluate(() =>
                 window.localStorage.getItem("sabha-operator-auth")
@@ -92,7 +96,9 @@ test.describe("mixed operator and demo isolation", () => {
         await demo
             .getByRole("button", { name: "Reset and discard changes" })
             .click();
-        await expect(operator.getByText("Operator", { exact: true })).toBeVisible();
+        await expect(
+            operator.getByRole("button", { name: "Open Live navigation" })
+        ).toBeVisible();
         expect(
             await operator.evaluate(() =>
                 window.localStorage.getItem("sabha-settings")
