@@ -12,6 +12,8 @@ import { UploadProgressView } from '../presentation/upload-progress';
 export interface UploadProgressProps {
     operationId: string;
     fileName?: string;
+    onRefresh?: () => void;
+    refreshing?: boolean;
     onRetry?: (operationId: string) => void;
     retrying?: boolean;
 }
@@ -19,6 +21,8 @@ export interface UploadProgressProps {
 export function UploadProgress({
     operationId,
     fileName,
+    onRefresh,
+    refreshing,
     onRetry,
     retrying,
 }: UploadProgressProps) {
@@ -31,6 +35,8 @@ export function UploadProgress({
                 query.data
                     ? {
                           state: query.data.state,
+                          documentId: query.data.documentId,
+                          documentStatus: query.data.documentStatus,
                           chunkCount: query.data.chunkCount,
                           errorMessage: query.data.errorMessage,
                           fileName: query.data.fileName,
@@ -38,6 +44,8 @@ export function UploadProgress({
                     : null
             }
             isError={query.isError}
+            onRefresh={onRefresh ?? (() => void query.refetch())}
+            refreshing={refreshing ?? query.isFetching}
             onRetry={onRetry}
             retrying={retrying}
         />

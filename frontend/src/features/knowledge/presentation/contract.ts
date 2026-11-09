@@ -32,6 +32,8 @@ export interface KnowledgeUploadReceiptView {
 
 export interface IngestionProgressView {
     state: string;
+    documentId?: string | null;
+    documentStatus?: string | null;
     chunkCount: number;
     errorMessage?: string | null;
     fileName?: string | null;

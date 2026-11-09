@@ -27,6 +27,7 @@ import {
     CardTitle,
 } from "@/components/ui/card";
 import type {
+    IngestionProgressView,
     KnowledgeDocumentView,
     KnowledgeUploadReceiptView,
 } from "./contract";
@@ -42,16 +43,45 @@ export interface DocumentPanelViewProps {
     uploading: boolean;
     uploadError?: string | null;
     receipt?: KnowledgeUploadReceiptView | null;
+    progress?: IngestionProgressView | null;
+    progressError?: boolean;
+    refreshingProgress?: boolean;
     localError?: string | null;
     deletingId?: string | null;
     retrying?: boolean;
     onUploadFile?: (file: File | undefined) => void;
     onRetry: (operationId: string) => void;
+    onRefreshProgress?: () => void;
+    onRefreshDocuments?: () => void;
+    refreshingDocuments?: boolean;
     onDelete: (document: KnowledgeDocumentView) => void;
     renderPreviewAction?: (document: KnowledgeDocumentView) => ReactNode;
     /** Demo composition replaces the native chooser with the sample picker. */
     uploadAction?: ReactNode;
     emptyMessage?: string;
+}
+
+/**
+ * The operation read model is canonical while an upload is being observed.
+ * A slower document-list read must not leave a row saying "Queued" beside a
+ * receipt or progress banner that already says "Ready".
+ */
+function withObservedProgress(
+    documents: KnowledgeDocumentView[] | undefined,
+    progress: IngestionProgressView | null | undefined
+): KnowledgeDocumentView[] | undefined {
+    if (!documents || !progress?.documentId || !progress.documentStatus) {
+        return documents;
+    }
+    return documents.map((document) => {
+        if (document.id !== progress.documentId) return document;
+        return {
+            ...document,
+            status: progress.documentStatus ?? document.status,
+            chunk_count: progress.chunkCount,
+            error_message: progress.errorMessage ?? document.error_message,
+        };
+    });
 }
 
 function statusBadge(document: KnowledgeDocumentView) {
@@ -93,17 +123,24 @@ export function DocumentPanelView({
     uploading,
     uploadError,
     receipt,
+    progress,
+    progressError,
+    refreshingProgress,
     localError,
     deletingId,
     retrying,
     onUploadFile,
     onRetry,
+    onRefreshProgress,
+    onRefreshDocuments,
+    refreshingDocuments,
     onDelete,
     renderPreviewAction,
     uploadAction,
     emptyMessage,
 }: DocumentPanelViewProps) {
     const inputRef = useRef<HTMLInputElement>(null);
+    const observedDocuments = withObservedProgress(documents, progress);
 
     return (
         <Card>
@@ -149,6 +186,10 @@ export function DocumentPanelView({
                     <UploadProgressView
                         operationId={receipt.operationId}
                         fileName={receipt.fileName}
+                        progress={progress}
+                        isError={progressError}
+                        onRefresh={onRefreshProgress}
+                        refreshing={refreshingProgress}
                         onRetry={onRetry}
                         retrying={retrying}
                     />
@@ -179,19 +220,35 @@ export function DocumentPanelView({
                     </div>
                 )}
                 {isError && (
-                    <div role="alert" className="flex items-center gap-2 type-body text-danger">
+                    <div
+                        role="alert"
+                        className="flex flex-wrap items-center gap-2 type-body text-danger"
+                    >
                         <AlertTriangle className="h-4 w-4" />
                         Documents are temporarily unavailable.
+                        {onRefreshDocuments && (
+                            <Button
+                                type="button"
+                                size="sm"
+                                variant="outline"
+                                busy={refreshingDocuments}
+                                busyLabel="Refreshing"
+                                onClick={onRefreshDocuments}
+                            >
+                                <RotateCcw className="mr-1 h-3.5 w-3.5" />
+                                Refresh documents
+                            </Button>
+                        )}
                     </div>
                 )}
-                {!isLoading && !isError && (documents?.length ?? 0) === 0 && (
+                {!isLoading && !isError && (observedDocuments?.length ?? 0) === 0 && (
                     <p className="rounded-group border border-dashed border-separator px-3 py-6 text-center type-body text-ink-muted">
                         {emptyMessage ??
                             "No documents yet. Upload a PDF, DOCX, XLSX, CSV, TXT, or Markdown file."}
                     </p>
                 )}
 
-                {(documents ?? []).map((document) => (
+                {(observedDocuments ?? []).map((document) => (
                     <div
                         key={document.id}
                         className="flex flex-wrap items-center gap-3 rounded-group border border-separator bg-surface-raised/40 px-3 py-2"
@@ -212,8 +269,7 @@ export function DocumentPanelView({
                         {statusBadge(document)}
                         {renderPreviewAction?.(document)}
                         {document.operation_id &&
-                            (document.status === "failed" ||
-                                document.status === "pending") && (
+                            document.status === "failed" && (
                                 <Button
                                     type="button"
                                     size="sm"

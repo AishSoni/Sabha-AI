@@ -110,11 +110,11 @@ describe("shared document panel", () => {
         fireEvent.click(
             screen.getByRole("button", { name: "Retry downside-worksheet.md" })
         );
-        fireEvent.click(
-            screen.getByRole("button", { name: "Retry shared-fact-sheet.md" })
-        );
-        expect(onRetry).toHaveBeenNthCalledWith(1, "operation-failed");
-        expect(onRetry).toHaveBeenNthCalledWith(2, "operation-queued");
+        expect(onRetry).toHaveBeenCalledTimes(1);
+        expect(onRetry).toHaveBeenCalledWith("operation-failed");
+        expect(
+            screen.queryByRole("button", { name: "Retry shared-fact-sheet.md" })
+        ).toBeNull();
 
         fireEvent.click(
             screen.getByRole("button", { name: "Delete credit-evidence.md" })
@@ -135,5 +135,59 @@ describe("shared document panel", () => {
             screen.getByText("No documents in this stack.")
         ).toBeTruthy();
         expect(screen.queryByText(/Upload a PDF/)).toBeNull();
+    });
+
+    it("converges a stale queued row and receipt on the observed ready operation", () => {
+        render(
+            <DocumentPanelView
+                {...baseProps()}
+                receipt={{
+                    operationId: "operation-queued",
+                    fileName: "shared-fact-sheet.md",
+                    state: "pending",
+                }}
+                progress={{
+                    state: "ready",
+                    documentId: "doc-queued",
+                    documentStatus: "ready",
+                    chunkCount: 4,
+                }}
+            />
+        );
+
+        expect(screen.getByText("Ready")).toBeTruthy();
+        expect(screen.getByText("Ready (4 chunks)")).toBeTruthy();
+        expect(screen.queryByText("Queued")).toBeNull();
+        expect(screen.getByText("4 chunks are eligible for retrieval.")).toBeTruthy();
+    });
+
+    it("offers a status refresh, not an ingestion retry, when observation fails", () => {
+        const onRetry = vi.fn();
+        const onRefreshProgress = vi.fn();
+        render(
+            <DocumentPanelView
+                {...baseProps()}
+                receipt={{
+                    operationId: "operation-queued",
+                    fileName: "shared-fact-sheet.md",
+                    state: "pending",
+                }}
+                progressError
+                onRetry={onRetry}
+                onRefreshProgress={onRefreshProgress}
+            />
+        );
+
+        expect(screen.getByText("Status unavailable")).toBeTruthy();
+        expect(screen.getByText(/Refresh status to try again/)).toBeTruthy();
+        expect(
+            screen.queryByRole("button", { name: "Retry ingestion" })
+        ).toBeNull();
+
+        fireEvent.click(
+            screen.getByRole("button", { name: "Refresh status" })
+        );
+        expect(onRefreshProgress).toHaveBeenCalledTimes(1);
+        expect(onRetry).not.toHaveBeenCalled();
     });
 });
