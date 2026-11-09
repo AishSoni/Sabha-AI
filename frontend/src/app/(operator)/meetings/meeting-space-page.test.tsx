@@ -104,6 +104,41 @@ describe('meeting space reads', () => {
         expect(screen.queryByRole('alert')).not.toBeInTheDocument();
     });
 
+    it('keeps ended meetings out of the active tab', async () => {
+        listState.data = [
+            {
+                id: 'meeting-active',
+                name: 'Active meeting',
+                status: 'active',
+                agenda: 'Still running',
+                created_at: '2026-11-01T10:00:00Z',
+                total_cost: 0,
+            },
+            {
+                id: 'meeting-ended',
+                name: 'Ended meeting',
+                status: 'ended',
+                agenda: 'Already closed',
+                created_at: '2026-10-01T10:00:00Z',
+                total_cost: 0,
+            },
+        ];
+        listState.isLoading = false;
+        listState.isError = false;
+        listState.error = null;
+
+        renderPage();
+
+        expect(screen.getByText('Active meeting')).toBeInTheDocument();
+        expect(screen.queryByText('Ended meeting')).not.toBeInTheDocument();
+
+        const endedTab = screen.getByRole('tab', { name: /Ended 1/ });
+        fireEvent.mouseDown(endedTab);
+        fireEvent.click(endedTab);
+
+        expect(await screen.findByText('Ended meeting')).toBeInTheDocument();
+    });
+
     it('reports a failed archive instead of dismissing it as success', async () => {
         listState.data = [
             {

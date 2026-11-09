@@ -138,7 +138,8 @@ export default function MeetingSpacePage() {
     };
 
     // Filter meetings by status
-    const activeMeetings = list.filter(m => m.status === 'active' || m.status === 'ended' || m.status === 'voting');
+    const activeMeetings = list.filter(m => m.status === 'active' || m.status === 'voting');
+    const endedMeetings = list.filter(m => m.status === 'ended');
     const archivedMeetings = list.filter(m => m.status === 'archived');
 
     return (
@@ -200,6 +201,15 @@ export default function MeetingSpacePage() {
                                         </StatusBadge>
                                     )}
                                 </TabsTrigger>
+                                <TabsTrigger value="ended">
+                                    <CheckCircle2 className="h-4 w-4" />
+                                    Ended
+                                    {endedMeetings.length > 0 && (
+                                        <StatusBadge tone="neutral" className="ml-2">
+                                            {endedMeetings.length}
+                                        </StatusBadge>
+                                    )}
+                                </TabsTrigger>
                                 <TabsTrigger value="archived">
                                     <Archive className="h-4 w-4" />
                                     Archived
@@ -219,6 +229,30 @@ export default function MeetingSpacePage() {
                                 ) : (
                                     <MeetingGrid
                                         meetings={activeMeetings}
+                                        onArchive={handleArchive}
+                                        onDelete={(id) => setDeleteConfirmId(id)}
+                                        actionLoading={actionLoading}
+                                        isArchived={false}
+                                    />
+                                )}
+                            </TabsContent>
+
+                            <TabsContent value="ended">
+                                {isLoading ? (
+                                    <LoadingState />
+                                ) : endedMeetings.length === 0 ? (
+                                    <div className="py-20 text-center">
+                                        <div className="mx-auto mb-4 flex h-16 w-16 items-center justify-center rounded-group bg-surface-raised">
+                                            <CheckCircle2 className="h-8 w-8 text-ink-muted" />
+                                        </div>
+                                        <h3 className="type-item-title mb-2 text-ink">No ended meetings</h3>
+                                        <p className="type-body text-ink-secondary">
+                                            Meetings appear here after their closing process completes.
+                                        </p>
+                                    </div>
+                                ) : (
+                                    <MeetingGrid
+                                        meetings={endedMeetings}
                                         onArchive={handleArchive}
                                         onDelete={(id) => setDeleteConfirmId(id)}
                                         actionLoading={actionLoading}
