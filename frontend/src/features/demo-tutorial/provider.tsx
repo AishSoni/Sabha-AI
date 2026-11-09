@@ -133,6 +133,7 @@ export function DemoTutorialProvider({ children }: { children: ReactNode }) {
             ? null
             : screenPromptFor(pathname);
     const contextualScreenPrompt =
+        !journey.archived &&
         screenPrompt &&
         pathname !== mainStageRoute(journey, run.session.meeting_id)
             ? screenPrompt

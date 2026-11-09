@@ -81,6 +81,8 @@ export function ReplaySessionProvider({ children }: { children: ReactNode }) {
     );
     const safeConfigController = useMemo(
         () => new AbortController(),
+        // A metadata retry or a new pinned session gets a fresh lifetime.
+        // eslint-disable-next-line react-hooks/exhaustive-deps
         [safeConfigAttempt, session]
     );
 

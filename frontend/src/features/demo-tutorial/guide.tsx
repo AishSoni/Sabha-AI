@@ -59,7 +59,7 @@ export function TutorialGuide({
                     </p>
                     <ExploreRecordingMenu iconOnly />
                 </div>
-                {prompt.detail ? (
+                {prompt.detail && placement === "card" ? (
                     <p className="mt-1 type-meta text-ink-secondary">
                         {prompt.detail}
                     </p>
