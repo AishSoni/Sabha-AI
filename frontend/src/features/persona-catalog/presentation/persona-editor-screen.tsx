@@ -23,6 +23,22 @@ import { normalizeStackIds, validatePersonaTemplate } from './validation';
 
 const COLORS = ['#ef4444', '#f97316', '#eab308', '#22c55e', '#14b8a6', '#3b82f6', '#6366f1', '#a855f7', '#ec4899'];
 
+interface EditorBaseline {
+    name: string;
+    subtitle: string;
+    color: string;
+    stackKey: string;
+    prompt: string;
+}
+
+type LeaveIntent =
+    | { kind: 'link'; href: string }
+    | { kind: 'history' };
+
+function stackKey(stackIds: readonly string[] | null | undefined): string {
+    return normalizeStackIds(stackIds).sort().join('\u0000');
+}
+
 export interface PersonaEditorRoutes {
     roster: string;
 }
@@ -34,6 +50,8 @@ export interface PersonaEditorScreenProps {
     client: PersonaCatalogClient;
     loadStacks: () => Promise<PersonaStackOption[]>;
     routes: PersonaEditorRoutes;
+    /** Injectable navigation used after an explicit discard; defaults to a full page navigation. */
+    navigate?: (href: string) => void;
     initialTab?: 'overview' | 'prompt';
     description?: string | null;
     revisionNotes?: Record<string, string>;
@@ -52,6 +70,7 @@ export function PersonaEditorScreen({
     client,
     loadStacks,
     routes,
+    navigate = (href) => window.location.assign(href),
     initialTab = 'overview',
     description,
     revisionNotes,
@@ -75,14 +94,14 @@ export function PersonaEditorScreen({
     const [color, setColor] = useState('#6366f1');
     const [promptContent, setPromptContent] = useState('');
     const [promptVersions, setPromptVersions] = useState<PromptRevision[]>([]);
-    const [promptDirty, setPromptDirty] = useState(false);
     const [availableStacks, setAvailableStacks] = useState<PersonaStackOption[]>([]);
     const [selectedStacks, setSelectedStacks] = useState<string[]>([]);
+    const [baseline, setBaseline] = useState<EditorBaseline | null>(null);
 
     // Revision inspection is deliberately separate from activation.
     const [viewedVersion, setViewedVersion] = useState<number | null>(null);
     const [pendingActivation, setPendingActivation] = useState<number | null>(null);
-    const [leaveConfirm, setLeaveConfirm] = useState(false);
+    const [leaveIntent, setLeaveIntent] = useState<LeaveIntent | null>(null);
     const [announcement, setAnnouncement] = useState('');
 
     const promptRef = useRef('');
@@ -90,23 +109,92 @@ export function PersonaEditorScreen({
     const mountedRef = useRef(true);
     const loadTokenRef = useRef(0);
     const inspectorRef = useRef<HTMLDivElement | null>(null);
+    const suppressGuardRef = useRef(false);
+    const editorHrefRef = useRef('');
+
+    const metadataDirty =
+        baseline !== null &&
+        (name !== baseline.name ||
+            subtitle !== baseline.subtitle ||
+            color !== baseline.color ||
+            stackKey(selectedStacks) !== baseline.stackKey);
+    const promptDirty = baseline !== null && promptContent !== baseline.prompt;
+    const isDirty = metadataDirty || promptDirty;
+    const dirtyRef = useRef(isDirty);
+    dirtyRef.current = isDirty;
 
     useEffect(() => {
         mountedRef.current = true;
+        editorHrefRef.current = window.location.href;
         return () => {
             mountedRef.current = false;
         };
     }, []);
 
     useEffect(() => {
-        if (!promptDirty) return;
         const handler = (event: BeforeUnloadEvent) => {
+            if (!dirtyRef.current || suppressGuardRef.current) return;
             event.preventDefault();
             event.returnValue = '';
         };
         window.addEventListener('beforeunload', handler);
         return () => window.removeEventListener('beforeunload', handler);
-    }, [promptDirty]);
+    }, []);
+
+    useEffect(() => {
+        const handler = () => {
+            if (!dirtyRef.current || suppressGuardRef.current) return;
+            // The browser has already moved to the previous entry. Restore
+            // the editor URL in the current entry, then ask the director
+            // whether the draft should be discarded.
+            window.history.pushState(
+                { ...(window.history.state ?? {}), personaEditorGuard: true },
+                '',
+                editorHrefRef.current
+            );
+            setLeaveIntent({ kind: 'history' });
+        };
+        window.addEventListener('popstate', handler);
+        return () => window.removeEventListener('popstate', handler);
+    }, []);
+
+    useEffect(() => {
+        const handler = (event: MouseEvent) => {
+            if (!dirtyRef.current || suppressGuardRef.current || event.defaultPrevented) return;
+            if (
+                event.button !== 0 ||
+                event.metaKey ||
+                event.ctrlKey ||
+                event.shiftKey ||
+                event.altKey
+            )
+                return;
+            const target = event.target;
+            if (!(target instanceof Element)) return;
+            const anchor = target.closest('a[href]');
+            if (!(anchor instanceof HTMLAnchorElement)) return;
+            if (anchor.target && anchor.target !== '_self') return;
+            if (anchor.hasAttribute('download')) return;
+            const href = anchor.getAttribute('href');
+            if (!href || href.startsWith('#')) return;
+            const url = new URL(anchor.href, window.location.href);
+            if (url.origin !== window.location.origin) return;
+            if (
+                url.hash &&
+                url.pathname === window.location.pathname &&
+                url.search === window.location.search
+            )
+                return;
+            event.preventDefault();
+            event.stopPropagation();
+            setLeaveIntent({
+                kind: 'link',
+                href: `${url.pathname}${url.search}${url.hash}`,
+            });
+        };
+        document.addEventListener('click', handler, true);
+        return () => document.removeEventListener('click', handler, true);
+    }, []);
 
     useEffect(() => {
         if (viewedVersion !== null) inspectorRef.current?.focus();
@@ -121,21 +209,31 @@ export function PersonaEditorScreen({
         setError(null);
         setViewedVersion(null);
         setPendingActivation(null);
-        setLeaveConfirm(false);
+        setLeaveIntent(null);
+        setBaseline(null);
         setAnnouncement('');
+        suppressGuardRef.current = false;
+        editorHrefRef.current = window.location.href;
         Promise.all([client.get(id), client.listPromptVersions(id), loadStacks()])
             .then(([p, versions, stacks]) => {
                 if (token !== loadTokenRef.current || !mountedRef.current) return;
+                const nextPrompt = p.active_prompt || '';
                 setPersona(p);
                 setName(p.name);
                 setSubtitle(p.subtitle || '');
                 setColor(p.color);
-                setPromptContent(p.active_prompt || '');
-                promptRef.current = p.active_prompt || '';
-                setPromptDirty(false);
+                setPromptContent(nextPrompt);
+                promptRef.current = nextPrompt;
                 setPromptVersions(versions);
                 setAvailableStacks(stacks);
                 setSelectedStacks(p.stack_ids || []);
+                setBaseline({
+                    name: p.name,
+                    subtitle: p.subtitle || '',
+                    color: p.color,
+                    stackKey: stackKey(p.stack_ids || []),
+                    prompt: nextPrompt,
+                });
             })
             .catch((err) => {
                 if (token === loadTokenRef.current && mountedRef.current) {
@@ -156,6 +254,12 @@ export function PersonaEditorScreen({
         }
 
         const token = loadTokenRef.current;
+        const submitted = {
+            name,
+            subtitle,
+            color,
+            stackKey: stackKey(selectedStacks),
+        };
         try {
             savingRef.current = true;
             setSaving(true);
@@ -168,6 +272,11 @@ export function PersonaEditorScreen({
             const updated = await client.update(id, update);
             if (token !== loadTokenRef.current || !mountedRef.current) return;
             setPersona(updated);
+            // Only advance the baseline for the submitted snapshot. Any
+            // later edit remains dirty because the form still differs.
+            setBaseline((current) =>
+                current ? { ...current, ...submitted } : current
+            );
             setAnnouncement('Persona settings saved.');
         } catch (err) {
             if (token === loadTokenRef.current && mountedRef.current) {
@@ -203,9 +312,13 @@ export function PersonaEditorScreen({
                     ? { ...current, active_prompt: submitted, active_prompt_version: saved.version }
                     : current
             );
-            // Only clear the draft marker when the editor still holds the
-            // submitted content. A later edit survives an earlier save.
-            if (promptRef.current === submitted) setPromptDirty(false);
+            // Only advance the prompt baseline when the editor still holds
+            // the submitted content. A later edit survives an earlier save.
+            if (promptRef.current === submitted) {
+                setBaseline((current) =>
+                    current ? { ...current, prompt: submitted } : current
+                );
+            }
             setAnnouncement(`Saved version ${saved.version} and made it active.`);
         } catch (err) {
             if (token === loadTokenRef.current && mountedRef.current) {
@@ -249,7 +362,9 @@ export function PersonaEditorScreen({
                     is_active: v.version === version,
                 }))
             );
-            setPromptDirty(false);
+            setBaseline((current) =>
+                current ? { ...current, prompt: revision.content } : current
+            );
             setViewedVersion(version);
             setAnnouncement(`Version ${version} is now active.`);
         } catch (err) {
@@ -277,6 +392,22 @@ export function PersonaEditorScreen({
     function viewRevision(version: number) {
         setViewedVersion(version);
         setAnnouncement(`Viewing version ${version}. The active version is unchanged.`);
+    }
+
+    function discardAndLeave() {
+        if (!leaveIntent) return;
+        const intent = leaveIntent;
+        // Suppress both unload and popstate prompts while the explicit
+        // discard navigation is in flight.
+        suppressGuardRef.current = true;
+        setLeaveIntent(null);
+        if (intent.kind === 'link') {
+            navigate(intent.href);
+        } else {
+            // The popstate handler restored the editor entry after the
+            // browser moved back. One step now reaches the prior page.
+            window.history.go(-1);
+        }
     }
 
     const viewedRevision =
@@ -315,11 +446,6 @@ export function PersonaEditorScreen({
                             href={routes.roster}
                             className="text-ink-secondary hover:text-ink m-control"
                             aria-label="Back to roster"
-                            onClick={(event) => {
-                                if (!promptDirty) return;
-                                event.preventDefault();
-                                setLeaveConfirm(true);
-                            }}
                         >
                             <ArrowLeft className="w-5 h-5" />
                         </Link>
@@ -362,22 +488,32 @@ export function PersonaEditorScreen({
                     {announcement}
                 </p>
 
-                {leaveConfirm && (
+                {leaveIntent && (
                     <div
                         role="alertdialog"
-                        aria-label="Unsaved system prompt"
+                        aria-label="Unsaved changes"
                         className="mb-6 rounded-group border border-warning/40 bg-warning-soft p-4"
+                        onKeyDown={(event) => {
+                            if (event.key === 'Escape') setLeaveIntent(null);
+                        }}
                     >
                         <p className="mb-3 type-body text-warning">
-                            You have an unsaved system prompt draft. Leaving this page will discard it.
+                            You have unsaved persona changes. Leaving this page will discard them.
                         </p>
                         <div className="flex flex-wrap items-center gap-2">
-                            <Link href={routes.roster}>
-                                <Button variant="destructive" size="sm">
-                                    Discard and leave
-                                </Button>
-                            </Link>
-                            <Button variant="ghost" size="sm" autoFocus onClick={() => setLeaveConfirm(false)}>
+                            <Button
+                                variant="destructive"
+                                size="sm"
+                                onClick={discardAndLeave}
+                            >
+                                Discard changes and leave
+                            </Button>
+                            <Button
+                                variant="ghost"
+                                size="sm"
+                                autoFocus
+                                onClick={() => setLeaveIntent(null)}
+                            >
                                 Keep editing
                             </Button>
                         </div>
@@ -568,7 +704,6 @@ export function PersonaEditorScreen({
                                             const next = e.target.value;
                                             setPromptContent(next);
                                             promptRef.current = next;
-                                            setPromptDirty(true);
                                         }}
                                         placeholder="Define this persona's personality, expertise, and behavior..."
                                         className="min-h-[300px] font-mono text-sm"

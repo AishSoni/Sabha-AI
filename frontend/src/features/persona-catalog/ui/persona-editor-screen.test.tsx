@@ -73,11 +73,11 @@ function deferred<T>() {
     return { promise, resolve, reject };
 }
 
-function renderRosterPage() {
+function renderRosterPage(navigate?: (href: string) => void) {
     // Renders the content component directly: the default export's React 19
     // use(params) suspension does not retry under vitest (environment
     // limitation documented in the commit message).
-    render(<PersonaDetailContent personaId={PERSONA_ID} />);
+    render(<PersonaDetailContent personaId={PERSONA_ID} navigate={navigate} />);
 }
 
 async function openPromptTab() {
@@ -104,9 +104,12 @@ beforeEach(() => {
         versionFixture("v3", 3, "Third revision directive", true)
     );
     mocks.activatePromptVersion.mockResolvedValue(undefined);
+    mocks.update.mockImplementation((_id: string, input: Record<string, unknown>) =>
+        Promise.resolve({ ...personaFixture, ...input })
+    );
 });
 
-describe("persona editor prompt version controls", () => {
+describe("persona editor", () => {
     it("deactivates the previous revision when a new prompt revision is saved", async () => {
         renderRosterPage();
         await screen.findByText("The Analyst");
@@ -321,11 +324,159 @@ describe("persona editor prompt version controls", () => {
         fireEvent.click(screen.getByLabelText("Back to roster"));
 
         expect(
-            await screen.findByRole("alertdialog", { name: "Unsaved system prompt" })
+            await screen.findByRole("alertdialog", { name: "Unsaved changes" })
         ).toBeInTheDocument();
         fireEvent.click(screen.getByRole("button", { name: "Keep editing" }));
         expect(
-            screen.queryByRole("alertdialog", { name: "Unsaved system prompt" })
+            screen.queryByRole("alertdialog", { name: "Unsaved changes" })
+        ).not.toBeInTheDocument();
+    });
+
+    it("guards unsaved metadata edits on unload and local back", async () => {
+        renderRosterPage();
+        await screen.findByText("The Analyst");
+
+        fireEvent.change(screen.getByLabelText("Name"), {
+            target: { value: "Mira" },
+        });
+
+        const unload = new Event("beforeunload", { cancelable: true });
+        window.dispatchEvent(unload);
+        expect(unload.defaultPrevented).toBe(true);
+
+        fireEvent.click(screen.getByLabelText("Back to roster"));
+        expect(
+            await screen.findByRole("alertdialog", { name: "Unsaved changes" })
+        ).toBeInTheDocument();
+    });
+
+    it("does not guard a clean editor", async () => {
+        renderRosterPage();
+        await screen.findByText("The Analyst");
+
+        const unload = new Event("beforeunload", { cancelable: true });
+        window.dispatchEvent(unload);
+        expect(unload.defaultPrevented).toBe(false);
+    });
+
+    it("tracks knowledge-stack edits as unsaved changes", async () => {
+        mocks.listStacks.mockResolvedValue({
+            stacks: [
+                {
+                    id: "stack-1",
+                    name: "Credit evidence",
+                    description: "Issuer records and covenant context.",
+                },
+            ],
+        });
+        renderRosterPage();
+        await screen.findByText("The Analyst");
+
+        fireEvent.click(screen.getByRole("checkbox", { name: /Credit evidence/i }));
+
+        const unload = new Event("beforeunload", { cancelable: true });
+        window.dispatchEvent(unload);
+        expect(unload.defaultPrevented).toBe(true);
+    });
+
+    it("clears the guard after metadata saves without later edits", async () => {
+        renderRosterPage();
+        await screen.findByText("The Analyst");
+
+        fireEvent.change(screen.getByLabelText("Name"), {
+            target: { value: "Mira" },
+        });
+        fireEvent.click(screen.getByRole("button", { name: /save changes/i }));
+
+        await waitFor(() => {
+            expect(mocks.update).toHaveBeenCalled();
+        });
+        const unload = new Event("beforeunload", { cancelable: true });
+        window.dispatchEvent(unload);
+        expect(unload.defaultPrevented).toBe(false);
+    });
+
+    it("keeps metadata typed during an earlier save dirty", async () => {
+        const pending = deferred<typeof personaFixture>();
+        mocks.update.mockReturnValueOnce(pending.promise);
+        renderRosterPage();
+        await screen.findByText("The Analyst");
+
+        const nameInput = screen.getByLabelText("Name");
+        fireEvent.change(nameInput, { target: { value: "Saved name" } });
+        fireEvent.click(screen.getByRole("button", { name: /save changes/i }));
+        fireEvent.change(nameInput, { target: { value: "Later name" } });
+
+        await act(async () => {
+            pending.resolve({ ...personaFixture, name: "Saved name" });
+            await pending.promise;
+        });
+
+        expect((nameInput as HTMLInputElement).value).toBe("Later name");
+        const unload = new Event("beforeunload", { cancelable: true });
+        window.dispatchEvent(unload);
+        expect(unload.defaultPrevented).toBe(true);
+    });
+
+    it("guards same-origin SPA links and navigates only after discard", async () => {
+        const navigate = vi.fn();
+        renderRosterPage(navigate);
+        await screen.findByText("The Analyst");
+        fireEvent.change(screen.getByLabelText("Name"), {
+            target: { value: "Mira" },
+        });
+
+        const link = document.createElement("a");
+        link.href = "/elsewhere";
+        link.textContent = "Elsewhere";
+        document.body.appendChild(link);
+
+        fireEvent.click(link);
+        expect(
+            await screen.findByRole("alertdialog", { name: "Unsaved changes" })
+        ).toBeInTheDocument();
+        expect(navigate).not.toHaveBeenCalled();
+
+        fireEvent.click(screen.getByRole("button", { name: "Discard changes and leave" }));
+        expect(navigate).toHaveBeenCalledWith("/elsewhere");
+        link.remove();
+    });
+
+    it("navigates to the roster only after discarding local back", async () => {
+        const navigate = vi.fn();
+        renderRosterPage(navigate);
+        await screen.findByText("The Analyst");
+        fireEvent.change(screen.getByLabelText("Name"), {
+            target: { value: "Mira" },
+        });
+
+        fireEvent.click(screen.getByLabelText("Back to roster"));
+        expect(
+            await screen.findByRole("alertdialog", { name: "Unsaved changes" })
+        ).toBeInTheDocument();
+        expect(navigate).not.toHaveBeenCalled();
+
+        fireEvent.click(screen.getByRole("button", { name: "Discard changes and leave" }));
+        expect(navigate).toHaveBeenCalledWith("/roster");
+    });
+
+    it("guards browser back while dirty", async () => {
+        renderRosterPage();
+        await screen.findByText("The Analyst");
+        fireEvent.change(screen.getByLabelText("Name"), {
+            target: { value: "Mira" },
+        });
+
+        act(() => {
+            window.dispatchEvent(new PopStateEvent("popstate"));
+        });
+
+        expect(
+            await screen.findByRole("alertdialog", { name: "Unsaved changes" })
+        ).toBeInTheDocument();
+        fireEvent.click(screen.getByRole("button", { name: "Keep editing" }));
+        expect(
+            screen.queryByRole("alertdialog", { name: "Unsaved changes" })
         ).not.toBeInTheDocument();
     });
 });

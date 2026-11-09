@@ -33,13 +33,20 @@ export default function PersonaDetailScreen({ params }: PageProps) {
     return <PersonaDetailContent personaId={id} />;
 }
 
-export function PersonaDetailContent({ personaId }: { personaId: string }) {
+export function PersonaDetailContent({
+    personaId,
+    navigate,
+}: {
+    personaId: string;
+    navigate?: (href: string) => void;
+}) {
     return (
         <PersonaEditorScreen
             personaId={personaId}
             client={personaClient}
             loadStacks={loadLiveStacks}
             routes={LIVE_ROUTES}
+            navigate={navigate}
         />
     );
 }
