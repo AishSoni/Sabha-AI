@@ -262,6 +262,44 @@ def test_the_effective_record_never_carries_credential_bytes():
     }
 
 
+def test_only_the_resolved_providers_browser_key_is_used():
+    defaults = _Defaults(provider="local", model="fixture-model", temperature=0.7, max_tokens=2048)
+    participant = _Participant(policy={"provider": "gemini", "model": "gemini-pro"})
+    resolved = resolve_effective_settings(
+        participant,
+        provider_api_keys={"openrouter": "sk-wrong-provider", "gemini": "sk-right-provider"},
+        defaults=defaults,
+        catalog=_Catalog(),
+        server_keys={},
+    )
+    assert resolved.credential_reference == "browser"
+    assert "sk-wrong-provider" not in str(resolved.as_record())
+    assert "sk-right-provider" not in str(resolved.as_record())
+
+    with pytest.raises(MissingProviderKeyError):
+        resolve_effective_settings(
+            participant,
+            provider_api_keys={"openrouter": "sk-wrong-provider"},
+            defaults=defaults,
+            catalog=_Catalog(),
+            server_keys={},
+        )
+
+
+def test_capability_resolution_can_describe_a_plan_without_requiring_a_key():
+    defaults = _Defaults(provider="local", model="fixture-model", temperature=0.7, max_tokens=2048)
+    resolved = resolve_effective_settings(
+        _Participant(policy={"provider": "gemini", "model": "gemini-pro"}),
+        defaults=defaults,
+        catalog=_Catalog(),
+        server_keys={},
+        require_credential=False,
+    )
+    assert resolved.provider == "gemini"
+    assert resolved.model == "gemini-pro"
+    assert resolved.credential_reference == "none"
+
+
 def test_running_settings_remain_frozen_once_captured():
     resolved = resolve_effective_settings(
         _Participant(policy={}), defaults=DEFAULTS, catalog=_Catalog()

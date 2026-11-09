@@ -44,3 +44,9 @@ class ClosingNotRecoverableError(MeetingsError):
 
 class ClosingNotFoundError(MeetingsError):
     code = "closing_not_found"
+
+
+class ClosingCredentialsError(MeetingsError):
+    """A close or retry lacks a browser/server credential for remaining work."""
+
+    code = "closing_credentials_required"

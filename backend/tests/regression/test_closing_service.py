@@ -18,8 +18,14 @@ from app.modules.meetings.application.closing import (
     ClosingService,
     MEETING_ENDED_MARKER,
 )
-from app.modules.meetings.application.contracts import ProviderOutput
-from app.modules.meetings.domain.errors import MeetingNotFoundError
+from app.modules.meetings.application.contracts import (
+    ClosingCredentialRequirement,
+    ProviderOutput,
+)
+from app.modules.meetings.domain.errors import (
+    ClosingCredentialsError,
+    MeetingNotFoundError,
+)
 from app.modules.meetings.domain.services import ClosingStage
 from app.modules.meetings.infrastructure.supabase_closing import (
     SupabaseClosingRepository,
@@ -87,22 +93,57 @@ class FakeInvocations:
         self.invokers: dict[str, FakeInvoker] = {}
         self.participant_calls: list[str] = []
         self.system_invoker = FakeInvoker(output=summary_output())
+        self.require_browser_key = False
+        self.seen_provider_keys: list[dict[str, str] | None] = []
 
     def configure_vote(self, participant_id: str, *, vote: bool, error=None):
         output = yes_output() if vote else no_output()
         self.invokers[participant_id] = FakeInvoker(output=output, error=error)
         return self.invokers[participant_id]
 
-    async def participant(self, policy):
+    async def participant(self, policy, provider_keys=None):
         self.participant_calls.append(policy.participant_id)
+        self.seen_provider_keys.append(dict(provider_keys) if provider_keys else provider_keys)
         invoker = self.invokers.get(policy.participant_id)
         if invoker is None:
             invoker = FakeInvoker(output=yes_output())
             self.invokers[policy.participant_id] = invoker
         return invoker
 
-    async def system(self, settings):
+    async def system(self, settings, provider_keys=None):
+        self.seen_provider_keys.append(dict(provider_keys) if provider_keys else provider_keys)
         return self.system_invoker
+
+    def _capability(self, *, scope, participant_id, participant_name, provider_keys):
+        supplied = bool(provider_keys and provider_keys.get("gemini"))
+        needs = self.require_browser_key and not supplied
+        return ClosingCredentialRequirement(
+            scope=scope,
+            participant_id=participant_id,
+            participant_name=participant_name,
+            provider="gemini",
+            model="gemini-2.0-flash",
+            server_configured=not self.require_browser_key,
+            needs_browser_key=needs,
+            code="browser_key_required" if needs else "ready",
+            message="Browser key required." if needs else "Ready.",
+        )
+
+    async def participant_capability(self, policy, provider_keys=None):
+        return self._capability(
+            scope="vote",
+            participant_id=policy.participant_id,
+            participant_name=policy.name,
+            provider_keys=provider_keys,
+        )
+
+    async def system_capability(self, settings, provider_keys=None):
+        return self._capability(
+            scope="summary",
+            participant_id=None,
+            participant_name="System AI",
+            provider_keys=provider_keys,
+        )
 
 
 def build(disposable_db, monkeypatch):
@@ -382,3 +423,73 @@ async def test_unknown_meeting_surfaces_not_found(disposable_db, monkeypatch):
     _, service, _ = build(disposable_db, monkeypatch)
     with pytest.raises(MeetingNotFoundError):
         await service.observe("00000000-0000-4000-8000-000000000000")
+
+
+async def test_close_preflight_refuses_before_admission_without_a_browser_key(
+    disposable_db, monkeypatch
+):
+    world, service, factory = build(disposable_db, monkeypatch)
+    meeting_id, _ = world.seed_active_meeting()
+    factory.require_browser_key = True
+
+    capability = await service.capability(meeting_id)
+    assert capability.ready_for_vote is False
+    assert any(
+        requirement.needs_browser_key for requirement in capability.requirements
+    )
+
+    with pytest.raises(ClosingCredentialsError):
+        await service.request(meeting_id, "close-1", "vote")
+
+    # Refusal happens before the durable close row exists or any vote runs.
+    assert world.closing(meeting_id) is None
+    assert factory.participant_calls == []
+
+
+async def test_close_accepts_transient_keys_for_votes_and_summary_without_persisting_them(
+    disposable_db, monkeypatch
+):
+    world, service, factory = build(disposable_db, monkeypatch)
+    meeting_id, participant_id = world.seed_active_meeting()
+    factory.require_browser_key = True
+    key = "sk-synthetic-browser"
+
+    capability = await service.capability(
+        meeting_id, provider_keys={"gemini": key}
+    )
+    assert capability.ready_for_vote is True
+    assert capability.ready_for_force is True
+
+    snapshot = await service.request(
+        meeting_id, "close-1", "vote", provider_keys={"gemini": key}
+    )
+
+    assert snapshot.closing.stage is ClosingStage.COMPLETED
+    assert factory.participant_calls == [participant_id]
+    assert factory.seen_provider_keys
+    assert all(
+        keys == {"gemini": key} for keys in factory.seen_provider_keys
+    )
+    assert key not in str(_close_row(world, meeting_id))
+
+
+async def test_provider_errors_redact_the_transient_browser_key(
+    disposable_db, monkeypatch
+):
+    world, service, factory = build(disposable_db, monkeypatch)
+    meeting_id, _ = world.seed_active_meeting()
+    factory.require_browser_key = True
+    key = "sk-synthetic-browser"
+    factory.system_invoker = FakeInvoker(
+        output=summary_output(),
+        error=RuntimeError(f"Authorization: Bearer {key} key={key}"),
+    )
+
+    snapshot = await service.request(
+        meeting_id, "close-1", "force", provider_keys={"gemini": key}
+    )
+
+    assert snapshot.closing.stage is ClosingStage.FAILED
+    assert key not in (snapshot.closing.error_message or "")
+    assert "redacted" in (snapshot.closing.error_message or "")
+    assert key not in str(_close_row(world, meeting_id))

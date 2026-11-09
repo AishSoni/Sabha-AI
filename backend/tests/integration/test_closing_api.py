@@ -16,7 +16,10 @@ from datetime import timezone
 from app.bootstrap import Container, create_app
 from tests.support.access import authorise
 from app.modules.meetings.application.closing import ClosingService
-from app.modules.meetings.application.contracts import ProviderOutput
+from app.modules.meetings.application.contracts import (
+    ClosingCredentialRequirement,
+    ProviderOutput,
+)
 from app.modules.meetings.infrastructure.supabase_closing import (
     SupabaseClosingRepository,
 )
@@ -53,12 +56,39 @@ class _FakeInvocations:
     def __init__(self) -> None:
         self.vote = _FakeInvoker('{"vote": true, "reason": "ship it"}')
         self.summary = _FakeInvoker("A concise executive summary.")
+        self.seen_provider_keys: list[dict[str, str] | None] = []
 
-    async def participant(self, policy):
+    async def participant(self, policy, provider_keys=None):
+        self.seen_provider_keys.append(
+            dict(provider_keys) if provider_keys else provider_keys
+        )
         return self.vote
 
-    async def system(self, settings):
+    async def system(self, settings, provider_keys=None):
+        self.seen_provider_keys.append(
+            dict(provider_keys) if provider_keys else provider_keys
+        )
         return self.summary
+
+    async def participant_capability(self, policy, provider_keys=None):
+        return ClosingCredentialRequirement(
+            scope="vote",
+            participant_id=policy.participant_id,
+            participant_name=policy.name,
+            provider="fake",
+            model="fake-model",
+            server_configured=True,
+        )
+
+    async def system_capability(self, settings, provider_keys=None):
+        return ClosingCredentialRequirement(
+            scope="summary",
+            participant_id=None,
+            participant_name="System AI",
+            provider="fake",
+            model="fake-model",
+            server_configured=True,
+        )
 
 
 @pytest.fixture()
@@ -91,6 +121,45 @@ def _request(client: TestClient, meeting_id: str, *, mode: str = "force", key: s
         f"/api/meetings/{meeting_id}/closing",
         json={"mode": mode, "request_key": key},
     )
+
+
+def test_capability_route_is_read_only_and_reports_both_modes(closing_app):
+    client, world, invocations, _service = closing_app
+    meeting_id, _participant_id = world.seed_active_meeting()
+
+    response = client.get(f"/api/meetings/{meeting_id}/closing/capability")
+
+    assert response.status_code == 200
+    body = response.json()
+    assert body["meeting_id"] == meeting_id
+    assert body["ready_for_vote"] is True
+    assert body["ready_for_force"] is True
+    assert {requirement["scope"] for requirement in body["requirements"]} == {
+        "vote",
+        "summary",
+    }
+    assert invocations.vote.calls == 0
+    assert invocations.summary.calls == 0
+
+
+def test_request_forwards_per_provider_browser_keys_to_the_invocation_layer(closing_app):
+    client, world, invocations, _service = closing_app
+    meeting_id, _participant_id = world.seed_active_meeting()
+
+    response = client.post(
+        f"/api/meetings/{meeting_id}/closing",
+        json={"mode": "force", "request_key": "close-keyed"},
+        headers={"X-Provider-Key-Gemini": "  sk-synthetic-browser  "},
+    )
+
+    assert response.status_code == 202
+    assert response.json()["stage"] == "completed"
+    assert invocations.seen_provider_keys
+    assert all(
+        keys == {"gemini": "sk-synthetic-browser"}
+        for keys in invocations.seen_provider_keys
+    )
+    assert "sk-synthetic-browser" not in response.text
 
 
 def test_request_runs_to_a_committed_ending_and_get_is_read_only(closing_app):

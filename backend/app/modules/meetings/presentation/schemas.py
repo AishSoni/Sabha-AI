@@ -152,6 +152,30 @@ class ClosingView(BaseModel):
     completed_at: datetime | None = None
 
 
+class ClosingCredentialRequirementView(BaseModel):
+    """One vote or summary invocation and the credential it needs."""
+
+    scope: Literal["vote", "summary"]
+    participant_id: str | None = None
+    participant_name: str | None = None
+    provider: str
+    model: str
+    server_configured: bool
+    needs_browser_key: bool
+    needed: bool
+    code: str
+    message: str
+
+
+class ClosingCapabilityView(BaseModel):
+    """Read-only credential preflight; GET never carries browser keys."""
+
+    meeting_id: str
+    ready_for_vote: bool
+    ready_for_force: bool
+    requirements: list[ClosingCredentialRequirementView] = Field(default_factory=list)
+
+
 class ClosingReceipt(BaseModel):
     """Durable acknowledgement that a close operation exists."""
 

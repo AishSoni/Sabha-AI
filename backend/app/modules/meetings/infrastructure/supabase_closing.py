@@ -13,8 +13,12 @@ from dataclasses import dataclass
 from datetime import datetime, timezone
 from typing import Any, Mapping, Sequence
 
-from app.capabilities.configuration.contracts import RequestDefaults
+from app.capabilities.configuration.contracts import (
+    IncompatibleGenerationPlan,
+    RequestDefaults,
+)
 from app.capabilities.configuration.service import (
+    CLOUD_PROVIDERS,
     SETTING_NAMES,
     resolve_effective_settings,
 )
@@ -24,6 +28,7 @@ from app.platform.config import settings
 from app.capabilities.inference.contracts import LLMMessage
 from app.platform.providers import get_provider
 from app.modules.meetings.application.contracts import (
+    ClosingCredentialRequirement,
     ClosingRecord,
     ClosingSnapshot,
     Completion,
@@ -521,7 +526,7 @@ class _PolicyParticipant:
 class SupabaseInvoker:
     """One provider call bound to a frozen effective policy."""
 
-    def __init__(self, effective) -> None:
+    def __init__(self, effective, api_key: str | None = None) -> None:
         self.provider = effective.provider
         self.model = effective.model
         self.temperature = effective.temperature
@@ -530,6 +535,7 @@ class SupabaseInvoker:
         self._client = get_provider(
             provider_name=effective.provider,
             model=effective.model,
+            api_key=api_key,
             base_url=effective.base_url,
         )
 
@@ -561,13 +567,101 @@ def _reported_cost(usage: Mapping[str, Any] | None) -> float | None:
 
 
 class SupabaseInvocationFactory:
-    """Resolve participant and System AI settings from server configuration."""
+    """Resolve participant and System AI settings from server configuration.
 
-    async def participant(self, policy: ParticipantPolicy) -> SupabaseInvoker:
-        effective = resolve_effective_settings(_PolicyParticipant(policy))
-        return SupabaseInvoker(effective)
+    Browser keys arrive as a per-request provider map. The factory selects only
+    the key for the resolved provider; it never falls back to another provider
+    and never persists the value.
+    """
 
-    async def system(self, summary: SummarySettings | None) -> SupabaseInvoker:
+    async def participant(
+        self,
+        policy: ParticipantPolicy,
+        provider_keys: Mapping[str, str] | None = None,
+    ) -> SupabaseInvoker:
+        effective = resolve_effective_settings(
+            _PolicyParticipant(policy),
+            provider_api_keys=provider_keys,
+        )
+        api_key = provider_keys.get(effective.provider) if provider_keys else None
+        return SupabaseInvoker(effective, api_key=api_key)
+
+    async def system(
+        self,
+        summary: SummarySettings | None,
+        provider_keys: Mapping[str, str] | None = None,
+    ) -> SupabaseInvoker:
+        effective = await self._resolve_system(summary, provider_keys=provider_keys)
+        api_key = provider_keys.get(effective.provider) if provider_keys else None
+        return SupabaseInvoker(effective, api_key=api_key)
+
+    async def participant_capability(
+        self,
+        policy: ParticipantPolicy,
+        provider_keys: Mapping[str, str] | None = None,
+    ) -> ClosingCredentialRequirement:
+        try:
+            plan = resolve_effective_settings(
+                _PolicyParticipant(policy),
+                provider_api_keys=None,
+                require_credential=False,
+            )
+        except IncompatibleGenerationPlan as exc:
+            return ClosingCredentialRequirement(
+                scope="vote",
+                participant_id=policy.participant_id,
+                participant_name=policy.name,
+                provider="",
+                model="",
+                code="configuration_error",
+                message=str(exc),
+            )
+
+        return _credential_requirement(
+            plan,
+            scope="vote",
+            participant_id=policy.participant_id,
+            participant_name=policy.name,
+            provider_keys=provider_keys,
+        )
+
+    async def system_capability(
+        self,
+        summary: SummarySettings | None,
+        provider_keys: Mapping[str, str] | None = None,
+    ) -> ClosingCredentialRequirement:
+        try:
+            plan = await self._resolve_system(
+                summary,
+                provider_keys=None,
+                require_credential=False,
+            )
+        except IncompatibleGenerationPlan as exc:
+            return ClosingCredentialRequirement(
+                scope="summary",
+                participant_id=None,
+                participant_name="System AI",
+                provider="",
+                model="",
+                code="configuration_error",
+                message=str(exc),
+            )
+
+        return _credential_requirement(
+            plan,
+            scope="summary",
+            participant_id=None,
+            participant_name="System AI",
+            provider_keys=provider_keys,
+        )
+
+    async def _resolve_system(
+        self,
+        summary: SummarySettings | None,
+        *,
+        provider_keys: Mapping[str, str] | None = None,
+        require_credential: bool = True,
+    ):
         await SYSTEM_AI_DEFAULTS.acurrent()
         overrides = RequestDefaults(
             provider=summary.provider if summary else None,
@@ -590,12 +684,50 @@ class SupabaseInvocationFactory:
                 max_tokens=overrides.max_tokens,
                 base_url=overrides.base_url,
             )
-        effective = resolve_effective_settings(
+        return resolve_effective_settings(
             None,
             provider_settings=overrides if (provider or model or _has_overrides(overrides)) else None,
             defaults=SYSTEM_AI_DEFAULTS,
+            provider_api_keys=provider_keys,
+            require_credential=require_credential,
         )
-        return SupabaseInvoker(effective)
+
+
+def _credential_requirement(
+    plan,
+    *,
+    scope: str,
+    participant_id: str | None,
+    participant_name: str | None,
+    provider_keys: Mapping[str, str] | None,
+) -> ClosingCredentialRequirement:
+    server_configured = plan.credential_reference == "server"
+    supplied = bool(provider_keys and provider_keys.get(plan.provider))
+    needs_browser_key = (
+        plan.provider in CLOUD_PROVIDERS and not server_configured and not supplied
+    )
+    if needs_browser_key:
+        message = (
+            f"Provide a browser {plan.provider} key; the server has no key configured."
+        )
+    elif server_configured:
+        message = f"Uses the server {plan.provider} key."
+    elif supplied:
+        message = f"Uses the supplied browser {plan.provider} key."
+    else:
+        message = "No credential is required."
+
+    return ClosingCredentialRequirement(
+        scope=scope,
+        participant_id=participant_id,
+        participant_name=participant_name,
+        provider=plan.provider,
+        model=plan.model,
+        server_configured=server_configured,
+        needs_browser_key=needs_browser_key,
+        code="browser_key_required" if needs_browser_key else "ready",
+        message=message,
+    )
 
 
 def _has_overrides(overrides: RequestDefaults) -> bool:

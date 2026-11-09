@@ -7,18 +7,23 @@ and retry/abort are explicit commands. Provider calls never happen in a GET.
 
 from __future__ import annotations
 
-from fastapi import APIRouter, Depends, HTTPException, status
+from fastapi import APIRouter, Depends, HTTPException, Request, status
 
 from app.modules.meetings.application.closing import ClosingService
-from app.modules.meetings.application.contracts import ClosingSnapshot
+from app.modules.meetings.application.contracts import (
+    ClosingCapability,
+    ClosingSnapshot,
+)
 from app.modules.meetings.domain.errors import (
     ClosingConflictError,
+    ClosingCredentialsError,
     ClosingNotFoundError,
     ClosingNotRecoverableError,
     MeetingClosedError,
     MeetingNotFoundError,
 )
 from app.modules.meetings.presentation.schemas import (
+    ClosingCapabilityView,
     ClosingReceipt,
     ClosingRequest,
     ClosingView,
@@ -27,13 +32,57 @@ from app.presentation.dependencies import get_closing
 
 router = APIRouter(prefix="/meetings", tags=["closing"])
 
+_PROVIDER_KEY_HEADERS = {
+    "openrouter": "X-Provider-Key-OpenRouter",
+    "gemini": "X-Provider-Key-Gemini",
+}
+
+
+def _provider_keys(request: Request) -> dict[str, str]:
+    keys: dict[str, str] = {}
+    for provider, header in _PROVIDER_KEY_HEADERS.items():
+        value = request.headers.get(header)
+        if value and value.strip():
+            keys[provider] = value.strip()
+    return keys
+
+
+def _capability_view(
+    meeting_id: str, capability: ClosingCapability
+) -> ClosingCapabilityView:
+    return ClosingCapabilityView(
+        meeting_id=meeting_id,
+        ready_for_vote=capability.ready_for_vote,
+        ready_for_force=capability.ready_for_force,
+        requirements=[
+            {
+                "scope": requirement.scope,
+                "participant_id": requirement.participant_id,
+                "participant_name": requirement.participant_name,
+                "provider": requirement.provider,
+                "model": requirement.model,
+                "server_configured": requirement.server_configured,
+                "needs_browser_key": requirement.needs_browser_key,
+                "needed": requirement.needed,
+                "code": requirement.code,
+                "message": requirement.message,
+            }
+            for requirement in capability.requirements
+        ],
+    )
+
 
 def _raise_http(exc: Exception) -> None:
     if isinstance(exc, (MeetingNotFoundError, ClosingNotFoundError)):
         raise HTTPException(status_code=404, detail=str(exc) or "Meeting not found")
     if isinstance(
         exc,
-        (MeetingClosedError, ClosingConflictError, ClosingNotRecoverableError),
+        (
+            MeetingClosedError,
+            ClosingConflictError,
+            ClosingNotRecoverableError,
+            ClosingCredentialsError,
+        ),
     ):
         raise HTTPException(status_code=409, detail=str(exc) or "Closing conflict")
     raise exc
@@ -109,6 +158,7 @@ def _view(snapshot: ClosingSnapshot) -> ClosingView:
 async def request_closing(
     meeting_id: str,
     body: ClosingRequest,
+    request: Request,
     service: ClosingService = Depends(get_closing),
 ) -> ClosingReceipt:
     try:
@@ -121,6 +171,7 @@ async def request_closing(
                 if body.summary_settings
                 else None
             ),
+            provider_keys=_provider_keys(request),
         )
     except Exception as exc:  # mapped below; unexpected errors still surface
         _raise_http(exc)
@@ -134,6 +185,22 @@ async def request_closing(
         stage=view.stage or record.stage.value,
         meeting_status=view.meeting_status,
     )
+
+
+@router.get(
+    "/{meeting_id}/closing/capability",
+    response_model=ClosingCapabilityView,
+)
+async def read_closing_capability(
+    meeting_id: str,
+    service: ClosingService = Depends(get_closing),
+) -> ClosingCapabilityView:
+    """Report remaining closing credential requirements without calling a provider."""
+    try:
+        capability = await service.capability(meeting_id)
+    except Exception as exc:
+        _raise_http(exc)
+    return _capability_view(meeting_id, capability)
 
 
 @router.get("/{meeting_id}/closing", response_model=ClosingView)
@@ -155,10 +222,13 @@ async def read_closing(
 )
 async def retry_closing(
     meeting_id: str,
+    request: Request,
     service: ClosingService = Depends(get_closing),
 ) -> ClosingView:
     try:
-        snapshot = await service.retry(meeting_id)
+        snapshot = await service.retry(
+            meeting_id, provider_keys=_provider_keys(request)
+        )
     except Exception as exc:
         _raise_http(exc)
     return _view(snapshot)

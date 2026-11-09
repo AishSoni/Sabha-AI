@@ -10,6 +10,7 @@ from __future__ import annotations
 from typing import Any, Mapping, Protocol, Sequence
 
 from app.modules.meetings.application.contracts import (
+    ClosingCredentialRequirement,
     ClosingSnapshot,
     Completion,
     ParticipantPolicy,
@@ -160,6 +161,26 @@ class Invoker(Protocol):
 
 
 class InvocationFactory(Protocol):
-    async def participant(self, policy: ParticipantPolicy) -> Invoker: ...
+    async def participant(
+        self,
+        policy: ParticipantPolicy,
+        provider_keys: Mapping[str, str] | None = None,
+    ) -> Invoker: ...
 
-    async def system(self, settings: SummarySettings | None) -> Invoker: ...
+    async def system(
+        self,
+        settings: SummarySettings | None,
+        provider_keys: Mapping[str, str] | None = None,
+    ) -> Invoker: ...
+
+    async def participant_capability(
+        self,
+        policy: ParticipantPolicy,
+        provider_keys: Mapping[str, str] | None = None,
+    ) -> ClosingCredentialRequirement: ...
+
+    async def system_capability(
+        self,
+        settings: SummarySettings | None,
+        provider_keys: Mapping[str, str] | None = None,
+    ) -> ClosingCredentialRequirement: ...

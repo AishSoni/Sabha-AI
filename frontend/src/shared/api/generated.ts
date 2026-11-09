@@ -339,6 +339,26 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/meetings/{meeting_id}/closing/capability": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Read Closing Capability
+         * @description Report remaining closing credential requirements without calling a provider.
+         */
+        get: operations["read_closing_capability_api_meetings__meeting_id__closing_capability_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/meetings/{meeting_id}/closing/retry": {
         parameters: {
             query?: never;
@@ -1273,6 +1293,49 @@ export interface components {
             chunk_index?: number | null;
             /** Page Number */
             page_number?: number | null;
+        };
+        /**
+         * ClosingCapabilityView
+         * @description Read-only credential preflight; GET never carries browser keys.
+         */
+        ClosingCapabilityView: {
+            /** Meeting Id */
+            meeting_id: string;
+            /** Ready For Vote */
+            ready_for_vote: boolean;
+            /** Ready For Force */
+            ready_for_force: boolean;
+            /** Requirements */
+            requirements?: components["schemas"]["ClosingCredentialRequirementView"][];
+        };
+        /**
+         * ClosingCredentialRequirementView
+         * @description One vote or summary invocation and the credential it needs.
+         */
+        ClosingCredentialRequirementView: {
+            /**
+             * Scope
+             * @enum {string}
+             */
+            scope: "vote" | "summary";
+            /** Participant Id */
+            participant_id?: string | null;
+            /** Participant Name */
+            participant_name?: string | null;
+            /** Provider */
+            provider: string;
+            /** Model */
+            model: string;
+            /** Server Configured */
+            server_configured: boolean;
+            /** Needs Browser Key */
+            needs_browser_key: boolean;
+            /** Needed */
+            needed: boolean;
+            /** Code */
+            code: string;
+            /** Message */
+            message: string;
         };
         /** ClosingErrorView */
         ClosingErrorView: {
@@ -4012,6 +4075,79 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["ClosingReceipt"];
+                };
+            };
+            /** @description Missing, malformed, expired, tampered or wrong-project token */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    /**
+                     * @example {
+                     *       "detail": "Operator authentication required"
+                     *     }
+                     */
+                    "application/json": unknown;
+                };
+            };
+            /** @description A valid account that is not the configured operator */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    /**
+                     * @example {
+                     *       "detail": "Operator access denied"
+                     *     }
+                     */
+                    "application/json": unknown;
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+            /** @description Auth verification could not be completed safely */
+            503: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    /**
+                     * @example {
+                     *       "detail": "Access verification unavailable"
+                     *     }
+                     */
+                    "application/json": unknown;
+                };
+            };
+        };
+    };
+    read_closing_capability_api_meetings__meeting_id__closing_capability_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                meeting_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ClosingCapabilityView"];
                 };
             };
             /** @description Missing, malformed, expired, tampered or wrong-project token */

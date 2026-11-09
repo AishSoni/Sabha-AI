@@ -9,6 +9,8 @@ imports nothing beyond its own subtree, the platform config, and its
 sibling contracts.
 """
 
+from typing import Mapping
+
 from app.capabilities.configuration.contracts import (
     EffectiveGenerationSettings,
     GenerationDefaults,
@@ -166,6 +168,8 @@ def resolve_effective_settings(
     defaults: GenerationDefaultsSource | None = None,
     catalog: ProviderCatalogPort | None = None,
     server_keys: dict[str, str] | None = None,
+    provider_api_keys: Mapping[str, str] | None = None,
+    require_credential: bool = True,
 ) -> EffectiveGenerationSettings:
     """Resolve ONE frozen effective configuration for this turn.
 
@@ -247,17 +251,22 @@ def resolve_effective_settings(
         )
 
     credential_reference = "none"
-    if provider in CLOUD_PROVIDERS:
-        keys = server_keys if server_keys is not None else _settings_server_keys()
-        if provider_api_key:
-            credential_reference = "browser"
-        elif keys.get(provider):
-            credential_reference = "server"
-        else:
-            raise MissingProviderKeyError(
-                f"No API key available for {provider}. "
-                "Provide a browser key (BYOK) or configure the server key."
-            )
+    keys = server_keys if server_keys is not None else _settings_server_keys()
+    browser_key = (
+        provider_api_keys.get(provider)
+        if provider_api_keys is not None
+        else provider_api_key
+    )
+    if browser_key:
+        credential_reference = "browser"
+    elif provider in CLOUD_PROVIDERS and keys.get(provider):
+        credential_reference = "server"
+
+    if require_credential and provider in CLOUD_PROVIDERS and credential_reference == "none":
+        raise MissingProviderKeyError(
+            f"No API key available for {provider}. "
+            "Provide a browser key (BYOK) or configure the server key."
+        )
 
     return EffectiveGenerationSettings(
         provider=provider,

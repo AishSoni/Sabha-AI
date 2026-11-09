@@ -11,12 +11,15 @@ from __future__ import annotations
 
 import json
 import logging
-from dataclasses import dataclass
+import re
+from dataclasses import dataclass, replace
 from datetime import datetime, timedelta, timezone
 from typing import Any, Mapping, Sequence
 from uuid import uuid4
 
 from app.modules.meetings.application.contracts import (
+    ClosingCapability,
+    ClosingCredentialRequirement,
     ClosingRecord,
     ClosingSnapshot,
     MeetingContext,
@@ -31,6 +34,7 @@ from app.modules.meetings.application.ports import (
 )
 from app.modules.meetings.domain.errors import (
     ClosingConflictError,
+    ClosingCredentialsError,
     ClosingNotFoundError,
     ClosingNotRecoverableError,
     MeetingClosedError,
@@ -54,6 +58,30 @@ MAX_STAGE_STEPS = 12
 
 RECENT_MESSAGE_LIMIT = 20
 RECENT_CONTENT_LIMIT = 200
+
+_SECRET_QUERY = re.compile(r"(?i)([?&](?:key|api_key|token)=)[^&\s]+")
+_SECRET_BEARER = re.compile(r"(?i)(bearer\s+)[A-Za-z0-9._~+/\-=]+")
+_SECRET_ASSIGNMENT = re.compile(
+    r"(?i)((?:api[_-]?key|key|token|authorization)\s*[:=]\s*)[^\s,;]+"
+)
+
+
+def redact_secrets(
+    value: Any, provider_keys: Mapping[str, str] | None = None
+) -> str:
+    """Remove request-scoped keys and common credential shapes from text.
+
+    Provider errors can echo a URL or header. Closing rows are durable, so a
+    transient browser key must never survive in ``reason``/``error_message``.
+    """
+    text = str(value)
+    for key in (provider_keys or {}).values():
+        if key:
+            text = text.replace(key, "[redacted]")
+    text = _SECRET_QUERY.sub(r"\1[redacted]", text)
+    text = _SECRET_BEARER.sub(r"\1[redacted]", text)
+    text = _SECRET_ASSIGNMENT.sub(r"\1[redacted]", text)
+    return text
 
 
 def _utcnow() -> datetime:
@@ -234,9 +262,22 @@ class ClosingService:
         request_key: str,
         mode: ClosingMode | str,
         summary_settings: SummarySettings | Mapping[str, Any] | None = None,
+        provider_keys: Mapping[str, str] | None = None,
     ) -> ClosingSnapshot:
         parsed_mode = ClosingMode(mode)
         settings = _coerce_settings(summary_settings)
+
+        snapshot = await self.repository.read(meeting_id)
+        preflight_settings = (
+            _coerce_settings(snapshot.closing.summary_settings)
+            if snapshot.closing is not None
+            else settings
+        )
+        capability = await self._capability_for_snapshot(
+            snapshot, parsed_mode, preflight_settings, provider_keys
+        )
+        self._require_capability(capability, parsed_mode)
+
         outcome = await self.repository.request(
             meeting_id,
             request_key,
@@ -251,20 +292,60 @@ class ClosingService:
             )
         if outcome.outcome == "invalid":
             raise ClosingConflictError("The closing request is invalid")
-        return await self.advance(meeting_id)
+        return await self.advance(meeting_id, provider_keys=provider_keys)
 
-    async def retry(self, meeting_id: str) -> ClosingSnapshot:
+    async def retry(
+        self,
+        meeting_id: str,
+        provider_keys: Mapping[str, str] | None = None,
+    ) -> ClosingSnapshot:
         snapshot = await self.repository.read(meeting_id)
         closing = self._require_closing(snapshot)
         if closing.stage is not ClosingStage.FAILED:
             raise ClosingNotRecoverableError(
                 "Only a failed closing can be retried"
             )
+        capability = await self._capability_for_snapshot(
+            snapshot,
+            closing.mode,
+            SummarySettings.from_mapping(closing.summary_settings),
+            provider_keys,
+        )
+        self._require_capability(capability, closing.mode)
         if not await self.repository.retry(closing.id):
             raise ClosingConflictError(
                 "The closing changed before it could be retried"
             )
-        return await self.advance(meeting_id)
+        return await self.advance(meeting_id, provider_keys=provider_keys)
+
+    async def capability(
+        self,
+        meeting_id: str,
+        mode: ClosingMode | str | None = None,
+        summary_settings: SummarySettings | Mapping[str, Any] | None = None,
+        provider_keys: Mapping[str, str] | None = None,
+    ) -> ClosingCapability:
+        """Report the credential work a close or retry still requires.
+
+        This is a read: it never admits a closing and never calls a provider.
+        GET callers have no browser keys, so requirements expose
+        ``needs_browser_key`` for the client's vault preflight.
+        """
+        snapshot = await self.repository.read(meeting_id)
+        closing = snapshot.closing
+        effective_mode = (
+            ClosingMode(mode)
+            if mode is not None
+            else (closing.mode if closing is not None else None)
+        )
+        settings = (
+            _coerce_settings(summary_settings)
+            if summary_settings is not None
+            else _coerce_settings(closing.summary_settings if closing is not None else None)
+        )
+        return await self._capability_for_snapshot(
+            snapshot, effective_mode, settings, provider_keys
+        )
 
     async def abort(self, meeting_id: str) -> ClosingSnapshot:
         snapshot = await self.repository.read(meeting_id)
@@ -287,16 +368,144 @@ class ClosingService:
         return await self.repository.read(meeting_id)
 
     # ------------------------------------------------------------------
+    # Credential capability
+    # ------------------------------------------------------------------
+
+    async def _capability_for_snapshot(
+        self,
+        snapshot: ClosingSnapshot,
+        mode: ClosingMode | None,
+        summary_settings: SummarySettings,
+        provider_keys: Mapping[str, str] | None,
+    ) -> ClosingCapability:
+        closing = snapshot.closing
+        terminal = bool(closing is not None and closing.stage.is_terminal)
+        include_votes = mode is not ClosingMode.FORCE
+        if (
+            closing is not None
+            and closing.failed_from_stage is ClosingStage.SUMMARIZING
+        ):
+            include_votes = False
+
+        completed = {
+            vote.participant_id
+            for vote in snapshot.votes
+            if vote.status == "completed"
+        }
+        requirements: list[ClosingCredentialRequirement] = []
+
+        if include_votes:
+            for participant in snapshot.context.participants:
+                try:
+                    requirement = await self.invocations.participant_capability(
+                        participant, provider_keys
+                    )
+                except Exception as exc:
+                    requirement = ClosingCredentialRequirement(
+                        scope="vote",
+                        participant_id=participant.participant_id,
+                        participant_name=participant.name,
+                        provider="",
+                        model="",
+                        code="configuration_error",
+                        message=redact_secrets(exc, provider_keys),
+                    )
+                requirements.append(
+                    replace(
+                        requirement,
+                        needed=(
+                            not terminal
+                            and participant.participant_id not in completed
+                        ),
+                    )
+                )
+
+        try:
+            summary_requirement = await self.invocations.system_capability(
+                summary_settings, provider_keys
+            )
+        except Exception as exc:
+            summary_requirement = ClosingCredentialRequirement(
+                scope="summary",
+                participant_id=None,
+                participant_name="System AI",
+                provider="",
+                model="",
+                code="configuration_error",
+                message=redact_secrets(exc, provider_keys),
+            )
+        requirements.append(
+            replace(
+                summary_requirement,
+                needed=not terminal and not bool(closing and closing.summary_text),
+            )
+        )
+
+        vote_requirements = [
+            requirement
+            for requirement in requirements
+            if requirement.needed
+            and (include_votes and requirement.scope == "vote"
+                 or requirement.scope == "summary")
+        ]
+        force_requirements = [
+            requirement
+            for requirement in requirements
+            if requirement.needed and requirement.scope == "summary"
+        ]
+
+        return ClosingCapability(
+            requirements=tuple(requirements),
+            ready_for_vote=all(
+                _requirement_ready(requirement) for requirement in vote_requirements
+            ),
+            ready_for_force=all(
+                _requirement_ready(requirement) for requirement in force_requirements
+            ),
+        )
+
+    def _require_capability(
+        self, capability: ClosingCapability, mode: ClosingMode
+    ) -> None:
+        ready = (
+            capability.ready_for_force
+            if mode is ClosingMode.FORCE
+            else capability.ready_for_vote
+        )
+        if ready:
+            return
+
+        missing = [
+            requirement
+            for requirement in capability.requirements
+            if requirement.needed and not _requirement_ready(requirement)
+        ]
+        labels = ", ".join(
+            f"{requirement.participant_name or 'System AI'} "
+            f"({requirement.provider or 'unknown provider'})"
+            for requirement in missing
+        )
+        raise ClosingCredentialsError(
+            "Browser credentials are required for the remaining closing work: "
+            f"{labels or 'an unnamed provider'}. Unlock the key vault and supply "
+            "a browser key, or configure the server key, then retry."
+        )
+
+    # ------------------------------------------------------------------
     # Stage driver
     # ------------------------------------------------------------------
 
-    async def advance(self, meeting_id: str) -> ClosingSnapshot:
+    async def advance(
+        self,
+        meeting_id: str,
+        provider_keys: Mapping[str, str] | None = None,
+    ) -> ClosingSnapshot:
         """Advance as far as committed state allows, inline.
 
         Returns the canonical snapshot. Provider calls happen outside any
         transaction and every attempt is checkpointed before and after the
         call, so repeating this method is safe after a crash or a lost HTTP
-        connection.
+        connection. ``provider_keys`` is request-scoped and never persisted.
         """
         attempted_votes: set[str] = set()
         for _ in range(MAX_STAGE_STEPS):
@@ -306,23 +515,30 @@ class ClosingService:
                 return snapshot
             if closing.stage.is_terminal or closing.stage is ClosingStage.FAILED:
                 return snapshot
-            progressed = await self._advance_stage(snapshot, attempted_votes)
+            progressed = await self._advance_stage(
+                snapshot, attempted_votes, provider_keys
+            )
             if not progressed:
                 return await self.repository.read(meeting_id)
         logger.warning("Closing %s exceeded its stage-step budget", meeting_id)
         return await self.repository.read(meeting_id)
 
     async def _advance_stage(
-        self, snapshot: ClosingSnapshot, attempted_votes: set[str]
+        self,
+        snapshot: ClosingSnapshot,
+        attempted_votes: set[str],
+        provider_keys: Mapping[str, str] | None,
     ) -> bool:
         closing = snapshot.closing
         assert closing is not None
         if closing.stage is ClosingStage.DRAINING:
             return await self._advance_draining(snapshot)
         if closing.stage is ClosingStage.VOTING:
-            return await self._advance_voting(snapshot, attempted_votes)
+            return await self._advance_voting(
+                snapshot, attempted_votes, provider_keys
+            )
         if closing.stage is ClosingStage.SUMMARIZING:
-            return await self._advance_summarizing(snapshot)
+            return await self._advance_summarizing(snapshot, provider_keys)
         return False
 
     async def _advance_draining(self, snapshot: ClosingSnapshot) -> bool:
@@ -345,7 +561,10 @@ class ClosingService:
         )
 
     async def _advance_voting(
-        self, snapshot: ClosingSnapshot, attempted_votes: set[str]
+        self,
+        snapshot: ClosingSnapshot,
+        attempted_votes: set[str],
+        provider_keys: Mapping[str, str] | None,
     ) -> bool:
         closing = snapshot.closing
         assert closing is not None
@@ -368,7 +587,12 @@ class ClosingService:
                 continue
             if vote.status in {"pending", "unknown", "failed"}:
                 if not await self._cast_ballot(
-                    snapshot, closing, vote, policies, attempted_votes
+                    snapshot,
+                    closing,
+                    vote,
+                    policies,
+                    attempted_votes,
+                    provider_keys,
                 ):
                     return False
             elif vote.status in {"in_flight"}:
@@ -399,6 +623,7 @@ class ClosingService:
         vote,
         policies: Mapping[str, ParticipantPolicy],
         attempted_votes: set[str],
+        provider_keys: Mapping[str, str] | None,
     ) -> bool:
         participant = policies.get(vote.participant_id)
         if participant is None:
@@ -411,7 +636,7 @@ class ClosingService:
             return False
 
         try:
-            invoker = await self.invocations.participant(participant)
+            invoker = await self.invocations.participant(participant, provider_keys)
         except Exception as exc:
             # A resolution failure is a failed ballot, exactly like a
             # provider exception: it counts as no and never blocks the round.
@@ -421,8 +646,9 @@ class ClosingService:
                 provider="",
                 model="",
                 settings={},
-                reason=f"Error getting vote: {exc}",
+                reason=f"Error getting vote: {redact_secrets(exc, provider_keys)}",
                 attempted_votes=attempted_votes,
+                provider_keys=provider_keys,
             )
 
         attempt_id = str(uuid4())
@@ -456,6 +682,7 @@ class ClosingService:
             output = await invoker.complete(vote_prompt(snapshot.context, participant))
         except Exception as exc:
             facts = unknown_usage()
+            reason = f"Error getting vote: {redact_secrets(exc, provider_keys)}"
             await self.repository.finish_vote(
                 closing.id,
                 vote.participant_id,
@@ -464,9 +691,9 @@ class ClosingService:
                 model=invoker.model,
                 status="failed",
                 vote=None,
-                reason=f"Error getting vote: {exc}",
+                reason=reason,
                 error_code="provider_error",
-                error_message=str(exc),
+                error_message=redact_secrets(exc, provider_keys),
                 **facts_fields(facts),
             )
             return True
@@ -481,7 +708,7 @@ class ClosingService:
             model=invoker.model,
             status="completed",
             vote=balloted,
-            reason=reason,
+            reason=redact_secrets(reason, provider_keys),
             error_code=None,
             error_message=None,
             **facts_fields(facts),
@@ -498,6 +725,7 @@ class ClosingService:
         settings: Mapping[str, Any],
         reason: str,
         attempted_votes: set[str],
+        provider_keys: Mapping[str, str] | None,
     ) -> bool:
         attempt_id = str(uuid4())
         attempt = await self.repository.begin_vote(
@@ -521,14 +749,18 @@ class ClosingService:
             model=model,
             status="failed",
             vote=None,
-            reason=reason,
+            reason=redact_secrets(reason, provider_keys),
             error_code="configuration_error",
-            error_message=reason,
+            error_message=redact_secrets(reason, provider_keys),
             **facts_fields(facts),
         )
         return True
 
-    async def _advance_summarizing(self, snapshot: ClosingSnapshot) -> bool:
+    async def _advance_summarizing(
+        self,
+        snapshot: ClosingSnapshot,
+        provider_keys: Mapping[str, str] | None,
+    ) -> bool:
         closing = snapshot.closing
         assert closing is not None
         if closing.summary_text:
@@ -559,13 +791,14 @@ class ClosingService:
 
         settings = SummarySettings.from_mapping(closing.summary_settings)
         try:
-            invoker = await self.invocations.system(settings)
+            invoker = await self.invocations.system(settings, provider_keys)
         except Exception as exc:
             await self.repository.fail(
                 closing.id,
                 ClosingStage.SUMMARIZING,
                 "summary_configuration_failed",
-                f"The closing summary could not be configured: {exc}",
+                "The closing summary could not be configured: "
+                f"{redact_secrets(exc, provider_keys)}",
             )
             return False
 
@@ -576,7 +809,8 @@ class ClosingService:
                 closing.id,
                 ClosingStage.SUMMARIZING,
                 "summary_generation_failed",
-                f"The closing summary provider failed: {exc}",
+                "The closing summary provider failed: "
+                f"{redact_secrets(exc, provider_keys)}",
             )
             return False
 
@@ -750,6 +984,10 @@ def facts_fields(facts: UsageFacts) -> dict[str, Any]:
         "estimated_cost": facts.estimated_cost,
         "reported_cost": facts.reported_cost,
     }
+
+
+def _requirement_ready(requirement: ClosingCredentialRequirement) -> bool:
+    return requirement.code == "ready" and not requirement.needs_browser_key
 
 
 def _coerce_settings(

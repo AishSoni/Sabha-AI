@@ -92,6 +92,36 @@ class ParticipantPolicy:
 
 
 @dataclass(frozen=True)
+class ClosingCredentialRequirement:
+    """One invocation the close must be able to authenticate.
+
+    ``needs_browser_key`` means a cloud plan has neither a server key nor a
+    transient browser key for that provider. ``code`` is ``ready`` or a
+    stable surface for a configuration failure.
+    """
+
+    scope: str
+    participant_id: str | None
+    participant_name: str | None
+    provider: str
+    model: str
+    server_configured: bool = False
+    needs_browser_key: bool = False
+    needed: bool = True
+    code: str = "ready"
+    message: str = ""
+
+
+@dataclass(frozen=True)
+class ClosingCapability:
+    """Credential preflight for a close, with remaining work distinguished."""
+
+    requirements: tuple[ClosingCredentialRequirement, ...] = ()
+    ready_for_vote: bool = False
+    ready_for_force: bool = False
+
+
+@dataclass(frozen=True)
 class MessageView:
     sender_name: str
     content: str

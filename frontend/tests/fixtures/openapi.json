@@ -1776,6 +1776,84 @@
         }
       }
     },
+    "/api/meetings/{meeting_id}/closing/capability": {
+      "get": {
+        "tags": [
+          "closing"
+        ],
+        "summary": "Read Closing Capability",
+        "description": "Report remaining closing credential requirements without calling a provider.",
+        "operationId": "read_closing_capability_api_meetings__meeting_id__closing_capability_get",
+        "security": [
+          {
+            "OperatorBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "meeting_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Meeting Id"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ClosingCapabilityView"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Missing, malformed, expired, tampered or wrong-project token",
+            "content": {
+              "application/json": {
+                "example": {
+                  "detail": "Operator authentication required"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "A valid account that is not the configured operator",
+            "content": {
+              "application/json": {
+                "example": {
+                  "detail": "Operator access denied"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "Auth verification could not be completed safely",
+            "content": {
+              "application/json": {
+                "example": {
+                  "detail": "Access verification unavailable"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/api/meetings/{meeting_id}/closing/retry": {
       "post": {
         "tags": [
@@ -5970,6 +6048,112 @@
         ],
         "title": "Citation",
         "description": "A citation reference in a message.\n\n``claim_id``/``locator`` identify replay evidence. Live knowledge\ncitations carry the exact retained document revision plus the chunk and\npage that produced the passage so the client can preview that revision\nwithout guessing from a file name or falling back to the latest one."
+      },
+      "ClosingCapabilityView": {
+        "properties": {
+          "meeting_id": {
+            "type": "string",
+            "title": "Meeting Id"
+          },
+          "ready_for_vote": {
+            "type": "boolean",
+            "title": "Ready For Vote"
+          },
+          "ready_for_force": {
+            "type": "boolean",
+            "title": "Ready For Force"
+          },
+          "requirements": {
+            "items": {
+              "$ref": "#/components/schemas/ClosingCredentialRequirementView"
+            },
+            "type": "array",
+            "title": "Requirements"
+          }
+        },
+        "type": "object",
+        "required": [
+          "meeting_id",
+          "ready_for_vote",
+          "ready_for_force"
+        ],
+        "title": "ClosingCapabilityView",
+        "description": "Read-only credential preflight; GET never carries browser keys."
+      },
+      "ClosingCredentialRequirementView": {
+        "properties": {
+          "scope": {
+            "type": "string",
+            "enum": [
+              "vote",
+              "summary"
+            ],
+            "title": "Scope"
+          },
+          "participant_id": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Participant Id"
+          },
+          "participant_name": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Participant Name"
+          },
+          "provider": {
+            "type": "string",
+            "title": "Provider"
+          },
+          "model": {
+            "type": "string",
+            "title": "Model"
+          },
+          "server_configured": {
+            "type": "boolean",
+            "title": "Server Configured"
+          },
+          "needs_browser_key": {
+            "type": "boolean",
+            "title": "Needs Browser Key"
+          },
+          "needed": {
+            "type": "boolean",
+            "title": "Needed"
+          },
+          "code": {
+            "type": "string",
+            "title": "Code"
+          },
+          "message": {
+            "type": "string",
+            "title": "Message"
+          }
+        },
+        "type": "object",
+        "required": [
+          "scope",
+          "provider",
+          "model",
+          "server_configured",
+          "needs_browser_key",
+          "needed",
+          "code",
+          "message"
+        ],
+        "title": "ClosingCredentialRequirementView",
+        "description": "One vote or summary invocation and the credential it needs."
       },
       "ClosingErrorView": {
         "properties": {
