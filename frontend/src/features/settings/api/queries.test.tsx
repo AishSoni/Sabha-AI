@@ -9,7 +9,7 @@
  * or appends credential material.
  */
 import { describe, expect, it, vi, beforeEach, afterEach } from 'vitest';
-import { act, renderHook, waitFor } from '@testing-library/react';
+import { renderHook, waitFor } from '@testing-library/react';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { useState, type ReactNode } from 'react';
 
