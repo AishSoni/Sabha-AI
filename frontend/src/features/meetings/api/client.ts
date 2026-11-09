@@ -27,6 +27,8 @@ export interface MeetingCreateInput {
     name: string;
     agenda: string;
     personaIds: string[];
+    /** One identity per deliberate creation; retries reuse it. */
+    requestKey?: string;
 }
 
 export interface RequestInitOptional {
@@ -61,6 +63,7 @@ export const meetingClient = {
                 name: input.name,
                 agenda: input.agenda,
                 persona_ids: input.personaIds,
+                request_key: input.requestKey ?? null,
             },
             signal: init.signal,
         });

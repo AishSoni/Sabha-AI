@@ -122,7 +122,7 @@ describe('useMeetingCreation resume semantics', () => {
         expect(result.current.createdMeetingId).toBe('meeting-new-1');
         expect(result.current.uploads.map((item) => item.status)).toEqual(['uploaded', 'failed']);
         expect(result.current.uploads[1]?.error).toBe('storage down');
-        expect(result.current.uploadError).toMatch(/1 of 2 files failed to upload/);
+        expect(result.current.uploadError).toMatch(/1 of 2 files need attention/i);
         expect(push).not.toHaveBeenCalled();
 
         const uploadCalls = scripted.calls.filter((call) => call.input.endsWith('/documents/upload'));
@@ -244,5 +244,153 @@ describe('useMeetingCreation resume semantics', () => {
         // must not replay its bytes or create a second operation.
         expect(scripted.calls.filter((call) => call.input.endsWith('/documents/upload'))).toHaveLength(1);
         await waitFor(() => expect(push).toHaveBeenCalledTimes(1));
+    });
+
+    it('freezes the committed configuration and meeting key across an ambiguous retry', async () => {
+        scripted.enqueueJson(500, { detail: 'connection reset' });
+        const { result } = renderHook(() => useMeetingCreation(), { wrapper: Wrapper });
+
+        await act(async () => {
+            await result.current.createMeeting(CREATE_INPUT);
+        });
+        expect(result.current.configLocked).toBe(true);
+        expect(result.current.creationError).toMatch(/connection reset/);
+
+        scripted.enqueueJson(201, MEETING);
+        await act(async () => {
+            await result.current.createMeeting({
+                title: 'Silently edited title',
+                context: 'Edited context',
+                personaIds: ['persona-2'],
+            });
+        });
+
+        const createCalls = scripted.calls.filter(
+            (call) => call.input === `${resolveApiBaseUrl()}/meetings`
+        );
+        expect(createCalls).toHaveLength(2);
+        const first = JSON.parse(String(createCalls[0]!.init?.body));
+        const second = JSON.parse(String(createCalls[1]!.init?.body));
+        expect(second.name).toBe(CREATE_INPUT.title);
+        expect(second.agenda).toBe(CREATE_INPUT.context);
+        expect(second.persona_ids).toEqual(CREATE_INPUT.personaIds);
+        expect(second.request_key).toBe(first.request_key);
+        expect(result.current.committedConfig).toEqual(CREATE_INPUT);
+    });
+
+    it('unlocks a definitely rejected creation so the next submit is a new intent', async () => {
+        scripted.enqueueJson(422, { detail: 'Unknown personas: persona-2' });
+        const { result } = renderHook(() => useMeetingCreation(), { wrapper: Wrapper });
+
+        await act(async () => {
+            await result.current.createMeeting(CREATE_INPUT);
+        });
+        expect(result.current.configLocked).toBe(false);
+        expect(result.current.createdMeetingId).toBeNull();
+
+        scripted.enqueueJson(201, MEETING);
+        await act(async () => {
+            await result.current.createMeeting({
+                title: 'Corrected title',
+                context: '',
+                personaIds: ['persona-1'],
+            });
+        });
+
+        const createCalls = scripted.calls.filter(
+            (call) => call.input === `${resolveApiBaseUrl()}/meetings`
+        );
+        const first = JSON.parse(String(createCalls[0]!.init?.body));
+        const second = JSON.parse(String(createCalls[1]!.init?.body));
+        expect(second.name).toBe('Corrected title');
+        expect(second.request_key).not.toBe(first.request_key);
+    });
+
+    it('uses one stable upload key per intent across a retry', async () => {
+        scripted.enqueueJson(201, MEETING);
+        scripted.enqueueJson(500, { detail: 'storage down' });
+        const { result } = renderHook(() => useMeetingCreation(), { wrapper: Wrapper });
+
+        act(() => {
+            result.current.stageFiles([FILE_ONE()]);
+        });
+        await act(async () => {
+            await result.current.createMeeting(CREATE_INPUT);
+        });
+        expect(result.current.uploads[0]?.status).toBe('failed');
+        expect(result.current.canContinue).toBe(true);
+
+        scripted.enqueueJson(202, UPLOAD_OK);
+        await act(async () => {
+            await result.current.retryUploads();
+        });
+
+        const uploadCalls = scripted.calls.filter((call) => call.input.endsWith('/documents/upload'));
+        expect(uploadCalls).toHaveLength(2);
+        const firstKey = (uploadCalls[0]!.init!.body as FormData).get('request_key');
+        const secondKey = (uploadCalls[1]!.init!.body as FormData).get('request_key');
+        expect(firstKey).toBeTruthy();
+        expect(secondKey).toBe(firstKey);
+        expect(push).toHaveBeenCalledWith('/meetings/meeting-new-1');
+    });
+
+    it('accounts for files staged while an upload batch is in flight', async () => {
+        scripted.enqueueJson(201, MEETING);
+        const firstUpload = scripted.enqueuePendingJson(202, UPLOAD_OK);
+        const { result } = renderHook(() => useMeetingCreation(), { wrapper: Wrapper });
+
+        act(() => {
+            result.current.stageFiles([FILE_ONE()]);
+        });
+        let creation!: Promise<void>;
+        act(() => {
+            creation = result.current.createMeeting(CREATE_INPUT);
+        });
+        await waitFor(() =>
+            expect(scripted.calls.filter((call) => call.input.endsWith('/documents/upload'))).toHaveLength(1)
+        );
+
+        // The admitted batch is already running; a new intended file joins it
+        // instead of being left unaccounted behind a successful navigation.
+        scripted.enqueueJson(202, UPLOAD_OK);
+        act(() => {
+            result.current.stageFiles([FILE_TWO()]);
+        });
+        expect(result.current.uploads.map((item) => item.status)).toEqual(['uploading', 'pending']);
+
+        firstUpload.resolve();
+        await act(async () => {
+            await creation;
+        });
+
+        expect(scripted.calls.filter((call) => call.input.endsWith('/documents/upload'))).toHaveLength(2);
+        expect(result.current.uploads.map((item) => item.status)).toEqual(['uploaded', 'uploaded']);
+        await waitFor(() => expect(push).toHaveBeenCalledTimes(1));
+    });
+
+    it('allows only never-submitted items to be removed without a fake cancel', async () => {
+        scripted.enqueueJson(201, MEETING);
+        scripted.enqueueJson(202, UPLOAD_OK);
+        const { result } = renderHook(() => useMeetingCreation(), { wrapper: Wrapper });
+
+        act(() => {
+            result.current.stageFiles([FILE_ONE(), FILE_TWO()]);
+        });
+        act(() => {
+            result.current.removeUpload(1);
+        });
+        expect(result.current.uploads).toHaveLength(1);
+
+        await act(async () => {
+            await result.current.createMeeting(CREATE_INPUT);
+        });
+        expect(result.current.uploads[0]?.status).toBe('uploaded');
+
+        act(() => {
+            result.current.removeUpload(0);
+        });
+        // The server admitted this upload; the browser cannot pretend it was
+        // cancelled by dropping the row.
+        expect(result.current.uploads).toHaveLength(1);
     });
 });

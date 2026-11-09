@@ -61,6 +61,15 @@ export interface MeetingCreationScreenProps {
     uploadError?: string | null;
     onRetryUploads?: () => void;
     showRetryUploads?: boolean;
+    /** Committed title/context/roster can no longer be edited. */
+    configLocked?: boolean;
+    /** Truthful partial-success copy shown after the meeting row exists. */
+    partialNotice?: string | null;
+    canContinue?: boolean;
+    onContinue?: () => void;
+    continueLabel?: string;
+    /** Hide the create action once a meeting exists or its intent is committed. */
+    showCreateAction?: boolean;
     isCreating: boolean;
     creationError?: string | null;
     navigationDone?: boolean;
@@ -94,6 +103,12 @@ export function MeetingCreationScreen({
     uploadError,
     onRetryUploads,
     showRetryUploads = false,
+    configLocked = false,
+    partialNotice,
+    canContinue = false,
+    onContinue,
+    continueLabel = 'Continue to meeting',
+    showCreateAction = true,
     isCreating,
     creationError,
     navigationDone = false,
@@ -113,6 +128,7 @@ export function MeetingCreationScreen({
     const ctaEnabled =
         canCreate ??
         (title.trim().length > 0 &&
+            !configLocked &&
             !isCreating &&
             !navigationDone &&
             selectedCount > 0);
@@ -136,6 +152,15 @@ export function MeetingCreationScreen({
             <main id="main-content" className="max-w-4xl mx-auto px-6 py-8" tabIndex={-1}>
                 {disclosure}
 
+                {partialNotice ? (
+                    <div
+                        role="status"
+                        className="mb-6 rounded-group border border-separator bg-surface-raised p-4 text-sm text-ink-secondary"
+                    >
+                        {partialNotice}
+                    </div>
+                ) : null}
+
                 <div className="grid lg:grid-cols-[1fr,320px] gap-8">
                     <div className="space-y-8">
                         <section className="space-y-4">
@@ -152,6 +177,7 @@ export function MeetingCreationScreen({
                                 placeholder="e.g., Product launch strategy for Q2"
                                 value={title}
                                 onChange={(event) => onTitleChange(event.target.value)}
+                                disabled={configLocked}
                                 className="h-12 text-lg"
                             />
                         </section>
@@ -170,8 +196,15 @@ export function MeetingCreationScreen({
                                 placeholder="Provide additional context, background information, constraints, or specific questions you want addressed..."
                                 value={context}
                                 onChange={(event) => onContextChange(event.target.value)}
+                                disabled={configLocked}
                                 className="min-h-[150px]"
                             />
+                            {configLocked ? (
+                                <p className="text-xs text-ink-muted">
+                                    The committed meeting title, context, and participants are
+                                    frozen. New documents still join this meeting.
+                                </p>
+                            ) : null}
                         </section>
 
                         <section className="space-y-4">
@@ -288,6 +321,7 @@ export function MeetingCreationScreen({
                                             variant="ghost"
                                             size="sm"
                                             onClick={onSelectAll}
+                                            disabled={configLocked}
                                             className="text-xs text-ink-secondary hover:text-ink h-7"
                                         >
                                             {everySelected ? 'Deselect All' : 'Select All'}
@@ -327,14 +361,18 @@ export function MeetingCreationScreen({
                                         {roster.map((persona) => (
                                             <div
                                                 key={persona.id}
-                                                className={`m-state flex cursor-pointer items-center gap-3 rounded-control border p-3 ${persona.selected
+                                                className={`m-state flex items-center gap-3 rounded-control border p-3 ${configLocked ? 'cursor-not-allowed opacity-70' : 'cursor-pointer'} ${persona.selected
                                                     ? 'border-action bg-surface-selected'
                                                     : 'border-separator bg-surface/50'
                                                     }`}
-                                                onClick={() => onToggleRoster(persona.id)}
+                                                onClick={() => {
+                                                    if (!configLocked) onToggleRoster(persona.id);
+                                                }}
+                                                aria-disabled={configLocked}
                                             >
                                                 <Checkbox
                                                     checked={persona.selected}
+                                                    disabled={configLocked}
                                                     onClick={(event) => event.stopPropagation()}
                                                     onCheckedChange={() => onToggleRoster(persona.id)}
                                                 />
@@ -376,15 +414,22 @@ export function MeetingCreationScreen({
                             Cancel
                         </Button>
                     ) : null}
-                    <Button
-                        onClick={onCreate}
-                        busy={isCreating}
-                        busyLabel={busyLabel}
-                        disabled={!ctaEnabled}
-                        className="px-8"
-                    >
-                        {createLabel}
-                    </Button>
+                    {canContinue && onContinue ? (
+                        <Button onClick={onContinue} className="px-8">
+                            {continueLabel}
+                        </Button>
+                    ) : null}
+                    {showCreateAction ? (
+                        <Button
+                            onClick={onCreate}
+                            busy={isCreating}
+                            busyLabel={busyLabel}
+                            disabled={!ctaEnabled}
+                            className="px-8"
+                        >
+                            {createLabel}
+                        </Button>
+                    ) : null}
                 </div>
                 {footerNote ? (
                     <p className="mt-3 text-right text-xs text-ink-muted">{footerNote}</p>
