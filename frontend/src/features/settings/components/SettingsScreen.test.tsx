@@ -14,6 +14,9 @@ vi.mock('./CredentialsSection', () => ({
 vi.mock('./AppearanceSection', () => ({
     AppearanceSection: () => <div data-testid="appearance-section" />,
 }));
+vi.mock('./DiagnosticsSection', () => ({
+    DiagnosticsSection: () => <div data-testid="diagnostics-section" />,
+}));
 
 import { SettingsScreen } from './SettingsScreen';
 
@@ -26,7 +29,7 @@ describe('settings section shell', () => {
         expect(screen.queryByText('Notifications')).toBeNull();
         expect(screen.queryByText('Privacy')).toBeNull();
 
-        for (const name of ['Providers', 'System AI', 'Credentials', 'Appearance']) {
+        for (const name of ['Providers', 'System AI', 'Credentials', 'Appearance', 'Diagnostics']) {
             expect(screen.getByRole('button', { name: new RegExp(name) })).toBeTruthy();
         }
     });
@@ -46,5 +49,8 @@ describe('settings section shell', () => {
             'aria-current',
             'page'
         );
+
+        fireEvent.click(screen.getByRole('button', { name: /Diagnostics/ }));
+        expect(screen.getByTestId('diagnostics-section')).toBeTruthy();
     });
 });

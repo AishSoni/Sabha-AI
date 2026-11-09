@@ -27,7 +27,9 @@ export default function DemoSettingsPage() {
                     </h2>
                     <p className="type-body text-ink-secondary">
                         Model providers and credentials are managed only in the
-                        authenticated operator workspace.
+                        authenticated operator workspace. Provider setup,
+                        connection tests, diagnostics and the browser key vault
+                        are only available in live.
                     </p>
                 </section>
 

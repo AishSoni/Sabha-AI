@@ -9,13 +9,14 @@
  */
 import { useState } from 'react';
 import Link from 'next/link';
-import { ArrowLeft, Cpu, KeyRound, Palette, Plug } from 'lucide-react';
+import { ArrowLeft, Activity, Cpu, KeyRound, Palette, Plug } from 'lucide-react';
 import { AppearanceSection } from './AppearanceSection';
 import { CredentialsSection } from './CredentialsSection';
+import { DiagnosticsSection } from './DiagnosticsSection';
 import { ProvidersSection } from './ProvidersSection';
 import { SystemAiSection } from './SystemAiSection';
 
-type SettingsSection = 'providers' | 'system-ai' | 'credentials' | 'appearance';
+type SettingsSection = 'providers' | 'system-ai' | 'credentials' | 'appearance' | 'diagnostics';
 
 const SETTING_SECTIONS = [
     {
@@ -41,6 +42,12 @@ const SETTING_SECTIONS = [
         icon: Palette,
         title: 'Appearance',
         description: 'System, light or dark',
+    },
+    {
+        id: 'diagnostics' as const,
+        icon: Activity,
+        title: 'Diagnostics',
+        description: 'Read-only prerequisite checks',
     },
 ];
 
@@ -97,6 +104,7 @@ export function SettingsScreen() {
                         {activeSection === 'system-ai' && <SystemAiSection />}
                         {activeSection === 'credentials' && <CredentialsSection />}
                         {activeSection === 'appearance' && <AppearanceSection />}
+                        {activeSection === 'diagnostics' && <DiagnosticsSection />}
                     </div>
                 </div>
             </main>
