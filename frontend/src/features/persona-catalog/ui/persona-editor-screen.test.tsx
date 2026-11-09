@@ -9,6 +9,7 @@
  */
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { act, fireEvent, render, screen, waitFor } from "@testing-library/react";
+import { ApiError } from "@/shared/api/errors";
 import { PersonaDetailContent } from "./persona-editor-screen";
 
 const PERSONA_ID = "persona-1";
@@ -526,5 +527,107 @@ describe("persona editor", () => {
         expect(
             screen.queryByRole("alertdialog", { name: "Unsaved changes" })
         ).not.toBeInTheDocument();
+    });
+
+    it("shows a genuine not-found state only for a 404 persona", async () => {
+        mocks.get.mockRejectedValueOnce(
+            new ApiError("http", 404, "Persona not found.")
+        );
+
+        renderRosterPage();
+
+        expect(await screen.findByText("Persona Not Found")).toBeInTheDocument();
+        expect(screen.queryByRole("button", { name: "Retry" })).not.toBeInTheDocument();
+        expect(screen.queryByText("Persona Unavailable")).not.toBeInTheDocument();
+    });
+
+    it("shows an unavailable state and retries a non-404 persona failure", async () => {
+        mocks.get.mockRejectedValueOnce(
+            new ApiError("network", null, "Network request failed")
+        );
+
+        renderRosterPage();
+
+        expect(await screen.findByText("Persona Unavailable")).toBeInTheDocument();
+        expect(screen.queryByText("Persona Not Found")).not.toBeInTheDocument();
+        fireEvent.click(screen.getByRole("button", { name: "Retry" }));
+
+        expect(await screen.findByText("The Analyst")).toBeInTheDocument();
+    });
+
+    it("keeps the editor usable when prompt history fails, and retries without discarding a draft", async () => {
+        mocks.listPromptVersions.mockRejectedValueOnce(
+            new ApiError("network", null, "Network request failed")
+        );
+
+        renderRosterPage();
+        await screen.findByText("The Analyst");
+        await openPromptTab();
+
+        expect(await screen.findByRole("alert")).toHaveTextContent(
+            "Prompt history is unavailable. You can still edit and save the prompt."
+        );
+
+        fireEvent.change(screen.getByRole("textbox"), {
+            target: { value: "Draft survives a history retry" },
+        });
+        expect(
+            screen.getByRole("button", { name: "Save and activate new version" })
+        ).toBeEnabled();
+        fireEvent.click(screen.getByRole("button", { name: "Retry" }));
+
+        await screen.findByRole("button", { name: "Make version 1 active" });
+        expect((screen.getByRole("textbox") as HTMLTextAreaElement).value).toBe(
+            "Draft survives a history retry"
+        );
+    });
+
+    it("preserves stack assignments when the stack list fails", async () => {
+        mocks.get.mockResolvedValueOnce({
+            ...personaFixture,
+            stack_ids: ["stack-1"],
+        });
+        mocks.listStacks.mockRejectedValueOnce(
+            new ApiError("network", null, "Network request failed")
+        );
+
+        renderRosterPage();
+        await screen.findByText("The Analyst");
+
+        expect(await screen.findByRole("alert")).toHaveTextContent(
+            "Knowledge stacks are unavailable. Your current assignments are preserved"
+        );
+
+        fireEvent.change(screen.getByLabelText("Name"), {
+            target: { value: "Mira" },
+        });
+        fireEvent.click(screen.getByRole("button", { name: /save changes/i }));
+
+        await waitFor(() => {
+            expect(mocks.update).toHaveBeenCalledWith(
+                PERSONA_ID,
+                expect.objectContaining({ stack_ids: ["stack-1"] })
+            );
+        });
+        expect(screen.queryByText("Persona Not Found")).not.toBeInTheDocument();
+    });
+
+    it("retries a failed stack list without blocking the editor", async () => {
+        mocks.listStacks.mockRejectedValueOnce(
+            new ApiError("network", null, "Network request failed")
+        );
+
+        renderRosterPage();
+        await screen.findByText("The Analyst");
+        expect(await screen.findByRole("alert")).toHaveTextContent(
+            "Knowledge stacks are unavailable"
+        );
+
+        fireEvent.click(screen.getByRole("button", { name: "Retry" }));
+
+        await waitFor(() => {
+            expect(screen.queryByRole("alert")).not.toBeInTheDocument();
+        });
+        expect(screen.getByText("No knowledge stacks created yet.")).toBeInTheDocument();
     });
 });

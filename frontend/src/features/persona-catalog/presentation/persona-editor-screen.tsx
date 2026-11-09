@@ -7,7 +7,7 @@
  * injected. The screen keeps the base app's Overview/System Prompt tabs,
  * metadata save, immutable revision save, and activation command.
  */
-import { useEffect, useRef, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import Link from 'next/link';
 import { ArrowLeft, Loader2, Save, History, Settings2, BookOpen } from 'lucide-react';
 import { Button } from '@/components/ui/button';
@@ -37,6 +37,27 @@ type LeaveIntent =
 
 function stackKey(stackIds: readonly string[] | null | undefined): string {
     return normalizeStackIds(stackIds).sort().join('\u0000');
+}
+
+type PersonaLoadError = {
+    kind: 'not-found' | 'unavailable';
+    message: string;
+};
+
+function failureStatus(error: unknown): number | null {
+    if (typeof error !== 'object' || error === null) return null;
+    const status = (error as { status?: unknown }).status;
+    return typeof status === 'number' ? status : null;
+}
+
+function errorMessage(error: unknown, fallback: string): string {
+    return error instanceof Error && error.message ? error.message : fallback;
+}
+
+function personaLoadError(error: unknown): PersonaLoadError {
+    return failureStatus(error) === 404
+        ? { kind: 'not-found', message: 'This persona may have been deleted or is not available to this workspace.' }
+        : { kind: 'unavailable', message: errorMessage(error, 'The persona could not be loaded.') };
 }
 
 export interface PersonaEditorRoutes {
@@ -87,6 +108,12 @@ export function PersonaEditorScreen({
     const [loading, setLoading] = useState(true);
     const [saving, setSaving] = useState(false);
     const [error, setError] = useState<string | null>(null);
+    const [loadError, setLoadError] = useState<PersonaLoadError | null>(null);
+    const [personaRetryKey, setPersonaRetryKey] = useState(0);
+    const [historyError, setHistoryError] = useState<string | null>(null);
+    const [historyLoading, setHistoryLoading] = useState(false);
+    const [stacksError, setStacksError] = useState<string | null>(null);
+    const [stacksLoading, setStacksLoading] = useState(false);
 
     // Editable form state
     const [name, setName] = useState('');
@@ -96,6 +123,7 @@ export function PersonaEditorScreen({
     const [promptVersions, setPromptVersions] = useState<PromptRevision[]>([]);
     const [availableStacks, setAvailableStacks] = useState<PersonaStackOption[]>([]);
     const [selectedStacks, setSelectedStacks] = useState<string[]>([]);
+    const [stackAssignmentsKnown, setStackAssignmentsKnown] = useState(false);
     const [baseline, setBaseline] = useState<EditorBaseline | null>(null);
 
     // Revision inspection is deliberately separate from activation.
@@ -108,6 +136,8 @@ export function PersonaEditorScreen({
     const savingRef = useRef(false);
     const mountedRef = useRef(true);
     const loadTokenRef = useRef(0);
+    const historyTokenRef = useRef(0);
+    const stacksTokenRef = useRef(0);
     const inspectorRef = useRef<HTMLDivElement | null>(null);
     const suppressGuardRef = useRef(false);
     const editorHrefRef = useRef('');
@@ -130,6 +160,65 @@ export function PersonaEditorScreen({
             mountedRef.current = false;
         };
     }, []);
+
+    const loadHistory = useCallback(async () => {
+        const token = ++historyTokenRef.current;
+        setHistoryLoading(true);
+        setHistoryError(null);
+        try {
+            const versions = await client.listPromptVersions(id);
+            if (token !== historyTokenRef.current || !mountedRef.current) return;
+            setPromptVersions(versions);
+        } catch (err) {
+            if (token !== historyTokenRef.current || !mountedRef.current) return;
+            setHistoryError(errorMessage(err, 'Prompt history is unavailable.'));
+        } finally {
+            if (token === historyTokenRef.current && mountedRef.current) {
+                setHistoryLoading(false);
+            }
+        }
+    }, [client, id]);
+
+    const loadStackOptions = useCallback(async () => {
+        const token = ++stacksTokenRef.current;
+        setStacksLoading(true);
+        setStacksError(null);
+        try {
+            const stacks = await loadStacks();
+            if (token !== stacksTokenRef.current || !mountedRef.current) return;
+            setAvailableStacks(stacks);
+        } catch (err) {
+            if (token !== stacksTokenRef.current || !mountedRef.current) return;
+            setStacksError(errorMessage(err, 'Knowledge stacks are unavailable.'));
+        } finally {
+            if (token === stacksTokenRef.current && mountedRef.current) {
+                setStacksLoading(false);
+            }
+        }
+    }, [loadStacks]);
+
+    useEffect(() => {
+        setPromptVersions([]);
+        setAvailableStacks([]);
+        setSelectedStacks([]);
+        setStackAssignmentsKnown(false);
+        setHistoryError(null);
+        setStacksError(null);
+    }, [id]);
+
+    useEffect(() => {
+        void loadHistory();
+        return () => {
+            historyTokenRef.current += 1;
+        };
+    }, [loadHistory]);
+
+    useEffect(() => {
+        void loadStackOptions();
+        return () => {
+            stacksTokenRef.current += 1;
+        };
+    }, [loadStackOptions]);
 
     useEffect(() => {
         const handler = (event: BeforeUnloadEvent) => {
@@ -207,15 +296,19 @@ export function PersonaEditorScreen({
         setLoading(true);
         setPersona(null);
         setError(null);
+        setLoadError(null);
         setViewedVersion(null);
         setPendingActivation(null);
         setLeaveIntent(null);
         setBaseline(null);
+        setSelectedStacks([]);
+        setStackAssignmentsKnown(false);
         setAnnouncement('');
         suppressGuardRef.current = false;
         editorHrefRef.current = window.location.href;
-        Promise.all([client.get(id), client.listPromptVersions(id), loadStacks()])
-            .then(([p, versions, stacks]) => {
+        client
+            .get(id)
+            .then((p) => {
                 if (token !== loadTokenRef.current || !mountedRef.current) return;
                 const nextPrompt = p.active_prompt || '';
                 setPersona(p);
@@ -224,9 +317,8 @@ export function PersonaEditorScreen({
                 setColor(p.color);
                 setPromptContent(nextPrompt);
                 promptRef.current = nextPrompt;
-                setPromptVersions(versions);
-                setAvailableStacks(stacks);
                 setSelectedStacks(p.stack_ids || []);
+                setStackAssignmentsKnown(Array.isArray(p.stack_ids));
                 setBaseline({
                     name: p.name,
                     subtitle: p.subtitle || '',
@@ -237,13 +329,13 @@ export function PersonaEditorScreen({
             })
             .catch((err) => {
                 if (token === loadTokenRef.current && mountedRef.current) {
-                    setError(err instanceof Error ? err.message : 'Failed to load persona');
+                    setLoadError(personaLoadError(err));
                 }
             })
             .finally(() => {
                 if (token === loadTokenRef.current && mountedRef.current) setLoading(false);
             });
-    }, [id, client, loadStacks]);
+    }, [id, client, personaRetryKey]);
 
     async function handleSaveMetadata() {
         if (!persona || savingRef.current) return;
@@ -267,8 +359,13 @@ export function PersonaEditorScreen({
                 name,
                 subtitle,
                 color,
-                stack_ids: normalizeStackIds(selectedStacks),
             };
+            // A stack-list failure must not erase assignments we never
+            // managed to read. Only send stack_ids when the persona response
+            // or an explicit edit gave us a known assignment set.
+            if (stackAssignmentsKnown) {
+                update.stack_ids = normalizeStackIds(selectedStacks);
+            }
             const updated = await client.update(id, update);
             if (token !== loadTokenRef.current || !mountedRef.current) return;
             setPersona(updated);
@@ -424,13 +521,32 @@ export function PersonaEditorScreen({
     }
 
     if (!persona) {
+        const unavailable = loadError?.kind === 'unavailable';
         return (
-            <div className="flex min-h-full items-center justify-center text-ink">
-                <div className="text-center">
-                    <h2 className="type-item-title mb-2">Persona Not Found</h2>
-                    <Link href={routes.roster} className="text-action hover:underline">
-                        Back to Roster
-                    </Link>
+            <div className="flex min-h-full items-center justify-center px-6 text-ink">
+                <div className="max-w-md text-center">
+                    <h2 className="type-item-title mb-2">
+                        {unavailable ? 'Persona Unavailable' : 'Persona Not Found'}
+                    </h2>
+                    <p className="mb-4 text-sm text-ink-secondary">
+                        {unavailable
+                            ? loadError?.message || 'The persona could not be loaded.'
+                            : loadError?.message ||
+                              'This persona may have been deleted or is not available to this workspace.'}
+                    </p>
+                    <div className="flex flex-wrap items-center justify-center gap-3">
+                        {unavailable && (
+                            <Button
+                                variant="outline"
+                                onClick={() => setPersonaRetryKey((key) => key + 1)}
+                            >
+                                Retry
+                            </Button>
+                        )}
+                        <Link href={routes.roster} className="text-action hover:underline">
+                            Back to Roster
+                        </Link>
+                    </div>
                 </div>
             </div>
         );
@@ -625,8 +741,34 @@ export function PersonaEditorScreen({
                                     <p className="text-xs text-ink-muted mb-2">
                                         Select document domains this AI can query during a meeting.
                                     </p>
-                                    {availableStacks.length === 0 ? (
-                                        <div className="text-sm text-ink-muted italic">No knowledge stacks created yet.</div>
+                                    {stacksError && (
+                                        <div
+                                            role="alert"
+                                            className="rounded-control border border-warning/40 bg-warning-soft p-3"
+                                        >
+                                            <p className="text-sm text-warning">
+                                                Knowledge stacks are unavailable. Your current
+                                                assignments are preserved; retry to edit them.
+                                            </p>
+                                            <p className="mt-1 text-xs text-warning/90">{stacksError}</p>
+                                            <Button
+                                                variant="outline"
+                                                size="sm"
+                                                className="mt-2"
+                                                onClick={() => void loadStackOptions()}
+                                                busy={stacksLoading}
+                                                busyLabel="Retrying"
+                                            >
+                                                Retry
+                                            </Button>
+                                        </div>
+                                    )}
+                                    {stacksLoading && availableStacks.length === 0 ? (
+                                        <div className="text-sm text-ink-muted">Loading knowledge stacks...</div>
+                                    ) : availableStacks.length === 0 ? (
+                                        stacksError ? null : (
+                                            <div className="text-sm text-ink-muted italic">No knowledge stacks created yet.</div>
+                                        )
                                     ) : (
                                         <div className="grid gap-2">
                                             {availableStacks.map((stack) => {
@@ -643,6 +785,7 @@ export function PersonaEditorScreen({
                                                             type="checkbox"
                                                             checked={isSelected}
                                                             onChange={(e) => {
+                                                                setStackAssignmentsKnown(true);
                                                                 if (e.target.checked) {
                                                                     setSelectedStacks([...selectedStacks, stack.id]);
                                                                 } else {
@@ -743,8 +886,34 @@ export function PersonaEditorScreen({
                                     ) : null}
                                 </CardHeader>
                                 <CardContent className="space-y-2">
-                                    {promptVersions.length === 0 ? (
-                                        <p className="text-sm text-ink-muted">No versions yet</p>
+                                    {historyError && (
+                                        <div
+                                            role="alert"
+                                            className="rounded-control border border-warning/40 bg-warning-soft p-3"
+                                        >
+                                            <p className="text-sm text-warning">
+                                                Prompt history is unavailable. You can still edit
+                                                and save the prompt.
+                                            </p>
+                                            <p className="mt-1 text-xs text-warning/90">{historyError}</p>
+                                            <Button
+                                                variant="outline"
+                                                size="sm"
+                                                className="mt-2"
+                                                onClick={() => void loadHistory()}
+                                                busy={historyLoading}
+                                                busyLabel="Retrying"
+                                            >
+                                                Retry
+                                            </Button>
+                                        </div>
+                                    )}
+                                    {historyLoading && promptVersions.length === 0 ? (
+                                        <p className="text-sm text-ink-muted">Loading version history...</p>
+                                    ) : promptVersions.length === 0 ? (
+                                        historyError ? null : (
+                                            <p className="text-sm text-ink-muted">No versions yet</p>
+                                        )
                                     ) : (
                                         promptVersions.map((v, index) => {
                                             const isViewed = viewedVersion === v.version;
