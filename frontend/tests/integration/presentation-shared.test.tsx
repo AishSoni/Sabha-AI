@@ -16,8 +16,8 @@ const persona: RosterPersonaView = {
     id: "persona-credit",
     name: "Mira",
     subtitle: "Credit Analyst",
+    description: "Ground every claim in the issuer evidence.",
     color: "#2563eb",
-    activePrompt: "Ground every claim in the issuer evidence.",
     activePromptVersion: 3,
 };
 
@@ -41,11 +41,54 @@ describe("shared feature presentations", () => {
         );
 
         expect(screen.getByText("Mira")).toBeInTheDocument();
+        expect(
+            screen.getByText("Ground every claim in the issuer evidence.")
+        ).toBeInTheDocument();
         expect(screen.getByText("Prompt v3")).toBeInTheDocument();
         expect(screen.getByRole("link", { name: /Create Persona/i })).toHaveAttribute(
             "href",
             "/roster/new"
         );
+    });
+
+    it("bounds long role and purpose text while keeping the full detail available", () => {
+        const longRole =
+            "Credit Analyst responsible for covenant interpretation, evidence quality, and issuer history across the fictional HDFC mandate.";
+        const longDescription =
+            "Tests the issuer record, covenant context, and evidence quality before the board relies on a fact, while keeping every assumption visible to the director.";
+        render(
+            <RosterList
+                personas={[
+                    {
+                        ...persona,
+                        name: "Mira with a deliberately long display name",
+                        subtitle: longRole,
+                        description: longDescription,
+                    },
+                ]}
+                loading={false}
+                error={null}
+                hrefs={{
+                    home: "/",
+                    create: "/roster/new",
+                    persona: (id) => `/roster/${id}`,
+                }}
+                onDuplicate={vi.fn()}
+                onDelete={vi.fn()}
+            />
+        );
+
+        const role = screen.getByText(longRole);
+        expect(role).toHaveAttribute("title", longRole);
+        expect(role).toHaveClass("line-clamp-2");
+        const purpose = screen.getByText(longDescription);
+        expect(purpose).toHaveAttribute("title", longDescription);
+        expect(purpose).toHaveClass("line-clamp-3");
+        expect(
+            screen.getByRole("button", {
+                name: "Actions for Mira with a deliberately long display name",
+            })
+        ).toBeInTheDocument();
     });
 
     it("renders document state and routes injected actions", () => {

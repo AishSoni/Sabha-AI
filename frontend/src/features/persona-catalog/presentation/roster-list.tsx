@@ -39,8 +39,8 @@ export interface RosterPersonaView {
     markId?: string;
     name: string;
     subtitle?: string | null;
+    description?: string | null;
     color: string;
-    activePrompt?: string | null;
     activePromptVersion?: number | null;
 }
 
@@ -57,6 +57,7 @@ export interface RosterListProps {
     hrefs: RosterHrefs;
     heading?: string;
     description?: string;
+    backLabel?: string;
     highlightedPersonaId?: string;
     onDuplicate: (persona: RosterPersonaView) => void;
     onDelete: (personaId: string) => void;
@@ -69,6 +70,7 @@ export function RosterList({
     hrefs,
     heading = "AI Roster",
     description = "Manage your AI personas",
+    backLabel = "Back",
     highlightedPersonaId,
     onDuplicate,
     onDelete,
@@ -81,7 +83,7 @@ export function RosterList({
                         <Link
                             href={hrefs.home}
                             className="text-ink-secondary hover:text-ink m-control"
-                            aria-label="Back"
+                            aria-label={backLabel}
                         >
                             <ArrowLeft className="w-5 h-5" />
                         </Link>
@@ -135,27 +137,35 @@ export function RosterList({
                             {personas.map((persona) => (
                                 <Card
                                     key={persona.id}
-                                    className="transition-colors hover:border-action/40"
+                                    className="flex h-full flex-col transition-colors hover:border-action/40"
                                 >
                                     <CardHeader className="pb-2">
-                                        <div className="flex items-center justify-between">
-                                            <div className="flex items-center gap-3">
-                                                <ParticipantMark
-                                                    participant={{
-                                                        id: persona.markId ?? persona.id,
-                                                        name: persona.name,
-                                                        color: persona.color,
-                                                    }}
-                                                    size="md"
-                                                />
-                                                <div>
-                                                    <Link href={hrefs.persona(persona.id)}>
-                                                        <CardTitle className="cursor-pointer transition-colors hover:text-action">
+                                        <div className="flex items-start justify-between gap-3">
+                                            <div className="flex min-w-0 flex-1 items-start gap-3">
+                                                <div className="mt-0.5 shrink-0">
+                                                    <ParticipantMark
+                                                        participant={{
+                                                            id: persona.markId ?? persona.id,
+                                                            name: persona.name,
+                                                            color: persona.color,
+                                                        }}
+                                                        size="md"
+                                                    />
+                                                </div>
+                                                <div className="min-w-0 flex-1">
+                                                    <Link
+                                                        href={hrefs.persona(persona.id)}
+                                                        className="block"
+                                                    >
+                                                        <CardTitle className="cursor-pointer break-words transition-colors hover:text-action">
                                                             {persona.name}
                                                         </CardTitle>
                                                     </Link>
                                                     {persona.subtitle && (
-                                                        <CardDescription>
+                                                        <CardDescription
+                                                            className="mt-1 line-clamp-2 break-words"
+                                                            title={persona.subtitle}
+                                                        >
                                                             {persona.subtitle}
                                                         </CardDescription>
                                                     )}
@@ -171,6 +181,7 @@ export function RosterList({
                                                     <Button
                                                         variant="ghost"
                                                         size="icon"
+                                                        className="shrink-0"
                                                         aria-label={`Actions for ${persona.name}`}
                                                     >
                                                         <MoreVertical className="size-4" />
@@ -192,19 +203,23 @@ export function RosterList({
                                             </DropdownMenu>
                                         </div>
                                     </CardHeader>
-                                    <CardContent>
-                                        <p className="line-clamp-2 type-body text-ink-muted">
-                                            {persona.activePrompt
-                                                ? persona.activePrompt.substring(0, 100) +
-                                                  (persona.activePrompt.length > 100 ? "..." : "")
-                                                : "No system prompt configured"}
-                                        </p>
-                                        {persona.activePromptVersion ? (
-                                            <p className="mt-2 type-meta text-ink-muted">
-                                                Prompt v{persona.activePromptVersion}
-                                            </p>
-                                        ) : null}
-                                    </CardContent>
+                                    {(persona.description || persona.activePromptVersion) && (
+                                        <CardContent className="mt-auto pt-0">
+                                            {persona.description && (
+                                                <p
+                                                    className="line-clamp-3 break-words type-body text-ink-muted"
+                                                    title={persona.description}
+                                                >
+                                                    {persona.description}
+                                                </p>
+                                            )}
+                                            {persona.activePromptVersion ? (
+                                                <p className="mt-2 type-meta text-ink-muted">
+                                                    Prompt v{persona.activePromptVersion}
+                                                </p>
+                                            ) : null}
+                                        </CardContent>
+                                    )}
                                 </Card>
                             ))}
                         </div>

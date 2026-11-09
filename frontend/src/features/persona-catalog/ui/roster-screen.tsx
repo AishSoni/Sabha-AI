@@ -18,6 +18,7 @@ export default function RosterScreen() {
                 create: '/roster/new',
                 persona: (id) => `/roster/${id}`,
             }}
+            backLabel="Back to home"
         />
     );
 }

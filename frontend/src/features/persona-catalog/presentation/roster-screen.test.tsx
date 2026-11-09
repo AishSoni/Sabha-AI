@@ -53,13 +53,25 @@ async function openActions(name: string) {
 describe("shared roster command flow", () => {
     it("duplicates metadata and the active prompt without stack ids or history", async () => {
         const client = fakeClient();
+        const descriptionFor = vi.fn(() => "Tests the issuer record before the board relies on a fact.");
         render(
             <RosterScreen
                 client={client}
                 hrefs={{ home: "/", create: "/roster/new", persona: (id) => `/roster/${id}` }}
+                backLabel="Back to roster"
+                descriptionFor={descriptionFor}
             />
         );
         await screen.findByText("Mira");
+
+        expect(
+            screen.getByText("Tests the issuer record before the board relies on a fact.")
+        ).toBeInTheDocument();
+        expect(screen.getByRole("link", { name: "Back to roster" })).toHaveAttribute(
+            "href",
+            "/"
+        );
+        expect(descriptionFor).toHaveBeenCalledWith(persona);
 
         await openActions("Mira");
         fireEvent.click(await screen.findByText("Duplicate"));
@@ -76,6 +88,26 @@ describe("shared roster command flow", () => {
         expect(
             await screen.findByText("Mira (Copy)")
         ).toBeInTheDocument();
+    });
+
+    it("renders a purpose summary instead of the prompt body", async () => {
+        const client = fakeClient();
+        const prompt = "A private prompt body that belongs in the editor.";
+        client.list = vi.fn().mockResolvedValue({
+            personas: [{ ...persona, active_prompt: prompt }],
+            total: 1,
+        });
+        render(
+            <RosterScreen
+                client={client}
+                hrefs={{ home: "/", create: "/roster/new", persona: (id) => `/roster/${id}` }}
+                descriptionFor={() => "Tests the issuer record."}
+            />
+        );
+        await screen.findByText("Mira");
+
+        expect(screen.getByText("Tests the issuer record.")).toBeInTheDocument();
+        expect(screen.queryByText(prompt)).not.toBeInTheDocument();
     });
 
     it("confirms deletion and removes only the selected catalog entry", async () => {

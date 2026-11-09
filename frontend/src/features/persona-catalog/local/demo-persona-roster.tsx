@@ -28,10 +28,16 @@ function Content() {
             }}
             heading="Personas"
             description="Temporary persona templates for this browser tab. They never rename, replace, or rerun the meeting participants."
+            backLabel="Back to demo board"
             markIdFor={(persona) =>
                 seed?.personas.find(
                     (template) => template.personaId === persona.id
                 )?.recordedParticipantId ?? undefined
+            }
+            descriptionFor={(persona) =>
+                seed?.personas.find(
+                    (template) => template.personaId === persona.id
+                )?.description
             }
             confirmDelete={(persona) =>
                 window.confirm(

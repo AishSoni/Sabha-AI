@@ -18,23 +18,27 @@ export interface RosterScreenProps {
     hrefs: RosterHrefs;
     heading?: string;
     description?: string;
+    backLabel?: string;
     highlightedPersonaId?: string;
     confirmDelete?: (persona: RosterPersonaView) => boolean;
     /** Optional stable identity for the participant mark. */
     markIdFor?: (persona: Persona) => string | undefined;
+    /** Optional purpose summary supplied by the demo workspace. */
+    descriptionFor?: (persona: Persona) => string | undefined;
 }
 
 function toView(
     persona: Persona,
-    markIdFor?: (persona: Persona) => string | undefined
+    markIdFor?: (persona: Persona) => string | undefined,
+    descriptionFor?: (persona: Persona) => string | undefined
 ): RosterPersonaView {
     return {
         id: persona.id,
         markId: markIdFor?.(persona),
         name: persona.name,
         subtitle: persona.subtitle,
+        description: descriptionFor?.(persona),
         color: persona.color,
-        activePrompt: persona.active_prompt,
         activePromptVersion: persona.active_prompt_version,
     };
 }
@@ -44,9 +48,11 @@ export function RosterScreen({
     hrefs,
     heading,
     description,
+    backLabel,
     highlightedPersonaId,
     confirmDelete,
     markIdFor,
+    descriptionFor,
 }: RosterScreenProps) {
     const [personas, setPersonas] = useState<Persona[]>([]);
     const [loading, setLoading] = useState(true);
@@ -95,7 +101,12 @@ export function RosterScreen({
     async function handleDelete(personaId: string) {
         if (actionRef.current) return;
         const persona = personas.find((item) => item.id === personaId);
-        if (persona && confirmDelete && !confirmDelete(toView(persona))) return;
+        if (
+            persona &&
+            confirmDelete &&
+            !confirmDelete(toView(persona, markIdFor, descriptionFor))
+        )
+            return;
         try {
             actionRef.current = true;
             setError(null);
@@ -110,12 +121,15 @@ export function RosterScreen({
 
     return (
         <RosterList
-            personas={personas.map((persona) => toView(persona, markIdFor))}
+            personas={personas.map((persona) =>
+                toView(persona, markIdFor, descriptionFor)
+            )}
             loading={loading}
             error={error}
             hrefs={hrefs}
             heading={heading}
             description={description}
+            backLabel={backLabel}
             highlightedPersonaId={highlightedPersonaId}
             onDuplicate={(persona) => void handleDuplicate(persona)}
             onDelete={(id) => void handleDelete(id)}
