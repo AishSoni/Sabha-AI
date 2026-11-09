@@ -36,7 +36,8 @@ export interface GenerationSettings {
 // it and persists sealed envelopes (ciphertext + salt, never any plaintext).
 const SETTINGS_STORAGE_KEY = 'sabha-settings';
 
-export type ProviderId = 'openrouter' | 'gemini' | 'ollama';
+export const PROVIDER_IDS = ['openrouter', 'gemini', 'ollama'] as const;
+export type ProviderId = (typeof PROVIDER_IDS)[number];
 
 export interface ProviderConfig {
     enabled: boolean;
@@ -77,7 +78,7 @@ export interface SettingsState {
     setProviderConfig: (providerId: ProviderId, config: Partial<ProviderConfig>) => void;
     setDefaultProvider: (providerId: ProviderId | null) => void;
     getActiveProvider: () => { id: string; config: ProviderConfig } | null;
-    clearProviderConfig: (providerId: ProviderId) => void;
+    clearProviderConfig: (providerId: string) => void;
     resetAllSettings: () => void;
     createVault: (passphrase: string) => Promise<boolean>;
     unlockVault: (passphrase: string) => Promise<boolean>;
@@ -167,18 +168,31 @@ export const useSettingsStore = create<SettingsState>()(
                 set((state) => {
                     const remaining = { ...state.vaultCiphertexts };
                     delete remaining[providerId];
+                    const remainingProviders = {
+                        ...state.providers,
+                    } as Record<string, ProviderConfig>;
+                    const knownDefault = (
+                        initialState.providers as Record<string, ProviderConfig>
+                    )[providerId];
+                    if (knownDefault) {
+                        remainingProviders[providerId] = {
+                            ...defaultProviderConfig,
+                            model: knownDefault.model,
+                            baseUrl: knownDefault.baseUrl,
+                        };
+                    } else {
+                        // A configuration persisted by a newer/older build must not
+                        // be silently retained after the operator removes it.
+                        delete remainingProviders[providerId];
+                    }
                     return {
                         vaultCiphertexts: remaining,
                         vaultEpoch: state.vaultEpoch + 1,
-                        providers: {
-                            ...state.providers,
-                            [providerId]: {
-                                ...defaultProviderConfig,
-                                model: initialState.providers[providerId].model,
-                                baseUrl: initialState.providers[providerId].baseUrl,
-                            },
-                        },
-                        defaultProvider: state.defaultProvider === providerId ? null : state.defaultProvider,
+                        providers: remainingProviders as SettingsState['providers'],
+                        defaultProvider:
+                            state.defaultProvider === providerId
+                                ? null
+                                : state.defaultProvider,
                     };
                 });
             },
