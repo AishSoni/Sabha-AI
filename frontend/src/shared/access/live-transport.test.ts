@@ -187,4 +187,29 @@ describe('authenticated live requests', () => {
         );
         expect(fetchMock).not.toHaveBeenCalled();
     });
+
+    it('refuses the implicit localhost base from a hosted page', () => {
+        vi.stubEnv('NEXT_PUBLIC_API_URL', '');
+        vi.stubGlobal('window', {
+            location: { origin: 'https://sabha.example' },
+        });
+
+        expect(() => requestLiveJson('/meetings')).toThrow(
+            /NEXT_PUBLIC_API_URL is not set/
+        );
+        expect(fetchMock).not.toHaveBeenCalled();
+    });
+
+    it('keeps the localhost default on a local page', async () => {
+        vi.stubEnv('NEXT_PUBLIC_API_URL', '');
+        vi.stubGlobal('window', {
+            location: { origin: 'http://localhost:3000' },
+        });
+
+        await requestLiveJson('/meetings');
+
+        expect(fetchMock.mock.calls[0][0]).toBe(
+            'http://localhost:8000/api/meetings'
+        );
+    });
 });

@@ -32,3 +32,11 @@ export {
     requestLiveJson,
     setLiveAccessTokenSource,
 } from './live-transport';
+export {
+    describeApiOrigin,
+    isLoopbackHost,
+    type ApiOriginDiagnosis,
+    type ApiOriginIssue,
+    type ApiOriginPage,
+    type ApiOriginSource,
+} from './api-origin';

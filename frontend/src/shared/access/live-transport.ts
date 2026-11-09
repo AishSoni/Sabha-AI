@@ -22,6 +22,7 @@ import {
     type JsonRequestInit,
 } from '@/shared/api/transport';
 import { combineSignals } from '@/shared/runtime/scope';
+import { describeApiOrigin } from './api-origin';
 import { getAccessToken } from './browser-session';
 import {
     AccessRevokedError,
@@ -92,6 +93,17 @@ export function assertLivePath(path: string): void {
 
 function baseUrl(): URL {
     const configured = resolveApiBaseUrl();
+    const pageOrigin =
+        typeof window !== 'undefined' ? window.location.origin : null;
+    const diagnosis = describeApiOrigin(
+        process.env.NEXT_PUBLIC_API_URL,
+        pageOrigin,
+    );
+    if (diagnosis.issue) {
+        throw new LiveTransportConfigurationError(
+            `${diagnosis.detail} ${diagnosis.remediation}`,
+        );
+    }
     const fallbackOrigin =
         typeof window !== 'undefined' ? window.location.origin : 'http://localhost';
     let url: URL;
