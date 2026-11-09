@@ -298,7 +298,13 @@ async def retry_ingestion(
     background_tasks: BackgroundTasks,
     lifecycle=Depends(get_knowledge_lifecycle),
 ):
-    """Re-run a failed ingestion without changing its document/operation ids."""
+    """Re-run a failed ingestion without changing its document/operation ids.
+
+    A pending or processing operation is already owned by a worker (or is
+    waiting for one) and retrying it would not be a recovery action. Only a
+    recorded failure is restartable; observation failures must be handled by
+    re-reading the operation status instead.
+    """
     try:
         status = await lifecycle.ingestion_status(operation_id)
     except KnowledgeUnavailable as exc:
@@ -318,6 +324,14 @@ async def retry_ingestion(
         )
         return JSONResponse(
             status_code=200, content=payload.model_dump(mode="json", by_alias=True)
+        )
+    if status.state.value != "failed":
+        raise HTTPException(
+            status_code=409,
+            detail=(
+                "Only a failed ingestion can be retried; "
+                f"this operation is {status.state.value}"
+            ),
         )
     background_tasks.add_task(lifecycle.retry_ingestion, operation_id)
     payload = UploadReceiptResponse(

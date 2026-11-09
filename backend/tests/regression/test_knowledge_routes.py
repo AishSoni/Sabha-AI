@@ -207,6 +207,13 @@ def test_operation_status_returns_404_when_unknown(route_env):
 
 def test_retry_keeps_the_same_identity_and_pends(route_env):
     client, lifecycle = route_env
+    lifecycle.status = replace(
+        lifecycle.status,
+        state=IngestionState.FAILED,
+        revision_state=RevisionState.FAILED,
+        document_status="failed",
+        error_message="parser failed",
+    )
 
     response = client.post(f"/api/documents/operations/{OPERATION_ID}/retry")
 
@@ -216,6 +223,36 @@ def test_retry_keeps_the_same_identity_and_pends(route_env):
     assert body["documentId"] == str(DOCUMENT_ID)
     assert body["operationId"] == str(OPERATION_ID)
     assert lifecycle.retried == [OPERATION_ID]
+
+
+@pytest.mark.parametrize(
+    "state",
+    [IngestionState.PENDING, IngestionState.PROCESSING],
+)
+def test_retry_of_queued_or_processing_work_is_refused(route_env, state):
+    client, lifecycle = route_env
+    lifecycle.status = replace(lifecycle.status, state=state)
+
+    response = client.post(f"/api/documents/operations/{OPERATION_ID}/retry")
+
+    assert response.status_code == 409, response.text
+    assert "Only a failed ingestion" in response.json()["detail"]
+    assert lifecycle.retried == []
+
+
+def test_retry_of_a_revoked_operation_is_refused(route_env):
+    client, lifecycle = route_env
+    lifecycle.status = replace(
+        lifecycle.status,
+        state=IngestionState.REVOKED,
+        revision_state=RevisionState.REVOKED,
+        document_status="revoked",
+    )
+
+    response = client.post(f"/api/documents/operations/{OPERATION_ID}/retry")
+
+    assert response.status_code == 409, response.text
+    assert lifecycle.retried == []
 
 
 def test_retry_of_a_ready_operation_returns_ready(route_env):
