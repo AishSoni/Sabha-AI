@@ -315,7 +315,7 @@ Run from `backend/` with the virtual environment active.
 | `python -m scripts.latency_probe` | Probe data-access latency |
 | `python -m scripts.pdf_extraction_benchmark` | Benchmark extraction and OCR |
 | `python -m scripts.pdf_extraction_probe` | Inspect a single PDF's extraction path |
-| `python -m scripts.build_schema3_package_v10` | Rebuild the authored demo package version 10 |
+| `python -m scripts.build_schema3_package_v11` | Rebuild the authored demo package version 11 |
 | `python -m scripts.replay_package validate DIR` | Validate a replay package |
 | `python -m scripts.replay_package publish DIR` | Publish a package to replay storage |
 | `python -m scripts.replay_package activate ID VERSION` | Activate a package version |

@@ -7,9 +7,11 @@ Source anchors: [technical register](reference-project-polish-audit.md#technical
 ## Scope and D05
 
 Consistent shared catalog cards, safe editing/version inspection, and visual
-continuity into a meeting. Choose friendly names for the authored demo personas
-under D05; their subtitles already explain their roles. Mira/Arjun/Leena were
-examples, not approved names. Never automatically rename live user-created content.
+continuity into a meeting. The Director approved first-name-only **Mira**
+(Credit Analyst), **Arjun** (Downside Reviewer), and **Leena** (Portfolio
+Analyst) for the authored demo personas under D05; their subtitles still explain
+their roles. This supersedes the earlier note that Mira/Arjun/Leena were only
+examples. Never automatically rename live user-created content.
 
 ## Requirements
 

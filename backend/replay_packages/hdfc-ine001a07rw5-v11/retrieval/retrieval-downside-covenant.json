@@ -1,0 +1,54 @@
+{
+  "retrieval_key": "retrieval-downside-covenant",
+  "meeting_id": "a0000000-0000-4000-8000-000000000001",
+  "participant_id": "a0000000-0000-4000-8000-000000000102",
+  "scope": "private",
+  "stack_id": "downside-private",
+  "query": "downgrade covenant protections",
+  "hits": [
+    {
+      "rank": 1,
+      "document_id": "a0000000-0000-4000-8000-000000000201",
+      "revision_id": "a0000000-0000-4000-8000-000000000202",
+      "chunk_id": "rating",
+      "content_sha256": "6d4a95f91561344d0e43b149273486fbdfcd323d34b07497a40e72373cf24581",
+      "passage": "AAA/Stable is a dated opinion, not a guarantee.",
+      "score": 0.87,
+      "file_name": "hdfc-v007-shared-fact-sheet.md",
+      "page_number": 1,
+      "locator": {
+        "section": "rating"
+      },
+      "citation": {
+        "source": "Committee judgment",
+        "title": "Downside worksheet, Rating test",
+        "url": null,
+        "snippet": "AAA/Stable is a rating opinion dated 31 July 2020, not a guarantee and not a current rating.",
+        "claim_id": "C8",
+        "locator": "Downside worksheet, Rating test"
+      }
+    },
+    {
+      "rank": 2,
+      "document_id": "a0000000-0000-4000-8000-000000000201",
+      "revision_id": "a0000000-0000-4000-8000-000000000202",
+      "chunk_id": "limits",
+      "content_sha256": "6d4a95f91561344d0e43b149273486fbdfcd323d34b07497a40e72373cf24581",
+      "passage": "No executable price, yield, or secondary-market liquidity.",
+      "score": 0.84,
+      "file_name": "hdfc-v007-shared-fact-sheet.md",
+      "page_number": 1,
+      "locator": {
+        "section": "limits"
+      },
+      "citation": {
+        "source": "Record evidence",
+        "title": "Shared fact sheet, What is not established",
+        "url": null,
+        "snippet": "The meeting record contains no executable price, yield, or secondary-market liquidity data for the series.",
+        "claim_id": "C10",
+        "locator": "Shared fact sheet, What is not established"
+      }
+    }
+  ]
+}

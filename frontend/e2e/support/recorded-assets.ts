@@ -27,7 +27,7 @@ export async function serveRecordedAssets(
         "..",
         "backend",
         "replay_packages",
-        "hdfc-ine001a07rw5-v10"
+        "hdfc-ine001a07rw5-v11"
     )
 ): Promise<RecordedAssetHandler> {
     const assets = (

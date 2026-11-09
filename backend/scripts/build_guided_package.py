@@ -8,8 +8,9 @@ from __future__ import annotations
 
 import hashlib
 import json
+import re
 from pathlib import Path
-from typing import Any
+from typing import Any, Callable
 
 from app.modules.meetings.application.prompts import BASE_SYSTEM_PROMPT
 from app.replay.constants import (
@@ -604,7 +605,49 @@ SUMMARY_REDTEAM_TEXT = (
 )
 
 
-def write_json(path: Path, payload: Any) -> None:
+Transform = Callable[[Any], Any]
+
+
+def rename_authored_text(text: str, display_names: dict[str, str]) -> str:
+    """Rename only friendly display-name phrases, never role labels."""
+
+    for old_name, new_name in display_names.items():
+        pattern = re.compile(rf"\b{re.escape(old_name)}\b", re.IGNORECASE)
+        text = pattern.sub(new_name, text)
+    return text
+
+
+def rename_authored_names(value: Any, display_names: dict[str, str]) -> Any:
+    """Recursively rename authored strings while preserving IDs and keys."""
+
+    if isinstance(value, str):
+        return rename_authored_text(value, display_names)
+    if isinstance(value, list):
+        return [rename_authored_names(item, display_names) for item in value]
+    if isinstance(value, tuple):
+        return tuple(rename_authored_names(item, display_names) for item in value)
+    if isinstance(value, dict):
+        return {
+            key: rename_authored_names(item, display_names)
+            for key, item in value.items()
+        }
+    return value
+
+
+def display_name_transform(display_names: dict[str, str] | None) -> Transform | None:
+    if not display_names:
+        return None
+    return lambda value: rename_authored_names(value, display_names)
+
+
+def write_json(
+    path: Path,
+    payload: Any,
+    *,
+    transform: Transform | None = None,
+) -> None:
+    if transform is not None:
+        payload = transform(payload)
     path.parent.mkdir(parents=True, exist_ok=True)
     path.write_text(json.dumps(payload, indent=2) + "\n", encoding="utf-8")
 
@@ -713,9 +756,12 @@ def upload_sample(
     scenario_id: str,
     chunks: int,
     failure_message: str | None = None,
+    transform: Transform | None = None,
 ) -> dict[str, Any]:
     """Build one reviewed upload sample from its retained package bytes."""
 
+    if transform is not None:
+        content = transform(content)
     return {
         "sample_id": sample_id,
         "asset_id": asset_id,
@@ -737,7 +783,7 @@ def upload_sample(
     }
 
 
-def workspace_seed() -> dict[str, Any]:
+def workspace_seed(transform: Transform | None = None) -> dict[str, Any]:
     """Author the schema-2 practice seed for the expanded demo workspace.
 
     The seed mirrors the recorded board: three personas with authored revision
@@ -860,6 +906,7 @@ def workspace_seed() -> dict[str, Any]:
             accessible_label="Shared HDFC fact sheet, Markdown, four chunks",
             scenario_id="ready-after-indexing",
             chunks=4,
+            transform=transform,
         ),
         upload_sample(
             sample_id="sample-credit-notes",
@@ -875,6 +922,7 @@ def workspace_seed() -> dict[str, Any]:
             accessible_label="Credit analyst notes, Markdown, two chunks",
             scenario_id="ready-after-indexing",
             chunks=2,
+            transform=transform,
         ),
         upload_sample(
             sample_id="sample-portfolio-mandate",
@@ -890,6 +938,7 @@ def workspace_seed() -> dict[str, Any]:
             accessible_label="Portfolio mandate, Markdown, three chunks",
             scenario_id="ready-after-indexing",
             chunks=3,
+            transform=transform,
         ),
         upload_sample(
             sample_id="sample-downside-retry",
@@ -909,10 +958,11 @@ def workspace_seed() -> dict[str, Any]:
                 "Simulation: the first ingestion attempt stopped before "
                 "indexing. Retry reuses this same document and operation."
             ),
+            transform=transform,
         ),
     ]
 
-    return {
+    payload = {
         "seed_version": 3,
         "base_instructions": BASE_SYSTEM_PROMPT,
         "highlighted_persona_id": "persona-credit",
@@ -987,6 +1037,9 @@ def workspace_seed() -> dict[str, Any]:
             },
         ],
     }
+    if transform is not None:
+        payload = transform(payload)
+    return payload
 
 
 def message(
@@ -3023,6 +3076,8 @@ def prepared_deck_content(
     checkpoints: dict[str, dict[str, Any]],
     intents: list[dict[str, Any]],
     consensus_message: dict[str, Any] | None = None,
+    *,
+    transform: Transform | None = None,
 ) -> dict[str, Any]:
     """Author the schema-3 closed deck, isolated results, and turn tapes."""
 
@@ -3056,7 +3111,11 @@ def prepared_deck_content(
             archived=False,
         ),
     )
-    write_json(root / "checkpoints" / f"{base_id}.json", checkpoints[base_id])
+    write_json(
+        root / "checkpoints" / f"{base_id}.json",
+        checkpoints[base_id],
+        transform=transform,
+    )
     ordinal += 1
 
     definitions = [
@@ -3133,7 +3192,11 @@ def prepared_deck_content(
             ),
         )
         checkpoints[checkpoint_id] = result
-        write_json(root / "checkpoints" / f"{checkpoint_id}.json", result)
+        write_json(
+            root / "checkpoints" / f"{checkpoint_id}.json",
+            result,
+            transform=transform,
+        )
         tape = turn_tape(
             tape_id,
             operation_id,
@@ -3143,7 +3206,11 @@ def prepared_deck_content(
             checkpoint_id,
             message,
         )
-        write_json(root / "tapes" / f"{tape_id}.json", tape)
+        write_json(
+            root / "tapes" / f"{tape_id}.json",
+            tape,
+            transform=transform,
+        )
         intents.append(
             {
                 "intent_id": intent_id,
@@ -3203,8 +3270,10 @@ def build(
     schema_version: int = 2,
     version: str = "7",
     consensus_thinking: str = CONSENSUS_THINKING,
+    display_names: dict[str, str] | None = None,
 ) -> dict[str, Any]:
     consensus_message = {**CONSENSUS_MESSAGE, "thinking_content": consensus_thinking}
+    transform = display_name_transform(display_names)
     root = root or ROOT
     if root.exists():
         for path in sorted(root.rglob("*"), reverse=True):
@@ -3222,6 +3291,11 @@ def build(
         "private/downside-worksheet.md": DOWNSIDE_WORKSHEET,
         "private/portfolio-mandate.md": PORTFOLIO_MANDATE,
     }
+    if transform is not None:
+        assets = {
+            relative: transform(content)
+            for relative, content in assets.items()
+        }
     for relative, content in assets.items():
         path = root / "assets" / relative
         path.parent.mkdir(parents=True, exist_ok=True)
@@ -3331,7 +3405,15 @@ def build(
             "extraction": "offline markdown",
         },
     ]
-    write_json(root / "assets" / "index.json", {"assets": asset_records})
+    for record in asset_records:
+        content = assets[record["path"]]
+        record["sha256"] = sha256(content)
+        record["size"] = len(content.encode("utf-8"))
+    write_json(
+        root / "assets" / "index.json",
+        {"assets": asset_records},
+        transform=transform,
+    )
 
     operations_created = [
         operation(CREDIT_OP, CREDIT, "turn-credit", "queued", 1, None),
@@ -3590,7 +3672,11 @@ def build(
         )
     )
     for checkpoint_id, payload in checkpoints.items():
-        write_json(root / "checkpoints" / f"{checkpoint_id}.json", payload)
+        write_json(
+            root / "checkpoints" / f"{checkpoint_id}.json",
+            payload,
+            transform=transform,
+        )
 
     credit_tape = turn_tape(
         "tape-credit",
@@ -3629,12 +3715,28 @@ def build(
         consensus_message,
     )
     for tape in (credit_tape, downside_tape, portfolio_tape, consensus_tape):
-        write_json(root / "tapes" / f"{tape['tape_id']}.json", tape)
-    write_json(root / "closing_tapes" / "tape-closing.json", closing_tape())
+        write_json(
+            root / "tapes" / f"{tape['tape_id']}.json",
+            tape,
+            transform=transform,
+        )
+    write_json(
+        root / "closing_tapes" / "tape-closing.json",
+        closing_tape(),
+        transform=transform,
+    )
     for tape in exploration["tapes"]:
-        write_json(root / "tapes" / f"{tape['tape_id']}.json", tape)
+        write_json(
+            root / "tapes" / f"{tape['tape_id']}.json",
+            tape,
+            transform=transform,
+        )
     for tape in exploration["closing_tapes"]:
-        write_json(root / "closing_tapes" / f"{tape['tape_id']}.json", tape)
+        write_json(
+            root / "closing_tapes" / f"{tape['tape_id']}.json",
+            tape,
+            transform=transform,
+        )
 
     retrievals = [
         retrieval(
@@ -3691,7 +3793,11 @@ def build(
     ]
     retrievals.extend(exploration["retrievals"])
     for record in retrievals:
-        write_json(root / "retrieval" / f"{record['retrieval_key']}.json", record)
+        write_json(
+            root / "retrieval" / f"{record['retrieval_key']}.json",
+            record,
+            transform=transform,
+        )
 
     intents = [
         {
@@ -3974,7 +4080,13 @@ def build(
     ]
 
     deck = (
-        prepared_deck_content(root, checkpoints, intents, consensus_message)
+        prepared_deck_content(
+            root,
+            checkpoints,
+            intents,
+            consensus_message,
+            transform=transform,
+        )
         if schema_version >= 3
         else None
     )
@@ -4010,14 +4122,19 @@ def build(
             write_json(
                 root / "checkpoints" / f"{checkpoint_id}.json",
                 checkpoint_payload,
+                transform=transform,
             )
 
-    seed_payload = workspace_seed()
+    seed_payload = workspace_seed(transform=transform)
     if schema_version >= 3 and seed_payload.get("base_instructions"):
         seed_payload["base_instructions"] = seed_payload[
             "base_instructions"
         ].replace("The Director", "You").replace("Director", "You")
-    write_json(root / "workspace_seed.json", seed_payload)
+    write_json(
+        root / "workspace_seed.json",
+        seed_payload,
+        transform=transform,
+    )
     seed_sha256 = hashlib.sha256(
         json.dumps(
             seed_payload,
@@ -4072,7 +4189,9 @@ def build(
         manifest["disclosure"] = (
             "Demo · responses were recorded, not live AI generation."
         )
-    write_json(root / "manifest.json", manifest)
+    if transform is not None:
+        manifest = transform(manifest)
+    write_json(root / "manifest.json", manifest, transform=transform)
 
     files: dict[str, str] = {}
     for path in sorted(root.rglob("*")):
@@ -4080,7 +4199,7 @@ def build(
             relative = path.relative_to(root).as_posix()
             files[relative] = hashlib.sha256(path.read_bytes()).hexdigest()
     manifest["content_sha256"] = compute_content_sha256(files, manifest)
-    write_json(root / "manifest.json", manifest)
+    write_json(root / "manifest.json", manifest, transform=transform)
     print(f"Wrote {root}")
     print(f"content_sha256={manifest['content_sha256']}")
     return manifest

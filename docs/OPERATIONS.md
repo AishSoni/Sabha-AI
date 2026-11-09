@@ -548,11 +548,11 @@ Publish from a clean checkout with the offline provisioner credential:
 cd backend
 python -m scripts.replay_roles --reader-login sabha_replay_login `
     --provisioner-login sabha_replay_publisher
-python -m scripts.replay_package validate replay_packages/hdfc-ine001a07rw5-v10
+python -m scripts.replay_package validate replay_packages/hdfc-ine001a07rw5-v11
 python -m scripts.replay_package --database-url $env:REPLAY_PROVISIONER_DATABASE_URL `
-    publish replay_packages/hdfc-ine001a07rw5-v10
+    publish replay_packages/hdfc-ine001a07rw5-v11
 python -m scripts.replay_package --database-url $env:REPLAY_PROVISIONER_DATABASE_URL `
-    activate hdfc-ine001a07rw5 10
+    activate hdfc-ine001a07rw5 11
 python -m scripts.replay_package --database-url $env:REPLAY_PROVISIONER_DATABASE_URL `
     prune --older-than-days 30
 python -m scripts.replay_package --database-url $env:REPLAY_PROVISIONER_DATABASE_URL list
@@ -591,8 +591,8 @@ Runtime configuration:
 ```text
 REPLAY_DATABASE_URL=postgresql://sabha_replay_login:<password>@<host>:5432/postgres
 REPLAY_PACKAGE_ID=hdfc-ine001a07rw5
-REPLAY_PACKAGE_VERSION=10             # optional; registry default otherwise
-REPLAY_PACKAGE_SHA256=fafe211e3500d571921c50bdb4e68c5dd264abb440745f6de3ec73886f680cd0
+REPLAY_PACKAGE_VERSION=11             # optional; registry default otherwise
+REPLAY_PACKAGE_SHA256=67dcc081615d74230064e7893d043e0a3387a02ff69fb37939d54e2304ece666
 REPLAY_ONLY=true                      # serve no live graph
 REPLAY_STREAM_MAX_PER_CLIENT=2
 REPLAY_STREAM_MAX_GLOBAL=8
@@ -601,7 +601,7 @@ REPLAY_STREAM_MAX_SECONDS=120
 ```
 
 `python -m scripts.e2e_provision --serve` provisions a disposable local
-database, publishes demo package version 10 by default, and serves the
+database, publishes demo package version 11 by default, and serves the
 replay-only app for `npm run test:e2e`; it owns the embedded Postgres for the
 lifetime of the process. Pass `--package replay_packages/placeholder-analyst` to exercise the
 synthetic backend fixture instead. Install the browser once with
@@ -610,15 +610,15 @@ synthetic backend fixture instead. Install the browser once with
 ### Demo bond journey (spec 18)
 
 The current authored demo package is
-`backend/replay_packages/hdfc-ine001a07rw5-v10` version `10` with content hash
-`fafe211e3500d571921c50bdb4e68c5dd264abb440745f6de3ec73886f680cd0`.
+`backend/replay_packages/hdfc-ine001a07rw5-v11` version `11` with content hash
+`67dcc081615d74230064e7893d043e0a3387a02ff69fb37939d54e2304ece666`.
 It keeps the original eight-beat journey and the approved expanded exploration
 graph: 33 checkpoints, 14 chapters, three demo choice states, and six retained
 closings. The schema-3 package uses a schema-3 workspace seed with an explicit
 four-sample upload allowlist and one ready demo document in each of the four
 knowledge stacks. The fail-once retry scenario remains available in meeting
 scope. Evidence-only assets, including the source register and the attributed
-third-party excerpts, stay outside that allowlist. Versions 7–9 remain immutable
+third-party excerpts, stay outside that allowlist. Versions 7–10 remain immutable
 for pinned runs and compatibility checks; the version-5 package remains a
 checked-in compatibility fixture at
 `backend/tests/fixtures/replay/hdfc-ine001a07rw5-v5` with its original hash.
@@ -628,12 +628,12 @@ It was approved through
 [the content ledger](../specs/spec-18-guided-bond-journey-content.md): short
 attributed source excerpts, exact locators, a source register, and no untracked
 research bytes. Regenerate the authored demo copy only with the tracked version
-10 builder:
+11 builder:
 
 ```powershell
 cd backend
-python -m scripts.build_schema3_package_v10
-python -m scripts.replay_package validate replay_packages/hdfc-ine001a07rw5-v10
+python -m scripts.build_schema3_package_v11
+python -m scripts.replay_package validate replay_packages/hdfc-ine001a07rw5-v11
 ```
 
 The browser routes are `/demo` (demo board), `/demo/new` (creation record,

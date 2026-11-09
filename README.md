@@ -384,7 +384,7 @@ The authored demo is the HDFC Ltd 7.87% 2022 debenture meeting, published as pac
 - One validated browser-memory workspace seed (3 personas, 4 knowledge stacks) with the approved base instructions, a highlighted persona, and links to the demo board participants
 - A separate upload allowlist of 4 approved Markdown samples and a deterministic fail-once retry scenario
 
-Earlier immutable versions, including version 7, remain available for pinned runs. A deployment may pin an earlier version until it activates version 10.
+Earlier immutable versions, including version 7, remain available for pinned runs. A deployment may pin an earlier version until it activates version 11.
 
 A second package, `placeholder-analyst`, supports synthetic tests. Assets are stored immutably in the public read-only `replay-assets` bucket under a content-addressed path.
 
@@ -393,8 +393,8 @@ The replay runtime is pinned by `REPLAY_DATABASE_URL` and `REPLAY_PACKAGE_ID`, o
 Package tooling:
 
 ```bash
-python -m scripts.build_schema3_package_v10
-python -m scripts.replay_package validate replay_packages/hdfc-ine001a07rw5-v10
+python -m scripts.build_schema3_package_v11
+python -m scripts.replay_package validate replay_packages/hdfc-ine001a07rw5-v11
 python -m scripts.replay_package publish <directory>
 python -m scripts.replay_package activate <package-id> <version>
 python -m scripts.replay_package prune --older-than-days 30

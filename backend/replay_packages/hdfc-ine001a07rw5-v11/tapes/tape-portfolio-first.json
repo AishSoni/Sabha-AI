@@ -1,0 +1,132 @@
+{
+  "tape_id": "tape-portfolio-first",
+  "meeting_id": "a0000000-0000-4000-8000-000000000001",
+  "operation_id": "a0000000-0000-4000-8000-000000000311",
+  "participant_id": "a0000000-0000-4000-8000-000000000103",
+  "request_key": "turn-retrieval-portfolio-first",
+  "initial_checkpoint": "checkpoint-created",
+  "completed_checkpoint": "checkpoint-portfolio-first",
+  "events": [
+    {
+      "event_id": "tape-portfolio-first-1",
+      "sequence": 1,
+      "type": "thinking",
+      "delay_ms": 60,
+      "payload": {
+        "content": "Start from the mandate and expose the missing market inputs."
+      }
+    },
+    {
+      "event_id": "tape-portfolio-first-2",
+      "sequence": 2,
+      "type": "tool_call",
+      "delay_ms": 100,
+      "payload": {
+        "invocation_id": "inv-retrieval-portfolio-first",
+        "call_id": "call-retrieval-portfolio-first",
+        "tool_name": "search_knowledge_base",
+        "arguments": {
+          "query": "retrieval portfolio first"
+        }
+      }
+    },
+    {
+      "event_id": "tape-portfolio-first-3",
+      "sequence": 3,
+      "type": "tool_result",
+      "delay_ms": 120,
+      "payload": {
+        "invocation_id": "inv-retrieval-portfolio-first",
+        "call_id": "call-retrieval-portfolio-first",
+        "result": {
+          "retrieval_key": "retrieval-portfolio-first",
+          "hits": 3
+        },
+        "is_error": false
+      }
+    },
+    {
+      "event_id": "tape-portfolio-first-4",
+      "sequence": 4,
+      "type": "citation",
+      "delay_ms": 60,
+      "payload": {
+        "source": "Record evidence",
+        "title": "Shared fact sheet, What is not established",
+        "url": null,
+        "snippet": "The meeting record contains no executable price, yield, or secondary-market liquidity data for the series.",
+        "claim_id": "C10",
+        "locator": "Shared fact sheet, What is not established"
+      }
+    },
+    {
+      "event_id": "tape-portfolio-first-5",
+      "sequence": 5,
+      "type": "citation",
+      "delay_ms": 60,
+      "payload": {
+        "source": "Record evidence",
+        "title": "Shared fact sheet, What is not established",
+        "url": null,
+        "snippet": "Scheduled maturity is 18 July 2022; the meeting does not assert that payment occurred.",
+        "claim_id": "C11",
+        "locator": "Shared fact sheet, What is not established"
+      }
+    },
+    {
+      "event_id": "tape-portfolio-first-6",
+      "sequence": 6,
+      "type": "citation",
+      "delay_ms": 60,
+      "payload": {
+        "source": "Committee judgment",
+        "title": "Shared fact sheet, Outcome and limitations",
+        "url": null,
+        "snippet": "The outcome is a research checklist, not a buy/sell recommendation or investment approval.",
+        "claim_id": "C13",
+        "locator": "Shared fact sheet, Outcome and limitations"
+      }
+    },
+    {
+      "event_id": "tape-portfolio-first-7",
+      "sequence": 7,
+      "type": "citation",
+      "delay_ms": 60,
+      "payload": {
+        "source": "Included in this demo",
+        "title": "Branch note, mandate first",
+        "url": null,
+        "snippet": "A demo path may open with the portfolio mandate so the missing market inputs are visible before the credit discussion.",
+        "claim_id": "C15",
+        "locator": "Branch note, mandate first"
+      }
+    },
+    {
+      "event_id": "tape-portfolio-first-8",
+      "sequence": 8,
+      "type": "text",
+      "delay_ms": 60,
+      "payload": {
+        "content": "Starting with the mandate exposes the gap immediately. It requires an executable price, yield, and liquidity assessment, and the record supplies none "
+      }
+    },
+    {
+      "event_id": "tape-portfolio-first-9",
+      "sequence": 9,
+      "type": "text",
+      "delay_ms": 60,
+      "payload": {
+        "content": "of them. The only defensible output is a research checklist, not a position size or a mark."
+      }
+    },
+    {
+      "event_id": "tape-portfolio-first-10",
+      "sequence": 10,
+      "type": "done",
+      "delay_ms": 80,
+      "payload": {
+        "message_id": "a0000000-0000-4000-8000-000000000413"
+      }
+    }
+  ]
+}

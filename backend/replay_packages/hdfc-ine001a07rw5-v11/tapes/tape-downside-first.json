@@ -1,0 +1,146 @@
+{
+  "tape_id": "tape-downside-first",
+  "meeting_id": "a0000000-0000-4000-8000-000000000001",
+  "operation_id": "a0000000-0000-4000-8000-000000000310",
+  "participant_id": "a0000000-0000-4000-8000-000000000102",
+  "request_key": "turn-retrieval-downside-first",
+  "initial_checkpoint": "checkpoint-created",
+  "completed_checkpoint": "checkpoint-downside-first",
+  "events": [
+    {
+      "event_id": "tape-downside-first-1",
+      "sequence": 1,
+      "type": "thinking",
+      "delay_ms": 60,
+      "payload": {
+        "content": "Test the rating and liquidity assumptions before the fact pack."
+      }
+    },
+    {
+      "event_id": "tape-downside-first-2",
+      "sequence": 2,
+      "type": "tool_call",
+      "delay_ms": 100,
+      "payload": {
+        "invocation_id": "inv-retrieval-downside-first",
+        "call_id": "call-retrieval-downside-first",
+        "tool_name": "search_knowledge_base",
+        "arguments": {
+          "query": "retrieval downside first"
+        }
+      }
+    },
+    {
+      "event_id": "tape-downside-first-3",
+      "sequence": 3,
+      "type": "tool_result",
+      "delay_ms": 120,
+      "payload": {
+        "invocation_id": "inv-retrieval-downside-first",
+        "call_id": "call-retrieval-downside-first",
+        "result": {
+          "retrieval_key": "retrieval-downside-first",
+          "hits": 3
+        },
+        "is_error": false
+      }
+    },
+    {
+      "event_id": "tape-downside-first-4",
+      "sequence": 4,
+      "type": "citation",
+      "delay_ms": 60,
+      "payload": {
+        "source": "HDFC Ltd FY20 MD&A",
+        "title": "HDFC Ltd Annual Report 2019-20, MD&A",
+        "url": "https://homeloans.hdfc.bank.in/digital-annual-report-2019-2020/mda",
+        "snippet": "The FY20 MD&A states the NCDs are listed on the NSE/BSE wholesale debt market.",
+        "claim_id": "C6",
+        "locator": "S4 MD&A, borrowings"
+      }
+    },
+    {
+      "event_id": "tape-downside-first-5",
+      "sequence": 5,
+      "type": "citation",
+      "delay_ms": 60,
+      "payload": {
+        "source": "Committee judgment",
+        "title": "Downside worksheet, Liquidity test",
+        "url": null,
+        "snippet": "Listing is not the same as executable secondary liquidity; the record contains no price, yield, or liquidity data.",
+        "claim_id": "C7",
+        "locator": "Downside worksheet, Liquidity test"
+      }
+    },
+    {
+      "event_id": "tape-downside-first-6",
+      "sequence": 6,
+      "type": "citation",
+      "delay_ms": 60,
+      "payload": {
+        "source": "Committee judgment",
+        "title": "Downside worksheet, Rating test",
+        "url": null,
+        "snippet": "AAA/Stable is a rating opinion dated 31 July 2020, not a guarantee and not a current rating.",
+        "claim_id": "C8",
+        "locator": "Downside worksheet, Rating test"
+      }
+    },
+    {
+      "event_id": "tape-downside-first-7",
+      "sequence": 7,
+      "type": "citation",
+      "delay_ms": 60,
+      "payload": {
+        "source": "Record evidence",
+        "title": "Shared fact sheet, What is not established",
+        "url": null,
+        "snippet": "The meeting record contains no executable price, yield, or secondary-market liquidity data for the series.",
+        "claim_id": "C10",
+        "locator": "Shared fact sheet, What is not established"
+      }
+    },
+    {
+      "event_id": "tape-downside-first-8",
+      "sequence": 8,
+      "type": "citation",
+      "delay_ms": 60,
+      "payload": {
+        "source": "Included in this demo",
+        "title": "Branch note, downside first",
+        "url": null,
+        "snippet": "A demo path may open with a downside review before the credit fact pack; the evidence set does not change.",
+        "claim_id": "C14",
+        "locator": "Branch note, downside first"
+      }
+    },
+    {
+      "event_id": "tape-downside-first-9",
+      "sequence": 9,
+      "type": "text",
+      "delay_ms": 60,
+      "payload": {
+        "content": "Testing the downside first is reasonable. AAA/Stable is a dated opinion, not a guarantee. The record shows listing, not executable liquidity, and it "
+      }
+    },
+    {
+      "event_id": "tape-downside-first-10",
+      "sequence": 10,
+      "type": "text",
+      "delay_ms": 60,
+      "payload": {
+        "content": "contains no price or yield, so any mark-to-market outcome remains unknown."
+      }
+    },
+    {
+      "event_id": "tape-downside-first-11",
+      "sequence": 11,
+      "type": "done",
+      "delay_ms": 80,
+      "payload": {
+        "message_id": "a0000000-0000-4000-8000-000000000410"
+      }
+    }
+  ]
+}
