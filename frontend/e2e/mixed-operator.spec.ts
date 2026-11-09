@@ -1,4 +1,5 @@
-import { test, expect } from "@playwright/test";
+import { test, expect } from "./support/demo-test";
+import { seedDemoIntroContext } from "./support/demo-intro";
 import {
     expectNoPublicPersistence,
     guardNetwork,
@@ -193,6 +194,7 @@ test.describe("mixed operator and demo isolation", () => {
         expect(beforeVault).toBe(VAULT_SENTINEL);
 
         const demoContext = await browser.newContext();
+        await seedDemoIntroContext(demoContext);
         const demo = await demoContext.newPage();
         const network = guardNetwork(demo);
         await demo.goto("/demo");

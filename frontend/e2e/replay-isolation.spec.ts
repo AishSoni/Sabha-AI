@@ -1,4 +1,5 @@
-﻿import { test, expect, type Page } from "@playwright/test";
+import { test, expect, type Page } from "./support/demo-test";
+import { seedDemoIntroContext } from "./support/demo-intro";
 import { expectNoPublicPersistence, guardNetwork } from "./support/guardrails";
 import { serveRecordedAssets } from "./support/recorded-assets";
 
@@ -69,6 +70,8 @@ test.describe("recorded visitor isolation", () => {
     }) => {
         const contextA = await browser.newContext();
         const contextB = await browser.newContext();
+        await seedDemoIntroContext(contextA);
+        await seedDemoIntroContext(contextB);
         const pageA = await contextA.newPage();
         const pageB = await contextB.newPage();
         const networkA = guardNetwork(pageA);
@@ -138,6 +141,8 @@ test.describe("recorded visitor isolation", () => {
         test.setTimeout(240_000);
         const contextA = await browser.newContext();
         const contextB = await browser.newContext();
+        await seedDemoIntroContext(contextA);
+        await seedDemoIntroContext(contextB);
         const pageA = await contextA.newPage();
         const pageB = await contextB.newPage();
         const networkA = guardNetwork(pageA);
@@ -219,6 +224,8 @@ test.describe("recorded visitor isolation", () => {
         test.setTimeout(240_000);
         const contextA = await browser.newContext();
         const contextB = await browser.newContext();
+        await seedDemoIntroContext(contextA);
+        await seedDemoIntroContext(contextB);
         const pageA = await contextA.newPage();
         const pageB = await contextB.newPage();
         const networkA = guardNetwork(pageA);
@@ -285,6 +292,8 @@ test.describe("recorded visitor isolation", () => {
         test.setTimeout(240_000);
         const contextA = await browser.newContext();
         const contextB = await browser.newContext();
+        await seedDemoIntroContext(contextA);
+        await seedDemoIntroContext(contextB);
         const pageA = await contextA.newPage();
         const pageB = await contextB.newPage();
         const networkA = guardNetwork(pageA);
@@ -344,6 +353,10 @@ test.describe("recorded visitor isolation", () => {
             await pageA
                 .getByRole("button", { name: "Reset and discard changes" })
                 .click();
+            // A confirmed discard re-enters the approved introduction.
+            await pageA
+                .getByRole("button", { name: "Skip introduction" })
+                .click();
             await expect(
                 pageA.getByText("This practice setup is not available")
             ).toBeVisible();
@@ -383,6 +396,9 @@ test.describe("recorded visitor isolation", () => {
             await pageA.getByRole("button", { name: "Reset demo" }).click();
             await pageA
                 .getByRole("button", { name: "Reset and discard changes" })
+                .click();
+            await pageA
+                .getByRole("button", { name: "Skip introduction" })
                 .click();
             await openPromptHistory(pageA, "Mira");
             await expect(pageA.getByPlaceholder(PROMPT)).not.toHaveValue(

@@ -1,7 +1,7 @@
 import { readFileSync } from "node:fs";
 import { join } from "node:path";
 
-import { expect, test, type Page } from "@playwright/test";
+import { expect, test, type Page } from "./support/demo-test";
 
 /**
  * Focused evidence-preview journey for the approved HDFC replay.

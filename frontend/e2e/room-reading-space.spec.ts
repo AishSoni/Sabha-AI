@@ -1,4 +1,4 @@
-import { test, expect, type Page } from "@playwright/test";
+import { test, expect, type Page } from "./support/demo-test";
 
 /**
  * Addendum A.3: the discussion owns its reading space.

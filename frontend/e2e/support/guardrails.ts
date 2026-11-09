@@ -1,4 +1,5 @@
 import { expect, type BrowserContext, type Page, type Request } from "@playwright/test";
+import { INTRO_STORAGE_KEY } from "../../src/features/demo-intro/steps";
 
 const APP_ORIGIN = "http://127.0.0.1:3100";
 const API_ORIGIN = "http://127.0.0.1:8123";
@@ -143,7 +144,12 @@ export async function expectNoPublicPersistence(
 ): Promise<void> {
     const snapshot = await storageSnapshot(context, page);
     expect(snapshot.localStorage, "localStorage").toEqual([]);
-    expect(snapshot.sessionStorage, "sessionStorage").toEqual([]);
+    // The one approved tab-scoped acknowledgement belongs to the demo intro.
+    // Everything else remains forbidden browser persistence.
+    expect(
+        snapshot.sessionStorage.filter((key) => key !== INTRO_STORAGE_KEY),
+        "sessionStorage"
+    ).toEqual([]);
     expect(snapshot.cookies, "cookies").toEqual([]);
     expect(snapshot.indexedDb, "IndexedDB").toEqual([]);
     expect(snapshot.caches, "Cache Storage").toEqual([]);

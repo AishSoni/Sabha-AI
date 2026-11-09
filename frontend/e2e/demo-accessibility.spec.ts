@@ -1,4 +1,4 @@
-import { test, expect } from "@playwright/test";
+import { test, expect } from "./support/demo-test";
 import {
     expectNoPublicPersistence,
     guardNetwork,
@@ -279,10 +279,20 @@ test.describe("demo keyboard and narrow-screen accessibility", () => {
         await expect(
             page.getByRole("heading", { name: "Demo settings" })
         ).toBeVisible();
-        // The tutorial objective has no anchor on this screen, so the card
-        // stays collapsed instead of guessing a position.
-        await expect(page.getByTestId("tutorial-hud-compact")).toBeVisible();
-        await expect(page.getByTestId("tutorial-hud")).toHaveCount(0);
+        // Settings owns a contextual explanation instead of an unreachable
+        // board objective; at this width it may use the compact presentation.
+        const hud = page.getByTestId("tutorial-hud");
+        if (
+            await page
+                .getByTestId("tutorial-hud-compact")
+                .isVisible()
+                .catch(() => false)
+        ) {
+            await page.getByRole("button", { name: "Show tips" }).click();
+        }
+        await expect(
+            hud.getByText("The demo is isolated by design")
+        ).toBeVisible();
         await expect(
             page.getByRole("heading", { name: "Provider setup is operator-only" })
         ).toBeVisible();

@@ -1,4 +1,4 @@
-import { test, expect, type Page } from "@playwright/test";
+import { test, expect, type Page } from "./support/demo-test";
 import {
     expectNoPublicPersistence,
     guardNetwork,
@@ -14,6 +14,75 @@ async function openRoom(page: Page) {
 }
 
 test.describe("demo failure recovery", () => {
+    test("required metadata failure has its own recovery and preserves the session", async ({
+        page,
+        context,
+    }) => {
+        const network = guardNetwork(page);
+        let sessionCalls = 0;
+        page.on("request", (request) => {
+            if (
+                new URL(request.url()).pathname ===
+                "/api/replay/session"
+            ) {
+                sessionCalls += 1;
+            }
+        });
+        await page.route("**/api/replay/meetings/*/safe-config*", (route) =>
+            route.fulfill({
+                status: 500,
+                contentType: "application/json",
+                body: JSON.stringify({ detail: "metadata unavailable" }),
+            })
+        );
+
+        await page.goto("/demo/settings");
+        await expect(
+            page.getByRole("heading", { name: "Demo details unavailable" })
+        ).toBeVisible({ timeout: 30_000 });
+        await expect(page.getByText("Loading demo…")).toHaveCount(0);
+        await expect(
+            page.getByRole("heading", { name: "Demo settings" })
+        ).toHaveCount(0);
+
+        await page.unroute("**/api/replay/meetings/*/safe-config*");
+        await page.getByRole("button", { name: "Try again" }).click();
+
+        await expect(
+            page.getByRole("heading", { name: "Demo settings" })
+        ).toBeVisible({ timeout: 30_000 });
+        await expect(page).toHaveURL(/\/demo\/settings$/);
+        expect(sessionCalls).toBe(1);
+
+        network.assertClean();
+        await expectNoPublicPersistence(context, page);
+    });
+
+    test("missing required metadata is a definitive state, not endless loading", async ({
+        page,
+    }) => {
+        await page.route("**/api/replay/meetings/*/safe-config*", (route) =>
+            route.fulfill({
+                status: 404,
+                contentType: "application/json",
+                body: JSON.stringify({
+                    detail: "demo read 'safe_config' is not available here",
+                }),
+            })
+        );
+
+        await page.goto("/demo");
+        await expect(
+            page.getByRole("heading", { name: "Demo details unavailable" })
+        ).toBeVisible({ timeout: 30_000 });
+        await expect(
+            page.getByText(
+                "The recorded demo details are missing from this package."
+            )
+        ).toBeVisible();
+        await expect(page.getByText("Loading demo…")).toHaveCount(0);
+    });
+
     test("a missing workspace seed fails closed but keeps the recording", async ({
         page,
         context,

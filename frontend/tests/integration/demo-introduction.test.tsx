@@ -52,7 +52,7 @@ function json(body: unknown, status = 200): Response {
     } as unknown as Response;
 }
 
-function installRouter() {
+function installRouter(options: { board?: boolean } = {}) {
     vi.stubGlobal(
         "fetch",
         vi.fn(async (input: unknown) => {
@@ -62,7 +62,9 @@ function installRouter() {
                 return json(replaySessionWire());
             }
             if (path === `/replay/meetings/${DEMO_MEETING_ID}/safe-config`) {
-                return json(demoSafeConfigWire());
+                return json(
+                    options.board === false ? {} : demoSafeConfigWire()
+                );
             }
             if (path === "/replay/workspace-seed") {
                 return json({ detail: "seed unavailable" }, 404);
@@ -187,6 +189,22 @@ describe("demo introduction", () => {
         expect(
             await screen.findByRole("heading", { name: "Demo board" })
         ).toBeInTheDocument();
+    });
+
+    it("shows an explicit board metadata failure instead of endless loading", async () => {
+        installRouter({ board: false });
+        await renderIntro();
+        fireEvent.click(
+            screen.getByRole("button", { name: "Skip introduction" })
+        );
+
+        expect(
+            await screen.findByRole("heading", {
+                name: "Demo board unavailable",
+            })
+        ).toBeInTheDocument();
+        expect(screen.getByText("Try again")).toBeInTheDocument();
+        expect(screen.queryByText("Loading demo…")).not.toBeInTheDocument();
     });
 
     it("does not reopen the introduction for an immediate reset", async () => {
