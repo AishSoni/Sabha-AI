@@ -2,7 +2,7 @@
 
 import { useState } from 'react';
 import Link from 'next/link';
-import { Plus, MessageSquare, Calendar, ArrowLeft, Loader2, Archive, Trash2, MoreVertical, ArchiveRestore } from 'lucide-react';
+import { Plus, MessageSquare, Calendar, ArrowLeft, Loader2, Archive, Trash2, MoreVertical, ArchiveRestore, AlertTriangle, RefreshCw } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { StatusBadge } from '@/components/ui/status-badge';
@@ -25,12 +25,14 @@ import {
     AlertDialogTitle,
 } from '@/components/ui/alert-dialog';
 import { useMeetingList, useArchiveMeeting, useUnarchiveMeeting, useDeleteMeeting, type Meeting } from '@/features/meetings';
+import { isApiError } from '@/shared/api/errors';
 import { formatRelativeTime } from '@/lib/utils';
 
 
 export default function MeetingSpacePage() {
-    const { data, isLoading } = useMeetingList();
+    const { data, isLoading, isError, error, refetch } = useMeetingList();
     const list = data ?? [];
+    const hasLoadedList = data !== undefined;
     const archiveMeeting = useArchiveMeeting();
     const unarchiveMeeting = useUnarchiveMeeting();
     const deleteMeeting = useDeleteMeeting();
@@ -92,66 +94,81 @@ export default function MeetingSpacePage() {
 
             {/* Main Content */}
             <main id="main-content" className="max-w-6xl mx-auto px-6 py-8" tabIndex={-1}>
-                <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
-                    <TabsList className="mb-6">
-                        <TabsTrigger value="active">
-                            <MessageSquare className="h-4 w-4" />
-                            Active
-                            {activeMeetings.length > 0 && (
-                                <StatusBadge tone="neutral" className="ml-2">
-                                    {activeMeetings.length}
-                                </StatusBadge>
-                            )}
-                        </TabsTrigger>
-                        <TabsTrigger value="archived">
-                            <Archive className="h-4 w-4" />
-                            Archived
-                            {archivedMeetings.length > 0 && (
-                                <StatusBadge tone="neutral" className="ml-2">
-                                    {archivedMeetings.length}
-                                </StatusBadge>
-                            )}
-                        </TabsTrigger>
-                    </TabsList>
-
-                    <TabsContent value="active">
-                        {isLoading ? (
-                            <LoadingState />
-                        ) : activeMeetings.length === 0 ? (
-                            <EmptyState />
-                        ) : (
-                            <MeetingGrid
-                                meetings={activeMeetings}
-                                onArchive={handleArchive}
-                                onDelete={(id) => setDeleteConfirmId(id)}
-                                actionLoading={actionLoading}
-                                isArchived={false}
+                {isError && !hasLoadedList ? (
+                    <ListUnavailable
+                        message={readFailureMessage(error)}
+                        onRetry={() => void refetch()}
+                    />
+                ) : (
+                    <>
+                        {isError && hasLoadedList && (
+                            <StaleListNotice
+                                message={readFailureMessage(error)}
+                                onRetry={() => void refetch()}
                             />
                         )}
-                    </TabsContent>
+                        <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
+                            <TabsList className="mb-6">
+                                <TabsTrigger value="active">
+                                    <MessageSquare className="h-4 w-4" />
+                                    Active
+                                    {activeMeetings.length > 0 && (
+                                        <StatusBadge tone="neutral" className="ml-2">
+                                            {activeMeetings.length}
+                                        </StatusBadge>
+                                    )}
+                                </TabsTrigger>
+                                <TabsTrigger value="archived">
+                                    <Archive className="h-4 w-4" />
+                                    Archived
+                                    {archivedMeetings.length > 0 && (
+                                        <StatusBadge tone="neutral" className="ml-2">
+                                            {archivedMeetings.length}
+                                        </StatusBadge>
+                                    )}
+                                </TabsTrigger>
+                            </TabsList>
 
-                    <TabsContent value="archived">
-                        {isLoading ? (
-                            <LoadingState />
-                        ) : archivedMeetings.length === 0 ? (
-                            <div className="py-20 text-center">
-                                <div className="mx-auto mb-4 flex h-16 w-16 items-center justify-center rounded-group bg-surface-raised">
-                                    <Archive className="h-8 w-8 text-ink-muted" />
-                                </div>
-                                <h3 className="type-item-title mb-2 text-ink">No archived meetings</h3>
-                                <p className="type-body text-ink-secondary">Meetings you archive will appear here</p>
-                            </div>
-                        ) : (
-                            <MeetingGrid
-                                meetings={archivedMeetings}
-                                onUnarchive={handleUnarchive}
-                                onDelete={(id) => setDeleteConfirmId(id)}
-                                actionLoading={actionLoading}
-                                isArchived={true}
-                            />
-                        )}
-                    </TabsContent>
-                </Tabs>
+                            <TabsContent value="active">
+                                {isLoading ? (
+                                    <LoadingState />
+                                ) : activeMeetings.length === 0 ? (
+                                    <EmptyState />
+                                ) : (
+                                    <MeetingGrid
+                                        meetings={activeMeetings}
+                                        onArchive={handleArchive}
+                                        onDelete={(id) => setDeleteConfirmId(id)}
+                                        actionLoading={actionLoading}
+                                        isArchived={false}
+                                    />
+                                )}
+                            </TabsContent>
+
+                            <TabsContent value="archived">
+                                {isLoading ? (
+                                    <LoadingState />
+                                ) : archivedMeetings.length === 0 ? (
+                                    <div className="py-20 text-center">
+                                        <div className="mx-auto mb-4 flex h-16 w-16 items-center justify-center rounded-group bg-surface-raised">
+                                            <Archive className="h-8 w-8 text-ink-muted" />
+                                        </div>
+                                        <h3 className="type-item-title mb-2 text-ink">No archived meetings</h3>
+                                        <p className="type-body text-ink-secondary">Meetings you archive will appear here</p>
+                                    </div>
+                                ) : (
+                                    <MeetingGrid
+                                        meetings={archivedMeetings}
+                                        onUnarchive={handleUnarchive}
+                                        onDelete={(id) => setDeleteConfirmId(id)}
+                                        actionLoading={actionLoading}
+                                        isArchived={true}
+                                    />
+                                )}
+                            </TabsContent>
+                        </Tabs>
+                    </>
+                )}
             </main>
 
 
@@ -182,6 +199,75 @@ export default function MeetingSpacePage() {
                     </AlertDialogFooter>
                 </AlertDialogContent>
             </AlertDialog>
+        </div>
+    );
+}
+
+function readFailureMessage(error: Error | null): string {
+    if (isApiError(error)) {
+        if (error.status === 401 || error.status === 403) {
+            return 'Meeting space access is unavailable. Check operator access and try again.';
+        }
+        if (error.kind === 'network') {
+            return 'Meeting space could not be reached. Check your connection and try again.';
+        }
+        if (error.detail && error.detail !== 'Unknown error') {
+            return `Meeting space could not be loaded: ${error.detail}`;
+        }
+    }
+    return 'Meeting space could not be loaded. Try again.';
+}
+
+function ListUnavailable({
+    message,
+    onRetry,
+}: {
+    message: string;
+    onRetry: () => void;
+}) {
+    return (
+        <div
+            role="alert"
+            className="mx-auto max-w-xl rounded-group border border-warning/50 bg-warning-soft p-8 text-center"
+        >
+            <div className="mx-auto mb-4 flex h-14 w-14 items-center justify-center rounded-group bg-surface-raised">
+                <AlertTriangle className="h-7 w-7 text-warning" />
+            </div>
+            <h2 className="type-item-title mb-2 text-ink">Meeting space unavailable</h2>
+            <p className="type-body mb-6 text-ink-secondary">{message}</p>
+            <Button type="button" variant="outline" onClick={onRetry}>
+                <RefreshCw className="mr-2 h-4 w-4" />
+                Try again
+            </Button>
+            <p className="mt-4 type-meta text-ink-muted">
+                Your meetings were not changed.
+            </p>
+        </div>
+    );
+}
+
+function StaleListNotice({
+    message,
+    onRetry,
+}: {
+    message: string;
+    onRetry: () => void;
+}) {
+    return (
+        <div
+            role="status"
+            aria-live="polite"
+            className="mb-6 flex flex-wrap items-center gap-3 rounded-control border border-warning/50 bg-warning-soft px-4 py-3 type-body text-ink"
+        >
+            <AlertTriangle className="h-4 w-4 shrink-0 text-warning" />
+            <div className="min-w-0 flex-1">
+                <p className="font-medium">Showing the last loaded meetings.</p>
+                <p className="type-meta text-ink-secondary">{message}</p>
+            </div>
+            <Button type="button" variant="outline" size="sm" onClick={onRetry}>
+                <RefreshCw className="mr-2 h-4 w-4" />
+                Refresh
+            </Button>
         </div>
     );
 }
