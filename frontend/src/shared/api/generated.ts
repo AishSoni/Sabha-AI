@@ -2334,7 +2334,11 @@ export interface components {
         };
         /**
          * TestKeyRequest
-         * @description Request to test an API key.
+         * @description Request to test a provider connection.
+         *
+         *     Local providers such as Ollama do not require a credential; hosted
+         *     providers are validated by the endpoint so a missing key is a useful
+         *     capability result rather than a schema error.
          */
         TestKeyRequest: {
             /**
@@ -2343,7 +2347,7 @@ export interface components {
              */
             provider: "openrouter" | "gemini" | "ollama";
             /** Api Key */
-            api_key: string;
+            api_key?: string | null;
             /** Base Url */
             base_url?: string | null;
         };

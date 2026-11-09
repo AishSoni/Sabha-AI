@@ -396,11 +396,22 @@ async def test_api_key(request: TestKeyRequest):
     Test if an API key is valid for the specified provider.
     Makes a minimal API call to verify the key works.
     """
+    api_key = (request.api_key or "").strip()
+
+    # Hosted providers need a credential before any network call. Returning a
+    # capability result keeps the failure useful instead of surfacing a schema
+    # error. Local providers may legitimately be keyless.
+    if request.provider in ("openrouter", "gemini") and not api_key:
+        return TestKeyResponse(
+            valid=False,
+            message="Enter an API key before testing this provider.",
+        )
+
     try:
         if request.provider == "openrouter":
-            return await _test_openrouter_key(request.api_key)
+            return await _test_openrouter_key(api_key)
         elif request.provider == "gemini":
-            return await _test_gemini_key(request.api_key)
+            return await _test_gemini_key(api_key)
         elif request.provider == "ollama":
             return await _test_ollama_connection(request.base_url or settings.ollama_base_url)
         else:

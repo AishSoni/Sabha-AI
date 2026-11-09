@@ -43,9 +43,15 @@ class ProviderSettings(BaseModel):
 
 
 class TestKeyRequest(BaseModel):
-    """Request to test an API key."""
+    """Request to test a provider connection.
+
+    Local providers such as Ollama do not require a credential; hosted
+    providers are validated by the endpoint so a missing key is a useful
+    capability result rather than a schema error.
+    """
+
     provider: Literal["openrouter", "gemini", "ollama"]
-    api_key: str
+    api_key: Optional[str] = None
     base_url: Optional[str] = None  # For Ollama
 
 
