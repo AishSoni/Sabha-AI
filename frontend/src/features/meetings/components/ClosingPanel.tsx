@@ -360,12 +360,18 @@ export function ClosingPanel({
                     action.available
             ) ?? null;
     const replayClosingIntent = replayClosingAction?.intent ?? null;
+    // A close can start between reads. Only a successful observation proves
+    // there is no closing process to join; loading or a failed read is an
+    // unknown state, not evidence that closing is still available.
+    const observationConfirmed = !closingQuery.isPending && !closingQuery.error;
+    const observationBlocksStart = !runtime.replay && !observationConfirmed;
     const canStart =
         !archived &&
         !ended &&
         (status === 'active' || status === 'voting') &&
         !isAdvancing(stage) &&
         stage !== 'failed' &&
+        !observationBlocksStart &&
         (deckClosing
             ? deckClosing.canClose
             : runtime.replay
@@ -439,6 +445,14 @@ export function ClosingPanel({
     const startClose = async (mode: ClosingMode) => {
         setConfirmMode(null);
         setActionError(null);
+
+        if (observationBlocksStart) {
+            setActionError(
+                'Closing state is unknown. Retry the observation before starting a close; this will not open a second process.'
+            );
+            void closingQuery.refetch();
+            return;
+        }
 
         if (runtime.replay) {
             try {
@@ -905,21 +919,46 @@ export function ClosingPanel({
                 </div>
             ) : null}
 
-            {closingQuery.error ? (
-                <div className="flex items-center gap-2 rounded-lg border border-warning/60 bg-warning-soft p-3 text-warning">
-                    <AlertTriangle className="h-4 w-4 shrink-0" />
-                    <span className="flex-1 text-sm">
-                        Closing progress could not be read: {closingQuery.error.message}
-                    </span>
+            {!runtime.replay && closingQuery.isPending ? (
+                <StatusCard
+                    tone="muted"
+                    icon={<Loader2 className="h-5 w-5 text-ink-muted" />}
+                    title="Checking closing status"
+                >
+                    <p className="text-sm text-ink-secondary">
+                        Reading whether a closing process is already running.
+                        This read never starts one.
+                    </p>
+                </StatusCard>
+            ) : null}
+
+            {!runtime.replay && closingQuery.error ? (
+                <StatusCard
+                    tone="warning"
+                    icon={<AlertTriangle className="h-5 w-5 text-warning" />}
+                    title="Closing state unknown"
+                >
+                    <p className="text-sm text-ink-secondary">
+                        Closing progress could not be read:{' '}
+                        {closingQuery.error.message} A failed read does not mean
+                        no close is running, so starting one is paused. Retry
+                        the observation to join the existing process.
+                    </p>
                     <Button
                         size="sm"
-                        variant="ghost"
+                        variant="outline"
                         onClick={() => void closingQuery.refetch()}
-                        className="text-warning hover:text-ink"
+                        disabled={closingQuery.isFetching}
+                        className="mt-3 border-control"
                     >
-                        Reconnect
+                        <RotateCcw
+                            className={`mr-2 h-4 w-4${closingQuery.isFetching ? ' motion-safe:animate-spin' : ''}`}
+                        />
+                        {closingQuery.isFetching
+                            ? 'Retrying observation…'
+                            : 'Retry observation'}
                     </Button>
-                </div>
+                </StatusCard>
             ) : null}
 
             {replayClosingUnavailable ? (

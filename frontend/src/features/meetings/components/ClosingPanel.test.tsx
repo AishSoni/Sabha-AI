@@ -8,7 +8,7 @@
  */
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { fireEvent, render, screen, waitFor } from '@testing-library/react';
-import { QueryClientProvider } from '@tanstack/react-query';
+import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { makeQueryClient } from '@/app/providers';
 import {
     createScriptedFetch,
@@ -98,6 +98,64 @@ afterEach(() => {
 });
 
 describe('closing panel observation', () => {
+    it('does not offer a fresh close while the observation is loading', async () => {
+        const pending = scripted.enqueuePendingJson(200, viewJson());
+
+        renderPanel('active');
+
+        await waitFor(() =>
+            expect(screen.getByText('Checking closing status')).toBeInTheDocument()
+        );
+        expect(screen.queryByRole('button', { name: /Vote to End/ })).toBeNull();
+        expect(screen.queryByRole('button', { name: /Force End/ })).toBeNull();
+
+        pending.resolve();
+
+        await waitFor(() =>
+            expect(
+                screen.getByRole('button', { name: /Vote to End/ })
+            ).toBeInTheDocument()
+        );
+        expect(postBodies()).toHaveLength(0);
+    });
+
+    it('treats a failed observation as unknown and recovers by observation only', async () => {
+        queryClient.clear();
+        queryClient = new QueryClient({
+            defaultOptions: {
+                queries: { retry: false },
+                mutations: { retry: false },
+            },
+        });
+        scripted.enqueueFailure(new Error('The server is unreachable.'));
+
+        renderPanel('active');
+
+        await waitFor(() =>
+            expect(screen.getByText('Closing state unknown')).toBeInTheDocument()
+        );
+        expect(
+            screen.getByText(/A failed read does not mean no close is running/)
+        ).toBeInTheDocument();
+        expect(screen.queryByRole('button', { name: /Vote to End/ })).toBeNull();
+        expect(screen.queryByRole('button', { name: /Force End/ })).toBeNull();
+
+        scripted.enqueueJson(
+            200,
+            viewJson({ stage: 'draining', abortable: true })
+        );
+        fireEvent.click(
+            screen.getByRole('button', { name: 'Retry observation' })
+        );
+
+        await waitFor(() =>
+            expect(screen.getByText('Finishing queued work')).toBeInTheDocument()
+        );
+        expect(screen.queryByText('Closing state unknown')).toBeNull();
+        expect(screen.queryByRole('button', { name: /Vote to End/ })).toBeNull();
+        expect(postBodies()).toHaveLength(0);
+    });
+
     it('renders an advancing stage without submitting work', async () => {
         scripted.enqueueJson(
             200,
