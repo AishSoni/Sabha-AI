@@ -35,6 +35,7 @@ export function SystemAiSection() {
                         <SystemAiCard
                             providers={metadata.providers}
                             systemAI={metadata.systemAI}
+                            systemAIStatus={metadata.systemAIStatus}
                             defaultProvider={metadata.environment.defaultProvider}
                         />
                     </div>

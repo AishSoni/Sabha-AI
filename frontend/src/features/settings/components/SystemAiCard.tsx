@@ -11,6 +11,7 @@
  */
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { Check, Loader2, RefreshCw, Save } from 'lucide-react';
+import { Badge } from '@/components/ui/badge';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
@@ -18,14 +19,28 @@ import { Slider } from '@/components/ui/slider';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
 import { useFetchProviderModels, useUpdateSystemAI } from '../api';
-import type { ProviderInfoView, SystemAIConfigView } from '../api';
+import type {
+    FetchedModelInfoView,
+    FetchModelsResultView,
+    ProviderInfoView,
+    SystemAIConfigView,
+    SystemAIStatusView,
+} from '../api';
 import { useSettingsStore } from '../state/settings-store';
 
 interface SystemAiCardProps {
     providers: ProviderInfoView[];
     systemAI: SystemAIConfigView;
+    systemAIStatus: SystemAIStatusView;
     defaultProvider: string;
 }
+
+type DiscoveryState =
+    | { status: 'idle' }
+    | { status: 'loading'; provider: string }
+    | { status: 'ready'; provider: string; models: FetchedModelInfoView[] }
+    | { status: 'provider-error'; provider: string; message: string }
+    | { status: 'transport-error'; provider: string };
 
 const MIN_MAX_TOKENS = 256;
 const MAX_MAX_TOKENS = 16000;
@@ -40,21 +55,41 @@ function isValidDraft(draft: SystemAIConfigView): boolean {
     );
 }
 
-export function SystemAiCard({ providers, systemAI, defaultProvider }: SystemAiCardProps) {
+function discoveryFromResult(
+    providerId: string,
+    result: FetchModelsResultView,
+): DiscoveryState {
+    if (!result.success) {
+        return {
+            status: 'provider-error',
+            provider: providerId,
+            message: result.message || 'The provider rejected model discovery.',
+        };
+    }
+    return {
+        status: 'ready',
+        provider: providerId,
+        models: result.models,
+    };
+}
+
+export function SystemAiCard({
+    providers,
+    systemAI,
+    systemAIStatus,
+    defaultProvider,
+}: SystemAiCardProps) {
     // `null` draft means "show the confirmed server snapshot". Once the user
     // edits, the draft owns the form until the mutation confirms it.
     const [draft, setDraft] = useState<SystemAIConfigView | null>(null);
     const [saved, setSaved] = useState(false);
+    const [discovery, setDiscovery] = useState<DiscoveryState>({ status: 'idle' });
     const current = draft ?? systemAI;
 
     const providerConfigs = useSettingsStore((state) => state.providers);
     const getProviderApiKey = useSettingsStore((state) => state.getProviderApiKey);
     const updateSystemAI = useUpdateSystemAI();
-    const {
-        mutateAsync: fetchModelsRequest,
-        data: modelsResult,
-        isPending: loadingModels,
-    } = useFetchProviderModels();
+    const { mutateAsync: fetchModelsRequest } = useFetchProviderModels();
 
     const selectedProvider = current.provider || defaultProvider || 'openrouter';
     const latestConfigs = useRef(providerConfigs);
@@ -62,27 +97,60 @@ export function SystemAiCard({ providers, systemAI, defaultProvider }: SystemAiC
         latestConfigs.current = providerConfigs;
     }, [providerConfigs]);
 
-    const fetchModelsForProvider = useCallback(
-        async (providerId: string) => {
+    const discoveryToken = useRef(0);
+    const loadModels = useCallback(
+        (providerId: string) => {
             const providerConfig =
                 latestConfigs.current[providerId as keyof typeof latestConfigs.current];
-            try {
-                await fetchModelsRequest({
-                    provider: providerId,
-                    apiKey: getProviderApiKey(providerId),
-                    baseUrl: providerConfig?.baseUrl || undefined,
-                });
-            } catch {
-                // An empty model list renders the failure as "No models".
-            }
+            return fetchModelsRequest({
+                provider: providerId,
+                apiKey: getProviderApiKey(providerId),
+                baseUrl: providerConfig?.baseUrl || undefined,
+            });
         },
         [fetchModelsRequest, getProviderApiKey],
     );
 
-    // Fetch models when the selected provider changes.
+    const refreshModels = useCallback(
+        (providerId: string) => {
+            const token = ++discoveryToken.current;
+            setDiscovery({ status: 'loading', provider: providerId });
+            void loadModels(providerId)
+                .then((result) => {
+                    if (token === discoveryToken.current) {
+                        setDiscovery(discoveryFromResult(providerId, result));
+                    }
+                })
+                .catch(() => {
+                    if (token === discoveryToken.current) {
+                        setDiscovery({ status: 'transport-error', provider: providerId });
+                    }
+                });
+        },
+        [loadModels],
+    );
+
+    // Fetch models when the selected provider changes. The cleanup invalidates
+    // a late response from the provider that was previously selected.
     useEffect(() => {
-        void fetchModelsForProvider(selectedProvider);
-    }, [selectedProvider, fetchModelsForProvider]);
+        const token = ++discoveryToken.current;
+        const run = async () => {
+            try {
+                const result = await loadModels(selectedProvider);
+                if (token === discoveryToken.current) {
+                    setDiscovery(discoveryFromResult(selectedProvider, result));
+                }
+            } catch {
+                if (token === discoveryToken.current) {
+                    setDiscovery({ status: 'transport-error', provider: selectedProvider });
+                }
+            }
+        };
+        void run();
+        return () => {
+            discoveryToken.current += 1;
+        };
+    }, [selectedProvider, loadModels]);
 
     const edit = (changes: Partial<SystemAIConfigView>) => {
         setSaved(false);
@@ -109,7 +177,19 @@ export function SystemAiCard({ providers, systemAI, defaultProvider }: SystemAiC
         }
     };
 
-    const models = modelsResult?.success ? modelsResult.models : [];
+    // A response for another provider is never rendered under the newly selected
+    // provider, even for the frame before the discovery effect starts.
+    const activeDiscovery: DiscoveryState =
+        discovery.status !== 'idle' && discovery.provider === selectedProvider
+            ? discovery
+            : { status: 'loading', provider: selectedProvider };
+    const loadingModels = activeDiscovery.status === 'loading';
+    const policyBadge =
+        systemAIStatus.state === 'available'
+            ? { label: 'Saved policy', variant: 'success' as const }
+            : systemAIStatus.state === 'failed'
+              ? { label: 'Storage read failed', variant: 'destructive' as const }
+              : { label: 'Environment default', variant: 'warning' as const };
     const canSave = draft !== null && isValidDraft(draft) && !updateSystemAI.isPending;
 
     return (
@@ -126,6 +206,21 @@ export function SystemAiCard({ providers, systemAI, defaultProvider }: SystemAiC
                 </div>
             </CardHeader>
             <CardContent className="space-y-4">
+                <div
+                    role={systemAIStatus.state === 'failed' ? 'alert' : 'status'}
+                    className={`flex flex-wrap items-center gap-2 rounded-control border px-3 py-2 type-meta ${
+                        systemAIStatus.state === 'failed'
+                            ? 'border-danger/40 text-danger'
+                            : 'border-separator text-ink-secondary'
+                    }`}
+                >
+                    <Badge variant={policyBadge.variant}>{policyBadge.label}</Badge>
+                    <span>{systemAIStatus.message}</span>
+                    {systemAIStatus.degraded && (
+                        <Badge variant="destructive">Degraded</Badge>
+                    )}
+                </div>
+
                 {/* Provider Selection */}
                 <div className="space-y-2">
                     <Label htmlFor="system-ai-provider">Provider</Label>
@@ -157,7 +252,7 @@ export function SystemAiCard({ providers, systemAI, defaultProvider }: SystemAiC
                             variant="ghost"
                             size="icon-sm"
                             aria-label="Refresh models"
-                            onClick={() => void fetchModelsForProvider(selectedProvider)}
+                            onClick={() => void refreshModels(selectedProvider)}
                             disabled={loadingModels}
                         >
                             {loadingModels ? (
@@ -168,14 +263,47 @@ export function SystemAiCard({ providers, systemAI, defaultProvider }: SystemAiC
                         </Button>
                     </div>
 
-                    {loadingModels ? (
+                    {activeDiscovery.status === 'loading' ? (
                         <div className="flex items-center gap-2 py-2 type-meta text-ink-muted">
                             <Loader2 className="size-4 animate-spin motion-reduce:animate-none" />
                             Fetching models...
                         </div>
-                    ) : models.length === 0 ? (
-                        <div className="type-meta text-ink-muted">
-                            No models available for this provider
+                    ) : activeDiscovery.status === 'provider-error' ? (
+                        <div role="alert" className="space-y-1">
+                            <p className="type-meta text-danger">
+                                Model discovery failed. {activeDiscovery.message}
+                            </p>
+                            <p className="type-meta text-ink-muted">
+                                Check the provider credential and try again.
+                            </p>
+                            <Button
+                                variant="outline"
+                                size="sm"
+                                onClick={() => void refreshModels(selectedProvider)}
+                            >
+                                Retry
+                            </Button>
+                        </div>
+                    ) : activeDiscovery.status === 'transport-error' ? (
+                        <div role="alert" className="space-y-1">
+                            <p className="type-meta text-danger">
+                                Model discovery could not reach the settings API.
+                            </p>
+                            <p className="type-meta text-ink-muted">
+                                Check the API origin in Diagnostics and retry.
+                            </p>
+                            <Button
+                                variant="outline"
+                                size="sm"
+                                onClick={() => void refreshModels(selectedProvider)}
+                            >
+                                Retry
+                            </Button>
+                        </div>
+                    ) : activeDiscovery.models.length === 0 ? (
+                        <div role="status" className="type-meta text-ink-muted">
+                            The provider returned no models. The policy can still use the
+                            provider default.
                         </div>
                     ) : (
                         <Select
@@ -189,7 +317,7 @@ export function SystemAiCard({ providers, systemAI, defaultProvider }: SystemAiC
                                 <SelectItem value="__default__">
                                     Use Provider Default
                                 </SelectItem>
-                                {models.map((model) => (
+                                {activeDiscovery.models.map((model) => (
                                     <SelectItem key={model.id} value={model.id}>
                                         <span className="flex items-center gap-2">
                                             {model.name}
