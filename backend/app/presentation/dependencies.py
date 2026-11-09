@@ -105,6 +105,14 @@ def get_system_ai_reader(request: Request):
     return reader
 
 
+def get_system_ai_policy_reader(request: Request):
+    """The composition root's System AI policy/provenance port (spec-38)."""
+    reader = getattr(_container(request), "system_ai_policy_reader", None)
+    if reader is None:
+        raise HTTPException(status_code=503, detail="Settings are not configured")
+    return reader
+
+
 def get_turn_queue(request: Request) -> TurnQueueService:
     """The composition root's durable turn service (spec-07)."""
     service = getattr(request.app.state.container, "turn_queue", None)

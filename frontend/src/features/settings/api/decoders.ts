@@ -6,6 +6,7 @@
  * camelCase views of server state.
  */
 import {
+    DecodeError,
     decodeObject,
     optionalNumber,
     optionalString,
@@ -49,10 +50,51 @@ export interface SystemAIConfigView {
     maxTokens: number;
 }
 
+export type SystemAISourceView = 'stored' | 'environment' | 'fallback';
+export type SystemAIStateView = 'available' | 'missing' | 'failed';
+
+export interface SystemAIStatusView {
+    source: SystemAISourceView;
+    state: SystemAIStateView;
+    degraded: boolean;
+    message: string;
+}
+
 export interface ProvidersEnvironment {
     providers: ProviderInfoView[];
     environment: EnvironmentInfoView;
     systemAI: SystemAIConfigView;
+    systemAIStatus: SystemAIStatusView;
+}
+
+function requireLiteral<T extends string>(
+    value: unknown,
+    path: string,
+    allowed: readonly T[],
+): T {
+    const text = requireString(value, path);
+    if (!allowed.includes(text as T)) {
+        throw new DecodeError(`${path}: expected one of ${allowed.join(', ')}`);
+    }
+    return text as T;
+}
+
+export function decodeSystemAIStatus(value: unknown, path: string): SystemAIStatusView {
+    const record = decodeObject(value, path);
+    return {
+        source: requireLiteral(record.source, `${path}.source`, [
+            'stored',
+            'environment',
+            'fallback',
+        ] as const),
+        state: requireLiteral(record.state, `${path}.state`, [
+            'available',
+            'missing',
+            'failed',
+        ] as const),
+        degraded: requireBoolean(record.degraded, `${path}.degraded`),
+        message: requireString(record.message, `${path}.message`),
+    };
 }
 
 export function decodeSystemAIConfig(value: unknown, path: string): SystemAIConfigView {
@@ -162,6 +204,10 @@ export function decodeProvidersEnvironment(value: unknown, path: string): Provid
     const record = decodeObject(value, path);
     const environment = decodeObject(record.environment, `${path}.environment`);
     const systemAI = decodeObject(record.system_ai, `${path}.system_ai`);
+    const systemAIStatus = decodeObject(
+        record.system_ai_status,
+        `${path}.system_ai_status`,
+    );
 
     return {
         providers: requireArray(
@@ -180,5 +226,9 @@ export function decodeProvidersEnvironment(value: unknown, path: string): Provid
             defaultModels: decodeDefaultModels(environment.default_models ?? {}, `${path}.environment.default_models`),
         },
         systemAI: decodeSystemAIConfig(systemAI, `${path}.system_ai`),
+        systemAIStatus: decodeSystemAIStatus(
+            systemAIStatus,
+            `${path}.system_ai_status`,
+        ),
     };
 }

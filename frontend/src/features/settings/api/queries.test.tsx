@@ -64,6 +64,12 @@ const providersPayload = {
         temperature: 0.5,
         max_tokens: 2048,
     },
+    system_ai_status: {
+        source: 'stored',
+        state: 'available',
+        degraded: false,
+        message: 'Saved System AI policy loaded.',
+    },
 };
 
 describe('settings metadata environment query', () => {
@@ -118,6 +124,12 @@ describe('settings metadata environment query', () => {
             model: 'llama3.2',
             temperature: 0.5,
             maxTokens: 2048,
+        });
+        expect(result.current.data!.systemAIStatus).toEqual({
+            source: 'stored',
+            state: 'available',
+            degraded: false,
+            message: 'Saved System AI policy loaded.',
         });
 
         const call = scripted.calls[0]!;

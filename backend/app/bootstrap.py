@@ -51,6 +51,13 @@ async def _system_ai_reader():
     return await SYSTEM_AI_DEFAULTS.acurrent_config()
 
 
+async def _system_ai_policy_reader():
+    """Read the effective System AI policy and its provenance."""
+    from app.modules.settings.infrastructure.system_ai import SYSTEM_AI_DEFAULTS
+
+    return await SYSTEM_AI_DEFAULTS.acurrent_policy()
+
+
 async def _startup_reconciliation():
     """Recover orphaned knowledge work through the live adapter."""
     from app.modules.knowledge.public import reconcile_startup_state
@@ -88,6 +95,7 @@ class Container:
     knowledge_lifecycle_factory: Callable[[], Any] | None = None
     knowledge_db_factory: Callable[[], Any] | None = None
     system_ai_reader: Callable[[], Any] | None = None
+    system_ai_policy_reader: Callable[[], Any] | None = None
     # Live-only startup hooks. A replay-only composition leaves them unset so
     # serving recorded requests never reaches live storage or recovery work.
     startup_reconciliation: Callable[[], Any] | None = None
@@ -139,6 +147,7 @@ class Container:
             knowledge_lifecycle_factory=get_knowledge_lifecycle,
             knowledge_db_factory=get_supabase,
             system_ai_reader=_system_ai_reader,
+            system_ai_policy_reader=_system_ai_policy_reader,
             startup_reconciliation=_startup_reconciliation,
         )
 

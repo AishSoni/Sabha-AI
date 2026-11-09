@@ -17,6 +17,7 @@ from app.modules.settings.domain import SystemAIConfig
 from app.modules.settings.infrastructure import system_ai
 from app.modules.settings.infrastructure.system_ai import (
     SystemAIDefaultsSource,
+    SystemAIPolicy,
     load_system_ai_config,
     save_system_ai_config,
 )
@@ -130,11 +131,15 @@ async def test_current_serves_from_memory_and_refreshes_once(monkeypatch):
         nonlocal calls
         calls += 1
         await asyncio.sleep(0.05)
-        return SystemAIConfig(
-            provider="openrouter", model="cached", temperature=0.2, max_tokens=512
+        return SystemAIPolicy(
+            config=SystemAIConfig(
+                provider="openrouter", model="cached", temperature=0.2, max_tokens=512
+            ),
+            source="stored",
+            message="Saved System AI policy loaded.",
         )
 
-    monkeypatch.setattr(system_ai, "load_system_ai_config", fake_load)
+    monkeypatch.setattr(system_ai, "load_system_ai_policy", fake_load)
     source = SystemAIDefaultsSource(ttl_seconds=60.0)
 
     # Before any refresh, the synchronous port answers from the environment
@@ -146,12 +151,14 @@ async def test_current_serves_from_memory_and_refreshes_once(monkeypatch):
 
     assert calls == 1
     assert {result.model for result in results} == {"cached"}
+    assert source.current_policy().source == "stored"
     # Within the TTL there is no further read.
     assert (await source.acurrent()).model == "cached"
     assert calls == 1
 
     source.invalidate()
     assert source.current().model == ""
+    assert source.current_policy().source == "environment"
     assert (await source.acurrent()).model == "cached"
     assert calls == 2
 
@@ -164,11 +171,15 @@ async def test_acurrent_config_shares_the_same_single_flight(monkeypatch):
         nonlocal calls
         calls += 1
         await asyncio.sleep(0.05)
-        return SystemAIConfig(
-            provider="openrouter", model="cached", temperature=0.2, max_tokens=512
+        return SystemAIPolicy(
+            config=SystemAIConfig(
+                provider="openrouter", model="cached", temperature=0.2, max_tokens=512
+            ),
+            source="stored",
+            message="Saved System AI policy loaded.",
         )
 
-    monkeypatch.setattr(system_ai, "load_system_ai_config", fake_load)
+    monkeypatch.setattr(system_ai, "load_system_ai_policy", fake_load)
     source = SystemAIDefaultsSource(ttl_seconds=60.0)
 
     results = await asyncio.gather(*(source.acurrent_config() for _ in range(5)))
@@ -180,11 +191,34 @@ async def test_acurrent_config_shares_the_same_single_flight(monkeypatch):
 
 
 @pytest.mark.asyncio
+async def test_policy_port_keeps_fallback_provenance(monkeypatch):
+    async def fake_load():
+        return SystemAIPolicy(
+            config=SystemAIConfig(
+                provider="ollama", model="", temperature=0.5, max_tokens=2048
+            ),
+            source="fallback",
+            degraded=True,
+            message="Environment defaults are in effect until storage recovers.",
+        )
+
+    monkeypatch.setattr(system_ai, "load_system_ai_policy", fake_load)
+    source = SystemAIDefaultsSource(ttl_seconds=60.0)
+
+    policy = await source.acurrent_policy()
+
+    assert policy.source == "fallback"
+    assert policy.degraded is True
+    assert source.current_policy().source == "fallback"
+    assert source.current().provider == "ollama"
+
+
+@pytest.mark.asyncio
 async def test_update_pins_the_value_without_a_read(monkeypatch):
     async def fail_load():
         raise AssertionError("updated cache must not reload")
 
-    monkeypatch.setattr(system_ai, "load_system_ai_config", fail_load)
+    monkeypatch.setattr(system_ai, "load_system_ai_policy", fail_load)
     source = SystemAIDefaultsSource(ttl_seconds=60.0)
     config = SystemAIConfig(
         provider="ollama", model="llama", temperature=0.1, max_tokens=256

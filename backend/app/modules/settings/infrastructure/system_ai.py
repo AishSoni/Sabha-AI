@@ -19,8 +19,9 @@ from __future__ import annotations
 import asyncio
 import logging
 import time
+from dataclasses import dataclass
 from datetime import datetime, timezone
-from typing import Any
+from typing import Any, Literal
 
 from app.capabilities.configuration.contracts import GenerationDefaults
 from app.modules.settings.domain import SystemAIConfig
@@ -50,8 +51,45 @@ def environment_system_ai() -> SystemAIConfig:
     )
 
 
-async def load_system_ai_config() -> SystemAIConfig:
-    """Read the persisted policy, falling back to the environment.
+SystemAISource = Literal["stored", "environment", "fallback"]
+
+
+@dataclass(frozen=True)
+class SystemAIPolicy:
+    """The effective policy together with where it came from.
+
+    The settings surface must not present an environment fallback as a saved
+    policy, nor hide a storage read failure behind a successful response.
+    """
+
+    config: SystemAIConfig
+    source: SystemAISource
+    degraded: bool = False
+    message: str = ""
+
+
+def environment_system_ai_policy() -> SystemAIPolicy:
+    return SystemAIPolicy(
+        config=environment_system_ai(),
+        source="environment",
+        message="No saved System AI policy is stored; environment defaults are in effect.",
+    )
+
+
+def fallback_system_ai_policy() -> SystemAIPolicy:
+    return SystemAIPolicy(
+        config=environment_system_ai(),
+        source="fallback",
+        degraded=True,
+        message=(
+            "The saved System AI policy could not be read. "
+            "Environment defaults are in effect until storage recovers."
+        ),
+    )
+
+
+async def load_system_ai_policy() -> SystemAIPolicy:
+    """Read the persisted policy and preserve its provenance.
 
     A missing row is the normal first-run state. A storage failure is logged
     and downgraded to the environment default so a settings read never takes
@@ -71,11 +109,23 @@ async def load_system_ai_config() -> SystemAIConfig:
         )
         rows = response.data or []
         if not rows:
-            return environment_system_ai()
-        return SystemAIConfig(**rows[0])
+            return environment_system_ai_policy()
+        return SystemAIPolicy(
+            config=SystemAIConfig(**rows[0]),
+            source="stored",
+            message="Saved System AI policy loaded.",
+        )
     except Exception:  # noqa: BLE001 - configuration read must not break the app
-        logger.warning("Falling back to environment System AI settings", exc_info=True)
-        return environment_system_ai()
+        logger.warning(
+            "Falling back to environment System AI settings after a storage read failure"
+        )
+        return fallback_system_ai_policy()
+
+
+async def load_system_ai_config() -> SystemAIConfig:
+    """Compatibility accessor for callers that only need the effective config."""
+
+    return (await load_system_ai_policy()).config
 
 
 async def save_system_ai_config(config: SystemAIConfig) -> SystemAIConfig:
@@ -134,7 +184,7 @@ class SystemAIDefaultsSource:
 
     def __init__(self, *, ttl_seconds: float = DEFAULT_TTL_SECONDS) -> None:
         self._ttl = ttl_seconds
-        self._cached = environment_system_ai()
+        self._cached = environment_system_ai_policy()
         self._expires_at = 0.0
         self._lock: asyncio.Lock | None = None
         self._lock_loop: asyncio.AbstractEventLoop | None = None
@@ -148,38 +198,58 @@ class SystemAIDefaultsSource:
         return self._lock
 
     def current(self) -> GenerationDefaults:
-        return _generation_defaults(self._cached)
+        return _generation_defaults(self._cached.config)
+
+    def current_policy(self) -> SystemAIPolicy:
+        return self._cached
 
     async def acurrent(self) -> GenerationDefaults:
         if self._fresh():
-            return _generation_defaults(self._cached)
+            return _generation_defaults(self._cached.config)
         async with self._refresh_lock():
             if not self._fresh():
-                await self.refresh()
-            return _generation_defaults(self._cached)
+                await self._refresh_policy()
+            return _generation_defaults(self._cached.config)
 
     async def acurrent_config(self) -> SystemAIConfig:
-        """Return the full policy, refreshing off the loop when stale."""
+        """Return the effective config, refreshing off the loop when stale."""
+        return (await self.acurrent_policy()).config
+
+    async def acurrent_policy(self) -> SystemAIPolicy:
+        """Return the policy and its provenance, refreshing when stale."""
         if self._fresh():
             return self._cached
         async with self._refresh_lock():
             if not self._fresh():
-                await self.refresh()
+                await self._refresh_policy()
             return self._cached
+
+    async def _refresh_policy(self) -> SystemAIPolicy:
+        policy = await load_system_ai_policy()
+        self.update_policy(policy)
+        return policy
 
     async def refresh(self) -> SystemAIConfig:
         """Reload the persisted policy and publish it to the cache."""
-        config = await load_system_ai_config()
-        self.update(config)
-        return config
+        return (await self._refresh_policy()).config
 
     def update(self, config: SystemAIConfig) -> None:
-        self._cached = config
+        """Publish a known-persisted configuration (the save path)."""
+        self.update_policy(
+            SystemAIPolicy(
+                config=config,
+                source="stored",
+                message="Saved System AI policy loaded.",
+            )
+        )
+
+    def update_policy(self, policy: SystemAIPolicy) -> None:
+        self._cached = policy
         self._expires_at = time.monotonic() + self._ttl
 
     def invalidate(self) -> None:
         """Drop the cache so the next refresh observes the current database."""
-        self._cached = environment_system_ai()
+        self._cached = environment_system_ai_policy()
         self._expires_at = 0.0
 
     def _fresh(self) -> bool:

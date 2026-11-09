@@ -13,7 +13,10 @@ from fastapi.testclient import TestClient
 
 from app.bootstrap import Container
 from app.modules.meetings.infrastructure.supabase_meetings import build_meeting_service
-from app.modules.settings.infrastructure.system_ai import load_system_ai_config
+from app.modules.settings.infrastructure.system_ai import (
+    load_system_ai_config,
+    load_system_ai_policy,
+)
 from main import app
 from tests.doubles.providers import LLMResponse
 from tests.doubles.supabase_stub import stub_for
@@ -74,6 +77,7 @@ def settings_env(disposable_db, monkeypatch):
             meeting_service=service,
             meeting_reads=service,
             system_ai_reader=load_system_ai_config,
+            system_ai_policy_reader=load_system_ai_policy,
         ),
     )
     return disposable_db
@@ -110,6 +114,35 @@ def test_environment_is_the_fallback_when_no_system_ai_was_saved(settings_env):
         "temperature": 0.5,
         "max_tokens": 2048,
     }
+    assert response.json()["system_ai_status"] == {
+        "source": "environment",
+        "state": "missing",
+        "degraded": False,
+        "message": (
+            "No saved System AI policy is stored; environment defaults are in effect."
+        ),
+    }
+
+
+def test_system_ai_read_failure_is_reported_as_degraded(settings_env, monkeypatch):
+    def unavailable():
+        raise RuntimeError("database password must not reach the browser")
+
+    monkeypatch.setattr(
+        "app.modules.settings.infrastructure.system_ai.get_supabase_admin",
+        unavailable,
+    )
+
+    with TestClient(app) as client:
+        response = client.get("/api/settings/providers")
+
+    assert response.status_code == 200
+    status = response.json()["system_ai_status"]
+    assert status["source"] == "fallback"
+    assert status["state"] == "failed"
+    assert status["degraded"] is True
+    assert "database password" not in status["message"]
+    assert response.json()["system_ai"]["provider"] == "ollama"
 
 
 def test_update_persists_and_the_next_read_returns_server_state(settings_env):
@@ -135,6 +168,12 @@ def test_update_persists_and_the_next_read_returns_server_state(settings_env):
         again = client.get("/api/settings/providers")
         assert again.status_code == 200
         assert again.json()["system_ai"] == updated.json()
+        assert again.json()["system_ai_status"] == {
+            "source": "stored",
+            "state": "available",
+            "degraded": False,
+            "message": "Saved System AI policy loaded.",
+        }
 
     row = settings_env.query(
         "SELECT provider, model, temperature, max_tokens "

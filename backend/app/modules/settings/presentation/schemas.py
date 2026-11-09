@@ -65,11 +65,21 @@ class EnvironmentInfo(BaseModel):
     default_models: dict = {}  # {"openrouter": "anthropic/claude-sonnet-4", ...}
 
 
+class SystemAIStatus(BaseModel):
+    """Safe provenance for the effective System AI policy."""
+
+    source: Literal["stored", "environment", "fallback"]
+    state: Literal["available", "missing", "failed"]
+    degraded: bool = False
+    message: str = ""
+
+
 class ProvidersListResponse(BaseModel):
     """Response with all available providers and environment info."""
     providers: List[ProviderInfo]
     environment: EnvironmentInfo
     system_ai: SystemAIConfig
+    system_ai_status: SystemAIStatus
 
 
 # ============== Default Provider Data ==============

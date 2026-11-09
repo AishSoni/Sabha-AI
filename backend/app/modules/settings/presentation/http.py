@@ -18,11 +18,12 @@ from .schemas import (
     TestKeyResponse,
     EnvironmentInfo,
     SystemAIConfig,
+    SystemAIStatus,
     DEFAULT_PROVIDERS,
 )
 from app.platform.config import settings
 from app.modules.settings.infrastructure.system_ai import save_system_ai_config
-from app.presentation.dependencies import get_system_ai_reader
+from app.presentation.dependencies import get_system_ai_policy_reader
 
 
 # --------------------------------------------------------------------------
@@ -142,7 +143,7 @@ def _get_default_models() -> dict:
 
 
 @router.get("/providers", response_model=ProvidersListResponse)
-async def list_providers(system_ai_reader=Depends(get_system_ai_reader)):
+async def list_providers(system_ai_reader=Depends(get_system_ai_policy_reader)):
     """
     List all available LLM providers with their supported models and environment info.
     """
@@ -154,13 +155,26 @@ async def list_providers(system_ai_reader=Depends(get_system_ai_reader)):
     )
     
     # System AI is shared server policy. A saved mutation wins; otherwise the
-    # deployment environment remains the fallback.
-    system_ai = await system_ai_reader()
+    # deployment environment remains the fallback. The status keeps a missing
+    # row distinct from a storage read failure.
+    policy = await system_ai_reader()
+    state = {
+        "stored": "available",
+        "environment": "missing",
+        "fallback": "failed",
+    }[policy.source]
+    system_ai_status = SystemAIStatus(
+        source=policy.source,
+        state=state,
+        degraded=policy.degraded,
+        message=policy.message,
+    )
 
     return ProvidersListResponse(
         providers=DEFAULT_PROVIDERS,
         environment=environment,
-        system_ai=system_ai,
+        system_ai=policy.config,
+        system_ai_status=system_ai_status,
     )
 
 

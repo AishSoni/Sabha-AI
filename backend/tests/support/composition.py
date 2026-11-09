@@ -19,6 +19,7 @@ def live_container(
     *,
     lifecycle=None,
     system_ai_reader=None,
+    system_ai_policy_reader=None,
     turn_queue=None,
     closing=None,
 ):
@@ -37,6 +38,7 @@ def live_container(
         closing=closing,
         knowledge_lifecycle=lifecycle,
         system_ai_reader=system_ai_reader,
+        system_ai_policy_reader=system_ai_policy_reader,
     )
     try:
         yield service

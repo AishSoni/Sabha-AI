@@ -7771,13 +7771,17 @@
           },
           "system_ai": {
             "$ref": "#/components/schemas/SystemAIConfig"
+          },
+          "system_ai_status": {
+            "$ref": "#/components/schemas/SystemAIStatus"
           }
         },
         "type": "object",
         "required": [
           "providers",
           "environment",
-          "system_ai"
+          "system_ai",
+          "system_ai_status"
         ],
         "title": "ProvidersListResponse",
         "description": "Response with all available providers and environment info."
@@ -8264,6 +8268,45 @@
         "type": "object",
         "title": "SystemAIConfig",
         "description": "Configuration for the System AI used for app-level functions.\n\nThe empty provider means \"use the environment default\"; an empty model\nmeans \"use the provider's default model\". Values are validated here\nbecause this model is both the persisted server state and the mutation\nrequest body, so an invalid policy can never be stored."
+      },
+      "SystemAIStatus": {
+        "properties": {
+          "source": {
+            "type": "string",
+            "enum": [
+              "stored",
+              "environment",
+              "fallback"
+            ],
+            "title": "Source"
+          },
+          "state": {
+            "type": "string",
+            "enum": [
+              "available",
+              "missing",
+              "failed"
+            ],
+            "title": "State"
+          },
+          "degraded": {
+            "type": "boolean",
+            "title": "Degraded",
+            "default": false
+          },
+          "message": {
+            "type": "string",
+            "title": "Message",
+            "default": ""
+          }
+        },
+        "type": "object",
+        "required": [
+          "source",
+          "state"
+        ],
+        "title": "SystemAIStatus",
+        "description": "Safe provenance for the effective System AI policy."
       },
       "TemplateCreate": {
         "properties": {

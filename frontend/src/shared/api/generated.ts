@@ -2003,6 +2003,7 @@ export interface components {
             providers: components["schemas"]["ProviderInfo"][];
             environment: components["schemas"]["EnvironmentInfo"];
             system_ai: components["schemas"]["SystemAIConfig"];
+            system_ai_status: components["schemas"]["SystemAIStatus"];
         };
         /** ReplayCapabilitiesView */
         ReplayCapabilitiesView: {
@@ -2238,6 +2239,32 @@ export interface components {
              * @default 2048
              */
             max_tokens: number;
+        };
+        /**
+         * SystemAIStatus
+         * @description Safe provenance for the effective System AI policy.
+         */
+        SystemAIStatus: {
+            /**
+             * Source
+             * @enum {string}
+             */
+            source: "stored" | "environment" | "fallback";
+            /**
+             * State
+             * @enum {string}
+             */
+            state: "available" | "missing" | "failed";
+            /**
+             * Degraded
+             * @default false
+             */
+            degraded: boolean;
+            /**
+             * Message
+             * @default
+             */
+            message: string;
         };
         /**
          * TemplateCreate
