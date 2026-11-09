@@ -157,6 +157,7 @@ function renderRoom(
 describe('MeetingRoom', () => {
     beforeEach(() => {
         getQueryClient().clear();
+        getQueryClient().setDefaultOptions({ queries: { retry: false } });
     });
 
     afterEach(() => {
@@ -753,5 +754,83 @@ describe('MeetingRoom', () => {
         expect(screen.queryByText(/Q4_2025_Financial_Report/)).not.toBeInTheDocument();
         expect(screen.queryByText(/Market_Analysis_2026/)).not.toBeInTheDocument();
         expect(screen.getByText('0 stacks')).toBeInTheDocument();
+    });
+
+    it('keeps the room and its draft when a background meeting read fails', async () => {
+        let failMeetingReads = false;
+        installRouter({
+            [`/meetings/${MEETING_ID}`]: () =>
+                failMeetingReads
+                    ? json(503, { detail: 'Meeting read unavailable.' })
+                    : json(200, meetingWire()),
+        });
+        renderRoom();
+        await screen.findByText('Product review');
+
+        const input = await screen.findByPlaceholderText('Type your message...');
+        fireEvent.change(input, { target: { value: 'Unsent draft' } });
+
+        failMeetingReads = true;
+        await act(async () => {
+            await getQueryClient().invalidateQueries({
+                queryKey: meetingKeys.detail(MEETING_ID),
+            });
+        });
+
+        expect(
+            await screen.findByText(
+                /The latest meeting updates could not be read/
+            )
+        ).toBeInTheDocument();
+        expect(screen.getByText('Product review')).toBeInTheDocument();
+        expect(input).toHaveValue('Unsent draft');
+        expect(
+            screen.queryByText('This meeting could not be loaded.')
+        ).not.toBeInTheDocument();
+
+        failMeetingReads = false;
+        fireEvent.click(
+            screen.getByRole('button', { name: /Retry refresh/ })
+        );
+        await waitFor(() =>
+            expect(
+                screen.queryByText(/The latest meeting updates could not be read/)
+            ).toBeNull()
+        );
+    });
+
+    it('does not report an unreadable meeting record as empty', async () => {
+        let failRecordReads = true;
+        const onTabChange = vi.fn();
+        installRouter({
+            '/disagreements': () =>
+                failRecordReads
+                    ? json(503, { detail: 'Record read unavailable.' })
+                    : json(200, []),
+            '/consensus': () => json(200, []),
+        });
+        renderRoom({ activeTab: 'disagreements', onTabChange });
+
+        expect(await screen.findByText('Product review')).toBeInTheDocument();
+        expect(
+            await screen.findByText(/The meeting record could not be refreshed/)
+        ).toBeInTheDocument();
+        expect(
+            screen.getByText('Disagreements could not be loaded')
+        ).toBeInTheDocument();
+        expect(screen.queryByText('No disagreements yet')).not.toBeInTheDocument();
+        expect(onTabChange).not.toHaveBeenCalledWith('chat');
+
+        failRecordReads = false;
+        fireEvent.click(
+            screen.getByRole('button', { name: /Retry record/ })
+        );
+        await waitFor(() =>
+            expect(
+                screen.queryByText(/The meeting record could not be refreshed/)
+            ).toBeNull()
+        );
+        expect(onTabChange).toHaveBeenCalledWith('chat');
+        expect(screen.queryByText('Disagreements could not be loaded')).toBeNull();
     });
 });

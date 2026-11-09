@@ -32,6 +32,7 @@ import {
     LogOut,
     MessageSquare,
     PanelRight,
+    RefreshCw,
     Scroll,
     Send,
     Users,
@@ -129,11 +130,17 @@ export function MeetingRoom({
     const disagreementsQuery = useRuntimeDisagreements(meetingId);
     const consensusQuery = useRuntimeConsensus(meetingId);
     const contextStatsQuery = useRuntimeContextStats(meetingId);
+    const recordUnavailable = Boolean(
+        disagreementsQuery.error || consensusQuery.error
+    );
     const recordAvailable =
+        recordUnavailable ||
         (disagreementsQuery.data?.length ?? 0) > 0 ||
         (consensusQuery.data?.length ?? 0) > 0;
     const recordSettled =
-        !disagreementsQuery.isLoading && !consensusQuery.isLoading;
+        !disagreementsQuery.isLoading &&
+        !consensusQuery.isLoading &&
+        !recordUnavailable;
 
     useEffect(() => {
         if (recordSettled && !recordAvailable) {
@@ -156,7 +163,7 @@ export function MeetingRoom({
             </main>
         );
     }
-    if (meetingQuery.isError || !meetingQuery.data) {
+    if (meetingQuery.isError && !meetingQuery.data) {
         return (
             <main
                 id="main-content"
@@ -169,6 +176,9 @@ export function MeetingRoom({
                 </Button>
             </main>
         );
+    }
+    if (!meetingQuery.data) {
+        return <RoomNotice text="No meeting selected." />;
     }
 
     const meeting = meetingQuery.data;
@@ -186,12 +196,25 @@ export function MeetingRoom({
             className="flex h-full min-h-0 flex-col overflow-hidden"
             tabIndex={-1}
         >
+            {meetingQuery.isError ? (
+                <RoomReadNotice
+                    message="The latest meeting updates could not be read. You are viewing the last loaded conversation."
+                    onRetry={() => void meetingQuery.refetch()}
+                />
+            ) : null}
             <MeetingConversation
                 meeting={meeting}
                 disagreements={disagreementsQuery.data ?? []}
                 consensus={consensusQuery.data ?? []}
                 contextStats={contextStatsQuery.data}
                 recordAvailable={recordAvailable}
+                recordUnavailable={recordUnavailable}
+                disagreementsUnavailable={Boolean(disagreementsQuery.error)}
+                consensusUnavailable={Boolean(consensusQuery.error)}
+                onRetryRecord={() => {
+                    void disagreementsQuery.refetch();
+                    void consensusQuery.refetch();
+                }}
                 initialTab={initialTab}
                 activeTab={activeTab}
                 onTabChange={onTabChange}
@@ -217,12 +240,72 @@ function RoomNotice({ text }: { text: string }) {
     );
 }
 
+function RoomReadNotice({
+    message,
+    onRetry,
+}: {
+    message: string;
+    onRetry: () => void;
+}) {
+    return (
+        <div
+            role="status"
+            aria-live="polite"
+            className="mx-4 mt-3 flex shrink-0 flex-wrap items-center gap-2 rounded-control border border-warning/60 bg-warning-soft p-3 type-meta text-warning"
+        >
+            <AlertTriangle className="h-4 w-4 shrink-0" />
+            <span className="min-w-0 flex-1">{message}</span>
+            <Button
+                type="button"
+                size="sm"
+                variant="ghost"
+                className="text-warning hover:text-ink"
+                onClick={onRetry}
+            >
+                <RefreshCw className="mr-1 h-4 w-4" />
+                Retry refresh
+            </Button>
+        </div>
+    );
+}
+
+function RecordReadNotice({ onRetry }: { onRetry?: () => void }) {
+    return (
+        <div
+            role="status"
+            aria-live="polite"
+            className="shrink-0 border-b border-warning/60 bg-warning-soft px-3 py-2 type-meta text-warning"
+        >
+            <p>
+                The meeting record could not be refreshed. Showing the last
+                loaded entries.
+            </p>
+            {onRetry ? (
+                <Button
+                    type="button"
+                    size="sm"
+                    variant="ghost"
+                    className="mt-1 h-auto px-0 text-warning hover:text-ink"
+                    onClick={onRetry}
+                >
+                    <RefreshCw className="mr-1 h-4 w-4" />
+                    Retry record
+                </Button>
+            ) : null}
+        </div>
+    );
+}
+
 interface ConversationProps {
     meeting: MeetingWithParticipants;
     disagreements: Disagreement[];
     consensus: Consensus[];
     contextStats?: ContextStats;
     recordAvailable: boolean;
+    recordUnavailable?: boolean;
+    disagreementsUnavailable?: boolean;
+    consensusUnavailable?: boolean;
+    onRetryRecord?: () => void;
     initialTab?: string;
     activeTab?: string;
     onTabChange?: (tab: string) => void;
@@ -285,6 +368,10 @@ function MeetingConversation({
     consensus,
     contextStats,
     recordAvailable,
+    recordUnavailable = false,
+    disagreementsUnavailable = false,
+    consensusUnavailable = false,
+    onRetryRecord,
     initialTab,
     activeTab,
     onTabChange,
@@ -686,6 +773,9 @@ function MeetingConversation({
                                 <PanelRight className="h-4 w-4" />
                             </Button>
                         </div>
+                        {recordUnavailable ? (
+                            <RecordReadNotice onRetry={onRetryRecord} />
+                        ) : null}
                         <Tabs
                             value={recordTab}
                             onValueChange={setRecordTab}
@@ -697,7 +787,11 @@ function MeetingConversation({
                                         value="disagreements"
                                         icon={<AlertTriangle className="h-[18px] w-[18px]" />}
                                         label="Disagreements"
-                                        count={disagreements.length}
+                                        count={
+                                            disagreementsUnavailable
+                                                ? undefined
+                                                : disagreements.length
+                                        }
                                         tone="red"
                                         anchor="room.tab.disagreements"
                                     />
@@ -707,7 +801,11 @@ function MeetingConversation({
                                         value="consensus"
                                         icon={<CheckCircle2 className="h-[18px] w-[18px]" />}
                                         label="Consensus"
-                                        count={consensus.length}
+                                        count={
+                                            consensusUnavailable
+                                                ? undefined
+                                                : consensus.length
+                                        }
                                         tone="green"
                                         anchor="room.tab.consensus"
                                     />
@@ -718,7 +816,11 @@ function MeetingConversation({
                                     value="disagreements"
                                     className="m-0 flex min-h-0 flex-1 flex-col"
                                 >
-                                    <DisagreementsPanel disagreements={disagreements} compact />
+                                    <DisagreementsPanel
+                                        disagreements={disagreements}
+                                        compact
+                                        unavailable={disagreementsUnavailable}
+                                    />
                                 </TabsContent>
                             )}
                             {capabilities.consensus && (
@@ -726,7 +828,11 @@ function MeetingConversation({
                                     value="consensus"
                                     className="m-0 flex min-h-0 flex-1 flex-col"
                                 >
-                                    <ConsensusPanel consensus={consensus} compact />
+                                    <ConsensusPanel
+                                        consensus={consensus}
+                                        compact
+                                        unavailable={consensusUnavailable}
+                                    />
                                 </TabsContent>
                             )}
                         </Tabs>
@@ -768,6 +874,7 @@ function MeetingConversation({
                 disagreements={disagreements}
                 consensus={consensus}
                 contextStats={contextStats}
+                recordUnavailable={recordUnavailable}
             />
         </div>
     );
@@ -1420,9 +1527,11 @@ function MessageComposer({ meeting }: { meeting: MeetingWithParticipants }) {
 function DisagreementsPanel({
     disagreements,
     compact = false,
+    unavailable = false,
 }: {
     disagreements: Disagreement[];
     compact?: boolean;
+    unavailable?: boolean;
 }) {
     return (
         <ScrollArea className={cn('h-full', compact ? 'p-3' : 'p-4')}>
@@ -1438,8 +1547,16 @@ function DisagreementsPanel({
                     <EmptyTab
                         compact={compact}
                         icon={<AlertTriangle className="h-8 w-8" />}
-                        title="No disagreements yet"
-                        text="When AI participants disagree, their debates will appear here."
+                        title={
+                            unavailable
+                                ? 'Disagreements could not be loaded'
+                                : 'No disagreements yet'
+                        }
+                        text={
+                            unavailable
+                                ? 'The record read failed, so absence is not confirmed. Retry the record read above.'
+                                : 'When AI participants disagree, their debates will appear here.'
+                        }
                     />
                 ) : (
                     <div className={compact ? 'space-y-2' : 'space-y-4'}>
@@ -1464,9 +1581,11 @@ function DisagreementsPanel({
 function ConsensusPanel({
     consensus,
     compact = false,
+    unavailable = false,
 }: {
     consensus: Consensus[];
     compact?: boolean;
+    unavailable?: boolean;
 }) {
     return (
         <ScrollArea className={cn('h-full', compact ? 'p-3' : 'p-4')}>
@@ -1478,8 +1597,16 @@ function ConsensusPanel({
                     <EmptyTab
                         compact={compact}
                         icon={<CheckCircle2 className="h-8 w-8" />}
-                        title="No consensus yet"
-                        text="When AI participants reach agreement, it will appear here."
+                        title={
+                            unavailable
+                                ? 'Consensus could not be loaded'
+                                : 'No consensus yet'
+                        }
+                        text={
+                            unavailable
+                                ? 'The record read failed, so absence is not confirmed. Retry the record read above.'
+                                : 'When AI participants reach agreement, it will appear here.'
+                        }
                     />
                 ) : (
                     <div className={compact ? 'space-y-2' : 'space-y-4'}>
@@ -1770,6 +1897,7 @@ function MeetingDetailsDialog({
     disagreements,
     consensus,
     contextStats,
+    recordUnavailable = false,
 }: {
     open: boolean;
     onOpenChange: (open: boolean) => void;
@@ -1777,6 +1905,7 @@ function MeetingDetailsDialog({
     disagreements: Disagreement[];
     consensus: Consensus[];
     contextStats: ContextStats | undefined;
+    recordUnavailable?: boolean;
 }) {
     const runtime = useMeetingsRuntime();
     return (
@@ -1829,11 +1958,17 @@ function MeetingDetailsDialog({
                         </div>
                         <div className="flex justify-between gap-3">
                             <dt className="text-ink-secondary">Disagreements</dt>
-                            <dd className="type-tabular text-ink">{disagreements.length}</dd>
+                            <dd className="type-tabular text-ink">
+                                {disagreements.length}
+                                {recordUnavailable ? ' (last loaded)' : ''}
+                            </dd>
                         </div>
                         <div className="flex justify-between gap-3">
                             <dt className="text-ink-secondary">Consensus</dt>
-                            <dd className="type-tabular text-ink">{consensus.length}</dd>
+                            <dd className="type-tabular text-ink">
+                                {consensus.length}
+                                {recordUnavailable ? ' (last loaded)' : ''}
+                            </dd>
                         </div>
                         {meeting.total_cost > 0 && (
                             <div className="flex justify-between gap-3">
