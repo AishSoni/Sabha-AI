@@ -515,6 +515,7 @@ export function ClosingPanel({
             }
             if (isApiError(error) && error.status === 409) {
                 void capabilityQuery.refetch();
+                void closingQuery.refetch();
             }
             setActionError(errorMessage(error));
         }
@@ -545,6 +546,7 @@ export function ClosingPanel({
         } catch (error) {
             if (isApiError(error) && error.status === 409) {
                 void capabilityQuery.refetch();
+                void closingQuery.refetch();
             }
             setActionError(errorMessage(error));
         }

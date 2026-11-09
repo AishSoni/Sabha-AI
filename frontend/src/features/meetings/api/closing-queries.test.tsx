@@ -11,7 +11,7 @@ import { QueryClientProvider } from '@tanstack/react-query';
 import { makeQueryClient } from '@/app/providers';
 import { createScriptedFetch, type ScriptedFetch } from '../../../../tests/fixtures/transport';
 import { closingKeys } from './closing-keys';
-import { useClosing, useClosingCapability } from './closing-queries';
+import { closingRefetchInterval, useClosing, useClosingCapability } from './closing-queries';
 import { useAbortClosing, useRequestClosing, useRetryClosing } from './closing-mutations';
 import { useClosingObservation } from './use-closing-observation';
 import { meetingKeys } from './keys';
@@ -120,6 +120,16 @@ describe('closingKeys', () => {
 });
 
 describe('closing reads', () => {
+    it('polls advancing work, checks idle live rooms, and never polls replays', () => {
+        expect(closingRefetchInterval('draining', false, false)).toBe(3_000);
+        expect(closingRefetchInterval('voting', false, true)).toBe(3_000);
+        expect(closingRefetchInterval(null, false, false)).toBe(10_000);
+        expect(closingRefetchInterval(null, false, true)).toBe(false);
+        expect(closingRefetchInterval(null, true, false)).toBe(false);
+        expect(closingRefetchInterval('completed', false, false)).toBe(false);
+        expect(closingRefetchInterval('failed', false, false)).toBe(false);
+    });
+
     it('loads durable progress for exactly one meeting', async () => {
         scripted.install();
         scripted.enqueueJson(200, viewJson());
