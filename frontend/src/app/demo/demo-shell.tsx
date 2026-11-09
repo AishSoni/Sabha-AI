@@ -15,6 +15,7 @@ import {
 } from "@/features/meetings/runtime/replay-session";
 import { ReplayRunProvider } from "@/features/meetings/runtime/replay-run";
 import { ChapterBootstrap } from "./chapter-bootstrap";
+import { ReplayMetadataGate } from "./replay-metadata-gate";
 
 function PinnedWorkspace({ children }: { children: ReactNode }) {
     const pathname = usePathname();
@@ -75,7 +76,9 @@ function PinnedWorkspace({ children }: { children: ReactNode }) {
 export function DemoShell({ children }: { children: ReactNode }) {
     return (
         <ReplaySessionProvider>
-            <PinnedWorkspace>{children}</PinnedWorkspace>
+            <ReplayMetadataGate>
+                <PinnedWorkspace>{children}</PinnedWorkspace>
+            </ReplayMetadataGate>
         </ReplaySessionProvider>
     );
 }

@@ -8,6 +8,7 @@ import { ParticipantMark } from "@/components/identity/participant-mark";
 import { useDemoWorkspace } from "@/features/demo-workspace";
 import { useAnchorRef } from "@/features/demo-tutorial";
 import { useReplayRun } from "@/features/meetings/runtime/replay-run";
+import { useReplaySession } from "@/features/meetings/runtime/replay-session";
 
 interface BoardStack {
     label: string;
@@ -36,6 +37,7 @@ interface BoardPreview {
 
 export default function DemoBoardPage() {
     const run = useReplayRun();
+    const { retrySafeConfig } = useReplaySession();
     const workspace = useDemoWorkspace();
     const startRef = useAnchorRef("demo.start");
     const boardRef = useAnchorRef("board.roster");
@@ -56,7 +58,17 @@ export default function DemoBoardPage() {
     if (!board) {
         return (
             <main id="main-content" className="mx-auto max-w-5xl p-6" tabIndex={-1}>
-                <p className="text-sm text-ink-muted">Loading demo…</p>
+                <h1 className="type-item-title">Demo board unavailable</h1>
+                <p className="mt-2 type-body text-ink-secondary">
+                    The recorded board details are missing from this package.
+                </p>
+                <button
+                    type="button"
+                    onClick={retrySafeConfig}
+                    className="m-control mt-4 inline-flex min-h-10 items-center rounded-control border border-control bg-surface px-4 type-control text-ink hover:bg-surface-raised focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-focus-ring"
+                >
+                    Try again
+                </button>
             </main>
         );
     }
