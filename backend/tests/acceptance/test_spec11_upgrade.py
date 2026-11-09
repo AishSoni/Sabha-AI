@@ -45,11 +45,11 @@ def test_target_history_upgrades_the_seeded_dataset(phase_one_db) -> None:
     applied = dataset.apply_target_migrations()
 
     assert applied[0] == "000_baseline"
-    assert applied[-1] == "038_message_request_key_conflict"
-    assert len(applied) == 38
+    assert applied[-1] == "040_upload_request_identity"
+    assert len(applied) == 40
     assert phase_one_db.query(
         "SELECT count(*) FROM schema_migrations"
-    ) == [(38,)]
+    ) == [(40,)]
 
     history = dataset.read_preserved_history()
     meetings = {row["id"]: row for row in history["meetings"]}
@@ -201,4 +201,4 @@ def test_direct_roles_cannot_write_and_service_role_keeps_guarded_rpc(
 def test_upgraded_database_serves_the_final_api_surface() -> None:
     from main import app
 
-    assert len(app.openapi()["paths"]) == 57
+    assert len(app.openapi()["paths"]) == 58
