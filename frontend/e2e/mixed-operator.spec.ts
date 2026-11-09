@@ -29,6 +29,118 @@ test.describe("mixed operator and demo isolation", () => {
         "run through npm run test:e2e:mixed so the backend mounts the operator graph"
     );
 
+    test("Live navigation is discoverable, keyboard accessible, and on demand", async ({
+        browser,
+    }) => {
+        const context = await browser.newContext();
+        await context.addInitScript(
+            ({ session }) => {
+                window.localStorage.setItem(
+                    "sabha-operator-auth",
+                    JSON.stringify(session)
+                );
+            },
+            { session: OPERATOR_SESSION }
+        );
+        const page = await context.newPage();
+        await page.goto("/meetings");
+
+        const trigger = page.getByRole("button", {
+            name: "Open Live navigation",
+        });
+        await expect(trigger).toBeVisible({ timeout: 30_000 });
+        await expect(trigger).toContainText("Live");
+        await expect(
+            page.getByRole("link", { name: "Meeting space" })
+        ).toHaveCount(0);
+
+        await trigger.focus();
+        await page.keyboard.press("Enter");
+        const dialog = page.getByRole("dialog", { name: "Live" });
+        await expect(dialog).toBeVisible();
+        await expect(
+            dialog.getByRole("link", { name: "Meeting space" })
+        ).toBeVisible();
+        await expect(
+            dialog.getByRole("link", { name: "AI roster" })
+        ).toBeVisible();
+        await expect(
+            dialog.getByRole("link", { name: "Knowledge stacks" })
+        ).toBeVisible();
+        await expect(
+            dialog.getByRole("link", { name: "Settings" })
+        ).toBeVisible();
+        await expect(dialog.getByRole("button", { name: "Sign out" })).toBeVisible();
+        await expect(
+            dialog.getByRole("link", { name: "Recorded demo" })
+        ).toHaveCount(0);
+
+        await page.keyboard.press("Escape");
+        await expect(dialog).toBeHidden();
+        await expect(trigger).toBeFocused();
+
+        await trigger.click();
+        await page
+            .getByRole("dialog", { name: "Live" })
+            .getByRole("link", { name: "Settings" })
+            .click();
+        await expect(page).toHaveURL(/\/settings$/);
+        await expect(dialog).toBeHidden();
+        await expect(trigger).toBeVisible();
+
+        await trigger.click();
+        await page
+            .getByRole("dialog", { name: "Live" })
+            .getByRole("link", { name: "Meeting space" })
+            .click();
+        await expect(page).toHaveURL(/\/meetings$/);
+        await expect(trigger).toBeVisible();
+
+        await context.close();
+    });
+
+    test("a failed meeting list read is not presented as an empty space", async ({
+        browser,
+    }) => {
+        const context = await browser.newContext();
+        await context.addInitScript(
+            ({ session }) => {
+                window.localStorage.setItem(
+                    "sabha-operator-auth",
+                    JSON.stringify(session)
+                );
+            },
+            { session: OPERATOR_SESSION }
+        );
+        const page = await context.newPage();
+        let failReads = true;
+        await page.route(/\/api\/meetings(\?|$)/, async (route) => {
+            if (failReads) {
+                await route.fulfill({
+                    status: 503,
+                    contentType: "application/json",
+                    body: JSON.stringify({ detail: "Meeting list unavailable." }),
+                });
+                return;
+            }
+            await route.continue();
+        });
+
+        await page.goto("/meetings");
+        await expect(
+            page.getByRole("heading", { name: "Meeting space unavailable" })
+        ).toBeVisible({ timeout: 30_000 });
+        await expect(page.getByText("No meeting rooms yet")).toHaveCount(0);
+
+        failReads = false;
+        await page.getByRole("button", { name: "Try again" }).click();
+        await expect(
+            page.getByRole("heading", { name: "Meeting space unavailable" })
+        ).toBeHidden();
+
+        await context.close();
+    });
+
     test("demo edits and resets never touch the operator session or vault", async ({
         browser,
     }) => {
