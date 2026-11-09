@@ -17,6 +17,9 @@ import {
 beforeEach(() => {
     setLiveAccessTokenSource(async () => "test-operator-token");
     beginAccess();
+    // The demo introduction is tab-scoped. Tests that want first-load behavior
+    // start unacknowledged; journey tests seed the key explicitly.
+    window.sessionStorage?.clear();
 });
 
 afterEach(() => {
@@ -26,20 +29,51 @@ afterEach(() => {
 
 // happy-dom does not ship a working Storage in this environment; zustand's
 // persist middleware and vault tests need one. Minimal spec-shaped shim.
-if (typeof window !== "undefined" && typeof window.localStorage === "undefined") {
-    const backing = new Map<string, string>();
-    const shim = {
-        getItem: (key: string): string | null => (backing.has(key) ? backing.get(key)! : null),
-        setItem: (key: string, value: string): void => void backing.set(key, value),
-        removeItem: (key: string): void => void backing.delete(key),
-        clear: (): void => void backing.clear(),
-        key: (index: number): string | null => Array.from(backing.keys())[index] ?? null,
-        get length(): number {
-            return backing.size;
-        },
+if (typeof window !== "undefined") {
+    const storageShim = () => {
+        const backing = new Map<string, string>();
+        return {
+            getItem: (key: string): string | null =>
+                backing.has(key) ? backing.get(key)! : null,
+            setItem: (key: string, value: string): void =>
+                void backing.set(key, value),
+            removeItem: (key: string): void => void backing.delete(key),
+            clear: (): void => void backing.clear(),
+            key: (index: number): string | null =>
+                Array.from(backing.keys())[index] ?? null,
+            get length(): number {
+                return backing.size;
+            },
+        };
     };
-    Object.defineProperty(window, "localStorage", { value: shim, configurable: true });
-    if (typeof (globalThis as { localStorage?: unknown }).localStorage === "undefined") {
-        (globalThis as { localStorage?: unknown }).localStorage = shim;
+
+    if (typeof window.localStorage === "undefined") {
+        const localStorage = storageShim();
+        Object.defineProperty(window, "localStorage", {
+            value: localStorage,
+            configurable: true,
+        });
+        if (
+            typeof (globalThis as { localStorage?: unknown }).localStorage ===
+            "undefined"
+        ) {
+            (globalThis as { localStorage?: unknown }).localStorage =
+                localStorage;
+        }
+    }
+
+    if (typeof window.sessionStorage === "undefined") {
+        const sessionStorage = storageShim();
+        Object.defineProperty(window, "sessionStorage", {
+            value: sessionStorage,
+            configurable: true,
+        });
+        if (
+            typeof (globalThis as { sessionStorage?: unknown }).sessionStorage ===
+            "undefined"
+        ) {
+            (globalThis as { sessionStorage?: unknown }).sessionStorage =
+                sessionStorage;
+        }
     }
 }

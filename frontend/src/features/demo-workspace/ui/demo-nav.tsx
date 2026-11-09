@@ -11,6 +11,7 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useState } from "react";
 import { useAnchorRef, type TutorialAnchorId } from "@/features/demo-tutorial";
+import { useDemoIntro } from "@/features/demo-intro";
 import { AppearanceMenu } from "@/components/appearance";
 import { Button } from "@/components/ui/button";
 import { useDemoWorkspace } from "../provider";
@@ -68,6 +69,7 @@ function DestinationLink({
 export function DemoNav() {
     const pathname = usePathname();
     const workspace = useDemoWorkspace();
+    const intro = useDemoIntro();
     const [confirmingReset, setConfirmingReset] = useState(false);
     const [announcement, setAnnouncement] = useState("");
 
@@ -84,6 +86,9 @@ export function DemoNav() {
         workspace.resetWorkspace();
         setConfirmingReset(false);
         setAnnouncement("Demo workspace reset to the approved seed.");
+        // A confirmed discard is the agreed re-entry point for the
+        // introduction. The immediate reset path leaves it dismissed.
+        intro.reset();
     };
 
     return (
@@ -114,7 +119,14 @@ export function DemoNav() {
                     })}
                 </nav>
 
-                <div className="ml-auto flex items-center gap-3">
+                <div className="ml-auto flex flex-wrap items-center justify-end gap-2">
+                    <button
+                        type="button"
+                        onClick={intro.revisit}
+                        className="m-control min-h-8 rounded-control px-2.5 type-meta font-medium text-ink-secondary hover:bg-surface-raised hover:text-ink focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-focus-ring"
+                    >
+                        How this demo works
+                    </button>
                     <AppearanceMenu />
                     <Button
                         type="button"

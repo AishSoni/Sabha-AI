@@ -4,6 +4,7 @@ import type { ReactNode } from "react";
 import { usePathname } from "next/navigation";
 import { Starfield } from "@/components/atmosphere";
 import { DemoNav, DemoWorkspaceProvider } from "@/features/demo-workspace";
+import { DemoIntroGate, DemoIntroProvider, useDemoIntro } from "@/features/demo-intro";
 import { isRoomPath } from "@/features/demo-tutorial";
 import { DemoTutorialProvider } from "@/features/demo-tutorial/provider";
 import { TutorialBoundary } from "@/features/demo-tutorial/error-boundary";
@@ -20,6 +21,7 @@ import { ReplayMetadataGate } from "./replay-metadata-gate";
 function PinnedWorkspace({ children }: { children: ReactNode }) {
     const pathname = usePathname();
     const room = isRoomPath(pathname);
+    const intro = useDemoIntro();
     const { session } = useReplaySession();
     const identity = {
         packageId: session.package_id,
@@ -44,8 +46,12 @@ function PinnedWorkspace({ children }: { children: ReactNode }) {
                         <Starfield />
                         {room ? <DemoNav /> : null}
                         <TutorialBoundary>
-                            <TutorialHud />
-                            <TutorialNotices />
+                            {intro.open ? null : (
+                                <>
+                                    <TutorialHud />
+                                    <TutorialNotices />
+                                </>
+                            )}
                         </TutorialBoundary>
                         {/*
                          * The chapter entry remounts the route page when a
@@ -76,9 +82,13 @@ function PinnedWorkspace({ children }: { children: ReactNode }) {
 export function DemoShell({ children }: { children: ReactNode }) {
     return (
         <ReplaySessionProvider>
-            <ReplayMetadataGate>
-                <PinnedWorkspace>{children}</PinnedWorkspace>
-            </ReplayMetadataGate>
+            <DemoIntroProvider>
+                <ReplayMetadataGate>
+                    <DemoIntroGate>
+                        <PinnedWorkspace>{children}</PinnedWorkspace>
+                    </DemoIntroGate>
+                </ReplayMetadataGate>
+            </DemoIntroProvider>
         </ReplaySessionProvider>
     );
 }

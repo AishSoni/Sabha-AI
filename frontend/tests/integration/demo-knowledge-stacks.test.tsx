@@ -27,6 +27,7 @@ import {
     demoMeetingWire,
     replaySessionWire,
 } from "../fixtures/demo/journey";
+import { acknowledgeDemoIntro } from "../support/demo-intro";
 import type {
     ReplayAsset,
     ReplayClaim,
@@ -274,6 +275,7 @@ async function renderAt(pathname: string) {
 }
 
 beforeEach(() => {
+    acknowledgeDemoIntro();
     demoLocation.reset();
     verifySample.mockClear();
 });

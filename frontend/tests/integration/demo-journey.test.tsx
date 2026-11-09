@@ -23,6 +23,7 @@ import {
     demoMeetingWire,
     replaySessionWire,
 } from "../fixtures/demo/journey";
+import { acknowledgeDemoIntro } from "../support/demo-intro";
 
 const API = "http://localhost:8000/api";
 
@@ -201,6 +202,7 @@ function installDemoRouter() {
 }
 
 beforeEach(() => {
+    acknowledgeDemoIntro();
     demoLocation.reset();
     // The recording routes render a fixed-position HUD; happy-dom reports no
     // layout viewport unless it is stubbed.

@@ -23,6 +23,7 @@ import {
     replaySessionWire,
 } from "../fixtures/demo/journey";
 import { demoWorkspaceSeedEnvelope } from "../fixtures/demo/workspace";
+import { acknowledgeDemoIntro } from "../support/demo-intro";
 
 const API = "http://localhost:8000/api";
 
@@ -196,6 +197,7 @@ async function openPromptTab() {
 }
 
 beforeEach(() => {
+    acknowledgeDemoIntro();
     demoLocation.reset();
 });
 
@@ -391,6 +393,10 @@ describe("demo persona catalog", () => {
 
         await waitFor(() =>
             expect(screen.queryByText("The Demo Analyst")).not.toBeInTheDocument()
+        );
+        // A confirmed discard re-enters the approved introduction.
+        fireEvent.click(
+            screen.getByRole("button", { name: "Skip introduction" })
         );
         expect(screen.getByText("Mira")).toBeInTheDocument();
     });

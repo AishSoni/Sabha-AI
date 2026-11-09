@@ -28,6 +28,7 @@ import {
     replaySessionWire,
 } from "../fixtures/demo/journey";
 import { demoWorkspaceSeedEnvelope } from "../fixtures/demo/workspace";
+import { acknowledgeDemoIntro } from "../support/demo-intro";
 
 const API = "http://localhost:8000/api";
 
@@ -235,6 +236,7 @@ async function createSetup(options: { sample?: RegExp; buttonName?: string } = {
 }
 
 beforeEach(() => {
+    acknowledgeDemoIntro();
     demoLocation.reset();
     verifySample.mockClear();
 });
