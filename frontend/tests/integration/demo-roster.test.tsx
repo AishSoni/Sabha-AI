@@ -254,7 +254,7 @@ describe("demo persona catalog", () => {
         fireEvent.change(textarea, {
             target: { value: "You are a temporary practice analyst." },
         });
-        fireEvent.click(screen.getByRole("button", { name: /Save as New Version/ }));
+        fireEvent.click(screen.getByRole("button", { name: /Save and activate new version/ }));
 
         expect(await screen.findByText("Version 4")).toBeInTheDocument();
         await waitFor(() => expect(screen.getAllByText("Active")).toHaveLength(1));
@@ -307,7 +307,7 @@ describe("demo persona catalog", () => {
         fireEvent.change(screen.getByRole("textbox"), {
             target: { value: "A new template prompt after capture." },
         });
-        fireEvent.click(screen.getByRole("button", { name: /Save as New Version/ }));
+        fireEvent.click(screen.getByRole("button", { name: /Save and activate new version/ }));
         await screen.findByText("Version 4");
 
         const preview = within(panel)
@@ -400,7 +400,7 @@ describe("demo persona catalog", () => {
         fireEvent.change(screen.getByRole("textbox"), {
             target: { value: "A temporary practice prompt." },
         });
-        fireEvent.click(screen.getByRole("button", { name: /Save as New Version/ }));
+        fireEvent.click(screen.getByRole("button", { name: /Save and activate new version/ }));
         await screen.findByText("Version 4");
 
         act(() => demoLocation.navigate("/demo"));

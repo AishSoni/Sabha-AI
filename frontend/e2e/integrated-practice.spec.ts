@@ -70,9 +70,9 @@ test.describe("integrated practice exploration", () => {
         await prompt.fill(
             "Practice edit marker: this prompt never reaches the recording."
         );
-        await page.getByRole("button", { name: "Save as New Version" }).click();
+        await page.getByRole("button", { name: "Save and activate new version" }).click();
         await expect(
-            page.getByText(/Saved version 4 and made it active\./)
+            page.getByText(/Saved and activated version 4\./)
         ).toBeVisible();
 
         await page.getByRole("button", { name: "Make version 1 active" }).click();

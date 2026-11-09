@@ -117,9 +117,18 @@ describe("persona editor", () => {
 
         const textarea = screen.getByRole("textbox");
         fireEvent.change(textarea, { target: { value: "Third revision directive" } });
-        fireEvent.click(screen.getByRole("button", { name: /save as new version/i }));
+        const save = screen.getByRole("button", { name: "Save and activate new version" });
+        expect(save).toBeEnabled();
+        expect(save).toHaveAttribute("aria-describedby", "persona-construction-note");
+        fireEvent.click(save);
 
         await screen.findByText("Version 3");
+        expect(screen.getByRole("status")).toHaveTextContent(
+            "Saved and activated version 3."
+        );
+        expect(
+            screen.getByText(/creates a new revision and activates it for future meetings/i)
+        ).toBeInTheDocument();
         await waitFor(() => {
             // Exactly ONE revision may show the Active badge in local state.
             expect(screen.getAllByText("Active")).toHaveLength(1);
@@ -229,11 +238,11 @@ describe("persona editor", () => {
 
         const textarea = screen.getByRole("textbox");
         fireEvent.change(textarea, { target: { value: "Third revision directive" } });
-        fireEvent.click(screen.getByRole("button", { name: /save as new version/i }));
+        fireEvent.click(screen.getByRole("button", { name: /save and activate new version/i }));
 
         expect(await screen.findByText(/network down/i)).toBeInTheDocument();
         // Save remains possible: the revision was NOT submitted.
-        expect(screen.getByRole("button", { name: /save as new version/i })).not.toBeDisabled();
+        expect(screen.getByRole("button", { name: /save and activate new version/i })).not.toBeDisabled();
     });
 
     it("does not erase text typed while an earlier save is in flight", async () => {
@@ -245,7 +254,7 @@ describe("persona editor", () => {
 
         const textarea = screen.getByRole("textbox");
         fireEvent.change(textarea, { target: { value: "Third revision directive" } });
-        fireEvent.click(screen.getByRole("button", { name: /save as new version/i }));
+        fireEvent.click(screen.getByRole("button", { name: /save and activate new version/i }));
         fireEvent.change(textarea, { target: { value: "Fourth revision directive" } });
 
         await act(async () => {
@@ -256,7 +265,7 @@ describe("persona editor", () => {
         expect((screen.getByRole("textbox") as HTMLTextAreaElement).value).toBe(
             "Fourth revision directive"
         );
-        expect(screen.getByRole("button", { name: /save as new version/i })).not.toBeDisabled();
+        expect(screen.getByRole("button", { name: /save and activate new version/i })).not.toBeDisabled();
     });
 
     it("does not apply a pending save to a different persona", async () => {
@@ -297,7 +306,7 @@ describe("persona editor", () => {
         fireEvent.change(screen.getByRole("textbox"), {
             target: { value: "Draft for the first persona" },
         });
-        fireEvent.click(screen.getByRole("button", { name: /save as new version/i }));
+        fireEvent.click(screen.getByRole("button", { name: /save and activate new version/i }));
 
         view.rerender(<PersonaDetailContent personaId="persona-2" />);
         await screen.findByText("The Second Analyst");
@@ -330,6 +339,22 @@ describe("persona editor", () => {
         expect(
             screen.queryByRole("alertdialog", { name: "Unsaved changes" })
         ).not.toBeInTheDocument();
+    });
+
+    it("keeps the activation save disabled until the prompt changes", async () => {
+        renderRosterPage();
+        await screen.findByText("The Analyst");
+        await openPromptTab();
+
+        expect(
+            screen.getByRole("button", { name: "Save and activate new version" })
+        ).toBeDisabled();
+        fireEvent.change(screen.getByRole("textbox"), {
+            target: { value: "Third revision directive" },
+        });
+        expect(
+            screen.getByRole("button", { name: "Save and activate new version" })
+        ).toBeEnabled();
     });
 
     it("guards unsaved metadata edits on unload and local back", async () => {

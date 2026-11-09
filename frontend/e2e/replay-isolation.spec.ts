@@ -297,19 +297,19 @@ test.describe("recorded visitor isolation", () => {
             await openPromptHistory(pageA, "Mira");
             await pageA.getByPlaceholder(PROMPT).fill("Visitor A practice marker.");
             await pageA
-                .getByRole("button", { name: "Save as New Version" })
+                .getByRole("button", { name: "Save and activate new version" })
                 .click();
             await expect(
-                pageA.getByText(/Saved version 4 and made it active\./)
+                pageA.getByText(/Saved and activated version 4\./)
             ).toBeVisible();
 
             await openPromptHistory(pageB, "Arjun");
             await pageB.getByPlaceholder(PROMPT).fill("Visitor B practice marker.");
             await pageB
-                .getByRole("button", { name: "Save as New Version" })
+                .getByRole("button", { name: "Save and activate new version" })
                 .click();
             await expect(
-                pageB.getByText(/Saved version 3 and made it active\./)
+                pageB.getByText(/Saved and activated version 3\./)
             ).toBeVisible();
 
             // A starts a practice setup with queued work, then resets.
@@ -364,10 +364,10 @@ test.describe("recorded visitor isolation", () => {
                 .getByPlaceholder(PROMPT)
                 .fill("Visitor A restart marker.");
             await pageA
-                .getByRole("button", { name: "Save as New Version" })
+                .getByRole("button", { name: "Save and activate new version" })
                 .click();
             await expect(
-                pageA.getByText(/Saved version 4 and made it active\./)
+                pageA.getByText(/Saved and activated version 4\./)
             ).toBeVisible();
             await openExploreMenu(pageA);
             await pageA

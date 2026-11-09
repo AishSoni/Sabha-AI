@@ -319,7 +319,7 @@ export function PersonaEditorScreen({
                     current ? { ...current, prompt: submitted } : current
                 );
             }
-            setAnnouncement(`Saved version ${saved.version} and made it active.`);
+            setAnnouncement(`Saved and activated version ${saved.version}.`);
         } catch (err) {
             if (token === loadTokenRef.current && mountedRef.current) {
                 setError(err instanceof Error ? err.message : 'Failed to save prompt');
@@ -480,7 +480,7 @@ export function PersonaEditorScreen({
                     </div>
                 )}
 
-                <p className="mb-6 rounded-control border border-separator bg-surface-raised p-4 text-sm text-ink-secondary">
+                <p id="persona-construction-note" className="mb-6 rounded-control border border-separator bg-surface-raised p-4 text-sm text-ink-secondary">
                     Changes apply when this persona is added to a new meeting. Existing meeting participants are unchanged; their captured identity, prompt, policy, and knowledge-stack assignments stay fixed. Eligible contents of an assigned knowledge stack may change future searches.
                 </p>
 
@@ -716,13 +716,19 @@ export function PersonaEditorScreen({
                                         <Button
                                             onClick={handleSavePrompt}
                                             busy={saving}
-                                            busyLabel="Saving version"
+                                            busyLabel="Saving and activating"
+                                            aria-describedby="persona-construction-note"
                                             disabled={saving || !promptDirty}
                                         >
                                             <Save className="size-4" />
-                                            Save as New Version
+                                            Save and activate new version
                                         </Button>
                                     </div>
+                                    <p className="text-xs text-ink-muted">
+                                        Saving creates a new revision and activates it for future
+                                        meetings. Existing meeting participants keep their captured
+                                        prompt.
+                                    </p>
                                 </CardContent>
                             </Card>
 

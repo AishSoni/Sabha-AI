@@ -69,9 +69,9 @@ test.describe("mixed operator and demo isolation", () => {
             "Define this persona's personality, expertise, and behavior..."
         );
         await prompt.fill("Mixed-mode practice marker.");
-        await demo.getByRole("button", { name: "Save as New Version" }).click();
+        await demo.getByRole("button", { name: "Save and activate new version" }).click();
         await expect(
-            demo.getByText(/Saved version 4 and made it active\./)
+            demo.getByText(/Saved and activated version 4\./)
         ).toBeVisible();
 
         // The operator remains signed in and its vault envelope is untouched.
@@ -108,9 +108,9 @@ test.describe("mixed operator and demo isolation", () => {
                 "Define this persona's personality, expertise, and behavior..."
             )
             .fill("Mixed-mode survival marker.");
-        await demo.getByRole("button", { name: "Save as New Version" }).click();
+        await demo.getByRole("button", { name: "Save and activate new version" }).click();
         await expect(
-            demo.getByText(/Saved version 4 and made it active\./)
+            demo.getByText(/Saved and activated version 4\./)
         ).toBeVisible();
 
         await operator.evaluate(() =>

@@ -31,11 +31,11 @@ test.describe("demo keyboard and narrow-screen accessibility", () => {
         );
         await prompt.focus();
         await page.keyboard.type("Keyboard-only practice marker.");
-        const save = page.getByRole("button", { name: "Save as New Version" });
+        const save = page.getByRole("button", { name: "Save and activate new version" });
         await save.focus();
         await page.keyboard.press("Enter");
         await expect(
-            page.getByText(/Saved version 4 and made it active\./)
+            page.getByText(/Saved and activated version 4\./)
         ).toBeVisible();
 
         const activate = page.getByRole("button", {

@@ -96,9 +96,9 @@ test.describe("temporary practice setup", () => {
             "Define this persona's personality, expertise, and behavior..."
         );
         await prompt.fill("Practice template changed after setup.");
-        await page.getByRole("button", { name: "Save as New Version" }).click();
+        await page.getByRole("button", { name: "Save and activate new version" }).click();
         await expect(
-            page.getByText(/Saved version 4 and made it active\./)
+            page.getByText(/Saved and activated version 4\./)
         ).toBeVisible();
 
         // The captured setup still shows the original prompt and bindings.
