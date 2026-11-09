@@ -74,6 +74,9 @@ const diagnostics = {
 
 beforeEach(() => {
     vi.clearAllMocks();
+    // CI exports NEXT_PUBLIC_API_URL for the production build; keep these
+    // assertions independent of the ambient environment.
+    vi.stubEnv('NEXT_PUBLIC_API_URL', '');
     mocks.view.data = null;
     mocks.view.isLoading = false;
     mocks.view.error = null;
