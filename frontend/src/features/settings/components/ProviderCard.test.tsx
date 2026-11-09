@@ -5,7 +5,7 @@
  * blockers instead of sending a blank key or dropping input.
  */
 import { beforeEach, describe, expect, it, vi } from 'vitest';
-import { fireEvent, render, screen, waitFor } from '@testing-library/react';
+import { act, fireEvent, render, screen, waitFor } from '@testing-library/react';
 import type { ComponentProps } from 'react';
 
 const mocks = vi.hoisted(() => ({
@@ -140,5 +140,122 @@ describe('ProviderCard credential controls', () => {
             })
         );
         expect(onConfigChange).toHaveBeenCalledWith({ enabled: true });
+        expect(await screen.findByText('Reachable')).toBeTruthy();
+    });
+
+    it('does not present an enabled provider as a successful probe', async () => {
+        renderCard({ config: { ...CONFIG, enabled: true } });
+
+        expect(screen.getByText('Enabled')).toBeTruthy();
+        expect(screen.queryByText('Active')).toBeNull();
+        expect(screen.queryByText('Reachable')).toBeNull();
+        expect(await screen.findByText(/Save an API key to load models/i)).toBeTruthy();
+    });
+
+    it('discards a connection result when the draft changes while testing', async () => {
+        let resolveTest: (value: { valid: boolean; message: string }) => void = () => {};
+        mocks.testKey.mockReturnValueOnce(
+            new Promise((resolve) => {
+                resolveTest = resolve;
+            })
+        );
+        const onConfigChange = vi.fn();
+        renderCard({ onConfigChange });
+        const input = screen.getByLabelText(/Browser API Key/i);
+
+        fireEvent.change(input, { target: { value: 'sk-first' } });
+        fireEvent.click(screen.getByRole('button', { name: /^test$/i }));
+        await waitFor(() => expect(mocks.testKey).toHaveBeenCalledTimes(1));
+
+        fireEvent.change(input, { target: { value: 'sk-second' } });
+        await act(async () => {
+            resolveTest({ valid: true, message: 'Key is valid' });
+        });
+
+        expect(onConfigChange).not.toHaveBeenCalledWith({ enabled: true });
+        expect(screen.queryByText('Reachable')).toBeNull();
+        expect(screen.queryByText('Key is valid')).toBeNull();
+    });
+
+    it('does not apply models discovered for an earlier credential', async () => {
+        let resolveModels: (value: {
+            success: boolean;
+            models: { id: string; name: string; context_length: number }[];
+            message: string;
+        }) => void = () => {};
+        mocks.fetchModels.mockReturnValueOnce(
+            new Promise((resolve) => {
+                resolveModels = resolve;
+            })
+        );
+        const onConfigChange = vi.fn();
+        renderCard({ onConfigChange });
+        const input = screen.getByLabelText(/Browser API Key/i);
+
+        fireEvent.change(input, { target: { value: 'sk-first' } });
+        fireEvent.click(screen.getByRole('button', { name: /Refresh models/i }));
+        await waitFor(() => expect(mocks.fetchModels).toHaveBeenCalledTimes(1));
+
+        fireEvent.change(input, { target: { value: 'sk-second' } });
+        await act(async () => {
+            resolveModels({
+                success: true,
+                models: [{ id: 'late-model', name: 'Late Model', context_length: 4096 }],
+                message: '',
+            });
+        });
+
+        expect(screen.queryByText('Late Model')).toBeNull();
+        expect(onConfigChange).not.toHaveBeenCalledWith({ model: 'late-model' });
+    });
+
+    it('does not overwrite a model chosen while discovery is pending', async () => {
+        let resolveModels: (value: {
+            success: boolean;
+            models: { id: string; name: string; context_length: number }[];
+            message: string;
+        }) => void = () => {};
+        mocks.fetchModels.mockReturnValueOnce(
+            new Promise((resolve) => {
+                resolveModels = resolve;
+            })
+        );
+        const onConfigChange = vi.fn();
+        const props = {
+            provider: PROVIDER,
+            config: CONFIG,
+            isDefault: false,
+            storedKey: false,
+            vaultUnlocked: false,
+            vaultEpoch: 0,
+            onConfigChange,
+            onSaveKey: mocks.saveKey,
+            onRemoveKey: vi.fn(),
+            onResolveStoredKey: () => undefined,
+            onSetDefault: vi.fn(),
+        };
+        const { rerender } = render(<ProviderCard {...props} />);
+
+        fireEvent.change(screen.getByLabelText(/Browser API Key/i), {
+            target: { value: 'sk-draft' },
+        });
+        fireEvent.click(screen.getByRole('button', { name: /Refresh models/i }));
+        await waitFor(() => expect(mocks.fetchModels).toHaveBeenCalledTimes(1));
+
+        rerender(
+            <ProviderCard
+                {...props}
+                config={{ ...CONFIG, model: 'chosen-model' }}
+            />
+        );
+        await act(async () => {
+            resolveModels({
+                success: true,
+                models: [{ id: 'first-model', name: 'First Model', context_length: 4096 }],
+                message: '',
+            });
+        });
+
+        expect(onConfigChange).not.toHaveBeenCalledWith({ model: 'first-model' });
     });
 });

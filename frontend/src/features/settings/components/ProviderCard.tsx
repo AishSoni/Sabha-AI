@@ -62,11 +62,13 @@ export function ProviderCard({
         valid: boolean;
         message: string;
         epoch: number;
+        generation: number;
     } | null>(null);
     const [modelsState, setModelsState] = useState<{
         models: FetchedModelInfoView[];
         error: string | null;
         epoch: number;
+        generation: number;
     } | null>(null);
 
     const {
@@ -110,6 +112,64 @@ export function ProviderCard({
     ]);
 
     const testToken = useRef(0);
+    const discoveryToken = useRef(0);
+    const inputGeneration = useRef(0);
+    const [generation, setGeneration] = useState(0);
+
+    /**
+     * Invalidate every in-flight command and every result that was produced for
+     * an earlier credential or endpoint. The generation is a monotonic number:
+     * raw key material never enters an identity, cache key or fingerprint.
+     */
+    const invalidateInputs = useCallback(() => {
+        inputGeneration.current += 1;
+        testToken.current += 1;
+        discoveryToken.current += 1;
+        setGeneration(inputGeneration.current);
+        setTestOutcome(null);
+        setModelsState(null);
+    }, []);
+
+    // Inputs owned outside the draft (provider identity, endpoint, stored-key
+    // presence, vault state and server-key availability) invalidate results too.
+    const externalInputs = useRef({
+        providerId: provider.id,
+        baseUrl: config.baseUrl ?? '',
+        serverConfigured: Boolean(config.serverConfigured),
+        storedKey,
+        vaultUnlocked,
+        vaultEpoch,
+    });
+    useEffect(() => {
+        const next = {
+            providerId: provider.id,
+            baseUrl: config.baseUrl ?? '',
+            serverConfigured: Boolean(config.serverConfigured),
+            storedKey,
+            vaultUnlocked,
+            vaultEpoch,
+        };
+        const previous = externalInputs.current;
+        externalInputs.current = next;
+        if (
+            previous.providerId !== next.providerId ||
+            previous.baseUrl !== next.baseUrl ||
+            previous.serverConfigured !== next.serverConfigured ||
+            previous.storedKey !== next.storedKey ||
+            previous.vaultUnlocked !== next.vaultUnlocked ||
+            previous.vaultEpoch !== next.vaultEpoch
+        ) {
+            invalidateInputs();
+        }
+    }, [
+        provider.id,
+        config.baseUrl,
+        config.serverConfigured,
+        storedKey,
+        vaultUnlocked,
+        vaultEpoch,
+        invalidateInputs,
+    ]);
 
     // Adjust state during render when the vault locks (the documented pattern
     // for derived state), so a typed draft never survives an access-loss lock
@@ -145,10 +205,18 @@ export function ProviderCard({
     const fetchModels = useCallback(async () => {
         const current = latest.current;
         const epoch = current.vaultEpoch;
+        const requestGeneration = inputGeneration.current;
+        const token = ++discoveryToken.current;
+        const modelWasEmpty = !current.config.model;
         const credential = resolveCredential();
 
         if (credential.blocked) {
-            setModelsState({ models: [], error: credential.blocked, epoch });
+            setModelsState({
+                models: [],
+                error: credential.blocked,
+                epoch,
+                generation: requestGeneration,
+            });
             return;
         }
 
@@ -161,6 +229,7 @@ export function ProviderCard({
                 models: [],
                 error: 'Save an API key to load models.',
                 epoch,
+                generation: requestGeneration,
             });
             return;
         }
@@ -171,24 +240,51 @@ export function ProviderCard({
                 apiKey: credential.key,
                 baseUrl: current.config.baseUrl || undefined,
             });
-            if (latest.current.vaultEpoch !== epoch) return;
+            const now = latest.current;
+            if (
+                token !== discoveryToken.current ||
+                requestGeneration !== inputGeneration.current ||
+                now.vaultEpoch !== epoch ||
+                now.provider.id !== current.provider.id
+            ) {
+                return;
+            }
 
             if (!result.success) {
                 setModelsState({
                     models: [],
                     error: result.message || 'Failed to fetch models',
                     epoch,
+                    generation: requestGeneration,
                 });
                 return;
             }
 
-            setModelsState({ models: result.models, error: null, epoch });
-            if (!current.config.model && result.models.length > 0) {
-                current.onConfigChange({ model: result.models[0]!.id });
+            setModelsState({
+                models: result.models,
+                error: null,
+                epoch,
+                generation: requestGeneration,
+            });
+            if (modelWasEmpty && !now.config.model && result.models.length > 0) {
+                now.onConfigChange({ model: result.models[0]!.id });
             }
         } catch {
-            if (latest.current.vaultEpoch !== epoch) return;
-            setModelsState({ models: [], error: 'Failed to fetch models', epoch });
+            const now = latest.current;
+            if (
+                token !== discoveryToken.current ||
+                requestGeneration !== inputGeneration.current ||
+                now.vaultEpoch !== epoch ||
+                now.provider.id !== current.provider.id
+            ) {
+                return;
+            }
+            setModelsState({
+                models: [],
+                error: 'Failed to fetch models',
+                epoch,
+                generation: requestGeneration,
+            });
         }
     }, [fetchModelsRequest, resolveCredential]);
 
@@ -198,7 +294,14 @@ export function ProviderCard({
         if (config.enabled || config.serverConfigured || provider.id === 'ollama') {
             void fetchModels();
         }
-    }, [config.enabled, config.serverConfigured, provider.id, vaultUnlocked, fetchModels]);
+    }, [
+        config.enabled,
+        config.serverConfigured,
+        provider.id,
+        vaultUnlocked,
+        vaultEpoch,
+        fetchModels,
+    ]);
 
     const handleSaveKey = async () => {
         const key = keyDraft.trim();
@@ -225,12 +328,12 @@ export function ProviderCard({
 
         setKeyDraft('');
         setKeyNotice({ tone: 'success', message: 'Key saved encrypted in this browser.' });
-        if (config.enabled || config.serverConfigured || provider.id === 'ollama') {
-            void fetchModels();
-        }
+        // The vault epoch changes when the sealed key is saved; the auto-fetch
+        // effect then reloads models with the new stored credential.
     };
 
     const handleRemoveKey = () => {
+        invalidateInputs();
         onRemoveKey();
         setKeyDraft('');
         setKeyNotice({ tone: 'success', message: 'Stored key removed.' });
@@ -240,10 +343,16 @@ export function ProviderCard({
         const current = latest.current;
         const token = ++testToken.current;
         const epoch = current.vaultEpoch;
+        const requestGeneration = inputGeneration.current;
         const credential = resolveCredential();
 
         if (credential.blocked) {
-            setTestOutcome({ valid: false, message: credential.blocked, epoch });
+            setTestOutcome({
+                valid: false,
+                message: credential.blocked,
+                epoch,
+                generation: requestGeneration,
+            });
             return;
         }
         if (
@@ -255,6 +364,7 @@ export function ProviderCard({
                 valid: false,
                 message: 'Enter or save an API key before testing.',
                 epoch,
+                generation: requestGeneration,
             });
             return;
         }
@@ -265,19 +375,43 @@ export function ProviderCard({
                 apiKey: credential.key,
                 baseUrl: current.config.baseUrl || undefined,
             });
-            if (token !== testToken.current || latest.current.vaultEpoch !== epoch) return;
+            const now = latest.current;
+            if (
+                token !== testToken.current ||
+                requestGeneration !== inputGeneration.current ||
+                now.vaultEpoch !== epoch ||
+                now.provider.id !== current.provider.id
+            ) {
+                return;
+            }
 
-            setTestOutcome({ valid: result.valid, message: result.message, epoch });
+            setTestOutcome({
+                valid: result.valid,
+                message: result.message,
+                epoch,
+                generation: requestGeneration,
+            });
             if (result.valid) {
-                current.onConfigChange({ enabled: true });
-                void fetchModels();
+                now.onConfigChange({ enabled: true });
+                // A newly enabled provider refetches through the auto-fetch
+                // effect; an already-enabled card refreshes immediately.
+                if (current.config.enabled) void fetchModels();
             }
         } catch {
-            if (token !== testToken.current || latest.current.vaultEpoch !== epoch) return;
+            const now = latest.current;
+            if (
+                token !== testToken.current ||
+                requestGeneration !== inputGeneration.current ||
+                now.vaultEpoch !== epoch ||
+                now.provider.id !== current.provider.id
+            ) {
+                return;
+            }
             setTestOutcome({
                 valid: false,
                 message: 'Connection failed. Check the key and provider settings.',
                 epoch,
+                generation: requestGeneration,
             });
         }
     };
@@ -296,15 +430,21 @@ export function ProviderCard({
     };
 
     const models =
-        modelsState?.epoch === vaultEpoch
+        modelsState?.epoch === vaultEpoch && modelsState.generation === generation
             ? modelsState.models
             : provider.models.map((model) => ({
                   id: model.id,
                   name: model.name,
                   context_length: model.context_length,
               }));
-    const modelsError = modelsState?.epoch === vaultEpoch ? modelsState.error : null;
-    const connectionResult = testOutcome?.epoch === vaultEpoch ? testOutcome : null;
+    const modelsError =
+        modelsState?.epoch === vaultEpoch && modelsState.generation === generation
+            ? modelsState.error
+            : null;
+    const connectionResult =
+        testOutcome?.epoch === vaultEpoch && testOutcome.generation === generation
+            ? testOutcome
+            : null;
     const storedLocked = storedKey && !vaultUnlocked;
     const canSaveKey = Boolean(keyDraft.trim()) && !savingKey;
 
@@ -323,11 +463,19 @@ export function ProviderCard({
                         {config.serverConfigured && (
                             <Badge variant="secondary">Server</Badge>
                         )}
-                        {config.enabled && (
-                            <Badge variant="success">
-                                <Check className="mr-1 size-3" /> Active
-                            </Badge>
-                        )}
+                        {connectionResult ? (
+                            connectionResult.valid ? (
+                                <Badge variant="success">
+                                    <Check className="mr-1 size-3" /> Reachable
+                                </Badge>
+                            ) : (
+                                <Badge variant="destructive">
+                                    <X className="mr-1 size-3" /> Test failed
+                                </Badge>
+                            )
+                        ) : config.enabled ? (
+                            <Badge variant="secondary">Enabled</Badge>
+                        ) : null}
                         {isDefault && (
                             <Badge variant="warning">
                                 <Zap className="mr-1 size-3" /> Default
@@ -373,6 +521,7 @@ export function ProviderCard({
                                     onChange={(e) => {
                                         setKeyDraft(e.target.value);
                                         setKeyNotice(null);
+                                        invalidateInputs();
                                     }}
                                     placeholder={
                                         storedKey
@@ -464,7 +613,10 @@ export function ProviderCard({
                             <Input
                                 id={`${provider.id}-base-url`}
                                 value={config.baseUrl || 'http://localhost:11434'}
-                                onChange={(e) => onConfigChange({ baseUrl: e.target.value })}
+                                onChange={(e) => {
+                                    invalidateInputs();
+                                    onConfigChange({ baseUrl: e.target.value });
+                                }}
                                 placeholder="http://localhost:11434"
                                 className="flex-1"
                             />
