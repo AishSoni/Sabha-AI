@@ -91,4 +91,37 @@ describe('ProvidersSection', () => {
         expect(screen.queryByText('mystery')).toBeNull();
         expect(useSettingsStore.getState().providers).not.toHaveProperty('mystery');
     });
+
+    it('renders a server provider unknown to this build as unsupported', () => {
+        useSettingsStore.setState((state) => {
+            const providers = { ...state.providers } as Record<string, ProviderConfig>;
+            delete providers.mystery;
+            return { providers: providers as typeof state.providers };
+        });
+        fixtures.metadata.providers.push({
+            id: 'future-provider',
+            name: 'Future Provider',
+            description: 'Not supported by this build',
+            requires_api_key: true,
+            models: [],
+            default_model: 'future-model',
+            default_temperature: 0.7,
+            default_max_tokens: 2048,
+        });
+
+        try {
+            render(<ProvidersSection />);
+
+            expect(screen.getByText('future-provider')).toBeTruthy();
+            expect(screen.getByText('Unsupported')).toBeTruthy();
+            expect(screen.queryByTestId('provider-future-provider')).toBeNull();
+            expect(
+                screen.queryByRole('button', {
+                    name: /Remove saved configuration/i,
+                })
+            ).toBeNull();
+        } finally {
+            fixtures.metadata.providers.pop();
+        }
+    });
 });

@@ -26,7 +26,7 @@ function UnsupportedProviderCard({
     onRemove,
 }: {
     providerId: string;
-    config: ProviderConfig;
+    config?: ProviderConfig;
     onRemove: () => void;
 }) {
     return (
@@ -39,19 +39,26 @@ function UnsupportedProviderCard({
             </CardHeader>
             <CardContent className="space-y-3">
                 <p className="type-body text-ink-secondary">
-                    This saved browser configuration uses a provider this Sabha build
-                    does not support. It is kept for reference but cannot be tested,
-                    enabled, or used for generation.
+                    {config
+                        ? 'This saved browser configuration uses a provider this Sabha build does not support. It is kept for reference but cannot be tested, enabled, or used for generation.'
+                        : 'The server reports a provider this Sabha build does not support. It cannot be tested, enabled, or used for generation.'}
                 </p>
-                {config.model && (
+                {config?.model && (
                     <p className="type-meta text-ink-secondary">
                         Saved model: <span className="font-mono">{config.model}</span>
                     </p>
                 )}
-                <Button type="button" variant="outline" size="sm" onClick={onRemove}>
-                    <Trash2 className="size-4" aria-hidden="true" />
-                    Remove saved configuration
-                </Button>
+                {config && (
+                    <Button
+                        type="button"
+                        variant="outline"
+                        size="sm"
+                        onClick={onRemove}
+                    >
+                        <Trash2 className="size-4" aria-hidden="true" />
+                        Remove saved configuration
+                    </Button>
+                )}
             </CardContent>
         </Card>
     );
@@ -87,18 +94,19 @@ export function ProvidersSection() {
 
             <SettingsMetadata>
                 {(metadata) => {
-                    const knownProviders = new Set(
-                        metadata.providers.map((provider) => provider.id)
-                    );
                     const supportedProviders = new Set<string>(PROVIDER_IDS);
-                    const unsupportedIds = Object.keys(providerConfigs).filter(
-                        (providerId) =>
-                            !knownProviders.has(providerId) &&
-                            !supportedProviders.has(providerId)
-                    );
+                    const unsupportedIds = Array.from(
+                        new Set([
+                            ...metadata.providers.map((provider) => provider.id),
+                            ...Object.keys(providerConfigs),
+                        ])
+                    ).filter((providerId) => !supportedProviders.has(providerId));
                     return (
                         <div className="grid gap-4">
                             {metadata.providers.map((provider) => {
+                                if (!supportedProviders.has(provider.id)) {
+                                    return null;
+                                }
                                 const providerId = provider.id as ProviderId;
                                 const config = providerConfigs[providerId];
 
