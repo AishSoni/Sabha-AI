@@ -93,9 +93,10 @@ integration, and regression tests. Spec 46 still owns integrated acceptance.
   configuration is read-only, so retries reuse the committed request rather than
   silently applying edits. The screen states “Meeting created — X of Y files
   accepted, N need attention”, retains the created identity, receipts, and
-  actionable failures, and blocks automatic navigation while any intended file
-  is pending. Files added mid-flight join the same pump and are accounted for
-  before navigation. Only never-submitted (`pending`) rows are removable;
+  actionable failures, and withholds automatic navigation while any intended file
+  is unfinished (queued, uploading, or failed). Files added mid-flight join the
+  same pump and are accounted for before navigation. Only never-submitted
+  (`pending`) rows are removable;
   uploading, accepted, and failed rows cannot pretend to cancel admitted server
   work. `Continue to meeting` is available only when nothing is in flight, and
   navigation follows accepted receipts rather than indexing readiness.
@@ -112,3 +113,32 @@ integration, and regression tests. Spec 46 still owns integrated acceptance.
   retry contract is preserved.
 
 ### Verification performed
+
+- Backend full suite: `python -m pytest -q` — 1003 passed, 1 skipped, 21
+  pre-existing dependency warnings.
+- Backend knowledge contract: 15 passed, including request-key replay, conflict,
+  and owner-scoped receipt lookup.
+- Backend knowledge upload routes/application: 28 passed, including failed-only
+  retry, ready idempotency, pending/processing/revoked rejection, request-key
+  replay, and lookup.
+- Backend meeting creation identity/integrity: 11 passed, including same-key
+  recovery, payload conflict, route replay/conflict, and transactional rollback.
+- Spec 11 migration, upgrade, clean-checkout, and public-surface checks pass with
+  migrations through `040_upload_request_identity`.
+- `python -m scripts.export_openapi --check`: passed with 58 paths.
+- Frontend full suite: `npm test` — 116 files / 713 tests passed.
+- `npm run test:unit`: 89 files / 536 tests passed.
+- `npm run test:architecture`: 7 files / 52 tests passed.
+- `npx tsc --noEmit`: passed.
+- `npm run lint`: 0 errors, 17 pre-existing warnings.
+- `npm run build`: passed (`next build`, 20/20 static pages).
+
+### Deferred owners and limits
+
+- Demo sample integration remains Spec 43; this spec only keeps the shared
+  presentation compatible.
+- No live Supabase, operator-auth, or paid-provider run was performed.
+- Remount recovery, late events, and network ambiguity are exercised through
+  scripted transports and happy-dom, not a real browser network.
+- Spec 46 owns integrated browser and end-to-end acceptance. This record is not
+  an acceptance claim.
