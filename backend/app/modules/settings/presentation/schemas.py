@@ -80,6 +80,68 @@ class SystemAIStatus(BaseModel):
     message: str = ""
 
 
+CapabilityState = Literal[
+    "missing",
+    "disabled",
+    "unverified",
+    "available",
+    "failed",
+    "unsupported",
+]
+
+
+class CapabilityDiagnostic(BaseModel):
+    """A safe, read-only explanation of one deployment prerequisite.
+
+    The detail/effect/remediation triad keeps a failure actionable without
+    exposing server-owned URLs, credentials, or raw transport errors.
+    """
+
+    state: CapabilityState
+    detail: str
+    effect: str
+    remediation: str
+
+
+class ProviderDiagnostic(CapabilityDiagnostic):
+    id: str
+    name: str
+    credential_required: bool
+    server_credential_configured: bool
+
+
+class EmbeddingDiagnostic(CapabilityDiagnostic):
+    provider: str
+    model: str
+    dimension: int
+    credential_required: bool
+    server_credential_configured: bool
+
+
+class KnowledgeDiagnostic(CapabilityDiagnostic):
+    qdrant_configured: bool
+    qdrant_credential_configured: bool
+    bucket_configured: bool
+
+
+class ExecutionDiagnostic(CapabilityDiagnostic):
+    in_process_runner: Literal["enabled", "disabled"]
+    external_worker: Literal["unknown"]
+    liveness_scope: str
+
+
+class SettingsDiagnosticsResponse(BaseModel):
+    """Read-only capability diagnostics for the live operator workspace."""
+
+    runtime_mode: str
+    app_env: str
+    providers: List[ProviderDiagnostic]
+    embedding: EmbeddingDiagnostic
+    knowledge: KnowledgeDiagnostic
+    execution: ExecutionDiagnostic
+    system_ai: SystemAIStatus
+
+
 class ProvidersListResponse(BaseModel):
     """Response with all available providers and environment info."""
     providers: List[ProviderInfo]

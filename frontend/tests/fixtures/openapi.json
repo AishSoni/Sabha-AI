@@ -775,6 +775,63 @@
         ]
       }
     },
+    "/api/settings/diagnostics": {
+      "get": {
+        "tags": [
+          "settings"
+        ],
+        "summary": "Get Settings Diagnostics",
+        "description": "Report safe, read-only capability prerequisites.\n\nThis route never probes a provider or storage service. Configured is not\nreported as verified, and no credential or server-owned URL is returned.",
+        "operationId": "get_settings_diagnostics_api_settings_diagnostics_get",
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SettingsDiagnosticsResponse"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Missing, malformed, expired, tampered or wrong-project token",
+            "content": {
+              "application/json": {
+                "example": {
+                  "detail": "Operator authentication required"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "A valid account that is not the configured operator",
+            "content": {
+              "application/json": {
+                "example": {
+                  "detail": "Operator access denied"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "Auth verification could not be completed safely",
+            "content": {
+              "application/json": {
+                "example": {
+                  "detail": "Access verification unavailable"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "OperatorBearer": []
+          }
+        ]
+      }
+    },
     "/api/settings/system-ai": {
       "put": {
         "tags": [
@@ -6957,6 +7014,67 @@
         ],
         "title": "DocumentSearchResult"
       },
+      "EmbeddingDiagnostic": {
+        "properties": {
+          "state": {
+            "type": "string",
+            "enum": [
+              "missing",
+              "disabled",
+              "unverified",
+              "available",
+              "failed",
+              "unsupported"
+            ],
+            "title": "State"
+          },
+          "detail": {
+            "type": "string",
+            "title": "Detail"
+          },
+          "effect": {
+            "type": "string",
+            "title": "Effect"
+          },
+          "remediation": {
+            "type": "string",
+            "title": "Remediation"
+          },
+          "provider": {
+            "type": "string",
+            "title": "Provider"
+          },
+          "model": {
+            "type": "string",
+            "title": "Model"
+          },
+          "dimension": {
+            "type": "integer",
+            "title": "Dimension"
+          },
+          "credential_required": {
+            "type": "boolean",
+            "title": "Credential Required"
+          },
+          "server_credential_configured": {
+            "type": "boolean",
+            "title": "Server Credential Configured"
+          }
+        },
+        "type": "object",
+        "required": [
+          "state",
+          "detail",
+          "effect",
+          "remediation",
+          "provider",
+          "model",
+          "dimension",
+          "credential_required",
+          "server_credential_configured"
+        ],
+        "title": "EmbeddingDiagnostic"
+      },
       "EnvironmentInfo": {
         "properties": {
           "is_production": {
@@ -6987,6 +7105,62 @@
         "type": "object",
         "title": "EnvironmentInfo",
         "description": "Environment information for the frontend."
+      },
+      "ExecutionDiagnostic": {
+        "properties": {
+          "state": {
+            "type": "string",
+            "enum": [
+              "missing",
+              "disabled",
+              "unverified",
+              "available",
+              "failed",
+              "unsupported"
+            ],
+            "title": "State"
+          },
+          "detail": {
+            "type": "string",
+            "title": "Detail"
+          },
+          "effect": {
+            "type": "string",
+            "title": "Effect"
+          },
+          "remediation": {
+            "type": "string",
+            "title": "Remediation"
+          },
+          "in_process_runner": {
+            "type": "string",
+            "enum": [
+              "enabled",
+              "disabled"
+            ],
+            "title": "In Process Runner"
+          },
+          "external_worker": {
+            "type": "string",
+            "const": "unknown",
+            "title": "External Worker"
+          },
+          "liveness_scope": {
+            "type": "string",
+            "title": "Liveness Scope"
+          }
+        },
+        "type": "object",
+        "required": [
+          "state",
+          "detail",
+          "effect",
+          "remediation",
+          "in_process_runner",
+          "external_worker",
+          "liveness_scope"
+        ],
+        "title": "ExecutionDiagnostic"
       },
       "FetchModelsRequest": {
         "properties": {
@@ -7136,6 +7310,57 @@
         ],
         "title": "IngestionStatusResponse",
         "description": "Durable progress for one upload operation."
+      },
+      "KnowledgeDiagnostic": {
+        "properties": {
+          "state": {
+            "type": "string",
+            "enum": [
+              "missing",
+              "disabled",
+              "unverified",
+              "available",
+              "failed",
+              "unsupported"
+            ],
+            "title": "State"
+          },
+          "detail": {
+            "type": "string",
+            "title": "Detail"
+          },
+          "effect": {
+            "type": "string",
+            "title": "Effect"
+          },
+          "remediation": {
+            "type": "string",
+            "title": "Remediation"
+          },
+          "qdrant_configured": {
+            "type": "boolean",
+            "title": "Qdrant Configured"
+          },
+          "qdrant_credential_configured": {
+            "type": "boolean",
+            "title": "Qdrant Credential Configured"
+          },
+          "bucket_configured": {
+            "type": "boolean",
+            "title": "Bucket Configured"
+          }
+        },
+        "type": "object",
+        "required": [
+          "state",
+          "detail",
+          "effect",
+          "remediation",
+          "qdrant_configured",
+          "qdrant_credential_configured",
+          "bucket_configured"
+        ],
+        "title": "KnowledgeDiagnostic"
       },
       "KnowledgeStack": {
         "properties": {
@@ -7660,6 +7885,62 @@
         "title": "ProviderConfig",
         "description": "LLM provider configuration for an AI participant.\n\nIf provider or model are empty, the global defaults from settings will be used.\nEmpty provider_config (all fields empty) keeps every value on server defaults."
       },
+      "ProviderDiagnostic": {
+        "properties": {
+          "state": {
+            "type": "string",
+            "enum": [
+              "missing",
+              "disabled",
+              "unverified",
+              "available",
+              "failed",
+              "unsupported"
+            ],
+            "title": "State"
+          },
+          "detail": {
+            "type": "string",
+            "title": "Detail"
+          },
+          "effect": {
+            "type": "string",
+            "title": "Effect"
+          },
+          "remediation": {
+            "type": "string",
+            "title": "Remediation"
+          },
+          "id": {
+            "type": "string",
+            "title": "Id"
+          },
+          "name": {
+            "type": "string",
+            "title": "Name"
+          },
+          "credential_required": {
+            "type": "boolean",
+            "title": "Credential Required"
+          },
+          "server_credential_configured": {
+            "type": "boolean",
+            "title": "Server Credential Configured"
+          }
+        },
+        "type": "object",
+        "required": [
+          "state",
+          "detail",
+          "effect",
+          "remediation",
+          "id",
+          "name",
+          "credential_required",
+          "server_credential_configured"
+        ],
+        "title": "ProviderDiagnostic"
+      },
       "ProviderInfo": {
         "properties": {
           "id": {
@@ -8157,6 +8438,49 @@
           "system"
         ],
         "title": "SenderType"
+      },
+      "SettingsDiagnosticsResponse": {
+        "properties": {
+          "runtime_mode": {
+            "type": "string",
+            "title": "Runtime Mode"
+          },
+          "app_env": {
+            "type": "string",
+            "title": "App Env"
+          },
+          "providers": {
+            "items": {
+              "$ref": "#/components/schemas/ProviderDiagnostic"
+            },
+            "type": "array",
+            "title": "Providers"
+          },
+          "embedding": {
+            "$ref": "#/components/schemas/EmbeddingDiagnostic"
+          },
+          "knowledge": {
+            "$ref": "#/components/schemas/KnowledgeDiagnostic"
+          },
+          "execution": {
+            "$ref": "#/components/schemas/ExecutionDiagnostic"
+          },
+          "system_ai": {
+            "$ref": "#/components/schemas/SystemAIStatus"
+          }
+        },
+        "type": "object",
+        "required": [
+          "runtime_mode",
+          "app_env",
+          "providers",
+          "embedding",
+          "knowledge",
+          "execution",
+          "system_ai"
+        ],
+        "title": "SettingsDiagnosticsResponse",
+        "description": "Read-only capability diagnostics for the live operator workspace."
       },
       "SummaryRequest": {
         "properties": {

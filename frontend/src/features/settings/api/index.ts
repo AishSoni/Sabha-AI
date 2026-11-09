@@ -10,14 +10,21 @@ export type {
     TestProviderKeyInput,
     UpdateSystemAIInput,
 } from './client';
-export { useProvidersEnvironment } from './queries';
+export { useProvidersEnvironment, useSettingsDiagnostics } from './queries';
 export { useFetchProviderModels, useTestProviderKey, useUpdateSystemAI } from './mutations';
 export type {
+    CapabilityDiagnosticView,
+    CapabilityStateView,
+    EmbeddingDiagnosticView,
+    ExecutionDiagnosticView,
     FetchedModelInfoView,
     FetchModelsResultView,
+    KnowledgeDiagnosticView,
+    ProviderDiagnosticView,
     ProviderInfoView,
     ProviderModelInfoView,
     ProvidersEnvironment,
+    SettingsDiagnosticsView,
     EnvironmentInfoView,
     SystemAIConfigView,
     SystemAIStateView,

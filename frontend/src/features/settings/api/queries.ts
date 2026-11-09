@@ -11,7 +11,7 @@ import { useQuery, type UseQueryResult } from '@tanstack/react-query';
 
 import { settingsKeys } from './keys';
 import { settingsClient } from './client';
-import type { ProvidersEnvironment } from './decoders';
+import type { ProvidersEnvironment, SettingsDiagnosticsView } from './decoders';
 
 export { settingsKeys };
 
@@ -19,5 +19,12 @@ export function useProvidersEnvironment(): UseQueryResult<ProvidersEnvironment, 
     return useQuery<ProvidersEnvironment, Error>({
         queryKey: settingsKeys.providers(),
         queryFn: ({ signal }) => settingsClient.getProviders({ signal }),
+    });
+}
+
+export function useSettingsDiagnostics(): UseQueryResult<SettingsDiagnosticsView, Error> {
+    return useQuery<SettingsDiagnosticsView, Error>({
+        queryKey: settingsKeys.diagnostics(),
+        queryFn: ({ signal }) => settingsClient.getDiagnostics({ signal }),
     });
 }

@@ -15,13 +15,14 @@ import httpx
 
 from .schemas import (
     ProvidersListResponse,
+    SettingsDiagnosticsResponse,
     TestKeyRequest,
     TestKeyResponse,
     EnvironmentInfo,
     SystemAIConfig,
-    SystemAIStatus,
     DEFAULT_PROVIDERS,
 )
+from .diagnostics import build_settings_diagnostics, system_ai_status_from_policy
 from app.platform.config import settings
 from app.modules.settings.infrastructure.system_ai import save_system_ai_config
 from app.presentation.dependencies import get_system_ai_policy_reader
@@ -167,17 +168,7 @@ async def list_providers(system_ai_reader=Depends(get_system_ai_policy_reader)):
     # deployment environment remains the fallback. The status keeps a missing
     # row distinct from a storage read failure.
     policy = await system_ai_reader()
-    state = {
-        "stored": "available",
-        "environment": "missing",
-        "fallback": "failed",
-    }[policy.source]
-    system_ai_status = SystemAIStatus(
-        source=policy.source,
-        state=state,
-        degraded=policy.degraded,
-        message=policy.message,
-    )
+    system_ai_status = system_ai_status_from_policy(policy)
 
     return ProvidersListResponse(
         providers=DEFAULT_PROVIDERS,
@@ -185,6 +176,20 @@ async def list_providers(system_ai_reader=Depends(get_system_ai_policy_reader)):
         system_ai=policy.config,
         system_ai_status=system_ai_status,
     )
+
+
+@router.get("/diagnostics", response_model=SettingsDiagnosticsResponse)
+async def get_settings_diagnostics(
+    system_ai_reader=Depends(get_system_ai_policy_reader),
+):
+    """Report safe, read-only capability prerequisites.
+
+    This route never probes a provider or storage service. Configured is not
+    reported as verified, and no credential or server-owned URL is returned.
+    """
+
+    policy = await system_ai_reader()
+    return build_settings_diagnostics(policy)
 
 
 @router.put("/system-ai", response_model=SystemAIConfig)

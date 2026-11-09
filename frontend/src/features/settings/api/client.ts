@@ -8,10 +8,12 @@ import { requestLiveJson } from '@/shared/access';
 import {
     decodeFetchModelsResult,
     decodeProvidersEnvironment,
+    decodeSettingsDiagnostics,
     decodeSystemAIConfig,
     decodeTestProviderKeyResult,
     type FetchModelsResultView,
     type ProvidersEnvironment,
+    type SettingsDiagnosticsView,
     type SystemAIConfigView,
     type TestProviderKeyResultView,
 } from './decoders';
@@ -45,6 +47,16 @@ export const settingsClient = {
     getProviders(init: RequestInitOptional = {}): Promise<ProvidersEnvironment> {
         return requestLiveJson<unknown>('/settings/providers', { signal: init.signal }).then((payload) =>
             decodeProvidersEnvironment(payload, 'providers'),
+        );
+    },
+
+    getDiagnostics(
+        init: RequestInitOptional = {},
+    ): Promise<SettingsDiagnosticsView> {
+        return requestLiveJson<unknown>('/settings/diagnostics', {
+            signal: init.signal,
+        }).then((payload) =>
+            decodeSettingsDiagnostics(payload, 'GET /settings/diagnostics'),
         );
     },
 

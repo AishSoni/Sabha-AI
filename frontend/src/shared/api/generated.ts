@@ -183,6 +183,29 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/settings/diagnostics": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Get Settings Diagnostics
+         * @description Report safe, read-only capability prerequisites.
+         *
+         *     This route never probes a provider or storage service. Configured is not
+         *     reported as verified, and no credential or server-owned URL is returned.
+         */
+        get: operations["get_settings_diagnostics_api_settings_diagnostics_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/settings/system-ai": {
         parameters: {
             query?: never;
@@ -1602,6 +1625,30 @@ export interface components {
             /** Page Number */
             page_number?: number | null;
         };
+        /** EmbeddingDiagnostic */
+        EmbeddingDiagnostic: {
+            /**
+             * State
+             * @enum {string}
+             */
+            state: "missing" | "disabled" | "unverified" | "available" | "failed" | "unsupported";
+            /** Detail */
+            detail: string;
+            /** Effect */
+            effect: string;
+            /** Remediation */
+            remediation: string;
+            /** Provider */
+            provider: string;
+            /** Model */
+            model: string;
+            /** Dimension */
+            dimension: number;
+            /** Credential Required */
+            credential_required: boolean;
+            /** Server Credential Configured */
+            server_credential_configured: boolean;
+        };
         /**
          * EnvironmentInfo
          * @description Environment information for the frontend.
@@ -1629,6 +1676,32 @@ export interface components {
             default_models: {
                 [key: string]: unknown;
             };
+        };
+        /** ExecutionDiagnostic */
+        ExecutionDiagnostic: {
+            /**
+             * State
+             * @enum {string}
+             */
+            state: "missing" | "disabled" | "unverified" | "available" | "failed" | "unsupported";
+            /** Detail */
+            detail: string;
+            /** Effect */
+            effect: string;
+            /** Remediation */
+            remediation: string;
+            /**
+             * In Process Runner
+             * @enum {string}
+             */
+            in_process_runner: "enabled" | "disabled";
+            /**
+             * External Worker
+             * @constant
+             */
+            external_worker: "unknown";
+            /** Liveness Scope */
+            liveness_scope: string;
         };
         /**
          * FetchModelsRequest
@@ -1702,6 +1775,26 @@ export interface components {
             chunkCount: number;
             /** Errormessage */
             errorMessage?: string | null;
+        };
+        /** KnowledgeDiagnostic */
+        KnowledgeDiagnostic: {
+            /**
+             * State
+             * @enum {string}
+             */
+            state: "missing" | "disabled" | "unverified" | "available" | "failed" | "unsupported";
+            /** Detail */
+            detail: string;
+            /** Effect */
+            effect: string;
+            /** Remediation */
+            remediation: string;
+            /** Qdrant Configured */
+            qdrant_configured: boolean;
+            /** Qdrant Credential Configured */
+            qdrant_credential_configured: boolean;
+            /** Bucket Configured */
+            bucket_configured: boolean;
         };
         /**
          * KnowledgeStack
@@ -1938,6 +2031,28 @@ export interface components {
              * @default 2048
              */
             max_tokens: number;
+        };
+        /** ProviderDiagnostic */
+        ProviderDiagnostic: {
+            /**
+             * State
+             * @enum {string}
+             */
+            state: "missing" | "disabled" | "unverified" | "available" | "failed" | "unsupported";
+            /** Detail */
+            detail: string;
+            /** Effect */
+            effect: string;
+            /** Remediation */
+            remediation: string;
+            /** Id */
+            id: string;
+            /** Name */
+            name: string;
+            /** Credential Required */
+            credential_required: boolean;
+            /** Server Credential Configured */
+            server_credential_configured: boolean;
         };
         /**
          * ProviderInfo
@@ -2183,6 +2298,22 @@ export interface components {
          * @enum {string}
          */
         SenderType: "user" | "ai" | "system";
+        /**
+         * SettingsDiagnosticsResponse
+         * @description Read-only capability diagnostics for the live operator workspace.
+         */
+        SettingsDiagnosticsResponse: {
+            /** Runtime Mode */
+            runtime_mode: string;
+            /** App Env */
+            app_env: string;
+            /** Providers */
+            providers: components["schemas"]["ProviderDiagnostic"][];
+            embedding: components["schemas"]["EmbeddingDiagnostic"];
+            knowledge: components["schemas"]["KnowledgeDiagnostic"];
+            execution: components["schemas"]["ExecutionDiagnostic"];
+            system_ai: components["schemas"]["SystemAIStatus"];
+        };
         /**
          * SummaryRequest
          * @description Request to generate an interim meeting summary (real endpoint).
@@ -3146,6 +3277,68 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["ProvidersListResponse"];
+                };
+            };
+            /** @description Missing, malformed, expired, tampered or wrong-project token */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    /**
+                     * @example {
+                     *       "detail": "Operator authentication required"
+                     *     }
+                     */
+                    "application/json": unknown;
+                };
+            };
+            /** @description A valid account that is not the configured operator */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    /**
+                     * @example {
+                     *       "detail": "Operator access denied"
+                     *     }
+                     */
+                    "application/json": unknown;
+                };
+            };
+            /** @description Auth verification could not be completed safely */
+            503: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    /**
+                     * @example {
+                     *       "detail": "Access verification unavailable"
+                     *     }
+                     */
+                    "application/json": unknown;
+                };
+            };
+        };
+    };
+    get_settings_diagnostics_api_settings_diagnostics_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["SettingsDiagnosticsResponse"];
                 };
             };
             /** @description Missing, malformed, expired, tampered or wrong-project token */

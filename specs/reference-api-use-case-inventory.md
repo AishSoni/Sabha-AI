@@ -210,8 +210,9 @@ the same payload returns the original operation, while a different payload is
 
 | Method & path | Class | Receipt / shape | Request keys | Safe errors | Notes |
 |---|---|---|---|---|---|
-| `GET /api/settings/providers` | observation | `ProvidersListResponse {providers,environment,system_ai}` | — | — | Server capability snapshot; drives BYOK validation |
-| `PUT /api/settings/system-ai` | command | `SystemAIConfig` | provider, model, temperature, max_tokens | `422` | `provider` is `''`, `ollama`, `openrouter`, or `gemini`; temperature 0–1; max_tokens 256–16000 |
+| `GET /api/settings/providers` | observation | `ProvidersListResponse {providers,environment,system_ai,system_ai_status}` | - | - | Server capability snapshot; `system_ai_status` keeps saved policy, environment fallback, and a degraded read distinct |
+| `GET /api/settings/diagnostics` | observation | `SettingsDiagnosticsResponse` | - | - | Safe read-only prerequisites (providers, embedding, knowledge, execution); never probes or returns credentials/URLs |
+| `PUT /api/settings/system-ai` | command | `SystemAIConfig` | provider, model, temperature, max_tokens | `422` | `provider` is `''`, `ollama`, `openrouter`, or `gemini`; temperature 0-1; max_tokens 256-16000 |
 | `POST /api/settings/models` | probe | `FetchModelsResponse {success,models,message}` | provider, optional `api_key`, `base_url` | Provider failures are returned in the body with `success: false` | External catalog probe; Ollama destinations are origin-allowlisted |
 | `POST /api/settings/test-key` | probe | `TestKeyResponse {valid,message,models?}` | provider, optional `api_key`, `base_url` | `400` unknown provider; `422` validation | Same probe exception and Ollama allowlist |
 

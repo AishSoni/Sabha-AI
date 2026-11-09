@@ -232,3 +232,185 @@ export function decodeProvidersEnvironment(value: unknown, path: string): Provid
         ),
     };
 }
+
+export type CapabilityStateView =
+    | 'missing'
+    | 'disabled'
+    | 'unverified'
+    | 'available'
+    | 'failed'
+    | 'unsupported';
+
+export interface CapabilityDiagnosticView {
+    state: CapabilityStateView;
+    detail: string;
+    effect: string;
+    remediation: string;
+}
+
+export interface ProviderDiagnosticView extends CapabilityDiagnosticView {
+    id: string;
+    name: string;
+    credentialRequired: boolean;
+    serverCredentialConfigured: boolean;
+}
+
+export interface EmbeddingDiagnosticView extends CapabilityDiagnosticView {
+    provider: string;
+    model: string;
+    dimension: number;
+    credentialRequired: boolean;
+    serverCredentialConfigured: boolean;
+}
+
+export interface KnowledgeDiagnosticView extends CapabilityDiagnosticView {
+    qdrantConfigured: boolean;
+    qdrantCredentialConfigured: boolean;
+    bucketConfigured: boolean;
+}
+
+export interface ExecutionDiagnosticView extends CapabilityDiagnosticView {
+    inProcessRunner: 'enabled' | 'disabled';
+    externalWorker: 'unknown';
+    livenessScope: string;
+}
+
+export interface SettingsDiagnosticsView {
+    runtimeMode: string;
+    appEnv: string;
+    providers: ProviderDiagnosticView[];
+    embedding: EmbeddingDiagnosticView;
+    knowledge: KnowledgeDiagnosticView;
+    execution: ExecutionDiagnosticView;
+    systemAI: SystemAIStatusView;
+}
+
+function decodeCapabilityDiagnostic(
+    value: unknown,
+    path: string,
+): CapabilityDiagnosticView {
+    const record = decodeObject(value, path);
+    return {
+        state: requireLiteral(record.state, `${path}.state`, [
+            'missing',
+            'disabled',
+            'unverified',
+            'available',
+            'failed',
+            'unsupported',
+        ] as const),
+        detail: requireString(record.detail, `${path}.detail`),
+        effect: requireString(record.effect, `${path}.effect`),
+        remediation: requireString(record.remediation, `${path}.remediation`),
+    };
+}
+
+function decodeProviderDiagnostic(
+    value: unknown,
+    path: string,
+): ProviderDiagnosticView {
+    const capability = decodeCapabilityDiagnostic(value, path);
+    const record = decodeObject(value, path);
+    return {
+        ...capability,
+        id: requireString(record.id, `${path}.id`),
+        name: requireString(record.name, `${path}.name`),
+        credentialRequired: requireBoolean(
+            record.credential_required,
+            `${path}.credential_required`,
+        ),
+        serverCredentialConfigured: requireBoolean(
+            record.server_credential_configured,
+            `${path}.server_credential_configured`,
+        ),
+    };
+}
+
+export function decodeSettingsDiagnostics(
+    value: unknown,
+    path: string,
+): SettingsDiagnosticsView {
+    const record = decodeObject(value, path);
+    const embeddingRecord = decodeObject(record.embedding, `${path}.embedding`);
+    const knowledgeRecord = decodeObject(record.knowledge, `${path}.knowledge`);
+    const executionRecord = decodeObject(record.execution, `${path}.execution`);
+
+    const embeddingCapability = decodeCapabilityDiagnostic(
+        record.embedding,
+        `${path}.embedding`,
+    );
+    const knowledgeCapability = decodeCapabilityDiagnostic(
+        record.knowledge,
+        `${path}.knowledge`,
+    );
+    const executionCapability = decodeCapabilityDiagnostic(
+        record.execution,
+        `${path}.execution`,
+    );
+
+    return {
+        runtimeMode: requireString(record.runtime_mode, `${path}.runtime_mode`),
+        appEnv: requireString(record.app_env, `${path}.app_env`),
+        providers: requireArray(
+            record.providers ?? [],
+            `${path}.providers`,
+            (item, itemPath) => decodeProviderDiagnostic(item, itemPath),
+        ),
+        embedding: {
+            ...embeddingCapability,
+            provider: requireString(
+                embeddingRecord.provider,
+                `${path}.embedding.provider`,
+            ),
+            model: requireString(embeddingRecord.model, `${path}.embedding.model`),
+            dimension: requireNumber(
+                embeddingRecord.dimension,
+                `${path}.embedding.dimension`,
+            ),
+            credentialRequired: requireBoolean(
+                embeddingRecord.credential_required,
+                `${path}.embedding.credential_required`,
+            ),
+            serverCredentialConfigured: requireBoolean(
+                embeddingRecord.server_credential_configured,
+                `${path}.embedding.server_credential_configured`,
+            ),
+        },
+        knowledge: {
+            ...knowledgeCapability,
+            qdrantConfigured: requireBoolean(
+                knowledgeRecord.qdrant_configured,
+                `${path}.knowledge.qdrant_configured`,
+            ),
+            qdrantCredentialConfigured: requireBoolean(
+                knowledgeRecord.qdrant_credential_configured,
+                `${path}.knowledge.qdrant_credential_configured`,
+            ),
+            bucketConfigured: requireBoolean(
+                knowledgeRecord.bucket_configured,
+                `${path}.knowledge.bucket_configured`,
+            ),
+        },
+        execution: {
+            ...executionCapability,
+            inProcessRunner: requireLiteral(
+                executionRecord.in_process_runner,
+                `${path}.execution.in_process_runner`,
+                ['enabled', 'disabled'] as const,
+            ),
+            externalWorker: requireLiteral(
+                executionRecord.external_worker,
+                `${path}.execution.external_worker`,
+                ['unknown'] as const,
+            ),
+            livenessScope: requireString(
+                executionRecord.liveness_scope,
+                `${path}.execution.liveness_scope`,
+            ),
+        },
+        systemAI: decodeSystemAIStatus(
+            record.system_ai,
+            `${path}.system_ai`,
+        ),
+    };
+}

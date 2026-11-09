@@ -7,4 +7,5 @@
 export const settingsKeys = {
     all: ['settings'] as const,
     providers: () => ['settings', 'providers'] as const,
+    diagnostics: () => ['settings', 'diagnostics'] as const,
 };
