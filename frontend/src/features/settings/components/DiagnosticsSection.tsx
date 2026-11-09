@@ -6,11 +6,11 @@
  * This section reports deployment prerequisites without probing providers or
  * storage. A configured value is never presented as a successful connection.
  */
-import { useEffect, useState, type ReactNode } from 'react';
+import { type ReactNode } from 'react';
 import { Loader2 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { StatusBadge, type StatusTone } from '@/components/ui/status-badge';
-import { describeApiOrigin, type ApiOriginDiagnosis } from '@/shared/access';
+import { describeApiOrigin } from '@/shared/access';
 import { useSettingsDiagnostics } from '../api';
 import type {
     CapabilityDiagnosticView,
@@ -86,16 +86,13 @@ function CapabilityDetails({
 }
 
 function DiagnosticsContent({ diagnostics }: { diagnostics: SettingsDiagnosticsView }) {
-    const [apiOrigin, setApiOrigin] = useState<ApiOriginDiagnosis | null>(null);
-
-    useEffect(() => {
-        setApiOrigin(
-            describeApiOrigin(
-                process.env.NEXT_PUBLIC_API_URL,
-                window.location.origin,
-            ),
-        );
-    }, []);
+    const apiOrigin =
+        typeof window === 'undefined'
+            ? null
+            : describeApiOrigin(
+                  process.env.NEXT_PUBLIC_API_URL,
+                  window.location.origin,
+              );
 
     const originReady = apiOrigin !== null && apiOrigin.issue === null;
 
