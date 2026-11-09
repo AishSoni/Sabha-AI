@@ -1,5 +1,5 @@
 // @vitest-environment happy-dom
-import { beforeEach, describe, expect, it, vi } from 'vitest';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { fireEvent, render, screen } from '@testing-library/react';
 
 const mocks = vi.hoisted(() => ({
@@ -18,7 +18,7 @@ vi.mock('../api', () => ({
     }),
 }));
 
-import { DiagnosticsSection } from './DiagnosticsSection';
+import { ApiOriginCard, DiagnosticsSection } from './DiagnosticsSection';
 
 const diagnostics = {
     runtimeMode: 'local',
@@ -79,12 +79,17 @@ beforeEach(() => {
     mocks.view.error = null;
 });
 
+afterEach(() => {
+    vi.unstubAllEnvs();
+});
+
 describe('settings diagnostics section', () => {
     it('shows configuration states and never calls them connected', () => {
         mocks.view.data = diagnostics;
 
         render(<DiagnosticsSection />);
 
+        expect(screen.getByText('API origin')).toBeTruthy();
         expect(screen.getByText('Read-only')).toBeTruthy();
         expect(screen.getByText(/Runtime mode:/)).toBeTruthy();
         expect(screen.getByText(/local development default/)).toBeTruthy();
@@ -104,10 +109,22 @@ describe('settings diagnostics section', () => {
 
         render(<DiagnosticsSection />);
 
+        expect(screen.getByText('API origin')).toBeTruthy();
+        expect(screen.getByText(/local development default/)).toBeTruthy();
         expect(screen.getByRole('alert').textContent).toContain(
             'Failed to load diagnostics'
         );
         fireEvent.click(screen.getByRole('button', { name: /retry/i }));
         expect(mocks.refetch).toHaveBeenCalledTimes(1);
+    });
+
+    it('explains a hosted page with no configured API origin', () => {
+        vi.stubEnv('NEXT_PUBLIC_API_URL', '');
+
+        render(<ApiOriginCard pageOrigin="https://sabha.example" />);
+
+        expect(screen.getByText('Misconfigured')).toBeTruthy();
+        expect(screen.getByText(/NEXT_PUBLIC_API_URL is not set/)).toBeTruthy();
+        expect(screen.getByText(/public HTTPS API origin/)).toBeTruthy();
     });
 });

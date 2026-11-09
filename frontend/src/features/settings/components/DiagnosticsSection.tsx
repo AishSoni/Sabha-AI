@@ -85,47 +85,57 @@ function CapabilityDetails({
     );
 }
 
-function DiagnosticsContent({ diagnostics }: { diagnostics: SettingsDiagnosticsView }) {
-    const apiOrigin =
-        typeof window === 'undefined'
-            ? null
-            : describeApiOrigin(
-                  process.env.NEXT_PUBLIC_API_URL,
-                  window.location.origin,
-              );
-
-    const originReady = apiOrigin !== null && apiOrigin.issue === null;
+export function ApiOriginCard({
+    pageOrigin,
+}: {
+    pageOrigin?: string | null;
+}) {
+    const resolvedPageOrigin =
+        pageOrigin === undefined
+            ? typeof window === 'undefined'
+                ? null
+                : window.location.origin
+            : pageOrigin;
+    const apiOrigin = describeApiOrigin(
+        process.env.NEXT_PUBLIC_API_URL,
+        resolvedPageOrigin,
+    );
+    const originReady = apiOrigin.issue === null;
 
     return (
-        <div className="space-y-4">
-            <div className="rounded-group border border-separator bg-surface/40 p-4">
-                <div className="flex flex-wrap items-center justify-between gap-2">
-                    <h3 className="type-item-title text-ink">API origin</h3>
-                    {apiOrigin ? (
-                        <StatusBadge tone={originReady ? 'success' : 'danger'}>
-                            {originReady ? 'Ready' : 'Misconfigured'}
-                        </StatusBadge>
-                    ) : (
-                        <StatusBadge tone="pending">Checking</StatusBadge>
-                    )}
-                </div>
-                <p className="mt-3 type-body text-ink-secondary">
-                    {apiOrigin === null
-                        ? 'Checking where this page would send live requests.'
-                        : originReady
-                          ? apiOrigin.source === 'configured'
-                              ? 'Live requests use the API origin configured for this build.'
-                              : 'Live requests use the local development default for this local page.'
-                          : apiOrigin.detail}
-                </p>
-                {apiOrigin?.issue ? (
-                    <p className="mt-2 type-body text-ink-secondary">
-                        <span className="font-medium text-ink">Next step:</span>{' '}
-                        {apiOrigin.remediation}
-                    </p>
-                ) : null}
+        <div className="rounded-group border border-separator bg-surface/40 p-4">
+            <div className="flex flex-wrap items-center justify-between gap-2">
+                <h3 className="type-item-title text-ink">API origin</h3>
+                {resolvedPageOrigin === null ? (
+                    <StatusBadge tone="pending">Checking</StatusBadge>
+                ) : (
+                    <StatusBadge tone={originReady ? 'success' : 'danger'}>
+                        {originReady ? 'Ready' : 'Misconfigured'}
+                    </StatusBadge>
+                )}
             </div>
+            <p className="mt-3 type-body text-ink-secondary">
+                {resolvedPageOrigin === null
+                    ? 'Checking where this page would send live requests.'
+                    : originReady
+                      ? apiOrigin.source === 'configured'
+                          ? 'Live requests use the API origin configured for this build.'
+                          : 'Live requests use the local development default for this local page.'
+                      : apiOrigin.detail}
+            </p>
+            {apiOrigin.issue ? (
+                <p className="mt-2 type-body text-ink-secondary">
+                    <span className="font-medium text-ink">Next step:</span>{' '}
+                    {apiOrigin.remediation}
+                </p>
+            ) : null}
+        </div>
+    );
+}
 
+function DiagnosticsContent({ diagnostics }: { diagnostics: SettingsDiagnosticsView }) {
+    return (
+        <div className="space-y-4">
             <div className="rounded-group border border-separator bg-surface/40 p-4">
                 <h3 className="type-item-title text-ink">Runtime</h3>
                 <p className="mt-2 type-body text-ink-secondary">
@@ -243,6 +253,8 @@ export function DiagnosticsSection() {
                 </div>
                 <StatusBadge tone="neutral">Read-only</StatusBadge>
             </div>
+
+            <ApiOriginCard />
 
             {diagnosticsQuery.isLoading ? (
                 <div role="status" className="flex items-center justify-center gap-2 py-12 text-ink-muted">
