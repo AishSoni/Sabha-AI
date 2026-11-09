@@ -53,6 +53,7 @@ export default function DemoNewMeetingPage() {
     const run = useReplayRun();
     const createRef = useAnchorRef("demo.create");
     const openRoomRef = useAnchorRef("demo.open-room");
+    const setupRef = useAnchorRef("screen.setup");
     const workspace = useDemoWorkspace();
     const [busy, setBusy] = useState(false);
     const [editing, setEditing] = useState(false);
@@ -184,7 +185,7 @@ export default function DemoNewMeetingPage() {
             )}
 
             <div className="space-y-4">
-                <Card className="p-5">
+                <Card ref={setupRef} className="p-5">
                     <div className="flex items-center gap-2 type-meta font-medium uppercase tracking-wide text-warning">
                         <Lock className="h-4 w-4" />
                         Meeting setup

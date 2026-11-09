@@ -116,6 +116,7 @@ function deckMiddlePrompt(journey: TutorialJourney): TutorialPrompt | null {
         return {
             id: "main-speaker",
             instruction: "Choose who speaks next",
+            detail: "You direct the room; replies are recorded, not live generation.",
             anchor: "room.speaker",
             progress: `${journey.replyCount} of ${journey.requiredReplyCount} replies`,
         };
@@ -124,6 +125,7 @@ function deckMiddlePrompt(journey: TutorialJourney): TutorialPrompt | null {
         return {
             id: "main-followup",
             instruction: "Send your follow-up",
+            detail: "Keep the thread on the evidence and the unresolved question.",
             anchor: "room.followup",
             alternates: ["room.speaker"],
         };
@@ -134,6 +136,7 @@ function deckMiddlePrompt(journey: TutorialJourney): TutorialPrompt | null {
         return {
             id: "main-vote",
             instruction: "Vote to end the meeting",
+            detail: "The vote ends the meeting; it does not erase the record.",
             anchor: "room.vote",
             alternates: ["room.vote-confirm"],
         };
@@ -141,6 +144,7 @@ function deckMiddlePrompt(journey: TutorialJourney): TutorialPrompt | null {
     return {
         id: "main-close",
         instruction: "Close the meeting",
+        detail: "Closing records the decision and the research checklist.",
         anchor: "room.close",
     };
 }
@@ -151,6 +155,7 @@ function closingPrompt(journey: TutorialJourney): TutorialPrompt | null {
             ? {
                   id: "main-archive",
                   instruction: "Archive the meeting",
+                  detail: "Archiving keeps the completed record and moves it out of active work.",
                   anchor: "meetings.archive",
               }
             : null;
@@ -158,6 +163,7 @@ function closingPrompt(journey: TutorialJourney): TutorialPrompt | null {
     return {
         id: "main-return",
         instruction: "Return to the meetings list",
+        detail: "The list holds the ended record for review.",
         anchor: "room.return",
     };
 }
@@ -186,6 +192,7 @@ export function selectPrompt(journey: TutorialJourney): TutorialPrompt | null {
                 : {
                       id: "main-create",
                       instruction: "Create meeting",
+                      detail: "This records the setup; practice edits never alter the recording.",
                       anchor: "demo.create",
                   };
         }
@@ -193,12 +200,14 @@ export function selectPrompt(journey: TutorialJourney): TutorialPrompt | null {
             return {
                 id: "main-open-room",
                 instruction: "Open the meeting room",
+                detail: "The room opens on the prepared discussion.",
                 anchor: "demo.open-room",
             };
         }
         return {
             id: "main-start",
             instruction: "Start the meeting",
+            detail: "The board shows who is in the room and what each participant can see.",
             anchor: "demo.start",
             alternates: ["demo.create"],
         };

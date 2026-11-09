@@ -1,6 +1,7 @@
 'use client';
 
 import { useDemoWorkspace } from '@/features/demo-workspace';
+import { useAnchorRef } from '@/features/demo-tutorial';
 import { RosterScreen } from '../presentation/roster-screen';
 import { DemoCatalogGate } from './demo-catalog-gate';
 import { useLocalPersonaCatalog } from './use-local-persona-catalog';
@@ -16,10 +17,12 @@ export function DemoPersonaRoster() {
 function Content() {
     const { client } = useLocalPersonaCatalog();
     const { seed } = useDemoWorkspace();
+    const firstPersonaRef = useAnchorRef('roster.persona');
 
     return (
         <RosterScreen
             client={client}
+            firstPersonaRef={firstPersonaRef}
             highlightedPersonaId={seed?.highlightedPersonaId ?? undefined}
             hrefs={{
                 home: '/demo',

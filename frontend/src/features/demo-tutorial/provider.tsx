@@ -23,6 +23,7 @@ import { useMeetingsRuntime, useReplayRun } from "@/features/meetings/presentati
 import { combineSignals } from "@/shared/runtime/scope";
 import { isRoomPath, deriveJourney, type TutorialJourney } from "./journey";
 import { refineOnRoute, selectPrompt } from "./objectives";
+import { mainStageRoute, screenPromptFor } from "./screen-guidance";
 import {
     clearTutorialFacts,
     markTutorialFact,
@@ -127,6 +128,15 @@ export function DemoTutorialProvider({ children }: { children: ReactNode }) {
             ? tourState.id
             : null;
 
+    const screenPrompt =
+        isOtherMeetingRoute(pathname, run.session.meeting_id)
+            ? null
+            : screenPromptFor(pathname);
+    const contextualScreenPrompt =
+        screenPrompt &&
+        pathname !== mainStageRoute(journey, run.session.meeting_id)
+            ? screenPrompt
+            : null;
     const prompt = activeTour
         ? selectTourPrompt(
               activeTour,
@@ -139,7 +149,8 @@ export function DemoTutorialProvider({ children }: { children: ReactNode }) {
           )
         : isOtherMeetingRoute(pathname, run.session.meeting_id)
           ? null
-          : refineOnRoute(selectPrompt(journey), pathname);
+          : contextualScreenPrompt ??
+            refineOnRoute(selectPrompt(journey), pathname);
 
     const hide = useCallback(() => setHidden(true), []);
     const show = useCallback(() => setHidden(false), []);

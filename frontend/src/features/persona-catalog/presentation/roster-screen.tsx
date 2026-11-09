@@ -25,6 +25,8 @@ export interface RosterScreenProps {
     markIdFor?: (persona: Persona) => string | undefined;
     /** Optional purpose summary supplied by the demo workspace. */
     descriptionFor?: (persona: Persona) => string | undefined;
+    /** Optional anchor for the first persona card in the demo workspace. */
+    firstPersonaRef?: (node: HTMLDivElement | null) => void;
 }
 
 function toView(
@@ -53,6 +55,7 @@ export function RosterScreen({
     confirmDelete,
     markIdFor,
     descriptionFor,
+    firstPersonaRef,
 }: RosterScreenProps) {
     const [personas, setPersonas] = useState<Persona[]>([]);
     const [loading, setLoading] = useState(true);
@@ -133,6 +136,7 @@ export function RosterScreen({
             highlightedPersonaId={highlightedPersonaId}
             onDuplicate={(persona) => void handleDuplicate(persona)}
             onDelete={(id) => void handleDelete(id)}
+            firstPersonaRef={firstPersonaRef}
         />
     );
 }

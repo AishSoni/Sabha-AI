@@ -357,12 +357,18 @@ describe("canonical guided demo journey", () => {
                 name: "Demo settings",
             })
         ).toBeInTheDocument();
-        // The board objective has no anchor on this screen, so the HUD
-        // collapses to the compact bar instead of guessing a position.
+        // The settings screen owns a contextual explanation instead of
+        // receiving an unreachable board objective.
+        const hud = await screen.findByTestId("tutorial-hud");
         expect(
-            await screen.findByTestId("tutorial-hud-compact")
+            within(hud).getByText("The demo is isolated by design")
         ).toBeInTheDocument();
-        expect(screen.queryByTestId("tutorial-hud")).not.toBeInTheDocument();
+        expect(
+            within(hud).getByText(/Providers are operator-only in live/)
+        ).toBeInTheDocument();
+        expect(
+            screen.queryByTestId("tutorial-hud-compact")
+        ).not.toBeInTheDocument();
         expect(
             screen.getByText(/Provider setup is operator-only/i)
         ).toBeInTheDocument();

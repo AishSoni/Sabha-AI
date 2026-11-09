@@ -29,6 +29,7 @@ export const TUTORIAL_ANCHOR_IDS = [
     "room.tab.disagreements",
     "room.tab.consensus",
     "meetings.archive",
+    "meetings.list",
     "nav.personas",
     "nav.knowledge",
     "roster.persona",
@@ -37,6 +38,9 @@ export const TUTORIAL_ANCHOR_IDS = [
     "knowledge.stack",
     "stack.document",
     "stack.access",
+    "screen.setup",
+    "settings.providers",
+    "settings.lifetime",
 ] as const;
 
 export type TutorialAnchorId = (typeof TUTORIAL_ANCHOR_IDS)[number];
@@ -60,7 +64,17 @@ export type TutorialObjectiveId =
     | "tour-knowledge-1"
     | "tour-knowledge-2"
     | "tour-knowledge-3"
-    | "tour-knowledge-4";
+    | "tour-knowledge-4"
+    | "screen-overview"
+    | "screen-setup"
+    | "screen-meetings"
+    | "screen-room"
+    | "screen-roster"
+    | "screen-persona"
+    | "screen-prompt-history"
+    | "screen-knowledge"
+    | "screen-stack"
+    | "screen-settings";
 
 export type TutorialTourId = "prompt" | "knowledge";
 
@@ -68,6 +82,8 @@ export interface TutorialPrompt {
     /** Stable objective id. A change here is the only thing announced. */
     id: TutorialObjectiveId;
     instruction: string;
+    /** One short consequence or value statement, never a second instruction. */
+    detail?: string;
     anchor: TutorialAnchorId | null;
     /** Later candidates, used only when the previous anchor is not mounted. */
     alternates?: readonly TutorialAnchorId[];

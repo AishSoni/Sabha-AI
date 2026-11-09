@@ -20,6 +20,7 @@ export default function DemoMeetingListPage() {
     const workspace = useDemoWorkspace();
     const practice = useLocalPracticeMeetings();
     const archiveRef = useAnchorRef("meetings.archive");
+    const listRef = useAnchorRef("meetings.list");
     const meetings = useRuntimeMeetingList();
     const [tab, setTab] = useState<ListTab>("active");
     const [busy, setBusy] = useState(false);
@@ -189,7 +190,10 @@ export default function DemoMeetingListPage() {
                 </section>
             ) : null}
 
-            <div className="mb-4 inline-flex rounded-group border border-separator bg-surface-raised p-1">
+            <div
+                ref={listRef}
+                className="mb-4 inline-flex rounded-group border border-separator bg-surface-raised p-1"
+            >
                 <button
                     type="button"
                     onClick={() => setTab("active")}

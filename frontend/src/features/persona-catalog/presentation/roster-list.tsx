@@ -61,6 +61,8 @@ export interface RosterListProps {
     highlightedPersonaId?: string;
     onDuplicate: (persona: RosterPersonaView) => void;
     onDelete: (personaId: string) => void;
+    /** Optional anchor for the first persona card, supplied by the demo shell. */
+    firstPersonaRef?: (node: HTMLDivElement | null) => void;
 }
 
 export function RosterList({
@@ -74,6 +76,7 @@ export function RosterList({
     highlightedPersonaId,
     onDuplicate,
     onDelete,
+    firstPersonaRef,
 }: RosterListProps) {
     return (
         <div className="min-h-full text-ink">
@@ -134,9 +137,10 @@ export function RosterList({
                         </h2>
 
                         <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-4">
-                            {personas.map((persona) => (
+                            {personas.map((persona, index) => (
                                 <Card
                                     key={persona.id}
+                                    ref={index === 0 ? firstPersonaRef : undefined}
                                     className="flex h-full flex-col transition-colors hover:border-action/40"
                                 >
                                     <CardHeader className="pb-2">

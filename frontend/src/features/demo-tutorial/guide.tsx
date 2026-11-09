@@ -59,6 +59,11 @@ export function TutorialGuide({
                     </p>
                     <ExploreRecordingMenu iconOnly />
                 </div>
+                {prompt.detail ? (
+                    <p className="mt-1 type-meta text-ink-secondary">
+                        {prompt.detail}
+                    </p>
+                ) : null}
                 {prompt.complete ? (
                     <p className="mt-1 type-meta text-ink-secondary">
                         {prompt.id === "main-complete"
