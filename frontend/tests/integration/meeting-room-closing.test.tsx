@@ -99,8 +99,12 @@ function json(status: number, body: unknown): Response {
     } as unknown as Response;
 }
 
-function installClosingRouter(initial: Partial<ClosingState> = {}) {
+function installClosingRouter(
+    initial: Partial<ClosingState> = {},
+    options: { failClosingReads?: boolean } = {}
+) {
     const calls: Call[] = [];
+    let closingReadsFail = options.failClosingReads ?? false;
     const state: ClosingState = {
         status: 'active',
         stage: null,
@@ -140,6 +144,9 @@ function installClosingRouter(initial: Partial<ClosingState> = {}) {
                         meeting_status: 'voting',
                     });
                 }
+                if (closingReadsFail) {
+                    return json(503, { detail: 'Closing read unavailable.' });
+                }
                 return json(200, closingWire(state));
             }
             if (url.endsWith(`/meetings/${MEETING_ID}/closing/abort`)) {
@@ -173,6 +180,12 @@ function installClosingRouter(initial: Partial<ClosingState> = {}) {
 
     return {
         calls,
+        failClosingReads() {
+            closingReadsFail = true;
+        },
+        recoverClosingReads() {
+            closingReadsFail = false;
+        },
         complete() {
             state.status = 'ended';
             state.stage = 'completed';
@@ -194,10 +207,42 @@ function renderRoom() {
 describe('MeetingRoom closing workflow', () => {
     beforeEach(() => {
         getQueryClient().clear();
+        getQueryClient().setDefaultOptions({ queries: { retry: false } });
     });
 
     afterEach(() => {
         vi.unstubAllGlobals();
+    });
+
+    it('pauses admission when closing status is unknown and recovers by observation', async () => {
+        const router = installClosingRouter({}, { failClosingReads: true });
+        renderRoom();
+
+        expect(await screen.findByText('Closing state unknown')).toBeInTheDocument();
+        expect(screen.getByText(/Closing read unavailable/)).toBeInTheDocument();
+        expect(screen.queryByPlaceholderText('Type your message...')).not.toBeInTheDocument();
+
+        router.recoverClosingReads();
+        fireEvent.click(screen.getByRole('button', { name: 'Retry observation' }));
+
+        expect(
+            await screen.findByPlaceholderText('Type your message...')
+        ).toBeInTheDocument();
+        expect(screen.queryByText('Closing state unknown')).toBeNull();
+        expect(
+            router.calls.filter(
+                (call) =>
+                    call.method === 'POST' &&
+                    call.url.endsWith(`/meetings/${MEETING_ID}/closing`)
+            )
+        ).toHaveLength(0);
+        expect(
+            router.calls.filter(
+                (call) =>
+                    call.method === 'GET' &&
+                    call.url.endsWith(`/meetings/${MEETING_ID}/closing`)
+            ).length
+        ).toBeGreaterThanOrEqual(2);
     });
 
     it('starts the real close, observes progress, and reconciles completion once', async () => {

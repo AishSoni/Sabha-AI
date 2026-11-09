@@ -371,6 +371,14 @@ function MeetingConversation({
     const closingOpen =
         isPollingClosingStage(closingStage) || closingStage === 'failed';
     const closingCompleted = closingStage === 'completed';
+    const closingObservationUnknown =
+        !runtime.replay &&
+        capabilities.closing &&
+        Boolean(closingObservation.error);
+    const closingObservationChecking =
+        !runtime.replay &&
+        capabilities.closing &&
+        closingObservation.isLoading;
     const ended =
         meeting.status === 'ended' ||
         meeting.status === 'archived' ||
@@ -733,7 +741,15 @@ function MeetingConversation({
                     className="max-h-[35dvh] shrink-0 overflow-y-auto border-t border-separator bg-surface px-4 py-1 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-focus-ring lg:max-h-none lg:overflow-visible"
                 >
                     <div className="mx-auto w-full max-w-[1120px]">
-                        {closingOpen ? (
+                        {closingObservationUnknown ? (
+                            <ClosingObservationNotice
+                                tone="unknown"
+                                error={closingObservation.error}
+                                onRetry={closingObservation.resume}
+                            />
+                        ) : closingObservationChecking ? (
+                            <ClosingObservationNotice tone="checking" />
+                        ) : closingOpen ? (
                             tab !== 'closing' ? (
                                 <ClosingRoomNotice stage={closingStage} onOpen={openClosing} />
                             ) : null
@@ -804,6 +820,58 @@ function ClosingRoomNotice({
             >
                 View closing
             </Button>
+        </div>
+    );
+}
+
+function ClosingObservationNotice({
+    tone,
+    error,
+    onRetry,
+}: {
+    tone: 'checking' | 'unknown';
+    error?: Error | null;
+    onRetry?: () => void;
+}) {
+    const unknown = tone === 'unknown';
+    return (
+        <div
+            id="closing-room-status"
+            role="status"
+            aria-live="polite"
+            className={cn(
+                'flex flex-wrap items-center gap-3 rounded-control border px-3 py-2',
+                unknown
+                    ? 'border-warning/50 bg-warning-soft'
+                    : 'border-separator bg-surface/50'
+            )}
+        >
+            <div className="min-w-0 flex-1">
+                <p className="type-control font-medium text-ink">
+                    {unknown ? 'Closing state unknown' : 'Checking closing status'}
+                </p>
+                <p className="type-meta text-ink-secondary">
+                    {unknown
+                        ? `Closing progress could not be read${
+                              error?.message ? `: ${error.message}` : ''
+                          } Turn submission is paused; retry the observation rather than starting another close.`
+                        : 'Turn submission is paused until this room confirms whether a close is already running.'}
+                </p>
+            </div>
+            {unknown && onRetry ? (
+                <Button
+                    id="closing-room-retry"
+                    type="button"
+                    variant="outline"
+                    size="sm"
+                    className="border-control text-ink-secondary"
+                    onClick={onRetry}
+                >
+                    Retry observation
+                </Button>
+            ) : (
+                <Loader2 className="h-4 w-4 shrink-0 text-ink-muted motion-safe:animate-spin" />
+            )}
         </div>
     );
 }
