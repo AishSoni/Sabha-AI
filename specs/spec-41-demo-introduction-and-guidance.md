@@ -672,10 +672,12 @@ The final qualifier is the only small footnote. There are no eyebrows, chip
 labels, captions, logo, brand header, tagline, HUD, workspace navigation,
 Back/Continue buttons, or pagination bar. Visible controls are limited to
 `Skip introduction`, one hairline four-segment progress cue, and the final
-`Enter the demo`. The progress cue is non-interactive and hidden from assistive
-technology; `Step N of 4` remains available as screen-reader-only live text.
-Cards use the actual Mira, Arjun, and Leena identities, the dated HDFC fact
-sheet, and role-appropriate questions. No participant quotations, consensus,
+`Enter the demo`. The whole lower rail rests at 10% opacity and reveals on hover
+or keyboard focus; touch devices keep a usable resting opacity. The progress cue
+is non-interactive and hidden from assistive technology; `Step N of 4` remains
+available as screen-reader-only live text. Cards are bare typography with no
+surface, border, radius, or shadow. They use the actual Mira, Arjun, and Leena
+identities, the dated HDFC fact sheet, and role-appropriate questions. No participant quotations, consensus,
 outcomes, citations, or financial claims are invented. Coupon, ISIN, and rating
 jargon are deliberately absent.
 
@@ -723,8 +725,9 @@ plates, and one thin tapered spatial trail. Essential copy and card content stay
 in semantic HTML and are projected from the same camera and authored anchors;
 no text is baked into GPU textures. The four authored compositions use separate
 copy and card coordinates, responsive mobile anchors, and distinct reading
-windows. Outgoing cards fade before they can cover the next composition; distant
-plates remain faint silhouettes rather than competing readable content.
+windows. Outgoing cards fade before they can cover the next composition; card
+plates are suppressed so only the active composition's bare semantic cards are
+visible.
 
 Dark-first palettes move through violet, deep cobalt, muted rose, and warm
 amber-violet. Each has a deliberately composed light counterpart, and both are
@@ -770,9 +773,10 @@ overflow, and the controls at the lower composition edge.
 - The default demo guardrail still permits only the single tab-scoped intro
   acknowledgement key and rejects other browser persistence.
 - Browser review at 1366x768 and 390x844, dark and light, confirmed one-line
-  desktop headlines, two-line mobile headlines, no eyebrow/chip remnants, rich
-  full-screen colour, readable cards, visible trail, a composed light
-  counterpart, and no horizontal overflow at 390 px.
+  desktop headlines, two-line mobile headlines, no eyebrow/chip or card-surface
+  remnants, richer saturated fields, a pronounced seeded starfield, visible
+  four-point trail head, a composed light counterpart, and no horizontal
+  overflow at 390 px.
 - Chrome DevTools traces on the Three.js scene: a scrubbed forward/back
   transition recorded CLS 0.00 with no long-task or layout warning; a 3.2 s
   settled trace recorded no performance insight, consistent with rendering

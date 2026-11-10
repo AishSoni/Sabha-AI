@@ -113,16 +113,14 @@
   display: flex;
   align-items: center;
   box-sizing: border-box;
-  padding: 0.8rem 0.95rem;
-  overflow: hidden;
-  border: 1px solid var(--intro-border, rgba(196, 181, 253, 0.32));
-  border-radius: 0.55rem;
-  background: var(--intro-card, rgba(20, 11, 36, 0.72));
-  box-shadow:
-    0 1.1rem 2.4rem rgba(0, 0, 0, 0.2),
-    inset 0 1px 0 rgba(255, 255, 255, 0.06);
+  padding: 0.25rem 0;
+  overflow: visible;
+  border: 0;
+  border-radius: 0;
+  background: transparent;
+  box-shadow: none;
   color: var(--intro-ink, #f8f3ff);
-  backdrop-filter: blur(10px);
+  text-shadow: 0 1px 16px color-mix(in srgb, var(--intro-base) 82%, transparent);
 }
 
 .intro-card__stack {
@@ -294,8 +292,15 @@
   flex-direction: column;
   gap: 0.8rem;
   padding: 0.7rem 0 max(1rem, env(safe-area-inset-bottom));
-  pointer-events: none;
+  opacity: 0.1;
+  pointer-events: auto;
   transform: translateX(-50%);
+  transition: opacity 220ms ease;
+}
+
+.intro-rail:hover,
+.intro-rail:focus-within {
+  opacity: 1;
 }
 
 .intro-progress {
@@ -326,14 +331,7 @@
   align-items: center;
   justify-content: space-between;
   gap: 1rem;
-  opacity: 0.7;
   pointer-events: auto;
-  transition: opacity 220ms ease;
-}
-
-.intro-rail:hover .intro-controls,
-.intro-rail:focus-within .intro-controls {
-  opacity: 1;
 }
 
 .intro-control {
@@ -578,7 +576,6 @@
 
   .intro-controls {
     gap: 0.45rem;
-    opacity: 0.78;
   }
 
   .intro-control {
@@ -610,8 +607,15 @@
   }
 }
 
+@media (hover: none) {
+  .intro-rail {
+    opacity: 0.55;
+  }
+}
+
 @media (prefers-reduced-motion: reduce) {
   .intro-progress__segment,
+  .intro-rail,
   .intro-controls {
     transition: none;
   }

@@ -5,14 +5,13 @@ import {
     Color,
     DoubleSide,
     Mesh,
-    MeshBasicMaterial,
+    NormalBlending,
     OrthographicCamera,
     PerspectiveCamera,
     PlaneGeometry,
     Points,
     Scene,
     ShaderMaterial,
-    SphereGeometry,
     Vector3,
     WebGLRenderer,
 } from "three";
@@ -70,7 +69,7 @@ void main() {
   float nearFade = smoothstep(0.6, 3.2, distanceToCamera);
   float farFade = 1.0 - smoothstep(56.0, 92.0, distanceToCamera);
   vAlpha = aAlpha * nearFade * farFade;
-  gl_PointSize = aSize * uPixelRatio * clamp(18.0 / max(distanceToCamera, 1.0), 0.18, 4.2);
+  gl_PointSize = aSize * uPixelRatio * clamp(26.0 / max(distanceToCamera, 1.0), 0.26, 5.2);
   gl_Position = projectionMatrix * mv;
 }
 `;
@@ -103,6 +102,31 @@ void main() {
 }
 `;
 
+const HEAD_VERTEX = `
+varying vec2 vUv;
+void main() {
+  vUv = uv;
+  gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.0);
+}
+`;
+
+const HEAD_FRAGMENT = `
+uniform vec3 uColor;
+uniform float uOpacity;
+varying vec2 vUv;
+void main() {
+  vec2 p = (vUv - 0.5) * 2.0;
+  float radius = length(p);
+  float angle = atan(p.y, p.x);
+  float ray = 0.5 * pow(abs(cos(angle * 2.0)), 3.0) + 0.08;
+  float star = 1.0 - smoothstep(ray - 0.045, ray + 0.02, radius);
+  float glow = (1.0 - smoothstep(0.0, 0.92, radius)) * 0.2;
+  float alpha = max(star, glow);
+  if (alpha <= 0.01) discard;
+  gl_FragColor = vec4(uColor, alpha * uOpacity);
+}
+`;
+
 const BACKGROUND_VERTEX = `
 varying vec2 vUv;
 void main() {
@@ -115,6 +139,7 @@ const BACKGROUND_FRAGMENT = `
 uniform vec3 uBase;
 uniform vec3 uFieldA;
 uniform vec3 uFieldB;
+uniform float uLightMix;
 uniform float uTime;
 uniform float uVelocity;
 varying vec2 vUv;
@@ -128,7 +153,10 @@ void main() {
   vec2 centerB = vec2(0.77 + 0.05 * cos(uTime * 0.09), 0.67 + 0.06 * sin(uTime * 0.12));
   float a = field(vUv, centerA, 0.72);
   float b = field(vUv, centerB, 0.86);
-  vec3 color = uBase + uFieldA * a * 0.82 + uFieldB * b * 0.7;
+  vec3 additive = uBase + uFieldA * a * 0.82 + uFieldB * b * 0.7;
+  vec3 mixed = mix(uBase, uFieldA, a * 0.82);
+  mixed = mix(mixed, uFieldB, b * 0.58);
+  vec3 color = mix(additive, mixed, uLightMix);
   color += clamp(uVelocity, 0.0, 1.0) * (a + b) * 0.035;
   color = clamp(color, 0.0, 1.0);
   gl_FragColor = vec4(color, 1.0);
@@ -222,12 +250,12 @@ function makeStars(count: number): {
     const alphas = new Float32Array(count);
 
     for (let index = 0; index < count; index += 1) {
-        positions[index * 3] = (random() - 0.5) * 52;
-        positions[index * 3 + 1] = (random() - 0.5) * 36;
+        positions[index * 3] = (random() - 0.5) * 58;
+        positions[index * 3 + 1] = (random() - 0.5) * 40;
         positions[index * 3 + 2] = 28 - random() * 126;
         const depth = random();
-        sizes[index] = 0.7 + depth * 1.5;
-        alphas[index] = 0.16 + depth * 0.42;
+        sizes[index] = 0.9 + depth * 2.1;
+        alphas[index] = 0.32 + depth * 0.53;
     }
 
     const geometry = new BufferGeometry();
@@ -273,7 +301,7 @@ export class IntroSceneRenderer {
     private readonly trailPosition: BufferAttribute;
     private readonly trailAlpha: BufferAttribute;
     private readonly trailMaterial: ShaderMaterial;
-    private readonly trailHeadMesh: Mesh<SphereGeometry, MeshBasicMaterial>;
+    private readonly trailHeadMesh: Mesh<PlaneGeometry, ShaderMaterial>;
     private readonly trailHistory: TrailPoint[] = [];
     private readonly domNodes = new Map<string, HTMLElement>();
     private readonly dark: boolean;
@@ -317,6 +345,7 @@ export class IntroSceneRenderer {
                 uBase: { value: new Color() },
                 uFieldA: { value: new Color() },
                 uFieldB: { value: new Color() },
+                uLightMix: { value: this.dark ? 0 : 1 },
                 uTime: { value: 0 },
                 uVelocity: { value: 0 },
             },
@@ -331,9 +360,13 @@ export class IntroSceneRenderer {
         );
         this.backgroundScene.add(background);
 
-        const starData = makeStars(1100);
+        const starData = makeStars(1800);
         this.starGeometry = starData.geometry;
         this.starMaterial = starData.material;
+        this.starMaterial.blending = this.dark
+            ? AdditiveBlending
+            : NormalBlending;
+        this.starMaterial.needsUpdate = true;
         this.starPoints = new Points(this.starGeometry, this.starMaterial);
         this.starPoints.renderOrder = 0;
         this.scene.add(this.starPoints);
@@ -389,7 +422,7 @@ export class IntroSceneRenderer {
             fragmentShader: TRAIL_FRAGMENT,
             transparent: true,
             depthWrite: false,
-            blending: AdditiveBlending,
+            blending: this.dark ? AdditiveBlending : NormalBlending,
             side: DoubleSide,
         });
         this.trailMesh = new Mesh(this.trailGeometry, this.trailMaterial);
@@ -397,13 +430,18 @@ export class IntroSceneRenderer {
         this.trailMesh.frustumCulled = false;
         this.scene.add(this.trailMesh);
 
-        const headGeometry = new SphereGeometry(0.025, 8, 6);
-        const headMaterial = new MeshBasicMaterial({
-            color: new Color("#ffffff"),
+        const headGeometry = new PlaneGeometry(0.34, 0.34);
+        const headMaterial = new ShaderMaterial({
+            uniforms: {
+                uColor: { value: new Color("#ffffff") },
+                uOpacity: { value: 0.95 },
+            },
+            vertexShader: HEAD_VERTEX,
+            fragmentShader: HEAD_FRAGMENT,
             transparent: true,
-            opacity: 0.7,
             depthWrite: false,
-            blending: AdditiveBlending,
+            blending: this.dark ? AdditiveBlending : NormalBlending,
+            side: DoubleSide,
         });
         this.trailHeadMesh = new Mesh(headGeometry, headMaterial);
         this.trailHeadMesh.renderOrder = 1;
@@ -639,24 +677,10 @@ export class IntroSceneRenderer {
     }
 
     private updatePlates(blended: ReturnType<typeof paletteBlend>): void {
-        const active = introMomentAt(this.progress);
         for (const plate of this.plates) {
-            const distance = Math.max(
-                0.1,
-                this.camera.position.z - plate.z
-            );
-            const near = smoothstep(5.4, 6.6, distance);
-            const far = 1 - smoothstep(16, 20, distance);
-            const proximity = 1 - Math.min(
-                Math.abs(distance - this.readDistance) / 7,
-                1
-            );
             plate.mesh.material.uniforms.uColor!.value.copy(blended.card);
             plate.mesh.material.uniforms.uBorder!.value.copy(blended.border);
-            plate.mesh.material.uniforms.uOpacity!.value =
-                (plate.moment === active ? 0 : 0.04 + proximity * 0.06) *
-                near *
-                far;
+            plate.mesh.material.uniforms.uOpacity!.value = 0;
         }
     }
 
@@ -769,6 +793,8 @@ export class IntroSceneRenderer {
         this.trailMaterial.uniforms.uColor!.value.copy(blended.line);
         this.trailMaterial.uniforms.uOpacity!.value = 0.7;
         this.trailHeadMesh.position.copy(points[count - 1]!.position);
-        this.trailHeadMesh.material.color.copy(blended.line);
+        this.trailHeadMesh.quaternion.copy(this.camera.quaternion);
+        this.trailHeadMesh.material.uniforms.uColor!.value.copy(blended.line);
+        this.trailHeadMesh.material.uniforms.uOpacity!.value = 0.95;
     }
 }
