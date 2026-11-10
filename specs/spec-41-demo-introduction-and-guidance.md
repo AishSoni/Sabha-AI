@@ -257,22 +257,11 @@ The governing hierarchy is **headline and cards first; colour second; stars and
 line third**. Atmosphere should be strong without becoming something the user
 must study. The user should understand each idea at a glance.
 
-Minimalism clarification (2026-11-10): use the fewest elements and words that
-communicate each idea. Colour, depth, negative space, and the visible starfield
-carry the atmosphere; additional explanation or decoration must earn its place.
-The reference adaptation must not lose the starfield. The spatial trail ends in
-a small glowing four-point star, carrying Sabha's identity without a logo/header.
-
 ### Source findings that govern the adaptation
 
 The study covers Cosmic Trail's deployed
 [JavaScript](https://cosmic-trail.vercel.app/assets/index-Dco8YSdU.js) and
 [CSS](https://cosmic-trail.vercel.app/assets/index-CiA9Sm49.css), plus DepthGallery
-at [commit 28190e0](https://github.com/houmahani/codrops-depth-gallery/tree/28190e0920df887f069524c3863db397af34c1c8).
-The Cosmic Trail bundle inspected on 2026-11-10 has SHA-256
-`ec4baec1a390b3cd6e7d267fe79a8b9b3388824b86f8c6a0ece8581f58839968`.
-Its minified identifiers are not a reusable public API. These are source findings,
-not claims that Sabha already implements or has tested the same behaviour:
 
 | Mechanic | Cosmic Trail | DepthGallery | Consequence for Sabha |
 | --- | --- | --- | --- |
@@ -309,12 +298,9 @@ debug/asset-loading scaffolding are not requirements to copy.
   the homepage's approximately 34–72px responsive display scale, tight tracking
   (around -0.04em), and compact leading (around 1.02), adapting for actual line
   breaks and zoom. Do not simply retain the smaller intro page-title treatment.
-- Headlines should usually occupy one or two lines at desktop size. Use only
-  words that add meaning: omit supporting copy when the headline and cards already
-  communicate the idea. No obligatory eyebrow, subtitle, card caption, or repeated
-  instruction per moment. Never shrink essential text into the reference's tiny
-  caption treatment to preserve layout. Fewer words must mean clearer ideas, not
-  smaller type or cryptic labels.
+- Headlines should usually occupy one or two lines at desktop size. Supporting
+  copy is one short passage, not a second explanation of the visual. Never shrink
+  essential text into the reference's tiny caption treatment to preserve layout.
 - Our familiar sigils, distinct participant identities, and violet card materials
   replace the reference's image planes. Cards are the content, not an enclosing
   presentation panel. Avoid nested boxes, generic dashboard mockups, repeated
@@ -333,24 +319,19 @@ and communicate the remaining meaning through the card compositions.
 
 | Moment | Headline | Supporting copy | Visual job |
 | --- | --- | --- | --- |
-| 1. The idea | **Different minds. You direct.** | Choose which AI speaks. | Three distinct participant cards relate to one shared question; establish different AI perspectives and the user's ability to choose. |
-| 2. The value | **See where they disagree.** | Check the sources. | Relate two contrasting positions to a source and an outcome; make disagreement inspectable rather than presenting a feature list. |
-| 3. What to try | **Choose. Ask. Explore.** | None; the cards carry the actions. | Compose a compact speaker/source/follow-up example, not another paragraph or numbered checklist page. |
-| 4. The example | **Clear facts. Different judgments.** | HDFC bond review · 2020. | Pair the dated fact sheet with three viewpoints, distinguishing checkable terms from judgments and open questions. |
-
-The moment names and visual jobs in this table are authoring guidance, not extra
-on-screen labels. Do not render the third row's supporting-copy note. Essential
-participant/source labels and the final qualifier remain; do not add explanatory
-paragraphs to the cards to compensate for shorter headline copy.
+| 1. The idea | **What if you hold a meeting and see different sides of the coin?** | You direct the meeting. Choose which AI speaks next. | Three distinct participant cards relate to one shared question; establish different AI perspectives and the user's ability to choose. |
+| 2. The value | **See which findings agree with the story & which *don't*.** | Compare perspectives. Inspect sources. Keep the outcome. | Relate two contrasting positions to a source and an outcome; make disagreement inspectable rather than presenting a feature list. |
+| 3. What to try | **Choose with lead to pursue using turns.** | Choose who speaks, open a source, and ask a follow-up. | Compose a compact speaker/source/follow-up example, not another paragraph or numbered checklist page. |
+| 4. The example | **Let's say you wanted to analyze something complex? Like *a corporate bond*** | Explore an HDFC bond review from 2020 in this demo. | Pair the dated fact sheet with three viewpoints, distinguishing checkable terms from judgments and open questions. |
 
 On the final moment, retain the small, readable qualifier **Historical example ·
 Not investment advice.** Use the contrast between dated facts and differing
 judgments to explain why this example is useful, without requiring finance
 expertise or suggesting Sabha is finance-only. Do not foreground coupon/ISIN/rating
-jargon or repeat investment disclaimers throughout the journey.
+jargon or repeat investment disclaimers throughout the journey. Any such disclaimers should be placed on the bottom corners.
 
-Do not call the user a **director** or assign that title to a visual node. Explain
-that the user directs the meeting without assigning them a role title. Do not
+Do not call the user a **director** or assign that title to a visual node. The
+plain-language explanation **you direct the meeting** is intentional. Do not
 introduce replay-package terminology or technical playback explanations into the
 intro or entry-status copy. This copy restriction does not authorize false claims
 of live generation or removal of necessary factual disclosures elsewhere.
@@ -382,8 +363,8 @@ and fade, with an upcoming composition discernible in the distance.
   third a closer speaker/source/follow-up composition; the fourth a dated central
   fact sheet with viewpoints around it. These are the visual jobs in the copy
   table, not miniature dashboard screenshots or additional onboarding screens.
-- Compose the large Satoshi headline and any necessary supporting line in the
-  negative space of each moment. Their HTML presentation follows that moment's camera
+- Compose the large Satoshi headline and short supporting passage in the negative
+  space of each moment. Their HTML presentation follows that moment's camera
   range while remaining readable at foreground size. Do not copy the reference's
   8px captions or scale whole passages from illegible specks to enormous text.
   Distant previews may show card silhouettes/sigils without requiring their text
@@ -437,12 +418,6 @@ No warp-speed streaks, large white discs, flashing, random reseeding on input, o
 constant forward star travel. The starfield is an addition to the references, not
 an excuse to flatten their gallery depth.
 
-The field must remain recognizably star-filled throughout the colour journey,
-including intermediate blends, not disappear into the shader background or be
-reduced to the trail's particle wake. Sparse means spacious, not imperceptible.
-Balance star contrast and depth distribution against each environment while
-keeping the reading areas quiet; do not restore visibility by adding clutter.
-
 ### Spatial flowing trail
 
 Retain the little illuminated line crossing the scene as a **thin WebGL curved
@@ -455,18 +430,6 @@ animation played once per moment.
   starting model; account for Sabha's actual card and text bounds rather than
   copying its sine amplitudes. The head's Z relation to the camera is essential
   to how the line crosses and recedes through the scene.
-- Make its travel along the **depth/Z axis, perpendicular to the screen**, plainly
-  visible. The curve may sweep laterally, but its approach/recession and changing
-  perspective must read as a line running through space, not merely across the
-  screen. Preserve that depth when framing the scene for mobile.
-- Attach a **small glowing four-point star** to the leading end. Its world-space
-  position follows the actual trail head, including easing and reversal; it is
-  not a separate screen-space animation. A camera-facing procedural WebGL shape
-  may keep its four points legible while its position and apparent size convey
-  depth. Use a restrained luminous core/halo with bounded apparent size: no large
-  flare, flashing, five-point star, emoji, or detached orbiting ornament. This
-  star is the identity cue; a particle burst is not a substitute. Under reduced
-  motion it may remain as a static accent, without travel or pulsing.
 - Sample and smooth a bounded history of spatial head positions, form a smooth
   spline, and render its tapered tube/ribbon in the same perspective scene.
   Material colour, emission, width, history length, and edge opacity are
@@ -652,10 +615,6 @@ The subsequent implementation must demonstrate:
 - Satoshi display typography and familiar Sabha cards visibly dominate; all four
   moments follow the new order/copy baseline without dense explanations, director
   titles, package jargon, fabricated evidence, or cloud/nebula effects.
-- Minimal visible wording: no redundant subtitles, authoring labels, or repeated
-  explanations inside cards. Strong colour, depth, and negative space carry the
-  composition; the sparse starfield remains visibly present across every palette
-  and intermediate blend, not just at the opening or around the trail.
 - At the start, each foreground reading window, intermediate approach/passage
   positions, and the end: type/card alignment, near-plane fades, distant previews,
   active copy, and all three shader colour channels remain coherent. Review slow
@@ -663,10 +622,8 @@ The subsequent implementation must demonstrate:
   blank composition, or washed-out colour midpoint.
 - Sparse seeded stars and a crossing curved mesh trail share the camera journey;
   head placement, bounded history, reversal/reseeding, start/end fades, and motion
-  after input release are reviewed. The trail visibly travels along the screen's
-  perpendicular depth axis and ends in a small glowing four-point star attached
-  to its head. No text/controls are crossed, no tangled reversal connection, and
-  no trail presented as loading or AI activity.
+  after input release are reviewed. No text/controls are crossed, no tangled
+  reversal connection, and no trail presented as loading or AI activity.
 - Homepage success, slow-session, slow-metadata, failure, scoped retry, reduced
   motion, and repeated-click cases: no early navigation, duplicate session,
   refetch/loading flash after handoff, mixed identity, or permanently stuck CTA.
