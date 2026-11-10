@@ -34,6 +34,8 @@ Four short steps are a proposal, not an approved count or final script:
 3. Provide Back, Continue, Skip, and understandable position/progress. No automatic
    timer advancement or forced reading duration. Hide competing nav/HUD behind the
    introduction; support keyboard, screen reader, mobile, text zoom, and focus.
+   **Navigation superseded by the design addendum:** scrolling replaces visible
+   Back/Continue buttons; retain the other accessibility and escape guarantees.
 4. Preserve the intended destination for direct/deep links. Intro acknowledgement
    does not complete a creation/turn/closing step. Do not repeat the introduction
    on ordinary soft navigation or every turn restart; provide a deliberate revisit.
@@ -218,9 +220,23 @@ is documentation only; the implementation and verification record above describe
 the earlier version, not completion or testing of this redesign.
 
 This section supersedes the earlier introduction's step order, wording, visible
-branding, static visual compositions, and standalone entry-loading presentation.
+branding, button-based step navigation, static visual compositions, and standalone
+entry-loading presentation.
 It does not supersede the existing demo stages, recovery guarantees, guidance
 ownership, acknowledgement policy, or isolation of practice from meeting progress.
+
+Navigation correction (2026-11-10): scrolling is the primary interaction and the
+continuous driver of the transitions, as in the references. The earlier wording
+in this addendum that retained Back/Continue buttons and made scrolling optional
+was incorrect; the scroll-driven requirements below replace it.
+
+Renderer and source-study correction (2026-11-10): **the normal-motion experience
+uses Three.js/WebGL, not Canvas2D**. Both references build their depth with a
+perspective camera, spatial gallery planes, shader backgrounds, and a mesh trail.
+The earlier Canvas2D/CSS-only recommendation and requirement for a native vertical
+scroll surface were unsupported simplifications. The source-grounded requirements
+below replace them; the static accessibility/failure fallback is not the target
+visual implementation.
 
 ### Primary reference and design intent
 
@@ -241,12 +257,44 @@ The governing hierarchy is **headline and cards first; colour second; stars and
 line third**. Atmosphere should be strong without becoming something the user
 must study. The user should understand each idea at a glance.
 
+Minimalism clarification (2026-11-10): use the fewest elements and words that
+communicate each idea. Colour, depth, negative space, and the visible starfield
+carry the atmosphere; additional explanation or decoration must earn its place.
+The reference adaptation must not lose the starfield. The spatial trail ends in
+a small glowing four-point star, carrying Sabha's identity without a logo/header.
+
+### Source findings that govern the adaptation
+
+The study covers Cosmic Trail's deployed
+[JavaScript](https://cosmic-trail.vercel.app/assets/index-Dco8YSdU.js) and
+[CSS](https://cosmic-trail.vercel.app/assets/index-CiA9Sm49.css), plus DepthGallery
+at [commit 28190e0](https://github.com/houmahani/codrops-depth-gallery/tree/28190e0920df887f069524c3863db397af34c1c8).
+The Cosmic Trail bundle inspected on 2026-11-10 has SHA-256
+`ec4baec1a390b3cd6e7d267fe79a8b9b3388824b86f8c6a0ece8581f58839968`.
+Its minified identifiers are not a reusable public API. These are source findings,
+not claims that Sabha already implements or has tested the same behaviour:
+
+| Mechanic | Cosmic Trail | DepthGallery | Consequence for Sabha |
+| --- | --- | --- | --- |
+| Input and camera | Page overflow is hidden. Wheel/touch input changes a bounded target Z; the perspective camera eases toward it. Actual plane Z positions are `-index * 5`, overriding the Z values in the entry data. | `Scroll.js` normalizes wheel units, accumulates target input, smooths current input, clamps both, and derives camera Z and signed velocity. | Use a continuous, bounded virtual depth journey, not native page scrolling or a wheel-to-next-slide controller. Bounds follow the actual scene layout. |
+| Spatial composition | Nine image planes have authored X/Y offsets and perspective scale; the next plane can already be visible in the distance. Planes also have slight time-based vertical float. | `Gallery.js` places planes at fixed depth intervals, compresses horizontal spread on mobile, and adds separately smoothed pointer parallax and velocity-driven drift/breath. | Author positions, scale, visibility, and reading windows in space. Do not replace the gallery with four fixed screen layouts that merely crossfade. |
+| Visibility | Image opacity depends on camera distance, fading out around passage through the plane; HTML captions have a separate proximity gate. | `getPlaneBlendData()` samples ahead of the camera; adjacent planes crossfade. Labels select the nearer member of that blend. | Separate physical placement, visual visibility, and semantic active-moment selection, but derive all three from the same camera. No inherited opacity constants or arbitrary step-index switches. |
+| Colour | A full-screen fragment shader interpolates three nine-entry colour arrays from continuous camera progress: base colour plus two broad moving colour fields. | `getMoodBlendData()` blends per-plane base/field colours using a configurable camera sampling offset; the background also responds to depth and smoothed velocity. | Preserve continuous, multi-channel colour choreography, including its alignment with the approaching composition. A uniform tint behind a slideshow is not equivalent. |
+| Trail | Points are laid ahead of the camera toward the approaching plane. A smoothed point history becomes a tapered 3D tube, with a particle wake. Reverse movement removes history rather than replaying an identical line. | `TrailController.js` authors a progress-dependent XYZ head path; length and edge opacity vary with progress. Reversal resets/reseeds the trail and shortens its history. `Trail.js` builds a spline-based tapered mesh. | Keep a spatial head, curved mesh, and history-sensitive wake. Use DepthGallery's explicit reversal handling rather than promising an exactly reversible 2D stroke. |
+| Text | Captions are actual HTML attached to scene anchors through `CSS2DRenderer`. | `Label.js` maintains a fixed HTML overlay, changing content only when the active plane changes. | Keep essential text as semantic DOM, coordinated with the WebGL scene. `CSS2DRenderer` is not Canvas2D and does not render the gallery, background, or trail. |
+
+Reference values describe the inspected code, not Sabha tuning targets. The
+references do not supply the requested sparse ambient starfield: Cosmic Trail's
+particle wake and photographic skies are not a substitute for one. Their global
+listeners, tiny captions, arbitrary random sizing, frame-dependent easing, and
+debug/asset-loading scaffolding are not requirements to copy.
+
 ### Art direction and typography
 
 - Design dark-first, beginning in the homepage's near-black violet world. Entry
   should feel like going further into the homepage, not arriving at another site.
   Dark-first applies to the whole journey, not merely the first screen.
-- Give each stop a distinct, rich, full-screen colour environment. Violet → deep
+- Give each moment a distinct, rich, full-screen colour environment. Violet → deep
   cobalt → muted rose → warm amber-violet is a starting palette study, not an
   approved set of final colours. Art-direct endpoints and intermediate blends;
   avoid muddy transitions, a cream/daylight opening, or almost-black screens with
@@ -261,16 +309,21 @@ must study. The user should understand each idea at a glance.
   the homepage's approximately 34–72px responsive display scale, tight tracking
   (around -0.04em), and compact leading (around 1.02), adapting for actual line
   breaks and zoom. Do not simply retain the smaller intro page-title treatment.
-- Headlines should usually occupy one or two lines at desktop size. Supporting
-  copy is one short passage, not a second explanation of the visual. Never shrink
-  essential text into the reference's tiny caption treatment to preserve layout.
+- Headlines should usually occupy one or two lines at desktop size. Use only
+  words that add meaning: omit supporting copy when the headline and cards already
+  communicate the idea. No obligatory eyebrow, subtitle, card caption, or repeated
+  instruction per moment. Never shrink essential text into the reference's tiny
+  caption treatment to preserve layout. Fewer words must mean clearer ideas, not
+  smaller type or cryptic labels.
 - Our familiar sigils, distinct participant identities, and violet card materials
   replace the reference's image planes. Cards are the content, not an enclosing
   presentation panel. Avoid nested boxes, generic dashboard mockups, repeated
   text-left/visual-right templates, and generated portraits.
 - No Sabha logo, brand header, tagline, competing workspace navigation, or tutorial
-  HUD is visible during the introduction. Necessary controls and progress remain
-  legible and subordinate at the lower composition edge, not hidden or hover-only.
+  HUD is visible during the introduction. A restrained initial scroll cue and
+  non-interactive journey progress can explain navigation. Skip introduction and
+  the final Enter the demo action remain legible and subordinate, not hidden or
+  hover-only. Do not add visible Back/Continue buttons or a pagination bar.
 
 ### Four moments and copy baseline
 
@@ -280,10 +333,15 @@ and communicate the remaining meaning through the card compositions.
 
 | Moment | Headline | Supporting copy | Visual job |
 | --- | --- | --- | --- |
-| 1. The idea | **One question. Different minds.** | You direct the meeting. Choose which AI speaks next. | Three distinct participant cards relate to one shared question; establish different AI perspectives and the user's ability to choose. |
-| 2. The value | **See where they disagree.** | Compare arguments. Inspect sources. Keep the outcome. | Relate two contrasting positions to a source and an outcome; make disagreement inspectable rather than presenting a feature list. |
-| 3. What to try | **Choose. Question. Explore.** | Choose who speaks, open a source, and ask a follow-up. | Compose a compact speaker/source/follow-up example, not another paragraph or numbered checklist page. |
-| 4. The example | **Clear facts. Different judgments.** | Explore an HDFC bond review from 2020. | Pair the dated fact sheet with three viewpoints, distinguishing checkable terms from judgments and open questions. |
+| 1. The idea | **Different minds. You direct.** | Choose which AI speaks. | Three distinct participant cards relate to one shared question; establish different AI perspectives and the user's ability to choose. |
+| 2. The value | **See where they disagree.** | Check the sources. | Relate two contrasting positions to a source and an outcome; make disagreement inspectable rather than presenting a feature list. |
+| 3. What to try | **Choose. Ask. Explore.** | None; the cards carry the actions. | Compose a compact speaker/source/follow-up example, not another paragraph or numbered checklist page. |
+| 4. The example | **Clear facts. Different judgments.** | HDFC bond review · 2020. | Pair the dated fact sheet with three viewpoints, distinguishing checkable terms from judgments and open questions. |
+
+The moment names and visual jobs in this table are authoring guidance, not extra
+on-screen labels. Do not render the third row's supporting-copy note. Essential
+participant/source labels and the final qualifier remain; do not add explanatory
+paragraphs to the cards to compensate for shorter headline copy.
 
 On the final moment, retain the small, readable qualifier **Historical example ·
 Not investment advice.** Use the contrast between dated facts and differing
@@ -291,8 +349,8 @@ judgments to explain why this example is useful, without requiring finance
 expertise or suggesting Sabha is finance-only. Do not foreground coupon/ISIN/rating
 jargon or repeat investment disclaimers throughout the journey.
 
-Do not call the user a **director** or assign that title to a visual node. The
-plain-language explanation **you direct the meeting** is intentional. Do not
+Do not call the user a **director** or assign that title to a visual node. Explain
+that the user directs the meeting without assigning them a role title. Do not
 introduce replay-package terminology or technical playback explanations into the
 intro or entry-status copy. This copy restriction does not authorize false claims
 of live generation or removal of necessary factual disclosures elsewhere.
@@ -305,40 +363,170 @@ sheet, disagreements, resulting research checklist, personas, prompt history,
 knowledge stacks, and settings; short intro copy does not remove that coverage or
 make optional exploration mandatory.
 
-### Continuous space, starfield, and flowing line
+### Required WebGL scene and spatial choreography
 
-The atmosphere is a **coded, colour-shifting starfield**, not a nebula. No cloud
-layers, smoke, dust lanes, procedural cloud generation, photographs, or video are
-required. Broad tonal variation is acceptable without recognizable cloud/blob
-shapes or elaborate background textures.
+Build one persistent **Three.js/WebGL perspective scene** for the open
+introduction. The camera travels through four authored compositions. The cards
+are spatial objects, not four full-screen slides animated with CSS scale to
+suggest depth. Retain the references' approach → readable foreground → passage
+and fade, with an upcoming composition discernible in the distance.
 
-- Place sparse stars at several stable depths. Perspective should produce gentle
-  differences in movement, apparent size, and brightness; avoid warp-speed streaks,
-  hyperspace effects, flashing, or large stars crossing the reading area.
-- Tie star positions and camera depth to journey position, not continuous forward
-  travel or random regeneration. Back retraces the same space. Fade/cull nearby
-  stars before they become large distracting discs.
-- Preserve the little animated line crossing the scene. It is one thin, softly
-  illuminated curve with a leading tip and tapered, fading tail, travelling through
-  open space around the cards rather than through readable text.
-- The line, starfield depth, card movement, and colour blend follow one shared
-  transition progress. The line responds to direction, reverses naturally with
-  Back, and remains continuous when motion is interrupted. It settles with the
-  scene instead of looping for attention.
-- The line expresses movement through the introduction, never AI thinking,
-  retrieval, loading progress, agreement, or an action performed in the meeting.
-- Use brief depth travel between four readable stops. Compositions resolve and
-  settle so users can read; no automatic advancement or idle forward camera drift.
-  Preserve continuity without giant outgoing cards obscuring incoming content.
-- Keep essential headings, card text, and controls as semantic HTML. They must not
-  become tiny receding labels or text rasterized into a canvas texture.
+- Define each composition's XYZ anchors, dimensions, reading distance, visibility
+  range, and colour sampling range as presentation data. Card surfaces and sigils
+  occupy that space; project their semantic HTML content from the same camera.
+  Perspective, camera-relative distance, and clipping determine apparent size and
+  position, not unrelated per-step animation timelines.
+- Do not put every card in a flat row or reuse one text-left/visual-right layout.
+  Give the first moment a shared-question/participant cluster; the second a
+  separated pair of contrasting positions with their evidence relationship; the
+  third a closer speaker/source/follow-up composition; the fourth a dated central
+  fact sheet with viewpoints around it. These are the visual jobs in the copy
+  table, not miniature dashboard screenshots or additional onboarding screens.
+- Compose the large Satoshi headline and any necessary supporting line in the
+  negative space of each moment. Their HTML presentation follows that moment's camera
+  range while remaining readable at foreground size. Do not copy the reference's
+  8px captions or scale whole passages from illegible specks to enormous text.
+  Distant previews may show card silhouettes/sigils without requiring their text
+  to be read. Avoid simultaneous competing headlines.
+- Author readable camera-distance windows rather than requiring a precise stop.
+  Incoming cards grow into view as the camera approaches; outgoing ones fade
+  before near-plane enlargement or overlap obscures the next message. Visibility
+  must distinguish objects ahead of and behind the camera, not just absolute
+  distance. Never let a passed card cover the next scene's text.
+- Keep physical depth, opacity windows, active-moment selection, and colour lookup
+  aligned through a documented camera sampling offset. The reference's one-gap
+  look-ahead exists because the readable plane is ahead of the camera; sampling
+  an integer step index independently would put the wrong colour/copy on screen.
+- Use responsive scene layouts: reduce horizontal spread, adjust camera framing
+  and card dimensions, and protect type at narrow widths. Do not merely shrink
+  the desktop world until text fits. Resize/reflow must preserve journey position
+  and keep the current composition accessible.
 
-Continue and Back provide dependable step navigation. Wheel/touch movement may
-support the spatial experience, but is not the only way to advance and must not
-copy the reference's unrestricted global input interception. It must not consume
-scrolling needed for small-screen/zoomed content or disrupt focus and native
-controls. All input methods address the same four moments; no second navigation
-or tutorial state machine is introduced.
+There is no automatic forward camera travel, timed advancement, or mandatory
+snap. On input release the camera eases toward its existing target and stops
+there, including between moments. Subtle bounded float or pointer response may
+remain, as in the references, but it must not move the reading target or compete
+with the headline. Velocity-driven responses decay when travel stops. Reduced
+motion removes these effects rather than only slowing the camera.
+
+### Shader colour environment and coded starfield
+
+Use a full-viewport **shader background**, coordinated with the perspective scene.
+Each moment defines a base colour and two complementary broad colour fields.
+Interpolate all three channels continuously from camera depth, including the
+approach to the next composition; do not switch a single CSS background at an
+active-moment threshold. The reference's broad soft fields create enveloping
+colour without needing a volumetric effect. Art-direct their placement and
+movement so the entire screen changes character while text contrast stays stable.
+Any velocity-based luminance/strength response must be restrained and must not
+wash out the midpoint of a transition.
+
+This is a **coded, colour-shifting starfield**, not a nebula. Soft colour fields
+are allowed; recognizable clouds, smoke, dust lanes, procedural cloud simulation,
+elaborate cloud textures, photographs, and video are not part of this direction.
+Do not port Cosmic Trail's unused noise functions or treat its grain as a cloud
+system. Fine grain is optional surface treatment, not a replacement for stars or
+a required animated full-screen texture.
+
+Place sparse, seeded stars in the WebGL world using a bounded point buffer and
+perspective-aware point rendering. They share the camera with the cards, not a
+separate screen-space star animation. Stable XYZ positions give coherent parallax,
+size, and brightness changes; reverse scrolling returns through the same field.
+Fade/cull stars at the near plane and keep the headline/card reading areas quiet.
+No warp-speed streaks, large white discs, flashing, random reseeding on input, or
+constant forward star travel. The starfield is an addition to the references, not
+an excuse to flatten their gallery depth.
+
+The field must remain recognizably star-filled throughout the colour journey,
+including intermediate blends, not disappear into the shader background or be
+reduced to the trail's particle wake. Sparse means spacious, not imperceptible.
+Balance star contrast and depth distribution against each environment while
+keeping the reading areas quiet; do not restore visibility by adding clutter.
+
+### Spatial flowing trail
+
+Retain the little illuminated line crossing the scene as a **thin WebGL curved
+mesh with a spatial head and a tapered wake**. It must inhabit the camera journey,
+not be an SVG flourish, cursor follower, screen-space progress line, or a separate
+animation played once per moment.
+
+- Author a head path ahead of the camera that leads through the open space toward
+  the approaching composition. DepthGallery's progress-driven XYZ path is the
+  starting model; account for Sabha's actual card and text bounds rather than
+  copying its sine amplitudes. The head's Z relation to the camera is essential
+  to how the line crosses and recedes through the scene.
+- Make its travel along the **depth/Z axis, perpendicular to the screen**, plainly
+  visible. The curve may sweep laterally, but its approach/recession and changing
+  perspective must read as a line running through space, not merely across the
+  screen. Preserve that depth when framing the scene for mobile.
+- Attach a **small glowing four-point star** to the leading end. Its world-space
+  position follows the actual trail head, including easing and reversal; it is
+  not a separate screen-space animation. A camera-facing procedural WebGL shape
+  may keep its four points legible while its position and apparent size convey
+  depth. Use a restrained luminous core/halo with bounded apparent size: no large
+  flare, flashing, five-point star, emoji, or detached orbiting ornament. This
+  star is the identity cue; a particle burst is not a substitute. Under reduced
+  motion it may remain as a static accent, without travel or pulsing.
+- Sample and smooth a bounded history of spatial head positions, form a smooth
+  spline, and render its tapered tube/ribbon in the same perspective scene.
+  Material colour, emission, width, history length, and edge opacity are
+  art-directed together against each colour environment. Keep the result fine
+  and legible, not a thick glowing cable. A particle wake is optional and must
+  not turn into a second starfield or obscure the cards.
+- Handle direction reversal explicitly. Reseed/trim and shorten the wake so it
+  turns naturally without connecting old and new points into a long diagonal or
+  tangled loop. The camera, card positions, and palette retrace their spatial
+  mapping; the history-dependent trail need not reproduce identical pixels.
+- Initial seeding and start/end fades should avoid an abruptly appearing or
+  abruptly severed line. Continue sampling during camera easing, not only during
+  wheel events. At rest the trail must not keep drawing a new forward journey;
+  any remaining movement or wake decay stays subordinate to reading.
+- The line never crosses essential foreground text or actionable controls. This
+  is a deliberate presentation-layer constraint: do not assume the reference's
+  depth settings automatically provide it. It expresses travel through the intro,
+  never AI thinking, retrieval, API loading, consensus, or meeting progress.
+
+### Scroll-driven interaction
+
+Scrolling is essential to the experience, not an optional enhancement. Wheel,
+trackpad, and touch scrolling move through a continuous spatial journey. Scroll
+distance determines the card transforms, camera depth, colour blend, and line
+position together. Do not convert a wheel gesture into a Next/Previous command or
+trigger a fixed-duration slide animation when a threshold is crossed. Do not use
+mandatory scroll snapping to turn the journey back into four discrete pages.
+
+Use a **bounded virtual scroll controller scoped to the open introduction**.
+Its data flow is normalized input → accumulated target distance → eased current
+distance → camera Z. Derive journey progress and signed travel velocity from that
+same current distance. Clamp target and current distance against the first/last
+authored viewing positions, so overscroll cannot create hidden input debt or an
+empty end of the gallery. Normalize pixel/line/page wheel units and touch drag
+direction; match wheel, trackpad, and swipe direction rather than inheriting
+Cosmic Trail's inconsistent keyboard signs or Home/End mapping. Use time-based
+damping so response does not change with display refresh rate.
+
+Bind input only while the intro is active and release it on dismissal. Do not
+copy unrestricted window listeners or global body styles into the application.
+Preserve pinch/browser zoom, focused controls, and native scrolling inside any
+content that needs it. If viewport size or zoom makes the spatial reading layout
+unusable, provide the same ordered HTML compositions in normal document scroll
+rather than trapping the user in a fixed canvas. This is an accessibility
+adaptation, not a replacement for the intended WebGL journey at normal settings.
+
+Keyboard arrows and Page Up/Page Down adjust the same target distance; Home goes
+to the start and End to the final reading position without entering the demo.
+Do not use separate key-triggered slide transitions. Preserve Tab access to
+actual actions and native keys in focused controls. Screen-reader content remains
+in meaningful document order with all four moments available without operating a
+canvas. Offscreen visual previews must not create invisible focus targets or
+duplicate accessible text. Do not move focus on every scroll update or announce
+every animation frame.
+
+Journey progress reflects scroll position; an active-moment label is derived from
+the readable regions, not a separate navigation state. Scrolling to the end does
+not automatically dismiss the introduction or advance the meeting: the final
+Enter the demo action remains explicit. Skip introduction is an escape from the
+journey, not a replacement for scrolling through it.
 
 ### Homepage departure and readiness handoff
 
@@ -381,36 +569,65 @@ The decorative renderer must not become another prerequisite for entry.
 
 ### Implementation boundaries and retained behaviour
 
-The recommended lightweight structure is **CSS colour environments → transparent
-Canvas2D stars and line → HTML cards, wording, and controls**. No new Three.js,
-GSAP, Motion, shader framework, or rewrite of the homepage renderer is required by
-this design. Treat that as the preferred approach, not a verified performance
-claim. If a different renderer is proposed, justify it against the same result
-and constraints rather than importing the reference's entire application.
+The required structure is **a full-screen WebGL shader background → a Three.js
+perspective scene containing card/sigil surfaces, stars, and the trail → coordinated
+semantic HTML typography, card content, and controls**. Render the background
+without writing scene depth, then the perspective content, then the DOM overlay.
+Layering must preserve both spatial coherence and unobstructed essential text.
+Do not substitute Canvas2D or CSS-only faux depth for this normal-motion path.
 
-Use stable seeded positions, timestamp-based animation, bounded pixel resolution
-and star density, and cached drawing primitives where useful. Avoid per-star
-expensive blur, unbounded device-pixel-ratio scaling, per-frame React state, or
-accumulated opaque canvas trails that mask the changing CSS background. A bounded
-redrawn tail and prepared colour layers are sufficient starting techniques.
-Pause hidden work, avoid jumps after resuming, release resources on unmount, and
-stop redrawing settled scenes. Provide the same readable composition if canvas
-is unavailable; rendering must never block the controls.
+Isolate the renderer and scroll controller in the intro's client-side feature.
+Three.js is not currently a frontend dependency; subsequent implementation must
+add it explicitly. React Three Fiber, GSAP, Motion, a shader framework, and a
+rewrite of the homepage's separate raw-WebGL renderer are not prerequisites.
+Do not import either reference's whole app, debug panels, photography, particle
+textures, or global event/lifecycle scaffolding. Retain the MIT notice for adapted
+DepthGallery source; do not assume that licence covers Cosmic Trail's deployed
+bundle or its assets.
 
-Keep `DemoIntroProvider` authoritative for intro state; rendering interpolates
-presentation only. `DemoTutorialProvider` remains the sole contextual guidance
-owner. Keep the existing sessionStorage acknowledgement key and its exact
-refresh/soft-navigation/revisit/restart/reset semantics. A revisit must not remount
+Keep essential text out of GPU textures. Project semantic DOM anchors/bounds from
+the actual camera and viewport so type remains selectable, accessible, and
+aligned with the card surfaces. Cosmic Trail's `CSS2DRenderer` demonstrates HTML
+anchoring, not perspective-scaled HTML cards. The Three.js CSS2D/CSS3D renderer
+documentation limits their zoom support to 100%; copying either unmodified does
+not satisfy this spec's 200% zoom requirement. Use a zoom-aware DOM projection or
+the explicit reflow adaptation above, and verify it in the browser.
+
+Use timestamp-based damping, bounded drawing-buffer resolution and star density,
+reused geometry/buffers, and explicit ownership/disposal of GPU resources. The
+reference rebuilds its tube geometry after point updates; preserve its curved
+spatial result without requiring its allocation pattern or its arbitrary segment
+counts. Avoid per-frame React state, unnecessary material recompiles, expensive
+per-star blur, and unrestricted device-pixel-ratio scaling. Pause hidden work,
+reset frame timing on return, and stop rendering once easing/wake effects have
+settled unless a deliberately budgeted ambient effect remains. Any ambient loop
+must be justified by visual review and profiling, not inherited accidentally.
+
+Handle WebGL unavailability and context loss with the same ordered, readable HTML
+compositions and normal scroll access. Controls and acknowledgement remain
+operable; renderer initialization/restoration is never an entry-readiness gate.
+This fallback does not authorize silently delivering a 2D approximation as the
+primary experience. No performance claim is verified by choosing WebGL alone.
+
+Keep `DemoIntroProvider` authoritative for intro lifecycle and acknowledgement.
+Within that lifecycle, continuous scroll position drives the presentation and
+determines the active moment; do not make the existing discrete step buttons or
+step index drive the animation. This remains one intro experience, not a second
+navigation or tutorial state machine. `DemoTutorialProvider` remains the sole
+contextual guidance owner. Keep the existing sessionStorage acknowledgement key
+and its exact refresh/soft-navigation/revisit/restart/reset semantics. A revisit must not remount
 the workspace or discard drafts/playback/practice state. Keep intended URLs,
 chapter deferral, focus restoration, modal isolation, and the existing
 overview → setup/create → open-room journey. **Enter the demo** does not jump
 directly into a meeting or complete any domain objective.
 
-Preserve Back, Continue, Skip introduction, Enter the demo, Escape behaviour, and
-understandable `Step N of 4` progress. No animation wait, forced reading duration,
-or transition lockout may delay usable controls. Reduced motion removes depth
-travel, parallax, and the travelling trail while preserving content and state;
-use static compositions or an appropriately restrained transition. Decorative
+Retain Skip introduction, the final Enter the demo action, Escape behaviour, and
+understandable, non-interactive journey progress. The old requirement for visible
+Back/Continue buttons is superseded. No animation wait, forced reading duration,
+or transition lockout may delay scrolling or usable actions. Reduced motion keeps
+the same content order and scroll access but removes depth travel, parallax, and
+the travelling trail; use readable, normally scrolling static compositions or an
+appropriately restrained presentation, not a button-only replacement. Decorative
 canvas is non-interactive and hidden from assistive technology. Maintain readable
 contrast in every colour environment, keyboard operation, meaningful screen-reader
 order, focus handling, small-screen scrolling, and 200% zoom reflow.
@@ -422,11 +639,34 @@ The subsequent implementation must demonstrate:
 - A continuous Cosmic Trail-like experience, not four conventional slides with a
   starfield behind them; dark-first homepage continuity and strong full-screen
   colour changes, with no visible logo/header or competing HUD.
+- A real WebGL perspective scene: camera travel through authored XYZ card/sigil
+  placements, coordinated HTML type, shader colour environments, perspective
+  stars, and a spatial mesh trail. A Canvas2D background, CSS-scale slideshow, or
+  WebGL canvas used only for decoration does not satisfy this requirement.
+- Wheel, trackpad, touch, and keyboard input drive one bounded target/current
+  camera journey. Partial input gives partial travel; reversal returns through
+  the same spatial composition and palette; input release eases to the existing
+  target without snapping. Test bounds, overscroll reversal, input-unit/sign
+  normalization, and different refresh rates. No visible Back/Continue buttons,
+  wheel-to-next-slide substitution, mandatory snapping, or automatic end navigation.
 - Satoshi display typography and familiar Sabha cards visibly dominate; all four
   moments follow the new order/copy baseline without dense explanations, director
   titles, package jargon, fabricated evidence, or cloud/nebula effects.
-- Sparse perspective stars and the crossing, tapered line follow shared progress;
-  forward/backward and interrupted transitions remain coherent and settle to read.
+- Minimal visible wording: no redundant subtitles, authoring labels, or repeated
+  explanations inside cards. Strong colour, depth, and negative space carry the
+  composition; the sparse starfield remains visibly present across every palette
+  and intermediate blend, not just at the opening or around the trail.
+- At the start, each foreground reading window, intermediate approach/passage
+  positions, and the end: type/card alignment, near-plane fades, distant previews,
+  active copy, and all three shader colour channels remain coherent. Review slow
+  scrubbing as well as fast input; no giant outgoing card, competing headline,
+  blank composition, or washed-out colour midpoint.
+- Sparse seeded stars and a crossing curved mesh trail share the camera journey;
+  head placement, bounded history, reversal/reseeding, start/end fades, and motion
+  after input release are reviewed. The trail visibly travels along the screen's
+  perpendicular depth axis and ends in a small glowing four-point star attached
+  to its head. No text/controls are crossed, no tangled reversal connection, and
+  no trail presented as loading or AI activity.
 - Homepage success, slow-session, slow-metadata, failure, scoped retry, reduced
   motion, and repeated-click cases: no early navigation, duplicate session,
   refetch/loading flash after handoff, mixed identity, or permanently stuck CTA.
@@ -437,8 +677,9 @@ The subsequent implementation must demonstrate:
   hold; optional guidance remains under its existing owner.
 - Actual browser review on small laptop and mobile, both appearances, keyboard,
   screen-reader order/focus, 200% zoom, reduced motion, and renderer fallback.
-  Profile motion and idle cost on representative devices; Canvas2D alone is not
-  evidence of acceptable performance. Review intermediate colour blends too.
+  Profile GPU/drawing-buffer cost, frame pacing, allocation and idle work on
+  representative devices; verify context-loss fallback and cleanup after repeated
+  open/close/revisit. Choosing WebGL alone is not evidence of acceptable performance.
 
 Update intro/loading tests and visual acceptance evidence to match this addendum
 when implementation occurs. The earlier passing test counts are historical and
