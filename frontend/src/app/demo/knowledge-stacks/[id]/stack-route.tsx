@@ -7,7 +7,7 @@ import { collectRecordedExamples } from "@/features/knowledge/local";
 import { EvidencePreviewProvider } from "@/features/meetings/evidence/provider";
 import { EvidencePreviewHost } from "@/features/meetings/evidence/host";
 import { EvidenceTrigger } from "@/features/meetings/evidence/trigger";
-import { useReplaySession } from "@/features/meetings/runtime/replay-session";
+import { useReplaySessionReady } from "@/features/meetings/runtime/replay-session";
 import {
     createReplayEvidence,
     descriptorForAsset,
@@ -19,7 +19,7 @@ import {
  * only receives a rendered preview action.
  */
 export function DemoKnowledgeStackRoute({ stackId }: { stackId: string }) {
-    const { session } = useReplaySession();
+    const { session } = useReplaySessionReady();
     const workspace = useDemoWorkspace();
     const evidence = useMemo(
         () =>

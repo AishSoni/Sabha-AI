@@ -60,7 +60,7 @@ export default function DemoBoardPage() {
             <main id="main-content" className="mx-auto max-w-5xl p-6" tabIndex={-1}>
                 <h1 className="type-item-title">Demo board unavailable</h1>
                 <p className="mt-2 type-body text-ink-secondary">
-                    The recorded board details are missing from this package.
+                    The recorded board details are missing from this server.
                 </p>
                 <button
                     type="button"

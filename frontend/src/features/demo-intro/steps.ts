@@ -1,29 +1,16 @@
 /**
- * The approved introduction script (spec-41, D01).
+ * Approved introduction script and moment order (spec-41).
  *
- * Four short steps, one composition. Copy stays deliberately concrete: what
- * Sabha is, why the record is inspectable, what this historical example is,
- * and what a visitor can try. Finance details belong in the example step, not
- * in every heading.
+ * The copy is the concise baseline from the addendum. Meaning that would
+ * otherwise become a paragraph belongs in the spatial card composition.
  */
-export type IntroStepId =
-    | "sabha"
-    | "record"
-    | "example"
-    | "try";
-
-export type IntroVisualId =
-    | "constellation"
-    | "record"
-    | "term-sheet"
-    | "checklist";
+export type IntroStepId = "idea" | "value" | "try" | "example";
 
 export interface IntroStep {
     id: IntroStepId;
-    eyebrow: string;
     title: string;
     body: string;
-    visual: IntroVisualId;
+    qualifier?: string;
 }
 
 export const INTRO_STORAGE_KEY = "sabha.demo.intro.v1";
@@ -31,32 +18,25 @@ export const INTRO_STORAGE_VALUE = "seen";
 
 export const INTRO_STEPS: readonly IntroStep[] = [
     {
-        id: "sabha",
-        eyebrow: "The idea",
-        title: "One director. Three expert minds.",
-        body: "Sabha is a meeting you direct. You choose who speaks next while different AI expertise argues the same question.",
-        visual: "constellation",
+        id: "idea",
+        title: "One question. Different minds.",
+        body: "You direct the meeting. Choose which AI speaks next.",
     },
     {
-        id: "record",
-        eyebrow: "The record",
-        title: "Disagreement you can inspect.",
-        body: "Arguments stay visible. Disagreements and consensus are logged, sources can be opened, and the meeting ends with a documented outcome rather than one answer.",
-        visual: "record",
-    },
-    {
-        id: "example",
-        eyebrow: "The example",
-        title: "A HDFC Bond Review Demo",
-        body: "A historical 2020 HDFC debenture review. The terms and dated rating are checkable; the downside and portfolio mandate are judgment calls. That gap shows what Sabha makes visible: what is known, what is argued, and what is still unknown. Not investment advice.",
-        visual: "term-sheet",
+        id: "value",
+        title: "See where they disagree.",
+        body: "Compare perspectives. Inspect sources. Keep the outcome.",
     },
     {
         id: "try",
-        eyebrow: "Your turn",
-        title: "What to try",
-        body: "Open the shared fact sheet, choose who speaks next, read a disagreement, send a follow-up, and close with a research checklist. Personas, prompt history, knowledge stacks, and settings are there when you want to inspect how the meeting is assembled.",
-        visual: "checklist",
+        title: "Choose. Question. Explore.",
+        body: "Choose who speaks, open a source, and ask a follow-up.",
+    },
+    {
+        id: "example",
+        title: "Clear facts. Different judgments.",
+        body: "Explore an HDFC bond review from 2020 in this demo.",
+        qualifier: "Historical example · Not investment advice.",
     },
 ] as const;
 

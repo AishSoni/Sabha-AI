@@ -37,10 +37,10 @@ test.describe("demo failure recovery", () => {
         );
 
         await page.goto("/demo/settings");
-        await expect(
-            page.getByRole("heading", { name: "Demo details unavailable" })
-        ).toBeVisible({ timeout: 30_000 });
-        await expect(page.getByText("Loading demo…")).toHaveCount(0);
+        const alert = page.locator(".intro-entry__status[role='alert']");
+        await expect(alert).toBeVisible({ timeout: 30_000 });
+        await expect(page.getByText("Loading demo")).toHaveCount(0);
+        await expect(page.getByText("Loading demo details")).toHaveCount(0);
         await expect(
             page.getByRole("heading", { name: "Demo settings" })
         ).toHaveCount(0);
@@ -72,15 +72,11 @@ test.describe("demo failure recovery", () => {
         );
 
         await page.goto("/demo");
-        await expect(
-            page.getByRole("heading", { name: "Demo details unavailable" })
-        ).toBeVisible({ timeout: 30_000 });
-        await expect(
-            page.getByText(
-                "The recorded demo details are missing from this package."
-            )
-        ).toBeVisible();
-        await expect(page.getByText("Loading demo…")).toHaveCount(0);
+        await expect(page.locator(".intro-entry__status[role='alert']")).toContainText(
+            "The recorded demo details are missing from this server.",
+            { timeout: 30_000 }
+        );
+        await expect(page.getByText("Loading demo")).toHaveCount(0);
     });
 
     test("a missing workspace seed fails closed but keeps the recording", async ({
@@ -155,9 +151,7 @@ test.describe("demo failure recovery", () => {
         );
 
         await page.goto("/demo");
-        await expect(
-            page.getByRole("heading", { name: "Demo unavailable" })
-        ).toBeVisible({ timeout: 30_000 });
+        await expect(page.locator(".intro-entry__status[role='alert']")).toBeVisible({ timeout: 30_000 });
         await expect(page.getByTestId("tutorial-hud")).toHaveCount(0);
         await expect(page.getByTestId("tutorial-hud-compact")).toHaveCount(0);
         await expect(
@@ -257,9 +251,10 @@ test.describe("demo failure recovery", () => {
         );
 
         await page.goto("/demo");
-        await expect(
-            page.getByRole("heading", { name: "Demo unavailable" })
-        ).toBeVisible({ timeout: 30_000 });
+        await expect(page.locator(".intro-entry__status[role='alert']")).toContainText(
+            "The demo is not configured on this server.",
+            { timeout: 30_000 }
+        );
         await expect(page.getByTestId("tutorial-hud")).toHaveCount(0);
         await expect(page.getByTestId("tutorial-hud-compact")).toHaveCount(0);
         await expect(

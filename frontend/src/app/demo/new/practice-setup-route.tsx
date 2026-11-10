@@ -13,7 +13,7 @@ import { EvidencePreviewProvider } from "@/features/meetings/evidence/provider";
 import { EvidencePreviewHost } from "@/features/meetings/evidence/host";
 import { EvidenceTrigger } from "@/features/meetings/evidence/trigger";
 import { useReplayRun } from "@/features/meetings/runtime/replay-run";
-import { useReplaySession } from "@/features/meetings/runtime/replay-session";
+import { useReplaySessionReady } from "@/features/meetings/runtime/replay-session";
 import {
     createReplayEvidence,
     descriptorForAsset,
@@ -22,7 +22,7 @@ import { PracticeSetupScreen } from "./practice-setup-screen";
 
 export function PracticeSetupRoute({ onExit }: { onExit: () => void }) {
     const run = useReplayRun();
-    const { session } = useReplaySession();
+    const { session } = useReplaySessionReady();
     const workspace = useDemoWorkspace();
     const config = run.safeConfig as
         | {

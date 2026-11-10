@@ -642,3 +642,148 @@ Update intro/loading tests and visual acceptance evidence to match this addendum
 when implementation occurs. The earlier passing test counts are historical and
 must not be cited as verification of this design. No implementation work or new
 verification is recorded by approval of this addendum.
+
+## Addendum implementation record (2026-11-11)
+
+Status remains a working draft: local implementation and verification are
+complete; hosted acceptance remains outstanding.
+
+### Intro journey and wording
+
+The introduction is now one continuous, scroll-driven Three.js journey rather
+than four swapped slides. One bounded virtual-scroll controller, scoped to the
+open dialog, accumulates wheel, trackpad, and touch input into a target camera
+distance and eases the current distance toward it. Camera position, colour
+blending, card depth, DOM projection, active moment, progress, and trail all
+derive from that one distance. Arrow and Page keys move the same target;
+Home/End move to the first/final reading position. There is no snapping,
+auto-advance, idle travel, or automatic dismissal. The four moments are:
+
+1. **One question. Different minds.** — *You direct the meeting. Choose which
+   AI speaks next.*
+2. **See where they disagree.** — *Compare perspectives. Inspect sources. Keep
+   the outcome.*
+3. **Choose. Question. Explore.** — *Choose who speaks, open a source, and ask
+   a follow-up.*
+4. **Clear facts. Different judgments.** — *Explore an HDFC bond review from
+   2020 in this demo.* — *Historical example · Not investment advice.*
+
+The final qualifier is the only small footnote. There are no eyebrows, chip
+labels, captions, logo, brand header, tagline, HUD, workspace navigation,
+Back/Continue buttons, or pagination bar. Visible controls are limited to
+`Skip introduction`, one hairline four-segment progress cue, and the final
+`Enter the demo`. The progress cue is non-interactive and hidden from assistive
+technology; `Step N of 4` remains available as screen-reader-only live text.
+Cards use the actual Mira, Arjun, and Leena identities, the dated HDFC fact
+sheet, and role-appropriate questions. No participant quotations, consensus,
+outcomes, citations, or financial claims are invented. Coupon, ISIN, and rating
+jargon are deliberately absent.
+
+`DemoIntroProvider` remains the lifecycle and acknowledgement owner and keeps
+the existing `sabha.demo.intro.v1` tab-scoped key. Acknowledgement is read after
+hydration and before paint, so the first render is dark-first in both server and
+client. Revisit keeps the workspace mounted behind the modal; restart, reset,
+refresh, soft navigation, deep links, Escape, focus restoration, and chapter
+deferral keep their prior semantics. `DemoTutorialProvider` remains the sole
+contextual-guidance owner. Entering the introduction never completes a meeting
+objective.
+
+### Entry readiness and handoff
+
+`features/demo-entry` provides one shared loader for the replay session and its
+safe config. It validates the pinned package identity, meeting, initial
+checkpoint, and top-level board/intake metadata; applies a 20-second deadline;
+and keeps the decoded session pinned when a metadata-only retry is requested.
+The homepage CTA starts this acquisition immediately on plain activation while
+the existing 1050 ms departure runs. Navigation waits for both the departure
+and a valid handoff. A slow request shows one purposeful `Preparing the demo.`
+status instead of a blank or stuck button; success stages an in-memory handoff
+and navigates once. Failure stays on the homepage with a concise inline message
+and scoped retry: session failure retries the session, while metadata failure
+reuses the same session and never calls `/replay/session` again. Modified and
+middle clicks remain native, reduced motion still gates navigation on readiness,
+and duplicate/stale/abandoned requests are ignored.
+
+`ReplaySessionProvider` is now non-blocking and renders its children while
+session and safe-config status are derived from data. The in-memory handoff,
+when present, is fully decoded before use; the workspace is mounted only when
+both records are ready and is keyed by the decoded package identity. The old
+standalone `Loading demo` and `Loading demo details` screens are deleted. Direct
+entry, refresh, new tab, and deep links render a composed full-screen entry
+shell with the same atmosphere and stable geometry, an honest pending/error
+line, and a scoped `Try again`; the destination URL is preserved. The intro
+acknowledgement, Skip, and Escape cannot bypass readiness. The decorative
+renderer is never required for entry or retry.
+
+### Spatial scene
+
+The normal-motion scene renders a full-screen shader background first, clears
+depth, then renders the perspective scene: seeded star points, distant card
+plates, and one thin tapered spatial trail. Essential copy and card content stay
+in semantic HTML and are projected from the same camera and authored anchors;
+no text is baked into GPU textures. The four authored compositions use separate
+copy and card coordinates, responsive mobile anchors, and distinct reading
+windows. Outgoing cards fade before they can cover the next composition; distant
+plates remain faint silhouettes rather than competing readable content.
+
+Dark-first palettes move through violet, deep cobalt, muted rose, and warm
+amber-violet. Each has a deliberately composed light counterpart, and both are
+applied through the existing appearance provider without persistence. Base
+colour and two broad fields interpolate continuously from camera depth; there
+are no clouds, nebula layers, photographs, or threshold colour switches.
+
+Stars use a bounded seeded buffer in world space with stable positions, near
+fade, quiet reading areas, and a DPR cap of 2. The trail is a thin mesh with a
+spatial head, bounded history, and tapered wake; it is reseeded/shortened on
+reversal, lives behind DOM content, and never represents loading, retrieval,
+agreement, or AI activity. Rendering stops after the camera settles, pauses
+while hidden, reuses scene resources, and disposes geometry, materials, and the
+renderer on unmount. Context loss and WebGL initialization failure switch to the
+ordered fallback.
+
+### Fallbacks and accessibility
+
+Reduced motion, WebGL unavailability, context loss, compact landscape, and
+unusable text zoom use the same four moments in normal document scroll with
+static colour fields and no depth travel, parallax, or travelling trail. The
+fallback keeps the same headings, card content, order, Skip, and readiness-gated
+Enter. The canvas is decorative, non-interactive, and hidden from assistive
+technology. The dialog retains a Radix title/description, meaningful reading
+order, native controls, visible focus, Escape handling, and focus restoration.
+Small screens, 200% text, and both appearances keep readable type, no horizontal
+overflow, and the controls at the lower composition edge.
+
+### Verification performed
+
+- Frontend full `npx vitest run`: 137 files, 849 tests passed in 38.21 s.
+- `npx tsc --noEmit` passed.
+- `npm run lint -- --quiet` reported 0 errors and the same 13 pre-existing
+  warnings.
+- `npm run build` passed with Next.js 16.1.4 and 20 static pages.
+- Production Playwright acceptance (`npm run test:e2e:prod`): 84 tests, 80
+  passed, 4 skipped, 0 failed in 2.2 m. The opt-in legacy-journey and
+  mixed-operator cases remain skipped. Coverage includes the scroll journey,
+  deep-link Skip, WebGL-unavailable fallback, context-loss fallback, reduced
+  motion, mobile/keyboard/200% text, entry pending/error and metadata-only
+  retry, homepage slow/failure/retry/reduced/repeated activation, appearance,
+  guidance, evidence, replay isolation/resilience, and room geometry.
+- The default demo guardrail still permits only the single tab-scoped intro
+  acknowledgement key and rejects other browser persistence.
+- Browser review at 1366x768 and 390x844, dark and light, confirmed one-line
+  desktop headlines, two-line mobile headlines, no eyebrow/chip remnants, rich
+  full-screen colour, readable cards, visible trail, a composed light
+  counterpart, and no horizontal overflow at 390 px.
+- Chrome DevTools traces on the Three.js scene: a scrubbed forward/back
+  transition recorded CLS 0.00 with no long-task or layout warning; a 3.2 s
+  settled trace recorded no performance insight, consistent with rendering
+  stopping after easing.
+- `git diff --check` passed.
+
+Known limits: no committed visual-regression baseline was added; screenshots and
+traces are local review artifacts. Performance evidence comes from desktop
+Chrome with DevTools, not a physical low-end or mobile GPU, and no standalone
+heap-allocation profile was captured. Screen-reader checks use semantic markup,
+the accessibility tree, and focus behavior rather than a dedicated screen-reader
+session. Hosted acceptance remains outstanding.
+
+Changes remain uncommitted.

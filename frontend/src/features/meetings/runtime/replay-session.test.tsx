@@ -7,7 +7,11 @@ import {
     demoSafeConfigWire,
     replaySessionWire,
 } from "../../../../tests/fixtures/demo/journey";
-import { ReplayMetadataGate } from "@/app/demo/replay-metadata-gate";
+import {
+    clearEntryHandoff,
+    stageEntryHandoff,
+    type ReplayEntry,
+} from "@/features/demo-entry";
 import {
     ReplaySessionProvider,
     safeConfigFailureMessage,
@@ -25,7 +29,10 @@ function Probe() {
     const state = useReplaySession();
     return (
         <div>
-            <span data-testid="meeting">{state.session.meeting_id}</span>
+            <span data-testid="meeting">
+                {state.session?.meeting_id ?? "none"}
+            </span>
+            <span data-testid="session-status">{state.sessionStatus}</span>
             <span data-testid="status">{state.safeConfigStatus}</span>
             <span data-testid="config">
                 {state.safeConfig?.board ? "board" : "missing"}
@@ -41,12 +48,21 @@ function Probe() {
 }
 
 function renderProvider(children: ReactNode = <Probe />) {
-    return render(
-        <ReplaySessionProvider>{children}</ReplaySessionProvider>
-    );
+    return render(<ReplaySessionProvider>{children}</ReplaySessionProvider>);
+}
+
+function handoff(): ReplayEntry {
+    return {
+        session: replaySessionWire() as unknown as ReplayEntry["session"],
+        safeConfig: demoSafeConfigWire(),
+        checkpoint: "checkpoint-initial",
+        requestId: "test-handoff",
+        createdAt: Date.now(),
+    };
 }
 
 afterEach(() => {
+    clearEntryHandoff();
     vi.unstubAllGlobals();
     vi.restoreAllMocks();
 });
@@ -116,10 +132,10 @@ describe("replay session metadata recovery", () => {
                     "demo read 'safe_config' is not available here"
                 )
             )
-        ).toBe("The recorded demo details are missing from this package.");
+        ).toBe("The recorded demo details are missing from this server.");
     });
 
-    it("replaces the loading surface with explicit metadata recovery", async () => {
+    it("keeps children mounted while the data layer recovers", async () => {
         let configCalls = 0;
         vi.stubGlobal(
             "fetch",
@@ -140,21 +156,24 @@ describe("replay session metadata recovery", () => {
         );
 
         renderProvider(
-            <ReplayMetadataGate>
-                <p>Board ready</p>
-            </ReplayMetadataGate>
+            <>
+                <Probe />
+                <p>Destination content</p>
+            </>
         );
 
-        expect(
-            await screen.findByRole("heading", {
-                name: "Demo details unavailable",
-            })
-        ).toBeInTheDocument();
-        expect(screen.queryByText("Board ready")).not.toBeInTheDocument();
+        expect(screen.getByText("Destination content")).toBeInTheDocument();
+        await waitFor(() =>
+            expect(screen.getByTestId("status")).toHaveTextContent("error")
+        );
+        expect(screen.getByText("Destination content")).toBeInTheDocument();
 
-        fireEvent.click(screen.getByRole("button", { name: "Try again" }));
+        fireEvent.click(screen.getByRole("button", { name: "Retry details" }));
 
-        expect(await screen.findByText("Board ready")).toBeInTheDocument();
+        await waitFor(() =>
+            expect(screen.getByTestId("status")).toHaveTextContent("ready")
+        );
+        expect(screen.getByText("Destination content")).toBeInTheDocument();
         expect(configCalls).toBe(2);
     });
 
@@ -177,10 +196,12 @@ describe("replay session metadata recovery", () => {
 
         renderProvider();
 
-        expect(
-            await screen.findByRole("heading", { name: "Demo unavailable" })
-        ).toBeInTheDocument();
-        fireEvent.click(screen.getByRole("button", { name: "Try again" }));
+        await waitFor(() =>
+            expect(screen.getByTestId("session-status")).toHaveTextContent(
+                "error"
+            )
+        );
+        fireEvent.click(screen.getByRole("button", { name: "Retry session" }));
 
         await waitFor(() =>
             expect(screen.getByTestId("status")).toHaveTextContent("ready")
@@ -188,4 +209,18 @@ describe("replay session metadata recovery", () => {
         expect(sessionCalls).toBe(2);
     });
 
+    it("consumes an in-memory handoff without fetching again", async () => {
+        const fetchMock = vi.fn();
+        vi.stubGlobal("fetch", fetchMock);
+        stageEntryHandoff(handoff());
+
+        renderProvider();
+
+        expect(screen.getByTestId("session-status")).toHaveTextContent(
+            "ready"
+        );
+        expect(screen.getByTestId("status")).toHaveTextContent("ready");
+        expect(screen.getByTestId("meeting")).toHaveTextContent(DEMO_MEETING_ID);
+        expect(fetchMock).not.toHaveBeenCalled();
+    });
 });

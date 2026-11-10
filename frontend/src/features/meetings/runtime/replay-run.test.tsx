@@ -24,7 +24,7 @@ function stubReplayReads(session: unknown) {
             if (url.includes("/workspace-seed")) {
                 return json({ detail: "replay_workspace_seed_unavailable" }, 404);
             }
-            if (url.includes("/safe-config")) return json({});
+            if (url.includes("/safe-config")) return json({ board: {}, intake: {} });
             if (url.includes("/disagreements")) return json([]);
             if (url.includes("/consensus")) return json([]);
             if (url.endsWith("/turns") || url.includes("/turns?")) {
@@ -125,7 +125,7 @@ describe("ReplayRunProvider checkpoint transitions", () => {
                 if (url.includes("/workspace-seed")) {
                     return json({ detail: "replay_workspace_seed_unavailable" }, 404);
                 }
-                if (url.includes("/safe-config")) return json({});
+                if (url.includes("/safe-config")) return json({ board: {}, intake: {} });
                 if (url.includes("/disagreements")) return json([]);
                 if (url.includes("/consensus")) return json([]);
                 if (url.endsWith("/turns") || url.includes("/turns?")) return json([]);
@@ -152,7 +152,7 @@ describe("ReplayRunProvider checkpoint transitions", () => {
         );
         const { result } = renderHook(() => useReplayRun(), { wrapper });
 
-        await waitFor(() => expect(result.current.session).not.toBeNull());
+        await waitFor(() => expect(result.current?.session).toBeTruthy());
 
         await act(async () => {
             await result.current.switchCheckpoint("checkpoint-created");
@@ -201,7 +201,7 @@ describe("ReplayRunProvider reset fencing", () => {
                 if (url.includes("/workspace-seed")) {
                     return json({ detail: "replay_workspace_seed_unavailable" }, 404);
                 }
-                if (url.includes("/safe-config")) return json({});
+                if (url.includes("/safe-config")) return json({ board: {}, intake: {} });
                 if (url.includes("/disagreements")) return json([]);
                 if (url.includes("/consensus")) return json([]);
                 if (url.endsWith("/turns") || url.includes("/turns?")) return json([]);
@@ -227,7 +227,7 @@ describe("ReplayRunProvider reset fencing", () => {
             </ReplaySessionProvider>
         );
         const { result } = renderHook(() => useReplayRun(), { wrapper });
-        await waitFor(() => expect(result.current.session).toBeDefined());
+        await waitFor(() => expect(result.current?.session).toBeTruthy());
 
         let transition: Promise<unknown> | undefined;
         act(() => {
@@ -260,7 +260,7 @@ describe("ReplayRunProvider reset fencing", () => {
                 if (url.includes("/workspace-seed")) {
                     return json({ detail: "replay_workspace_seed_unavailable" }, 404);
                 }
-                if (url.includes("/safe-config")) return json({});
+                if (url.includes("/safe-config")) return json({ board: {}, intake: {} });
                 if (url.includes("/disagreements")) return json([]);
                 if (url.includes("/consensus")) return json([]);
                 if (url.endsWith("/turns") || url.includes("/turns?")) {
@@ -290,7 +290,7 @@ describe("ReplayRunProvider reset fencing", () => {
             </ReplaySessionProvider>
         );
         const { result } = renderHook(() => useReplayRun(), { wrapper });
-        await waitFor(() => expect(result.current.session).not.toBeNull());
+        await waitFor(() => expect(result.current?.session).toBeTruthy());
 
         await act(async () => {
             await result.current.switchCheckpoint("checkpoint-created");
@@ -494,7 +494,7 @@ describe("ReplayRunProvider prepared playback", () => {
                 if (url.includes("/workspace-seed")) {
                     return json({ detail: "replay_workspace_seed_unavailable" }, 404);
                 }
-                if (url.includes("/safe-config")) return json({});
+                if (url.includes("/safe-config")) return json({ board: {}, intake: {} });
                 if (url.includes("/disagreements")) return json([]);
                 if (url.includes("/consensus")) return json([]);
                 if (url.includes("/turns")) return json([completedOperationWire()]);
@@ -520,7 +520,7 @@ describe("ReplayRunProvider prepared playback", () => {
             </ReplaySessionProvider>
         );
         const { result } = renderHook(() => useReplayRun(), { wrapper });
-        await waitFor(() => expect(result.current.session).not.toBeNull());
+        await waitFor(() => expect(result.current?.session).toBeTruthy());
 
         await act(async () => {
             await result.current.switchCheckpoint("checkpoint-created");
@@ -550,7 +550,7 @@ describe("ReplayRunProvider prepared playback", () => {
                 if (url.includes("/workspace-seed")) {
                     return json({ detail: "replay_workspace_seed_unavailable" }, 404);
                 }
-                if (url.includes("/safe-config")) return json({});
+                if (url.includes("/safe-config")) return json({ board: {}, intake: {} });
                 if (url.includes("/disagreements")) return json([]);
                 if (url.includes("/consensus")) return json([]);
                 if (url.includes("/turns")) return json([completedOperationWire()]);
@@ -576,7 +576,7 @@ describe("ReplayRunProvider prepared playback", () => {
             </ReplaySessionProvider>
         );
         const { result } = renderHook(() => useReplayRun(), { wrapper });
-        await waitFor(() => expect(result.current.session).not.toBeNull());
+        await waitFor(() => expect(result.current?.session).toBeTruthy());
 
         await act(async () => {
             await result.current.startIntent("create");
@@ -600,7 +600,7 @@ describe("ReplayRunProvider prepared playback", () => {
                 if (url.includes("/workspace-seed")) {
                     return json({ detail: "replay_workspace_seed_unavailable" }, 404);
                 }
-                if (url.includes("/safe-config")) return json({});
+                if (url.includes("/safe-config")) return json({ board: {}, intake: {} });
                 if (url.includes("/disagreements")) return json([]);
                 if (url.includes("/consensus")) return json([]);
                 if (url.includes("/turns")) return json([]);
@@ -626,7 +626,7 @@ describe("ReplayRunProvider prepared playback", () => {
             </ReplaySessionProvider>
         );
         const { result } = renderHook(() => useReplayRun(), { wrapper });
-        await waitFor(() => expect(result.current.session).not.toBeNull());
+        await waitFor(() => expect(result.current?.session).toBeTruthy());
 
         await act(async () => {
             await result.current.startIntent("create");
@@ -640,7 +640,7 @@ describe("ReplayRunProvider prepared playback", () => {
         stubReplayReads(closingSessionWire());
 
         const { result } = renderReplayRun();
-        await waitFor(() => expect(result.current.session).not.toBeNull());
+        await waitFor(() => expect(result.current?.session).toBeTruthy());
 
         await act(async () => {
             await result.current.switchCheckpoint("checkpoint-created");
@@ -667,7 +667,7 @@ describe("ReplayRunProvider prepared playback", () => {
         stubReplayReads(closingSessionWire());
 
         const { result } = renderReplayRun();
-        await waitFor(() => expect(result.current.session).not.toBeNull());
+        await waitFor(() => expect(result.current?.session).toBeTruthy());
 
         await act(async () => {
             await result.current.switchCheckpoint("checkpoint-closed");
@@ -682,7 +682,7 @@ describe("ReplayRunProvider prepared playback", () => {
         stubReplayReads(closingSessionWire(false));
 
         const { result } = renderReplayRun();
-        await waitFor(() => expect(result.current.session).not.toBeNull());
+        await waitFor(() => expect(result.current?.session).toBeTruthy());
 
         await act(async () => {
             await result.current.switchCheckpoint("checkpoint-created");

@@ -92,6 +92,23 @@ export function useReplayRun(): ReplayRunContextValue {
 
 export function ReplayRunProvider({ children }: { children: ReactNode }) {
     const { session, safeConfig } = useReplaySession();
+    if (!session || !safeConfig) return null;
+    return (
+        <ReplayRunReadyProvider session={session} safeConfig={safeConfig}>
+            {children}
+        </ReplayRunReadyProvider>
+    );
+}
+
+function ReplayRunReadyProvider({
+    children,
+    session,
+    safeConfig,
+}: {
+    children: ReactNode;
+    session: ReplaySession;
+    safeConfig: ReplaySafeConfig;
+}) {
     const { playbackReset } = useDemoWorkspace();
     const [epoch, setEpoch] = useState(1);
     const [runKey, setRunKey] = useState(1);

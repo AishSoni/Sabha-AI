@@ -1,18 +1,18 @@
 "use client";
 
 /**
- * The demo introduction's only state owner (spec-41).
+ * The demo introduction's lifecycle owner (spec-41).
  *
- * Acknowledgement is tab-scoped browser memory. It intentionally survives a
- * refresh but never crosses a browser session; no server state, cookie or
- * localStorage entry is introduced. The provider is only mounted after the
- * replay session exists, so reading sessionStorage can happen in the initial
- * client state without a server-render mismatch.
+ * The introduction is now a continuous scroll journey, but acknowledgement,
+ * reset, revisit, and focus restoration still belong here. Acknowledgement is
+ * tab-scoped sessionStorage; the spatial journey itself is never persisted.
  */
 import {
     createContext,
     useCallback,
     useContext,
+    useEffect,
+    useLayoutEffect,
     useRef,
     useState,
     type ReactNode,
@@ -36,8 +36,11 @@ interface DemoIntroValue {
     stepLabel: string;
     next(): void;
     back(): void;
+    /** Set the moment derived from continuous journey progress. */
+    setActiveStep(index: number): void;
     skip(): void;
     close(): void;
+    enter(): void;
     revisit(): void;
     reset(): void;
     /** Read and clear the control that opened a deliberate revisit. */
@@ -69,9 +72,8 @@ function rememberAcknowledged(): void {
     try {
         window.sessionStorage.setItem(INTRO_STORAGE_KEY, INTRO_STORAGE_VALUE);
     } catch {
-        // Storage can be unavailable in private modes. The in-memory state
-        // still behaves correctly for this mount; refresh then re-shows the
-        // introduction rather than failing.
+        // Private modes can refuse storage. The in-memory state still behaves
+        // correctly for this mount; refresh re-shows the introduction.
     }
 }
 
@@ -83,12 +85,28 @@ function forgetAcknowledged(): void {
     }
 }
 
+const useIsomorphicLayoutEffect =
+    typeof window === "undefined" ? useEffect : useLayoutEffect;
+
 export function DemoIntroProvider({ children }: { children: ReactNode }) {
-    const [acknowledged, setAcknowledged] = useState(readAcknowledged);
-    const [open, setOpen] = useState(() => !readAcknowledged());
-    const [hasEntered, setHasEntered] = useState(readAcknowledged);
+    // Server and first client render agree on the first-visit state. The
+    // post-hydration layout effect reads tab-scoped storage before paint.
+    const [acknowledged, setAcknowledged] = useState(false);
+    const [open, setOpen] = useState(true);
+    const [hasEntered, setHasEntered] = useState(false);
     const [stepIndex, setStepIndex] = useState(0);
     const returnFocus = useRef<HTMLElement | null>(null);
+    const hydrated = useRef(false);
+
+    useIsomorphicLayoutEffect(() => {
+        if (hydrated.current) return;
+        hydrated.current = true;
+        const seen = readAcknowledged();
+        if (!seen) return;
+        setAcknowledged(true);
+        setOpen(false);
+        setHasEntered(true);
+    }, []);
 
     const dismiss = useCallback(() => {
         rememberAcknowledged();
@@ -109,6 +127,10 @@ export function DemoIntroProvider({ children }: { children: ReactNode }) {
 
     const back = useCallback(() => {
         setStepIndex((current) => clampIntroStep(current - 1));
+    }, []);
+
+    const setActiveStep = useCallback((index: number) => {
+        setStepIndex(clampIntroStep(index));
     }, []);
 
     const revisit = useCallback(() => {
@@ -143,8 +165,10 @@ export function DemoIntroProvider({ children }: { children: ReactNode }) {
         stepLabel: `Step ${stepIndex + 1} of ${INTRO_STEPS.length}`,
         next,
         back,
+        setActiveStep,
         skip: dismiss,
         close: dismiss,
+        enter: dismiss,
         revisit,
         reset,
         consumeReturnFocus,

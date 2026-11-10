@@ -4,7 +4,11 @@ import type { ReactNode } from "react";
 import { usePathname } from "next/navigation";
 import { Starfield } from "@/components/atmosphere";
 import { DemoNav, DemoWorkspaceProvider } from "@/features/demo-workspace";
-import { DemoIntroGate, DemoIntroProvider, useDemoIntro } from "@/features/demo-intro";
+import {
+    DemoEntryGate,
+    DemoIntroProvider,
+    useDemoIntro,
+} from "@/features/demo-intro";
 import { isRoomPath } from "@/features/demo-tutorial";
 import { DemoTutorialProvider } from "@/features/demo-tutorial/provider";
 import { TutorialBoundary } from "@/features/demo-tutorial/error-boundary";
@@ -13,16 +17,16 @@ import { TutorialNotices } from "@/features/demo-tutorial/notices";
 import {
     ReplaySessionProvider,
     useReplaySession,
+    useReplaySessionReady,
 } from "@/features/meetings/runtime/replay-session";
 import { ReplayRunProvider } from "@/features/meetings/runtime/replay-run";
 import { ChapterBootstrap } from "./chapter-bootstrap";
-import { ReplayMetadataGate } from "./replay-metadata-gate";
 
 function PinnedWorkspace({ children }: { children: ReactNode }) {
     const pathname = usePathname();
     const room = isRoomPath(pathname);
     const intro = useDemoIntro();
-    const { session } = useReplaySession();
+    const { session } = useReplaySessionReady();
     const identity = {
         packageId: session.package_id,
         version: session.package_version,
@@ -53,17 +57,6 @@ function PinnedWorkspace({ children }: { children: ReactNode }) {
                                 </>
                             )}
                         </TutorialBoundary>
-                        {/*
-                         * The chapter entry remounts the route page when a
-                         * chapter changes. Keeping it inside the tutorial
-                         * provider means a hidden HUD survives chapter
-                         * inspection instead of restarting the visitor's
-                         * presentation state.
-                         *
-                         * This is the single viewport owner for demo routes:
-                         * ordinary pages scroll here, while the room fills the
-                         * same space without creating a second page scrollbar.
-                         */}
                         <div className="relative z-10 min-h-0 flex-1 overflow-y-auto">
                             {room ? null : (
                                 <div className="sticky top-0 z-chrome">
@@ -79,16 +72,21 @@ function PinnedWorkspace({ children }: { children: ReactNode }) {
     );
 }
 
+function DemoShellContent({ children }: { children: ReactNode }) {
+    const readiness = useReplaySession();
+    return (
+        <DemoIntroProvider>
+            <DemoEntryGate readiness={readiness}>
+                <PinnedWorkspace>{children}</PinnedWorkspace>
+            </DemoEntryGate>
+        </DemoIntroProvider>
+    );
+}
+
 export function DemoShell({ children }: { children: ReactNode }) {
     return (
         <ReplaySessionProvider>
-            <DemoIntroProvider>
-                <ReplayMetadataGate>
-                    <DemoIntroGate>
-                        <PinnedWorkspace>{children}</PinnedWorkspace>
-                    </DemoIntroGate>
-                </ReplayMetadataGate>
-            </DemoIntroProvider>
+            <DemoShellContent>{children}</DemoShellContent>
         </ReplaySessionProvider>
     );
 }

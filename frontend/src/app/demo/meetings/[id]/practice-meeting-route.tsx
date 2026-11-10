@@ -9,7 +9,7 @@ import { collectRecordedExamples } from "@/features/knowledge/local";
 import { EvidencePreviewProvider } from "@/features/meetings/evidence/provider";
 import { EvidencePreviewHost } from "@/features/meetings/evidence/host";
 import { EvidenceTrigger } from "@/features/meetings/evidence/trigger";
-import { useReplaySession } from "@/features/meetings/runtime/replay-session";
+import { useReplaySessionReady } from "@/features/meetings/runtime/replay-session";
 import {
     createReplayEvidence,
     descriptorForAsset,
@@ -17,7 +17,7 @@ import {
 import { PracticeMeetingScreen } from "./practice-meeting-screen";
 
 export function PracticeMeetingRoute({ meetingId }: { meetingId: string }) {
-    const { session } = useReplaySession();
+    const { session } = useReplaySessionReady();
     const workspace = useDemoWorkspace();
     const evidence = useMemo(
         () =>

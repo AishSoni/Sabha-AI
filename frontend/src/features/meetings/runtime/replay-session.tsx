@@ -1,44 +1,50 @@
 "use client";
 
 /**
- * Pinned replay session provider (spec-23).
+ * Pinned replay session provider (spec-23, spec-41).
  *
- * The session read happens once per mounted demo workspace. Restarting the
- * recording resets checkpoint playback but must keep the same pinned package,
- * version, and content hash; extracting this read makes that guarantee
- * structural instead of incidental.
+ * The provider no longer renders a standalone loading card. It always exposes
+ * its children and lets the demo entry gate decide whether the introduction,
+ * the composed entry shell, or the workspace is visible.
  */
 import {
     createContext,
     useCallback,
     useContext,
     useEffect,
-    useMemo,
     useState,
     type ReactNode,
 } from "react";
-import { decodeObject } from "@/shared/api/decode";
+import {
+    clearEntryHandoff,
+    fetchReplaySafeConfig,
+    peekEntryHandoff,
+    type DemoEntryReadiness,
+    type DemoEntryStatus,
+    type ReplayEntry,
+} from "@/features/demo-entry";
 import { isApiError } from "@/shared/api/errors";
 import { requestJson, SESSION_REQUEST_RETRY } from "@/shared/api/transport";
 import { decodeReplaySession, type ReplaySession } from "./replay";
 
 export type ReplaySafeConfig = Record<string, unknown>;
 
-export type ReplaySafeConfigStatus =
-    | "idle"
-    | "loading"
-    | "ready"
-    | "error";
+export type ReplayDataStatus = DemoEntryStatus;
+export type ReplaySafeConfigStatus = DemoEntryStatus;
 
-interface ReplaySessionContextValue {
-    session: ReplaySession;
+interface ReplaySessionContextValue extends DemoEntryReadiness {
+    session: ReplaySession | null;
     safeConfig: ReplaySafeConfig | null;
+}
+
+export interface ReplaySessionReadyValue {
+    session: ReplaySession;
+    safeConfig: ReplaySafeConfig;
     safeConfigStatus: ReplaySafeConfigStatus;
     safeConfigError: Error | null;
-    /** Retry the whole session read after the demo itself failed. */
     retry(): void;
-    /** Retry only the required safe-config read for the pinned session. */
     retrySafeConfig(): void;
+    retryEntry(): void;
 }
 
 const ReplaySessionContext = createContext<ReplaySessionContextValue | null>(null);
@@ -51,10 +57,33 @@ export function useReplaySession(): ReplaySessionContextValue {
     return value;
 }
 
+export function useReplaySessionReady(): ReplaySessionReadyValue {
+    const value = useReplaySession();
+    if (
+        value.sessionStatus !== "ready" ||
+        value.safeConfigStatus !== "ready" ||
+        !value.session ||
+        !value.safeConfig
+    ) {
+        throw new Error(
+            "useReplaySessionReady must be used after the demo entry is ready."
+        );
+    }
+    return {
+        session: value.session,
+        safeConfig: value.safeConfig,
+        safeConfigStatus: value.safeConfigStatus,
+        safeConfigError: value.safeConfigError,
+        retry: value.retry,
+        retrySafeConfig: value.retrySafeConfig,
+        retryEntry: value.retryEntry,
+    };
+}
+
 export function safeConfigFailureMessage(error: Error | null): string {
     if (isApiError(error)) {
         if (error.status === 404) {
-            return "The recorded demo details are missing from this package.";
+            return "The recorded demo details are missing from this server.";
         }
         if (error.status === 503) {
             return "The demo details are not configured on this server.";
@@ -63,42 +92,83 @@ export function safeConfigFailureMessage(error: Error | null): string {
     return error?.message ?? "The recorded demo details could not be loaded.";
 }
 
+export function sessionFailureMessage(error: Error | null): string {
+    if (isApiError(error) && error.status === 503) {
+        return "The demo is not configured on this server.";
+    }
+    return error?.message ?? "The demo is unavailable.";
+}
+
+interface InitialState {
+    session: ReplaySession | null;
+    safeConfig: ReplaySafeConfig | null;
+    sessionError: Error | null;
+    fromHandoff: boolean;
+}
+
+function readInitialState(): InitialState {
+    const entry: ReplayEntry | null = peekEntryHandoff();
+    if (!entry) {
+        return {
+            session: null,
+            safeConfig: null,
+            sessionError: null,
+            fromHandoff: false,
+        };
+    }
+    try {
+        return {
+            session: decodeReplaySession(entry.session),
+            safeConfig: entry.safeConfig,
+            sessionError: null,
+            fromHandoff: true,
+        };
+    } catch {
+        clearEntryHandoff();
+        return {
+            session: null,
+            safeConfig: null,
+            sessionError: null,
+            fromHandoff: false,
+        };
+    }
+}
+
 export function ReplaySessionProvider({ children }: { children: ReactNode }) {
-    const [session, setSession] = useState<ReplaySession | null>(null);
-    const [sessionError, setSessionError] = useState<Error | null>(null);
-    const [safeConfig, setSafeConfig] = useState<ReplaySafeConfig | null>(null);
-    const [safeConfigStatus, setSafeConfigStatus] =
-        useState<ReplaySafeConfigStatus>("idle");
+    const [initial] = useState(readInitialState);
+    const [session, setSession] = useState<ReplaySession | null>(initial.session);
+    const [sessionError, setSessionError] = useState<Error | null>(
+        initial.sessionError
+    );
+    const [safeConfig, setSafeConfig] = useState<ReplaySafeConfig | null>(
+        initial.safeConfig
+    );
     const [safeConfigError, setSafeConfigError] = useState<Error | null>(null);
-    const [sessionAttempt, setSessionAttempt] = useState(1);
+    const [sessionAttempt, setSessionAttempt] = useState(
+        initial.fromHandoff ? 0 : 1
+    );
     const [safeConfigAttempt, setSafeConfigAttempt] = useState(0);
 
-    const sessionController = useMemo(
-        () => new AbortController(),
-        // A retry gets a fresh request lifetime.
-        // eslint-disable-next-line react-hooks/exhaustive-deps
-        [sessionAttempt]
-    );
-    const safeConfigController = useMemo(
-        () => new AbortController(),
-        // A metadata retry or a new pinned session gets a fresh lifetime.
-        // eslint-disable-next-line react-hooks/exhaustive-deps
-        [safeConfigAttempt, session]
-    );
+    useEffect(() => {
+        if (initial.fromHandoff) clearEntryHandoff();
+    }, [initial.fromHandoff]);
 
     useEffect(() => {
+        if (sessionAttempt === 0) return;
+        const controller = new AbortController();
         let active = true;
-        setSessionError(null);
         requestJson<unknown>("/replay/session", {
-            signal: sessionController.signal,
+            signal: controller.signal,
             retry: SESSION_REQUEST_RETRY,
         })
             .then((payload) => {
                 if (!active) return;
                 setSession(decodeReplaySession(payload));
+                setSessionError(null);
             })
             .catch((cause) => {
-                if (!active || sessionController.signal.aborted) return;
+                if (!active || controller.signal.aborted) return;
+                setSession(null);
                 setSessionError(
                     cause instanceof Error
                         ? cause
@@ -107,104 +177,82 @@ export function ReplaySessionProvider({ children }: { children: ReactNode }) {
             });
         return () => {
             active = false;
-            sessionController.abort();
+            controller.abort();
         };
-    }, [sessionAttempt, sessionController]);
+    }, [sessionAttempt]);
 
     useEffect(() => {
-        if (!session) return;
+        if (!session || safeConfig || safeConfigError) return;
+        const controller = new AbortController();
         let active = true;
-        setSafeConfigStatus("loading");
-        setSafeConfigError(null);
-        requestJson<unknown>(
-            `/replay/meetings/${encodeURIComponent(
-                session.meeting_id
-            )}/safe-config?checkpoint=${encodeURIComponent(
-                session.initial_checkpoint
-            )}`,
-            { signal: safeConfigController.signal }
-        )
+        fetchReplaySafeConfig(session, { signal: controller.signal })
             .then((config) => {
                 if (!active) return;
-                setSafeConfig(
-                    decodeObject(config, "GET /replay/safe-config")
-                );
-                setSafeConfigStatus("ready");
+                setSafeConfig(config);
+                setSafeConfigError(null);
             })
             .catch((cause) => {
-                if (!active || safeConfigController.signal.aborted) return;
+                if (!active || controller.signal.aborted) return;
                 setSafeConfig(null);
                 setSafeConfigError(
                     cause instanceof Error
                         ? cause
                         : new Error("The demo details are unavailable.")
                 );
-                setSafeConfigStatus("error");
             });
         return () => {
             active = false;
-            safeConfigController.abort();
+            controller.abort();
         };
-    }, [session, safeConfigAttempt, safeConfigController]);
+    }, [safeConfig, safeConfigAttempt, safeConfigError, session]);
 
     const retry = useCallback(() => {
         setSession(null);
         setSessionError(null);
         setSafeConfig(null);
-        setSafeConfigStatus("idle");
         setSafeConfigError(null);
-        setSessionAttempt((value) => value + 1);
+        setSessionAttempt((value) => Math.max(1, value + 1));
     }, []);
 
     const retrySafeConfig = useCallback(() => {
         setSafeConfig(null);
         setSafeConfigError(null);
-        setSafeConfigStatus("loading");
         setSafeConfigAttempt((value) => value + 1);
     }, []);
 
-    if (sessionError) {
-        const notConfigured =
-            isApiError(sessionError) && sessionError.status === 503
-                ? "The demo is not configured on this server."
-                : null;
-        return (
-            <ReplayFrame title="Demo unavailable">
-                <p className="type-body text-ink-secondary">
-                    {notConfigured ??
-                        sessionError.message ??
-                        "The demo is unavailable."}
-                </p>
-                <button
-                    type="button"
-                    onClick={retry}
-                    className="m-control inline-flex min-h-10 items-center rounded-control border border-control bg-surface px-4 type-control text-ink hover:bg-surface-raised focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-focus-ring"
-                >
-                    Try again
-                </button>
-            </ReplayFrame>
-        );
-    }
+    const retryEntry = useCallback(() => {
+        if (!session || sessionError) {
+            retry();
+        } else {
+            retrySafeConfig();
+        }
+    }, [retry, retrySafeConfig, session, sessionError]);
 
-    if (!session) {
-        return (
-            <ReplayFrame title="Loading demo">
-                <p className="type-body text-ink-muted">
-                    Fetching the demo package and its initial checkpoint.
-                </p>
-            </ReplayFrame>
-        );
-    }
+    const sessionStatus: ReplayDataStatus = session
+        ? "ready"
+        : sessionError
+          ? "error"
+          : "loading";
+    const safeConfigStatus: ReplaySafeConfigStatus = safeConfig
+        ? "ready"
+        : safeConfigError
+          ? "error"
+          : session
+            ? "loading"
+            : "idle";
 
     return (
         <ReplaySessionContext.Provider
             value={{
                 session,
+                sessionStatus,
+                sessionError,
                 safeConfig,
                 safeConfigStatus,
                 safeConfigError,
                 retry,
                 retrySafeConfig,
+                retryEntry,
             }}
         >
             {children}

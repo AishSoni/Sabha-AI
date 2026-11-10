@@ -4,58 +4,60 @@ import {
     guardNetwork,
 } from "./support/guardrails";
 
+const IDEA = "One question. Different minds.";
+
 async function gotoFirstLoad(page: import("@playwright/test").Page, path = "/demo") {
     await page.goto(path);
-    await expect(
-        page.getByRole("heading", {
-            name: "One director. Three expert minds.",
-        })
-    ).toBeVisible({ timeout: 30_000 });
+    await expect(page.getByRole("heading", { name: IDEA })).toBeVisible({
+        timeout: 30_000,
+    });
 }
 
 test.describe("demo introduction", () => {
-    test("walks the four steps, preserves the destination, and does not repeat", async ({
+    test("scrolls through the four moments and preserves the destination", async ({
         page,
         context,
     }) => {
         const network = guardNetwork(page);
         await gotoFirstLoad(page);
 
-        await expect(page.getByText("Step 1 of 4")).toBeVisible();
-        await expect(page.getByRole("button", { name: "Back" })).toBeDisabled();
+        await expect(page.locator(".intro-progress")).toHaveAttribute(
+            "data-progress",
+            "0"
+        );
         await expect(
             page.getByRole("navigation", { name: "Demo workspace" })
         ).toHaveCount(0);
         await expect(page.getByTestId("tutorial-hud")).toHaveCount(0);
+        await expect(page.locator('[data-testid="demo-introduction"] header')).toHaveCount(0);
 
-        await page.getByRole("button", { name: "Continue" }).click();
+        await page.mouse.move(720, 450);
+        await page.mouse.wheel(0, 340);
+        await page.mouse.wheel(0, 340);
         await expect(
             page.getByRole("heading", {
-                name: "Disagreement you can inspect.",
+                name: "See where they disagree.",
             })
         ).toBeVisible();
-        await expect(page.getByText("Step 2 of 4")).toBeVisible();
+        await expect(page.locator(".intro-progress")).toHaveAttribute(
+            "data-progress",
+            "1"
+        );
 
-        await page.getByRole("button", { name: "Back" }).click();
+        await page.keyboard.press("End");
         await expect(
             page.getByRole("heading", {
-                name: "One director. Three expert minds.",
+                name: "Clear facts. Different judgments.",
             })
         ).toBeVisible();
+        await expect(page.locator(".intro-progress")).toHaveAttribute(
+            "data-progress",
+            "3"
+        );
 
-        await page.getByRole("button", { name: "Continue" }).click();
-        await page.getByRole("button", { name: "Continue" }).click();
-        await expect(
-            page.getByRole("heading", { name: "A HDFC Bond Review Demo" })
-        ).toBeVisible();
-        await expect(page.getByText("Step 3 of 4")).toBeVisible();
-        await expect(page.getByText("CRISIL AAA / Stable (July 2020)")).toBeVisible();
-
-        await page.getByRole("button", { name: "Continue" }).click();
-        await expect(
-            page.getByRole("heading", { name: "What to try" })
-        ).toBeVisible();
-        await page.getByRole("button", { name: "Enter the demo" }).click();
+        const enter = page.getByRole("button", { name: "Enter the demo" });
+        await expect(enter).toBeEnabled();
+        await enter.click();
 
         await expect(
             page.getByRole("heading", { name: "Demo board" })
@@ -64,27 +66,17 @@ test.describe("demo introduction", () => {
             page.getByRole("navigation", { name: "Demo workspace" })
         ).toBeVisible();
 
-        // A reload in the same tab keeps the acknowledgement.
         await page.reload();
         await expect(
             page.getByRole("heading", { name: "Demo board" })
         ).toBeVisible();
-        await expect(
-            page.getByRole("heading", {
-                name: "One director. Three expert minds.",
-            })
-        ).toHaveCount(0);
+        await expect(page.getByRole("heading", { name: IDEA })).toHaveCount(0);
 
-        // Soft navigation and Restart demo do not repeat it either.
         await page.getByRole("link", { name: "Personas" }).click();
         await expect(
             page.getByRole("heading", { name: "Personas", exact: true })
         ).toBeVisible();
-        await expect(
-            page.getByRole("heading", {
-                name: "One director. Three expert minds.",
-            })
-        ).toHaveCount(0);
+        await expect(page.getByRole("heading", { name: IDEA })).toHaveCount(0);
 
         await page.getByRole("link", { name: "Board", exact: true }).click();
         await page.getByRole("link", { name: "Start meeting" }).waitFor();
@@ -93,31 +85,17 @@ test.describe("demo introduction", () => {
         await expect(
             page.getByRole("heading", { name: "Demo board" })
         ).toBeVisible();
-        await expect(
-            page.getByRole("heading", {
-                name: "One director. Three expert minds.",
-            })
-        ).toHaveCount(0);
+        await expect(page.getByRole("heading", { name: IDEA })).toHaveCount(0);
 
-        // Deliberate revisit from the demo navigation.
         await page.getByRole("button", { name: "How this demo works" }).click();
-        await expect(
-            page.getByRole("heading", {
-                name: "One director. Three expert minds.",
-            })
-        ).toBeVisible();
+        await expect(page.getByRole("heading", { name: IDEA })).toBeVisible();
         await page.keyboard.press("Escape");
         await expect(
             page.getByRole("button", { name: "How this demo works" })
         ).toBeFocused();
 
-        // An immediate reset has no confirmation and leaves it dismissed.
         await page.getByRole("button", { name: "Reset demo" }).click();
-        await expect(
-            page.getByRole("heading", {
-                name: "One director. Three expert minds.",
-            })
-        ).toHaveCount(0);
+        await expect(page.getByRole("heading", { name: IDEA })).toHaveCount(0);
         await expect(
             page.getByRole("heading", { name: "Demo board" })
         ).toBeVisible();
@@ -130,11 +108,9 @@ test.describe("demo introduction", () => {
         page,
     }) => {
         await page.goto("/demo/settings");
-        await expect(
-            page.getByRole("heading", {
-                name: "One director. Three expert minds.",
-            })
-        ).toBeVisible({ timeout: 30_000 });
+        await expect(page.getByRole("heading", { name: IDEA })).toBeVisible({
+            timeout: 30_000,
+        });
         await expect(page).toHaveURL(/\/demo\/settings$/);
 
         await page.getByRole("button", { name: "Skip introduction" }).click();
@@ -144,6 +120,53 @@ test.describe("demo introduction", () => {
         await expect(page).toHaveURL(/\/demo\/settings$/);
     });
 
+    test("reflows to the readable journey at 200 percent text size", async ({
+        page,
+    }) => {
+        await page.setViewportSize({ width: 1440, height: 900 });
+        await gotoFirstLoad(page);
+        await page.evaluate(() => {
+            document.documentElement.style.fontSize = "200%";
+        });
+
+        await expect(page.locator("[data-intro-fallback]")).toBeVisible();
+        await expect(page.getByRole("heading", { name: IDEA })).toBeVisible();
+        await expect(
+            page.getByRole("button", { name: "Enter the demo" })
+        ).toBeVisible();
+    });
+
+    test("falls back to the ordered journey when WebGL is unavailable", async ({
+        page,
+    }) => {
+        await page.addInitScript(() => {
+            HTMLCanvasElement.prototype.getContext = function () {
+                return null;
+            } as typeof HTMLCanvasElement.prototype.getContext;
+        });
+        await gotoFirstLoad(page);
+
+        await expect(page.locator("[data-intro-fallback]")).toBeVisible();
+        await expect(page.getByRole("heading", { name: IDEA })).toBeVisible();
+        await page.getByRole("button", { name: "Skip introduction" }).click();
+        await expect(
+            page.getByRole("heading", { name: "Demo board" })
+        ).toBeVisible();
+    });
+
+    test("falls back when the WebGL context is lost", async ({ page }) => {
+        await gotoFirstLoad(page);
+        await page.locator(".intro-scene__canvas").dispatchEvent(
+            "webglcontextlost"
+        );
+
+        await expect(page.locator("[data-intro-fallback]")).toBeVisible();
+        await expect(page.getByRole("heading", { name: IDEA })).toBeVisible();
+        await expect(
+            page.getByRole("button", { name: "Skip introduction" })
+        ).toBeVisible();
+    });
+
     test("supports keyboard entry, mobile, zoom, and reduced motion", async ({
         page,
     }) => {
@@ -151,11 +174,7 @@ test.describe("demo introduction", () => {
         await page.emulateMedia({ reducedMotion: "reduce" });
         await gotoFirstLoad(page);
 
-        await expect(
-            page.getByRole("heading", {
-                name: "One director. Three expert minds.",
-            })
-        ).toBeFocused();
+        await expect(page.getByRole("heading", { name: IDEA })).toBeFocused();
         await page.getByRole("button", { name: "Skip introduction" }).focus();
         await page.keyboard.press("Enter");
 

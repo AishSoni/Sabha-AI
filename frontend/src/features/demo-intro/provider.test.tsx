@@ -65,7 +65,7 @@ describe("demo introduction policy", () => {
 
         expect(screen.getByTestId("open")).toHaveTextContent("true");
         expect(screen.getByTestId("entered")).toHaveTextContent("false");
-        expect(screen.getByTestId("step")).toHaveTextContent("sabha");
+        expect(screen.getByTestId("step")).toHaveTextContent("idea");
         expect(screen.getByTestId("label")).toHaveTextContent(
             `Step 1 of ${INTRO_STEPS.length}`
         );
@@ -118,7 +118,7 @@ describe("demo introduction policy", () => {
 
         fireEvent.click(screen.getByRole("button", { name: "Revisit" }));
         expect(screen.getByTestId("open")).toHaveTextContent("true");
-        expect(screen.getByTestId("step")).toHaveTextContent("sabha");
+        expect(screen.getByTestId("step")).toHaveTextContent("idea");
         expect(window.sessionStorage.getItem(INTRO_STORAGE_KEY)).toBe(
             INTRO_STORAGE_VALUE
         );
@@ -159,10 +159,10 @@ describe("demo introduction policy", () => {
         revisit.focus();
         fireEvent.click(revisit);
         fireEvent.click(screen.getByRole("button", { name: "Next" }));
-        expect(screen.getByTestId("step")).toHaveTextContent("record");
+        expect(screen.getByTestId("step")).toHaveTextContent("value");
 
         fireEvent.click(screen.getByRole("button", { name: "Back" }));
-        expect(screen.getByTestId("step")).toHaveTextContent("sabha");
+        expect(screen.getByTestId("step")).toHaveTextContent("idea");
 
         fireEvent.click(screen.getByRole("button", { name: "Consume focus" }));
         expect(document.title).toBe("revisit");

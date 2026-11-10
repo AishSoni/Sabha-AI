@@ -2,9 +2,9 @@
 /**
  * Demo introduction entry policy (spec-41).
  *
- * The introduction is the only thing exposed after the pinned session and
- * safe config are ready. It preserves the requested route, hides the competing
- * workspace chrome, and can be revisited without remounting the workspace.
+ * jsdom cannot create a WebGL context, so these assertions exercise the
+ * required readable fallback that preserves the same ordered moments and
+ * controls.
  */
 import { fireEvent, render, screen, waitFor } from "@testing-library/react";
 import type { ReactNode } from "react";
@@ -52,7 +52,7 @@ function json(body: unknown, status = 200): Response {
     } as unknown as Response;
 }
 
-function installRouter(options: { board?: boolean } = {}) {
+function installRouter(options: { safeConfig?: Record<string, unknown> } = {}) {
     vi.stubGlobal(
         "fetch",
         vi.fn(async (input: unknown) => {
@@ -63,7 +63,7 @@ function installRouter(options: { board?: boolean } = {}) {
             }
             if (path === `/replay/meetings/${DEMO_MEETING_ID}/safe-config`) {
                 return json(
-                    options.board === false ? {} : demoSafeConfigWire()
+                    options.safeConfig ?? demoSafeConfigWire()
                 );
             }
             if (path === "/replay/workspace-seed") {
@@ -98,22 +98,23 @@ async function renderIntro() {
         </DemoLayout>
     );
     return screen.findByRole("heading", {
-        name: "One director. Three expert minds.",
+        name: "One question. Different minds.",
     });
 }
 
 describe("demo introduction", () => {
-    it("gates the workspace until the four steps are acknowledged", async () => {
+    it("gates the workspace until Enter the demo is activated", async () => {
         installRouter();
         const heading = await renderIntro();
 
         expect(heading).toHaveFocus();
+        expect(screen.getByText("Step 1 of 4")).toBeInTheDocument();
         expect(
-            screen.getByText("Step 1 of 4")
-        ).toBeInTheDocument();
+            screen.queryByRole("button", { name: "Back" })
+        ).not.toBeInTheDocument();
         expect(
-            screen.getByRole("button", { name: "Back" })
-        ).toBeDisabled();
+            screen.queryByRole("button", { name: "Continue" })
+        ).not.toBeInTheDocument();
         expect(
             screen.queryByRole("navigation", { name: "Demo workspace" })
         ).not.toBeInTheDocument();
@@ -122,33 +123,25 @@ describe("demo introduction", () => {
             screen.queryByRole("heading", { name: "Demo board" })
         ).not.toBeInTheDocument();
 
-        fireEvent.click(screen.getByRole("button", { name: "Continue" }));
         expect(
             screen.getByRole("heading", {
-                name: "Disagreement you can inspect.",
+                name: "See where they disagree.",
             })
         ).toBeInTheDocument();
-        expect(screen.getByText("Step 2 of 4")).toBeInTheDocument();
-
-        fireEvent.click(screen.getByRole("button", { name: "Back" }));
         expect(
             screen.getByRole("heading", {
-                name: "One director. Three expert minds.",
+                name: "Choose. Question. Explore.",
+            })
+        ).toBeInTheDocument();
+        expect(
+            screen.getByRole("heading", {
+                name: "Clear facts. Different judgments.",
             })
         ).toBeInTheDocument();
 
-        fireEvent.click(screen.getByRole("button", { name: "Continue" }));
-        fireEvent.click(screen.getByRole("button", { name: "Continue" }));
-        expect(
-            screen.getByRole("heading", { name: "A HDFC Bond Review Demo" })
-        ).toBeInTheDocument();
-        expect(screen.getByText("Step 3 of 4")).toBeInTheDocument();
-
-        fireEvent.click(screen.getByRole("button", { name: "Continue" }));
-        expect(
-            screen.getByRole("heading", { name: "What to try" })
-        ).toBeInTheDocument();
-        fireEvent.click(screen.getByRole("button", { name: "Enter the demo" }));
+        const enter = screen.getByRole("button", { name: "Enter the demo" });
+        await waitFor(() => expect(enter).toBeEnabled());
+        fireEvent.click(enter);
 
         expect(
             await screen.findByRole("heading", { name: "Demo board" })
@@ -175,7 +168,7 @@ describe("demo introduction", () => {
 
         expect(
             screen.getByRole("heading", {
-                name: "One director. Three expert minds.",
+                name: "One question. Different minds.",
             })
         ).toBeInTheDocument();
         expect(screen.queryByTestId("tutorial-hud")).not.toBeInTheDocument();
@@ -191,20 +184,31 @@ describe("demo introduction", () => {
         ).toBeInTheDocument();
     });
 
-    it("shows an explicit board metadata failure instead of endless loading", async () => {
-        installRouter({ board: false });
+    it("shows a composed entry failure instead of a standalone loading card", async () => {
+        installRouter({ safeConfig: {} });
         await renderIntro();
+        expect(screen.getByText("Step 1 of 4")).toBeInTheDocument();
+        expect(
+            screen.getByRole("button", { name: "Enter the demo" })
+        ).toBeDisabled();
+
         fireEvent.click(
             screen.getByRole("button", { name: "Skip introduction" })
         );
 
         expect(
             await screen.findByRole("heading", {
-                name: "Demo board unavailable",
+                name: "The demo could not open.",
             })
         ).toBeInTheDocument();
-        expect(screen.getByText("Try again")).toBeInTheDocument();
-        expect(screen.queryByText("Loading demo…")).not.toBeInTheDocument();
+        expect(
+            screen.getByText("The demo details are incomplete.")
+        ).toBeInTheDocument();
+        expect(screen.getByRole("button", { name: "Try again" })).toBeInTheDocument();
+        expect(screen.queryByText("Loading demo")).not.toBeInTheDocument();
+        expect(
+            screen.queryByText("Loading demo details")
+        ).not.toBeInTheDocument();
     });
 
     it("does not reopen the introduction for an immediate reset", async () => {
@@ -219,7 +223,7 @@ describe("demo introduction", () => {
 
         expect(
             screen.queryByRole("heading", {
-                name: "One director. Three expert minds.",
+                name: "One question. Different minds.",
             })
         ).not.toBeInTheDocument();
         expect(

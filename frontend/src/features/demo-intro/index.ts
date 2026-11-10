@@ -1,4 +1,7 @@
-export { DemoIntroGate } from "./gate";
+export { DemoEntryGate, DemoIntroGate } from "./entry-gate";
+export { DemoEntryShell } from "./entry-shell";
+export { IntroFallback } from "./intro-fallback";
+export { IntroScene } from "./intro-scene";
 export { Introduction } from "./introduction";
 export {
     DemoIntroProvider,
@@ -12,5 +15,4 @@ export {
     introStepAt,
     type IntroStep,
     type IntroStepId,
-    type IntroVisualId,
 } from "./steps";
