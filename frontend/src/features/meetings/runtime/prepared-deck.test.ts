@@ -5,7 +5,6 @@ import type { TurnOperation } from "../api/turn-decoders";
 import type { ReplayPreparedClosing, ReplayPreparedTurn } from "./contract";
 import {
     FOLLOW_UP_STEP,
-    canCloseDeck,
     composedBundle,
     emptyPreparedDeck,
     replyTurnForOperation,
@@ -228,16 +227,5 @@ describe("prepared deck composition", () => {
             "turn-b"
         );
         expect(replyTurnForOperation(current, "missing")).toBeNull();
-    });
-
-    it("requires every prepared turn before closing", () => {
-        const current = session();
-        expect(canCloseDeck(current, new Set(["turn-a", "turn-b"]))).toBe(false);
-        expect(
-            canCloseDeck(
-                current,
-                new Set(["turn-a", "turn-b", "turn-follow"])
-            )
-        ).toBe(true);
     });
 });

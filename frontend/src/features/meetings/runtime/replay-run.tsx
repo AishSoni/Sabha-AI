@@ -22,7 +22,7 @@ import { QueryClientProvider } from "@tanstack/react-query";
 import { makeQueryClient } from "@/shared/query/client";
 import { RuntimeScopeProvider, type RuntimeScope } from "@/shared/runtime/scope";
 import { useDemoWorkspace } from "@/features/demo-workspace";
-import type { MeetingsRuntime } from "./contract";
+import type { MeetingsRuntime, SettlementContext } from "./contract";
 import { MeetingsRuntimeProvider } from "./context";
 import {
     createReplayRuntime,
@@ -40,7 +40,6 @@ import {
     emptyPreparedDeck,
     followUpTurn,
     replyTurnForOperation,
-    replyTurns,
     turnById,
     type PreparedDeckState,
 } from "./prepared-deck";
@@ -386,10 +385,25 @@ function ReplayRunReadyProvider({
     );
 
     const settleDeckOperation = useCallback(
-        async (operationId: string): Promise<boolean> => {
+        async (
+            operationId: string,
+            status: SettlementContext["status"] = "completed"
+        ): Promise<boolean> => {
             const turn = replyTurnForOperation(session, operationId);
             if (!turn) return false;
             const current = deckRef.current;
+            if (status === "failed" || status === "cancelled") {
+                if (current?.activeTurnId === turn.turn_id) {
+                    commitDeck({ ...current, activeTurnId: null });
+                }
+                markStarted(turn.intent_id, false);
+                return true;
+            }
+            if (status !== "completed") {
+                // Interruption is resumable: keep the active prepared turn so
+                // the visitor can retry or resume the recorded stream.
+                return true;
+            }
             if (current?.results[turn.turn_id]) {
                 if (current.activeTurnId === turn.turn_id) {
                     commitDeck({ ...current, activeTurnId: null });
@@ -405,7 +419,13 @@ function ReplayRunReadyProvider({
             mergeDeckResult(turn.turn_id, result);
             return true;
         },
-        [commitDeck, deckController.signal, mergeDeckResult, session]
+        [
+            commitDeck,
+            deckController.signal,
+            markStarted,
+            mergeDeckResult,
+            session,
+        ]
     );
 
     const startPreparedTurn = useCallback(
@@ -1137,8 +1157,8 @@ function ReplayRunReadyProvider({
             return operation;
         };
         value.settlement = {
-            beforeTerminal: async ({ operationId }) => {
-                await settleDeckOperation(operationId);
+            beforeTerminal: async ({ operationId, status }) => {
+                await settleDeckOperation(operationId, status);
             },
         };
         const state = deckRef.current;
@@ -1161,7 +1181,6 @@ function ReplayRunReadyProvider({
             startPreparedClosing,
             archivePreparedMeeting,
         };
-        void replyTurns;
         return value;
     }, [
         session,

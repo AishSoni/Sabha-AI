@@ -681,6 +681,50 @@ describe("ReplayRunProvider deck admission", () => {
         });
         expect(result.current.runtime.replay?.activePreparedOperationId).toBeNull();
     });
+
+    it("never accepts a failed prepared turn as an outcome", async () => {
+        stubDeckReads();
+        const { result } = renderReplayRun();
+        await waitFor(() =>
+            expect(result.current?.runtime.replay?.progression?.phase).toBe(
+                "opening"
+            )
+        );
+
+        await act(async () => {
+            await result.current.runtime.replay?.startPreparedTurn(
+                "prepared-credit"
+            );
+        });
+        expect(result.current.runtime.replay?.activePreparedOperationId).toBe(
+            "operation-credit"
+        );
+
+        await act(async () => {
+            await result.current.runtime.settlement?.beforeTerminal({
+                meetingId: MEETING_ID,
+                operationId: "operation-credit",
+                event: null,
+                status: "failed",
+            });
+        });
+
+        expect(result.current.runtime.replay?.activePreparedOperationId).toBeNull();
+        expect(result.current.runtime.replay?.playedTurnIds.size).toBe(0);
+        expect(
+            result.current.runtime.replay?.progression?.acceptedCount
+        ).toBe(0);
+
+        // The same opening view remains available for a clean retry.
+        await act(async () => {
+            await result.current.runtime.replay?.startPreparedTurn(
+                "prepared-credit"
+            );
+        });
+        expect(result.current.runtime.replay?.activePreparedOperationId).toBe(
+            "operation-credit"
+        );
+    });
 });
 
 function completedMeetingWire() {
