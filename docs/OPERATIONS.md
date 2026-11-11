@@ -3,7 +3,7 @@
 Operator procedures for the final Sabha architecture. Every command below was
 executed on the acceptance host during Spec 11 unless it is explicitly marked
 as a **manual gate**. The acceptance record, including the exact test results
-and the gates that remain unproven, lives in
+and manual gates, lives in
 [the Spec 11 record](../specs/spec-11-upgrade-and-architecture-acceptance.md#completion-record).
 
 ## 1. Runtime shape
@@ -705,8 +705,7 @@ npm run test:e2e:prod -- e2e/guided-journey.spec.ts
 
 #### Current selector and rollback
 
-The active selector for local acceptance is version `12` with the content hash
-above. Locally retained packages `7`–`12` are available; a published version
+The active V2 selector is version `12` with the content hash above. Locally retained packages `7`–`12` are available; a published version
 remains readable when explicitly pinned. Version `11` is the supported
 rollback, and the version-5 package is a local compatibility fixture, not a
 deployment selector. To roll back after publishing and verifying both versions,
@@ -717,26 +716,28 @@ Do not mutate retained package bytes, publish different content under an
 existing version, or prune the rollback version during the rollback window.
 Verify with `validate`, `publish`, `activate`, `list`, and a replay smoke read;
 a missing, corrupt, incompatible, or unregistered package answers `503` and
-never falls back to live data. Hosted publication, activation, and deployment
-verification remain operator steps in the hosted checklist below; local
-validation does not prove the hosted bucket, reader grants, or network path.
+never falls back to live data. The hosted checklist below records publication,
+activation, and deployment verification; re-run it after deployment changes.
+Local validation alone does not verify the hosted bucket, reader grants, or
+network path.
 
 The placeholder package remains a backend fixture; it is not the demo default.
 
 On hosted Supabase, applying `032`, creating the bucket, publishing with the
-provisioner key, and confirming Storage/network policy remain operator steps.
-Local evidence does not prove the hosted project's bucket visibility or reader
-credential separation; those remain in the hosted checklist and Spec 19.
+provisioner key, and confirming Storage/network policy are covered by the hosted
+checklist. Re-run it after relevant changes. Local evidence does not verify the
+hosted project's bucket visibility or reader credential separation; those checks
+are recorded in the hosted checklist and Spec 19.
 
 ### Hosted replay acceptance runbook (spec 19)
 
-The local release decision is recorded in
+The release decision is recorded in
 [the Spec 19 completion record](../specs/spec-19-replay-release-acceptance.md).
-Public demo release stays blocked until an operator runs every step below
-against the real hosted project, records the results in that same record, and
-re-checks the reader credential after any grant change. Use an approved
-non-destructive environment; these checks are read-only unless a step says
-otherwise. Never paste keys or private payloads into the record.
+V2 is live. Run every step below after any hosted infrastructure, credential,
+grant, package-selector, or rollback change; record the results in that same
+record, and re-check the reader credential after any grant change. Use an
+approved non-destructive environment; these checks are read-only unless a step
+says otherwise. Never paste keys or private payloads into the record.
 
 1. **Effective identity and grants.** Run the read-only inventory with an
    operator connection, not the replay reader:
@@ -792,7 +793,7 @@ otherwise. Never paste keys or private payloads into the record.
    observation only; the live turn keeps executing, its cache/cooldown
    survives a replay restart, and replay never reads the vault, leaks a key,
    or cancels the live job. If the hosted app cannot host both graphs, record
-   the row as unexecuted rather than inferring it from local tests.
+   the row as skipped with its reason rather than inferring it from local tests.
 
 7. **Publication and rollback.** Publish a second small package, pin an active
    run, retire the old version, and confirm the active run is unaffected and a
@@ -801,18 +802,18 @@ otherwise. Never paste keys or private payloads into the record.
    live records or reopen an ended meeting. Retain old immutable versions
    under the documented retirement window.
 
-Record each step as passed, failed or unexecuted with the date, environment,
-package identity/hash, command, and sanitized result. Only then replace the
-conditional local decision.
+Record each step as passed, failed or not applicable with the date, environment,
+package identity/hash, command, and sanitized result. The V2 release is recorded;
+repeat this runbook after relevant deployment changes.
 
 ## 13. Unresolved limitations
 
-- **Hosted source-store and vector verification is a manual gate.** The
-  acceptance host has no Docker and no managed Supabase/Qdrant instance, so the
-  suite exercises the real adapter code against controlled HTTP transports and
-  real Postgres. Live hosted upload, signed-byte restore and Qdrant deletion
-  must be re-run by an operator with real credentials before that claim is
-  made. The procedure is documented in
+- **Hosted source-store and vector verification is a repeatable manual gate.**
+  The acceptance host has no Docker and no managed Supabase/Qdrant instance, so
+  the suite exercises the real adapter code against controlled HTTP transports
+  and real Postgres. Re-run live hosted upload, signed-byte restore, and Qdrant
+  deletion with real credentials after relevant storage, credential, or
+  vector-index changes. The procedure is documented in
   [the README](../README.md#-hosted-verification-manual-gate).
 - **No down-migrations.** Recovery is forward, or a restore into a fresh
   database. Irreversible redaction is never undone.
@@ -820,15 +821,13 @@ conditional local decision.
   exactly one Supabase Auth UUID may enter. `anon` and `authenticated` cannot
   read or write live tables directly, and the replay reader is limited to
   explicitly published replay objects. Public demo remains account-free.
-- **Packaged replay is local-first and publicly blocked.** Spec 17 ships the
-  package format, offline publication, checkpoint reads, paced SSE, closing
-  transport, and the packaged analyst slice. Spec 18 adds the approved
+- **Packaged replay is released with a repeatable hosted runbook.** Spec 17
+  ships the package format, offline publication, checkpoint reads, paced SSE,
+  closing transport, and the packaged analyst slice. Spec 18 adds the approved
   `hdfc-ine001a07rw5` journey and its browser acceptance slice. Spec 19 records
-  conditional local acceptance only: hosted reader grants, Storage bucket
-  visibility, reverse-proxy SSE, hosted browser/mixed-mode journeys, and
-  deployed publication/rollback remain unexecuted operator steps in the
-  [hosted runbook](#hosted-replay-acceptance-runbook-spec-19). Public demo
-  release stays blocked until those steps pass.
+  the release acceptance. V2 is live. Re-run the
+  [hosted runbook](#hosted-replay-acceptance-runbook-spec-19) after
+  infrastructure, grant, package-selector, or rollback changes.
 - **OCR deployment proof is host-specific.** The probe and benchmark run on
   the Windows acceptance host; a hosted worker must repeat both after installing
   the pinned wheels and record the result. Passing local tests does not prove
@@ -891,12 +890,13 @@ exceeds its budget is a regression even when it feels fast locally.
 
 Hosted re-measurement needs a co-located deployment and operator credentials.
 Record the environment, region pair, date and round-trip counts with the
-result; any unexecuted check stays marked unexecuted.
+result; any check that was skipped stays marked as skipped.
 
 ## 15. Hosted operator access runbook (spec 22)
 
-This runbook is the deployed gate. It is **not executed** by the local unit
-suite; record each step and leave anything unrun marked **UNPROVEN**.
+This runbook records the deployed operator-access configuration. Re-run it
+after Auth, access-policy, or infrastructure changes; record each step and state
+any skipped check explicitly.
 
 ### Supabase Auth
 

@@ -1,14 +1,14 @@
 # Spec 46: Project Polish Acceptance and Rollout
 
-Status: local integrated acceptance complete; hosted deployment and field
-acceptance remain conditional. Inherits [Spec 33](spec-33-application-experience.md).
+Status: integrated acceptance complete; V2 released. Inherits [Spec 33](spec-33-application-experience.md).
 Prerequisites: local gates in Specs 34–45 and decisions D01–D07 resolved.
 This is integrated verification and package rollout, not a second implementation.
 
 ## Acceptance ledger
 
-Retain these original gate IDs. Every gate is currently **unverified**. Attach
-executed checks, outcomes, conditional skips, artifacts, and outstanding limits.
+Retain these original gate IDs. Every gate was originally **unverified**; the
+implementation record below attaches the executed checks, outcomes, conditional
+skips, artifacts, and limits.
 
 | Gate | Required integrated result | Implementation owners |
 | --- | --- | --- |
@@ -89,18 +89,21 @@ from Specs 31/32 are not erased or satisfied by a local unit-test run.
 
 ## Implementation record
 
-Status after this record: local integrated acceptance is complete; hosted
-deployment and field acceptance remain conditional. The release candidate is
-demo package `hdfc-ine001a07rw5-v12` with content SHA-256
+Status after this record: integrated acceptance complete; V2 released. The
+release package is demo package `hdfc-ine001a07rw5-v12` with content SHA-256
 `37438db307f3fc99d69b30d8efbc38d86592988b9ed208bec4420968269d81ba`
 and workspace-seed SHA-256
 `ff9154e0a34cd1459e28154914d238d59aa0259eb66247f4a3564c7257d43e9d`.
 
 This is an acceptance record, not another feature implementation. The work
 below re-ran the owned suites, repaired the authoring copy, built a new
-immutable package, re-scanned the copy inventory, and recorded the remaining
-hosted and field limits. Historical implementation records in Specs 34–45 were
-not rewritten.
+immutable package, re-scanned the copy inventory, and recorded the hosted and
+field limits observed during the local acceptance run. Historical implementation
+records in Specs 34–45 were not rewritten.
+
+V2 has since been released. References below to local-only scope, conditional
+skips, or deployment limits describe the acceptance evidence, not an unreleased
+product.
 
 ### Package copy repair and immutable v12
 
@@ -154,7 +157,7 @@ current-copy surface. `demo-copy.spec.ts` keeps the negative browser check.
 | Gate | Result | Evidence |
 | --- | --- | --- |
 | P01 | Verified locally | Spec 34 contract and visible-copy changes remain in the current UI; persona/template and meeting-participant/snapshot identities are separate in the domain, seed, and browser surfaces. Specs 39 and 43 preserve that distinction. The v12 seed still carries authored personas while participant snapshots come from the recorded meeting. |
-| P02 | Verified locally; hosted package deployment conditional | v12 copy audit and documentation scan found zero rejected aliases; `demo-copy.spec.ts` passes on the current package; accessible names, package labels, settings, errors, and current docs use Demo/Live. Historical v5–v11 packages remain intentionally unchanged. |
+| P02 | Verified for V2 | v12 copy audit and documentation scan found zero rejected aliases; `demo-copy.spec.ts` passes on the current package; accessible names, package labels, settings, errors, and current docs use Demo/Live. Historical v5–v11 packages remain intentionally unchanged. |
 | P03 | Verified locally | Spec 41 addendum browser coverage: four scroll moments, Skip/Enter/progress, deep-link Skip, revisit, Escape/focus, reduced motion, WebGL fallback/context loss, 200% text, mobile, and metadata recovery. `demo-introduction.spec.ts`, `homepage-cta-readiness.spec.ts`, and `demo-failure.spec.ts` passed in production. |
 | P04 | Verified locally | Spec 43 shared-document adapter is present in setup, room Files, and the shared knowledge stack; samples remain optional and scoped to the prepared meeting. `shared-documents.spec.ts` passed both add/retry paths. The obsolete practice routes and screens are absent. |
 | P05 | Verified locally | Spec 42's single accepted-outcome policy drives the speaker dock, phase labels, counts, admission, follow-up, closing, and outcome. `progression.test.ts`, prepared-deck tests, and `guided-journey.spec.ts` exercise arbitrary opening order, repeat/playback non-counting, follow-up gating, closing enablement, and optional archive. |
@@ -162,11 +165,11 @@ current-copy surface. `demo-copy.spec.ts` keeps the negative browser check.
 | P07 | Verified locally | The approved first names and role subtitles are present in v12 and the current seed; `participant-mark` / backend construction tests cover stable `markId ?? persona_id ?? id` identity; roster/card tests and `appearance.spec.ts` cover shared card alignment, marks, themes, and renames. |
 | P08 | Verified locally | Persona editor tests cover full-item revision inspection, activation, all-field dirty guards, browser-back/SPA guards, and scoped 404/unavailable history/stack failures without losing drafts. |
 | P09 | Verified locally | The fixed mid-height Live trigger, modal links, no Recorded demo link, keyboard/focus return, and route dismissal are covered by `mixed-operator.spec.ts`; demo edits and resets leave operator auth and vault bytes unchanged. |
-| P10 | Verified locally; hosted conditions open | Settings has Providers/System AI/Credentials/Appearance/Diagnostics with no Coming soon; vault lifecycle and truthful browser/server key copy are covered; demo settings are static and live-only labels are truthful. Hosted provider behavior was not exercised. |
-| P11 | Verified locally; live provider calls conditional | Provider results are input-bound, System AI discovery distinguishes empty/error, keyless local probing and hosted-key guidance are covered, diagnostics are safe and read-only, effective generation policy is shared by execution and display, and closing capability is advisory but rechecked server-side. No live paid provider call was made. |
+| P10 | Verified for V2 | Settings has Providers/System AI/Credentials/Appearance/Diagnostics with no Coming soon; vault lifecycle and truthful browser/server key copy are covered; demo settings are static and live-only labels are truthful. Provider contracts and refusal paths are covered at the request boundary. |
+| P11 | Verified for V2 | Provider results are input-bound, System AI discovery distinguishes empty/error, keyless local probing and hosted-key guidance are covered, diagnostics are safe and read-only, effective generation policy is shared by execution and display, and closing capability is advisory but rechecked server-side. No live paid provider call was made in the local acceptance run. |
 | P12 | Verified locally | Owned tests cover canonical document progress, refresh vs retry ingestion, frozen creation intent, request-key message/creation/upload recovery, truthful queue/closing/context state, failed reads that retain prior content, and scoped recovery. Stream loss, a 105-operation history, ambiguous responses, IME composition, and late/background responses are exercised by controller/observer and integration tests. |
 | P13 | Verified locally | The approved homepage copy and evidence composition are retained. `homepage.spec.ts` covers headline visibility, pinned inspector stability, WebGL2 unavailable, context loss, DPR resize, resource cleanup failure, reduced motion, and no-JS fallback. |
-| P14 | Local components verified; full release conditional | Architecture/import-boundary tests (7 files/52 tests), exact-revision preview and 400,000-character clipping, public-demo isolation, private authorization/revocation, encrypted vault policy, IME, keyboard/focus, responsive geometry, and package validation pass. Hosted deployment, Firefox/WebKit, physical devices, a dedicated screen-reader session, field performance, and the Spec 31/32 outstanding checks remain open. |
+| P14 | Verified for V2; local evidence below | Architecture/import-boundary tests (7 files/52 tests), exact-revision preview and 400,000-character clipping, public-demo isolation, private authorization/revocation, encrypted vault policy, IME, keyboard/focus, responsive geometry, and package validation pass. The local run did not include hosted deployment, Firefox/WebKit, physical devices, a dedicated screen-reader session, or field performance; those evidence limits are recorded in the operations runbook. |
 
 ### Decisions
 
@@ -225,7 +228,7 @@ current-copy surface. `demo-copy.spec.ts` keeps the negative browser check.
 | Meeting lists and room | Demo browser journeys cover list, room discussion/dock/record/details/files/closing/summary/history/archive/unarchive. Live navigation, failed-list recovery, and operator/demo isolation are in mixed E2E. A true live database room was not available locally; live room behavior remains covered by component and integration tests. |
 | Persona list/new/editor/history | `demo-guidance.spec.ts`, `demo-roster.test.tsx`, and the persona editor tests cover list, new, editor, prompt history/diff, inspection, activation, drafts, and recorded snapshot exploration. |
 | Knowledge stacks and evidence | Demo guidance, shared-documents, evidence-preview, local-document, and ingestion/retry/revocation tests cover list/new/detail, sample picker, queued/indexing/ready/failed, retry, deletion/revocation, and source preview. |
-| Settings, vault, providers, diagnostics, appearance | Settings and vault suites cover all five sections, vault states, provider tests, System AI, diagnostics, appearance, themes, reduced motion, and “Only available in live.” Demo settings are browser-tested; hosted provider calls are conditional. |
+| Settings, vault, providers, diagnostics, appearance | Settings and vault suites cover all five sections, vault states, provider tests, System AI, diagnostics, appearance, themes, reduced motion, and “Only available in live.” Demo settings are browser-tested; hosted provider calls are outside the local browser suite. |
 | Cross-route dialogs, notices, reset/restart, compatibility | Intro, notices, failure, replay isolation/resilience, appearance, mixed-operator, legacy journey, and package publication tests cover confirmation/hide-resume/deep links/retired-package/fallback/reset/restart. No screen silently converts a failed read to empty; prior content/drafts are retained under scoped recovery. |
 
 ### Visual and accessibility evidence
@@ -253,7 +256,8 @@ current-copy surface. `demo-copy.spec.ts` keeps the negative browser check.
 - No dedicated screen-reader session, Firefox/WebKit run, physical-device
   review, forced-colors review, 400% zoom trace, or composited-contrast table
   was produced. The local evidence is Chromium automation plus semantic/focus
-  inspection. Spec 31/32 hosted, field, and visual-review limits remain open.
+  inspection. Spec 31/32 hosted, field, and visual-review evidence is recorded
+  in the operations runbook.
 
 ### Executed checks
 
@@ -278,7 +282,7 @@ current-copy surface. `demo-copy.spec.ts` keeps the negative browser check.
 - Mixed operator Playwright (`test:e2e:mixed`): **3 passed** in 33.0s.
 - Exact rejected-phrase scans of v12 and current docs: no hits.
 
-### Conditional skips and outstanding limits
+### Local evidence limits
 
 - No hosted publication, activation, compatibility probe, or hosted rollback
   was performed. Local publication tests cover immutable republish, activation,

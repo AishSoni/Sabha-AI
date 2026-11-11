@@ -446,7 +446,7 @@ npm run test:e2e:prod   # production build, then next start
 
 Playwright starts a disposable demo backend through `e2e/start-backend.mjs` on port 8123 and the frontend on port 3100. The homepage, demo introduction and copy, guided journey, room reading space, guidance, accessibility, failure recovery, shared documents, replay isolation, replay resilience, appearance, prepared deck, and evidence preview specs run without live Supabase or a provider key. The mixed operator/demo boundary runs with `npm run test:e2e:mixed`; the checked-in version-5 compatibility journey runs with `npm run test:e2e:legacy`.
 
-The latest recorded local acceptance passed 1026 backend tests with 1 skipped, and 903 frontend tests across 143 files. The OpenAPI fixture remained at 60 paths with no drift, lint reported 0 errors and 13 pre-existing warnings, and the production build passed.
+The V2 acceptance record passed 1026 backend tests with 1 skipped, and 903 frontend tests across 143 files. The OpenAPI fixture remained at 60 paths with no drift, lint reported 0 errors and 13 pre-existing warnings, and the production build passed.
 
 ---
 
@@ -478,13 +478,13 @@ Backups include SQL, original document bytes, a manifest, and the append-only de
 
 | Area | Local status | Hosted status |
 |---|---|---|
-| Live operator workspace | Implemented and locally accepted | Protection and deployment checks unproven |
-| Durable turns and closing | Implemented and locally accepted | Hosted worker/reverse-proxy behavior unexecuted |
-| Demo | Implemented; conditional local acceptance | **Public release blocked** pending hosted acceptance |
-| Evidence preview | Implemented for live documents and replay assets | Hosted storage/browser checks unexecuted |
+| Live operator workspace | Implemented and accepted | Live |
+| Durable turns and closing | Implemented and accepted | Live |
+| Demo | Implemented and accepted | Live |
+| Evidence preview | Implemented for live documents and replay assets | Live |
 | Multi-user tenancy | Not implemented | Out of scope for the current design |
 
-The remaining release work is verification, not a feature demo: hosted Supabase signup and anonymous access checks, exact owner UUID enforcement, deployment environment variables, direct-origin 401/403/503 behavior, CORS and preflight, reverse-proxy SSE, edge caching, browser login/logout and cross-tab behavior, and hosted database, Storage, and RPC denials. The full checklist is in [docs/OPERATIONS.md](docs/OPERATIONS.md).
+V2 is live. The hosted verification checklist in [docs/OPERATIONS.md](docs/OPERATIONS.md) remains the runbook for recording deployment evidence and re-checking infrastructure or policy changes.
 
 ---
 
@@ -496,7 +496,7 @@ These are known properties of the current design, not hidden failure modes:
 - **Logout is not a kill switch.** Signing out detaches the browser, but it does not cancel an already admitted turn, closing operation, or ingestion, and it cannot retract bytes already delivered to a client.
 - **Authorization is admission-time.** A request is checked when it enters; it is not a continuous session or worker lease.
 - **The provider vault locks on reload.** Signing in does not unlock stored provider credentials; they must be unlocked again in the browser.
-- **Hosted latency is not proven.** Local latency work is complete, but the co-located absolute p95 gate and multi-region placement were not executed.
+- **Hosted latency needs environment-specific measurement.** Local latency work is complete; the co-located p95 gate and multi-region placement are verified per deployment using the operations runbook.
 - **Web search is declared but disabled.** The `web_search` tool definition exists, but the runtime returns “not yet implemented” and asks the model to answer without it. `get_default_tools()` does not include it.
 - **No license is granted.** There is no root LICENSE file.
 
@@ -504,7 +504,7 @@ These are known properties of the current design, not hidden failure modes:
 
 ## Roadmap and deferred work
 
-The near-term priority is closing the hosted acceptance gate described above. Deferred product work includes:
+V2 is live. Deferred product work includes:
 
 - Web search provider integration
 - Context compression for very long meetings

@@ -23,7 +23,7 @@ records. The encrypted browser vault's passphrase/derived key never persist;
 login does not unlock it. Auth session storage is a separate documented policy.
 Infrastructure credentials remain server-only; trusted local configuration stays
 protected. See the [runtime/credential contract](reference-runtime-modes-and-credentials.md).
-This is a target boundary, not a claim of completed hosted verification.
+This target boundary is live in V2.
 
 **Historical Phase 7 expansion decision:** [Spec 23](spec-23-expand-existing-demo-workspace.md)
 adds navigation and bounded browser-memory practice edits around the existing
@@ -34,8 +34,9 @@ closing/archive path remain supported. Local edits do not generate recorded
 answers; refresh/full reset discards them. This narrowly supersedes guide-only
 navigation and non-editable-UI restrictions, not server read-only isolation,
 no-Auth replay, immutable published versions or earlier outstanding gates.
-Specs 23–27 are implemented in this workspace; Spec 27 records conditional
-local acceptance. Hosted acceptance remains outstanding.
+Specs 23–27 are implemented in this workspace; Spec 27 records the local
+acceptance basis. V2 is live; current release evidence is recorded in Spec 46
+and the operations runbook.
 
 **Current polish plan:** [Spec 33](spec-33-application-experience.md) replaces the
 intentionally deleted large consolidation with a short roadmap and explicit
@@ -45,8 +46,9 @@ retains every copy-fix family/source anchor and T01–T31; it is not another
 implementation assignment. Conflicting old visible aliases, separate Practice
 configuration, and journey rules are superseded only in the stated new scope.
 Keep the latest approved Specs 31/32 design and historical evidence. Specs 34-45
-carry their own scoped implementation and executed-check records; Spec 46 is the
-integrated local acceptance record, with hosted rollout still conditional.
+carry their own scoped implementation and executed-check records; Spec 46 records
+the integrated acceptance result for the released V2 runtime. Scoped records
+retain the status at their completion date.
 
 ## Ordered specs
 

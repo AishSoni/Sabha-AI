@@ -1,21 +1,23 @@
 # Shared Reference: Runtime Modes, Replay, and Browser Credentials
 
-This contract applies to every implementation spec. It supersedes earlier descriptions of a writable public demo and universally server-owned provider keys. Phase 3 clarifies that live and replay coexist in the same hosted app, not separate deployments. It is a reference, not another numbered implementation step. All examples are proposed contracts; their fixtures and adapters must be implemented and tested first.
+This contract applies to every implementation spec. It supersedes earlier descriptions of a writable public demo and universally server-owned provider keys. Phase 3 clarifies that live and replay coexist in the same hosted app, not separate deployments. It is a reference, not another numbered implementation step. The contracts below describe V2 behavior; fixtures and adapters remain responsible for enforcing them.
 
 **Spec 22 decision update:** [Operator-only live access](spec-22-operator-only-live-access.md)
 supersedes earlier public/no-sign-in live requirements and blanket prohibitions
 on an Auth boundary. Public replay still requires no accounts or Auth bootstrap.
-This reference describes the updated target, not deployed implementation or
-acceptance evidence; earlier specs' completion records remain historical.
+V2 is live; current acceptance evidence is recorded in Spec 46 and the
+operations runbook. Earlier specs' completion records remain historical.
 
-**Specs 23–27 expansion update (planned):** expand the existing `/demo`, not
+**Specs 23–27 expansion update:** expand the existing `/demo`, not
 replace it. Preserve the canonical guided HDFC journey while adding freely
-navigable shared feature screens, bounded browser-memory practice edits and
+navigable shared feature screens, bounded browser-memory workspace edits and
 validated prepared recording choices. [Spec 23](spec-23-expand-existing-demo-workspace.md)
 defines the narrow supersession of guide-only/non-editable UI rules. Persistent
-demo effects and live calls remain forbidden; local practice mutations are
+demo effects and live calls remain forbidden; local workspace mutations are
 explicitly temporary and never represented as generating recorded answers.
-This update is a target contract, not evidence that the expansion has shipped.
+This update is implemented in V2. Spec 43 later removed the separate practice
+setup/meeting flow while retaining bounded browser edits to personas, stacks,
+and meeting samples.
 
 ## Two distinct paths
 
@@ -47,7 +49,7 @@ and replay graph never initialize Auth to render or play recorded content.
 - Package all scenario content beforehand: initial records, permitted steps, messages, participant replies, tool activity/results, source excerpts, votes, summaries, and displayed usage. Use a versioned, validated replay manifest and reproducibly provisioned assets, not ignored author-local files or production imports from test fixtures.
 - Replay runtime reads may serve the fixed package and dedicated read-only data. Deny replay-attributable application writes to both demo and live stores: meeting/persona/settings mutations, message insertion, uploads/indexing, deletion, queue/jobs, operation journals, evidence, usage, and tutorial progress/session/analytics records. Do not create a per-visitor workspace or seed it on first visit. Authoring/provisioning happens before runtime.
 - Enforce guards before adapter dispatch, including direct API/deep-link attempts. UI-disabled buttons alone are insufficient. Read-only database/storage permissions and replay-adapter outbound restrictions provide defense in depth. Audit effective `PUBLIC` inheritance, roles, views, RPCs and default privileges; smaller explicit reader grants alone do not remove inherited live access. Demo operation must not require live provider, embedding, vector-search, or writable database credentials.
-- Tutorial advancement changes only an ephemeral cursor and presentation projection. Specs 23–27 additionally permit bounded browser-memory practice commands over seeded templates, stacks, sample documents and setups. Back, restart, navigation, or repeated clicks never create backend commands or durable effects. Neither practice edits nor tutorial progress persist in browser storage. Do not access or alter the live credential vault while replaying.
+- Tutorial advancement changes only an ephemeral cursor and presentation projection. Specs 23–27 additionally permit bounded browser-memory workspace commands over seeded templates, stacks, and sample documents. Back, restart, navigation, or repeated clicks never create backend commands or durable effects. Bounded workspace edits do not survive reload or full reset; only tab-scoped session storage holds the introduction acknowledgement and document-operation receipts. No localStorage, cookie, server, analytics, or cross-session demo state is created. Do not access or alter the live credential vault while replaying.
 - No fallback to live execution when a step, asset, or recorded event is missing. Fail with an honest replay-package error and a retry/restart choice; no generated substitute. Recorded activity is identified as replay, not claimed to be fresh research, a real charge, or a newly committed live operation.
 
 Live startup recovery, workers and provider calls may legitimately run in the cohosted deployment. They are not replay effects and must not be disabled to pass a global no-writes assertion. Replay handling must neither construct nor invoke them. A replay-only local composition must start without those live dependencies. Same-process isolation cannot claim process-wide outbound denial while live execution is enabled; test attribution and the separate restricted graph.
@@ -56,7 +58,7 @@ Live startup recovery, workers and provider calls may legitimately run in the co
 
 Reuse the base application's actual feature screens/components, domain policy interfaces, normalized event/read contracts, and pure reconciliation/rendering code. Compose a recorded read/event source and rejecting write ports instead of live adapters. Do not build a separate lookalike meeting application, fork lifecycle policy into a tutorial engine, or treat successful no-op persistence as a real commit.
 
-The guide owns its canonical step order, objectives, overlays/highlights anchored to real controls, and explicit next/back/restart actions. It does not own a second meeting/message implementation. Specs 23–27 separate optional guidance from legal prepared actions and allow explicit local practice editing; all other unsupported actions stay unavailable with an explanation. Replay and practice outcomes are explicit and must not satisfy live-operation persistence/completion assertions.
+The guide owns its canonical step order, objectives, overlays/highlights anchored to real controls, and explicit next/back/restart actions. It does not own a second meeting/message implementation. Specs 23–27 separate optional guidance from legal prepared actions and allow explicit local workspace editing; all other unsupported actions stay unavailable with an explanation. Replay and workspace outcomes are explicit and must not satisfy live-operation persistence/completion assertions.
 
 Advance only on the user's permitted action; no automatic transition to another step or surprise paid call. Presentation animation is optional and cannot control correctness. All authored generated text uses actual paced backend SSE, including closing reasons and summaries; source excerpts and fixed labels need not stream. Test keyboard access, focus when targets mount/unmount, route transitions, reduced motion, and rapid/repeated actions. The tutorial is interactive guidance through the real UI, not merely a video player or a separate `/demo` mock screen. A replay route scope may compose the same actual features.
 
@@ -129,6 +131,6 @@ Those step IDs are fixture values, not mandated scenario content. Add independen
 - **Spec 15–16:** integrate real closing UI/shared generated-text presentation and resolve bounded shared PDF extraction quality.
 - **Spec 17–19:** implement package/provisioning/prepared retrieval/paced streaming and one technical slice; deliver one approved guided bond journey; independently verify hosted replay and live-regression acceptance. See the [Phase 3 roadmap](roadmap-phase-3-hosted-guided-replay.md).
 - **Spec 22:** replace public live admission with exact-UUID operator authorization, private frontend composition and authenticated live transports; preserve public replay, existing provider-vault/worker behavior and database isolation. Old no-sign-in-live tests change deliberately; public no-Auth replay tests remain mandatory. No ownership migration or hosted acceptance is implied by this decision update.
-- **Specs 23–27:** expand the existing demo shell and feature coverage, with local prompt/stack/sample-document/setup operations and validated prepared meeting choices. Preserve the original guide and isolate practice state from playback epochs and immutable provenance. Full demo reset clears both; recording-only restart preserves practice edits. No persisted demo state, live inference or public write authority is introduced.
+- **Specs 23–27:** expand the existing demo shell and feature coverage, with local prompt/stack/sample-document operations and validated prepared meeting choices. Preserve the original guide and isolate workspace state from playback epochs and immutable provenance. Full demo reset clears both; recording-only restart preserves workspace edits. No persisted demo state, live inference or public write authority is introduced.
 
 Documentation: [MDN key derivation](https://developer.mozilla.org/en-US/docs/Web/API/SubtleCrypto/deriveKey), [PBKDF2 parameters](https://developer.mozilla.org/en-US/docs/Web/API/Pbkdf2Params), [AES-GCM parameters](https://developer.mozilla.org/en-US/docs/Web/API/AesGcmParams), and [non-extractable keys](https://developer.mozilla.org/en-US/docs/Web/API/CryptoKey/extractable). API examples inform implementation, not production work-factor selection or a guarantee against XSS.
