@@ -7,6 +7,7 @@
  * published with the package, plus any recorded meeting documents visible at
  * the current checkpoint. Upload, delete, and retry actions are absent.
  */
+import type { ComponentType } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { FileText } from "lucide-react";
 import { EvidenceTrigger } from "../evidence/trigger";
@@ -53,7 +54,13 @@ function AssetRow({ asset }: { asset: ReplayAsset }) {
     );
 }
 
-export function RecordedDocumentsPanel({ meetingId }: { meetingId: string }) {
+export function RecordedDocumentsPanel({
+    meetingId,
+    addedDocuments: AddedDocuments,
+}: {
+    meetingId: string;
+    addedDocuments?: ComponentType<{ meetingId: string }>;
+}) {
     const runtime = useMeetingsRuntime();
     const assets = runtime.replay?.assets ?? [];
 
@@ -102,8 +109,8 @@ export function RecordedDocumentsPanel({ meetingId }: { meetingId: string }) {
             <div className="space-y-1">
                 <h2 className="type-section-title">Documents</h2>
                 <p className="type-meta text-ink-muted">
-                    Read-only documents retained for this demo. Upload and delete
-                    are unavailable.
+                    Package documents are read-only. Added samples stay in this
+                    browser and can be retried or removed.
                 </p>
             </div>
 
@@ -128,6 +135,8 @@ export function RecordedDocumentsPanel({ meetingId }: { meetingId: string }) {
                     </div>
                 </section>
             ))}
+
+            {AddedDocuments ? <AddedDocuments meetingId={meetingId} /> : null}
 
             {recordedDocuments.length > 0 ? (
                 <section className="space-y-2">

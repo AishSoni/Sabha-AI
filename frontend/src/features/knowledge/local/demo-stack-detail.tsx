@@ -20,12 +20,14 @@ import { RecordedExamplesView, type RecordedExampleView } from "../presentation/
 import { SamplePicker } from "../presentation/sample-picker";
 import { StackEditorView } from "../presentation/stack-editor";
 import { DemoKnowledgeGate } from "./demo-knowledge-gate";
+import { DemoMeetingDocuments } from "./demo-meeting-documents";
 import { stackParticipants } from "./stack-state";
 import { useLocalDocuments } from "./use-local-documents";
 import { useLocalStacks } from "./use-local-stacks";
 
 export interface DemoStackDetailProps {
     stackId: string;
+    meetingId?: string;
     recordedExamples?: RecordedExampleView[];
     renderPreviewAction?: (sample: WorkspaceSample) => ReactNode;
     renderRecordedPreviewAction?: (example: RecordedExampleView) => ReactNode;
@@ -33,6 +35,7 @@ export interface DemoStackDetailProps {
 
 export function DemoStackDetail({
     stackId,
+    meetingId,
     recordedExamples,
     renderPreviewAction,
     renderRecordedPreviewAction,
@@ -41,6 +44,7 @@ export function DemoStackDetail({
         <DemoKnowledgeGate>
             <Content
                 stackId={stackId}
+                meetingId={meetingId}
                 recordedExamples={recordedExamples}
                 renderPreviewAction={renderPreviewAction}
                 renderRecordedPreviewAction={renderRecordedPreviewAction}
@@ -51,6 +55,7 @@ export function DemoStackDetail({
 
 function Content({
     stackId,
+    meetingId,
     recordedExamples,
     renderPreviewAction,
     renderRecordedPreviewAction,
@@ -160,6 +165,14 @@ function Content({
                 emptyMessage="No documents yet. Add a sample to watch eligibility change."
                 />
             </div>
+
+            {stack.scope === "shared" && meetingId ? (
+                <DemoMeetingDocuments
+                    meetingId={meetingId}
+                    mode="stack"
+                    renderPreviewAction={renderPreviewAction}
+                />
+            ) : null}
 
             <Card ref={accessRef}>
                 <CardHeader>

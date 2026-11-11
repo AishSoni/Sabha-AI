@@ -51,6 +51,7 @@ export function DemoKnowledgeStackRoute({ stackId }: { stackId: string }) {
         <EvidencePreviewProvider adapter={evidence} epoch={previewEpoch}>
             <DemoStackDetail
                 stackId={stackId}
+                meetingId={session.meeting_id}
                 recordedExamples={recordedExamples}
                 renderPreviewAction={(sample) => {
                     const asset = assetsById.get(sample.assetId);

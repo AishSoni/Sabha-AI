@@ -1,10 +1,51 @@
 "use client";
 
-import { useCallback, useEffect } from "react";
+import { useCallback, useEffect, useMemo } from "react";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import { MeetingRoom } from "@/features/meetings/components/MeetingRoom";
+import { RecordedDocumentsPanel } from "@/features/meetings/runtime/recorded-documents-panel";
+import { EvidenceTrigger } from "@/features/meetings/evidence/trigger";
+import { descriptorForAsset } from "@/features/meetings/runtime/replay-evidence";
+import { useReplaySessionReady } from "@/features/meetings/runtime/replay-session";
+import { DemoMeetingDocuments } from "@/features/knowledge/local";
 import { useReplayRun } from "@/features/meetings/runtime/replay-run";
 import { chapterHref } from "@/features/meetings/runtime/chapters";
+
+function DemoAddedDocuments({ meetingId }: { meetingId: string }) {
+    const { session } = useReplaySessionReady();
+    const assetsById = useMemo(
+        () => new Map(session.assets.map((asset) => [asset.asset_id, asset])),
+        [session.assets]
+    );
+    return (
+        <DemoMeetingDocuments
+            meetingId={meetingId}
+            mode="room"
+            renderPreviewAction={(sample) => {
+                const asset = assetsById.get(sample.assetId);
+                if (!asset) return null;
+                return (
+                    <EvidenceTrigger
+                        descriptor={{
+                            ...descriptorForAsset(asset),
+                            title: sample.fileName,
+                        }}
+                        label="Preview source"
+                    />
+                );
+            }}
+        />
+    );
+}
+
+function DemoDocumentsPanel({ meetingId }: { meetingId: string }) {
+    return (
+        <RecordedDocumentsPanel
+            meetingId={meetingId}
+            addedDocuments={DemoAddedDocuments}
+        />
+    );
+}
 
 /**
  * The canonical recorded meeting route (spec-18). Local practice IDs never
@@ -73,6 +114,7 @@ export function RecordedMeetingRoute({ meetingId }: { meetingId: string }) {
             initialTab={selectedTab}
             activeTab={selectedTab}
             onTabChange={changeTab}
+            documentPanel={DemoDocumentsPanel}
         />
     );
 }

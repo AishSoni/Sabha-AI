@@ -12,6 +12,7 @@ import {
     useEffect,
     useRef,
     useState,
+    type ComponentType,
     type KeyboardEvent as ReactKeyboardEvent,
 } from 'react';
 import Link from 'next/link';
@@ -112,6 +113,12 @@ export interface MeetingRoomProps {
     /** Route-owned tab for a routable room. Omit for the live room. */
     activeTab?: string;
     onTabChange?: (tab: string) => void;
+    /**
+     * Optional route-owned Files panel. The demo route uses this to add its
+     * browser-local meeting inventory without making the meetings feature
+     * depend on a demo-only knowledge adapter.
+     */
+    documentPanel?: ComponentType<{ meetingId: string }>;
 }
 
 const TERMINAL_STATUSES = ['completed', 'failed', 'interrupted', 'cancelled'];
@@ -125,6 +132,7 @@ export function MeetingRoom({
     initialTab,
     activeTab,
     onTabChange,
+    documentPanel,
 }: MeetingRoomProps) {
     const runtime = useMeetingsRuntime();
     const meetingQuery = useRuntimeMeeting(meetingId);
@@ -219,6 +227,7 @@ export function MeetingRoom({
                 initialTab={initialTab}
                 activeTab={activeTab}
                 onTabChange={onTabChange}
+                documentPanel={documentPanel}
             />
         </main>
     );
@@ -310,6 +319,7 @@ interface ConversationProps {
     initialTab?: string;
     activeTab?: string;
     onTabChange?: (tab: string) => void;
+    documentPanel?: ComponentType<{ meetingId: string }>;
 }
 
 function RecordToggle({
@@ -376,6 +386,7 @@ function MeetingConversation({
     initialTab,
     activeTab,
     onTabChange,
+    documentPanel,
 }: ConversationProps) {
     const runtime = useMeetingsRuntime();
     const { capabilities, slots } = runtime;
@@ -453,7 +464,7 @@ function MeetingConversation({
         'recorded-room',
         Boolean(turns.observationOperation) || turns.isObserving
     );
-    const DocumentsPanel = slots.documentPanel;
+    const DocumentsPanel = documentPanel ?? slots.documentPanel;
     const SummaryPanel = slots.summaryPanel;
 
     const closingStage: ClosingStage | null = closingObservation.closing?.stage ?? null;
