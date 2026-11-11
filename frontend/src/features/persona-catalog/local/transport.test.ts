@@ -47,8 +47,6 @@ function workspace(): WorkspaceLocalState {
                 description: "Private documents.",
             },
         ],
-        practiceSetups: [],
-        practiceMeetings: [],
         participantSnapshots: [],
         documents: [],
     };

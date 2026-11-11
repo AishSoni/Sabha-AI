@@ -9,7 +9,6 @@ import {
     WORKSPACE_LIMITS,
     type WorkspaceDocument,
     type WorkspacePersona,
-    type WorkspacePracticeSetup,
     type WorkspaceRevision,
     type WorkspaceSample,
     type WorkspaceSampleRole,
@@ -118,22 +117,6 @@ function decodeStack(value: unknown, path: string): WorkspaceStack {
         label: requireString(record.label, `${path}.label`),
         scope,
         description: requireString(record.description, `${path}.description`),
-    };
-}
-
-function decodePracticeSetup(
-    value: unknown,
-    path: string
-): WorkspacePracticeSetup {
-    const record = decodeObject(value, path);
-    return {
-        setupId: requireString(record.setup_id, `${path}.setup_id`),
-        label: requireString(record.label, `${path}.label`),
-        description: requireString(record.description, `${path}.description`),
-        recordedExampleId: requireString(
-            record.recorded_example_id,
-            `${path}.recorded_example_id`
-        ),
     };
 }
 
@@ -314,11 +297,6 @@ export function decodeWorkspaceSeed(value: unknown): WorkspaceSeed {
         "workspace-seed.stacks",
         decodeStack
     );
-    const practiceSetups = requireArray(
-        record.practice_setups,
-        "workspace-seed.practice_setups",
-        decodePracticeSetup
-    );
     const samples =
         seedVersion >= 3
             ? requireArray(record.samples, "workspace-seed.samples", decodeSample)
@@ -350,9 +328,6 @@ export function decodeWorkspaceSeed(value: unknown): WorkspaceSeed {
     }
     if (stacks.length > WORKSPACE_LIMITS.stacks) {
         fail("workspace-seed.stacks", "stack ceiling exceeded");
-    }
-    if (practiceSetups.length > WORKSPACE_LIMITS.practiceSetups) {
-        fail("workspace-seed.practice_setups", "setup ceiling exceeded");
     }
 
     const personaIds = new Set<string>();
@@ -477,7 +452,6 @@ export function decodeWorkspaceSeed(value: unknown): WorkspaceSeed {
         },
         personas,
         stacks,
-        practiceSetups,
         samples,
         documents,
     };

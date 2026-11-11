@@ -69,7 +69,6 @@ function seed(): WorkspaceSeed {
                 description: "Shared notes.",
             },
         ],
-        practiceSetups: [],
         samples: [],
         documents: [],
     };
