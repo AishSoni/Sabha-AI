@@ -1,5 +1,13 @@
 export type FieldDensity = "wide" | "medium" | "compact";
 
+/**
+ * Resolution cap for the hero canvas. The compact breakpoint lowers the
+ * backing store so phones do not pay for an unnecessary fill rate.
+ */
+export function fieldDprCap(viewportWidth: number): number {
+  return viewportWidth < 768 ? 1.5 : 2;
+}
+
 export {
   HOME_FIELD_SLOTS,
   HOME_FIELD_SLOTS_BY_DENSITY,

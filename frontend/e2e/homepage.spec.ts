@@ -835,3 +835,33 @@ test.describe("homepage without JavaScript", () => {
     ).toBeVisible();
   });
 });
+
+test.describe("homepage field resolution", () => {
+  test.use({
+    viewport: { width: 1440, height: 900 },
+    deviceScaleFactor: 3,
+  });
+
+  test("reapplies the device pixel cap across the compact breakpoint", async ({
+    page,
+  }) => {
+    await page.goto("/");
+
+    const field = page.getByTestId("home-persona-field");
+    await expect(field).toHaveAttribute("data-webgl", "ready");
+    const canvas = page.getByTestId("home-persona-canvas");
+    const backingRatio = () =>
+      canvas.evaluate((element: HTMLCanvasElement) => {
+        const cssWidth = element.getBoundingClientRect().width;
+        return cssWidth > 0 ? element.width / cssWidth : 0;
+      });
+
+    await expect.poll(backingRatio).toBeCloseTo(2, 1);
+
+    await page.setViewportSize({ width: 390, height: 844 });
+    await expect.poll(backingRatio).toBeCloseTo(1.5, 1);
+
+    await page.setViewportSize({ width: 1440, height: 900 });
+    await expect.poll(backingRatio).toBeCloseTo(2, 1);
+  });
+});

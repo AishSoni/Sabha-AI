@@ -1,5 +1,8 @@
 import { EMBLEMS, emblemSvgMarkup } from "../presentation/emblems";
-import type { FieldDensity } from "../presentation/field-layout";
+import {
+  fieldDprCap,
+  type FieldDensity,
+} from "../presentation/field-layout";
 import type { FieldPalette } from "../presentation/field-palette";
 import {
   SPIRAL_CAMERA_SIZE,
@@ -193,7 +196,6 @@ export function releaseFieldResources(
 export interface CreateFieldEngineOptions {
   canvas: HTMLCanvasElement;
   palette: FieldPalette;
-  dprCap: number;
   startPaused?: boolean;
   onReady: () => void;
   onFailure: () => void;
@@ -419,7 +421,7 @@ interface FieldUniforms {
 export async function createHomeFieldEngine(
   options: CreateFieldEngineOptions,
 ): Promise<FieldEngine> {
-  const { canvas, dprCap, onReady, onFailure } = options;
+  const { canvas, onReady, onFailure } = options;
   const gl = canvas.getContext("webgl2", {
     alpha: true,
     antialias: false,
@@ -553,7 +555,10 @@ export async function createHomeFieldEngine(
 
   function resize() {
     const rect = canvas.getBoundingClientRect();
-    const ratio = Math.min(window.devicePixelRatio || 1, dprCap);
+    const ratio = Math.min(
+      window.devicePixelRatio || 1,
+      fieldDprCap(window.innerWidth),
+    );
     const width = Math.max(1, Math.round(rect.width * ratio));
     const height = Math.max(1, Math.round(rect.height * ratio));
     if (canvas.width !== width || canvas.height !== height) {

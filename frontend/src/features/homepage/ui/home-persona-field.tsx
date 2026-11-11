@@ -237,7 +237,6 @@ export function HomePersonaField() {
         engine = await engineModule.createHomeFieldEngine({
           canvas,
           palette: FIELD_PALETTES[resolvedRef.current],
-          dprCap: window.innerWidth < 768 ? 1.5 : 2,
           startPaused: pauseStateRef.current,
           onReady: () => {
             if (!disposed) setEngineState("ready");
