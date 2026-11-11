@@ -142,4 +142,6 @@ shows a collapsed exact preview with Expand and Send, and never becomes editable
   discussion/work-area ratio at or above 2/3. At 200% text at 1440×900 the
   discussion remained visible (39px) and the dock scrolled within a 224px cap;
   there was no horizontal overflow. The dock is no longer in the tab order.
+- A failed prepared terminal clears the active turn without adding an accepted
+  outcome, and the same opening view remains available for a clean retry.
 - No replay package was changed; package v11 remains immutable.
