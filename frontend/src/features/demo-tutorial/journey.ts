@@ -61,6 +61,7 @@ export interface TutorialJourney {
     intakeReady: boolean;
     boardOpen: boolean;
     listOpen: boolean;
+    roomOpen: boolean;
     archived: boolean;
     ended: boolean;
     /** The prepared turn deck exists; otherwise the legacy beat journey runs. */
@@ -122,6 +123,7 @@ export function deriveJourney(input: JourneyInput): TutorialJourney {
         intakeReady: input.intakeReady,
         boardOpen: input.pathname === "/demo",
         listOpen: input.pathname === "/demo/meetings",
+        roomOpen: isRoomPath(input.pathname),
         archived: input.meetingStatus === "archived",
         ended: input.meetingStatus === "ended",
         deck,

@@ -71,7 +71,7 @@ export function RecordedParticipantAction({
                             anchor={anchorForIntent(turn.intent_id)}
                             variant="outline"
                             size="sm"
-                            className="h-auto py-1.5"
+                            className="h-auto py-0"
                             aria-label={accessibleName}
                             busy={busy}
                             busyLabel="Preparing turn"

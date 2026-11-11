@@ -161,7 +161,7 @@ function completePrompt(journey: TutorialJourney): TutorialPrompt {
         detail: archived
             ? "The demo meeting is archived. Changes made in this browser stay here. Both tours are optional."
             : "The demo meeting is closed. The outcome and research checklist are saved; archiving is optional. Changes made in this browser stay here. Both tours are optional.",
-        anchor: journey.listOpen ? null : "room.outcome",
+        anchor: journey.roomOpen ? "room.outcome" : null,
         complete: true,
     };
 }

@@ -862,7 +862,7 @@ function MeetingConversation({
                     data-testid="room-dock"
                     role="region"
                     aria-label="Meeting controls dock"
-                    className="max-h-[35dvh] shrink-0 overflow-y-auto border-t border-separator bg-surface px-4 py-1 lg:max-h-none lg:overflow-visible"
+                    className="max-h-[35dvh] shrink-0 overflow-y-auto border-t border-separator bg-surface px-4 py-1 lg:max-h-[224px]"
                 >
                     <div className="mx-auto w-full max-w-[1120px]">
                         {closingObservationUnknown ? (

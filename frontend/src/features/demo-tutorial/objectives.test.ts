@@ -20,6 +20,7 @@ function journey(overrides: Partial<TutorialJourney> = {}): TutorialJourney {
         intakeReady: false,
         boardOpen: true,
         listOpen: false,
+        roomOpen: false,
         archived: false,
         ended: false,
         deck: true,
@@ -325,6 +326,7 @@ describe("selectPrompt", () => {
                 journey({
                     meetingCreated: true,
                     roomVisited: true,
+                    roomOpen: true,
                     phase: "closed",
                     closingCompleted: true,
                 })
