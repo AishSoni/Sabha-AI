@@ -31,6 +31,10 @@ from app.replay.package.loader import compute_content_sha256
 BACKEND = Path(__file__).resolve().parents[1]
 ROOT = BACKEND / "replay_packages" / "hdfc-ine001a07rw5"
 
+COPY_PROFILE_LEGACY = "legacy"
+COPY_PROFILE_POLISH = "polish"
+COPY_PROFILES = (COPY_PROFILE_LEGACY, COPY_PROFILE_POLISH)
+
 MEETING = "a0000000-0000-4000-8000-000000000001"
 CREDIT = "a0000000-0000-4000-8000-000000000101"
 DOWNSIDE = "a0000000-0000-4000-8000-000000000102"
@@ -783,12 +787,18 @@ def upload_sample(
     }
 
 
-def workspace_seed(transform: Transform | None = None) -> dict[str, Any]:
-    """Author the schema-2 practice seed for the expanded demo workspace.
+def workspace_seed(
+    transform: Transform | None = None,
+    *,
+    copy_profile: str = COPY_PROFILE_LEGACY,
+) -> dict[str, Any]:
+    """Author the schema-2 workspace seed for the expanded demo workspace.
 
     The seed mirrors the recorded board: three personas with authored revision
-    history, the same four stacks, and one practice intake preset linked to the
-    recorded creation beat. It contains no provider configuration or live ID.
+    history and the same four stacks. The legacy profile keeps the former
+    practice-intake preset for byte-compatible historical packages; the polish
+    profile removes that retired flow. It contains no provider configuration or
+    live ID.
     """
 
     histories = {
@@ -962,15 +972,22 @@ def workspace_seed(transform: Transform | None = None) -> dict[str, Any]:
         ),
     ]
 
+    polish = copy_profile == COPY_PROFILE_POLISH
+    disclosure_practice = (
+        "Workspace changes live in this browser tab only and disappear when "
+        "the workspace is reset or the page is refreshed."
+        if polish
+        else (
+            "Practice changes live in this browser tab only and disappear "
+            "when the workspace is reset or the page is refreshed."
+        )
+    )
     payload = {
         "seed_version": 3,
         "base_instructions": BASE_SYSTEM_PROMPT,
         "highlighted_persona_id": "persona-credit",
         "disclosure": {
-            "practice": (
-                "Practice changes live in this browser tab only and disappear "
-                "when the workspace is reset or the page is refreshed."
-            ),
+            "practice": disclosure_practice,
             "recording": (
                 "Participant replies, retrieval, and evidence come from the "
                 "demo; browser edits never change recorded content."
@@ -1037,6 +1054,8 @@ def workspace_seed(transform: Transform | None = None) -> dict[str, Any]:
             },
         ],
     }
+    if polish:
+        payload.pop("practice_setups", None)
     if transform is not None:
         payload = transform(payload)
     return payload
@@ -3271,7 +3290,13 @@ def build(
     version: str = "7",
     consensus_thinking: str = CONSENSUS_THINKING,
     display_names: dict[str, str] | None = None,
+    copy_profile: str = COPY_PROFILE_LEGACY,
 ) -> dict[str, Any]:
+    if copy_profile not in COPY_PROFILES:
+        raise ValueError(
+            f"Unknown copy profile {copy_profile!r}; "
+            f"expected one of {', '.join(COPY_PROFILES)}"
+        )
     consensus_message = {**CONSENSUS_MESSAGE, "thinking_content": consensus_thinking}
     transform = display_name_transform(display_names)
     root = root or ROOT
@@ -3962,7 +3987,11 @@ def build(
                 },
                 {
                     "step_id": "review-disagreement",
-                    "label": "Review the formal disagreement",
+                    "label": (
+                        "Review the disagreement"
+                        if copy_profile == COPY_PROFILE_POLISH
+                        else "Review the formal disagreement"
+                    ),
                     "completion": "acknowledge",
                     "requires_tab": "disagreements",
                 },
@@ -4023,7 +4052,11 @@ def build(
                 },
                 {
                     "step_id": "review-consensus",
-                    "label": "Review the formal consensus",
+                    "label": (
+                        "Review the consensus"
+                        if copy_profile == COPY_PROFILE_POLISH
+                        else "Review the formal consensus"
+                    ),
                     "completion": "acknowledge",
                     "requires_tab": "consensus",
                 },
@@ -4125,7 +4158,7 @@ def build(
                 transform=transform,
             )
 
-    seed_payload = workspace_seed(transform=transform)
+    seed_payload = workspace_seed(transform=transform, copy_profile=copy_profile)
     if schema_version >= 3 and seed_payload.get("base_instructions"):
         seed_payload["base_instructions"] = seed_payload[
             "base_instructions"
