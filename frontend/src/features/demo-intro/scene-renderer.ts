@@ -24,6 +24,7 @@ import {
     introMomentAt,
 } from "./scene-config";
 import { introPalettes, type IntroPalette } from "./palettes";
+import { starPathAt, type StarPathSample } from "./star-path";
 
 const CARD_VERTEX = `
 varying vec2 vUv;
@@ -683,24 +684,55 @@ export class IntroSceneRenderer {
         }
     }
 
-    private trailHead(progress: number): Vector3 {
-        const clamped = clamp(progress, 0, INTRO_MAX_PROGRESS);
+    /**
+     * Places a normalised route sample in the world for the camera position at
+     * `progress`. Because the sample is measured in screen space, the star
+     * keeps the drawn route at any aspect ratio while `depth` still moves it
+     * towards and away from the camera.
+     */
+    private starSamplePoint(
+        sample: StarPathSample,
+        progress: number
+    ): Vector3 {
         const cameraZ =
-            -clamped * INTRO_CAMERA.stopGap + this.readDistance;
+            -clamp(progress, 0, INTRO_MAX_PROGRESS) * INTRO_CAMERA.stopGap +
+            this.readDistance;
+        const halfHeight =
+            Math.tan((INTRO_CAMERA.fov * Math.PI) / 360) * sample.depth;
+        const halfWidth = halfHeight * (this.width / this.height);
         return new Vector3(
-            5.8 - clamped * 0.5 + Math.sin(clamped * 4.2) * 0.35,
-            -2.7 + Math.sin(clamped * 4.8) * 0.35,
-            cameraZ - 10.2
+            (sample.u - 0.5) * 2 * halfWidth,
+            (0.5 - sample.v) * 2 * halfHeight,
+            cameraZ - sample.depth
         );
+    }
+
+    private starPoint(progress: number): Vector3 {
+        return this.starSamplePoint(starPathAt(progress), progress);
     }
 
     private seedTrail(progress: number): void {
         this.trailHistory.length = 0;
+        const head = this.starPoint(progress);
+        const tangent = head
+            .clone()
+            .sub(this.starPoint(Math.max(0, progress - 0.008)));
+        if (tangent.lengthSq() < 1e-6) {
+            tangent
+                .copy(head)
+                .sub(
+                    this.starPoint(
+                        Math.min(INTRO_MAX_PROGRESS, progress + 0.008)
+                    )
+                );
+        }
+        if (tangent.lengthSq() < 1e-6) tangent.set(0, 1, 0);
+        tangent.normalize();
         for (let index = 11; index >= 0; index -= 1) {
-            const point = this.trailHead(progress);
-            point.x -= index * 0.018;
-            point.y += index * 0.022;
-            point.z += index * 0.08;
+            const point = head
+                .clone()
+                .addScaledVector(tangent, -index * 0.05);
+            point.z += index * 0.03;
             this.trailHistory.push({ position: point });
         }
     }
@@ -724,7 +756,7 @@ export class IntroSceneRenderer {
         ) {
             this.trailHistory.shift();
         }
-        const head = this.trailHead(progress);
+        const head = this.starPoint(progress);
         const previous = this.trailHistory[this.trailHistory.length - 1];
         if (!previous || previous.position.distanceTo(head) > 0.015) {
             this.trailHistory.push({ position: head });
