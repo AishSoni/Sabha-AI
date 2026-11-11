@@ -673,11 +673,15 @@ labels, captions, logo, brand header, tagline, HUD, workspace navigation,
 Back/Continue buttons, or pagination bar. Visible controls are limited to
 `Skip introduction`, one hairline four-segment progress cue, and the final
 `Enter the demo`. The whole lower rail rests at 10% opacity and reveals on hover
-or keyboard focus; touch devices keep a usable resting opacity. The progress cue
-is non-interactive and hidden from assistive technology; `Step N of 4` remains
-available as screen-reader-only live text. Cards are bare typography with no
-surface, border, radius, or shadow. They use the actual Mira, Arjun, and Leena
-identities, the dated HDFC fact sheet, and role-appropriate questions. No participant quotations, consensus,
+or keyboard focus; at the fourth moment it reveals, `Skip introduction` fades
+out and becomes disabled, and the enabled `Enter the demo` control becomes the
+accent-filled final action. Touch devices keep a usable resting opacity. The progress cue is non-interactive and hidden
+from assistive technology; `Step N of 4` remains available as screen-reader-only
+live text. Cards are bare typography with no
+surface, border, radius, or shadow. The first moment carries no separate
+question card; the three participant identities are its complete visual. It
+uses the actual Mira, Arjun, and Leena identities, the dated HDFC fact sheet,
+and role-appropriate questions. No participant quotations, consensus,
 outcomes, citations, or financial claims are invented. Coupon, ISIN, and rating
 jargon are deliberately absent.
 
@@ -737,7 +741,9 @@ are no clouds, nebula layers, photographs, or threshold colour switches.
 
 Stars use a bounded seeded buffer in world space with stable positions, near
 fade, quiet reading areas, and a DPR cap of 2. The trail is a thin mesh with a
-spatial head, bounded history, and tapered wake; it is reseeded/shortened on
+compact billboarded four-point astroid head, scaled to roughly 40% of the trail
+width and wrapped in a soft glow, plus bounded history and a tapered wake; it is
+reseeded/shortened on
 reversal, lives behind DOM content, and never represents loading, retrieval,
 agreement, or AI activity. Rendering stops after the camera settles, pauses
 while hidden, reuses scene resources, and disposes geometry, materials, and the

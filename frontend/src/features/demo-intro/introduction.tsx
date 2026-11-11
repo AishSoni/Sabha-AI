@@ -98,6 +98,7 @@ export function Introduction({
         Math.max(intro.stepIndex, 0),
         INTRO_STEPS.length - 1
     );
+    const isFinal = progress === INTRO_STEPS.length - 1;
 
     useEffect(() => {
         if (!intro.open) return;
@@ -182,7 +183,10 @@ export function Introduction({
                         </IntroScene>
                     )}
 
-                    <footer className="intro-rail">
+                    <footer
+                        className="intro-rail"
+                        data-final={isFinal ? "true" : "false"}
+                    >
                         <div
                             className="intro-progress"
                             aria-hidden="true"
@@ -208,8 +212,11 @@ export function Introduction({
                         <div className="intro-controls">
                             <button
                                 type="button"
-                                className="intro-control intro-control--quiet"
+                                className="intro-control intro-control--quiet intro-control--skip"
                                 onClick={intro.skip}
+                                disabled={isFinal}
+                                aria-hidden={isFinal || undefined}
+                                data-hidden={isFinal ? "true" : "false"}
                             >
                                 Skip introduction
                             </button>

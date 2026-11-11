@@ -1,5 +1,4 @@
 export type IntroCardKind =
-    | "question"
     | "participant"
     | "position"
     | "source"
@@ -76,18 +75,7 @@ export const INTRO_COPY_ANCHORS: readonly IntroCopyAnchor[] = [
 ] as const;
 
 export const INTRO_CARD_NODES: readonly IntroCardNode[] = [
-    // 1. The idea: one question, three different minds, and the user's choice.
-    {
-        id: "idea-question",
-        moment: 0,
-        kind: "question",
-        height: 1.15,
-        data: {
-            title: "Should we proceed?",
-        },
-        desktop: { x: 3.85, y: 1.25, z: 0.25, width: 3.4 },
-        mobile: { x: 0, y: 1.75, z: 0.2, width: 4.4 },
-    },
+    // 1. The idea: three different minds and the user's choice.
     {
         id: "idea-mira",
         moment: 0,

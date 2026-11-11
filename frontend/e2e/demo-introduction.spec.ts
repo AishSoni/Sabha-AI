@@ -20,10 +20,16 @@ test.describe("demo introduction", () => {
     }) => {
         const network = guardNetwork(page);
         await gotoFirstLoad(page);
+        await expect(page.getByText("Should we proceed?", { exact: true })).toHaveCount(0);
 
         await expect(page.locator(".intro-progress")).toHaveAttribute(
             "data-progress",
             "0"
+        );
+        await expect(page.locator(".intro-rail")).toHaveCSS("opacity", "0.1");
+        await expect(page.locator(".intro-card").first()).toHaveCSS(
+            "background-color",
+            "rgba(0, 0, 0, 0)"
         );
         await expect(
             page.getByRole("navigation", { name: "Demo workspace" })
@@ -55,8 +61,22 @@ test.describe("demo introduction", () => {
             "3"
         );
 
+        await expect(page.locator(".intro-rail")).toHaveAttribute(
+            "data-final",
+            "true"
+        );
+        await expect(page.locator(".intro-rail")).toHaveCSS("opacity", "1");
+
+        const skip = page.locator(".intro-control--skip");
+        await expect(skip).toBeDisabled();
+        await expect(skip).toHaveCSS("opacity", "0");
+
         const enter = page.getByRole("button", { name: "Enter the demo" });
         await expect(enter).toBeEnabled();
+        await expect(enter).not.toHaveCSS(
+            "background-color",
+            "rgba(0, 0, 0, 0)"
+        );
         await enter.click();
 
         await expect(

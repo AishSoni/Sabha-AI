@@ -115,12 +115,11 @@ uniform vec3 uColor;
 uniform float uOpacity;
 varying vec2 vUv;
 void main() {
-  vec2 p = (vUv - 0.5) * 2.0;
-  float radius = length(p);
-  float angle = atan(p.y, p.x);
-  float ray = 0.5 * pow(abs(cos(angle * 2.0)), 3.0) + 0.08;
-  float star = 1.0 - smoothstep(ray - 0.045, ray + 0.02, radius);
-  float glow = (1.0 - smoothstep(0.0, 0.92, radius)) * 0.2;
+  vec2 p = abs((vUv - 0.5) * 2.0);
+  vec2 starP = p * 2.5;
+  float astroid = pow(starP.x, 0.66) + pow(starP.y, 0.66);
+  float star = 1.0 - smoothstep(0.96, 1.02, astroid);
+  float glow = (1.0 - smoothstep(0.0, 1.08, length(p))) * 0.28;
   float alpha = max(star, glow);
   if (alpha <= 0.01) discard;
   gl_FragColor = vec4(uColor, alpha * uOpacity);
@@ -430,7 +429,7 @@ export class IntroSceneRenderer {
         this.trailMesh.frustumCulled = false;
         this.scene.add(this.trailMesh);
 
-        const headGeometry = new PlaneGeometry(0.34, 0.34);
+        const headGeometry = new PlaneGeometry(0.44, 0.44);
         const headMaterial = new ShaderMaterial({
             uniforms: {
                 uColor: { value: new Color("#ffffff") },

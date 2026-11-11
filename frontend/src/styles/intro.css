@@ -181,10 +181,6 @@
   letter-spacing: -0.01em;
 }
 
-[data-intro-card="question"] .intro-card__title {
-  font-size: 1.12rem;
-}
-
 [data-intro-card="position"] {
   align-items: flex-start;
 }
@@ -299,7 +295,8 @@
 }
 
 .intro-rail:hover,
-.intro-rail:focus-within {
+.intro-rail:focus-within,
+.intro-rail[data-final="true"] {
   opacity: 1;
 }
 
@@ -364,6 +361,24 @@
   background: color-mix(in srgb, var(--intro-card) 58%, transparent);
 }
 
+.intro-rail[data-final="true"] .intro-control--enter:not(:disabled) {
+  border-color: color-mix(in srgb, var(--intro-accent, #c4b5fd) 72%, transparent);
+  background: var(--intro-accent, #c4b5fd);
+  color: var(--intro-base, #07040f);
+  box-shadow:
+    0 0 0 1px color-mix(in srgb, var(--intro-accent, #c4b5fd) 38%, transparent),
+    0 0 1.8rem color-mix(in srgb, var(--intro-accent, #c4b5fd) 30%, transparent);
+}
+
+.intro-rail[data-final="true"] .intro-control--enter:not(:disabled):hover {
+  border-color: var(--intro-accent, #c4b5fd);
+  background: color-mix(
+    in srgb,
+    var(--intro-accent, #c4b5fd) 88%,
+    var(--intro-ink, #f8f3ff)
+  );
+}
+
 .intro-control:focus-visible {
   border-radius: 0.35rem;
   outline: 2px solid var(--intro-accent, #c4b5fd);
@@ -373,6 +388,15 @@
 .intro-control:disabled {
   cursor: not-allowed;
   opacity: 0.42;
+}
+
+.intro-control--skip {
+  transition: opacity 180ms ease;
+}
+
+.intro-control--skip:disabled {
+  opacity: 0;
+  pointer-events: none;
 }
 
 .intro-readiness {
@@ -615,6 +639,7 @@
 
 @media (prefers-reduced-motion: reduce) {
   .intro-progress__segment,
+  .intro-control--skip,
   .intro-rail,
   .intro-controls {
     transition: none;
