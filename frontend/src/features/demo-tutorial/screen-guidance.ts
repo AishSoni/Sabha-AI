@@ -69,7 +69,7 @@ export function screenPromptFor(
         return screen(
             "screen-roster",
             "Templates, not meeting participants",
-            "Editing a persona changes future practice setups only; captured participant snapshots stay fixed.",
+            "Editing a persona changes future demo setups only; captured participant snapshots stay fixed.",
             "roster.persona"
         );
     }
@@ -126,7 +126,7 @@ export function screenPromptFor(
         return screen(
             "screen-setup",
             "This is the recorded setup",
-            "Create the meeting to unlock the room; practice edits stay in this browser and never alter the recording.",
+            "Create the meeting to unlock the room; sample additions stay in this browser and never alter the recording.",
             "screen.setup",
             ["demo.create"]
         );

@@ -48,8 +48,8 @@ function DemoDocumentsPanel({ meetingId }: { meetingId: string }) {
 }
 
 /**
- * The canonical recorded meeting route (spec-18). Local practice IDs never
- * reach this component; the route branches before replay state is read.
+ * The canonical recorded meeting route (spec-18). Unknown or local IDs
+ * redirect before any replay read.
  */
 export function RecordedMeetingRoute({ meetingId }: { meetingId: string }) {
     const router = useRouter();

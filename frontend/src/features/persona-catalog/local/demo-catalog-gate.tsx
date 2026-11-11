@@ -5,7 +5,7 @@ import type { ReactNode } from 'react';
 import { useDemoWorkspace } from '@/features/demo-workspace';
 
 /**
- * Keeps practice catalog routes closed when the workspace did not load.
+ * Keeps demo catalog routes closed when the workspace did not load.
  * The original guided journey stays available from the board.
  */
 export function DemoCatalogGate({ children }: { children: ReactNode }) {

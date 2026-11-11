@@ -1,7 +1,7 @@
 "use client";
 
 /**
- * Browser-memory document adapter for practice knowledge screens (spec-25).
+ * Browser-memory document adapter for demo knowledge screens (spec-25).
  *
  * It reuses the shared document vocabulary and the package's data-only
  * scenarios. It never calls the live upload API, stores source bytes, or starts

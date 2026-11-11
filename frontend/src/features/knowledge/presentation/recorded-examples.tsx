@@ -4,7 +4,7 @@
  * Recorded examples linked to approved prepared inputs (spec-25).
  *
  * The mapping is data-only and resolves through the recorded package's claim
- * citations. It never represents a retrieval performed against practice edits.
+ * citations. It never represents a retrieval performed against browser edits.
  */
 import type { ReactNode } from "react";
 import { BookOpenCheck } from "lucide-react";

@@ -4,7 +4,7 @@
  * Shared stack create/edit form (spec-25).
  *
  * Server or browser-memory state and navigation are injected by the composing
- * adapter, so the live and practice screens use the same form.
+ * adapter, so the live and demo screens use the same form.
  */
 import { useState } from "react";
 import { AlertTriangle, Save } from "lucide-react";

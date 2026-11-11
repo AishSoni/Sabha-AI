@@ -1,7 +1,7 @@
 "use client";
 
 /**
- * Restricted practice upload picker (spec-25).
+ * Restricted approved-sample picker (spec-25).
  *
  * The dialog only offers package-declared samples. It never opens the OS file
  * chooser, accepts drag-and-drop files, or treats an `accept` attribute as an

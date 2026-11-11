@@ -3,7 +3,7 @@
 /**
  * Shared create-meeting presentation (spec-05, spec-25).
  *
- * The live route and the demo practice setup pass the same structural values
+ * The live route and the demo creation screen pass the same structural values
  * into this screen. Live composition keeps the native file input; the demo
  * replaces that one control with its approved-sample picker.
  */

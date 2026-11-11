@@ -1,7 +1,7 @@
 /**
  * Demo workspace contracts (spec-23).
  *
- * The workspace is volatile browser memory. It owns practice catalog state and
+ * The workspace is volatile browser memory. It owns the demo catalog state and
  * the guide bookmark; the replay run keeps checkpoint, epoch, and projections.
  * Nothing here persists across a refresh and nothing here can reach a live
  * adapter.
@@ -68,7 +68,7 @@ export type WorkspaceSampleRole =
     | "failure-retry";
 
 /**
- * One explicitly approved source in the practice upload allowlist.
+ * One explicitly approved source in the demo upload allowlist.
  *
  * The sample record is separate from the evidence asset catalog. An asset can
  * be previewable or cited without becoming uploadable.
@@ -123,7 +123,7 @@ export interface WorkspaceSeed {
     documents: WorkspaceDocument[];
 }
 
-/** A frozen copy of what a new practice participant would capture. */
+/** A frozen copy of what a new demo participant would capture. */
 export interface LocalParticipantSnapshot {
     snapshotId: string;
     personaId: string;

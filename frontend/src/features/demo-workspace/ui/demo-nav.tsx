@@ -4,7 +4,7 @@
  * Persistent demo chrome (spec-23).
  *
  * The nav is the only place that advertises workspace destinations, so a
- * feature is linked here only once its demo adapter exists. Practice state is
+ * feature is linked here only once its demo adapter exists. Browser-local edits are
  * browser memory; the Demo badge and reset copy keep that visible.
  */
 import Link from "next/link";

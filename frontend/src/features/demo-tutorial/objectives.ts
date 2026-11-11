@@ -207,7 +207,7 @@ export function selectPrompt(journey: TutorialJourney): TutorialPrompt | null {
                 : {
                       id: "main-create",
                       instruction: "Create meeting",
-                      detail: "This records the setup; practice edits never alter the recording.",
+                      detail: "This records the setup; browser sample additions never alter the recording.",
                       anchor: "demo.create",
                   };
         }

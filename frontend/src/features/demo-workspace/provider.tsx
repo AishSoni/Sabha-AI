@@ -4,7 +4,7 @@
  * One volatile demo workspace (spec-23).
  *
  * This provider sits above the replay run controller and below the pinned
- * replay session. It owns the browser-memory practice catalog and the reset
+ * replay session. It owns the browser-memory demo catalog and the reset
  * scopes. Replay playback state stays in
  * `ReplayRunProvider`; this provider only asks it to reset through a nonce.
  */
@@ -227,8 +227,8 @@ export function DemoWorkspaceProvider({
     }, [applySeed, bumpEpoch]);
 
     const restartRecording = useCallback(() => {
-        // Restart is a playback operation. It must not invalidate practice
-        // drafts, pending practice verification, or staged setups.
+        // Restart is a playback operation. It must not invalidate browser
+        // changes, pending sample verification, or added documents.
         setPlaybackReset((previous) => ({
             nonce: previous.nonce + 1,
             reason: "recording",

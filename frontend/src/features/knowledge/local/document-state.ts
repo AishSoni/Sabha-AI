@@ -1,5 +1,5 @@
 /**
- * Practice document state machine (spec-25).
+ * Demo document state machine (spec-25).
  *
  * The package supplies data-only scenarios. This module owns the bounded
  * transitions and mirrors the shared document vocabulary without reproducing

@@ -5,7 +5,7 @@ import type { ReactNode } from "react";
 import { useDemoWorkspace } from "@/features/demo-workspace";
 
 /**
- * Keeps practice knowledge routes closed when the workspace cannot expand.
+ * Keeps demo knowledge routes closed when the workspace cannot expand.
  * The recorded meeting and its evidence stay available from the board.
  */
 export function DemoKnowledgeGate({ children }: { children: ReactNode }) {

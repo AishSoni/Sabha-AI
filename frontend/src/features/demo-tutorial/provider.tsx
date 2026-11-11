@@ -243,7 +243,7 @@ interface ResumeDestination {
 }
 
 /**
- * A local practice meeting shares the room layout but not the recording.
+ * An unknown meeting route shares the room layout but not the recording.
  * It must never receive recorded-action tips.
  */
 function isOtherMeetingRoute(pathname: string, recordedMeetingId: string): boolean {

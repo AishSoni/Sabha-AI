@@ -1,5 +1,5 @@
 /**
- * Practice knowledge-stack operations (spec-25).
+ * Demo knowledge-stack operations (spec-25).
  *
  * Stack contents are live for already-assigned practice participants, while
  * deleting a stack revokes its practice documents first and drops it from

@@ -1,7 +1,7 @@
 "use client";
 
 /**
- * Local practice stack registry (spec-25).
+ * Local demo stack registry (spec-25).
  *
  * The same registry drives stack routes, persona assignments, and practice
  * document scopes. Live stack adapters remain separate.

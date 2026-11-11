@@ -14,7 +14,7 @@ import {
 } from "@/features/meetings/runtime/replay-evidence";
 
 /**
- * App-level composition for practice stack previews. It reuses the recorded
+ * App-level composition for demo stack previews. It reuses the recorded
  * package's bounded evidence loader and viewer; the knowledge feature itself
  * only receives a rendered preview action.
  */
