@@ -174,10 +174,6 @@ interface Plate {
     height: number;
 }
 
-interface TrailPoint {
-    position: Vector3;
-}
-
 interface IntroSceneOptions {
     root: HTMLElement;
     canvas: HTMLCanvasElement;
@@ -194,6 +190,11 @@ function smoothstep(edge0: number, edge1: number, value: number): number {
     const t = clamp((value - edge0) / (edge1 - edge0 || 1e-6), 0, 1);
     return t * t * (3 - 2 * t);
 }
+
+/** Number of samples in the comet's tail. */
+const TRAIL_POINTS = 96;
+/** How much of the route the tail covers, in journey progress. */
+const TRAIL_SPAN = 0.85;
 
 function hexToColor(hex: string): Color {
     return new Color(hex);
@@ -302,7 +303,6 @@ export class IntroSceneRenderer {
     private readonly trailAlpha: BufferAttribute;
     private readonly trailMaterial: ShaderMaterial;
     private readonly trailHeadMesh: Mesh<PlaneGeometry, ShaderMaterial>;
-    private readonly trailHistory: TrailPoint[] = [];
     private readonly domNodes = new Map<string, HTMLElement>();
     private readonly dark: boolean;
     private readonly onActiveMoment: (moment: number) => void;
@@ -450,7 +450,6 @@ export class IntroSceneRenderer {
 
         this.collectDomNodes();
         this.resize();
-        this.seedTrail(0);
         this.render();
     }
 
@@ -463,7 +462,7 @@ export class IntroSceneRenderer {
             this.activeMoment = moment;
             this.onActiveMoment(moment);
         }
-        this.updateTrail(clamped);
+        this.updateTrail();
         this.render();
     }
 
@@ -473,7 +472,6 @@ export class IntroSceneRenderer {
         this.lastDirection = 0;
         this.trailPresence = 0;
         this.activeMoment = 0;
-        this.seedTrail(0);
         this.onActiveMoment(0);
         this.render();
     }
@@ -711,82 +709,56 @@ export class IntroSceneRenderer {
         return this.starSamplePoint(starPathAt(progress), progress);
     }
 
-    private seedTrail(progress: number): void {
-        this.trailHistory.length = 0;
-        const head = this.starPoint(progress);
-        const tangent = head
-            .clone()
-            .sub(this.starPoint(Math.max(0, progress - 0.008)));
-        if (tangent.lengthSq() < 1e-6) {
-            tangent
-                .copy(head)
-                .sub(
-                    this.starPoint(
-                        Math.min(INTRO_MAX_PROGRESS, progress + 0.008)
-                    )
-                );
-        }
-        if (tangent.lengthSq() < 1e-6) tangent.set(0, 1, 0);
-        tangent.normalize();
-        for (let index = 11; index >= 0; index -= 1) {
-            const point = head
-                .clone()
-                .addScaledVector(tangent, -index * 0.05);
-            point.z += index * 0.03;
-            this.trailHistory.push({ position: point });
-        }
-    }
-
-    private updateTrail(progress: number): void {
+    private updateTrail(): void {
         const direction = Math.sign(this.velocity);
         if (
             direction !== 0 &&
             this.lastDirection !== 0 &&
             direction !== this.lastDirection
         ) {
-            this.seedTrail(progress);
             this.trailPresence = 0;
         }
         if (direction !== 0) this.lastDirection = direction;
-        const cameraZ =
-            -progress * INTRO_CAMERA.stopGap + this.readDistance;
-        while (
-            this.trailHistory.length > 2 &&
-            this.trailHistory[0]!.position.z > cameraZ - 3
-        ) {
-            this.trailHistory.shift();
-        }
-        const head = this.starPoint(progress);
-        const previous = this.trailHistory[this.trailHistory.length - 1];
-        if (!previous || previous.position.distanceTo(head) > 0.015) {
-            this.trailHistory.push({ position: head });
-            if (this.trailHistory.length > 120) this.trailHistory.shift();
-        }
         this.trailPresence = Math.min(1, this.trailPresence + 0.08);
     }
 
     private updateTrailMesh(blended: ReturnType<typeof paletteBlend>): void {
-        const points = this.trailHistory;
-        const count = points.length;
-        if (count < 3) {
+        const heading = this.lastDirection || 1;
+        const tail = clamp(
+            this.progress - heading * TRAIL_SPAN,
+            0,
+            INTRO_MAX_PROGRESS
+        );
+        const span = this.progress - tail;
+        if (this.trailPresence < 0.002 || Math.abs(span) < 1e-4) {
             this.trailMesh.visible = false;
             this.trailHeadMesh.visible = false;
             return;
         }
+        const count = TRAIL_POINTS;
+        const step = 1 / (count - 1);
+        const pointAt = (t: number): Vector3 =>
+            this.starSamplePoint(
+                starPathAt(tail + span * clamp(t, 0, 1)),
+                this.progress
+            );
         this.trailMesh.visible = true;
         this.trailHeadMesh.visible = true;
         const positions = this.trailPosition.array as Float32Array;
         const alphas = this.trailAlpha.array as Float32Array;
         const indices: number[] = [];
+        let head = this.starPoint(this.progress);
         for (let index = 0; index < count; index += 1) {
-            const point = points[index]!.position;
-            const next = points[Math.min(index + 1, count - 1)]!.position;
-            const previous = points[Math.max(index - 1, 0)]!.position;
-            const direction = new Vector3().subVectors(next, previous);
+            const t = index * step;
+            const point = pointAt(t);
+            if (index === count - 1) head = point;
+            const direction = new Vector3().subVectors(
+                pointAt(t + step),
+                pointAt(t - step)
+            );
             direction.z = 0;
             if (direction.lengthSq() < 1e-5) direction.set(0, 1, 0);
             direction.normalize();
-            const t = index / (count - 1);
             const width = 0.004 + Math.pow(t, 1.5) * 0.05;
             const side = new Vector3(-direction.y, direction.x, 0);
             if (side.lengthSq() < 1e-5) side.set(0, 1, 0);
@@ -823,7 +795,7 @@ export class IntroSceneRenderer {
         this.trailGeometry.setDrawRange(0, indices.length);
         this.trailMaterial.uniforms.uColor!.value.copy(blended.line);
         this.trailMaterial.uniforms.uOpacity!.value = 0.7;
-        this.trailHeadMesh.position.copy(points[count - 1]!.position);
+        this.trailHeadMesh.position.copy(head);
         this.trailHeadMesh.quaternion.copy(this.camera.quaternion);
         this.trailHeadMesh.material.uniforms.uColor!.value.copy(blended.line);
         this.trailHeadMesh.material.uniforms.uOpacity!.value = 0.95;
