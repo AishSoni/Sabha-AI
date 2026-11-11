@@ -1,6 +1,8 @@
+import { createHash } from "node:crypto";
 import { readFileSync } from "node:fs";
 import { join } from "node:path";
 
+import { EVIDENCE_MAX_TEXT_CHARACTERS } from "../src/features/meetings/evidence/contract";
 import { expect, test, type Page } from "./support/demo-test";
 
 /**
@@ -151,6 +153,79 @@ test.describe("recorded evidence previews", () => {
                 true
             );
         }
+    });
+
+    test("shows the completeness notice for a truncated retained Markdown source", async ({
+        page,
+    }) => {
+        test.setTimeout(120_000);
+        const bodyText =
+            "# Synthetic truncated source\n\n" +
+            "a".repeat(EVIDENCE_MAX_TEXT_CHARACTERS);
+        const body = Buffer.from(bodyText, "utf8");
+        const sha256 = createHash("sha256").update(body).digest("hex");
+        const syntheticUrl = `https://example.invalid/replay-assets/${sha256}.md`;
+
+        await serveRecordedAssets(page);
+        await page.route(syntheticUrl, async (route) => {
+            await route.fulfill({
+                status: 200,
+                contentType: "text/markdown; charset=utf-8",
+                body,
+            });
+        });
+        await page.route("**/api/replay/session*", async (route) => {
+            const response = await route.fetch();
+            const session = (await response.json()) as {
+                assets?: Array<{
+                    asset_id?: string;
+                    public_url?: string;
+                    sha256?: string;
+                    size?: number;
+                }>;
+            };
+            const asset = session.assets?.find(
+                (item) => item.asset_id === "crisil-annexure"
+            );
+            if (!asset) {
+                throw new Error("recorded Crisil asset missing from replay session");
+            }
+            asset.public_url = syntheticUrl;
+            asset.sha256 = sha256;
+            asset.size = body.length;
+            const headers = { ...response.headers() };
+            delete headers["content-length"];
+            await route.fulfill({
+                status: response.status(),
+                headers,
+                contentType: "application/json",
+                body: JSON.stringify(session),
+            });
+        });
+
+        await openRecordedRoom(page);
+        await page.getByRole("tab", { name: "Files" }).click();
+        await page
+            .getByRole("button", {
+                name: "Preview evidence: Crisil annexure",
+            })
+            .click();
+
+        const dialog = page.getByRole("dialog");
+        await expect(dialog).toBeVisible();
+        await expect(
+            dialog.getByRole("heading", { name: "Crisil annexure" })
+        ).toBeVisible();
+        await expect(dialog.getByRole("status")).toHaveText(
+            "Preview truncated; the retained source may contain more."
+        );
+        await expect(
+            dialog.getByRole("heading", { name: "Synthetic truncated source" })
+        ).toBeVisible();
+        await expect(dialog.getByRole("alert")).toHaveCount(0);
+
+        await page.keyboard.press("Escape");
+        await expect(dialog).toBeHidden();
     });
 
     test("opens the exact recorded asset from a committed citation", async ({
