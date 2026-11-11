@@ -55,3 +55,38 @@ do not introduce a second tutorial owner.
   isolation, source integrity, memory lifetime, failure, and reset guarantees.
 - Confirm no new citations, changed fixed replies, live/private requests, or
   persistent effects; keyboard and responsive semantic layouts remain usable.
+
+## Implementation record
+
+D02 resolves to the retained Document card on `/demo/new`: approved samples are
+optional, never block meeting creation, and are scoped to the prepared meeting
+ID (`{ kind: "meeting", id: session.meeting_id }`). The shared
+`DemoMeetingDocuments` adapter renders that one identity in setup, the room Files
+tab, and the shared knowledge stack. Private stacks do not claim meeting-wide
+documents.
+
+The adapter reuses the existing browser document machine: verification against
+published package metadata/URL/size/type/hash, queued → indexing → ready/failed,
+retry on the same document/operation, revocation, duplicate rejection, two
+concurrent operations, and bounded totals. Full workspace reset clears added
+samples through the epoch; recording restart preserves them; late timers and
+verification results are dropped by the epoch guard. Published package assets
+and seeded stack documents remain immutable, and added samples do not alter
+recorded replies, citations, captured participants, or checkpoint state.
+
+The separate practice setup/meeting routes, screens, command/state owners, list
+section, entry points, and giant empty cards were removed. Guidance and knowledge
+copy now use demo/browser-sample semantics while keeping Spec 41 anchors and
+Spec 42 progression. The seed decoder ignores the legacy `practice_setups`
+package field, so no backend package was republished.
+
+## Executed checks
+
+- `npx vitest run`: 140 files, 876 tests passed.
+- `npm run test:architecture`: 7 files, 52 tests passed.
+- `npx tsc --noEmit`: passed.
+- `npm run lint`: 0 errors (13 pre-existing warnings).
+- `npm run build`: passed.
+- Playwright `e2e/shared-documents.spec.ts`: 2 tests passed (setup → Ready →
+  room → shared stack; failed → retry → Ready → room).
+- No backend package or server persistence was changed.
