@@ -14,6 +14,7 @@ import type {
     ReplayPreparedReplyTurn,
     ReplayPreparedTurn,
 } from "./contract";
+import { closingEligible } from "./progression";
 import type { ReplayBundle, ReplaySession } from "./replay";
 
 export const FOLLOW_UP_STEP = "__follow_up__";
@@ -262,8 +263,10 @@ export function canCloseDeck(
     session: ReplaySession,
     playedTurnIds: ReadonlySet<string>
 ): boolean {
-    const required = session.prepared_closing?.required_turn_ids ?? [];
-    return required.length > 0 && required.every((id) => playedTurnIds.has(id));
+    return closingEligible(
+        session.prepared_closing?.required_turn_ids ?? [],
+        playedTurnIds
+    );
 }
 
 export function remapOperation(
