@@ -11,6 +11,7 @@
  */
 import { useState, type ComponentProps } from "react";
 import { Play } from "lucide-react";
+import { ParticipantMark } from "@/components/identity/participant-mark";
 import { Button } from "@/components/ui/button";
 import {
     anchorForIntent,
@@ -43,25 +44,35 @@ export function RecordedParticipantAction({
         replay.preparedBaseCheckpoint !== null &&
         replay.checkpoint === replay.preparedBaseCheckpoint;
     const playedTurnIds = replay.playedTurnIds ?? new Set<string>();
+    const progression = replay.progression;
     const preparedTurns = deckActive
-        ? (replay.preparedTurns ?? []).filter(
-              (turn) =>
-                  turn.kind === "reply" &&
-                  turn.participant_id === participant.id &&
-                  !playedTurnIds.has(turn.turn_id)
-          )
+        ? (replay.preparedTurns ?? []).filter((turn) => {
+              if (turn.kind !== "reply") return false;
+              if (turn.participant_id !== participant.id) return false;
+              const availability = progression?.turns[turn.turn_id];
+              if (availability) return availability.available;
+              return !playedTurnIds.has(turn.turn_id);
+          })
         : [];
     if (preparedTurns.length > 0) {
         return (
             <div className="flex flex-nowrap gap-2">
                 {preparedTurns.map((turn) => {
                     const busy = busyIntent === turn.turn_id;
+                    const revealTitle =
+                        progression?.turns[turn.turn_id]?.revealTitle ?? false;
+                    const identity = `${participant.name}, ${participant.role}`;
+                    const accessibleName = revealTitle
+                        ? `${turn.label} — ${identity}`
+                        : `Ask ${identity} for an opening view`;
                     return (
                         <TurnButton
                             key={turn.turn_id}
                             anchor={anchorForIntent(turn.intent_id)}
                             variant="outline"
                             size="sm"
+                            className="h-auto py-1.5"
+                            aria-label={accessibleName}
                             busy={busy}
                             busyLabel="Preparing turn"
                             disabled={
@@ -78,8 +89,23 @@ export function RecordedParticipantAction({
                                 }
                             }}
                         >
-                            <Play className="mr-1 size-4" />
-                            {turn.label}
+                            <Play className="mr-1 size-4 shrink-0" />
+                            <ParticipantMark
+                                participant={participant}
+                                size="sm"
+                            />
+                            <span className="ml-1 flex min-w-0 flex-col items-start text-left leading-tight">
+                                <span className="truncate">
+                                    {revealTitle
+                                        ? turn.label
+                                        : participant.name}
+                                </span>
+                                <span className="type-meta truncate">
+                                    {revealTitle
+                                        ? identity
+                                        : participant.role}
+                                </span>
+                            </span>
                         </TurnButton>
                     );
                 })}

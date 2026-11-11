@@ -138,6 +138,10 @@ export const INTENT_ANCHORS: Record<string, TutorialAnchorId> = {
     "downside-reviewer": "action.downside-reviewer",
     "portfolio-analyst": "action.portfolio-analyst",
     "concluding-discussion": "action.consensus",
+    "prepared-credit": "action.credit-analyst",
+    "prepared-downside": "action.downside-reviewer",
+    "prepared-portfolio": "action.portfolio-analyst",
+    "prepared-consensus": "action.consensus",
 };
 
 export function anchorForIntent(
