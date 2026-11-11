@@ -94,6 +94,7 @@ import { ThinkingBlock } from './ThinkingBlock';
 import { ToolUseBlock } from './ToolUseBlock';
 import { CitationsBlock, type CitationView } from './CitationsBlock';
 import { ClosingPanel } from './ClosingPanel';
+import { DemoOutcomePanel } from './DemoOutcomePanel';
 import { ContextEstimate } from './ContextEstimate';
 import { EvidenceCitationTrigger } from '../evidence/trigger';
 import { EvidencePreviewHost } from '../evidence/host';
@@ -459,6 +460,12 @@ function MeetingConversation({
     const closingOpen =
         isPollingClosingStage(closingStage) || closingStage === 'failed';
     const closingCompleted = closingStage === 'completed';
+    const outcomeSummary =
+        closingObservation.closing?.summary ??
+        [...(meeting.messages ?? [])]
+            .reverse()
+            .find((message) => message.sender_type === 'system')?.content ??
+        null;
     const closingObservationUnknown =
         !runtime.replay &&
         capabilities.closing &&
@@ -723,6 +730,15 @@ function MeetingConversation({
                                         }
                                     />
                                     {runtime.replay && ended && (
+                                        <DemoOutcomePanel
+                                            meeting={meeting}
+                                            disagreements={disagreements}
+                                            consensus={consensus}
+                                            summary={outcomeSummary}
+                                            archived={meeting.status === 'archived'}
+                                        />
+                                    )}
+                                    {runtime.replay && ended && (
                                         <div className="mt-4 flex justify-center">
                                             <Button asChild variant="outline">
                                                 <Link
@@ -820,6 +836,7 @@ function MeetingConversation({
                                         disagreements={disagreements}
                                         compact
                                         unavailable={disagreementsUnavailable}
+                                        showScores={!runtime.replay}
                                     />
                                 </TabsContent>
                             )}
@@ -832,6 +849,7 @@ function MeetingConversation({
                                         consensus={consensus}
                                         compact
                                         unavailable={consensusUnavailable}
+                                        showScores={!runtime.replay}
                                     />
                                 </TabsContent>
                             )}
@@ -1524,10 +1542,12 @@ function DisagreementsPanel({
     disagreements,
     compact = false,
     unavailable = false,
+    showScores = true,
 }: {
     disagreements: Disagreement[];
     compact?: boolean;
     unavailable?: boolean;
+    showScores?: boolean;
 }) {
     return (
         <ScrollArea className={cn('h-full', compact ? 'p-3' : 'p-4')}>
@@ -1565,6 +1585,7 @@ function DisagreementsPanel({
                                 key={disagreement.id}
                                 disagreement={disagreement}
                                 compact={compact}
+                                showScores={showScores}
                             />
                         ))}
                     </div>
@@ -1578,10 +1599,12 @@ function ConsensusPanel({
     consensus,
     compact = false,
     unavailable = false,
+    showScores = true,
 }: {
     consensus: Consensus[];
     compact?: boolean;
     unavailable?: boolean;
+    showScores?: boolean;
 }) {
     return (
         <ScrollArea className={cn('h-full', compact ? 'p-3' : 'p-4')}>
@@ -1611,7 +1634,12 @@ function ConsensusPanel({
                             {consensus.length !== 1 ? 's' : ''} reached
                         </p>
                         {consensus.map((item) => (
-                            <ConsensusCard key={item.id} consensus={item} compact={compact} />
+                            <ConsensusCard
+                                key={item.id}
+                                consensus={item}
+                                compact={compact}
+                                showScores={showScores}
+                            />
                         ))}
                     </div>
                 )}
@@ -1648,9 +1676,11 @@ function EmptyTab({
 function DisagreementCard({
     disagreement,
     compact = false,
+    showScores = true,
 }: {
     disagreement: Disagreement;
     compact?: boolean;
+    showScores?: boolean;
 }) {
     const severityColors: Record<number, string> = {
         1: 'border-warning/50 bg-warning-soft',
@@ -1661,7 +1691,15 @@ function DisagreementCard({
     };
     const severity = (disagreement.severity || 3) as keyof typeof severityColors;
     return (
-        <Card className={cn('border', compact ? 'p-3' : 'p-4', severityColors[severity])}>
+        <Card
+            className={cn(
+                'border',
+                compact ? 'p-3' : 'p-4',
+                showScores
+                    ? severityColors[severity]
+                    : 'border-separator bg-surface'
+            )}
+        >
             <div className="space-y-2">
                 <div className="flex items-start justify-between gap-3">
                     <h4 className="type-control font-semibold text-ink">
@@ -1687,8 +1725,12 @@ function DisagreementCard({
                     </span>
                     <span aria-hidden="true">·</span>
                     <span>{formatRelativeTime(disagreement.created_at)}</span>
-                    <span aria-hidden="true">·</span>
-                    <span>Severity {severity}/5</span>
+                    {showScores ? (
+                        <>
+                            <span aria-hidden="true">·</span>
+                            <span>Severity {severity}/5</span>
+                        </>
+                    ) : null}
                 </div>
             </div>
         </Card>
@@ -1698,9 +1740,11 @@ function DisagreementCard({
 function ConsensusCard({
     consensus,
     compact = false,
+    showScores = true,
 }: {
     consensus: Consensus;
     compact?: boolean;
+    showScores?: boolean;
 }) {
     const strengthColors: Record<number, string> = {
         1: 'border-success/40 bg-success-soft',
@@ -1711,7 +1755,15 @@ function ConsensusCard({
     };
     const strength = (consensus.strength || 3) as keyof typeof strengthColors;
     return (
-        <Card className={cn('border', compact ? 'p-3' : 'p-4', strengthColors[strength])}>
+        <Card
+            className={cn(
+                'border',
+                compact ? 'p-3' : 'p-4',
+                showScores
+                    ? strengthColors[strength]
+                    : 'border-separator bg-surface'
+            )}
+        >
             <div className="space-y-2">
                 <h4 className="type-control font-semibold text-ink">{consensus.topic}</h4>
                 <div className="flex flex-wrap gap-1.5">
@@ -1726,8 +1778,12 @@ function ConsensusCard({
                     ))}
                 </div>
                 <div className="flex items-center gap-2 type-meta text-ink-muted">
-                    <span>Strength {strength}/5</span>
-                    <span aria-hidden="true">·</span>
+                    {showScores ? (
+                        <>
+                            <span>Strength {strength}/5</span>
+                            <span aria-hidden="true">·</span>
+                        </>
+                    ) : null}
                     <span>{formatRelativeTime(consensus.created_at)}</span>
                 </div>
             </div>

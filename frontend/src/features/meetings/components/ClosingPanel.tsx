@@ -889,21 +889,15 @@ export function ClosingPanel({
                 </div>
             ) : null}
 
-            {summaryText || (deckClosing && closing?.summary) ? (
+            {!deckClosing && summaryText ? (
                 <Card id="closing-final-summary" className="border-separator bg-surface/50 p-4">
                     <h5 className="mb-2 text-xs font-semibold uppercase tracking-wide text-ink-muted">
                         Summary
                     </h5>
-                    {summaryText ? (
-                        <ClosingGeneratedText
-                            item={summaryText}
-                            className="whitespace-pre-wrap text-sm text-ink-secondary"
-                        />
-                    ) : (
-                        <p className="whitespace-pre-wrap text-sm text-ink-secondary">
-                            {closing?.summary}
-                        </p>
-                    )}
+                    <ClosingGeneratedText
+                        item={summaryText}
+                        className="whitespace-pre-wrap text-sm text-ink-secondary"
+                    />
                 </Card>
             ) : null}
 
