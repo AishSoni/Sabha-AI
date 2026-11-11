@@ -66,7 +66,7 @@ test.describe("version-5 package compatibility", () => {
         await page.getByRole("link", { name: "Start meeting" }).click();
         await expect(page).toHaveURL(/\/demo\/new$/);
         await expect(
-            page.getByRole("button", { name: "Try editing this setup" })
+            page.getByRole("heading", { name: "Added samples" })
         ).toBeVisible();
         await expect(hud.getByText("Create meeting")).toBeVisible();
 

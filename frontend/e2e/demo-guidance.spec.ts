@@ -24,7 +24,7 @@ test.describe("demo screen guidance", () => {
             [
                 "/demo/roster",
                 "Templates, not meeting participants",
-                "Editing a persona changes future practice setups only",
+                "Editing a persona changes future demo setups only",
                 true,
             ],
             [

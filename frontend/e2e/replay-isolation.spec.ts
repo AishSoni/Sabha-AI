@@ -286,7 +286,7 @@ test.describe("recorded visitor isolation", () => {
         }
     });
 
-    test("practice edits stay isolated and survive only a recording restart", async ({
+    test("browser edits stay isolated and survive only a recording restart", async ({
         browser,
     }) => {
         test.setTimeout(240_000);
@@ -304,7 +304,7 @@ test.describe("recorded visitor isolation", () => {
             await Promise.all([openBoard(pageA), openBoard(pageB)]);
 
             await openPromptHistory(pageA, "Mira");
-            await pageA.getByPlaceholder(PROMPT).fill("Visitor A practice marker.");
+            await pageA.getByPlaceholder(PROMPT).fill("Visitor A demo marker.");
             await pageA
                 .getByRole("button", { name: "Save and activate new version" })
                 .click();
@@ -313,7 +313,7 @@ test.describe("recorded visitor isolation", () => {
             ).toBeVisible();
 
             await openPromptHistory(pageB, "Arjun");
-            await pageB.getByPlaceholder(PROMPT).fill("Visitor B practice marker.");
+            await pageB.getByPlaceholder(PROMPT).fill("Visitor B demo marker.");
             await pageB
                 .getByRole("button", { name: "Save and activate new version" })
                 .click();
@@ -321,13 +321,10 @@ test.describe("recorded visitor isolation", () => {
                 pageB.getByText(/Saved and activated version 3\./)
             ).toBeVisible();
 
-            // A starts a practice setup with queued work, then resets.
+            // A adds an approved sample in setup with queued work, then resets.
             await pageA.getByRole("link", { name: "New meeting" }).click();
-            await pageA
-                .getByRole("button", { name: "Try editing this setup" })
-                .click();
             await expect(
-                pageA.getByRole("heading", { name: "Practice setup" })
+                pageA.getByRole("heading", { name: "Added samples" })
             ).toBeVisible();
             await pageA
                 .getByRole("button", { name: "Add approved sample" })
@@ -337,17 +334,10 @@ test.describe("recorded visitor isolation", () => {
                 .getByRole("radio", { name: /downside-worksheet\.md/ })
                 .check();
             await picker.getByRole("button", { name: "Add sample" }).click();
-            await pageA
-                .getByRole("button", { name: "Create practice setup" })
-                .click();
-            await expect(pageA).toHaveURL(/\/demo\/meetings\/local-/);
-            await expect(pageA.getByText("Captured participants")).toBeVisible();
+            await expect(picker).toBeHidden();
             await expect(
                 pageA.getByText(/Queued|Indexing|Failed|Ready/)
             ).toBeVisible({ timeout: 10_000 });
-            await expect(
-                pageA.getByRole("link", { name: "Open practice setup" })
-            ).toHaveCount(0);
 
             await pageA.getByRole("button", { name: "Reset demo" }).click();
             await pageA
@@ -357,19 +347,25 @@ test.describe("recorded visitor isolation", () => {
             await pageA
                 .getByRole("button", { name: "Skip introduction" })
                 .click();
+            await pageA.goto("/demo/new");
             await expect(
-                pageA.getByText("This practice setup is not available")
+                pageA.getByRole("heading", { name: "Added samples" })
+            ).toBeVisible();
+            await expect(
+                pageA.getByText(
+                    "No approved sample has been added. Creating the meeting does not require one."
+                )
             ).toBeVisible();
 
             // B is untouched by A's reset.
             await expect(pageB.getByPlaceholder(PROMPT)).toHaveValue(
-                "Visitor B practice marker."
+                "Visitor B demo marker."
             );
 
             // A's reset removed its own prompt edit.
             await openPromptHistory(pageA, "Mira");
             await expect(pageA.getByPlaceholder(PROMPT)).not.toHaveValue(
-                "Visitor A practice marker."
+                "Visitor A demo marker."
             );
 
             // A new edit survives a recording-only restart.
@@ -392,7 +388,7 @@ test.describe("recorded visitor isolation", () => {
                 "Visitor A restart marker."
             );
 
-            // A full reset removes the remaining practice edit.
+            // A full reset removes the remaining browser edit.
             await pageA.getByRole("button", { name: "Reset demo" }).click();
             await pageA
                 .getByRole("button", { name: "Reset and discard changes" })

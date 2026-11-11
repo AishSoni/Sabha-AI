@@ -84,7 +84,7 @@ afterEach(() => {
 });
 
 describe("demo workspace provider", () => {
-    it("loads the pinned seed once and exposes the practice catalog", async () => {
+    it("loads the pinned seed once and exposes the demo catalog", async () => {
         const calls = installSeedFetch(demoWorkspaceSeedEnvelope());
         renderWorkspace();
 
@@ -102,7 +102,7 @@ describe("demo workspace provider", () => {
         expect(calls[0]).toContain("version=2");
     });
 
-    it("restart recording keeps practice edits and resets playback", async () => {
+    it("restart recording keeps browser edits and resets playback", async () => {
         installSeedFetch(demoWorkspaceSeedEnvelope());
         renderWorkspace();
         await waitFor(() =>
@@ -123,7 +123,7 @@ describe("demo workspace provider", () => {
         expect(screen.getByTestId("stacks").textContent).toBe("3");
         expect(screen.getByTestId("reset-reason").textContent).toBe("recording");
         expect(screen.getByTestId("reset-nonce").textContent).toBe("1");
-        // Restarting playback is not a practice reset: pending work and drafts
+        // Restarting playback is not a workspace reset: pending work and drafts
         // keep their epoch, while a full workspace reset invalidates them.
         expect(Number(screen.getByTestId("epoch").textContent)).toBe(
             startingEpoch
@@ -133,7 +133,7 @@ describe("demo workspace provider", () => {
         ).toBe(startingResetEpoch);
     });
 
-    it("reset workspace restores the seed and discards practice edits", async () => {
+    it("reset workspace restores the seed and discards browser edits", async () => {
         installSeedFetch(demoWorkspaceSeedEnvelope());
         renderWorkspace();
         await waitFor(() =>

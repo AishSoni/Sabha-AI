@@ -22,6 +22,10 @@ const BANNED = [
     "Guided replay",
     "Start guided replay",
     "Practice setup created",
+    "Practice setup",
+    "Try editing this setup",
+    "Create practice setup",
+    "Open practice setup",
     "Documents in this step",
     "Chapters and inspection screens",
     "Continue (acknowledge)",
@@ -99,35 +103,8 @@ test.describe("concise demo copy", () => {
         await expect(
             page.getByText("Document supplied with the demo.")
         ).toBeVisible();
-        await page.getByRole("button", { name: "Try editing this setup" }).click();
         await expect(
-            page.getByRole("heading", { name: "Practice setup" }).first()
-        ).toBeVisible();
-        await expect(
-            page.getByText(/Practice only · changes stay in this browser/)
-        ).toBeVisible();
-        await expectNoBannedCopy(page);
-
-        await page.getByRole("button", { name: "Add approved sample" }).click();
-        const samplePicker = page.getByRole("dialog");
-        await samplePicker
-            .getByRole("radio", { name: /downside-worksheet\.md/ })
-            .check();
-        await samplePicker.getByRole("button", { name: "Add sample" }).click();
-        await page.getByRole("button", { name: "Create practice setup" }).click();
-        await expect(page).toHaveURL(/\/demo\/meetings\/local-/, {
-            timeout: 30_000,
-        });
-        await expect(page.getByTestId("tutorial-hud")).toHaveCount(0);
-        await expect(page.getByTestId("tutorial-hud-compact")).toHaveCount(0);
-        await expect(
-            page.getByText("Practice setup", { exact: true }).first()
-        ).toBeVisible();
-        await expect(
-            page.getByText("What this setup does not do", { exact: true })
-        ).toBeVisible();
-        await expect(
-            page.getByText(/It does not send a turn, generate a reply/)
+            page.getByRole("heading", { name: "Added samples" })
         ).toBeVisible();
         await expectNoBannedCopy(page);
 
