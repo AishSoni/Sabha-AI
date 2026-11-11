@@ -1021,6 +1021,7 @@ export function createReplayRuntime(
             preparedBaseCheckpoint: session.prepared_base_checkpoint,
             preparedTurns: session.prepared_turns,
             preparedClosing: session.prepared_closing,
+            progression: null,
             playedTurnIds: new Set<string>(),
             activePreparedOperationId: null,
             lastCompletedTurnId: null,

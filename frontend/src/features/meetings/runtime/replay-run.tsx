@@ -34,7 +34,7 @@ import {
 } from "./replay";
 import {
     FOLLOW_UP_STEP,
-    canCloseDeck,
+    acceptedTurnIds,
     composedBundle,
     composedTurns,
     emptyPreparedDeck,
@@ -44,6 +44,7 @@ import {
     turnById,
     type PreparedDeckState,
 } from "./prepared-deck";
+import { deriveProgression } from "./progression";
 import { useReplaySession, type ReplaySafeConfig } from "./replay-session";
 
 export type { ReplaySafeConfig } from "./replay-session";
@@ -156,6 +157,33 @@ function ReplayRunReadyProvider({
     const [deckVersion, setDeckVersion] = useState(0);
     const deckRef = useRef<PreparedDeckState | null>(null);
     const deckBasePromise = useRef<Promise<ReplayBundle> | null>(null);
+    const deckActionLock = useRef(false);
+    const runDeckAction = useCallback(
+        async (action: () => Promise<void>): Promise<void> => {
+            if (deckActionLock.current) return;
+            deckActionLock.current = true;
+            try {
+                await action();
+            } finally {
+                deckActionLock.current = false;
+            }
+        },
+        []
+    );
+    const progressionForState = useCallback(
+        (state: PreparedDeckState) =>
+            deriveProgression({
+                turns: session.prepared_turns,
+                requiredTurnIds:
+                    session.prepared_closing?.required_turn_ids ?? [],
+                acceptedTurnIds: acceptedTurnIds(session, state),
+                closingAccepted: Boolean(state.closing),
+                deckAttached:
+                    stateRef.current.checkpoint ===
+                    session.prepared_base_checkpoint,
+            }),
+        [session]
+    );
 
     const ensureDeckBase = useCallback(async (): Promise<PreparedDeckState> => {
         if (deckRef.current) return deckRef.current;
@@ -205,18 +233,33 @@ function ReplayRunReadyProvider({
     const deckPlayedTurnIds = useMemo(() => {
         const state = deckRef.current;
         if (!state) return new Set<string>();
-        const played = new Set(Object.keys(state.results));
-        const followUp = followUpTurn(session);
-        if (state.followUpSent && followUp) played.add(followUp.turn_id);
-        return played;
+        return acceptedTurnIds(session, state);
         // deckVersion is the observable fence for the mutable composition.
         // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [deckVersion, session]);
 
-    const deckCanClose =
-        deckEnabled &&
-        !deckRef.current?.closing &&
-        canCloseDeck(session, deckPlayedTurnIds);
+    const deckProgression = useMemo(() => {
+        if (!deckEnabled) return null;
+        return deriveProgression({
+            turns: session.prepared_turns,
+            requiredTurnIds:
+                session.prepared_closing?.required_turn_ids ?? [],
+            acceptedTurnIds: deckPlayedTurnIds,
+            closingAccepted: Boolean(deckRef.current?.closing),
+            deckAttached:
+                session.prepared_base_checkpoint === effectiveCheckpoint,
+        });
+        // deckVersion covers the mutable closing flag.
+        // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [
+        deckEnabled,
+        deckPlayedTurnIds,
+        effectiveCheckpoint,
+        session,
+        deckVersion,
+    ]);
+
+    const deckCanClose = Boolean(deckProgression?.closing.eligible);
 
     const closingCompleted = useMemo(() => {
         if (deckEnabled) return Boolean(deckRef.current?.closing);
@@ -367,33 +410,98 @@ function ReplayRunReadyProvider({
 
     const startPreparedTurn = useCallback(
         async (turnId: string) => {
-            const state = await ensureDeckBase();
-            const turn = turnById(session, turnId);
-            if (!turn || turn.kind !== "reply") {
-                throw new Error("That turn is not part of this demo.");
-            }
-            if (state.results[turnId] || state.activeTurnId) return;
-            markStarted(turn.intent_id, true);
-            commitDeck({ ...state, activeTurnId: turnId });
-            invalidateDeckReads();
+            await ensureDeckBase();
+            await runDeckAction(async () => {
+                const state = deckRef.current;
+                if (!state) return;
+                const turn = turnById(session, turnId);
+                if (!turn || turn.kind !== "reply") {
+                    throw new Error("That turn is not part of this demo.");
+                }
+                if (state.activeTurnId || state.results[turnId]) return;
+                const progression = progressionForState(state);
+                if (!progression.turns[turnId]?.available) return;
+                markStarted(turn.intent_id, true);
+                commitDeck({ ...state, activeTurnId: turnId });
+                invalidateDeckReads();
+            });
         },
         [
             commitDeck,
             ensureDeckBase,
             invalidateDeckReads,
             markStarted,
+            progressionForState,
+            runDeckAction,
             session,
         ]
     );
 
     const skipPreparedTurn = useCallback(
         async (turnId: string) => {
-            const state = await ensureDeckBase();
-            if (state.results[turnId]) return;
+            await ensureDeckBase();
+            await runDeckAction(async () => {
+                const state = deckRef.current;
+                if (!state || state.activeTurnId !== turnId) return;
+                if (state.results[turnId]) return;
+                const turn = turnById(session, turnId);
+                if (!turn || turn.kind !== "reply") {
+                    throw new Error("That result is not available in this demo.");
+                }
+                const result = await fetchReplayBundle(
+                    session,
+                    session.meeting_id,
+                    turn.result_checkpoint,
+                    deckController.signal
+                );
+                mergeDeckResult(turnId, result);
+            });
+        },
+        [
+            deckController.signal,
+            ensureDeckBase,
+            mergeDeckResult,
+            runDeckAction,
+            session,
+        ]
+    );
+
+    const replayPreparedTurn = useCallback(
+        async (turnId: string) => {
+            await ensureDeckBase();
+            await runDeckAction(async () => {
+                const state = deckRef.current;
+                if (!state) return;
+                const turn = turnById(session, turnId);
+                if (!turn || turn.kind !== "reply" || !state.results[turnId]) {
+                    throw new Error("That turn cannot be repeated.");
+                }
+                if (state.activeTurnId || state.closing) return;
+                if (progressionForState(state).phase === "closed") return;
+                markStarted(turn.intent_id, true);
+                commitDeck({ ...state, activeTurnId: turnId });
+                invalidateDeckReads();
+            });
+        },
+        [
+            commitDeck,
+            ensureDeckBase,
+            invalidateDeckReads,
+            markStarted,
+            progressionForState,
+            runDeckAction,
+            session,
+        ]
+    );
+
+    const showFullPreparedResponse = useCallback(async () => {
+        await ensureDeckBase();
+        await runDeckAction(async () => {
+            const state = deckRef.current;
+            if (!state?.activeTurnId) return;
+            const turnId = state.activeTurnId;
             const turn = turnById(session, turnId);
-            if (!turn || turn.kind !== "reply") {
-                throw new Error("That result is not available in this demo.");
-            }
+            if (!turn || turn.kind !== "reply") return;
             const result = await fetchReplayBundle(
                 session,
                 session.meeting_id,
@@ -401,110 +509,96 @@ function ReplayRunReadyProvider({
                 deckController.signal
             );
             mergeDeckResult(turnId, result);
-        },
-        [deckController.signal, ensureDeckBase, mergeDeckResult, session]
-    );
-
-    const replayPreparedTurn = useCallback(
-        async (turnId: string) => {
-            const state = await ensureDeckBase();
-            const turn = turnById(session, turnId);
-            if (!turn || turn.kind !== "reply" || !state.results[turnId]) {
-                throw new Error("That turn cannot be repeated.");
-            }
-            if (state.activeTurnId) return;
-            markStarted(turn.intent_id, true);
-            commitDeck({ ...state, activeTurnId: turnId });
-            invalidateDeckReads();
-        },
-        [
-            commitDeck,
-            ensureDeckBase,
-            invalidateDeckReads,
-            markStarted,
-            session,
-        ]
-    );
-
-    const showFullPreparedResponse = useCallback(async () => {
-        const state = await ensureDeckBase();
-        if (!state.activeTurnId) return;
-        const turnId = state.activeTurnId;
-        const turn = turnById(session, turnId);
-        if (!turn || turn.kind !== "reply") return;
-        const result = await fetchReplayBundle(
-            session,
-            session.meeting_id,
-            turn.result_checkpoint,
-            deckController.signal
-        );
-        mergeDeckResult(turnId, result);
-    }, [deckController.signal, ensureDeckBase, mergeDeckResult, session]);
+        });
+    }, [
+        deckController.signal,
+        ensureDeckBase,
+        mergeDeckResult,
+        runDeckAction,
+        session,
+    ]);
 
     const sendFollowUp = useCallback(async () => {
-        const state = await ensureDeckBase();
-        const turn = followUpTurn(session);
-        if (!turn || state.followUpSent) return;
-        commitDeck({
-            ...state,
-            order: [...state.order, FOLLOW_UP_STEP],
-            followUpSent: true,
+        await ensureDeckBase();
+        await runDeckAction(async () => {
+            const state = deckRef.current;
+            if (!state || state.followUpSent) return;
+            const progression = progressionForState(state);
+            if (!progression.followUp.available) return;
+            const turn = followUpTurn(session);
+            if (!turn) return;
+            commitDeck({
+                ...state,
+                order: [...state.order, FOLLOW_UP_STEP],
+                followUpSent: true,
+            });
+            if (turn.intent_id) settleIntent(turn.intent_id);
+            invalidateDeckReads();
         });
-        if (turn.intent_id) settleIntent(turn.intent_id);
-        invalidateDeckReads();
-    }, [commitDeck, ensureDeckBase, invalidateDeckReads, session, settleIntent]);
+    }, [
+        commitDeck,
+        ensureDeckBase,
+        invalidateDeckReads,
+        progressionForState,
+        runDeckAction,
+        session,
+        settleIntent,
+    ]);
 
     const startPreparedClosing = useCallback(async () => {
-        const state = await ensureDeckBase();
-        if (state.closing) return;
-        const closing = session.prepared_closing;
-        if (!closing) throw new Error("This demo has no closing.");
-        const played = new Set([
-            ...Object.keys(state.results),
-            ...(state.followUpSent
-                ? [followUpTurn(session)?.turn_id].filter(
-                      (value): value is string => Boolean(value)
-                  )
-                : []),
-        ]);
-        if (!canCloseDeck(session, played)) {
-            throw new Error(
-                "Continue through every reply and send the follow-up before closing."
+        await ensureDeckBase();
+        await runDeckAction(async () => {
+            const state = deckRef.current;
+            if (!state || state.closing) return;
+            const progression = progressionForState(state);
+            if (!progression.closing.eligible) {
+                throw new Error(
+                    progression.closeReason ??
+                        "The required discussion steps are not complete."
+                );
+            }
+            const closing = session.prepared_closing;
+            if (!closing) throw new Error("This demo has no closing.");
+            const bundle = await fetchReplayBundle(
+                session,
+                session.meeting_id,
+                closing.completed_checkpoint,
+                deckController.signal
             );
-        }
-        const bundle = await fetchReplayBundle(
-            session,
-            session.meeting_id,
-            closing.completed_checkpoint,
-            deckController.signal
-        );
-        commitDeck({ ...state, closing: bundle, archived: false });
-        invalidateDeckReads();
+            commitDeck({ ...state, closing: bundle, archived: false });
+            invalidateDeckReads();
+        });
     }, [
         commitDeck,
         deckController.signal,
         ensureDeckBase,
         invalidateDeckReads,
+        progressionForState,
+        runDeckAction,
         session,
     ]);
 
     const archivePreparedMeeting = useCallback(async () => {
-        const state = await ensureDeckBase();
-        const closing = session.prepared_closing;
-        if (!closing || !state.closing || state.archived) return;
-        const bundle = await fetchReplayBundle(
-            session,
-            session.meeting_id,
-            closing.archived_checkpoint,
-            deckController.signal
-        );
-        commitDeck({ ...state, closing: bundle, archived: true });
-        invalidateDeckReads();
+        await ensureDeckBase();
+        await runDeckAction(async () => {
+            const state = deckRef.current;
+            const closing = session.prepared_closing;
+            if (!closing || !state?.closing || state.archived) return;
+            const bundle = await fetchReplayBundle(
+                session,
+                session.meeting_id,
+                closing.archived_checkpoint,
+                deckController.signal
+            );
+            commitDeck({ ...state, closing: bundle, archived: true });
+            invalidateDeckReads();
+        });
     }, [
         commitDeck,
         deckController.signal,
         ensureDeckBase,
         invalidateDeckReads,
+        runDeckAction,
         session,
     ]);
 
@@ -1053,14 +1147,13 @@ function ReplayRunReadyProvider({
             : null;
         value.replay = {
             ...value.replay!,
+            progression: deckProgression,
             playedTurnIds: deckPlayedTurnIds,
             activePreparedOperationId:
                 activeTurn?.kind === "reply" ? activeTurn.operation_id : null,
             lastCompletedTurnId: state?.lastCompletedTurnId ?? null,
             canClose: deckCanClose,
-            closeReason: deckCanClose
-                ? null
-                : "Play all four replies and send the follow-up to close.",
+            closeReason: deckProgression?.closing.reason ?? null,
             startPreparedTurn,
             sendFollowUp,
             replayPreparedTurn,
@@ -1085,6 +1178,7 @@ function ReplayRunReadyProvider({
         onTurnSettled,
         isTurnVisible,
         deckEnabled,
+        deckProgression,
         deckCanClose,
         deckPlayedTurnIds,
         ensureDeckBase,

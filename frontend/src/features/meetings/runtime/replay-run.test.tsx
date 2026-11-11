@@ -440,6 +440,249 @@ function legacySessionWire() {
     };
 }
 
+function deckSessionWire() {
+    const base = sessionWire();
+    return {
+        ...base,
+        package_version: "11",
+        checkpoints: [
+            "checkpoint-prepared-base",
+            "checkpoint-prepared-credit",
+            "checkpoint-prepared-downside",
+            "checkpoint-prepared-portfolio",
+            "checkpoint-prepared-consensus",
+            "checkpoint-closed",
+            "checkpoint-archived",
+        ],
+        prepared_base_checkpoint: "checkpoint-prepared-base",
+        prepared_turns: [
+            {
+                kind: "reply",
+                turn_id: "prepared-credit",
+                participant_id: "participant-1",
+                label: "Credit Analyst opening facts",
+                intent_id: "prepared-credit",
+                operation_id: "operation-credit",
+                tape_id: "tape-credit",
+                result_checkpoint: "checkpoint-prepared-credit",
+                reply_message_ids: ["message-credit"],
+                effect_ids: [],
+                required: true,
+            },
+            {
+                kind: "reply",
+                turn_id: "prepared-downside",
+                participant_id: "participant-2",
+                label: "Downside challenge",
+                intent_id: "prepared-downside",
+                operation_id: "operation-downside",
+                tape_id: "tape-downside",
+                result_checkpoint: "checkpoint-prepared-downside",
+                reply_message_ids: ["message-downside"],
+                effect_ids: [],
+                required: true,
+            },
+            {
+                kind: "reply",
+                turn_id: "prepared-portfolio",
+                participant_id: "participant-3",
+                label: "Mandate review",
+                intent_id: "prepared-portfolio",
+                operation_id: "operation-portfolio",
+                tape_id: "tape-portfolio",
+                result_checkpoint: "checkpoint-prepared-portfolio",
+                reply_message_ids: ["message-portfolio"],
+                effect_ids: [],
+                required: true,
+            },
+            {
+                kind: "reply",
+                turn_id: "prepared-consensus",
+                participant_id: "participant-1",
+                label: "Committee alignment",
+                intent_id: "prepared-consensus",
+                operation_id: "operation-consensus",
+                tape_id: "tape-consensus",
+                result_checkpoint: "checkpoint-prepared-consensus",
+                reply_message_ids: ["message-consensus"],
+                effect_ids: [],
+                required: true,
+            },
+            {
+                kind: "follow_up",
+                turn_id: "prepared-followup",
+                label: "You",
+                question: "What can you conclude from this record?",
+                message_id: "message-followup",
+                intent_id: "director-follow-up",
+                participant_id: null,
+                required: true,
+            },
+        ],
+        prepared_closing: {
+            closing_tape_id: "tape-closing",
+            completed_checkpoint: "checkpoint-closed",
+            archived_checkpoint: "checkpoint-archived",
+            required_turn_ids: [
+                "prepared-credit",
+                "prepared-downside",
+                "prepared-portfolio",
+                "prepared-consensus",
+                "prepared-followup",
+            ],
+        },
+    };
+}
+
+function messageWire(id: string, content: string) {
+    return {
+        id,
+        meeting_id: MEETING_ID,
+        sender_type: "ai",
+        sender_id: "participant-1",
+        sender_name: "Mira",
+        content,
+        citations: [],
+        tool_artifacts: null,
+        thinking_content: null,
+        estimated_cost: 0,
+        created_at: "2026-01-15T10:00:20Z",
+    };
+}
+
+function deckMeetingWire() {
+    return {
+        ...meetingWire(),
+        messages: [
+            messageWire("message-credit", "Credit facts"),
+            messageWire("message-downside", "Downside challenge"),
+            messageWire("message-portfolio", "Mandate review"),
+            messageWire("message-consensus", "Committee alignment"),
+        ],
+    };
+}
+
+function stubDeckReads() {
+    vi.stubGlobal(
+        "fetch",
+        vi.fn(async (input: unknown) => {
+            const url = String(input);
+            if (url.endsWith("/replay/session")) return json(deckSessionWire());
+            if (url.includes("/workspace-seed")) {
+                return json({ detail: "replay_workspace_seed_unavailable" }, 404);
+            }
+            if (url.includes("/safe-config")) {
+                return json({ board: {}, intake: {} });
+            }
+            if (url.includes("/disagreements")) return json([]);
+            if (url.includes("/consensus")) return json([]);
+            if (url.includes("/turns")) return json([]);
+            if (url.includes(`/replay/meetings/${MEETING_ID}`)) {
+                return json(deckMeetingWire());
+            }
+            return json({ detail: "replay_read_unavailable" }, 404);
+        })
+    );
+}
+
+describe("ReplayRunProvider deck admission", () => {
+    afterEach(() => {
+        vi.unstubAllGlobals();
+    });
+
+    it("rejects locked turns, follow-up, and closing until accepted outcomes unlock them", async () => {
+        stubDeckReads();
+        const { result } = renderReplayRun();
+        await waitFor(() =>
+            expect(result.current?.runtime.replay?.progression?.phase).toBe(
+                "opening"
+            )
+        );
+
+        await act(async () => {
+            await result.current.runtime.replay?.startPreparedTurn(
+                "prepared-consensus"
+            );
+        });
+        expect(result.current.runtime.replay?.activePreparedOperationId).toBeNull();
+        expect(result.current.runtime.replay?.playedTurnIds.size).toBe(0);
+
+        await act(async () => {
+            await result.current.runtime.replay?.sendFollowUp();
+        });
+        expect(result.current.runtime.replay?.playedTurnIds.size).toBe(0);
+
+        await act(async () => {
+            await expect(
+                result.current.runtime.replay?.startPreparedClosing()
+            ).rejects.toThrow("Choose who speaks next to begin.");
+        });
+
+        for (const turnId of [
+            "prepared-downside",
+            "prepared-credit",
+            "prepared-portfolio",
+        ]) {
+            await act(async () => {
+                await result.current.runtime.replay?.startPreparedTurn(turnId);
+            });
+            expect(
+                result.current.runtime.replay?.activePreparedOperationId
+            ).toBe(`operation-${turnId.replace("prepared-", "")}`);
+            await act(async () => {
+                await result.current.runtime.replay?.showFullPreparedResponse();
+            });
+        }
+
+        await waitFor(() =>
+            expect(result.current?.runtime.replay?.progression?.phase).toBe(
+                "deliberation"
+            )
+        );
+        expect(result.current.runtime.replay?.playedTurnIds.size).toBe(3);
+
+        await act(async () => {
+            await result.current.runtime.replay?.startPreparedTurn(
+                "prepared-consensus"
+            );
+        });
+        await act(async () => {
+            await result.current.runtime.replay?.showFullPreparedResponse();
+        });
+        await waitFor(() =>
+            expect(result.current?.runtime.replay?.progression?.phase).toBe(
+                "follow-up"
+            )
+        );
+
+        await act(async () => {
+            await result.current.runtime.replay?.sendFollowUp();
+        });
+        await act(async () => {
+            await result.current.runtime.replay?.sendFollowUp();
+        });
+        await waitFor(() =>
+            expect(result.current?.runtime.replay?.progression?.phase).toBe(
+                "closing"
+            )
+        );
+        expect(result.current.runtime.replay?.playedTurnIds.size).toBe(5);
+
+        await act(async () => {
+            await result.current.runtime.replay?.startPreparedClosing();
+        });
+        await waitFor(() => expect(result.current.closingCompleted).toBe(true));
+        expect(result.current.runtime.replay?.progression?.phase).toBe("closed");
+
+        await act(async () => {
+            await result.current.runtime.replay?.startPreparedTurn(
+                "prepared-credit"
+            );
+        });
+        expect(result.current.runtime.replay?.activePreparedOperationId).toBeNull();
+    });
+});
+
 function completedMeetingWire() {
     return {
         ...meetingWire(),

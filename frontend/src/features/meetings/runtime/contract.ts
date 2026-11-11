@@ -34,6 +34,7 @@ import type { TurnStatus } from "../api/turn-decoders";
 import type { ClosingTextEvent } from "../api/closing-stream";
 import type { MeetingsEvidenceApi } from "../evidence/contract";
 import type { GenerationSummary } from "./effective-generation";
+import type { DeckProgression } from "./progression";
 
 /**
  * Wire shape of a recorded document read. The knowledge feature owns the live
@@ -225,6 +226,7 @@ export interface ReplayRuntimeInfo {
     preparedBaseCheckpoint: string | null;
     preparedTurns: ReplayPreparedTurn[];
     preparedClosing: ReplayPreparedClosing | null;
+    progression: DeckProgression | null;
     playedTurnIds: ReadonlySet<string>;
     activePreparedOperationId: string | null;
     lastCompletedTurnId: string | null;

@@ -259,6 +259,16 @@ export function composedBundle(
     };
 }
 
+export function acceptedTurnIds(
+    session: ReplaySession,
+    state: PreparedDeckState
+): Set<string> {
+    const played = new Set(Object.keys(state.results));
+    const followUp = followUpTurn(session);
+    if (state.followUpSent && followUp) played.add(followUp.turn_id);
+    return played;
+}
+
 export function canCloseDeck(
     session: ReplaySession,
     playedTurnIds: ReadonlySet<string>
