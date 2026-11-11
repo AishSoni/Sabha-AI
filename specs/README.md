@@ -44,8 +44,9 @@ manageable slices. The [audit reference](reference-project-polish-audit.md)
 retains every copy-fix family/source anchor and T01–T31; it is not another
 implementation assignment. Conflicting old visible aliases, separate Practice
 configuration, and journey rules are superseded only in the stated new scope.
-Keep the latest approved Specs 31/32 design and historical evidence. The new
-polish specs are working drafts, not implementation or acceptance records.
+Keep the latest approved Specs 31/32 design and historical evidence. Specs 34-45
+carry their own scoped implementation and executed-check records; Spec 46 is the
+integrated local acceptance record, with hosted rollout still conditional.
 
 ## Ordered specs
 
