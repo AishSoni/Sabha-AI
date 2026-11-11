@@ -1,7 +1,7 @@
 import { fireEvent, render, screen } from "@testing-library/react";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import type { WorkspaceSample } from "@/features/demo-workspace";
-import type { LocalDocumentsAdapter } from "../local/use-local-documents";
+import type { LocalDocumentsAdapter } from "./use-local-documents";
 import { DemoMeetingDocuments } from "./demo-meeting-documents";
 
 const SAMPLE: WorkspaceSample = {
@@ -44,7 +44,7 @@ const baseAdapter: LocalDocumentsAdapter = {
 
 const useLocalDocuments = vi.fn(() => baseAdapter);
 
-vi.mock("../local/use-local-documents", () => ({
+vi.mock("./use-local-documents", () => ({
     useLocalDocuments: () => useLocalDocuments(),
 }));
 

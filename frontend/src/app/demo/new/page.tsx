@@ -1,13 +1,22 @@
 "use client";
 
-import { useState } from "react";
+import { useMemo, useState } from "react";
 import Link from "next/link";
 import { ArrowRight, CheckCircle2, FileText, Lock, ShieldCheck } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { useDemoWorkspace } from "@/features/demo-workspace";
+import { DemoMeetingDocuments } from "@/features/knowledge/local";
+import { EvidencePreviewHost } from "@/features/meetings/evidence/host";
+import { EvidencePreviewProvider } from "@/features/meetings/evidence/provider";
+import { EvidenceTrigger } from "@/features/meetings/evidence/trigger";
+import {
+    createReplayEvidence,
+    descriptorForAsset,
+} from "@/features/meetings/runtime/replay-evidence";
 import { useReplayRun } from "@/features/meetings/runtime/replay-run";
+import { useReplaySessionReady } from "@/features/meetings/runtime/replay-session";
 import { markTutorialFact, useAnchorRef } from "@/features/demo-tutorial";
 import { PracticeSetupRoute } from "./practice-setup-route";
 
@@ -51,10 +60,28 @@ interface SafeConfig {
 
 export default function DemoNewMeetingPage() {
     const run = useReplayRun();
+    const { session } = useReplaySessionReady();
     const createRef = useAnchorRef("demo.create");
     const openRoomRef = useAnchorRef("demo.open-room");
     const setupRef = useAnchorRef("screen.setup");
     const workspace = useDemoWorkspace();
+    const evidence = useMemo(
+        () =>
+            createReplayEvidence({
+                assets: session.assets,
+                claims: session.claims,
+            }),
+        [session]
+    );
+    const assetsById = useMemo(
+        () => new Map(session.assets.map((asset) => [asset.asset_id, asset])),
+        [session.assets]
+    );
+    const revokedIds = workspace.local.documents
+        .filter((document) => document.status === "revoked")
+        .map((document) => document.documentId)
+        .join(",");
+    const previewEpoch = `${workspace.workspaceEpoch}:${revokedIds}`;
     const [busy, setBusy] = useState(false);
     const [editing, setEditing] = useState(false);
     const [createdLocally, setCreatedLocally] = useState(false);
@@ -100,6 +127,7 @@ export default function DemoNewMeetingPage() {
     };
 
     return (
+        <EvidencePreviewProvider adapter={evidence} epoch={previewEpoch}>
         <main id="main-content" className="mx-auto max-w-4xl px-4 py-8" tabIndex={-1}>
             <div className="mb-6">
                 <div className="mb-2 flex flex-wrap items-center gap-2">
@@ -244,9 +272,29 @@ export default function DemoNewMeetingPage() {
                             </p>
                         </div>
                     </div>
+                    <DemoMeetingDocuments
+                        meetingId={session.meeting_id}
+                        mode="setup"
+                        className="mt-4 space-y-3 border-t border-separator pt-4"
+                        renderPreviewAction={(sample) => {
+                            const asset = assetsById.get(sample.assetId);
+                            if (!asset) return null;
+                            return (
+                                <EvidenceTrigger
+                                    descriptor={{
+                                        ...descriptorForAsset(asset),
+                                        title: sample.fileName,
+                                    }}
+                                    label="Preview source"
+                                />
+                            );
+                        }}
+                    />
                 </Card>
 
             </div>
         </main>
+        <EvidencePreviewHost />
+        </EvidencePreviewProvider>
     );
 }

@@ -6,6 +6,11 @@ export {
     type DemoStackDetailProps,
 } from "./demo-stack-detail";
 export {
+    DemoMeetingDocuments,
+    type DemoMeetingDocumentsMode,
+    type DemoMeetingDocumentsProps,
+} from "./demo-meeting-documents";
+export {
     useLocalDocuments,
     type LocalDocumentsAdapter,
 } from "./use-local-documents";

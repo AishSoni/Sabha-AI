@@ -21,9 +21,9 @@ import {
 import { Button } from "@/components/ui/button";
 import { StatusBadge } from "@/components/ui/status-badge";
 import { useDemoWorkspace, type WorkspaceSample } from "@/features/demo-workspace";
-import { useLocalDocuments } from "../local/use-local-documents";
-import type { KnowledgeDocumentView } from "./contract";
-import { SamplePicker } from "./sample-picker";
+import type { KnowledgeDocumentView } from "../presentation/contract";
+import { SamplePicker } from "../presentation/sample-picker";
+import { useLocalDocuments } from "./use-local-documents";
 
 export type DemoMeetingDocumentsMode = "setup" | "room" | "stack";
 
