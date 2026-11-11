@@ -1,36 +1,62 @@
 "use client";
 
-import {
-  useEffect,
-  useRef,
-  useState,
-  type CSSProperties,
-} from "react";
+import { useEffect, useRef, useState } from "react";
 
 import {
   useAppearanceOptional,
   type ResolvedAppearance,
 } from "@/components/appearance";
 
-import { emblemById } from "../presentation/emblems";
 import { FIELD_PALETTES } from "../presentation/field-palette";
-import {
-  HOME_FIELD_SLOTS,
-  type FieldDensity,
-} from "../presentation/field-layout";
-import { EmblemSvg } from "./emblem-svg";
 import type { FieldEngine, FieldMask } from "./home-field-webgl";
 
-type EngineState = "static" | "ready" | "failed";
-
-function densityForWidth(width: number): FieldDensity {
-  if (width >= 1200) return "wide";
-  if (width >= 768) return "medium";
-  return "compact";
-}
+type EngineState = "static" | "ready" | "failed" | "skipped";
 
 function clamp(value: number, min: number, max: number): number {
   return Math.min(max, Math.max(min, value));
+}
+
+/**
+ * Data-saver and low-memory visitors never pay for the spiral. The hero is
+ * still complete without it, so the field simply stays empty.
+ */
+function wantsReducedData(): boolean {
+  if (typeof navigator === "undefined") return false;
+  const connection = (
+    navigator as Navigator & { connection?: { saveData?: boolean } }
+  ).connection;
+  if (connection?.saveData) return true;
+  return (
+    typeof window !== "undefined" &&
+    window.matchMedia?.("(prefers-reduced-data: reduce)").matches === true
+  );
+}
+
+/** Resolves after the first frame that follows hydration has been painted. */
+function afterNextPaint(): Promise<void> {
+  return new Promise((resolve) => {
+    if (typeof requestAnimationFrame !== "function") {
+      window.setTimeout(resolve, 16);
+      return;
+    }
+    requestAnimationFrame(() => requestAnimationFrame(() => resolve()));
+  });
+}
+
+/**
+ * Yields the main thread once the hero has painted. The spiral is decorative,
+ * so it is always better to let the headline, CTA, and fonts settle first.
+ */
+function whenIdle(timeout = 1000): Promise<void> {
+  return new Promise((resolve) => {
+    if (typeof window.requestIdleCallback === "function") {
+      window.requestIdleCallback(() => resolve(), { timeout });
+      return;
+    }
+    // Safari has no requestIdleCallback; a short timer is a close enough
+    // approximation for a decorative canvas.
+    window.setTimeout(resolve, 180);
+  });
 }
 
 export function HomePersonaField() {
@@ -43,24 +69,15 @@ export function HomePersonaField() {
   const engineRef = useRef<FieldEngine | null>(null);
   const maskRef = useRef<FieldMask | null>(null);
   const resolvedRef = useRef<ResolvedAppearance>(resolved);
-  const densityRef = useRef<FieldDensity>("wide");
   const pauseStateRef = useRef(false);
 
   const [engineState, setEngineState] = useState<EngineState>("static");
-  const [density, setDensity] = useState<FieldDensity>("wide");
   const [inView, setInView] = useState(true);
   const [documentHidden, setDocumentHidden] = useState(false);
+  const [shouldBoot, setShouldBoot] = useState(false);
 
   resolvedRef.current = resolved;
-  densityRef.current = density;
   pauseStateRef.current = reducedMotion || !inView || documentHidden;
-
-  useEffect(() => {
-    const update = () => setDensity(densityForWidth(window.innerWidth));
-    update();
-    window.addEventListener("resize", update);
-    return () => window.removeEventListener("resize", update);
-  }, []);
 
   useEffect(() => {
     const update = () => setDocumentHidden(document.hidden);
@@ -80,6 +97,12 @@ export function HomePersonaField() {
     observer.observe(field);
     return () => observer.disconnect();
   }, []);
+
+  // Deep links land past the hero. Do not spend a frame budget on a canvas
+  // nobody is looking at; boot the first time the field is actually seen.
+  useEffect(() => {
+    if (inView) setShouldBoot(true);
+  }, [inView]);
 
   useEffect(() => {
     const field = fieldRef.current;
@@ -166,7 +189,17 @@ export function HomePersonaField() {
     observer?.observe(field);
     observer?.observe(content);
 
+    // Satoshi is served with `display: swap`. If it settles after mount the
+    // headline reflows, so the protected oval has to be measured again.
+    let active = true;
+    if (typeof document !== "undefined" && document.fonts) {
+      void document.fonts.ready.then(() => {
+        if (active) updateMask();
+      });
+    }
+
     return () => {
+      active = false;
       window.removeEventListener("resize", updateMask);
       observer?.disconnect();
     };
@@ -177,14 +210,26 @@ export function HomePersonaField() {
       setEngineState("static");
       return;
     }
+    if (!shouldBoot) return;
+    if (engineRef.current) return;
 
     const canvas = canvasRef.current;
     if (!canvas) return;
+
+    if (wantsReducedData()) {
+      setEngineState("skipped");
+      return;
+    }
 
     let disposed = false;
     let engine: FieldEngine | null = null;
 
     const load = async () => {
+      await afterNextPaint();
+      if (disposed) return;
+      await whenIdle();
+      if (disposed) return;
+
       try {
         const engineModule = await import("./home-field-webgl");
         if (disposed) return;
@@ -208,7 +253,6 @@ export function HomePersonaField() {
         }
 
         engineRef.current = engine;
-        engine.setDensity(densityRef.current);
         engine.setPalette(FIELD_PALETTES[resolvedRef.current]);
         if (maskRef.current) engine.setMask(maskRef.current);
         engine.setPaused(pauseStateRef.current);
@@ -224,11 +268,7 @@ export function HomePersonaField() {
       engine?.destroy();
       engineRef.current = null;
     };
-  }, [reducedMotion]);
-
-  useEffect(() => {
-    engineRef.current?.setDensity(density);
-  }, [density]);
+  }, [reducedMotion, shouldBoot]);
 
   useEffect(() => {
     engineRef.current?.setPalette(FIELD_PALETTES[resolved]);
@@ -254,48 +294,14 @@ export function HomePersonaField() {
             ? "hidden"
             : !inView
               ? "offscreen"
-              : engineState === "failed"
+              : engineState === "failed" || engineState === "skipped"
                 ? "fallback"
                 : engineState === "static"
                   ? "static"
                   : "running"
       }
-      data-density={density}
       aria-hidden="true"
     >
-      <div className="home-persona-field__stage">
-        <div
-          className="home-persona-field__static"
-          data-testid="home-persona-static"
-        >
-          {HOME_FIELD_SLOTS.map((slot) => {
-            const emblem = emblemById(slot.emblemId);
-            const style = {
-              left: `${slot.x}%`,
-              top: `${slot.y}%`,
-              width: `${slot.width}%`,
-              height: `${slot.height}%`,
-              "--home-slot-rotation": `${slot.rotation}rad`,
-              "--home-slot-opacity": String(slot.opacity),
-              "--home-slot-accent": emblem.accent,
-            } as CSSProperties;
-
-            return (
-              <span
-                key={slot.id}
-                className="home-slot"
-                data-compact="true"
-                data-medium="true"
-                data-emblem={slot.emblemId}
-                data-testid="home-persona-slot"
-                style={style}
-              >
-                <EmblemSvg emblemId={slot.emblemId} variant="glyph" />
-              </span>
-            );
-          })}
-        </div>
-      </div>
       <canvas
         ref={canvasRef}
         className="home-persona-field__canvas"

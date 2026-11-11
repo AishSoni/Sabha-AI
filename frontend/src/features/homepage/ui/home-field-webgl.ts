@@ -242,11 +242,18 @@ async function createGlyphTextureArray(
   gl.pixelStorei(gl.UNPACK_FLIP_Y_WEBGL, true);
   gl.pixelStorei(gl.UNPACK_PREMULTIPLY_ALPHA_WEBGL, false);
 
-  for (let index = 0; index < EMBLEMS.length; index += 1) {
-    const emblem = EMBLEMS[index]!;
-    const raster = await loadSvgCanvas(
-      emblemSvgMarkup(emblem, { color: "#ffffff", size: TEXTURE_SIZE }),
-    );
+  // Decoding eighteen SVGs one after another serialised the whole boot behind
+  // the slowest image. They are independent, so decode them together and only
+  // pay for the upload once every layer is ready.
+  const rasters = await Promise.all(
+    EMBLEMS.map((emblem) =>
+      loadSvgCanvas(
+        emblemSvgMarkup(emblem, { color: "#ffffff", size: TEXTURE_SIZE }),
+      ),
+    ),
+  );
+
+  for (let index = 0; index < rasters.length; index += 1) {
     gl.texSubImage3D(
       gl.TEXTURE_2D_ARRAY,
       0,
@@ -258,7 +265,7 @@ async function createGlyphTextureArray(
       1,
       gl.RGBA,
       gl.UNSIGNED_BYTE,
-      raster,
+      rasters[index]!,
     );
   }
 
@@ -354,7 +361,10 @@ export async function createHomeFieldEngine(
   let frame = 0;
   let lastTime = 0;
   let offsetPercent = 0;
-  const startedAt = performance.now();
+  // The arrival burst is a one-shot gesture. It must not start until the
+  // canvas is actually on screen, otherwise the accelerate-and-coast is spent
+  // behind the reveal fade and the spiral only ever looks slow.
+  let startedAt = Number.NaN;
   let ready = false;
   let mask: FieldMask = {
     centerX: canvas.clientWidth / 2,
@@ -579,6 +589,7 @@ export async function createHomeFieldEngine(
     frame = 0;
     if (destroyed || paused) return;
     if (!lastTime) lastTime = now;
+    if (!Number.isFinite(startedAt)) startedAt = now;
     const delta = Math.min((now - lastTime) / 1000, 0.05);
     lastTime = now;
 

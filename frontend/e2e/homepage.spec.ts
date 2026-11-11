@@ -143,19 +143,12 @@ test.describe("homepage composition", () => {
         const cta = document
           .querySelector(".home-demo-cta")
           ?.getBoundingClientRect();
-        const slots = document.querySelectorAll(
-          ".home-persona-field__static .home-slot",
-        );
-        const visibleSlots = Array.from(slots).filter(
-          (slot) => getComputedStyle(slot).display !== "none",
-        ).length;
         return {
           viewportWidth: window.innerWidth,
           viewportHeight: window.innerHeight,
           scrollWidth: document.documentElement.scrollWidth,
           operatorBottom: operator?.bottom ?? Infinity,
           ctaWidth: cta?.width ?? 0,
-          visibleSlots,
         };
       });
 
@@ -168,7 +161,6 @@ test.describe("homepage composition", () => {
       expect(geometry.ctaWidth, `${viewport.width}px CTA`).toBeGreaterThanOrEqual(
         viewport.width <= 320 ? 288 : 320,
       );
-      expect(geometry.visibleSlots, `${viewport.width}px slots`).toBe(189);
     }
   });
 
@@ -267,10 +259,50 @@ test.describe("homepage lifecycle", () => {
     });
     await expect(field).toHaveAttribute("data-activity", "running");
   });
+
+  test("paints the invitation before the spiral boots", async ({ page }) => {
+    // Hold the idle callback so the boot gate can be observed without racing
+    // the engine on a fast local server. Callbacks registered after release
+    // still run, so the assertion order cannot deadlock the boot.
+    await page.addInitScript(`
+      window.__sabhaIdleQueue = [];
+      window.__sabhaIdleReleased = false;
+      window.requestIdleCallback = (callback) => {
+        if (window.__sabhaIdleReleased) {
+          window.setTimeout(callback, 0);
+        } else {
+          window.__sabhaIdleQueue.push(callback);
+        }
+        return 1;
+      };
+    `);
+    await page.goto("/");
+
+    const field = page.getByTestId("home-persona-field");
+    await expect(page.getByRole("heading", { level: 1 })).toBeVisible();
+    await expect(field).toHaveAttribute("data-webgl", "static");
+    await expect(page.getByTestId("home-persona-canvas")).toHaveCSS(
+      "opacity",
+      "0",
+    );
+    await expect(page.locator(".home-slot")).toHaveCount(0);
+
+    await page.evaluate(`(() => {
+      window.__sabhaIdleReleased = true;
+      const queued = window.__sabhaIdleQueue.splice(0);
+      queued.forEach((callback) => callback());
+    })()`);
+
+    await expect(field).toHaveAttribute("data-webgl", "ready");
+    await expect(page.getByTestId("home-persona-canvas")).toHaveCSS(
+      "opacity",
+      "1",
+    );
+  });
 });
 
 test.describe("homepage fallback", () => {
-  test("keeps the static constellation when WebGL2 is unavailable", async ({
+  test("leaves the hero complete when WebGL2 is unavailable", async ({
     page,
   }) => {
     await page.addInitScript(`
@@ -291,7 +323,7 @@ test.describe("homepage fallback", () => {
       "opacity",
       "0",
     );
-    await expect(page.getByTestId("home-persona-static")).toBeVisible();
+    await expect(page.getByRole("heading", { level: 1 })).toBeVisible();
     await expect(
       page
         .locator(".home-hero")
@@ -482,7 +514,14 @@ test.describe("homepage without JavaScript", () => {
     await expect(
       page.locator(".home-chrome__brand .sabha-logo__wordmark"),
     ).toHaveText("Sabha AI");
-    await expect(page.getByTestId("home-persona-static")).toBeVisible();
+    await expect(page.getByTestId("home-persona-field")).toHaveAttribute(
+      "data-webgl",
+      "static",
+    );
+    await expect(page.getByTestId("home-persona-canvas")).toHaveCSS(
+      "opacity",
+      "0",
+    );
     await expect(page.locator(".home-graph__map")).toBeVisible();
     await expect(page.locator(".home-graph__overlay")).toHaveCount(0);
     await expect(
