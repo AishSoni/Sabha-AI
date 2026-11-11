@@ -1,0 +1,648 @@
+{
+  "checkpoint_id": "checkpoint-closed-first",
+  "ordinal": 12,
+  "phase": "closed",
+  "meeting_id": "a0000000-0000-4000-8000-000000000001",
+  "reads": {
+    "safe_config": {
+      "board": {
+        "title": "Demo board",
+        "participants": [
+          {
+            "participant_id": "a0000000-0000-4000-8000-000000000101",
+            "name": "Mira",
+            "role": "Credit Analyst",
+            "persona_summary": "You are Mira. Test the record: terms, rating, issuer context, and what is missing.",
+            "stack_ids": [
+              "shared-meeting-documents",
+              "credit-private"
+            ],
+            "color": "#6366f1"
+          },
+          {
+            "participant_id": "a0000000-0000-4000-8000-000000000102",
+            "name": "Arjun",
+            "role": "Downside Reviewer",
+            "persona_summary": "You are Arjun. Stress-test the case: ratings are opinions; rates and liquidity can change.",
+            "stack_ids": [
+              "shared-meeting-documents",
+              "downside-private"
+            ],
+            "color": "#f59e0b"
+          },
+          {
+            "participant_id": "a0000000-0000-4000-8000-000000000103",
+            "name": "Leena",
+            "role": "Portfolio Analyst",
+            "persona_summary": "You are Leena. Apply a fictional mandate and distinguish what can be concluded from what cannot.",
+            "stack_ids": [
+              "shared-meeting-documents",
+              "portfolio-private"
+            ],
+            "color": "#10b981"
+          }
+        ],
+        "stacks": {
+          "shared-meeting-documents": {
+            "label": "Meeting documents (shared)",
+            "scope": "shared"
+          },
+          "credit-private": {
+            "label": "Credit evidence (private to Mira)",
+            "scope": "private"
+          },
+          "downside-private": {
+            "label": "Downside worksheet (private to Arjun)",
+            "scope": "private"
+          },
+          "portfolio-private": {
+            "label": "Portfolio mandate (private to Leena)",
+            "scope": "private"
+          }
+        },
+        "preset": {
+          "agenda": "A HDFC Bond Review Demo",
+          "context": "Historical committee review. Establish the terms and rating, test the downside, apply a fictional mandate, and close with a research checklist. Not investment advice.",
+          "participant_ids": [
+            "a0000000-0000-4000-8000-000000000101",
+            "a0000000-0000-4000-8000-000000000102",
+            "a0000000-0000-4000-8000-000000000103"
+          ],
+          "document_id": "a0000000-0000-4000-8000-000000000201",
+          "document_label": "HDFC Ltd 7.87% 2022 Debenture - Shared Fact Sheet (as of 31 July 2020)"
+        }
+      },
+      "intake": {
+        "document_id": "a0000000-0000-4000-8000-000000000201",
+        "stages": [
+          {
+            "key": "received",
+            "label": "Received",
+            "at": "2020-07-31T09:00:00Z"
+          },
+          {
+            "key": "validated",
+            "label": "Validated",
+            "at": "2020-07-31T09:00:05Z"
+          },
+          {
+            "key": "parsed",
+            "label": "Parsed",
+            "at": "2020-07-31T09:00:12Z"
+          },
+          {
+            "key": "indexed",
+            "label": "Indexed",
+            "at": "2020-07-31T09:00:20Z"
+          },
+          {
+            "key": "ready",
+            "label": "Ready",
+            "at": "2020-07-31T09:00:24Z"
+          }
+        ],
+        "note": "Meeting created."
+      },
+      "disclosure": "Demo \u00b7 historical educational content. No live research, current pricing, or investment advice. No fresh model charge.",
+      "as_of": "Information as of 31 July 2020 - sources captured 16 October 2026.",
+      "settings": {
+        "runtime": "recorded",
+        "notice": "Demo; not live research."
+      }
+    },
+    "meeting": {
+      "id": "a0000000-0000-4000-8000-000000000001",
+      "name": "A HDFC Bond Review Demo",
+      "agenda": "Historical committee review. Establish the terms and rating, test the downside, apply a fictional mandate, and close with a research checklist. Not investment advice.",
+      "user_id": null,
+      "status": "ended",
+      "total_cost": 0.0,
+      "created_at": "2020-07-31T09:00:00Z",
+      "participants": [
+        {
+          "id": "a0000000-0000-4000-8000-000000000101",
+          "meeting_id": "a0000000-0000-4000-8000-000000000001",
+          "name": "Mira",
+          "role": "Credit Analyst",
+          "system_prompt": "You are Mira. Test the record: terms, rating, issuer context, and what is missing.",
+          "provider_config": {
+            "provider": "recorded",
+            "model": "recorded"
+          },
+          "color": "#6366f1",
+          "persona_id": null,
+          "stack_ids": [
+            "shared-meeting-documents",
+            "credit-private"
+          ],
+          "created_at": "2020-07-31T09:00:24Z",
+          "generation_policy": {}
+        },
+        {
+          "id": "a0000000-0000-4000-8000-000000000102",
+          "meeting_id": "a0000000-0000-4000-8000-000000000001",
+          "name": "Arjun",
+          "role": "Downside Reviewer",
+          "system_prompt": "You are Arjun. Stress-test the case: ratings are opinions; rates and liquidity can change.",
+          "provider_config": {
+            "provider": "recorded",
+            "model": "recorded"
+          },
+          "color": "#f59e0b",
+          "persona_id": null,
+          "stack_ids": [
+            "shared-meeting-documents",
+            "downside-private"
+          ],
+          "created_at": "2020-07-31T09:00:24Z",
+          "generation_policy": {}
+        },
+        {
+          "id": "a0000000-0000-4000-8000-000000000103",
+          "meeting_id": "a0000000-0000-4000-8000-000000000001",
+          "name": "Leena",
+          "role": "Portfolio Analyst",
+          "system_prompt": "You are Leena. Apply a fictional mandate and distinguish what can be concluded from what cannot.",
+          "provider_config": {
+            "provider": "recorded",
+            "model": "recorded"
+          },
+          "color": "#10b981",
+          "persona_id": null,
+          "stack_ids": [
+            "shared-meeting-documents",
+            "portfolio-private"
+          ],
+          "created_at": "2020-07-31T09:00:24Z",
+          "generation_policy": {}
+        }
+      ],
+      "messages": [
+        {
+          "id": "a0000000-0000-4000-8000-000000000401",
+          "meeting_id": "a0000000-0000-4000-8000-000000000001",
+          "content": "We are reviewing HDFC Ltd's 7.87% 2022 debenture (ISIN INE001A07RW5) as of 31 July 2020. Credit Analyst, establish the terms and rating, and separate what the record supports from what it does not.",
+          "sender_type": "user",
+          "sender_id": null,
+          "sender_name": "You",
+          "citations": [],
+          "tool_artifacts": null,
+          "thinking_content": null,
+          "estimated_cost": 0.0,
+          "effective_generation": null,
+          "sequence": 0,
+          "request_key": "director-opening",
+          "operation_id": null,
+          "created_at": "2020-07-31T09:00:30Z"
+        },
+        {
+          "id": "a0000000-0000-4000-8000-000000000410",
+          "meeting_id": "a0000000-0000-4000-8000-000000000001",
+          "content": "Testing the downside first is reasonable. AAA/Stable is a dated opinion, not a guarantee. The record shows listing, not executable liquidity, and it contains no price or yield, so any mark-to-market outcome remains unknown.",
+          "sender_type": "ai",
+          "sender_id": "a0000000-0000-4000-8000-000000000102",
+          "sender_name": "Arjun",
+          "citations": [
+            {
+              "source": "HDFC Ltd FY20 MD&A",
+              "title": "HDFC Ltd Annual Report 2019-20, MD&A",
+              "url": "https://homeloans.hdfc.bank.in/digital-annual-report-2019-2020/mda",
+              "snippet": "The FY20 MD&A states the NCDs are listed on the NSE/BSE wholesale debt market.",
+              "claim_id": "C6",
+              "locator": "S4 MD&A, borrowings"
+            },
+            {
+              "source": "Committee judgment",
+              "title": "Downside worksheet, Liquidity test",
+              "url": null,
+              "snippet": "Listing is not the same as executable secondary liquidity; the record contains no price, yield, or liquidity data.",
+              "claim_id": "C7",
+              "locator": "Downside worksheet, Liquidity test"
+            },
+            {
+              "source": "Committee judgment",
+              "title": "Downside worksheet, Rating test",
+              "url": null,
+              "snippet": "AAA/Stable is a rating opinion dated 31 July 2020, not a guarantee and not a current rating.",
+              "claim_id": "C8",
+              "locator": "Downside worksheet, Rating test"
+            },
+            {
+              "source": "Record evidence",
+              "title": "Shared fact sheet, What is not established",
+              "url": null,
+              "snippet": "The meeting record contains no executable price, yield, or secondary-market liquidity data for the series.",
+              "claim_id": "C10",
+              "locator": "Shared fact sheet, What is not established"
+            },
+            {
+              "source": "Included in this demo",
+              "title": "Branch note, downside first",
+              "url": null,
+              "snippet": "A demo path may open with a downside review before the credit fact pack; the evidence set does not change.",
+              "claim_id": "C14",
+              "locator": "Branch note, downside first"
+            }
+          ],
+          "tool_artifacts": {
+            "calls": [
+              {
+                "invocation_id": "inv-retrieval-downside-first",
+                "call_id": "call-retrieval-downside-first",
+                "tool_name": "search_knowledge_base",
+                "arguments": {
+                  "query": "retrieval downside first"
+                },
+                "result": {
+                  "retrieval_key": "retrieval-downside-first",
+                  "hits": 3
+                },
+                "is_error": false
+              }
+            ]
+          },
+          "thinking_content": "Test the rating and liquidity assumptions before the fact pack.",
+          "estimated_cost": 0.0,
+          "effective_generation": null,
+          "sequence": 1,
+          "request_key": "turn-retrieval-downside-first",
+          "operation_id": "a0000000-0000-4000-8000-000000000310",
+          "created_at": "2020-07-31T09:00:24Z"
+        },
+        {
+          "id": "a0000000-0000-4000-8000-000000000411",
+          "meeting_id": "a0000000-0000-4000-8000-000000000001",
+          "content": "Keep the sequence honest: the downside has been stated, but the credit terms and rating still need to be established. Please confirm the instrument record before the mandate is applied.",
+          "sender_type": "user",
+          "sender_id": null,
+          "sender_name": "You",
+          "citations": [],
+          "tool_artifacts": null,
+          "thinking_content": null,
+          "estimated_cost": 0.0,
+          "effective_generation": null,
+          "sequence": 2,
+          "request_key": "director-follow-up-first",
+          "operation_id": null,
+          "created_at": "2020-07-31T09:00:24Z"
+        },
+        {
+          "id": "a0000000-0000-4000-8000-000000000412",
+          "meeting_id": "a0000000-0000-4000-8000-000000000001",
+          "content": "The mandate still cannot be completed. The record supplies terms and a scheduled maturity, not a current price, yield, or secondary-market liquidity. Treat the scheduled date as a maturity, not as proof of payment.",
+          "sender_type": "ai",
+          "sender_id": "a0000000-0000-4000-8000-000000000103",
+          "sender_name": "Leena",
+          "citations": [
+            {
+              "source": "Record evidence",
+              "title": "Shared fact sheet, What is not established",
+              "url": null,
+              "snippet": "The meeting record contains no executable price, yield, or secondary-market liquidity data for the series.",
+              "claim_id": "C10",
+              "locator": "Shared fact sheet, What is not established"
+            },
+            {
+              "source": "Record evidence",
+              "title": "Shared fact sheet, What is not established",
+              "url": null,
+              "snippet": "Scheduled maturity is 18 July 2022; the meeting does not assert that payment occurred.",
+              "claim_id": "C11",
+              "locator": "Shared fact sheet, What is not established"
+            },
+            {
+              "source": "Committee judgment",
+              "title": "Shared fact sheet, Outcome and limitations",
+              "url": null,
+              "snippet": "The outcome is a research checklist, not a buy/sell recommendation or investment approval.",
+              "claim_id": "C13",
+              "locator": "Shared fact sheet, Outcome and limitations"
+            },
+            {
+              "source": "Included in this demo",
+              "title": "Branch note, mandate first",
+              "url": null,
+              "snippet": "A demo path may open with the portfolio mandate so the missing market inputs are visible before the credit discussion.",
+              "claim_id": "C15",
+              "locator": "Branch note, mandate first"
+            }
+          ],
+          "tool_artifacts": {
+            "calls": [
+              {
+                "invocation_id": "inv-retrieval-portfolio-after-first",
+                "call_id": "call-retrieval-portfolio-after-first",
+                "tool_name": "search_knowledge_base",
+                "arguments": {
+                  "query": "retrieval portfolio after first"
+                },
+                "result": {
+                  "retrieval_key": "retrieval-portfolio-after-first",
+                  "hits": 3
+                },
+                "is_error": false
+              }
+            ]
+          },
+          "thinking_content": "Apply the mandate after the downside has been stated.",
+          "estimated_cost": 0.0,
+          "effective_generation": null,
+          "sequence": 3,
+          "request_key": "turn-retrieval-portfolio-after-first",
+          "operation_id": "a0000000-0000-4000-8000-000000000312",
+          "created_at": "2020-07-31T09:00:24Z"
+        },
+        {
+          "id": "a0000000-0000-4000-8000-000000000430",
+          "meeting_id": "a0000000-0000-4000-8000-000000000001",
+          "content": "The committee closed after the downside-first path. Outcome: a research checklist, not an investment approval. The terms and dated rating are recorded; the missing price, yield, liquidity, security, and payment evidence remain unknowns.",
+          "sender_type": "system",
+          "sender_id": null,
+          "sender_name": "Sabha",
+          "citations": [
+            {
+              "source": "CRISIL rating rationale",
+              "title": "CRISIL Rating Rationale, 31 July 2020",
+              "url": "https://www.crisil.com/mnt/winshare/Ratings/RatingList/RatingDocs/Housing_Development_Finance_Corporation_Limited_July_31_2020_RR.html",
+              "snippet": "CRISIL's annexure row for ISIN INE001A07RW5 lists a 7.87% coupon, allotment on 18 July 2019, scheduled maturity on 18 July 2022, and an issue size of Rs 5,000 crore.",
+              "claim_id": "C1",
+              "locator": "S1 annexure row for ISIN INE001A07RW5"
+            },
+            {
+              "source": "CRISIL rating rationale",
+              "title": "CRISIL Rating Rationale, 31 July 2020",
+              "url": "https://www.crisil.com/mnt/winshare/Ratings/RatingList/RatingDocs/Housing_Development_Finance_Corporation_Limited_July_31_2020_RR.html",
+              "snippet": "CRISIL assigned AAA/Stable on 31 July 2020.",
+              "claim_id": "C2",
+              "locator": "S1 rating action"
+            },
+            {
+              "source": "Record evidence",
+              "title": "Shared fact sheet, What is not established",
+              "url": null,
+              "snippet": "The meeting record contains no executable price, yield, or secondary-market liquidity data for the series.",
+              "claim_id": "C10",
+              "locator": "Shared fact sheet, What is not established"
+            },
+            {
+              "source": "Record evidence",
+              "title": "Shared fact sheet, What is not established",
+              "url": null,
+              "snippet": "Scheduled maturity is 18 July 2022; the meeting does not assert that payment occurred.",
+              "claim_id": "C11",
+              "locator": "Shared fact sheet, What is not established"
+            },
+            {
+              "source": "Committee judgment",
+              "title": "Shared fact sheet, Outcome and limitations",
+              "url": null,
+              "snippet": "The outcome is a research checklist, not a buy/sell recommendation or investment approval.",
+              "claim_id": "C13",
+              "locator": "Shared fact sheet, Outcome and limitations"
+            }
+          ],
+          "tool_artifacts": null,
+          "thinking_content": null,
+          "estimated_cost": 0.0,
+          "effective_generation": null,
+          "sequence": 4,
+          "request_key": "closing-summary-first",
+          "operation_id": null,
+          "created_at": "2020-07-31T09:00:24Z"
+        }
+      ]
+    },
+    "meetings": [
+      {
+        "id": "a0000000-0000-4000-8000-000000000001",
+        "name": "A HDFC Bond Review Demo",
+        "agenda": "Historical committee review. Establish the terms and rating, test the downside, apply a fictional mandate, and close with a research checklist. Not investment advice.",
+        "user_id": null,
+        "status": "ended",
+        "total_cost": 0.0,
+        "created_at": "2020-07-31T09:00:00Z",
+        "participants": [
+          {
+            "id": "a0000000-0000-4000-8000-000000000101",
+            "meeting_id": "a0000000-0000-4000-8000-000000000001",
+            "name": "Mira",
+            "role": "Credit Analyst",
+            "system_prompt": "You are Mira. Test the record: terms, rating, issuer context, and what is missing.",
+            "provider_config": {
+              "provider": "recorded",
+              "model": "recorded"
+            },
+            "color": "#6366f1",
+            "persona_id": null,
+            "stack_ids": [
+              "shared-meeting-documents",
+              "credit-private"
+            ],
+            "created_at": "2020-07-31T09:00:24Z",
+            "generation_policy": {}
+          },
+          {
+            "id": "a0000000-0000-4000-8000-000000000102",
+            "meeting_id": "a0000000-0000-4000-8000-000000000001",
+            "name": "Arjun",
+            "role": "Downside Reviewer",
+            "system_prompt": "You are Arjun. Stress-test the case: ratings are opinions; rates and liquidity can change.",
+            "provider_config": {
+              "provider": "recorded",
+              "model": "recorded"
+            },
+            "color": "#f59e0b",
+            "persona_id": null,
+            "stack_ids": [
+              "shared-meeting-documents",
+              "downside-private"
+            ],
+            "created_at": "2020-07-31T09:00:24Z",
+            "generation_policy": {}
+          },
+          {
+            "id": "a0000000-0000-4000-8000-000000000103",
+            "meeting_id": "a0000000-0000-4000-8000-000000000001",
+            "name": "Leena",
+            "role": "Portfolio Analyst",
+            "system_prompt": "You are Leena. Apply a fictional mandate and distinguish what can be concluded from what cannot.",
+            "provider_config": {
+              "provider": "recorded",
+              "model": "recorded"
+            },
+            "color": "#10b981",
+            "persona_id": null,
+            "stack_ids": [
+              "shared-meeting-documents",
+              "portfolio-private"
+            ],
+            "created_at": "2020-07-31T09:00:24Z",
+            "generation_policy": {}
+          }
+        ],
+        "messages": []
+      }
+    ],
+    "disagreements": [
+      {
+        "id": "a0000000-0000-4000-8000-000000000501",
+        "meeting_id": "a0000000-0000-4000-8000-000000000001",
+        "source_ai_id": "a0000000-0000-4000-8000-000000000102",
+        "target_name": "Mira",
+        "topic": "Rating alone is insufficient",
+        "reasoning": "AAA/Stable is a dated opinion, not a guarantee or current market evidence; the record has no executable price, yield, or liquidity data.",
+        "severity": 3,
+        "status": "open",
+        "created_at": "2020-07-31T09:02:00Z"
+      }
+    ],
+    "consensus": [
+      {
+        "id": "a0000000-0000-4000-8000-000000000601",
+        "meeting_id": "a0000000-0000-4000-8000-000000000001",
+        "participants": [
+          "Mira",
+          "Arjun",
+          "Leena"
+        ],
+        "topic": "Research checklist separates facts, judgments, and unknowns",
+        "strength": 4,
+        "created_at": "2020-07-31T09:05:00Z"
+      }
+    ],
+    "context_stats": {
+      "current_tokens": 2400,
+      "max_tokens": 128000,
+      "usage_percent": 1.1,
+      "message_tokens": 1200,
+      "system_tokens": 900,
+      "agenda_tokens": 120,
+      "message_count": 5,
+      "participant_count": 3
+    },
+    "documents": [
+      {
+        "id": "a0000000-0000-4000-8000-000000000201",
+        "file_name": "hdfc-v007-shared-fact-sheet.md",
+        "file_type": "markdown",
+        "file_size_bytes": 1345,
+        "chunk_count": 1,
+        "qdrant_collection": null,
+        "status": "ready",
+        "error_message": null,
+        "created_at": "2020-07-31T09:00:24Z",
+        "meeting_id": "a0000000-0000-4000-8000-000000000001",
+        "persona_id": null,
+        "stack_id": null,
+        "revision_id": "a0000000-0000-4000-8000-000000000202",
+        "revision_state": "ready",
+        "operation_id": "a0000000-0000-4000-8000-000000000203"
+      }
+    ],
+    "closing": {
+      "meeting_id": "a0000000-0000-4000-8000-000000000001",
+      "meeting_status": "ended",
+      "archived": false,
+      "closing_id": "a0000000-0000-4000-8000-000000000702",
+      "request_key": "closing-request-first",
+      "mode": "vote",
+      "stage": "completed",
+      "failed_from_stage": null,
+      "votes": [
+        {
+          "participant_id": "a0000000-0000-4000-8000-000000000101",
+          "participant_name": "Mira",
+          "role": "Credit Analyst",
+          "status": "completed",
+          "vote": true,
+          "reason": "Yes - the facts and unknowns are recorded; the discussion is complete.",
+          "provider": "recorded",
+          "model": "recorded",
+          "usage_kind": "unknown",
+          "price_kind": null,
+          "estimated_cost": null,
+          "reported_cost": null,
+          "error_code": null,
+          "error_message": null,
+          "completed_at": "2020-07-31T09:06:00Z"
+        },
+        {
+          "participant_id": "a0000000-0000-4000-8000-000000000102",
+          "participant_name": "Arjun",
+          "role": "Downside Reviewer",
+          "status": "completed",
+          "vote": true,
+          "reason": "Yes - the disagreement is logged; the checklist captures the missing market evidence.",
+          "provider": "recorded",
+          "model": "recorded",
+          "usage_kind": "unknown",
+          "price_kind": null,
+          "estimated_cost": null,
+          "reported_cost": null,
+          "error_code": null,
+          "error_message": null,
+          "completed_at": "2020-07-31T09:06:00Z"
+        },
+        {
+          "participant_id": "a0000000-0000-4000-8000-000000000103",
+          "participant_name": "Leena",
+          "role": "Portfolio Analyst",
+          "status": "completed",
+          "vote": true,
+          "reason": "Yes - the mandate cannot be completed; closing on a research checklist is appropriate.",
+          "provider": "recorded",
+          "model": "recorded",
+          "usage_kind": "unknown",
+          "price_kind": null,
+          "estimated_cost": null,
+          "reported_cost": null,
+          "error_code": null,
+          "error_message": null,
+          "completed_at": "2020-07-31T09:06:00Z"
+        }
+      ],
+      "summary": "The committee closed after the downside-first path. Outcome: a research checklist, not an investment approval. The terms and dated rating are recorded; the missing price, yield, liquidity, security, and payment evidence remain unknowns.",
+      "summary_message_id": "a0000000-0000-4000-8000-000000000430",
+      "error": null,
+      "retryable": false,
+      "abortable": false,
+      "created_at": "2020-07-31T09:05:00Z",
+      "updated_at": "2020-07-31T09:06:00Z",
+      "completed_at": "2020-07-31T09:06:00Z"
+    },
+    "operations": [
+      {
+        "operation_id": "a0000000-0000-4000-8000-000000000310",
+        "meeting_id": "a0000000-0000-4000-8000-000000000001",
+        "participant_id": "a0000000-0000-4000-8000-000000000102",
+        "request_key": "turn-retrieval-downside-first",
+        "status": "completed",
+        "admission": 1,
+        "queue_position": null,
+        "created_at": "2020-07-31T09:00:30Z",
+        "started_at": "2020-07-31T09:00:30Z",
+        "completed_at": "2020-07-31T09:05:00Z",
+        "final_message_id": "a0000000-0000-4000-8000-000000000410",
+        "cancel_requested": false,
+        "error": null,
+        "effective_generation": null
+      },
+      {
+        "operation_id": "a0000000-0000-4000-8000-000000000312",
+        "meeting_id": "a0000000-0000-4000-8000-000000000001",
+        "participant_id": "a0000000-0000-4000-8000-000000000103",
+        "request_key": "turn-retrieval-portfolio-after-first",
+        "status": "completed",
+        "admission": 2,
+        "queue_position": null,
+        "created_at": "2020-07-31T09:00:30Z",
+        "started_at": "2020-07-31T09:00:30Z",
+        "completed_at": "2020-07-31T09:05:00Z",
+        "final_message_id": "a0000000-0000-4000-8000-000000000412",
+        "cancel_requested": false,
+        "error": null,
+        "effective_generation": null
+      }
+    ]
+  }
+}

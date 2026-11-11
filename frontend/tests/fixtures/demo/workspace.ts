@@ -19,7 +19,7 @@ export function demoWorkspaceSeedWire() {
         highlighted_persona_id: "persona-credit",
         disclosure: {
             practice:
-                "Practice changes live in this browser tab only and disappear when the workspace is reset or the page is refreshed.",
+                "Workspace changes live in this browser tab only and disappear when the workspace is reset or the page is refreshed.",
             recording:
                 "Participant replies, retrieval, and evidence come from the demo; browser edits never change recorded content.",
         },
@@ -112,7 +112,6 @@ export function demoWorkspaceSeedWire() {
                 ],
             },
         ],
-        practice_setups: [],
         samples: [
             {
                 sample_id: "sample-shared-fact-sheet",

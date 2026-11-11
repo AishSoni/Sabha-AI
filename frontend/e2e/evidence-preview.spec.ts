@@ -20,7 +20,7 @@ const PACKAGE_ROOT = join(
     "..",
     "backend",
     "replay_packages",
-    "hdfc-ine001a07rw5-v11"
+    "hdfc-ine001a07rw5-v12"
 );
 
 interface PackageAsset {
