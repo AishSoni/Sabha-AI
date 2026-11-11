@@ -86,8 +86,8 @@ test.describe("recorded visitor isolation", () => {
             expect(sessionA.run_id).toBeTruthy();
             expect(sessionB.run_id).toBeTruthy();
             expect(sessionA.run_id).not.toBe(sessionB.run_id);
-            expect(sessionA.package_version).toBe("11");
-            expect(sessionB.package_version).toBe("11");
+            expect(sessionA.package_version).toBe("12");
+            expect(sessionB.package_version).toBe("12");
 
             // B moves to the recorded setup and stays there.
             await pageB.getByRole("link", { name: "Start meeting" }).click();

@@ -22,7 +22,7 @@ async function openSetup(page: Page) {
         page.goto("/demo/new"),
     ]);
     const session = (await response.json()) as { package_version: string };
-    expect(session.package_version).toBe("11");
+    expect(session.package_version).toBe("12");
     await expect(
         page.getByRole("heading", { name: "Create meeting" })
     ).toBeVisible();
