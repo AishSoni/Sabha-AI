@@ -5,11 +5,11 @@ import {
 } from "./support/guardrails";
 
 /**
- * Spec 30, journeys A and B.
+ * Spec 30/42, journeys A and B.
  *
- * The recorded meeting is one concise experience: four prepared AI replies and
- * one **You** follow-up, chosen in any order, with the closing available only
- * after all five required turns.
+ * Opening views are chosen by participant identity in any order. The alignment
+ * turn unlocks after every participant has spoken; the fixed follow-up unlocks
+ * after all four replies; closing waits for all five accepted outcomes.
  */
 const FOLLOW_UP =
     "Portfolio Analyst, assume a fictional three-year mandate that requires an executable price, yield, and liquidity assessment. What can you conclude from this record?";
@@ -22,11 +22,10 @@ const MESSAGE = {
     consensus: "a0000000-0000-4000-8000-000000000406",
 } as const;
 
-const TURN = {
-    credit: "Credit Analyst opening facts",
-    downside: "Downside challenge",
-    portfolio: "Mandate review",
-    consensus: "Committee alignment",
+const OPENING = {
+    credit: "Ask Mira, Credit Analyst for an opening view",
+    downside: "Ask Arjun, Downside Reviewer for an opening view",
+    portfolio: "Ask Leena, Portfolio Analyst for an opening view",
 } as const;
 
 async function startRecording(page: Page) {
@@ -97,7 +96,7 @@ async function expectOrderNeutralSummary(page: Page) {
 }
 
 test.describe("concise recorded journey", () => {
-    test("journey A: follow-up first, then the remaining replies in a chosen order", async ({
+    test("journey A: opening views in a chosen order, then alignment, follow-up, and outcome", async ({
         page,
         context,
     }) => {
@@ -106,19 +105,23 @@ test.describe("concise recorded journey", () => {
 
         await expect(
             page.getByTestId("tutorial-announcement")
-        ).toContainText("0 of 4 replies");
+        ).toContainText("0 of 5 outcomes");
         const close = page.getByRole("button", { name: "Close meeting" });
         await expect(close).toBeDisabled();
+        await expect(
+            page.getByRole("button", { name: "Send question" })
+        ).toHaveCount(0);
+        await expect(
+            page.getByRole("button", { name: /Committee alignment/ })
+        ).toHaveCount(0);
 
-        // The follow-up is available before the replies; it is the one **You** turn.
-        await page.getByRole("button", { name: "Send question" }).click();
-        const you = message(page, MESSAGE.followUp);
-        await expect(you).toBeVisible();
-        await expect(you).toHaveAttribute("data-sender-name", "You");
-        await expect(you).toContainText(FOLLOW_UP);
+        await page.getByRole("button", { name: OPENING.portfolio }).click();
+        await expect(message(page, MESSAGE.portfolio)).toBeVisible({
+            timeout: 30_000,
+        });
         await expect(close).toBeDisabled();
 
-        await page.getByRole("button", { name: TURN.downside }).click();
+        await page.getByRole("button", { name: OPENING.downside }).click();
         await expect(message(page, MESSAGE.downside)).toBeVisible({
             timeout: 30_000,
         });
@@ -132,19 +135,20 @@ test.describe("concise recorded journey", () => {
         await expect(disagreement).toHaveCount(0);
         await expect(close).toBeDisabled();
 
-        await page.getByRole("button", { name: TURN.portfolio }).click();
-        await expect(message(page, MESSAGE.portfolio)).toBeVisible({
-            timeout: 30_000,
-        });
-        await expect(close).toBeDisabled();
+        // Alignment stays locked while one participant has not spoken.
+        await expect(
+            page.getByRole("button", { name: /Committee alignment/ })
+        ).toHaveCount(0);
 
-        await page.getByRole("button", { name: TURN.credit }).click();
+        await page.getByRole("button", { name: OPENING.credit }).click();
         await expect(message(page, MESSAGE.credit)).toBeVisible({
             timeout: 30_000,
         });
         await expect(close).toBeDisabled();
 
-        await page.getByRole("button", { name: TURN.consensus }).click();
+        await page
+            .getByRole("button", { name: /Committee alignment/ })
+            .click();
         await expect(message(page, MESSAGE.consensus)).toBeVisible({
             timeout: 30_000,
         });
@@ -164,17 +168,28 @@ test.describe("concise recorded journey", () => {
         await page.getByRole("tab", { name: "Chat" }).click();
         await expect(message(page, MESSAGE.consensus)).toBeVisible();
 
+        await expect(close).toBeDisabled();
+
+        await expect(
+            page.getByRole("button", { name: "Send question" })
+        ).toBeVisible();
+        await expect(page.getByText(FOLLOW_UP)).toBeVisible();
+        await page.getByRole("button", { name: "Expand" }).click();
+        await page.getByRole("button", { name: "Send question" }).click();
+        await expect(message(page, MESSAGE.followUp)).toBeVisible({
+            timeout: 30_000,
+        });
+        await expect(close).toBeEnabled();
         await expectOrderedPlayedSet(
             page,
             [
-                MESSAGE.downside,
                 MESSAGE.portfolio,
+                MESSAGE.downside,
                 MESSAGE.credit,
                 MESSAGE.consensus,
             ],
             MESSAGE.followUp
         );
-        await expect(close).toBeEnabled();
 
         await close.click();
         await expect(
@@ -183,27 +198,25 @@ test.describe("concise recorded journey", () => {
         await page.getByRole("button", { name: "Vote to End" }).click();
         await page.getByRole("button", { name: "Start Vote" }).click();
         await expectOrderNeutralSummary(page);
-
-        await page.getByRole("link", { name: "Go to meetings" }).click();
-        await expect(page).toHaveURL(/\/demo\/meetings$/);
-        // A target below the fold does not force scroll: the visitor scrolls,
-        // then the card anchors to the real control.
-        await page.getByTestId("archive-meeting").scrollIntoViewIfNeeded();
-        await expect(hud.getByText("Archive the meeting")).toBeVisible();
-        await page.getByTestId("archive-meeting").click();
+        await expect(page.getByTestId("demo-outcome")).toBeVisible();
         await expect(hud.getByText("Demo complete")).toBeVisible({
             timeout: 30_000,
         });
 
-        await hud.getByRole("button", { name: "Finish" }).click();
-        await expect(page.getByTestId("tutorial-hud")).toHaveCount(0);
-        await expect(page.getByTestId("tutorial-hud-compact")).toBeVisible();
+        await page.getByRole("link", { name: "Go to meetings" }).click();
+        await expect(page).toHaveURL(/\/demo\/meetings$/);
+        await expect(hud.getByText("Demo complete")).toBeVisible();
+
+        // Archive remains an optional list action, not the finale.
+        await page.getByTestId("archive-meeting").scrollIntoViewIfNeeded();
+        await page.getByTestId("archive-meeting").click();
+        await expect(page.getByTestId("archive-meeting")).toHaveCount(0);
 
         network.assertClean();
         await expectNoPublicPersistence(context, page);
     });
 
-    test("journey B: a different order keeps one reply per turn and a coherent close", async ({
+    test("journey B: every opening view is required before alignment and follow-up", async ({
         page,
         context,
     }) => {
@@ -213,36 +226,38 @@ test.describe("concise recorded journey", () => {
         const close = page.getByRole("button", { name: "Close meeting" });
         await expect(close).toBeDisabled();
 
-        await page.getByRole("button", { name: TURN.portfolio }).click();
-        await expect(message(page, MESSAGE.portfolio)).toBeVisible({
-            timeout: 30_000,
-        });
-        await expect(close).toBeDisabled();
-
-        // Alignment can be chosen before the analyst turns; it must not depend
-        // on who spoke first.
-        await page.getByRole("button", { name: TURN.consensus }).click();
-        await expect(message(page, MESSAGE.consensus)).toBeVisible({
-            timeout: 30_000,
-        });
-        await expect(page).toHaveURL(/\/demo\/meetings\/[^/]+/);
-        await expect(
-            page.getByText(/out of order|choose another|not available/i)
-        ).toHaveCount(0);
-        await expect(close).toBeDisabled();
-
-        await page.getByRole("button", { name: TURN.credit }).click();
+        await page.getByRole("button", { name: OPENING.credit }).click();
         await expect(message(page, MESSAGE.credit)).toBeVisible({
             timeout: 30_000,
         });
         await expect(close).toBeDisabled();
 
-        await page.getByRole("button", { name: TURN.downside }).click();
+        await page.getByRole("button", { name: OPENING.portfolio }).click();
+        await expect(message(page, MESSAGE.portfolio)).toBeVisible({
+            timeout: 30_000,
+        });
+        await expect(
+            page.getByRole("button", { name: /Committee alignment/ })
+        ).toHaveCount(0);
+        await expect(
+            page.getByRole("button", { name: "Send question" })
+        ).toHaveCount(0);
+
+        await page.getByRole("button", { name: OPENING.downside }).click();
         await expect(message(page, MESSAGE.downside)).toBeVisible({
             timeout: 30_000,
         });
         await expect(close).toBeDisabled();
 
+        await page
+            .getByRole("button", { name: /Committee alignment/ })
+            .click();
+        await expect(message(page, MESSAGE.consensus)).toBeVisible({
+            timeout: 30_000,
+        });
+        await expect(close).toBeDisabled();
+
+        await page.getByRole("button", { name: "Expand" }).click();
         await page.getByRole("button", { name: "Send question" }).click();
         await expect(message(page, MESSAGE.followUp)).toBeVisible();
         await expect(close).toBeEnabled();
@@ -250,10 +265,10 @@ test.describe("concise recorded journey", () => {
         await expectOrderedPlayedSet(
             page,
             [
-                MESSAGE.portfolio,
-                MESSAGE.consensus,
                 MESSAGE.credit,
+                MESSAGE.portfolio,
                 MESSAGE.downside,
+                MESSAGE.consensus,
             ],
             MESSAGE.followUp
         );
@@ -270,11 +285,8 @@ test.describe("concise recorded journey", () => {
         await page.getByRole("button", { name: "Vote to End" }).click();
         await page.getByRole("button", { name: "Start Vote" }).click();
         await expectOrderNeutralSummary(page);
-
-        await page.getByRole("button", { name: "Archive meeting" }).click();
-        await expect(page.getByText("Meeting archived")).toBeVisible({
-            timeout: 30_000,
-        });
+        await expect(page.getByTestId("demo-outcome")).toBeVisible();
+        await expect(page.getByText(/Archiving is optional/)).toBeVisible();
         await expect(page.getByText(/out of order|choose another/i)).toHaveCount(
             0
         );

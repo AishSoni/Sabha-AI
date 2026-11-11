@@ -116,7 +116,7 @@ test.describe("demo failure recovery", () => {
         await page.route("**/api/replay/**/events*", (route) => route.abort());
 
         await page
-            .getByRole("button", { name: "Credit Analyst opening facts" })
+            .getByRole("button", { name: "Ask Mira, Credit Analyst for an opening view" })
             .click();
         await expect(page.getByText(/Observation paused/).first()).toBeVisible({
             timeout: 30_000,
@@ -155,7 +155,7 @@ test.describe("demo failure recovery", () => {
         await expect(page.getByTestId("tutorial-hud")).toHaveCount(0);
         await expect(page.getByTestId("tutorial-hud-compact")).toHaveCount(0);
         await expect(
-            page.getByRole("button", { name: /Credit Analyst opening facts/ })
+            page.getByRole("button", { name: /Ask Mira, Credit Analyst for an opening view/ })
         ).toHaveCount(0);
         await expect(
             page.getByRole("button", { name: /Archive meeting/ })
@@ -180,7 +180,7 @@ test.describe("demo failure recovery", () => {
         );
 
         await page
-            .getByRole("button", { name: "Credit Analyst opening facts" })
+            .getByRole("button", { name: "Ask Mira, Credit Analyst for an opening view" })
             .click();
         await expect(page.getByText(/Observation paused/).first()).toBeVisible({
             timeout: 30_000,
@@ -219,7 +219,7 @@ test.describe("demo failure recovery", () => {
         );
 
         await page
-            .getByRole("button", { name: "Credit Analyst opening facts" })
+            .getByRole("button", { name: "Ask Mira, Credit Analyst for an opening view" })
             .click();
         await expect(page.getByText(/Observation paused/).first()).toBeVisible({
             timeout: 30_000,
@@ -258,7 +258,7 @@ test.describe("demo failure recovery", () => {
         await expect(page.getByTestId("tutorial-hud")).toHaveCount(0);
         await expect(page.getByTestId("tutorial-hud-compact")).toHaveCount(0);
         await expect(
-            page.getByRole("button", { name: /Credit Analyst opening facts/ })
+            page.getByRole("button", { name: /Ask Mira, Credit Analyst for an opening view/ })
         ).toHaveCount(0);
 
         network.assertClean();

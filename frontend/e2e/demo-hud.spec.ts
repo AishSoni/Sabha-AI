@@ -28,8 +28,8 @@ async function startRecording(page: Page) {
     const progress = hud.getByRole("progressbar", {
         name: "Demo progress",
     });
-    await expect(progress).toHaveAttribute("aria-valuenow", "10");
-    await expect(progress).toHaveAttribute("aria-valuetext", "Step 1 of 10");
+    await expect(progress).toHaveAttribute("aria-valuenow", "13");
+    await expect(progress).toHaveAttribute("aria-valuetext", "Step 1 of 8");
     await expect(hud.getByText(/Step \d+ of \d+/)).toHaveCount(0);
     const cardBounds = await hud.boundingBox();
     const progressBounds = await progress.boundingBox();
@@ -46,12 +46,12 @@ async function startRecording(page: Page) {
     await page.getByRole("link", { name: "Start meeting" }).click();
     await expect(page).toHaveURL(/\/demo\/new$/);
     await expect(hud.getByText("Create meeting")).toBeVisible();
-    await expect(progress).toHaveAttribute("aria-valuetext", "Step 2 of 10");
+    await expect(progress).toHaveAttribute("aria-valuetext", "Step 2 of 8");
 
     await page.getByRole("button", { name: "Create meeting" }).click();
     await expect(page.getByRole("heading", { name: "Meeting created" })).toBeVisible();
     await expect(hud.getByText("Open the meeting room")).toBeVisible();
-    await expect(progress).toHaveAttribute("aria-valuenow", "30");
+    await expect(progress).toHaveAttribute("aria-valuenow", "38");
 
     await page.getByRole("link", { name: "Open the meeting room" }).click();
     await expect(page).toHaveURL(/\/demo\/meetings\/[^/]+/);
@@ -60,17 +60,24 @@ async function startRecording(page: Page) {
 
 async function archiveRecording(page: Page) {
     await page
-        .getByRole("button", { name: "Credit Analyst opening facts" })
+        .getByRole("button", { name: "Ask Mira, Credit Analyst for an opening view" })
         .click();
-    await page.getByRole("button", { name: "Downside challenge" }).click();
-    await page.getByRole("button", { name: "Mandate review" }).click();
-    await page.getByRole("button", { name: "Committee alignment" }).click();
+    await page
+        .getByRole("button", { name: "Ask Arjun, Downside Reviewer for an opening view" })
+        .click();
+    await page
+        .getByRole("button", { name: "Ask Leena, Portfolio Analyst for an opening view" })
+        .click();
+    await page.getByRole("button", { name: /Committee alignment/ }).click();
     await page.getByRole("button", { name: "Send question" }).click();
     await page.getByRole("button", { name: "Close meeting" }).click();
     await page.getByRole("button", { name: "Vote to End" }).click();
     await page.getByRole("button", { name: "Start Vote" }).click();
     await expect(
         page.getByText(/The committee voted to conclude/).first()
+    ).toBeVisible({ timeout: 30_000 });
+    await expect(
+        page.getByTestId("tutorial-hud").getByText("Demo complete")
     ).toBeVisible({ timeout: 30_000 });
     await page.getByRole("link", { name: "Go to meetings" }).click();
     await expect(page).toHaveURL(/\/demo\/meetings$/);
@@ -93,7 +100,7 @@ test.describe("contextual demo tutorial", () => {
         const progress = hud.getByRole("progressbar", {
             name: "Demo progress",
         });
-        await expect(hud.getByText("0 of 4 replies")).toHaveCount(0);
+        await expect(hud.getByText("0 of 5 outcomes")).toHaveCount(0);
         await expect(
             hud.getByRole("button", { name: "Hide", exact: true })
         ).toHaveCount(0);
@@ -125,16 +132,16 @@ test.describe("contextual demo tutorial", () => {
         expect(inlineProgressBounds!.width).toBeLessThanOrEqual(
             inlineBounds!.width - 1.5
         );
-        await expect(progress).toHaveAttribute("aria-valuenow", "40");
-        await expect(progress).toHaveAttribute("aria-valuetext", "Step 4 of 10");
+        await expect(progress).toHaveAttribute("aria-valuenow", "50");
+        await expect(progress).toHaveAttribute("aria-valuetext", "Step 4 of 8");
         const ring = page.getByTestId("tutorial-ring");
         await expect(ring).toBeVisible();
         await expect(ring).toHaveCSS("pointer-events", "none");
 
         await page
-            .getByRole("button", { name: "Credit Analyst opening facts" })
+            .getByRole("button", { name: "Ask Mira, Credit Analyst for an opening view" })
             .click();
-        await expect(progress).toHaveAttribute("aria-valuenow", "43", {
+        await expect(progress).toHaveAttribute("aria-valuenow", "53", {
             timeout: 30_000,
         });
         await expect(hud.getByText("Choose who speaks next")).toBeVisible();
@@ -145,15 +152,19 @@ test.describe("contextual demo tutorial", () => {
         await expect(hud.getByText("Choose who speaks next")).toBeVisible();
         await expect(
             hud.getByRole("progressbar", { name: "Demo progress" })
-        ).toHaveAttribute("aria-valuenow", "43");
+        ).toHaveAttribute("aria-valuenow", "53");
 
-        await page.getByRole("button", { name: "Downside challenge" }).click();
-        await page.getByRole("button", { name: "Mandate review" }).click();
-        await page.getByRole("button", { name: "Committee alignment" }).click();
+        await page
+            .getByRole("button", { name: "Ask Arjun, Downside Reviewer for an opening view" })
+            .click();
+        await page
+            .getByRole("button", { name: "Ask Leena, Portfolio Analyst for an opening view" })
+            .click();
+        await page.getByRole("button", { name: /Committee alignment/ }).click();
         await expect(hud.getByText("Send your follow-up")).toBeVisible({
             timeout: 30_000,
         });
-        await expect(progress).toHaveAttribute("aria-valuenow", "50");
+        await expect(progress).toHaveAttribute("aria-valuenow", "63");
 
         await page.getByRole("button", { name: "Send question" }).click();
         await expect(hud.getByText("Close the meeting")).toBeVisible({
@@ -169,28 +180,25 @@ test.describe("contextual demo tutorial", () => {
         await expect(
             page.getByText(/The committee voted to conclude/).first()
         ).toBeVisible({ timeout: 30_000 });
-        await page.getByRole("link", { name: "Go to meetings" }).scrollIntoViewIfNeeded();
-        await expect(
-            hud.getByText("Return to the meetings list")
-        ).toBeVisible({ timeout: 30_000 });
-
-        await page.getByRole("link", { name: "Go to meetings" }).click();
-        await expect(page).toHaveURL(/\/demo\/meetings$/);
-        await page.getByTestId("archive-meeting").scrollIntoViewIfNeeded();
-        await expect(hud.getByText("Archive the meeting")).toBeVisible();
-        await expect(
-            page.getByRole("button", { name: "Explore prompt versions" })
-        ).toHaveCount(0);
-
-        await page.getByTestId("archive-meeting").click();
         await expect(hud.getByText("Demo complete")).toBeVisible({
             timeout: 30_000,
         });
         await expect(progress).toHaveAttribute("aria-valuenow", "100");
         await expect(progress).toHaveAttribute(
             "aria-valuetext",
-            "Step 10 of 10"
+            "Step 8 of 8"
         );
+        await expect(
+            page.getByRole("button", { name: "Explore prompt versions" })
+        ).toBeVisible();
+
+        await page.getByRole("link", { name: "Go to meetings" }).click();
+        await expect(page).toHaveURL(/\/demo\/meetings$/);
+        await expect(hud.getByText("Demo complete")).toBeVisible();
+        await page.getByTestId("archive-meeting").scrollIntoViewIfNeeded();
+        await page.getByTestId("archive-meeting").click();
+        await expect(page.getByTestId("archive-meeting")).toHaveCount(0);
+        await expect(hud.getByText("Demo complete")).toBeVisible();
         await expect(
             page.getByRole("button", { name: "Explore prompt versions" })
         ).toBeVisible();
@@ -251,11 +259,15 @@ test.describe("contextual demo tutorial", () => {
         test.setTimeout(180_000);
         await startRecording(page);
         await page
-            .getByRole("button", { name: "Credit Analyst opening facts" })
+            .getByRole("button", { name: "Ask Mira, Credit Analyst for an opening view" })
             .click();
-        await page.getByRole("button", { name: "Downside challenge" }).click();
-        await page.getByRole("button", { name: "Mandate review" }).click();
-        await page.getByRole("button", { name: "Committee alignment" }).click();
+        await page
+            .getByRole("button", { name: "Ask Arjun, Downside Reviewer for an opening view" })
+            .click();
+        await page
+            .getByRole("button", { name: "Ask Leena, Portfolio Analyst for an opening view" })
+            .click();
+        await page.getByRole("button", { name: /Committee alignment/ }).click();
         await page.getByRole("button", { name: "Send question" }).click();
         await page.getByRole("button", { name: "Close meeting" }).click();
         await page.getByRole("button", { name: "Vote to End" }).click();
@@ -321,7 +333,7 @@ test.describe("contextual demo tutorial", () => {
         // The visitor can still act while hidden; the card must not pop back
         // when the reply settles.
         await page
-            .getByRole("button", { name: "Credit Analyst opening facts" })
+            .getByRole("button", { name: "Ask Mira, Credit Analyst for an opening view" })
             .click();
         await expect(
             page.getByText(/CRISIL's annexure row for ISIN INE001A07RW5/).first()
@@ -342,14 +354,16 @@ test.describe("contextual demo tutorial", () => {
         await expect(hud.getByText("Choose who speaks next")).toBeVisible();
         await expect(
             hud.getByRole("progressbar", { name: "Demo progress" })
-        ).toHaveAttribute("aria-valuenow", "43");
+        ).toHaveAttribute("aria-valuenow", "53");
 
-        await page.getByRole("button", { name: "Downside challenge" }).click();
+        await page
+            .getByRole("button", { name: "Ask Arjun, Downside Reviewer for an opening view" })
+            .click();
         await expect(
             page
                 .getByTestId("tutorial-hud")
                 .getByRole("progressbar", { name: "Demo progress" })
-        ).toHaveAttribute("aria-valuenow", "45", { timeout: 30_000 });
+        ).toHaveAttribute("aria-valuenow", "56", { timeout: 30_000 });
 
         network.assertClean();
         await expectNoPublicPersistence(context, page);
@@ -363,11 +377,11 @@ test.describe("contextual demo tutorial", () => {
         const { hud, network } = await startRecording(page);
 
         await page
-            .getByRole("button", { name: "Credit Analyst opening facts" })
+            .getByRole("button", { name: "Ask Mira, Credit Analyst for an opening view" })
             .click();
         await expect(
             hud.getByRole("progressbar", { name: "Demo progress" })
-        ).toHaveAttribute("aria-valuenow", "43", { timeout: 30_000 });
+        ).toHaveAttribute("aria-valuenow", "53", { timeout: 30_000 });
 
         await page.getByRole("button", { name: /5 Sources/ }).first().click();
         await expect(
@@ -399,7 +413,7 @@ test.describe("contextual demo tutorial", () => {
         await expect(hud.getByText("Choose who speaks next")).toBeVisible();
         await expect(
             hud.getByRole("progressbar", { name: "Demo progress" })
-        ).toHaveAttribute("aria-valuenow", "43");
+        ).toHaveAttribute("aria-valuenow", "53");
 
         network.assertClean();
         await expectNoPublicPersistence(context, page);

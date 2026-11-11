@@ -58,6 +58,41 @@ test("keeps at least two-thirds of the room work area for discussion", async ({
     const wide = await measureRoom(page);
     expect(wide.outerScroll).toBe(false);
     expect(wide.ratio).toBeGreaterThanOrEqual(2 / 3);
+
+    await page.setViewportSize({ width: 1024, height: 768 });
+    const smallLaptop = await measureRoom(page);
+    expect(smallLaptop.outerScroll).toBe(false);
+    expect(smallLaptop.ratio).toBeGreaterThanOrEqual(2 / 3);
+});
+
+test("keeps the dock out of the tab order and the discussion readable at 200% text", async ({
+    page,
+}) => {
+    test.setTimeout(180_000);
+    await page.setViewportSize({ width: 1440, height: 900 });
+    await enterRecordedRoom(page);
+
+    const dock = page.getByTestId("room-dock");
+    expect(await dock.getAttribute("tabindex")).toBeNull();
+
+    await page.addStyleTag({ content: "html { font-size: 200%; }" });
+    await expect(
+        page.getByRole("group", { name: "Meeting controls" })
+    ).toBeVisible();
+    await expect(page.getByTestId("room-discussion")).toBeVisible();
+
+    const zoomed = await measureRoom(page);
+    // At 200% text the discussion may scroll, but it must still own real space
+    // and the page must not overflow horizontally.
+    expect(zoomed.discussionHeight).toBeGreaterThan(0);
+    expect(zoomed.outerScroll).toBe(false);
+
+    const pageOverflow = await page.evaluate(
+        () =>
+            document.documentElement.scrollWidth >
+            document.documentElement.clientWidth + 1
+    );
+    expect(pageOverflow).toBe(false);
 });
 
 test("keeps the room operable without page-level horizontal overflow", async ({

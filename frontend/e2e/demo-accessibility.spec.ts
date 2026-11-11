@@ -136,7 +136,11 @@ test.describe("demo keyboard and narrow-screen accessibility", () => {
         await page.keyboard.press("Enter");
         await expect(page).toHaveURL(/\/demo\/meetings\//);
 
-        await page.getByRole("button", { name: "Downside challenge" }).focus();
+        await page
+            .getByRole("button", {
+                name: "Ask Arjun, Downside Reviewer for an opening view",
+            })
+            .focus();
         await page.keyboard.press("Enter");
         const notices = page.getByTestId("tutorial-notices");
         await expect(notices.getByText("Disagreement logged")).toBeVisible({
@@ -158,14 +162,14 @@ test.describe("demo keyboard and narrow-screen accessibility", () => {
         await page.getByRole("tab", { name: "Chat" }).click();
 
         const expectedProgress = [
-            { value: "45", instruction: "Choose who speaks next" },
-            { value: "48", instruction: "Choose who speaks next" },
-            { value: "50", instruction: "Send your follow-up" },
+            { value: "56", instruction: "Choose who speaks next" },
+            { value: "59", instruction: "Choose who speaks next" },
+            { value: "63", instruction: "Send your follow-up" },
         ];
         for (const [index, name] of [
-            "Credit Analyst opening facts",
-            "Mandate review",
-            "Committee alignment",
+            "Ask Mira, Credit Analyst for an opening view",
+            "Ask Leena, Portfolio Analyst for an opening view",
+            /Committee alignment/,
         ].entries()) {
             const action = page.getByRole("button", { name });
             await expect(action).toBeEnabled();

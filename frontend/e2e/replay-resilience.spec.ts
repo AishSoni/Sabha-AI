@@ -51,7 +51,7 @@ test.describe("recorded replay resilience", () => {
         await startRecording(page);
 
         await page
-            .getByRole("button", { name: "Credit Analyst opening facts" })
+            .getByRole("button", { name: "Ask Mira, Credit Analyst for an opening view" })
             .click({ clickCount: 2, delay: 10 });
         const showFull = page.getByRole("button", {
             name: "Show full response",
@@ -74,7 +74,7 @@ test.describe("recorded replay resilience", () => {
         await expect(message(page, CREDIT_MESSAGE)).toHaveCount(1);
         await expect(
             page.getByTestId("tutorial-announcement")
-        ).toContainText("1 of 4 replies");
+        ).toContainText("1 of 5 outcomes");
         await expect(
             page.getByText(/transition is already in progress|not available/)
         ).toHaveCount(0);
@@ -102,7 +102,7 @@ test.describe("recorded replay resilience", () => {
         });
 
         await page
-            .getByRole("button", { name: "Credit Analyst opening facts" })
+            .getByRole("button", { name: "Ask Mira, Credit Analyst for an opening view" })
             .click();
         await expect(page.getByText(/Observation paused/)).toBeVisible({
             timeout: 15_000,
@@ -119,7 +119,7 @@ test.describe("recorded replay resilience", () => {
         });
         await expect(
             page.getByTestId("tutorial-announcement")
-        ).toContainText("1 of 4 replies", { timeout: 30_000 });
+        ).toContainText("1 of 5 outcomes", { timeout: 30_000 });
         await expect(
             page.getByRole("button", { name: "Cancel", exact: true })
         ).toHaveCount(0);
@@ -142,7 +142,7 @@ test.describe("recorded replay resilience", () => {
                 request.url().includes("/events")
         );
         await page
-            .getByRole("button", { name: "Credit Analyst opening facts" })
+            .getByRole("button", { name: "Ask Mira, Credit Analyst for an opening view" })
             .click();
         await streamStarted;
         await page.getByRole("button", { name: "Reset demo" }).click();
@@ -151,7 +151,7 @@ test.describe("recorded replay resilience", () => {
         await expect(message(page, CREDIT_MESSAGE)).toHaveCount(0);
         await expect(
             page.getByTestId("tutorial-announcement")
-        ).toContainText("0 of 4 replies");
+        ).toContainText("0 of 5 outcomes");
         await expect(
             page.getByText(/Observation paused|Something went wrong/)
         ).toHaveCount(0);
@@ -160,7 +160,7 @@ test.describe("recorded replay resilience", () => {
         await page.reload();
         await expect(
             page.getByTestId("tutorial-announcement")
-        ).toContainText("0 of 4 replies");
+        ).toContainText("0 of 5 outcomes");
         await expect(message(page, CREDIT_MESSAGE)).toHaveCount(0);
 
         expect(liveRequests).toEqual([]);

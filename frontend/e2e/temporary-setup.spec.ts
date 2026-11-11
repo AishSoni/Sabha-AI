@@ -147,7 +147,7 @@ test.describe("temporary practice setup", () => {
             page.getByText("Practice template changed after setup.")
         ).toHaveCount(0);
         await expect(
-            page.getByRole("button", { name: "Credit Analyst opening facts" })
+            page.getByRole("button", { name: "Ask Mira, Credit Analyst for an opening view" })
         ).toBeVisible();
 
         network.assertClean();

@@ -148,10 +148,10 @@ test.describe("integrated practice exploration", () => {
             "/demo/meetings/a0000000-0000-4000-8000-000000000001"
         );
         await expect(
-            page.getByRole("button", { name: "Credit Analyst opening facts" })
+            page.getByRole("button", { name: "Ask Mira, Credit Analyst for an opening view" })
         ).toBeVisible({ timeout: 30_000 });
         await page
-            .getByRole("button", { name: "Credit Analyst opening facts" })
+            .getByRole("button", { name: "Ask Mira, Credit Analyst for an opening view" })
             .click();
         await expect(
             page.getByText(/CRISIL's annexure row for ISIN INE001A07RW5/).first()

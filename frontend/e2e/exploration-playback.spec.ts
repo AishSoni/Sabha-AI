@@ -52,12 +52,13 @@ test.describe("recorded exploration and playback", () => {
             page.getByText(/The committee voted to conclude/).first()
         ).toBeVisible({ timeout: 30_000 });
         await expect(page.getByText("Meeting ended")).toBeVisible();
+        await expect(page.getByTestId("demo-outcome")).toBeVisible();
         await expect(
-            page.getByRole("heading", { name: "Summary" })
+            page.getByRole("heading", { name: "What this discussion produced" })
         ).toBeVisible();
         await expect(
             page.getByTestId("tutorial-announcement")
-        ).toContainText("0 of 4 replies");
+        ).toContainText("0 of 5 outcomes");
 
         await openChapter(page, "chapter-summary", "summary");
         await expect(
@@ -70,7 +71,7 @@ test.describe("recorded exploration and playback", () => {
         await expect(page.getByText(/Inspection only/)).toBeVisible();
         await expect(
             page.getByTestId("tutorial-announcement")
-        ).toContainText("0 of 4 replies");
+        ).toContainText("0 of 5 outcomes");
 
         await openChapter(page, "chapter-downside-first", "chat");
         await expect(
@@ -78,7 +79,7 @@ test.describe("recorded exploration and playback", () => {
         ).toBeVisible({ timeout: 30_000 });
         await expect(
             page.getByTestId("tutorial-announcement")
-        ).toContainText("0 of 4 replies");
+        ).toContainText("0 of 5 outcomes");
 
         await openChapter(page, "chapter-red-team", "chat");
         await expect(
@@ -86,7 +87,7 @@ test.describe("recorded exploration and playback", () => {
         ).toBeVisible({ timeout: 30_000 });
         await expect(
             page.getByTestId("tutorial-announcement")
-        ).toContainText("0 of 4 replies");
+        ).toContainText("0 of 5 outcomes");
 
         network.assertClean();
         await expectNoPublicPersistence(context, page);
@@ -102,7 +103,7 @@ test.describe("recorded exploration and playback", () => {
         await startRecording(page);
 
         await page
-            .getByRole("button", { name: "Credit Analyst opening facts" })
+            .getByRole("button", { name: "Ask Mira, Credit Analyst for an opening view" })
             .click();
         await expect(
             page.getByRole("button", { name: "Show full response" })
@@ -116,7 +117,7 @@ test.describe("recorded exploration and playback", () => {
         });
         await expect(
             page.getByTestId("tutorial-announcement")
-        ).toContainText("1 of 4 replies");
+        ).toContainText("1 of 5 outcomes");
 
         await page.getByRole("button", { name: "Repeat last turn" }).click();
         await expect(message(page, CREDIT_MESSAGE)).toBeVisible({
@@ -124,7 +125,7 @@ test.describe("recorded exploration and playback", () => {
         });
         await expect(
             page.getByTestId("tutorial-announcement")
-        ).toContainText("1 of 4 replies");
+        ).toContainText("1 of 5 outcomes");
 
         // Inspect a recorded branch without adding it to the composed deck.
         await openExploreMenu(page);
@@ -141,18 +142,18 @@ test.describe("recorded exploration and playback", () => {
         await expect(page).toHaveURL(/\/demo\/meetings\/[^/]+\?tab=chat/);
         await expect(
             page.getByTestId("tutorial-announcement")
-        ).toContainText("1 of 4 replies");
+        ).toContainText("1 of 5 outcomes");
         await expect(message(page, CREDIT_MESSAGE)).toBeVisible();
         await expect(message(page, DOWNSIDE_MESSAGE)).toHaveCount(0);
 
         // The resumed deck still accepts the next prepared reply.
-        await page.getByRole("button", { name: "Downside challenge" }).click();
+        await page.getByRole("button", { name: "Ask Arjun, Downside Reviewer for an opening view" }).click();
         await expect(message(page, DOWNSIDE_MESSAGE)).toBeVisible({
             timeout: 30_000,
         });
         await expect(
             page.getByTestId("tutorial-announcement")
-        ).toContainText("2 of 4 replies");
+        ).toContainText("2 of 5 outcomes");
 
         network.assertClean();
         await expectNoPublicPersistence(context, page);

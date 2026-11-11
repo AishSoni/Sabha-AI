@@ -160,7 +160,7 @@ test.describe("recorded evidence previews", () => {
         await openRecordedRoom(page);
 
         await page
-            .getByRole("button", { name: "Credit Analyst opening facts" })
+            .getByRole("button", { name: "Ask Mira, Credit Analyst for an opening view" })
             .click();
         await expect(
             page.getByText(/CRISIL's annexure row for ISIN INE001A07RW5/).first()

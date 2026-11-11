@@ -35,7 +35,7 @@ test.describe("recorded log notices", () => {
         const notices = page.getByTestId("tutorial-notices");
         const close = page.getByRole("button", { name: "Close meeting" });
 
-        await page.getByRole("button", { name: "Downside challenge" }).click();
+        await page.getByRole("button", { name: "Ask Arjun, Downside Reviewer for an opening view" }).click();
         await expect(notices.getByText("Disagreement logged")).toBeVisible({
             timeout: 30_000,
         });
@@ -48,9 +48,9 @@ test.describe("recorded log notices", () => {
         await expect(hud.getByText("Choose who speaks next")).toBeVisible();
         await expect(page.getByRole("button", { name: /Continue/ })).toHaveCount(0);
 
-        await page.getByRole("button", { name: "Credit Analyst opening facts" }).click();
-        await page.getByRole("button", { name: "Mandate review" }).click();
-        await page.getByRole("button", { name: "Committee alignment" }).click();
+        await page.getByRole("button", { name: "Ask Mira, Credit Analyst for an opening view" }).click();
+        await page.getByRole("button", { name: "Ask Leena, Portfolio Analyst for an opening view" }).click();
+        await page.getByRole("button", { name: /Committee alignment/ }).click();
         await expect(notices.getByText("Consensus logged")).toBeVisible({
             timeout: 30_000,
         });

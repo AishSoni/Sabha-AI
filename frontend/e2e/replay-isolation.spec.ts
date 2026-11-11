@@ -154,13 +154,13 @@ test.describe("recorded visitor isolation", () => {
             await Promise.all([startRecording(pageA), startRecording(pageB)]);
 
             await pageA
-                .getByRole("button", { name: "Credit Analyst opening facts" })
+                .getByRole("button", { name: "Ask Mira, Credit Analyst for an opening view" })
                 .click();
             await expect(message(pageA, CREDIT_MESSAGE)).toBeVisible({
                 timeout: 30_000,
             });
             await pageB
-                .getByRole("button", { name: "Downside challenge" })
+                .getByRole("button", { name: "Ask Arjun, Downside Reviewer for an opening view" })
                 .click();
             await expect(message(pageB, DOWNSIDE_MESSAGE)).toBeVisible({
                 timeout: 30_000,
@@ -197,7 +197,7 @@ test.describe("recorded visitor isolation", () => {
             await pageA.getByRole("button", { name: "Show tips" }).click();
             await expect(
                 pageA.getByTestId("tutorial-announcement")
-            ).toContainText("1 of 4 replies");
+            ).toContainText("1 of 5 outcomes");
             await expect(message(pageA, CREDIT_MESSAGE)).toBeVisible();
             await expect(message(pageA, DOWNSIDE_MESSAGE)).toHaveCount(0);
 
@@ -205,7 +205,7 @@ test.describe("recorded visitor isolation", () => {
             await expect(pageB).toHaveURL(/\/demo\/meetings\/[^/]+/);
             await expect(
                 pageB.getByTestId("tutorial-announcement")
-            ).toContainText("1 of 4 replies");
+            ).toContainText("1 of 5 outcomes");
             await expect(message(pageB, DOWNSIDE_MESSAGE)).toBeVisible();
 
             await expectNoPublicPersistence(contextA, pageA);
@@ -236,13 +236,13 @@ test.describe("recorded visitor isolation", () => {
             await Promise.all([startRecording(pageA), startRecording(pageB)]);
 
             await pageA
-                .getByRole("button", { name: "Credit Analyst opening facts" })
+                .getByRole("button", { name: "Ask Mira, Credit Analyst for an opening view" })
                 .click();
             await expect(message(pageA, CREDIT_MESSAGE)).toBeVisible({
                 timeout: 30_000,
             });
             await pageB
-                .getByRole("button", { name: "Downside challenge" })
+                .getByRole("button", { name: "Ask Arjun, Downside Reviewer for an opening view" })
                 .click();
             await expect(message(pageB, DOWNSIDE_MESSAGE)).toBeVisible({
                 timeout: 30_000,
@@ -265,14 +265,14 @@ test.describe("recorded visitor isolation", () => {
             await startRecording(pageA);
             await expect(
                 pageA.getByTestId("tutorial-announcement")
-            ).toContainText("0 of 4 replies");
+            ).toContainText("0 of 5 outcomes");
             await expect(message(pageA, CREDIT_MESSAGE)).toHaveCount(0);
 
             // B keeps its run, its reply, and its own progress.
             await expect(pageB).toHaveURL(/\/demo\/meetings\/[^/]+/);
             await expect(
                 pageB.getByTestId("tutorial-announcement")
-            ).toContainText("1 of 4 replies");
+            ).toContainText("1 of 5 outcomes");
             await expect(message(pageB, DOWNSIDE_MESSAGE)).toBeVisible();
             await expect(message(pageB, CREDIT_MESSAGE)).toHaveCount(0);
 
