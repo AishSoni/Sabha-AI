@@ -62,12 +62,13 @@ export function PreparedTurnControls({
                         type="button"
                         size="sm"
                         variant="ghost"
+                        className="type-meta text-ink-secondary"
                         busy={busy === 'replay'}
                         busyLabel="Repeating turn"
                         disabled={busy !== null}
                         onClick={() => void runDeck('replay')}
                     >
-                        <RotateCcw className="mr-1 size-4" />
+                        <RotateCcw className="mr-1 size-3.5" />
                         Repeat last turn
                     </Button>
                 ) : null}

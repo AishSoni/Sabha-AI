@@ -844,8 +844,7 @@ function MeetingConversation({
                     data-testid="room-dock"
                     role="region"
                     aria-label="Meeting controls dock"
-                    tabIndex={0}
-                    className="max-h-[35dvh] shrink-0 overflow-y-auto border-t border-separator bg-surface px-4 py-1 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-focus-ring lg:max-h-none lg:overflow-visible"
+                    className="max-h-[35dvh] shrink-0 overflow-y-auto border-t border-separator bg-surface px-4 py-1 lg:max-h-none lg:overflow-visible"
                 >
                     <div className="mx-auto w-full max-w-[1120px]">
                         {closingObservationUnknown ? (
@@ -1139,10 +1138,7 @@ function RoomControls({ meeting, turns }: RoomControlsProps) {
     return (
         <div className="space-y-1.5" role="group" aria-label="Meeting controls">
             <div className="min-w-0">
-                    <div className="mb-2 flex flex-wrap items-center gap-2">
-                        <p className="type-meta text-ink-secondary">Who speaks next?</p>
-                        <RoomTutorialInline />
-                    </div>
+                    <RoomTutorialInline />
                     <div
                         ref={speakerRef}
                         className="flex flex-wrap gap-2"
