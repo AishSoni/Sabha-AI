@@ -1,6 +1,9 @@
 import { describe, expect, it, vi } from "vitest";
 import { ApiError } from "@/shared/api/errors";
-import { EvidenceLoadError } from "../evidence/contract";
+import {
+    EVIDENCE_MAX_TEXT_CHARACTERS,
+    EvidenceLoadError,
+} from "../evidence/contract";
 import type { ReplayAsset, ReplayClaim } from "./contract";
 import {
     createReplayEvidence,
@@ -163,6 +166,64 @@ describe("replay evidence loading", () => {
             text: "# Fact",
             truncated: false,
         });
+    });
+
+    it("keeps text exactly at the loader character limit intact", async () => {
+        const body = "a".repeat(EVIDENCE_MAX_TEXT_CHARACTERS);
+        const asset = makeAsset({ size: body.length });
+        const evidence = createReplayEvidence(
+            { assets: [asset], claims: [] },
+            {
+                fetchBytes: async () => ({
+                    bytes: bytes(body),
+                    contentType: "text/markdown; charset=utf-8",
+                    contentLength: body.length,
+                    fileName: null,
+                }),
+                digest: async () => HASH,
+            }
+        );
+
+        const content = await evidence.load(descriptorForAsset(asset), {
+            signal: new AbortController().signal,
+        });
+
+        expect(content).toMatchObject({
+            kind: "markdown",
+            truncated: false,
+        });
+        if (content.kind !== "pdf") {
+            expect(content.text).toHaveLength(EVIDENCE_MAX_TEXT_CHARACTERS);
+        }
+    });
+
+    it("clips text one character over the loader limit and marks it truncated", async () => {
+        const body = "a".repeat(EVIDENCE_MAX_TEXT_CHARACTERS + 1);
+        const asset = makeAsset({ size: body.length });
+        const evidence = createReplayEvidence(
+            { assets: [asset], claims: [] },
+            {
+                fetchBytes: async () => ({
+                    bytes: bytes(body),
+                    contentType: "text/markdown; charset=utf-8",
+                    contentLength: body.length,
+                    fileName: null,
+                }),
+                digest: async () => HASH,
+            }
+        );
+
+        const content = await evidence.load(descriptorForAsset(asset), {
+            signal: new AbortController().signal,
+        });
+
+        expect(content).toMatchObject({
+            kind: "markdown",
+            truncated: true,
+        });
+        if (content.kind !== "pdf") {
+            expect(content.text).toHaveLength(EVIDENCE_MAX_TEXT_CHARACTERS);
+        }
     });
 
     it("rejects a response with the wrong media type", async () => {

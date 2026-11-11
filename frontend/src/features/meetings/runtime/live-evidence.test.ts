@@ -3,7 +3,10 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import type { Document } from "@/features/knowledge";
 import { ApiError } from "@/shared/api/errors";
 import type { ByteResponse } from "@/shared/api/transport";
-import { isEvidenceLoadError } from "../evidence/contract";
+import {
+    EVIDENCE_MAX_TEXT_CHARACTERS,
+    isEvidenceLoadError,
+} from "../evidence/contract";
 import {
     createLiveEvidence,
     liveDescriptorForDocument,
@@ -214,6 +217,56 @@ describe("createLiveEvidence", () => {
             text: "# Heading",
             truncated: false,
         });
+    });
+
+    it("keeps text exactly at the loader character limit intact", async () => {
+        const body = "a".repeat(EVIDENCE_MAX_TEXT_CHARACTERS);
+        const fetchBytes = vi.fn(async () =>
+            byteResponse({
+                bytes: new TextEncoder().encode(body),
+                contentType: "text/markdown; charset=utf-8",
+                contentLength: body.length,
+            })
+        );
+        const evidence = createLiveEvidence({ fetchBytes });
+
+        const content = await evidence.load(
+            liveDescriptorForDocument(documentRow()),
+            { signal: new AbortController().signal }
+        );
+
+        expect(content).toMatchObject({
+            kind: "markdown",
+            truncated: false,
+        });
+        if (content.kind !== "pdf") {
+            expect(content.text).toHaveLength(EVIDENCE_MAX_TEXT_CHARACTERS);
+        }
+    });
+
+    it("clips text one character over the loader limit and marks it truncated", async () => {
+        const body = "a".repeat(EVIDENCE_MAX_TEXT_CHARACTERS + 1);
+        const fetchBytes = vi.fn(async () =>
+            byteResponse({
+                bytes: new TextEncoder().encode(body),
+                contentType: "text/markdown; charset=utf-8",
+                contentLength: body.length,
+            })
+        );
+        const evidence = createLiveEvidence({ fetchBytes });
+
+        const content = await evidence.load(
+            liveDescriptorForDocument(documentRow()),
+            { signal: new AbortController().signal }
+        );
+
+        expect(content).toMatchObject({
+            kind: "markdown",
+            truncated: true,
+        });
+        if (content.kind !== "pdf") {
+            expect(content.text).toHaveLength(EVIDENCE_MAX_TEXT_CHARACTERS);
+        }
     });
 
     it("requests derived text for DOCX and labels it derived", async () => {
