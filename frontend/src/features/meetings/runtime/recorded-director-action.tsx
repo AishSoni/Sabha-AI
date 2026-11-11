@@ -18,6 +18,7 @@ export function RecordedDirectorAction() {
     const followUpRef = useAnchorRef("room.followup");
     const replay = runtime.replay;
     const [busy, setBusy] = useState(false);
+    const [expanded, setExpanded] = useState(false);
 
     if (!replay) return null;
 
@@ -31,6 +32,8 @@ export function RecordedDirectorAction() {
         : undefined;
     if (prepared?.kind === "follow_up") {
         if (replay.playedTurnIds?.has(prepared.turn_id)) return null;
+        const available = replay.progression?.followUp.available ?? true;
+        if (!available) return null;
         return (
             <div ref={followUpRef}>
                 <div className="flex flex-col gap-2 sm:flex-row sm:items-start">
@@ -40,12 +43,26 @@ export function RecordedDirectorAction() {
                         </p>
                         <p
                             id="prepared-follow-up-question"
-                            className="type-control whitespace-pre-wrap text-ink"
+                            className={`type-control text-ink ${
+                                expanded
+                                    ? "whitespace-pre-wrap"
+                                    : "line-clamp-1"
+                            }`}
                         >
                             {prepared.question}
                         </p>
                     </div>
                     <div className="flex shrink-0 flex-wrap items-center gap-2">
+                        <Button
+                            type="button"
+                            variant="ghost"
+                            size="sm"
+                            aria-expanded={expanded}
+                            aria-controls="prepared-follow-up-question"
+                            onClick={() => setExpanded((value) => !value)}
+                        >
+                            {expanded ? "Collapse" : "Expand"}
+                        </Button>
                         <Button
                             busy={busy}
                             busyLabel="Sending"
