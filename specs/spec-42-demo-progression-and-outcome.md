@@ -58,3 +58,55 @@ generation or free-form follow-up inference.
 - Exact question expansion/send, keyboard focus, and contextual guide coexist
   without obscuring controls. Re-measure room geometry at 1440×900 and 1920×917,
   mobile/small laptop, and text zoom; do not assume the existing tight ratio holds.
+
+## D03 decision: one accepted-outcome progression
+
+The prepared deck uses one authoritative progression policy. Its required outcome
+set is `prepared_closing.required_turn_ids`; it is not reconstructed from a reply
+count plus a separate closing check.
+
+| Phase | Entry condition | Available actions | Visible labels | Accepted outcomes | Closing |
+| --- | --- | --- | --- | --- | --- |
+| Opening | Deck attached at the prepared base checkpoint | Each participant's first required reply, in any order | Mark, friendly name, and role only | 0–3 of 5 | Disabled |
+| Deliberation | Every participant with a required reply has at least one accepted required reply | Remaining required replies | Authored stage title may be revealed | 3–4 of 5 | Disabled |
+| Follow-up | All required reply turns accepted | The fixed follow-up only | Exact question, collapsed with Expand and Send | 4 of 5 | Disabled |
+| Closing | Every `required_turn_ids` entry accepted | Close and vote | Closing prompt | 5 of 5 | Enabled |
+| Closed | Closing bundle accepted | Inspection and optional archive | Outcome | Complete | Ended |
+
+Only accepted results count: a stored reply result, the sent follow-up, and the
+accepted closing. Active playback, timers, animations, repeats, failed attempts,
+and cancellation do not count. Repeating a completed turn re-opens playback but
+does not append a message or change the count. Showing the full prepared response
+does count once because it accepts the prepared result.
+
+The opening phase makes the first required reply for each participant available.
+This permits any initial speaker order while keeping later turns locked. In the
+v11 package the opening set is Mira, Arjun, and Leena; Mira's committee alignment
+is the deliberation turn. Progress is reported as accepted outcomes over required
+outcomes; reply counts are a detail rather than a second denominator.
+
+## D04 decision: closing is the finale; archive is optional
+
+The accepted closing (`checkpoint-closed`, or the deck closing bundle) triggers the
+finale. The closing tab then shows the saved outcome reflection: the participants'
+different mandates, inspectable evidence, conflicts retained or resolved,
+alignment, the recorded research checklist, useful next destinations, and an
+honest browser-memory/restart note. The recorded closing summary remains the
+artifact; the reflection adds links and framing rather than replacing it.
+
+Archive remains an optional list action. It is not required for `Demo complete`
+and is not presented as the discussion's value. The guided deck flow completes
+when the closing is accepted, not when the meeting is archived. Legacy packages
+keep their existing beat-based journey.
+
+## Policy consequences
+
+- One pure progression function drives visible availability, runtime admission,
+  journey/guidance, counters, follow-up, closing eligibility, repeats, reset, and
+  direct or rapid calls.
+- Deck actions are admitted only while the prepared base checkpoint is attached.
+  Result checkpoints and branches are read-only inspection.
+- The follow-up is available only after the required replies are accepted. It is
+  the exact prepared question with a collapsed preview; it is not editable.
+- Demo cards omit severity and strength scores. Live cards and underlying records
+  are unchanged; no score is relabelled as confidence, truth, or probability.
