@@ -27,11 +27,20 @@ const CSV_MAX_CHARACTERS = 200_000;
 export interface CsvTable {
     rows: string[][];
     truncated: boolean;
+    rowLimit: boolean;
+    columnLimit: boolean;
+    cellLimit: boolean;
 }
 
 export function parseCsvBounded(text: string): CsvTable | null {
     if (text.length === 0) {
-        return { rows: [], truncated: false };
+        return {
+            rows: [],
+            truncated: false,
+            rowLimit: false,
+            columnLimit: false,
+            cellLimit: false,
+        };
     }
     if (text.length > CSV_MAX_CHARACTERS) {
         return null;
@@ -41,12 +50,14 @@ export function parseCsvBounded(text: string): CsvTable | null {
     let row: string[] = [];
     let cell = "";
     let quoted = false;
-    let truncated = false;
+    let rowLimit = false;
+    let columnLimit = false;
+    let cellLimit = false;
 
     const pushCell = () => {
         row.push(cell.slice(0, CSV_MAX_CELL_CHARACTERS));
         if (cell.length > CSV_MAX_CELL_CHARACTERS) {
-            truncated = true;
+            cellLimit = true;
         }
         cell = "";
     };
@@ -54,17 +65,17 @@ export function parseCsvBounded(text: string): CsvTable | null {
         pushCell();
         if (row.length > CSV_MAX_COLUMNS) {
             row = row.slice(0, CSV_MAX_COLUMNS);
-            truncated = true;
+            columnLimit = true;
         }
         rows.push(row);
-        if (rows.length >= CSV_MAX_ROWS) {
-            truncated = true;
-        }
         row = [];
     };
 
     for (let index = 0; index < text.length; index += 1) {
         if (rows.length >= CSV_MAX_ROWS) {
+            if (/[^\r\n]/.test(text.slice(index))) {
+                rowLimit = true;
+            }
             break;
         }
         const character = text[index];
@@ -102,7 +113,13 @@ export function parseCsvBounded(text: string): CsvTable | null {
     if (rows.length > 0 && rows[rows.length - 1].length === 1 && rows[rows.length - 1][0] === "") {
         rows.pop();
     }
-    return { rows, truncated };
+    return {
+        rows,
+        truncated: rowLimit || columnLimit || cellLimit,
+        rowLimit,
+        columnLimit,
+        cellLimit,
+    };
 }
 
 function safeUrl(url: string): string {
@@ -116,7 +133,13 @@ function safeUrl(url: string): string {
     return "";
 }
 
-function PreviewCompletenessNotice({ omitted }: { omitted: boolean }) {
+function PreviewCompletenessNotice({
+    omitted,
+    children,
+}: {
+    omitted: boolean;
+    children?: React.ReactNode;
+}) {
     if (!omitted) {
         return null;
     }
@@ -125,7 +148,8 @@ function PreviewCompletenessNotice({ omitted }: { omitted: boolean }) {
             role="status"
             className="rounded-group border border-separator bg-surface-raised px-3 py-2 type-meta text-ink-secondary"
         >
-            Preview truncated; the retained source may contain more.
+            {children ??
+                "Preview truncated; the retained source may contain more."}
         </p>
     );
 }
@@ -207,8 +231,31 @@ function CsvBody({ content }: { content: EvidenceTextContent }) {
         );
     }
     const [header, ...body] = table.rows;
+    const limitMessages: string[] = [];
+    if (table.rowLimit) {
+        limitMessages.push(`Only the first ${CSV_MAX_ROWS} rows are shown.`);
+    }
+    if (table.columnLimit) {
+        limitMessages.push(
+            `Only the first ${CSV_MAX_COLUMNS} columns are shown.`
+        );
+    }
+    if (table.cellLimit) {
+        limitMessages.push(
+            `Cells longer than ${CSV_MAX_CELL_CHARACTERS} characters are shortened.`
+        );
+    }
+    if (limitMessages.length > 0 && content.truncated) {
+        limitMessages.push("The retained source may contain more.");
+    }
+    const notice = limitMessages.length > 0 ? limitMessages.join(" ") : undefined;
     return (
         <div className="space-y-2">
+            <PreviewCompletenessNotice
+                omitted={table.truncated || content.truncated}
+            >
+                {notice}
+            </PreviewCompletenessNotice>
             <div className="max-h-[55vh] overflow-auto rounded-md border">
                 <table className="w-full border-collapse text-left text-xs">
                     {header ? (
@@ -242,12 +289,6 @@ function CsvBody({ content }: { content: EvidenceTextContent }) {
                     </tbody>
                 </table>
             </div>
-            {table.truncated || content.truncated ? (
-                <p className="text-xs text-muted-foreground">
-                    Table preview truncated to {CSV_MAX_ROWS} rows and{" "}
-                    {CSV_MAX_COLUMNS} columns.
-                </p>
-            ) : null}
         </div>
     );
 }

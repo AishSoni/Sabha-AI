@@ -181,6 +181,39 @@ describe("EvidenceContentRenderer", () => {
         expect(container.querySelector("input")).toBeNull();
     });
 
+    it("reports only the CSV limits that were actually applied", () => {
+        const rows = Array.from({ length: 201 }, (_, index) => `r${index}`);
+        render(
+            <EvidenceContentRenderer
+                descriptor={{ ...descriptor, media_type: "text/csv" }}
+                content={{
+                    kind: "csv",
+                    text: rows.join("\n"),
+                    truncated: false,
+                }}
+            />
+        );
+        const notice = screen.getByRole("status");
+        expect(notice).toHaveTextContent("Only the first 200 rows are shown.");
+        expect(notice).not.toHaveTextContent("columns");
+        expect(screen.queryByRole("alert")).toBeNull();
+    });
+
+    it("does not claim CSV truncation at exactly 200 rows", () => {
+        const rows = Array.from({ length: 200 }, (_, index) => `r${index}`);
+        render(
+            <EvidenceContentRenderer
+                descriptor={{ ...descriptor, media_type: "text/csv" }}
+                content={{
+                    kind: "csv",
+                    text: rows.join("\n"),
+                    truncated: false,
+                }}
+            />
+        );
+        expect(screen.queryByRole("status")).toBeNull();
+    });
+
     it("falls back to plain text for oversized CSV", () => {
         render(
             <EvidenceContentRenderer
@@ -247,12 +280,87 @@ describe("parseCsvBounded", () => {
                 ["line\nbreak", "d"],
             ],
             truncated: false,
+            rowLimit: false,
+            columnLimit: false,
+            cellLimit: false,
         });
     });
 
-    it("caps rows, columns, and cell length", () => {
-        const table = parseCsvBounded("x".repeat(600) + "," + "y");
-        expect(table?.truncated).toBe(true);
+    it("does not report a row limit at exactly 200 rows", () => {
+        const rows = Array.from({ length: 200 }, (_, index) => `r${index}`);
+        expect(parseCsvBounded(rows.join("\n"))).toMatchObject({
+            truncated: false,
+            rowLimit: false,
+            columnLimit: false,
+            cellLimit: false,
+        });
+    });
+
+    it("does not report a row limit for a trailing newline", () => {
+        const rows = Array.from({ length: 200 }, (_, index) => `r${index}`);
+        const table = parseCsvBounded(rows.join("\n") + "\n");
+        expect(table?.rows).toHaveLength(200);
+        expect(table).toMatchObject({
+            truncated: false,
+            rowLimit: false,
+        });
+    });
+
+    it("reports a row limit when a 201st row would be omitted", () => {
+        const rows = Array.from({ length: 201 }, (_, index) => `r${index}`);
+        const table = parseCsvBounded(rows.join("\n"));
+        expect(table?.rows).toHaveLength(200);
+        expect(table).toMatchObject({
+            truncated: true,
+            rowLimit: true,
+            columnLimit: false,
+            cellLimit: false,
+        });
+    });
+
+    it("does not report a column limit at exactly 20 columns", () => {
+        const row = Array.from({ length: 20 }, (_, index) => `c${index}`);
+        const table = parseCsvBounded(row.join(","));
+        expect(table).toMatchObject({
+            truncated: false,
+            rowLimit: false,
+            columnLimit: false,
+            cellLimit: false,
+        });
+        expect(table?.rows[0]).toHaveLength(20);
+    });
+
+    it("reports a column limit when a 21st column would be omitted", () => {
+        const row = Array.from({ length: 21 }, (_, index) => `c${index}`);
+        const table = parseCsvBounded(row.join(","));
+        expect(table?.rows[0]).toHaveLength(20);
+        expect(table).toMatchObject({
+            truncated: true,
+            rowLimit: false,
+            columnLimit: true,
+            cellLimit: false,
+        });
+    });
+
+    it("does not report a cell limit at exactly 500 characters", () => {
+        const table = parseCsvBounded("x".repeat(500) + ",y");
         expect(table?.rows[0][0]).toHaveLength(500);
+        expect(table).toMatchObject({
+            truncated: false,
+            rowLimit: false,
+            columnLimit: false,
+            cellLimit: false,
+        });
+    });
+
+    it("reports a cell limit when a cell is shortened", () => {
+        const table = parseCsvBounded("x".repeat(501) + ",y");
+        expect(table?.rows[0][0]).toHaveLength(500);
+        expect(table).toMatchObject({
+            truncated: true,
+            rowLimit: false,
+            columnLimit: false,
+            cellLimit: true,
+        });
     });
 });
