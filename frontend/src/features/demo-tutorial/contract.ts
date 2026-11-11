@@ -26,6 +26,7 @@ export const TUTORIAL_ANCHOR_IDS = [
     "room.vote",
     "room.vote-confirm",
     "room.return",
+    "room.outcome",
     "room.tab.disagreements",
     "room.tab.consensus",
     "meetings.archive",

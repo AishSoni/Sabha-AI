@@ -37,21 +37,25 @@ export function session(overrides: Partial<JourneySession> = {}): JourneySession
                 turn_id: "turn-credit",
                 kind: "reply",
                 required: true,
+                participant_id: "mira",
             },
             {
                 turn_id: "turn-downside",
                 kind: "reply",
                 required: true,
+                participant_id: "arjun",
             },
             {
                 turn_id: "turn-portfolio",
                 kind: "reply",
                 required: true,
+                participant_id: "leena",
             },
             {
                 turn_id: "turn-committee",
                 kind: "reply",
                 required: true,
+                participant_id: "mira",
             },
             {
                 turn_id: "turn-follow-up",
@@ -147,6 +151,69 @@ describe("deriveJourney", () => {
         );
         expect(sent.followUpSent).toBe(true);
         expect(sent.replyCount).toBe(1);
+    });
+
+    it("counts accepted outcomes from the same policy as the room", () => {
+        const opening = deriveJourney(
+            journeyInput({
+                playedTurnIds: new Set(["turn-downside", "turn-credit"]),
+            })
+        );
+        expect(opening.phase).toBe("opening");
+        expect(opening.acceptedOutcomeCount).toBe(2);
+        expect(opening.requiredOutcomeCount).toBe(5);
+        expect(opening.progressLabel).toBe("2 of 5 outcomes");
+        expect(opening.canClose).toBe(false);
+
+        const deliberation = deriveJourney(
+            journeyInput({
+                playedTurnIds: new Set([
+                    "turn-portfolio",
+                    "turn-credit",
+                    "turn-downside",
+                ]),
+            })
+        );
+        expect(deliberation.phase).toBe("deliberation");
+        expect(deliberation.acceptedOutcomeCount).toBe(3);
+
+        const followUp = deriveJourney(
+            journeyInput({
+                playedTurnIds: new Set([
+                    "turn-credit",
+                    "turn-downside",
+                    "turn-portfolio",
+                    "turn-committee",
+                ]),
+            })
+        );
+        expect(followUp.phase).toBe("follow-up");
+        expect(followUp.replyCount).toBe(4);
+        expect(followUp.acceptedOutcomeCount).toBe(4);
+
+        const closing = deriveJourney(
+            journeyInput({
+                playedTurnIds: new Set([
+                    "turn-credit",
+                    "turn-downside",
+                    "turn-portfolio",
+                    "turn-committee",
+                    "turn-follow-up",
+                ]),
+            })
+        );
+        expect(closing.phase).toBe("closing");
+        expect(closing.canClose).toBe(true);
+        expect(closing.acceptedOutcomeCount).toBe(5);
+        expect(closing.progressLabel).toBe("5 of 5 outcomes");
+    });
+
+    it("treats an accepted closing as closed even without played ids", () => {
+        const closed = deriveJourney(
+            journeyInput({ closingCompleted: true })
+        );
+        expect(closed.phase).toBe("closed");
+        expect(closed.canClose).toBe(false);
     });
 
     it("stays in the recorded room once visited", () => {

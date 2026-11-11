@@ -16,6 +16,7 @@ export interface TutorialProgress {
 }
 
 const MAIN_TOTAL = 10;
+const DECK_TOTAL = 8;
 const TOUR_TOTAL = 4;
 
 const MAIN_STEPS: Readonly<
@@ -31,6 +32,19 @@ const MAIN_STEPS: Readonly<
     "main-return": 8,
     "main-archive": 9,
     "main-complete": 10,
+};
+
+const DECK_STEPS: Readonly<
+    Partial<Record<TutorialObjectiveId, number>>
+> = {
+    "main-start": 1,
+    "main-create": 2,
+    "main-open-room": 3,
+    "main-speaker": 4,
+    "main-followup": 5,
+    "main-close": 6,
+    "main-vote": 7,
+    "main-complete": 8,
 };
 
 const TOUR_STEPS: Readonly<
@@ -63,15 +77,17 @@ function finish(step: number, total: number): TutorialProgress {
  * within that position instead of jumping by the number of participants.
  */
 function mainSpeakerProgress(journey: TutorialJourney): TutorialProgress {
+    const steps = journey.deck ? DECK_STEPS : MAIN_STEPS;
+    const total = journey.deck ? DECK_TOTAL : MAIN_TOTAL;
     const required = Math.max(journey.requiredReplyCount, 0);
     const played = Math.min(Math.max(journey.replyCount, 0), required);
     const fraction = required > 0 ? played / required : 0;
-    const continuous = MAIN_STEPS["main-speaker"]! + fraction;
+    const continuous = steps["main-speaker"]! + fraction;
     return {
-        step: MAIN_STEPS["main-speaker"]!,
-        total: MAIN_TOTAL,
-        percent: Math.round((continuous / MAIN_TOTAL) * 100),
-        label: `Step ${MAIN_STEPS["main-speaker"]} of ${MAIN_TOTAL}`,
+        step: steps["main-speaker"]!,
+        total,
+        percent: Math.round((continuous / total) * 100),
+        label: `Step ${steps["main-speaker"]} of ${total}`,
     };
 }
 
@@ -79,10 +95,12 @@ export function tutorialProgress(
     prompt: TutorialPrompt,
     journey: TutorialJourney
 ): TutorialProgress | null {
-    const mainStep = MAIN_STEPS[prompt.id];
+    const steps = journey.deck ? DECK_STEPS : MAIN_STEPS;
+    const total = journey.deck ? DECK_TOTAL : MAIN_TOTAL;
+    const mainStep = steps[prompt.id];
     if (mainStep !== undefined) {
         if (prompt.id === "main-speaker") return mainSpeakerProgress(journey);
-        return finish(mainStep, MAIN_TOTAL);
+        return finish(mainStep, total);
     }
 
     const tourStep = TOUR_STEPS[prompt.id];

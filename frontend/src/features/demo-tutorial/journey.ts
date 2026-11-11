@@ -7,11 +7,16 @@
  * never advance anything.
  */
 import type { ReplayBeat } from "@/features/meetings/presentation";
+import {
+    deriveProgression,
+    type DeckPhase,
+} from "@/features/meetings/runtime/progression";
 
 export interface JourneyPreparedTurn {
     turn_id: string;
     kind: "reply" | "follow_up";
     required: boolean;
+    participant_id?: string | null;
 }
 
 export interface JourneySession {
@@ -44,6 +49,10 @@ export interface TutorialJourney {
     meetingCreated: boolean;
     replyCount: number;
     requiredReplyCount: number;
+    acceptedOutcomeCount: number;
+    requiredOutcomeCount: number;
+    progressLabel: string;
+    phase: DeckPhase;
     followUpSent: boolean;
     canClose: boolean;
     closingCompleted: boolean;
@@ -78,6 +87,16 @@ export function deriveJourney(input: JourneyInput): TutorialJourney {
     );
     const deck =
         replies.length > 0 && input.session.prepared_closing !== null;
+    const requiredTurnIds =
+        input.session.prepared_closing?.required_turn_ids ?? [];
+    const progression = deck
+        ? deriveProgression({
+              turns: input.session.prepared_turns,
+              requiredTurnIds,
+              acceptedTurnIds: input.playedTurnIds,
+              closingAccepted: input.closingCompleted,
+          })
+        : null;
     return {
         // A schema-3 deck already exposes the prepared base checkpoint. Creation
         // is the visitor's recorded setup submission, not the base snapshot.
@@ -86,10 +105,17 @@ export function deriveJourney(input: JourneyInput): TutorialJourney {
             : input.checkpoint !== input.session.initial_checkpoint,
         replyCount: playedReplies.length,
         requiredReplyCount: replies.filter((turn) => turn.required).length,
+        acceptedOutcomeCount:
+            progression?.acceptedCount ?? input.playedTurnIds.size,
+        requiredOutcomeCount: progression?.requiredCount ?? requiredTurnIds.length,
+        progressLabel:
+            progression?.progressLabel ??
+            `${input.playedTurnIds.size} of ${requiredTurnIds.length} outcomes`,
+        phase: progression?.phase ?? "opening",
         followUpSent: followUp
             ? input.playedTurnIds.has(followUp.turn_id)
             : false,
-        canClose: input.canClose,
+        canClose: progression?.closing.eligible ?? input.canClose,
         closingCompleted: input.closingCompleted,
         roomVisited: input.roomVisited || isRoomPath(input.pathname),
         setupOpen: input.setupOpen || input.pathname === "/demo/new",

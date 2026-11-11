@@ -8,6 +8,10 @@ function journey(overrides: Partial<TutorialJourney> = {}): TutorialJourney {
         meetingCreated: false,
         replyCount: 0,
         requiredReplyCount: 4,
+        acceptedOutcomeCount: 0,
+        requiredOutcomeCount: 5,
+        progressLabel: "0 of 5 outcomes",
+        phase: "opening",
         followUpSent: false,
         canClose: false,
         closingCompleted: false,
@@ -36,7 +40,7 @@ function prompt(id: TutorialObjectiveId) {
 
 describe("tutorialProgress", () => {
     it("reports each main position from start through completion", () => {
-        const trails = journey();
+        const trails = journey({ deck: false });
         expect(tutorialProgress(prompt("main-start"), trails)).toMatchObject({
             step: 1,
             total: 10,
@@ -60,21 +64,37 @@ describe("tutorialProgress", () => {
         });
     });
 
+    it("uses the eight-position deck journey without archive steps", () => {
+        const trails = journey();
+        expect(tutorialProgress(prompt("main-start"), trails)).toMatchObject({
+            step: 1,
+            total: 8,
+            label: "Step 1 of 8",
+        });
+        expect(tutorialProgress(prompt("main-complete"), trails)).toMatchObject({
+            step: 8,
+            total: 8,
+            percent: 100,
+            label: "Step 8 of 8",
+        });
+        expect(tutorialProgress(prompt("main-archive"), trails)).toBeNull();
+    });
+
     it("moves within the speaker step as replies are accepted", () => {
-        const base = journey({ requiredReplyCount: 4 });
+        const base = journey({ deck: false, requiredReplyCount: 4 });
         expect(
             tutorialProgress(prompt("main-speaker"), base)?.percent
         ).toBe(40);
         expect(
             tutorialProgress(
                 prompt("main-speaker"),
-                journey({ requiredReplyCount: 4, replyCount: 1 })
+                journey({ deck: false, requiredReplyCount: 4, replyCount: 1 })
             )?.percent
         ).toBe(43);
         expect(
             tutorialProgress(
                 prompt("main-speaker"),
-                journey({ requiredReplyCount: 4, replyCount: 4 })
+                journey({ deck: false, requiredReplyCount: 4, replyCount: 4 })
             )?.percent
         ).toBe(50);
     });
@@ -83,7 +103,11 @@ describe("tutorialProgress", () => {
         expect(
             tutorialProgress(
                 prompt("main-speaker"),
-                journey({ requiredReplyCount: 0, replyCount: 0 })
+                journey({
+                    deck: false,
+                    requiredReplyCount: 0,
+                    replyCount: 0,
+                })
             )?.percent
         ).toBe(40);
     });

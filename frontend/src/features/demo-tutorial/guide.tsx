@@ -66,9 +66,10 @@ export function TutorialGuide({
                 ) : null}
                 {prompt.complete ? (
                     <p className="mt-1 type-meta text-ink-secondary">
-                        {prompt.id === "main-complete"
-                            ? "The demo meeting is archived. Changes made in this browser stay here. Both tours are optional."
-                            : "Nothing was saved or activated. The demo is unchanged."}
+                        {prompt.detail ??
+                            (prompt.id === "main-complete"
+                                ? "The demo meeting is closed. Changes made in this browser stay here. Both tours are optional."
+                                : "Nothing was saved or activated. The demo is unchanged.")}
                     </p>
                 ) : null}
                 {prompt.id === "tour-prompt-4" ||

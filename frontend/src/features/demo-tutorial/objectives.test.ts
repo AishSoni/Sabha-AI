@@ -8,6 +8,10 @@ function journey(overrides: Partial<TutorialJourney> = {}): TutorialJourney {
         meetingCreated: false,
         replyCount: 0,
         requiredReplyCount: 4,
+        acceptedOutcomeCount: 0,
+        requiredOutcomeCount: 5,
+        progressLabel: "0 of 5 outcomes",
+        phase: "opening",
         followUpSent: false,
         canClose: false,
         closingCompleted: false,
@@ -212,13 +216,20 @@ describe("selectPrompt", () => {
     it("keeps the speaker objective while replies remain", () => {
         expect(
             selectPrompt(
-                journey({ meetingCreated: true, roomVisited: true, replyCount: 2 })
+                journey({
+                    meetingCreated: true,
+                    roomVisited: true,
+                    phase: "deliberation",
+                    replyCount: 2,
+                    acceptedOutcomeCount: 2,
+                    progressLabel: "2 of 5 outcomes",
+                })
             )
         ).toMatchObject({
             id: "main-speaker",
             instruction: "Choose who speaks next",
             anchor: "room.speaker",
-            progress: "2 of 4 replies",
+            progress: "2 of 5 outcomes",
         });
     });
 
@@ -227,6 +238,7 @@ describe("selectPrompt", () => {
             journey({
                 meetingCreated: true,
                 roomVisited: true,
+                phase: "opening",
                 replyCount: 1,
                 followUpSent: true,
             })
@@ -234,29 +246,36 @@ describe("selectPrompt", () => {
         expect(prompt?.id).toBe("main-speaker");
     });
 
-    it("selects the follow-up only after all four replies", () => {
+    it("selects the follow-up only after every required reply", () => {
         expect(
             selectPrompt(
                 journey({
                     meetingCreated: true,
                     roomVisited: true,
+                    phase: "follow-up",
                     replyCount: 4,
+                    acceptedOutcomeCount: 4,
+                    progressLabel: "4 of 5 outcomes",
                 })
             )
         ).toMatchObject({
             id: "main-followup",
             instruction: "Send your follow-up",
             anchor: "room.followup",
+            progress: "4 of 5 outcomes",
         });
     });
 
-    it("skips the follow-up prompt when it was sent earlier", () => {
+    it("skips the follow-up prompt when it was accepted earlier", () => {
         expect(
             selectPrompt(
                 journey({
                     meetingCreated: true,
                     roomVisited: true,
+                    phase: "closing",
                     replyCount: 4,
+                    acceptedOutcomeCount: 5,
+                    progressLabel: "5 of 5 outcomes",
                     followUpSent: true,
                     canClose: true,
                 })
@@ -270,6 +289,7 @@ describe("selectPrompt", () => {
                 journey({
                     meetingCreated: true,
                     roomVisited: true,
+                    phase: "closing",
                     replyCount: 4,
                     followUpSent: true,
                     canClose: false,
@@ -284,7 +304,9 @@ describe("selectPrompt", () => {
                 journey({
                     meetingCreated: true,
                     roomVisited: true,
+                    phase: "closing",
                     replyCount: 4,
+                    acceptedOutcomeCount: 5,
                     followUpSent: true,
                     canClose: true,
                     tab: "closing",
@@ -297,10 +319,40 @@ describe("selectPrompt", () => {
         });
     });
 
-    it("returns to the list after the closing terminal", () => {
+    it("completes the deck at the accepted closing, before archive", () => {
         expect(
             selectPrompt(
                 journey({
+                    meetingCreated: true,
+                    roomVisited: true,
+                    phase: "closed",
+                    closingCompleted: true,
+                })
+            )
+        ).toMatchObject({
+            id: "main-complete",
+            anchor: "room.outcome",
+            complete: true,
+        });
+        expect(
+            selectPrompt(
+                journey({
+                    meetingCreated: true,
+                    roomVisited: true,
+                    phase: "closed",
+                    closingCompleted: true,
+                    ended: true,
+                    listOpen: true,
+                })
+            )
+        ).toMatchObject({ id: "main-complete", anchor: null, complete: true });
+    });
+
+    it("returns to the list after a legacy closing terminal", () => {
+        expect(
+            selectPrompt(
+                journey({
+                    deck: false,
                     meetingCreated: true,
                     roomVisited: true,
                     closingCompleted: true,
@@ -309,10 +361,11 @@ describe("selectPrompt", () => {
         ).toMatchObject({ id: "main-return", anchor: "room.return" });
     });
 
-    it("archives from the real list once the meeting ended", () => {
+    it("archives from the real list once a legacy meeting ended", () => {
         expect(
             selectPrompt(
                 journey({
+                    deck: false,
                     meetingCreated: true,
                     roomVisited: true,
                     closingCompleted: true,
@@ -323,10 +376,11 @@ describe("selectPrompt", () => {
         ).toMatchObject({ id: "main-archive", anchor: "meetings.archive" });
     });
 
-    it("completes only after the archive took effect", () => {
+    it("keeps the legacy completion after the archive took effect", () => {
         expect(
             selectPrompt(
                 journey({
+                    deck: false,
                     meetingCreated: true,
                     roomVisited: true,
                     closingCompleted: true,

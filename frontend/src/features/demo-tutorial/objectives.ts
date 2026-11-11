@@ -112,22 +112,24 @@ function legacyRoomPrompt(journey: TutorialJourney): TutorialPrompt | null {
 }
 
 function deckMiddlePrompt(journey: TutorialJourney): TutorialPrompt | null {
-    if (journey.replyCount < journey.requiredReplyCount) {
+    const progress = journey.progressLabel;
+    if (journey.phase === "opening" || journey.phase === "deliberation") {
         return {
             id: "main-speaker",
             instruction: "Choose who speaks next",
             detail: "You direct the room; replies are recorded, not live generation.",
             anchor: "room.speaker",
-            progress: `${journey.replyCount} of ${journey.requiredReplyCount} replies`,
+            progress,
         };
     }
-    if (!journey.followUpSent) {
+    if (journey.phase === "follow-up") {
         return {
             id: "main-followup",
             instruction: "Send your follow-up",
             detail: "Keep the thread on the evidence and the unresolved question.",
             anchor: "room.followup",
             alternates: ["room.speaker"],
+            progress,
         };
     }
     // Never point at the close control before the room accepts it.
@@ -139,6 +141,7 @@ function deckMiddlePrompt(journey: TutorialJourney): TutorialPrompt | null {
             detail: "The vote ends the meeting; it does not erase the record.",
             anchor: "room.vote",
             alternates: ["room.vote-confirm"],
+            progress,
         };
     }
     return {
@@ -146,6 +149,20 @@ function deckMiddlePrompt(journey: TutorialJourney): TutorialPrompt | null {
         instruction: "Close the meeting",
         detail: "Closing records the decision and the research checklist.",
         anchor: "room.close",
+        progress,
+    };
+}
+
+function completePrompt(journey: TutorialJourney): TutorialPrompt {
+    const archived = journey.archived;
+    return {
+        id: "main-complete",
+        instruction: "Demo complete",
+        detail: archived
+            ? "The demo meeting is archived. Changes made in this browser stay here. Both tours are optional."
+            : "The demo meeting is closed. The outcome and research checklist are saved; archiving is optional. Changes made in this browser stay here. Both tours are optional.",
+        anchor: journey.listOpen ? null : "room.outcome",
+        complete: true,
     };
 }
 
@@ -169,13 +186,11 @@ function closingPrompt(journey: TutorialJourney): TutorialPrompt | null {
 }
 
 export function selectPrompt(journey: TutorialJourney): TutorialPrompt | null {
+    if (journey.deck && journey.closingCompleted) {
+        return completePrompt(journey);
+    }
     if (journey.archived) {
-        return {
-            id: "main-complete",
-            instruction: "Demo complete",
-            anchor: null,
-            complete: true,
-        };
+        return completePrompt(journey);
     }
     if (!journey.deck) {
         const board = legacyBoardPrompt(journey);

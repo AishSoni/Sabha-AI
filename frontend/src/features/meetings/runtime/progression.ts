@@ -1,15 +1,22 @@
 /**
- * One progression policy for the schema-3 prepared deck.
- *
  * The package owns the immutable turns and the required outcome ids. This module
  * owns the visitor's phase, availability, counts, and closing eligibility so the
  * room controls, runtime admission, and tutorial guidance cannot disagree.
  */
-import type {
-    ReplayPreparedFollowUpTurn,
-    ReplayPreparedReplyTurn,
-    ReplayPreparedTurn,
-} from "./contract";
+export interface ProgressionReplyTurn {
+    kind: "reply";
+    turn_id: string;
+    participant_id?: string | null;
+    required: boolean;
+}
+
+export interface ProgressionFollowUpTurn {
+    kind: "follow_up";
+    turn_id: string;
+    required: boolean;
+}
+
+export type ProgressionTurn = ProgressionReplyTurn | ProgressionFollowUpTurn;
 
 export type DeckPhase =
     | "opening"
@@ -48,7 +55,7 @@ export interface DeckProgression {
 }
 
 export interface ProgressionInput {
-    turns: readonly ReplayPreparedTurn[];
+    turns: readonly ProgressionTurn[];
     requiredTurnIds: readonly string[];
     acceptedTurnIds: ReadonlySet<string>;
     closingAccepted?: boolean;
@@ -56,14 +63,14 @@ export interface ProgressionInput {
 }
 
 export function isReplyTurn(
-    turn: ReplayPreparedTurn
-): turn is ReplayPreparedReplyTurn {
+    turn: ProgressionTurn
+): turn is ProgressionReplyTurn {
     return turn.kind === "reply";
 }
 
 export function isFollowUpTurn(
-    turn: ReplayPreparedTurn
-): turn is ReplayPreparedFollowUpTurn {
+    turn: ProgressionTurn
+): turn is ProgressionFollowUpTurn {
     return turn.kind === "follow_up";
 }
 
@@ -88,11 +95,11 @@ export function deriveProgression(input: ProgressionInput): DeckProgression {
     const closingAccepted = input.closingAccepted ?? false;
     const requiredTurnIds = [...input.requiredTurnIds];
     const requiredReplyTurns = input.turns.filter(
-        (turn): turn is ReplayPreparedReplyTurn =>
+        (turn): turn is ProgressionReplyTurn =>
             isReplyTurn(turn) && turn.required
     );
     const followUpTurns = input.turns.filter(
-        (turn): turn is ReplayPreparedFollowUpTurn =>
+        (turn): turn is ProgressionFollowUpTurn =>
             isFollowUpTurn(turn) && turn.required
     );
     const requiredReplyIds = requiredReplyTurns.map((turn) => turn.turn_id);
@@ -111,19 +118,20 @@ export function deriveProgression(input: ProgressionInput): DeckProgression {
     const openingTurnIds = new Set<string>();
     const seenParticipants = new Set<string>();
     for (const turn of requiredReplyTurns) {
-        if (seenParticipants.has(turn.participant_id)) continue;
-        seenParticipants.add(turn.participant_id);
+        const participantId = turn.participant_id ?? "";
+        if (seenParticipants.has(participantId)) continue;
+        seenParticipants.add(participantId);
         openingTurnIds.add(turn.turn_id);
     }
 
     const requiredParticipantIds = new Set(
-        requiredReplyTurns.map((turn) => turn.participant_id)
+        requiredReplyTurns.map((turn) => turn.participant_id ?? "")
     );
     const everyParticipantHasReply = [...requiredParticipantIds].every(
         (participantId) =>
             requiredReplyTurns.some(
                 (turn) =>
-                    turn.participant_id === participantId &&
+                    (turn.participant_id ?? "") === participantId &&
                     acceptedReplies.has(turn.turn_id)
             )
     );
