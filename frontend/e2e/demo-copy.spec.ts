@@ -163,8 +163,9 @@ test.describe("concise demo copy", () => {
             `/demo/meetings/${MEETING_ID}?chapter=chapter-closing&tab=closing`
         );
         await expect(
-            page.getByRole("heading", { name: "Summary" })
+            page.getByRole("heading", { name: "What this discussion produced" })
         ).toBeVisible({ timeout: 30_000 });
+        await expect(page.getByText("Saved result")).toBeVisible();
         await expectNoBannedCopy(page);
 
         await page.goto("/demo/roster/persona-credit");

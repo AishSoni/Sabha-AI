@@ -399,7 +399,9 @@ test.describe("appearance lifecycle", () => {
                 name: /A HDFC Bond Review Demo/,
             })
         ).toBeVisible();
-        const roomMarks = page.locator("[data-participant-mark]");
+        const roomMarks = page
+            .getByRole("group", { name: "Meeting perspectives" })
+            .locator("[data-participant-mark]");
         await expect(roomMarks).toHaveCount(4);
         const room = await roomMarks.evaluateAll((marks) =>
             marks.map((mark) => mark.getAttribute("data-participant-mark"))
