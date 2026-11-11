@@ -382,6 +382,211 @@ test.describe("homepage fallback", () => {
     ).toHaveAttribute("href", "/demo");
   });
 
+  test("releases partial field resources when glyph upload fails", async ({
+    page,
+  }) => {
+    await page.addInitScript(`
+      (() => {
+        window.__sabhaFieldDeletes = {
+          textures: 0,
+          buffers: 0,
+          vertexArrays: 0,
+          programs: 0,
+        };
+        const proto = WebGL2RenderingContext.prototype;
+        const methods = {
+          deleteTexture: "textures",
+          deleteBuffer: "buffers",
+          deleteVertexArray: "vertexArrays",
+          deleteProgram: "programs",
+        };
+        for (const [method, key] of Object.entries(methods)) {
+          const original = proto[method];
+          proto[method] = function (...args) {
+            window.__sabhaFieldDeletes[key] += 1;
+            return original.apply(this, args);
+          };
+        }
+        proto.texStorage3D = function () {
+          throw new Error("injected glyph storage failure");
+        };
+      })();
+    `);
+    await page.goto("/");
+
+    const field = page.getByTestId("home-persona-field");
+    await expect(field).toHaveAttribute("data-webgl", "failed");
+    await expect(field).toHaveAttribute("data-activity", "fallback");
+    await expect(page.getByTestId("home-persona-canvas")).toHaveCSS(
+      "opacity",
+      "0",
+    );
+    await expect(page.getByRole("heading", { level: 1 })).toBeVisible();
+
+    const deletes = await page.evaluate(
+      () =>
+        (
+          window as unknown as {
+            __sabhaFieldDeletes: Record<string, number>;
+          }
+        ).__sabhaFieldDeletes,
+    );
+    expect(deletes.programs).toBeGreaterThanOrEqual(1);
+    expect(deletes.buffers).toBeGreaterThanOrEqual(2);
+    expect(deletes.vertexArrays).toBeGreaterThanOrEqual(1);
+    expect(deletes.textures).toBeGreaterThanOrEqual(1);
+  });
+
+  test("releases partial field resources when emblem decoding fails", async ({
+    page,
+  }) => {
+    await page.addInitScript(`
+      (() => {
+        window.__sabhaFieldDeletes = {
+          textures: 0,
+          buffers: 0,
+          vertexArrays: 0,
+          programs: 0,
+        };
+        const proto = WebGL2RenderingContext.prototype;
+        const methods = {
+          deleteTexture: "textures",
+          deleteBuffer: "buffers",
+          deleteVertexArray: "vertexArrays",
+          deleteProgram: "programs",
+        };
+        for (const [method, key] of Object.entries(methods)) {
+          const original = proto[method];
+          proto[method] = function (...args) {
+            window.__sabhaFieldDeletes[key] += 1;
+            return original.apply(this, args);
+          };
+        }
+        const createObjectURL = URL.createObjectURL;
+        URL.createObjectURL = function (blob) {
+          if (blob && blob.type === "image/svg+xml") {
+            throw new Error("injected emblem decode failure");
+          }
+          return createObjectURL.call(URL, blob);
+        };
+      })();
+    `);
+    await page.goto("/");
+
+    const field = page.getByTestId("home-persona-field");
+    await expect(field).toHaveAttribute("data-webgl", "failed");
+    await expect(field).toHaveAttribute("data-activity", "fallback");
+    await expect(page.getByRole("heading", { level: 1 })).toBeVisible();
+
+    const deletes = await page.evaluate(
+      () =>
+        (
+          window as unknown as {
+            __sabhaFieldDeletes: Record<string, number>;
+          }
+        ).__sabhaFieldDeletes,
+    );
+    expect(deletes.programs).toBeGreaterThanOrEqual(1);
+    expect(deletes.textures).toBeGreaterThanOrEqual(1);
+  });
+
+  test("falls back when the WebGL context is lost", async ({ page }) => {
+    await page.goto("/");
+
+    const field = page.getByTestId("home-persona-field");
+    await expect(field).toHaveAttribute("data-webgl", "ready");
+
+    await page.evaluate(() => {
+      const canvas = document.querySelector<HTMLCanvasElement>(
+        '[data-testid="home-persona-canvas"]',
+      );
+      const gl = canvas?.getContext("webgl2");
+      gl?.getExtension("WEBGL_lose_context")?.loseContext();
+    });
+
+    await expect(field).toHaveAttribute("data-webgl", "failed");
+    await expect(field).toHaveAttribute("data-activity", "fallback");
+    await expect(page.getByRole("heading", { level: 1 })).toBeVisible();
+  });
+
+  test("destroys a late engine when the page is left during boot", async ({
+    page,
+  }) => {
+    await page.addInitScript(`
+      (() => {
+        window.__sabhaFieldDeletes = {
+          textures: 0,
+          buffers: 0,
+          vertexArrays: 0,
+          programs: 0,
+        };
+        window.__sabhaEmblemSrcSet = 0;
+        const proto = WebGL2RenderingContext.prototype;
+        const methods = {
+          deleteTexture: "textures",
+          deleteBuffer: "buffers",
+          deleteVertexArray: "vertexArrays",
+          deleteProgram: "programs",
+        };
+        for (const [method, key] of Object.entries(methods)) {
+          const original = proto[method];
+          proto[method] = function (...args) {
+            window.__sabhaFieldDeletes[key] += 1;
+            return original.apply(this, args);
+          };
+        }
+        const OriginalImage = window.Image;
+        const srcDescriptor = Object.getOwnPropertyDescriptor(
+          HTMLImageElement.prototype,
+          "src",
+        );
+        window.Image = function () {
+          const image = new OriginalImage();
+          Object.defineProperty(image, "src", {
+            configurable: true,
+            get() {
+              return srcDescriptor.get.call(image);
+            },
+            set(value) {
+              window.__sabhaEmblemSrcSet += 1;
+              window.setTimeout(
+                () => srcDescriptor.set.call(image, value),
+                1000,
+              );
+            },
+          });
+          return image;
+        };
+      })();
+    `);
+    await page.goto("/");
+    await page.waitForFunction(() => {
+      const state = window as unknown as { __sabhaEmblemSrcSet: number };
+      return state.__sabhaEmblemSrcSet > 0;
+    });
+
+    await page
+      .locator(".home-hero")
+      .getByRole("link", { name: "Try the demo" })
+      .click();
+    await expect(page).toHaveURL(/\/demo/);
+    await page.waitForTimeout(2500);
+
+    const deletes = await page.evaluate(
+      () =>
+        (
+          window as unknown as {
+            __sabhaFieldDeletes: Record<string, number>;
+          }
+        ).__sabhaFieldDeletes,
+    );
+    expect(deletes.programs).toBeGreaterThanOrEqual(1);
+    expect(deletes.textures).toBeGreaterThanOrEqual(1);
+    expect(deletes.buffers).toBeGreaterThanOrEqual(2);
+    expect(deletes.vertexArrays).toBeGreaterThanOrEqual(1);
+    await expect(page.getByTestId("home-persona-canvas")).toHaveCount(0);
+  });
+
   test("keeps the invitation usable when the webfont fails", async ({
     page,
   }) => {

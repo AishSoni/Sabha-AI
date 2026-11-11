@@ -151,6 +151,45 @@ export interface FieldEngine {
   destroy(): void;
 }
 
+export interface FieldResources {
+  program: WebGLProgram | null;
+  vertexArray: WebGLVertexArrayObject | null;
+  quadBuffer: WebGLBuffer | null;
+  instanceBuffer: WebGLBuffer | null;
+  glyphs: WebGLTexture | null;
+}
+
+/**
+ * Releases every field resource that was actually allocated. Initialization
+ * and teardown share this path so a failure part-way through creation cannot
+ * strand buffers or a program without an engine to destroy them.
+ */
+export function releaseFieldResources(
+  gl: WebGL2RenderingContext,
+  resources: FieldResources,
+): void {
+  if (resources.glyphs) {
+    gl.deleteTexture(resources.glyphs);
+    resources.glyphs = null;
+  }
+  if (resources.instanceBuffer) {
+    gl.deleteBuffer(resources.instanceBuffer);
+    resources.instanceBuffer = null;
+  }
+  if (resources.quadBuffer) {
+    gl.deleteBuffer(resources.quadBuffer);
+    resources.quadBuffer = null;
+  }
+  if (resources.vertexArray) {
+    gl.deleteVertexArray(resources.vertexArray);
+    resources.vertexArray = null;
+  }
+  if (resources.program) {
+    gl.deleteProgram(resources.program);
+    resources.program = null;
+  }
+}
+
 export interface CreateFieldEngineOptions {
   canvas: HTMLCanvasElement;
   palette: FieldPalette;
@@ -179,20 +218,37 @@ function compileShader(
 
 function createProgram(gl: WebGL2RenderingContext): WebGLProgram {
   const vertex = compileShader(gl, gl.VERTEX_SHADER, VERTEX_SHADER);
-  const fragment = compileShader(gl, gl.FRAGMENT_SHADER, FRAGMENT_SHADER);
-  const program = gl.createProgram();
-  if (!program) throw new Error("Unable to create program");
-  gl.attachShader(program, vertex);
-  gl.attachShader(program, fragment);
-  gl.linkProgram(program);
-  gl.deleteShader(vertex);
-  gl.deleteShader(fragment);
-  if (!gl.getProgramParameter(program, gl.LINK_STATUS)) {
-    const message = gl.getProgramInfoLog(program) ?? "Unknown link error";
-    gl.deleteProgram(program);
-    throw new Error(message);
+  let fragment: WebGLShader;
+  try {
+    fragment = compileShader(gl, gl.FRAGMENT_SHADER, FRAGMENT_SHADER);
+  } catch (error) {
+    gl.deleteShader(vertex);
+    throw error;
   }
-  return program;
+
+  const program = gl.createProgram();
+  if (!program) {
+    gl.deleteShader(vertex);
+    gl.deleteShader(fragment);
+    throw new Error("Unable to create program");
+  }
+
+  try {
+    gl.attachShader(program, vertex);
+    gl.attachShader(program, fragment);
+    gl.linkProgram(program);
+    if (!gl.getProgramParameter(program, gl.LINK_STATUS)) {
+      const message = gl.getProgramInfoLog(program) ?? "Unknown link error";
+      throw new Error(message);
+    }
+    return program;
+  } catch (error) {
+    gl.deleteProgram(program);
+    throw error;
+  } finally {
+    gl.deleteShader(vertex);
+    gl.deleteShader(fragment);
+  }
 }
 
 function loadSvgCanvas(markup: string): Promise<HTMLCanvasElement> {
@@ -228,61 +284,67 @@ async function createGlyphTextureArray(
   const texture = gl.createTexture();
   if (!texture) throw new Error("Unable to create glyph texture array");
 
-  const levels = Math.floor(Math.log2(TEXTURE_SIZE)) + 1;
-  gl.bindTexture(gl.TEXTURE_2D_ARRAY, texture);
-  gl.texStorage3D(
-    gl.TEXTURE_2D_ARRAY,
-    levels,
-    gl.RGBA8,
-    TEXTURE_SIZE,
-    TEXTURE_SIZE,
-    TEXTURE_LAYERS,
-  );
-
-  gl.pixelStorei(gl.UNPACK_FLIP_Y_WEBGL, true);
-  gl.pixelStorei(gl.UNPACK_PREMULTIPLY_ALPHA_WEBGL, false);
-
-  // Decoding eighteen SVGs one after another serialised the whole boot behind
-  // the slowest image. They are independent, so decode them together and only
-  // pay for the upload once every layer is ready.
-  const rasters = await Promise.all(
-    EMBLEMS.map((emblem) =>
-      loadSvgCanvas(
-        emblemSvgMarkup(emblem, { color: "#ffffff", size: TEXTURE_SIZE }),
-      ),
-    ),
-  );
-
-  for (let index = 0; index < rasters.length; index += 1) {
-    gl.texSubImage3D(
+  try {
+    const levels = Math.floor(Math.log2(TEXTURE_SIZE)) + 1;
+    gl.bindTexture(gl.TEXTURE_2D_ARRAY, texture);
+    gl.texStorage3D(
       gl.TEXTURE_2D_ARRAY,
-      0,
-      0,
-      0,
-      index,
+      levels,
+      gl.RGBA8,
       TEXTURE_SIZE,
       TEXTURE_SIZE,
-      1,
-      gl.RGBA,
-      gl.UNSIGNED_BYTE,
-      rasters[index]!,
+      TEXTURE_LAYERS,
     );
-  }
 
-  gl.generateMipmap(gl.TEXTURE_2D_ARRAY);
-  gl.texParameteri(
-    gl.TEXTURE_2D_ARRAY,
-    gl.TEXTURE_MIN_FILTER,
-    gl.LINEAR_MIPMAP_LINEAR,
-  );
-  gl.texParameteri(
-    gl.TEXTURE_2D_ARRAY,
-    gl.TEXTURE_MAG_FILTER,
-    gl.LINEAR,
-  );
-  gl.texParameteri(gl.TEXTURE_2D_ARRAY, gl.TEXTURE_WRAP_S, gl.CLAMP_TO_EDGE);
-  gl.texParameteri(gl.TEXTURE_2D_ARRAY, gl.TEXTURE_WRAP_T, gl.CLAMP_TO_EDGE);
-  return texture;
+    gl.pixelStorei(gl.UNPACK_FLIP_Y_WEBGL, true);
+    gl.pixelStorei(gl.UNPACK_PREMULTIPLY_ALPHA_WEBGL, false);
+
+    // Decoding eighteen SVGs one after another serialised the whole boot behind
+    // the slowest image. They are independent, so decode them together and only
+    // pay for the upload once every layer is ready.
+    const rasters = await Promise.all(
+      EMBLEMS.map((emblem) =>
+        loadSvgCanvas(
+          emblemSvgMarkup(emblem, { color: "#ffffff", size: TEXTURE_SIZE }),
+        ),
+      ),
+    );
+
+    for (let index = 0; index < rasters.length; index += 1) {
+      gl.texSubImage3D(
+        gl.TEXTURE_2D_ARRAY,
+        0,
+        0,
+        0,
+        index,
+        TEXTURE_SIZE,
+        TEXTURE_SIZE,
+        1,
+        gl.RGBA,
+        gl.UNSIGNED_BYTE,
+        rasters[index]!,
+      );
+    }
+
+    gl.generateMipmap(gl.TEXTURE_2D_ARRAY);
+    gl.texParameteri(
+      gl.TEXTURE_2D_ARRAY,
+      gl.TEXTURE_MIN_FILTER,
+      gl.LINEAR_MIPMAP_LINEAR,
+    );
+    gl.texParameteri(
+      gl.TEXTURE_2D_ARRAY,
+      gl.TEXTURE_MAG_FILTER,
+      gl.LINEAR,
+    );
+    gl.texParameteri(gl.TEXTURE_2D_ARRAY, gl.TEXTURE_WRAP_S, gl.CLAMP_TO_EDGE);
+    gl.texParameteri(gl.TEXTURE_2D_ARRAY, gl.TEXTURE_WRAP_T, gl.CLAMP_TO_EDGE);
+    return texture;
+  } catch (error) {
+    gl.bindTexture(gl.TEXTURE_2D_ARRAY, null);
+    gl.deleteTexture(texture);
+    throw error;
+  }
 }
 
 function parseHex(color: string): [number, number, number] {
@@ -342,6 +404,18 @@ function scrollSurgeAt(
   return 1 + (decayAnchor - 1) * remaining * remaining;
 }
 
+interface FieldUniforms {
+  resolution: WebGLUniformLocation | null;
+  glyphs: WebGLUniformLocation | null;
+  cardTop: WebGLUniformLocation | null;
+  cardBottom: WebGLUniformLocation | null;
+  glyph: WebGLUniformLocation | null;
+  rim: WebGLUniformLocation | null;
+  glow: WebGLUniformLocation | null;
+  radius: WebGLUniformLocation | null;
+  dpr: WebGLUniformLocation | null;
+}
+
 export async function createHomeFieldEngine(
   options: CreateFieldEngineOptions,
 ): Promise<FieldEngine> {
@@ -378,87 +452,103 @@ export async function createHomeFieldEngine(
   let scrollSurgeStartedAt = Number.NEGATIVE_INFINITY;
   let scrollActiveUntil = Number.NEGATIVE_INFINITY;
 
-  const program = createProgram(gl);
-  const vertexArray = gl.createVertexArray();
-  const quadBuffer = gl.createBuffer();
-  const instanceBuffer = gl.createBuffer();
-  if (!vertexArray || !quadBuffer || !instanceBuffer) {
-    throw new Error("Unable to create field buffers");
-  }
-
-  gl.bindVertexArray(vertexArray);
-  gl.bindBuffer(gl.ARRAY_BUFFER, quadBuffer);
-  gl.bufferData(
-    gl.ARRAY_BUFFER,
-    new Float32Array([-0.5, -0.5, 0.5, -0.5, -0.5, 0.5, 0.5, 0.5]),
-    gl.STATIC_DRAW,
-  );
-  gl.enableVertexAttribArray(0);
-  gl.vertexAttribPointer(0, 2, gl.FLOAT, false, 0, 0);
-
-  gl.bindBuffer(gl.ARRAY_BUFFER, instanceBuffer);
-  gl.bufferData(
-    gl.ARRAY_BUFFER,
-    SPIRAL_CARD_COUNT * INSTANCE_STRIDE * 4,
-    gl.DYNAMIC_DRAW,
-  );
-
-  const attributeLayout = [
-    { location: 1, size: 2, offset: 0 },
-    { location: 2, size: 2, offset: 2 },
-    { location: 3, size: 1, offset: 4 },
-    { location: 4, size: 1, offset: 5 },
-    { location: 5, size: 1, offset: 6 },
-    { location: 6, size: 3, offset: 7 },
-    { location: 7, size: 1, offset: 10 },
-  ] as const;
-
-  for (const attribute of attributeLayout) {
-    gl.enableVertexAttribArray(attribute.location);
-    gl.vertexAttribPointer(
-      attribute.location,
-      attribute.size,
-      gl.FLOAT,
-      false,
-      INSTANCE_STRIDE * 4,
-      attribute.offset * 4,
-    );
-    gl.vertexAttribDivisor(attribute.location, 1);
-  }
-
-  const uniforms = {
-    resolution: gl.getUniformLocation(program, "uResolution"),
-    glyphs: gl.getUniformLocation(program, "uGlyphs"),
-    cardTop: gl.getUniformLocation(program, "uCardTop"),
-    cardBottom: gl.getUniformLocation(program, "uCardBottom"),
-    glyph: gl.getUniformLocation(program, "uGlyph"),
-    rim: gl.getUniformLocation(program, "uRim"),
-    glow: gl.getUniformLocation(program, "uGlow"),
-    radius: gl.getUniformLocation(program, "uRadius"),
-    dpr: gl.getUniformLocation(program, "uDpr"),
+  const resources: FieldResources = {
+    program: null,
+    vertexArray: null,
+    quadBuffer: null,
+    instanceBuffer: null,
+    glyphs: null,
   };
+  let uniforms!: FieldUniforms;
 
-  for (const location of Object.values(uniforms)) {
-    if (location === null) throw new Error("Unable to find field uniform");
+  try {
+    const program = createProgram(gl);
+    resources.program = program;
+    resources.vertexArray = gl.createVertexArray();
+    resources.quadBuffer = gl.createBuffer();
+    resources.instanceBuffer = gl.createBuffer();
+    const { vertexArray, quadBuffer, instanceBuffer } = resources;
+    if (!vertexArray || !quadBuffer || !instanceBuffer) {
+      throw new Error("Unable to create field buffers");
+    }
+
+    gl.bindVertexArray(vertexArray);
+    gl.bindBuffer(gl.ARRAY_BUFFER, quadBuffer);
+    gl.bufferData(
+      gl.ARRAY_BUFFER,
+      new Float32Array([-0.5, -0.5, 0.5, -0.5, -0.5, 0.5, 0.5, 0.5]),
+      gl.STATIC_DRAW,
+    );
+    gl.enableVertexAttribArray(0);
+    gl.vertexAttribPointer(0, 2, gl.FLOAT, false, 0, 0);
+
+    gl.bindBuffer(gl.ARRAY_BUFFER, instanceBuffer);
+    gl.bufferData(
+      gl.ARRAY_BUFFER,
+      SPIRAL_CARD_COUNT * INSTANCE_STRIDE * 4,
+      gl.DYNAMIC_DRAW,
+    );
+
+    const attributeLayout = [
+      { location: 1, size: 2, offset: 0 },
+      { location: 2, size: 2, offset: 2 },
+      { location: 3, size: 1, offset: 4 },
+      { location: 4, size: 1, offset: 5 },
+      { location: 5, size: 1, offset: 6 },
+      { location: 6, size: 3, offset: 7 },
+      { location: 7, size: 1, offset: 10 },
+    ] as const;
+
+    for (const attribute of attributeLayout) {
+      gl.enableVertexAttribArray(attribute.location);
+      gl.vertexAttribPointer(
+        attribute.location,
+        attribute.size,
+        gl.FLOAT,
+        false,
+        INSTANCE_STRIDE * 4,
+        attribute.offset * 4,
+      );
+      gl.vertexAttribDivisor(attribute.location, 1);
+    }
+
+    uniforms = {
+      resolution: gl.getUniformLocation(program, "uResolution"),
+      glyphs: gl.getUniformLocation(program, "uGlyphs"),
+      cardTop: gl.getUniformLocation(program, "uCardTop"),
+      cardBottom: gl.getUniformLocation(program, "uCardBottom"),
+      glyph: gl.getUniformLocation(program, "uGlyph"),
+      rim: gl.getUniformLocation(program, "uRim"),
+      glow: gl.getUniformLocation(program, "uGlow"),
+      radius: gl.getUniformLocation(program, "uRadius"),
+      dpr: gl.getUniformLocation(program, "uDpr"),
+    };
+
+    for (const location of Object.values(uniforms)) {
+      if (location === null) throw new Error("Unable to find field uniform");
+    }
+
+    gl.useProgram(program);
+    gl.uniform1i(uniforms.glyphs!, 0);
+    gl.enable(gl.BLEND);
+    gl.blendFunc(gl.ONE, gl.ONE_MINUS_SRC_ALPHA);
+    gl.disable(gl.DEPTH_TEST);
+    gl.clearColor(0, 0, 0, 0);
+
+    resources.glyphs = await createGlyphTextureArray(gl);
+    if (destroyed) throw new Error("Field engine was disposed");
+    if (gl.isContextLost()) {
+      throw new Error("WebGL context was lost during initialization");
+    }
+  } catch (error) {
+    releaseFieldResources(gl, resources);
+    throw error;
   }
 
-  gl.useProgram(program);
-  gl.uniform1i(uniforms.glyphs!, 0);
-  gl.enable(gl.BLEND);
-  gl.blendFunc(gl.ONE, gl.ONE_MINUS_SRC_ALPHA);
-  gl.disable(gl.DEPTH_TEST);
-  gl.clearColor(0, 0, 0, 0);
-
-  const glyphs = await createGlyphTextureArray(gl);
-  if (destroyed) {
-    gl.deleteTexture(glyphs);
-    gl.deleteBuffer(quadBuffer);
-    gl.deleteBuffer(instanceBuffer);
-    gl.deleteVertexArray(vertexArray);
-    gl.deleteProgram(program);
-    throw new Error("Field engine was disposed");
-  }
-
+  const program = resources.program!;
+  const vertexArray = resources.vertexArray!;
+  const instanceBuffer = resources.instanceBuffer!;
+  const glyphs = resources.glyphs!;
   const instanceData = new Float32Array(SPIRAL_CARD_COUNT * INSTANCE_STRIDE);
 
   function resize() {
@@ -675,11 +765,7 @@ export async function createHomeFieldEngine(
       resizeObserver.disconnect();
       canvas.removeEventListener("webglcontextlost", handleContextLost);
       window.removeEventListener("scroll", handleScroll);
-      gl.deleteTexture(glyphs);
-      gl.deleteBuffer(quadBuffer);
-      gl.deleteBuffer(instanceBuffer);
-      gl.deleteVertexArray(vertexArray);
-      gl.deleteProgram(program);
+      releaseFieldResources(gl, resources);
     },
   };
 }
