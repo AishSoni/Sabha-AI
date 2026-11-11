@@ -31,6 +31,7 @@ export function HomeHeadline({ id }: { id?: string }) {
   const reducedMotion = appearance?.reducedMotion ?? false;
   const headingRef = useRef<HTMLHeadingElement>(null);
   const [inView, setInView] = useState(true);
+  const [documentHidden, setDocumentHidden] = useState(false);
   const [index, setIndex] = useState(0);
   const [previous, setPrevious] = useState<number | null>(null);
 
@@ -46,13 +47,20 @@ export function HomeHeadline({ id }: { id?: string }) {
   }, []);
 
   useEffect(() => {
-    if (reducedMotion || !inView) return;
+    const syncVisibility = () => setDocumentHidden(document.hidden);
+    syncVisibility();
+    document.addEventListener("visibilitychange", syncVisibility);
+    return () => document.removeEventListener("visibilitychange", syncVisibility);
+  }, []);
+
+  useEffect(() => {
+    if (reducedMotion || !inView || documentHidden) return;
     const timer = window.setInterval(() => {
       setPrevious((current) => current ?? index);
       setIndex((current) => (current + 1) % 18);
     }, FLIP_INTERVAL);
     return () => window.clearInterval(timer);
-  }, [index, inView, reducedMotion]);
+  }, [index, inView, reducedMotion, documentHidden]);
 
   useEffect(() => {
     if (previous === null) return;

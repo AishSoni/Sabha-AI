@@ -270,6 +270,47 @@ test.describe("homepage lifecycle", () => {
     await expect(field).toHaveAttribute("data-activity", "running");
   });
 
+  test("pauses the rotating headline while the document is hidden", async ({
+    page,
+  }) => {
+    // Keep the fake clock focused on the headline interval. The WebGL loop is
+    // irrelevant here and would otherwise wait on animation frames.
+    await page.addInitScript(`
+      (() => {
+        const original = HTMLCanvasElement.prototype.getContext;
+        HTMLCanvasElement.prototype.getContext = function (type, ...args) {
+          if (type === "webgl2") return null;
+          return original.call(this, type, ...args);
+        };
+      })();
+    `);
+    await page.clock.install();
+    await page.goto("/");
+
+    const phrase = page.locator(".home-headline__tail-text");
+    await expect(phrase).toContainText("to your next decision.");
+
+    await page.evaluate(() => {
+      Object.defineProperty(document, "hidden", {
+        configurable: true,
+        get: () => true,
+      });
+      document.dispatchEvent(new Event("visibilitychange"));
+    });
+    await page.clock.fastForward(22_000);
+    await expect(phrase).toContainText("to your next decision.");
+
+    await page.evaluate(() => {
+      Object.defineProperty(document, "hidden", {
+        configurable: true,
+        get: () => false,
+      });
+      document.dispatchEvent(new Event("visibilitychange"));
+    });
+    await page.clock.fastForward(7_400);
+    await expect(phrase).toContainText("before the next call.");
+  });
+
   test("paints the invitation before the spiral boots", async ({ page }) => {
     // Hold the idle callback so the boot gate can be observed without racing
     // the engine on a fast local server. Callbacks registered after release
