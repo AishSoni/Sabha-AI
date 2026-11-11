@@ -498,7 +498,6 @@ These are known properties of the current design, not hidden failure modes:
 - **The provider vault locks on reload.** Signing in does not unlock stored provider credentials; they must be unlocked again in the browser.
 - **Hosted latency needs environment-specific measurement.** Local latency work is complete; the co-located p95 gate and multi-region placement are verified per deployment using the operations runbook.
 - **Web search is declared but disabled.** The `web_search` tool definition exists, but the runtime returns “not yet implemented” and asks the model to answer without it. `get_default_tools()` does not include it.
-- **No license is granted.** There is no root LICENSE file.
 
 ---
 
@@ -537,4 +536,4 @@ Agent behavior lives in `backend/app/modules/meetings/application/prompts.py` an
 
 ## License
 
-This project is currently unlicensed. All rights reserved by the author.
+Licensed under the [Apache License, Version 2.0](LICENSE).

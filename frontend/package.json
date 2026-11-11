@@ -2,6 +2,7 @@
   "name": "frontend",
   "version": "0.1.0",
   "private": true,
+  "license": "Apache-2.0",
   "scripts": {
     "fonts:fetch": "node scripts/fetch-satoshi.mjs",
     "predev": "npm run fonts:fetch",
