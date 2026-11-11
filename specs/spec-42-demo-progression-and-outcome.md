@@ -110,3 +110,36 @@ keep their existing beat-based journey.
   the exact prepared question with a collapsed preview; it is not editable.
 - Demo cards omit severity and strength scores. Live cards and underlying records
   are unchanged; no score is relabelled as confidence, truth, or probability.
+
+## Implementation record
+
+The deck uses `frontend/src/features/meetings/runtime/progression.ts` as the only
+phase/count/admission policy. Room controls, follow-up, closing, journey
+guidance, progress, and direct/rapid calls read the same result. Repeats and
+active playback do not change accepted outcomes; stored reply results, the sent
+follow-up, and the accepted closing do.
+
+The deck journey is eight positions (start, create, open room, speaker,
+follow-up, close, vote, complete). The legacy ten-position journey remains for
+older packages. Completion is the accepted closing; archive remains an optional
+list action. The closing tab shows the saved outcome reflection and the recorded
+research checklist. Prepared buttons use Spec 39 names, roles, and marks; the
+authored stage titles appear only when the policy reveals them. The follow-up
+shows a collapsed exact preview with Expand and Send, and never becomes editable.
+
+## Executed checks
+
+- `npm test` (Vitest): 140 files, 874 tests passed.
+- `npm run test:architecture`: 7 files, 52 tests passed.
+- `npx tsc --noEmit -p tsconfig.json`: passed.
+- `npm run lint`: 0 errors (13 pre-existing warnings).
+- Playwright: `prepared-deck`, `room-reading-space`, `guided-journey`,
+  `demo-hud`, `demo-accessibility`, `demo-notices`, `exploration-playback`,
+  `replay-resilience`, `replay-isolation`, `demo-failure`, `evidence-preview`,
+  `integrated-practice`, `temporary-setup`, and `demo-guidance` passed. The
+  version-5 `legacy-journey` case remains skipped by its existing guard.
+- Room geometry passed at 1440×900, 1920×917, and 1024×768 with the
+  discussion/work-area ratio at or above 2/3. At 200% text at 1440×900 the
+  discussion remained visible (39px) and the dock scrolled within a 224px cap;
+  there was no horizontal overflow. The dock is no longer in the tab order.
+- No replay package was changed; package v11 remains immutable.
