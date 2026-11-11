@@ -114,7 +114,7 @@ A persona defines a name, role, system prompt, provider configuration, and optio
 
 ### 2. Convene a meeting
 
-The director creates a meeting with an agenda, selects participants, and attaches shared documents. The meeting moves through explicit statuses; archiving is reversible, and archived meetings reject new turns.
+The operator creates a meeting with an agenda, selects participants, and attaches shared documents. The meeting moves through explicit statuses; archiving is reversible, and archived meetings reject new turns.
 
 ### 3. Run a turn
 
@@ -160,7 +160,7 @@ The demo is served from a pinned package through a separate request graph. It ne
 | Providers | Gemini, OpenRouter, and Ollama; embeddings through Gemini, OpenAI, Cohere, or Ollama |
 | Tests | pytest, Vitest, Testing Library, Playwright |
 
-The measured acceptance environment and pinned versions are listed in [docs/OPERATIONS.md](docs/OPERATIONS.md). The OpenAPI contract is frozen at **56 paths**.
+The measured acceptance environment and pinned versions are listed in [docs/OPERATIONS.md](docs/OPERATIONS.md). The OpenAPI contract is frozen at **60 paths**.
 
 ---
 
@@ -329,7 +329,7 @@ Provider selection is snapshotted per participant when a meeting is created. A b
 ## Database, migrations, and access
 
 - `backend/supabase_schema.sql` is `000_baseline`.
-- `backend/migrations/` contains the ordered history through `036_batched_turn_events`.
+- `backend/migrations/` contains the ordered history through `040_upload_request_identity`.
 - Each migration commits atomically with its tracking row.
 - The runner records a checksum per version and serializes concurrent deployers with a Postgres advisory lock.
 - There are no down migrations. Recover forward or restore a verified backup.
@@ -354,7 +354,7 @@ The replay process connects with a separate login in the `sabha_replay_reader` r
 
 ## API surface
 
-The frozen contract lives at `frontend/tests/fixtures/openapi.json` (**56 paths**). A running API exposes Swagger at `/docs` and ReDoc at `/redoc`.
+The frozen contract lives at `frontend/tests/fixtures/openapi.json` (**60 paths**). A running API exposes Swagger at `/docs` and ReDoc at `/redoc`.
 
 | Area | Representative routes |
 |---|---|
@@ -376,15 +376,16 @@ The frozen contract lives at `frontend/tests/fixtures/openapi.json` (**56 paths*
 
 ## Demo package
 
-The authored demo is the HDFC Ltd 7.87% 2022 debenture meeting, published as package `hdfc-ine001a07rw5` version **10**:
+The authored demo is the HDFC Ltd 7.87% 2022 debenture meeting, published as package `hdfc-ine001a07rw5` version **12**:
 
-- Manifest version **10**, schema **3**, content SHA-256 `fafe211e3500d571921c50bdb4e68c5dd264abb440745f6de3ec73886f680cd0`
+- Manifest version **12**, schema **3**, content SHA-256 `37438db307f3fc99d69b30d8efbc38d86592988b9ed208bec4420968269d81ba`
+- Workspace-seed SHA-256 `ff9154e0a34cd1459e28154914d238d59aa0259eb66247f4a3564c7257d43e9d`
 - 33 checkpoints, including the canonical journey and inspection branches
 - 14 chapters, 14 turn tapes, 6 closing tapes, 10 retrieval sets, and retained source assets
 - One validated browser-memory workspace seed (3 personas, 4 knowledge stacks) with the approved base instructions, a highlighted persona, and links to the demo board participants
 - A separate upload allowlist of 4 approved Markdown samples and a deterministic fail-once retry scenario
 
-Earlier immutable versions, including version 7, remain available for pinned runs. A deployment may pin an earlier version until it activates version 11.
+Version 11 remains immutable and is the rollback selector. Version 10 and earlier also remain available for pinned runs; a deployment may pin an earlier published version until it activates version 12. Publishing, activation, and rollback are described in [docs/OPERATIONS.md](docs/OPERATIONS.md).
 
 A second package, `placeholder-analyst`, supports synthetic tests. Assets are stored immutably in the public read-only `replay-assets` bucket under a content-addressed path.
 
@@ -393,8 +394,8 @@ The replay runtime is pinned by `REPLAY_DATABASE_URL` and `REPLAY_PACKAGE_ID`, o
 Package tooling:
 
 ```bash
-python -m scripts.build_schema3_package_v11
-python -m scripts.replay_package validate replay_packages/hdfc-ine001a07rw5-v11
+python -m scripts.build_schema3_package_v12
+python -m scripts.replay_package validate replay_packages/hdfc-ine001a07rw5-v12
 python -m scripts.replay_package publish <directory>
 python -m scripts.replay_package activate <package-id> <version>
 python -m scripts.replay_package prune --older-than-days 30
@@ -443,9 +444,9 @@ npm run test:e2e        # dev server
 npm run test:e2e:prod   # production build, then next start
 ```
 
-Playwright starts a disposable demo backend through `e2e/start-backend.mjs` on port 8123 and the frontend on port 3100. The demo journey, replay isolation, replay resilience, and evidence preview specs run without live Supabase or a provider key.
+Playwright starts a disposable demo backend through `e2e/start-backend.mjs` on port 8123 and the frontend on port 3100. The homepage, demo introduction and copy, guided journey, room reading space, guidance, accessibility, failure recovery, shared documents, replay isolation, replay resilience, appearance, prepared deck, and evidence preview specs run without live Supabase or a provider key. The mixed operator/demo boundary runs with `npm run test:e2e:mixed`; the checked-in version-5 compatibility journey runs with `npm run test:e2e:legacy`.
 
-The latest recorded local acceptance passed 924 backend tests with 1 skipped, and 391 frontend tests across 68 files. The OpenAPI fixture remained at 56 paths with no drift, lint reported 0 errors and 29 pre-existing warnings, and the production build passed.
+The latest recorded local acceptance passed 1026 backend tests with 1 skipped, and 903 frontend tests across 143 files. The OpenAPI fixture remained at 60 paths with no drift, lint reported 0 errors and 13 pre-existing warnings, and the production build passed.
 
 ---
 

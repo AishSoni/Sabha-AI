@@ -50,10 +50,18 @@ Public demo works without `NEXT_PUBLIC_SUPABASE_URL` or `NEXT_PUBLIC_SUPABASE_PU
 |---|---|---|
 | `/` | Public | Landing page with demo entry point and operator sign-in |
 | `/login` | Public | Supabase Auth sign-in for the single operator |
-| `/demo` | Public demo | Demo board introduction |
+| `/demo` | Public demo | Demo overview and first-visit introduction |
 | `/demo/new` | Public demo | Meeting creation record and setup |
 | `/demo/meetings` | Public demo | Demo meeting list and archive |
 | `/demo/meetings/[id]` | Public demo | Demo room with checkpoints and evidence |
+| `/demo/roster` | Public demo | Persona templates and prompt history |
+| `/demo/roster/new` | Public demo | Create a demo persona |
+| `/demo/roster/[id]` | Public demo | Edit a demo persona and inspect revisions |
+| `/demo/roster/[id]/history` | Public demo | Inspect and activate prompt history |
+| `/demo/knowledge-stacks` | Public demo | Demo knowledge stacks and samples |
+| `/demo/knowledge-stacks/new` | Public demo | Create a demo knowledge stack |
+| `/demo/knowledge-stacks/[id]` | Public demo | Stack documents and sample uploads |
+| `/demo/settings` | Public demo | Demo-isolated settings explanation |
 | `/meetings` | Operator | Live meeting list |
 | `/meetings/new` | Operator | Create a meeting and choose participants |
 | `/meetings/[id]` | Operator | Live meeting room, turns, closing, evidence, and summary |
@@ -140,7 +148,7 @@ Citations resolve to an exact live document revision or demo asset. The evidence
 
 ## API contract
 
-`tests/fixtures/openapi.json` is the frozen backend contract and currently contains **56 paths**. `src/shared/api/generated.ts` is generated from it.
+`tests/fixtures/openapi.json` is the frozen backend contract and currently contains **60 paths**. `src/shared/api/generated.ts` is generated from it.
 
 After a backend contract change:
 
@@ -183,9 +191,9 @@ Playwright starts its own dependencies:
 - a disposable replay backend on port `8123`, provisioned by `e2e/start-backend.mjs` and `backend/scripts/e2e_provision.py`
 - the frontend on port `3100`
 
-The journeys cover the guided bond meeting, replay isolation, replay resilience, and evidence preview. They use a synthetic replay package and do not require live Supabase, a provider key, or a paid model call.
+The journeys cover the homepage and evidence graph, four-moment demo introduction, current demo copy and guidance, the accepted-outcome meeting journey, room reading space, accessibility, failure recovery, shared documents, replay isolation, replay resilience, appearance, prepared deck, and evidence preview. They use the authored version-12 demo package plus the checked-in version-5 legacy fixture and do not require live Supabase, a provider key, or a paid model call. The mixed operator/demo boundary runs separately with `npm run test:e2e:mixed`.
 
-The latest recorded local acceptance passed 391 frontend tests across 68 files. Lint reported 0 errors and 29 pre-existing warnings, and the production build passed.
+The latest recorded local acceptance passed 903 frontend tests across 143 files. Lint reported 0 errors and 13 pre-existing warnings, and the production build passed.
 
 ---
 

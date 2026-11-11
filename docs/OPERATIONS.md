@@ -548,11 +548,11 @@ Publish from a clean checkout with the offline provisioner credential:
 cd backend
 python -m scripts.replay_roles --reader-login sabha_replay_login `
     --provisioner-login sabha_replay_publisher
-python -m scripts.replay_package validate replay_packages/hdfc-ine001a07rw5-v11
+python -m scripts.replay_package validate replay_packages/hdfc-ine001a07rw5-v12
 python -m scripts.replay_package --database-url $env:REPLAY_PROVISIONER_DATABASE_URL `
-    publish replay_packages/hdfc-ine001a07rw5-v11
+    publish replay_packages/hdfc-ine001a07rw5-v12
 python -m scripts.replay_package --database-url $env:REPLAY_PROVISIONER_DATABASE_URL `
-    activate hdfc-ine001a07rw5 11
+    activate hdfc-ine001a07rw5 12
 python -m scripts.replay_package --database-url $env:REPLAY_PROVISIONER_DATABASE_URL `
     prune --older-than-days 30
 python -m scripts.replay_package --database-url $env:REPLAY_PROVISIONER_DATABASE_URL list
@@ -591,8 +591,8 @@ Runtime configuration:
 ```text
 REPLAY_DATABASE_URL=postgresql://sabha_replay_login:<password>@<host>:5432/postgres
 REPLAY_PACKAGE_ID=hdfc-ine001a07rw5
-REPLAY_PACKAGE_VERSION=11             # optional; registry default otherwise
-REPLAY_PACKAGE_SHA256=67dcc081615d74230064e7893d043e0a3387a02ff69fb37939d54e2304ece666
+REPLAY_PACKAGE_VERSION=12             # optional; registry default otherwise
+REPLAY_PACKAGE_SHA256=37438db307f3fc99d69b30d8efbc38d86592988b9ed208bec4420968269d81ba
 REPLAY_ONLY=true                      # serve no live graph
 REPLAY_STREAM_MAX_PER_CLIENT=2
 REPLAY_STREAM_MAX_GLOBAL=8
@@ -601,90 +601,100 @@ REPLAY_STREAM_MAX_SECONDS=120
 ```
 
 `python -m scripts.e2e_provision --serve` provisions a disposable local
-database, publishes demo package version 11 by default, and serves the
+database, publishes demo package version 12 by default, and serves the
 replay-only app for `npm run test:e2e`; it owns the embedded Postgres for the
 lifetime of the process. Pass `--package replay_packages/placeholder-analyst` to exercise the
 synthetic backend fixture instead. Install the browser once with
 `npx playwright install chromium`.
 
-### Demo bond journey (spec 18)
+### Demo bond journey (spec 18, current package spec 46)
 
 The current authored demo package is
-`backend/replay_packages/hdfc-ine001a07rw5-v11` version `11` with content hash
-`67dcc081615d74230064e7893d043e0a3387a02ff69fb37939d54e2304ece666`.
-It keeps the original eight-beat journey and the approved expanded exploration
-graph: 33 checkpoints, 14 chapters, three demo choice states, and six retained
-closings. The schema-3 package uses a schema-3 workspace seed with an explicit
-four-sample upload allowlist and one ready demo document in each of the four
-knowledge stacks. The fail-once retry scenario remains available in meeting
-scope. Evidence-only assets, including the source register and the attributed
-third-party excerpts, stay outside that allowlist. Versions 7–10 remain immutable
-for pinned runs and compatibility checks; the version-5 package remains a
-checked-in compatibility fixture at
-`backend/tests/fixtures/replay/hdfc-ine001a07rw5-v5` with its original hash.
-Older published versions remain subject to the documented retention policy;
-they are not replaced for active pinned runs.
+`backend/replay_packages/hdfc-ine001a07rw5-v12` version `12` with content hash
+`37438db307f3fc99d69b30d8efbc38d86592988b9ed208bec4420968269d81ba`
+and workspace-seed hash
+`ff9154e0a34cd1459e28154914d238d59aa0259eb66247f4a3564c7257d43e9d`.
+Version 12 is the Spec 46 copy-polish rebuild: approved friendly names, current
+Demo vocabulary, and no retired practice intake. It keeps the canonical
+eight-beat guide data and the approved expanded exploration graph: 33
+checkpoints, 14 chapters, three demo choice states, and six retained closings.
+The schema-3 package uses a schema-3 workspace seed with an explicit four-sample
+upload allowlist and one ready demo document in each of the four knowledge
+stacks. The fail-once retry scenario remains available in meeting scope.
+Evidence-only assets, including the source register and the attributed
+third-party excerpts, stay outside that allowlist. Versions 7–11 remain
+immutable for pinned runs, rollback, and compatibility checks; version 11 is the
+rollback selector. The version-5 package remains a checked-in compatibility
+fixture at `backend/tests/fixtures/replay/hdfc-ine001a07rw5-v5` with its
+original hash. Older published versions remain subject to the documented
+retention policy; they are not replaced for active pinned runs.
+
 It was approved through
 [the content ledger](../specs/spec-18-guided-bond-journey-content.md): short
 attributed source excerpts, exact locators, a source register, and no untracked
 research bytes. Regenerate the authored demo copy only with the tracked version
-11 builder:
+12 builder:
 
 ```powershell
 cd backend
-python -m scripts.build_schema3_package_v11
-python -m scripts.replay_package validate replay_packages/hdfc-ine001a07rw5-v11
+python -m scripts.build_schema3_package_v12
+python -m scripts.replay_package validate replay_packages/hdfc-ine001a07rw5-v12
 ```
 
-The browser routes are `/demo` (demo board), `/demo/new` (creation record,
-locked preset, demo intake, and the inline browser setup), `/demo/meetings`
-(demo list, browser practice setups, and archive), `/demo/meetings/[id]` (real
-room with guide tab hints), `/demo/roster` (personas and prompt history),
-`/demo/knowledge-stacks` (knowledge stacks and samples), and `/demo/settings`
-(operator-provider explanation only). The guide owns only the canonical step
-order, anchors, Continue/Back/Restart, chapter links, and route/tab
-coordination; it never synthesizes clicks or writes progress. Expanded
-packages also expose the approved demo choices, 1x/2x playback, skip, repeat,
-and summary inspection. Back moves the inspection cursor and
-does not un-complete canonical evidence. Refresh or a fresh tab starts a new
-volatile workspace; a direct recorded-meeting link otherwise returns to the
-entry checkpoint, while an explicit chapter link installs that chapter after
+The browser routes are `/` (approved homepage), `/demo` (overview with the
+first-visit introduction and the **How this demo works** revisit), `/demo/new`
+(creation record and setup), `/demo/meetings` (list and archive),
+`/demo/meetings/[id]` (recorded room), `/demo/roster`, `/demo/roster/new`,
+`/demo/roster/[id]`, `/demo/roster/[id]/history`, `/demo/knowledge-stacks`,
+`/demo/knowledge-stacks/new`, `/demo/knowledge-stacks/[id]`, and
+`/demo/settings` (operator-provider explanation only). The room uses the Spec 42
+accepted-outcome progression: Opening, Deliberation, Follow-up, Closing, and
+Closed. The package retains the canonical eight-beat guide data and chapters for
+inspection and compatibility; the current UI does not require the retired
+eight-beat click path or a separate practice setup. Refresh or a fresh tab starts
+a new volatile workspace; a direct recorded-meeting link otherwise returns to
+the entry checkpoint, while an explicit chapter link installs that chapter after
 the session loads. Reset discards browser edits and returns to step one;
-Restart demo resets only playback and the bookmark. No browser edit,
-bookmark, draft, or sample is persisted in localStorage, sessionStorage,
-IndexedDB, cookies, Cache Storage, or a service worker. The only browser
-persistence is the separate operator Auth/vault envelope, which the public demo
-never reads or writes.
+Restart demo resets only playback and the bookmark. No workspace edit, bookmark,
+draft, or sample is persisted in localStorage, IndexedDB, cookies, Cache
+Storage, or a service worker. The public demo uses sessionStorage only for the
+first-visit intro marker `sabha.demo.intro.v1` and document-operation receipts
+needed to recover upload status; neither changes recorded content. The separate
+operator Auth/vault envelope is never read or written by the public demo.
 
-The isolated browser suite is `frontend/e2e/guided-journey.spec.ts`:
+The isolated browser suite covers the current accepted-outcome journey,
+source disclosure, private-scope separation, small screens, reduced motion,
+keyboard operation, back/restart, deep-link reset, and the absence of live
+meeting mutations:
 
 ```powershell
 cd frontend
 npm run test:e2e -- e2e/guided-journey.spec.ts
 ```
 
-It covers the full eight-beat journey, source disclosure, private-scope
-separation, small screens, reduced motion, keyboard operation, back/restart,
-deep-link reset, and the absence of live meeting mutations. The expanded
-acceptance slice adds:
+The current acceptance slice also includes:
 
+- `homepage.spec.ts` and `homepage-cta-readiness.spec.ts` for the approved
+  homepage, evidence graph, renderer lifecycle/fallback, reduced motion, and
+  demo readiness handoff.
+- `demo-introduction.spec.ts`, `demo-copy.spec.ts`, `demo-guidance.spec.ts`,
+  `demo-hud.spec.ts`, and `demo-notices.spec.ts` for the four-moment
+  introduction, current copy, contextual guidance, HUD, and notices.
+- `room-reading-space.spec.ts`, `shared-documents.spec.ts`, and
+  `prepared-deck.spec.ts` for discussion geometry, shared samples and scoped
+  uploads, and prepared-turn inspection.
+- `exploration-playback.spec.ts`, `replay-isolation.spec.ts`,
+  `replay-resilience.spec.ts`, `demo-accessibility.spec.ts`, and
+  `demo-failure.spec.ts` for chapters, playback, isolation, stream failure,
+  focus restoration, overflow, seed outage, and interrupted-stream recovery.
+- `evidence-preview.spec.ts` and `appearance.spec.ts` for exact citations,
+  bounded/truncated previews, themes, contrast, touch targets, reduced motion,
+  and participant marks.
 - `legacy-journey.spec.ts` via `npm run test:e2e:legacy` for the checked-in
   version-5 package and its original guide.
-- `integrated-practice.spec.ts` for persona revisions, stack samples,
-  failure/retry/removal, and the unchanged recorded turn.
-- `temporary-setup.spec.ts` for captured prompts, fixed snapshots, current
-  stack contents, and no fabricated transcript.
-- `exploration-playback.spec.ts` for chapter deep links, summary,
-  1x/2x speed, skip/repeat, bookmark restoration, and both opening branches.
-- `replay-isolation.spec.ts` for two visitors, browser edits, reset scopes,
-  and demo playback restart.
-- `replay-resilience.spec.ts` for double actions, double sample adds,
-  refocus/poll, stream abort/resume, and stale-state refresh.
-- `demo-accessibility.spec.ts` and `demo-failure.spec.ts` for keyboard-only
-  narrow-screen operation, focus restoration, overflow, seed outage, and
-  interrupted-stream recovery.
 - `mixed-operator.spec.ts` via `npm run test:e2e:mixed` for an independently
-  mounted operator Auth/vault envelope beside the demo.
+  mounted operator Auth/vault envelope beside the demo, live navigation, and
+  failed-read recovery.
 
 Run the journey against the production build separately:
 
@@ -692,6 +702,24 @@ Run the journey against the production build separately:
 cd frontend
 npm run test:e2e:prod -- e2e/guided-journey.spec.ts
 ```
+
+#### Current selector and rollback
+
+The active selector for local acceptance is version `12` with the content hash
+above. Locally retained packages `7`–`12` are available; a published version
+remains readable when explicitly pinned. Version `11` is the supported
+rollback, and the version-5 package is a local compatibility fixture, not a
+deployment selector. To roll back after publishing and verifying both versions,
+activate version 11 or pin the deployment to
+`REPLAY_PACKAGE_VERSION=11` with
+`REPLAY_PACKAGE_SHA256=67dcc081615d74230064e7893d043e0a3387a02ff69fb37939d54e2304ece666`.
+Do not mutate retained package bytes, publish different content under an
+existing version, or prune the rollback version during the rollback window.
+Verify with `validate`, `publish`, `activate`, `list`, and a replay smoke read;
+a missing, corrupt, incompatible, or unregistered package answers `503` and
+never falls back to live data. Hosted publication, activation, and deployment
+verification remain operator steps in the hosted checklist below; local
+validation does not prove the hosted bucket, reader grants, or network path.
 
 The placeholder package remains a backend fixture; it is not the demo default.
 
@@ -748,8 +776,8 @@ otherwise. Never paste keys or private payloads into the record.
    reason and final brief arrive as terminal events. A local socket run is not
    a substitute.
 
-4. **Browser journey.** Run the eight-beat journey against the deployed
-   production build, not `next dev`: source disclosure, private-scope
+4. **Browser journey.** Run the current accepted-outcome journey against the
+   deployed production build, not `next dev`: source disclosure, private-scope
    separation, keyboard-only completion, a 390 px viewport, reduced motion,
    back/restart and deep-link reset. Confirm there is no next-step timer,
    credential prompt, live meeting mutation, or console error.

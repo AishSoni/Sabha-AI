@@ -77,7 +77,7 @@ The full variable reference is [`.env.example`](../.env.example) and [docs/OPERA
 
 ## Database and storage
 
-`supabase_schema.sql` is migration `000_baseline`. The remaining ordered history lives in `migrations/` and currently ends at `036_batched_turn_events`.
+`supabase_schema.sql` is migration `000_baseline`. The remaining ordered history lives in `migrations/` and currently ends at `040_upload_request_identity`.
 
 Do not apply only the baseline. Use the runner:
 
@@ -142,8 +142,8 @@ A replay process needs no live Supabase, provider, or operator configuration. Se
 REPLAY_ONLY=true
 REPLAY_DATABASE_URL=...      # login in sabha_replay_reader
 REPLAY_PACKAGE_ID=hdfc-ine001a07rw5
-REPLAY_PACKAGE_VERSION=7
-REPLAY_PACKAGE_SHA256=1a48a568db5aafb2f521b0a690ad68bc06371baa2efa89c2e0f30f3b4c90f774
+REPLAY_PACKAGE_VERSION=12
+REPLAY_PACKAGE_SHA256=37438db307f3fc99d69b30d8efbc38d86592988b9ed208bec4420968269d81ba
 ```
 
 Then start the same app. The live graph is not mounted; `/`, `/health`, and the replay routes remain available.
@@ -242,7 +242,7 @@ Deletion is two-phase: eligibility closes first, then physical bytes and vectors
 
 ## API surface
 
-The frozen contract is `frontend/tests/fixtures/openapi.json` and currently has **56 paths**.
+The frozen contract is `frontend/tests/fixtures/openapi.json` and currently has **60 paths**.
 
 | Group | Routes |
 |---|---|
@@ -291,7 +291,7 @@ python -m scripts.rehearse_clean_checkout
 - Required tests never call paid providers.
 - `rehearse_clean_checkout` archives the tree, installs from a clean checkout, tests, builds, and starts the app.
 
-The latest recorded local acceptance passed 924 tests with 1 skipped.
+The latest recorded local acceptance passed 1026 tests with 1 skipped.
 
 ---
 
@@ -315,7 +315,7 @@ Run from `backend/` with the virtual environment active.
 | `python -m scripts.latency_probe` | Probe data-access latency |
 | `python -m scripts.pdf_extraction_benchmark` | Benchmark extraction and OCR |
 | `python -m scripts.pdf_extraction_probe` | Inspect a single PDF's extraction path |
-| `python -m scripts.build_schema3_package_v11` | Rebuild the authored demo package version 11 |
+| `python -m scripts.build_schema3_package_v12` | Rebuild the authored demo package version 12 |
 | `python -m scripts.replay_package validate DIR` | Validate a replay package |
 | `python -m scripts.replay_package publish DIR` | Publish a package to replay storage |
 | `python -m scripts.replay_package activate ID VERSION` | Activate a package version |
