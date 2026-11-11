@@ -15,20 +15,6 @@ export {
     type LocalDocumentsAdapter,
 } from "./use-local-documents";
 export {
-    useLocalPracticeMeetings,
-    type CreateLocalPracticeMeetingInput,
-    type LocalPracticeMeetingsAdapter,
-} from "./use-local-practice-meetings";
-export {
-    createLocalPracticeMeeting,
-    discardLocalPracticeMeeting,
-    findLocalPracticeMeeting,
-    practiceMeetingCount,
-    type CreatePracticeMeetingInput,
-    type PracticeMeetingFailure,
-    type PracticeMeetingResult,
-} from "./practice-meeting-state";
-export {
     useLocalStacks,
     type LocalStacksAdapter,
 } from "./use-local-stacks";

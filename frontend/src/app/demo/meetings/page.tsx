@@ -2,13 +2,11 @@
 
 import { useMemo, useState } from "react";
 import Link from "next/link";
-import { Archive, ArrowRight, MessageSquare, Users } from "lucide-react";
+import { Archive, ArrowRight, MessageSquare } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { StatusBadge } from "@/components/ui/status-badge";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
-import { useDemoWorkspace } from "@/features/demo-workspace";
-import { useLocalPracticeMeetings } from "@/features/knowledge/local";
 import { useRuntimeMeetingList } from "@/features/meetings/runtime/hooks";
 import { useReplayRun } from "@/features/meetings/runtime/replay-run";
 import { useAnchorRef } from "@/features/demo-tutorial";
@@ -17,8 +15,6 @@ type ListTab = "active" | "archived";
 
 export default function DemoMeetingListPage() {
     const run = useReplayRun();
-    const workspace = useDemoWorkspace();
-    const practice = useLocalPracticeMeetings();
     const archiveRef = useAnchorRef("meetings.archive");
     const listRef = useAnchorRef("meetings.list");
     const meetings = useRuntimeMeetingList();
@@ -87,109 +83,6 @@ export default function DemoMeetingListPage() {
                 </Link>
             </div>
 
-            {workspace.expanded ? (
-                <section className="mb-8" aria-labelledby="practice-setups">
-                    <div className="mb-3 flex flex-wrap items-end justify-between gap-2">
-                        <div>
-                            <h2
-                                id="practice-setups"
-                                className="text-lg font-semibold text-ink"
-                            >
-                                Practice setups
-                            </h2>
-                            <p className="mt-1 text-sm text-ink-secondary">
-                                Temporary browser-memory setups you created by
-                                editing the prepared intake. They are separate
-                                from the demo meeting below.
-                            </p>
-                        </div>
-                        <Badge
-                            variant="outline"
-                            className="border-warning/40 bg-warning-soft text-warning"
-                        >
-                            Local only
-                        </Badge>
-                    </div>
-                    {practice.meetings.length === 0 ? (
-                        <Card className="border-dashed border-separator bg-surface/30 p-5 text-sm text-ink-muted">
-                            No practice setup in this tab. Open{" "}
-                            <Link
-                                href="/demo/new"
-                                className="text-action hover:text-action-hover"
-                            >
-                                New meeting
-                            </Link>{" "}
-                            and choose <strong>Try editing this setup</strong>{" "}
-                            to practice creating one.
-                        </Card>
-                    ) : (
-                        <div className="grid gap-3 md:grid-cols-2">
-                            {practice.meetings.map((meeting) => (
-                                <Card key={meeting.meetingId} className="p-4">
-                                    <div className="flex items-start justify-between gap-2">
-                                        <div>
-                                            <h3 className="font-medium text-ink">
-                                                {meeting.name}
-                                            </h3>
-                                            <p className="mt-1 line-clamp-2 text-sm text-ink-muted">
-                                                {meeting.agenda ||
-                                                    "No additional context"}
-                                            </p>
-                                        </div>
-                                        <Badge
-                                            variant="outline"
-                                            className="border-warning/40 bg-warning-soft text-warning"
-                                        >
-                                            Practice
-                                        </Badge>
-                                    </div>
-                                    <p className="mt-2 text-xs text-ink-muted">
-                                        {meeting.participants.length}{" "}
-                                        participant
-                                        {meeting.participants.length === 1
-                                            ? ""
-                                            : "s"}{" "}
-                                        · {meeting.sampleIds.length} prepared
-                                        sample
-                                        {meeting.sampleIds.length === 1
-                                            ? ""
-                                            : "s"}
-                                    </p>
-                                    <div className="mt-3 flex flex-wrap gap-2">
-                                        <Link
-                                            href={`/demo/meetings/${meeting.meetingId}`}
-                                            className="m-control inline-flex items-center gap-2 rounded-control border border-control bg-surface px-3 py-2 type-control text-ink hover:bg-surface-raised"
-                                        >
-                                            Open practice setup
-                                            <ArrowRight className="h-4 w-4" />
-                                        </Link>
-                                        <Button
-                                            type="button"
-                                            size="sm"
-                                            variant="ghost"
-                                            className="text-danger hover:text-danger-hover"
-                                            onClick={() => {
-                                                const confirmed =
-                                                    window.confirm(
-                                                        `Discard "${meeting.name}"? Its local documents and simulated operations will be revoked. The recorded meeting, transcript, and Files view are unchanged.`
-                                                    );
-                                                if (confirmed) {
-                                                    practice.discardMeeting(
-                                                        meeting.meetingId
-                                                    );
-                                                }
-                                            }}
-                                        >
-                                            Discard setup
-                                        </Button>
-                                    </div>
-                                </Card>
-                            ))}
-                        </div>
-                    )}
-                </section>
-            ) : null}
-
             <div
                 ref={listRef}
                 className="mb-4 inline-flex rounded-group border border-separator bg-surface-raised p-1"
@@ -235,14 +128,18 @@ export default function DemoMeetingListPage() {
                     {meetings.error.message}
                 </p>
             ) : shown.length === 0 ? (
-                <Card className="p-10 text-center">
-                    <Users className="mx-auto mb-3 h-8 w-8 text-ink-muted" />
+                <div className="rounded-group border border-dashed border-separator px-5 py-6">
                     <p className="type-body text-ink-secondary">
                         {shownTab === "active"
                             ? "No active or ended demo meeting yet."
                             : "No archived demo meeting yet."}
                     </p>
-                </Card>
+                    <p className="mt-1 type-meta text-ink-muted">
+                        {shownTab === "active"
+                            ? "Create the prepared meeting from the board to open its room."
+                            : "Archived meetings stay listed here without changing the recorded content."}
+                    </p>
+                </div>
             ) : (
                 <div className="grid gap-4 md:grid-cols-2">
                     {shown.map((meeting) => {

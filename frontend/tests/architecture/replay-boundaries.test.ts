@@ -227,9 +227,6 @@ describe('recorded replay module graph', () => {
             'src/app/demo/knowledge-stacks/[id]/stack-route.tsx'
         );
         expect(modules).toContain(
-            'src/app/demo/meetings/[id]/practice-meeting-route.tsx'
-        );
-        expect(modules).toContain(
             'src/app/demo/meetings/[id]/recorded-meeting-route.tsx'
         );
         expect(modules).toContain(
