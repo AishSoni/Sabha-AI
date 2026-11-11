@@ -14,3 +14,7 @@ export {
     useRuntimeConsensus,
     useRuntimeDisagreements,
 } from '../runtime/hooks';
+export {
+    deriveProgression,
+    type DeckPhase,
+} from '../runtime/progression';

@@ -69,6 +69,11 @@ export {
 export type { TurnGenerationSettings } from './api/generation-settings';
 export type { TurnOperation, TurnStatus } from './api/turn-decoders';
 export type { TurnProjection, TurnToolProjection } from './api/turn-projection';
+export {
+    deriveProgression,
+    type DeckPhase,
+    type DeckProgression,
+} from './runtime/progression';
 export { clearLiveTurnProjections } from './api/turn-projection';
 export { turnProjectionKey, useTurnProjectionStore } from './api/turn-projection';
 export {

@@ -10,7 +10,7 @@ import type { ReplayBeat } from "@/features/meetings/presentation";
 import {
     deriveProgression,
     type DeckPhase,
-} from "@/features/meetings/runtime/progression";
+} from "@/features/meetings/presentation";
 
 export interface JourneyPreparedTurn {
     turn_id: string;

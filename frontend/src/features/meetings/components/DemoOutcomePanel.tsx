@@ -1,8 +1,6 @@
 "use client";
 
 import Link from "next/link";
-import ReactMarkdown from "react-markdown";
-import remarkGfm from "remark-gfm";
 
 import { Badge } from "@/components/ui/badge";
 import { Card } from "@/components/ui/card";
@@ -239,9 +237,7 @@ export function DemoOutcomePanel({
                         Research checklist
                     </h3>
                     <div className="m-prose mt-2 type-control text-ink">
-                        <ReactMarkdown remarkPlugins={[remarkGfm]}>
-                            {summary}
-                        </ReactMarkdown>
+                        <p className="whitespace-pre-wrap">{summary}</p>
                     </div>
                 </Card>
             ) : null}
