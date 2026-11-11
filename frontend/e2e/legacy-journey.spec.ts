@@ -98,6 +98,9 @@ test.describe("version-5 package compatibility", () => {
         await expect(
             page.getByText("Disagreement logged").first()
         ).toBeVisible({ timeout: 30_000 });
+        await page
+            .getByRole("button", { name: "Dismiss Disagreement logged" })
+            .click();
         await expect(
             hud.getByText("Send your follow-up")
         ).toBeVisible({ timeout: 30_000 });
@@ -134,8 +137,8 @@ test.describe("version-5 package compatibility", () => {
             page.getByText(/The committee voted to conclude/).first()
         ).toBeVisible({ timeout: 30_000 });
         await expect(
-            hud.getByText("Return to the meetings list")
-        ).toBeVisible({ timeout: 30_000 });
+            page.getByTestId("tutorial-announcement")
+        ).toContainText("Return to the meetings list");
 
         await page.getByRole("link", { name: "Go to meetings" }).click();
         await expect(page).toHaveURL(/\/demo\/meetings$/);

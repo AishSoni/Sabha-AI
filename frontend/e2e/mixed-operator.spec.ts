@@ -239,6 +239,13 @@ test.describe("mixed operator and demo isolation", () => {
             )
         ).toBe(beforeVault);
 
+        // A full reset deliberately reopens the introduction before the
+        // workspace can be used again.
+        await expect(demo.getByTestId("demo-introduction")).toBeVisible();
+        await demo
+            .getByRole("button", { name: "Skip introduction" })
+            .click();
+
         // A new demo edit survives the operator losing its local session.
         await demo.getByRole("link", { name: "Personas" }).click();
         await demo.getByRole("link", { name: "Mira" }).click();
