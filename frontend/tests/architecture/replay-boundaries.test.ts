@@ -233,9 +233,6 @@ describe('recorded replay module graph', () => {
             'src/app/demo/meetings/[id]/recorded-meeting-route.tsx'
         );
         expect(modules).toContain(
-            'src/app/demo/new/practice-setup-route.tsx'
-        );
-        expect(modules).toContain(
             'src/app/demo/roster/[id]/persona-route.tsx'
         );
         expect(modules.filter((file) => /\.(test|spec)\./.test(file))).toEqual([]);

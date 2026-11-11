@@ -18,7 +18,6 @@ import {
 import { useReplayRun } from "@/features/meetings/runtime/replay-run";
 import { useReplaySessionReady } from "@/features/meetings/runtime/replay-session";
 import { markTutorialFact, useAnchorRef } from "@/features/demo-tutorial";
-import { PracticeSetupRoute } from "./practice-setup-route";
 
 interface Preset {
     agenda?: string;
@@ -83,7 +82,6 @@ export default function DemoNewMeetingPage() {
         .join(",");
     const previewEpoch = `${workspace.workspaceEpoch}:${revokedIds}`;
     const [busy, setBusy] = useState(false);
-    const [editing, setEditing] = useState(false);
     const [createdLocally, setCreatedLocally] = useState(false);
     const [error, setError] = useState<string | null>(null);
     const config = run.safeConfig as SafeConfig | null;
@@ -96,10 +94,6 @@ export default function DemoNewMeetingPage() {
     const created = deck
         ? createdLocally
         : run.checkpoint !== run.session.initial_checkpoint;
-
-    if (editing) {
-        return <PracticeSetupRoute onExit={() => setEditing(false)} />;
-    }
 
     const create = async () => {
         setError(null);
@@ -138,27 +132,6 @@ export default function DemoNewMeetingPage() {
                 <p className="mt-2 text-sm text-ink-secondary">
                     This is the creation record for the demo meeting.
                 </p>
-                <div className="mt-4 flex flex-wrap items-center gap-2">
-                    <Button
-                        type="button"
-                        variant="outline"
-                        size="sm"
-                        disabled={!workspace.expanded}
-                        onClick={() => setEditing(true)}
-                    >
-                        Try editing this setup
-                    </Button>
-                    <span className="text-xs text-ink-muted">
-                        Practice only · changes stay in this browser and never alter
-                        the recording.
-                    </span>
-                </div>
-                {!workspace.expanded ? (
-                    <p className="mt-2 text-xs text-ink-muted">
-                        Practice editing is unavailable for this recording
-                        version. The recorded meeting remains usable.
-                    </p>
-                ) : null}
             </div>
 
             {error ? (
