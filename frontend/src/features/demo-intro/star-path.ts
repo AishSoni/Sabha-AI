@@ -25,10 +25,10 @@ interface PathKey {
 const HORIZONTAL_WEIGHT = 1.85;
 const SEGMENT_STEPS = 32;
 
-const LOOP_CENTER_U = 0.628;
+const LOOP_CENTER_U = 0.607;
 const LOOP_CENTER_V = 0.508;
-const LOOP_RADIUS_U = 0.045;
-const LOOP_RADIUS_V = 0.066;
+const LOOP_RADIUS_U = 0.068;
+const LOOP_RADIUS_V = 0.078;
 const LOOP_DEPTH = 10.2;
 /** Tilts the ring in depth so the loop reads as a 3D orbit. */
 const LOOP_TILT = 1.2;
