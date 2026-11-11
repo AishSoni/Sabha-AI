@@ -88,14 +88,17 @@ function ConnectionList() {
 export function HomeEvidence() {
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const [hoveredId, setHoveredId] = useState<string | null>(null);
+  const [focusedId, setFocusedId] = useState<string | null>(null);
 
-  const detailId = hoveredId ?? selectedId;
-  const detailNode = detailId
-    ? (EVIDENCE_NODE_BY_ID.get(detailId) ?? null)
+  const pinned = Boolean(selectedId);
+  const activeId = selectedId ?? hoveredId ?? focusedId;
+  const overlayId = selectedId ?? hoveredId;
+  const detailNode = overlayId
+    ? (EVIDENCE_NODE_BY_ID.get(overlayId) ?? null)
     : null;
   const detailEdges = useMemo(
-    () => (detailId ? evidenceEdgesFor(detailId) : []),
-    [detailId],
+    () => (overlayId ? evidenceEdgesFor(overlayId) : []),
+    [overlayId],
   );
   const detailAssignments = detailEdges.filter(
     (edge) => edge.kind === "assignment",
@@ -103,33 +106,62 @@ export function HomeEvidence() {
   const detailCitations = detailEdges.filter(
     (edge) => edge.kind === "citation",
   );
-  const pinned = Boolean(selectedId && detailId === selectedId);
 
   const nodeState = (node: EvidenceNode) => {
     const related =
-      detailId === node.id ||
+      activeId === node.id ||
       EVIDENCE_EDGES.some(
         (edge) =>
-          (edge.from === detailId && edge.to === node.id) ||
-          (edge.to === detailId && edge.from === node.id),
+          (edge.from === activeId && edge.to === node.id) ||
+          (edge.to === activeId && edge.from === node.id),
       );
 
     return {
       selected: selectedId === node.id,
       preview: hoveredId === node.id && hoveredId !== selectedId,
       related,
-      dim: Boolean(detailId) && !related,
+      dim: Boolean(activeId) && !related,
     };
   };
 
   const selectNode = (nodeId: string) => {
-    setSelectedId((current) => (current === nodeId ? null : nodeId));
+    if (selectedId === nodeId) {
+      setSelectedId(null);
+      setHoveredId(null);
+      return;
+    }
+    setSelectedId(nodeId);
+    setHoveredId(null);
+  };
+
+  const restoreFocus = (nodeId: string) => {
+    window.requestAnimationFrame(() => {
+      const target = Array.from(
+        document.querySelectorAll<HTMLElement>("[data-evidence-node-id]"),
+      ).find(
+        (node) =>
+          node.dataset.evidenceNodeId === nodeId &&
+          node.getClientRects().length > 0,
+      );
+      target?.focus();
+    });
+  };
+
+  const dismiss = (returnFocus: boolean) => {
+    if (returnFocus && selectedId) restoreFocus(selectedId);
+    setSelectedId(null);
+    setHoveredId(null);
   };
 
   useEffect(() => {
     if (!selectedId && !hoveredId) return;
     const handleKey = (event: KeyboardEvent) => {
       if (event.key !== "Escape") return;
+      const inspector = document.getElementById("home-graph-detail");
+      const focusInside = Boolean(
+        inspector && inspector.contains(document.activeElement),
+      );
+      if (focusInside && selectedId) restoreFocus(selectedId);
       setSelectedId(null);
       setHoveredId(null);
     };
@@ -182,8 +214,7 @@ export function HomeEvidence() {
             aria-label="Illustrative evidence star map"
             onClick={(event) => {
               if (event.target === event.currentTarget) {
-                setSelectedId(null);
-                setHoveredId(null);
+                dismiss(false);
               }
             }}
           >
@@ -222,7 +253,8 @@ export function HomeEvidence() {
               focusable="false"
             >
               {EVIDENCE_EDGES.map((edge) => {
-            const active = edge.from === detailId || edge.to === detailId;
+                const active =
+                  edge.from === activeId || edge.to === activeId;
                 return (
                   <path
                     key={edge.id}
@@ -244,7 +276,11 @@ export function HomeEvidence() {
                   type="button"
                   className="home-graph__node"
                   style={nodeStyle(node)}
-                  aria-pressed={state.selected}
+                  aria-expanded={state.selected}
+                  aria-controls={
+                    state.selected ? "home-graph-detail" : undefined
+                  }
+                  data-evidence-node-id={node.id}
                   data-kind={node.kind}
                   data-selected={state.selected}
                   data-preview={state.preview}
@@ -253,8 +289,8 @@ export function HomeEvidence() {
                   onClick={() => selectNode(node.id)}
                   onMouseEnter={() => setHoveredId(node.id)}
                   onMouseLeave={() => setHoveredId(null)}
-                  onFocus={() => setHoveredId(node.id)}
-                  onBlur={() => setHoveredId(null)}
+                  onFocus={() => setFocusedId(node.id)}
+                  onBlur={() => setFocusedId(null)}
                 >
                   <NodeMark node={node} />
                   <NodeLabel node={node} />
@@ -273,7 +309,11 @@ export function HomeEvidence() {
                     <button
                       type="button"
                       className="home-graph__node-list-button"
-                      aria-pressed={state.selected}
+                      aria-expanded={state.selected}
+                      aria-controls={
+                        state.selected ? "home-graph-detail" : undefined
+                      }
+                      data-evidence-node-id={node.id}
                       data-kind={node.kind}
                       data-selected={state.selected}
                       style={nodeStyle(node)}
@@ -290,18 +330,27 @@ export function HomeEvidence() {
 
           {detailNode ? (
             <aside
+              id={pinned ? "home-graph-detail" : undefined}
               className="home-graph__overlay"
               data-side={detailNode.x > 560 ? "left" : "right"}
               data-pinned={pinned}
-              aria-live="polite"
-              aria-atomic="true"
+              role={pinned ? "region" : undefined}
+              aria-labelledby={
+                pinned ? "home-graph-detail-title" : undefined
+              }
+              aria-hidden={pinned ? undefined : true}
             >
               <div className="home-graph__overlay-head">
                 <div className="home-graph__overlay-identity">
                   <p className="home-graph__overlay-label">
                     {HOME_COPY.evidence.detailLabel}
                   </p>
-                  <h3 className="type-item-title">{detailNode.name}</h3>
+                  <h3
+                    id={pinned ? "home-graph-detail-title" : undefined}
+                    className="type-item-title"
+                  >
+                    {detailNode.name}
+                  </h3>
                   <p className="home-graph__overlay-kind">
                     {detailNode.kindLabel}
                   </p>
@@ -311,10 +360,7 @@ export function HomeEvidence() {
                     type="button"
                     className="home-graph__overlay-close"
                     aria-label="Close details"
-                    onClick={() => {
-                      setSelectedId(null);
-                      setHoveredId(null);
-                    }}
+                    onClick={() => dismiss(true)}
                   >
                     <X className="size-4" aria-hidden="true" />
                   </button>
@@ -363,10 +409,12 @@ export function HomeEvidence() {
                   </p>
                 ) : null}
               </div>
-              <details className="home-graph__reading">
-                <summary>{HOME_COPY.evidence.readingLabel}</summary>
-                <ConnectionList />
-              </details>
+              {pinned ? (
+                <details className="home-graph__reading">
+                  <summary>{HOME_COPY.evidence.readingLabel}</summary>
+                  <ConnectionList />
+                </details>
+              ) : null}
             </aside>
           ) : null}
         </div>

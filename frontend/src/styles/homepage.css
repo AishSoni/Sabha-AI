@@ -1136,6 +1136,7 @@ html[data-theme="light"] .home-page {
 
 .home-graph__node:focus-visible,
 .home-graph__node-list-button:focus-visible,
+.home-graph__overlay-close:focus-visible,
 .home-evidence__demo-link:focus-visible,
 .home-graph__reading summary:focus-visible {
   outline: 2px solid var(--home-accent);

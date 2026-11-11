@@ -428,9 +428,9 @@ test.describe("homepage evidence graph", () => {
     await expect(
       page.locator(".home-graph__map .home-graph__edge[data-active='true']"),
     ).toHaveCount(1);
-    await expect(crisil).toHaveAttribute("aria-pressed", "true");
+    await expect(crisil).toHaveAttribute("aria-expanded", "true");
     await expect(
-      page.locator(".home-graph__map .home-graph__node[aria-pressed='true']"),
+      page.locator(".home-graph__map .home-graph__node[aria-expanded='true']"),
     ).toHaveCount(1);
 
     const after = await credit.boundingBox();
@@ -454,6 +454,9 @@ test.describe("homepage evidence graph", () => {
     await expect(overlay).toBeVisible();
     await expect(overlay.locator("h3")).toHaveText("Mira");
     await expect(overlay).toHaveAttribute("data-pinned", "false");
+    await expect(overlay).toHaveAttribute("aria-hidden", "true");
+    await expect(overlay.locator("button")).toHaveCount(0);
+    await expect(overlay.locator("details")).toHaveCount(0);
     await expect
       .poll(() =>
         overlay.evaluate((element) => getComputedStyle(element).backdropFilter),
@@ -466,11 +469,50 @@ test.describe("homepage evidence graph", () => {
     await credit.click();
     await expect(overlay).toBeVisible();
     await expect(overlay).toHaveAttribute("data-pinned", "true");
+    await expect(overlay).not.toHaveAttribute("aria-hidden", "true");
     await page.mouse.move(4, 4);
     await expect(overlay).toBeVisible();
 
     await page.keyboard.press("Escape");
     await expect(overlay).toHaveCount(0);
+  });
+
+  test("keeps a pinned inspector stable while another node is active", async ({
+    page,
+  }) => {
+    await page.setViewportSize({ width: 1440, height: 900 });
+    await page.goto("/#evidence");
+
+    const overlay = page.locator(".home-graph__overlay");
+    const credit = page
+      .locator(".home-graph__map .home-graph__node")
+      .filter({ hasText: "Mira" });
+    const crisil = page
+      .locator(".home-graph__map .home-graph__node")
+      .filter({ hasText: "Crisil annexure" });
+
+    await crisil.focus();
+    await crisil.press("Enter");
+    await expect(overlay).toHaveAttribute("data-pinned", "true");
+    await expect(overlay.locator("h3")).toHaveText("Crisil annexure");
+
+    await credit.hover();
+    await expect(overlay.locator("h3")).toHaveText("Crisil annexure");
+    await expect(
+      overlay.getByRole("button", { name: "Close details" }),
+    ).toBeVisible();
+    await expect(overlay.locator("details")).toHaveCount(1);
+
+    await credit.focus();
+    await expect(overlay.locator("h3")).toHaveText("Crisil annexure");
+    await expect(overlay.locator("details")).toHaveCount(1);
+
+    await overlay.locator("summary").focus();
+    await expect(overlay.locator("h3")).toHaveText("Crisil annexure");
+
+    await page.keyboard.press("Escape");
+    await expect(overlay).toHaveCount(0);
+    await expect(crisil).toBeFocused();
   });
 
   test("offers a complete relationship list on request", async ({ page }) => {
@@ -504,13 +546,17 @@ test.describe("homepage evidence graph", () => {
     await expect(page.locator(".home-graph__map")).toBeHidden();
     const mobile = page.locator(".home-graph__mobile");
     await expect(mobile).toBeVisible();
-    await mobile
+    const mandate = mobile
       .locator(".home-graph__node-list-button")
-      .filter({ hasText: "Portfolio mandate" })
-      .click();
+      .filter({ hasText: "Portfolio mandate" });
+    await mandate.click();
     await expect(
       page.locator(".home-graph__overlay h3"),
     ).toHaveText("Portfolio mandate");
+
+    await page.getByRole("button", { name: "Close details" }).click();
+    await expect(page.locator(".home-graph__overlay")).toHaveCount(0);
+    await expect(mandate).toBeFocused();
   });
 });
 
