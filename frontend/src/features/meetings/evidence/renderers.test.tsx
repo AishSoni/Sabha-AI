@@ -1,7 +1,10 @@
 import { render, screen } from "@testing-library/react";
 import { describe, expect, it } from "vitest";
 
-import { EvidenceDescriptor } from "./contract";
+import {
+    EVIDENCE_RENDER_TEXT_LIMIT,
+    EvidenceDescriptor,
+} from "./contract";
 import { EvidenceContentRenderer, parseCsvBounded } from "./renderers";
 
 const descriptor: EvidenceDescriptor = {
@@ -27,6 +30,105 @@ describe("EvidenceContentRenderer", () => {
         );
         expect(screen.getByRole("heading", { name: "Heading" })).toBeInTheDocument();
         expect(screen.getByRole("table")).toBeInTheDocument();
+    });
+
+    it("shows an accessible completeness notice when Markdown was truncated", () => {
+        render(
+            <EvidenceContentRenderer
+                descriptor={descriptor}
+                content={{
+                    kind: "markdown",
+                    text: "# Retained heading\n\nRetained body.",
+                    truncated: true,
+                }}
+            />
+        );
+        const notice = screen.getByRole("status");
+        expect(notice).toHaveTextContent(
+            "Preview truncated; the retained source may contain more."
+        );
+        expect(screen.queryByRole("alert")).toBeNull();
+        expect(
+            screen.getByRole("heading", { name: "Retained heading" })
+        ).toBeInTheDocument();
+    });
+
+    it("does not claim truncation for complete Markdown", () => {
+        render(
+            <EvidenceContentRenderer
+                descriptor={descriptor}
+                content={{
+                    kind: "markdown",
+                    text: "Complete markdown.",
+                    truncated: false,
+                }}
+            />
+        );
+        expect(screen.queryByRole("status")).toBeNull();
+    });
+
+    it("does not claim truncation for Markdown exactly at the render boundary", () => {
+        render(
+            <EvidenceContentRenderer
+                descriptor={descriptor}
+                content={{
+                    kind: "markdown",
+                    text: "a".repeat(EVIDENCE_RENDER_TEXT_LIMIT),
+                    truncated: false,
+                }}
+            />
+        );
+        expect(screen.queryByRole("status")).toBeNull();
+    });
+
+    it("bounds over-limit Markdown and hides clipped content", () => {
+        const tail = "CLIPPED_TAIL_MARKER";
+        const { container } = render(
+            <EvidenceContentRenderer
+                descriptor={descriptor}
+                content={{
+                    kind: "markdown",
+                    text: "a".repeat(EVIDENCE_RENDER_TEXT_LIMIT) + tail,
+                    truncated: false,
+                }}
+            />
+        );
+        expect(screen.getByRole("status")).toHaveTextContent(
+            "Preview truncated; the retained source may contain more."
+        );
+        expect(container.textContent).not.toContain(tail);
+    });
+
+    it("bounds over-limit preformatted text and reports the omission", () => {
+        render(
+            <EvidenceContentRenderer
+                descriptor={descriptor}
+                content={{
+                    kind: "text",
+                    text: "a".repeat(EVIDENCE_RENDER_TEXT_LIMIT + 1),
+                    truncated: false,
+                }}
+            />
+        );
+        const notice = screen.getByRole("status");
+        expect(notice).toHaveTextContent(
+            "Preview truncated; the retained source may contain more."
+        );
+        expect(screen.queryByRole("alert")).toBeNull();
+    });
+
+    it("does not claim truncation for complete preformatted text", () => {
+        render(
+            <EvidenceContentRenderer
+                descriptor={descriptor}
+                content={{
+                    kind: "json",
+                    text: '{"complete":true}',
+                    truncated: false,
+                }}
+            />
+        );
+        expect(screen.queryByRole("status")).toBeNull();
     });
 
     it("strips raw HTML and scripts", () => {

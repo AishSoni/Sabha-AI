@@ -18,6 +18,7 @@ export type EvidenceMediaType = (typeof EVIDENCE_MEDIA_TYPES)[number];
 
 export const EVIDENCE_MAX_BYTES = 50 * 1024 * 1024;
 export const EVIDENCE_MAX_TEXT_CHARACTERS = 2_000_000;
+export const EVIDENCE_RENDER_TEXT_LIMIT = 400_000;
 export const EVIDENCE_LOAD_TIMEOUT_MS = 15_000;
 
 export type EvidenceReadiness = "ready" | "unavailable";

@@ -12,13 +12,13 @@ import * as React from "react";
 import ReactMarkdown from "react-markdown";
 import remarkGfm from "remark-gfm";
 
+import { boundPreviewText } from "./bounded-text";
 import {
     EvidenceContent,
     EvidenceDescriptor,
     EvidenceTextContent,
 } from "./contract";
 
-const RENDER_TEXT_LIMIT = 400_000;
 const CSV_MAX_ROWS = 200;
 const CSV_MAX_COLUMNS = 20;
 const CSV_MAX_CELL_CHARACTERS = 500;
@@ -116,32 +116,58 @@ function safeUrl(url: string): string {
     return "";
 }
 
-function MarkdownBody({ text }: { text: string }) {
+function PreviewCompletenessNotice({ omitted }: { omitted: boolean }) {
+    if (!omitted) {
+        return null;
+    }
     return (
-        <div className="space-y-3 text-sm leading-6 [&_a]:underline [&_blockquote]:border-l-2 [&_blockquote]:pl-3 [&_code]:rounded [&_code]:bg-muted [&_code]:px-1 [&_h1]:text-xl [&_h1]:font-semibold [&_h2]:text-lg [&_h2]:font-semibold [&_h3]:font-medium [&_li]:ml-5 [&_li]:list-disc [&_ol_li]:list-decimal [&_p]:my-2 [&_table]:w-full [&_table]:border-collapse [&_td]:border [&_td]:px-2 [&_td]:py-1 [&_th]:border [&_th]:bg-muted [&_th]:px-2 [&_th]:py-1">
-            <ReactMarkdown
-                remarkPlugins={[remarkGfm]}
-                skipHtml
-                urlTransform={safeUrl}
-                components={{
-                    a: ({ children, href }) => (
-                        <a
-                            href={href}
-                            target="_blank"
-                            rel="noopener noreferrer nofollow"
-                        >
-                            {children}
-                        </a>
-                    ),
-                    img: ({ alt }) => (
-                        <span className="text-muted-foreground">
-                            {alt ? `[Image omitted: ${alt}]` : "[Image omitted]"}
-                        </span>
-                    ),
-                }}
-            >
-                {text}
-            </ReactMarkdown>
+        <p
+            role="status"
+            className="rounded-group border border-separator bg-surface-raised px-3 py-2 type-meta text-ink-secondary"
+        >
+            Preview truncated; the retained source may contain more.
+        </p>
+    );
+}
+
+function MarkdownBody({
+    text,
+    truncated,
+}: {
+    text: string;
+    truncated: boolean;
+}) {
+    const preview = boundPreviewText(text, truncated);
+    return (
+        <div className="space-y-3">
+            <PreviewCompletenessNotice omitted={preview.omitted} />
+            <div className="space-y-3 text-sm leading-6 [&_a]:underline [&_blockquote]:border-l-2 [&_blockquote]:pl-3 [&_code]:rounded [&_code]:bg-muted [&_code]:px-1 [&_h1]:text-xl [&_h1]:font-semibold [&_h2]:text-lg [&_h2]:font-semibold [&_h3]:font-medium [&_li]:ml-5 [&_li]:list-disc [&_ol_li]:list-decimal [&_p]:my-2 [&_table]:w-full [&_table]:border-collapse [&_td]:border [&_td]:px-2 [&_td]:py-1 [&_th]:border [&_th]:bg-muted [&_th]:px-2 [&_th]:py-1">
+                <ReactMarkdown
+                    remarkPlugins={[remarkGfm]}
+                    skipHtml
+                    urlTransform={safeUrl}
+                    components={{
+                        a: ({ children, href }) => (
+                            <a
+                                href={href}
+                                target="_blank"
+                                rel="noopener noreferrer nofollow"
+                            >
+                                {children}
+                            </a>
+                        ),
+                        img: ({ alt }) => (
+                            <span className="text-muted-foreground">
+                                {alt
+                                    ? `[Image omitted: ${alt}]`
+                                    : "[Image omitted]"}
+                            </span>
+                        ),
+                    }}
+                >
+                    {preview.text}
+                </ReactMarkdown>
+            </div>
         </div>
     );
 }
@@ -155,21 +181,16 @@ function PreformattedBody({
     truncated: boolean;
     label?: string;
 }) {
-    const bounded = text.slice(0, RENDER_TEXT_LIMIT);
-    const clipped = truncated || bounded.length < text.length;
+    const preview = boundPreviewText(text, truncated);
     return (
         <div className="space-y-2">
             {label ? (
                 <p className="text-xs text-muted-foreground">{label}</p>
             ) : null}
+            <PreviewCompletenessNotice omitted={preview.omitted} />
             <pre className="max-h-[55vh] overflow-auto rounded-md border bg-muted/40 p-3 text-xs whitespace-pre-wrap break-words">
-                {bounded}
+                {preview.text}
             </pre>
-            {clipped ? (
-                <p className="text-xs text-muted-foreground">
-                    Preview truncated; the retained source may contain more.
-                </p>
-            ) : null}
         </div>
     );
 }
@@ -263,7 +284,12 @@ export function EvidenceContentRenderer({
     }
     switch (content.kind) {
         case "markdown":
-            return <MarkdownBody text={content.text} />;
+            return (
+                <MarkdownBody
+                    text={content.text}
+                    truncated={content.truncated}
+                />
+            );
         case "csv":
             return <CsvBody content={content} />;
         case "json":
