@@ -42,7 +42,9 @@ async function addSample(page: Page, fileName: RegExp) {
 
 async function openRoomFiles(page: Page) {
     await page.getByRole("button", { name: "Create meeting" }).click();
-    await expect(page.getByText("Meeting created")).toBeVisible();
+    await expect(
+        page.getByRole("heading", { name: "Meeting created" })
+    ).toBeVisible();
     await page.getByRole("link", { name: "Open the meeting room" }).click();
     await expect(page).toHaveURL(/\/demo\/meetings\/[^/]+/);
     await page.getByRole("tab", { name: "Files" }).click();
