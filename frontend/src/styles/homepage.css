@@ -900,14 +900,29 @@ html[data-theme="light"] .home-page {
   padding: 0 clamp(1.25rem, 5vw, 2.5rem);
 }
 
-.home-graph__illustrative {
+.home-graph__eyebrow {
   margin: 0;
   color: var(--home-accent);
-  font-size: 0.75rem;
+  font-size: 0.7rem;
   font-weight: 600;
   letter-spacing: 0.11em;
   line-height: 1.4;
   text-transform: uppercase;
+}
+
+.home-graph__illustrative {
+  margin: 0 0 0.9rem;
+  padding: 0 clamp(1.25rem, 5vw, 2.5rem);
+  color: var(--home-muted);
+  font-size: 0.8125rem;
+  line-height: 1.5;
+}
+
+.home-graph__hint {
+  margin: 1rem 0 0;
+  color: var(--home-soft);
+  font-size: 0.875rem;
+  line-height: 1.5;
 }
 
 .home-evidence__intro h2 {

@@ -9,12 +9,14 @@ export const HOME_COPY = {
   operatorCta: "Operator sign-in",
   evidenceAnchor: "Explore the evidence constellation",
   evidence: {
-    heading: "Different perspectives. Traceable sources.",
-    body: "The demo gives every participant the same shared material, then a private working set. Dashed lines show what was assigned; solid lines show an example citation from a recorded turn.",
+    exampleLabel: "Demo example",
+    heading: "Different perspectives. Sources you can inspect.",
+    body: "Give AI participants shared documents and additional material for their roles. Compare their reasoning, then follow citations back to the supporting sources.",
     illustrative: "Illustrative view of the demo · not a live retrieval record",
+    hint: "Select a role or source to inspect its connections.",
     legend: {
-      assignment: "Assigned / available",
-      citation: "Example citation",
+      assignment: "Available to the participant",
+      citation: "Cited in a response",
     },
     demoLink: "Inspect evidence in the demo",
     detailLabel: "Selected example",

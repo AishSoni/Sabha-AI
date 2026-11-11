@@ -34,6 +34,21 @@ describe("homepage copy", () => {
     expect("disclosure" in HOME_COPY.evidence).toBe(false);
   });
 
+  it("leads with the evidence message and keeps the demo framing small", () => {
+    expect(HOME_COPY.evidence.exampleLabel).toBe("Demo example");
+    expect(HOME_COPY.evidence.heading).toBe(
+      "Different perspectives. Sources you can inspect.",
+    );
+    expect(HOME_COPY.evidence.body).toContain(
+      "follow citations back to the supporting sources",
+    );
+    expect(HOME_COPY.evidence.hint).toContain("Select a role or source");
+    expect(HOME_COPY.evidence.legend).toEqual({
+      assignment: "Available to the participant",
+      citation: "Cited in a response",
+    });
+  });
+
   it("labels the evidence view as illustrative rather than live", () => {
     expect(HOME_COPY.evidence.illustrative).toContain("Illustrative");
     expect(HOME_COPY.evidence.illustrative).toContain(

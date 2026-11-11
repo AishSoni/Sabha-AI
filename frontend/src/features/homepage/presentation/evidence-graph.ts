@@ -242,5 +242,5 @@ export function evidenceNodeName(nodeId: string): string {
 }
 
 export function edgeKindLabel(kind: EvidenceEdgeKind): string {
-  return kind === "assignment" ? "Assigned / available" : "Example citation";
+  return kind === "assignment" ? "Available to the participant" : "Cited in a response";
 }

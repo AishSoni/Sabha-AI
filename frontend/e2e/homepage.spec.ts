@@ -74,10 +74,20 @@ test.describe("homepage composition", () => {
       page.getByRole("link", { name: "Explore the evidence constellation" }),
     ).toHaveAttribute("href", "#evidence");
 
+    await expect(page.getByText("Demo example")).toBeVisible();
     await expect(
       page.getByRole("heading", {
-        name: "Different perspectives. Traceable sources.",
+        name: "Different perspectives. Sources you can inspect.",
       }),
+    ).toBeVisible();
+    await expect(
+      page.getByText(
+        "Give AI participants shared documents and additional material for their roles.",
+        { exact: false },
+      ),
+    ).toBeVisible();
+    await expect(
+      page.getByText("Select a role or source to inspect its connections."),
     ).toBeVisible();
     await expect(
       page.getByText(
@@ -438,8 +448,12 @@ test.describe("homepage evidence graph", () => {
     await expect(
       reading.getByText("Mira → Crisil annexure"),
     ).toBeVisible();
-    await expect(reading.getByText("Assigned / available").first()).toBeVisible();
-    await expect(reading.getByText("Example citation").first()).toBeVisible();
+    await expect(
+      reading.getByText("Available to the participant").first(),
+    ).toBeVisible();
+    await expect(
+      reading.getByText("Cited in a response").first(),
+    ).toBeVisible();
   });
 
   test("uses the structured list on compact screens", async ({ page }) => {

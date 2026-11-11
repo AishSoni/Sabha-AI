@@ -144,8 +144,8 @@ export function HomeEvidence() {
     >
       <div className="home-evidence__inner">
         <div className="home-evidence__intro">
-          <p className="home-graph__illustrative">
-            {HOME_COPY.evidence.illustrative}
+          <p className="home-graph__eyebrow">
+            {HOME_COPY.evidence.exampleLabel}
           </p>
           <h2 id="home-evidence-title" className="type-page-title">
             {HOME_COPY.evidence.heading}
@@ -153,6 +153,7 @@ export function HomeEvidence() {
           <p className="home-evidence__copy type-lead">
             {HOME_COPY.evidence.body}
           </p>
+          <p className="home-graph__hint">{HOME_COPY.evidence.hint}</p>
           <div className="home-graph__legend" aria-label="Graph legend">
             <span>
               <span
@@ -172,6 +173,9 @@ export function HomeEvidence() {
         </div>
 
         <div className="home-graph">
+          <p className="home-graph__illustrative">
+            {HOME_COPY.evidence.illustrative}
+          </p>
           <div
             className="home-graph__map"
             role="group"
